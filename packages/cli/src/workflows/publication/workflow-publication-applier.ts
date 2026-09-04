@@ -21,6 +21,7 @@ import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
+import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';
 import type {
 	PublicationResult,
@@ -440,9 +441,9 @@ export class WorkflowPublicationApplier {
 	private toActivationError(failures: TriggerActivationFailure[]): Error {
 		if (failures.length === 1) return failures[0].error;
 
-		const detail = failures
-			.map((failure) => `"${failure.nodeName}": ${failure.error.message}`)
-			.join('; ');
+		const detail = formatNodeFailures(
+			failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+		);
 
 		return new Error(`Triggers failed to activate: ${detail}`);
 	}

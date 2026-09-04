@@ -1,5 +1,5 @@
 import { i18n, i18nInstance, setLanguage, updateLocaleMessages } from '@n8n/i18n';
-import type { LocaleMessages } from '@n8n/i18n/types';
+import type { LocaleMessages } from '@n8n/i18n';
 import { locale as designLocale } from '@n8n/design-system';
 
 const hot = import.meta.hot;

@@ -198,8 +198,8 @@ describe('Cipher', () => {
 		});
 	});
 
-	describe('encryptV2 / decryptV2 (proxy-aware)', () => {
-		const instanceKeyForProxy = 'test_key';
+	describe('encryptV2 / decryptV2 (descriptor-driven)', () => {
+		const instanceKey = 'test_key';
 		const plaintextDataKey = '11'.repeat(32);
 		const encryptionKeyProxy = Container.get(EncryptionKeyProxy);
 
@@ -212,7 +212,7 @@ describe('Cipher', () => {
 			encryptionKeyProxy.setProvider(undefined);
 		});
 
-		it('should use active key and embed keyId prefix when proxy is registered and feature flag is on', async () => {
+		it('should encrypt with the active key and embed the keyId prefix when the descriptor is prefixed', async () => {
 			const keyId = 'test-uuid-1234';
 			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
 
@@ -221,118 +221,116 @@ describe('Cipher', () => {
 					id: keyId,
 					value: encryptedDataKey,
 					algorithm: 'aes-256-gcm',
+					format: 'prefixed',
 				}),
 				getKeyById: async () => null,
-				getLegacyKey: async () => ({
-					id: 'legacy',
-					value: encryptedDataKey,
-					algorithm: 'aes-256-cbc',
-				}),
 			});
 
-			const originalFlag = process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
-			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
-			try {
-				const encrypted = await cipher.encryptV2('hello');
-				expect(encrypted.startsWith(`${keyId}:`)).toBe(true);
+			const encrypted = await cipher.encryptV2('hello');
+			expect(encrypted.startsWith(`${keyId}:`)).toBe(true);
 
-				const ciphertext = encrypted.slice(keyId.length + 1);
-				const decrypted = cipher.decryptWithKey(ciphertext, plaintextDataKey, 'aes-256-gcm');
-				expect(decrypted).toEqual('hello');
-			} finally {
-				process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = originalFlag;
-			}
+			const ciphertext = encrypted.slice(keyId.length + 1);
+			const decrypted = cipher.decryptWithKey(ciphertext, plaintextDataKey, 'aes-256-gcm');
+			expect(decrypted).toEqual('hello');
 		});
 
-		it('should decrypt using keyId from prefix when proxy is registered', async () => {
+		it('should write the byte-compatible legacy format when the descriptor is no-prefix', async () => {
+			withProvider({
+				getActiveKey: async () => ({
+					id: 'legacy',
+					value: cipher.encryptDEKWithInstanceKey(instanceKey),
+					algorithm: 'aes-256-cbc',
+					format: 'no-prefix',
+				}),
+				getKeyById: async () => null,
+			});
+
+			const encrypted = await cipher.encryptV2('legacy-write');
+			expect(encrypted.includes(':')).toBe(false);
+			// Byte-compatible with the pre-rotation output: readable both via the
+			// plain instance-key path and by an instance without a provider.
+			expect(cipher.decryptWithInstanceKey(encrypted)).toEqual('legacy-write');
+			expect(await cipher.decryptV2(encrypted)).toEqual('legacy-write');
+		});
+
+		it('should reject a no-prefix descriptor that does not resolve to the instance key', async () => {
+			withProvider({
+				getActiveKey: async () => ({
+					id: 'legacy',
+					value: cipher.encryptDEKWithInstanceKey('some-other-key'),
+					algorithm: 'aes-256-cbc',
+					format: 'no-prefix',
+				}),
+				getKeyById: async () => null,
+			});
+
+			await expect(cipher.encryptV2('data')).rejects.toThrow('must resolve to the instance key');
+		});
+
+		it('should decrypt using the keyId from the prefix when the provider is registered', async () => {
 			const keyId = 'test-uuid-5678';
 			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
 			const ciphertext = cipher.encryptWithKey('world', plaintextDataKey, 'aes-256-gcm');
 			const prefixed = `${keyId}:${ciphertext}`;
 
 			withProvider({
-				getActiveKey: async () => ({
-					id: keyId,
-					value: encryptedDataKey,
-					algorithm: 'aes-256-gcm',
-				}),
 				getKeyById: async (id: string) =>
-					id === keyId ? { id, value: encryptedDataKey, algorithm: 'aes-256-gcm' } : null,
-				getLegacyKey: async () => ({
-					id: 'legacy',
-					value: encryptedDataKey,
-					algorithm: 'aes-256-cbc',
-				}),
+					id === keyId
+						? { id, value: encryptedDataKey, algorithm: 'aes-256-gcm', format: 'prefixed' }
+						: null,
 			});
 
-			const originalFlag = process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
-			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
-			try {
-				const decrypted = await cipher.decryptV2(prefixed);
-				expect(decrypted).toEqual('world');
-			} finally {
-				process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = originalFlag;
-			}
+			const decrypted = await cipher.decryptV2(prefixed);
+			expect(decrypted).toEqual('world');
 		});
 
-		it('should use legacy CBC key for unprefixed data when proxy is registered', async () => {
-			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(instanceKeyForProxy);
-			const legacyCiphertext = cipher.encryptWithKey(
-				'legacy-data',
-				instanceKeyForProxy,
-				'aes-256-cbc',
-			);
+		it('should throw when the prefixed keyId is unknown', async () => {
+			withProvider({ getKeyById: async () => null });
 
-			withProvider({
-				getActiveKey: async () => ({
-					id: 'active',
-					value: encryptedDataKey,
-					algorithm: 'aes-256-cbc',
-				}),
-				getKeyById: async () => null,
-				getLegacyKey: async () => ({
-					id: 'legacy',
-					value: encryptedDataKey,
-					algorithm: 'aes-256-cbc',
-				}),
-			});
-
-			const originalFlag = process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
-			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
-			try {
-				const decrypted = await cipher.decryptV2(legacyCiphertext);
-				expect(decrypted).toEqual('legacy-data');
-			} finally {
-				process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = originalFlag;
-			}
+			await expect(cipher.decryptV2('unknown-id:abc')).rejects.toThrow('Encryption key not found');
 		});
 
-		it('should bypass proxy when customEncryptionKey is provided', async () => {
-			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
-			withProvider({
-				getActiveKey: async () => ({
-					id: 'should-not-be-called',
-					value: encryptedDataKey,
-					algorithm: 'aes-256-gcm',
-				}),
-				getKeyById: async () => null,
-				getLegacyKey: async () => ({
-					id: 'should-not-be-called',
-					value: encryptedDataKey,
-					algorithm: 'aes-256-gcm',
-				}),
-			});
+		it('should treat a colon prefix that cannot be a key id as ciphertext content', async () => {
+			const getKeyById = vi.fn();
+			withProvider({ getKeyById });
 
-			const originalFlag = process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
-			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
-			try {
-				const encrypted = await cipher.encryptV2('bypass-test', 'custom-key');
-				expect(encrypted.includes(':')).toBe(false);
-				const decrypted = await cipher.decryptV2(encrypted, 'custom-key');
-				expect(decrypted).toEqual('bypass-test');
-			} finally {
-				process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = originalFlag;
-			}
+			// Junk input: the prefix contains characters no key id can have, so it
+			// goes down the legacy instance-key path (which yields garbage or
+			// throws, same as before rotation) without consulting the key store.
+			const result = await cipher.decryptV2('not+a/key=id:payload').catch(() => '__threw__');
+			expect(result).not.toEqual('payload');
+			expect(getKeyById).not.toHaveBeenCalled();
+		});
+
+		it('should decrypt unprefixed data with the instance key without consulting the provider', async () => {
+			const getKeyById = vi.fn();
+			const getLegacyKey = vi.fn();
+			withProvider({ getKeyById, getLegacyKey });
+
+			const legacyCiphertext = cipher.encryptWithKey('legacy-data', instanceKey, 'aes-256-cbc');
+
+			const decrypted = await cipher.decryptV2(legacyCiphertext);
+			expect(decrypted).toEqual('legacy-data');
+			expect(getKeyById).not.toHaveBeenCalled();
+			expect(getLegacyKey).not.toHaveBeenCalled();
+		});
+
+		it('should bypass the provider when customEncryptionKey is provided', async () => {
+			const getActiveKey = vi.fn();
+			withProvider({ getActiveKey });
+
+			const encrypted = await cipher.encryptV2('bypass-test', 'custom-key');
+			expect(encrypted.includes(':')).toBe(false);
+			const decrypted = await cipher.decryptV2(encrypted, 'custom-key');
+			expect(decrypted).toEqual('bypass-test');
+			expect(getActiveKey).not.toHaveBeenCalled();
+		});
+
+		it('should fall back to the instance key when no provider is configured', async () => {
+			const encrypted = await cipher.encryptV2('no-provider');
+			expect(encrypted.includes(':')).toBe(false);
+			expect(await cipher.decryptV2(encrypted)).toEqual('no-provider');
+			expect(cipher.decryptWithInstanceKey(encrypted)).toEqual('no-provider');
 		});
 	});
 });

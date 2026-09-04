@@ -7,15 +7,28 @@ import {
 	type DeploymentKeySortField,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Cipher, InstanceSettings, type CipherAlgorithm } from 'n8n-core';
+import {
+	Cipher,
+	InstanceSettings,
+	type CipherAlgorithm,
+	type IEncryptionKeyProvider,
+	type KeyInfo,
+} from 'n8n-core';
 import { randomBytes } from 'node:crypto';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-type KeyInfo = { id: string; value: string; algorithm: string };
+import { isKeyRotationEnabled } from './key-rotation-flag';
 
 @Service()
-export class KeyManagerService {
+export class KeyManagerService implements IEncryptionKeyProvider {
+	/**
+	 * Memoized legacy instance-key descriptor: no `keyId:` prefix, AES-256-CBC,
+	 * and a key that unwraps to the instance key itself. Serves two roles: the
+	 * write descriptor while rotation is off, and the read fallback when the
+	 * key store cannot serve the seeded legacy key. It never changes for the
+	 * lifetime of the process, and building it costs a GCM wrap.
+	 */
 	private cachedInstanceKeyInfo?: KeyInfo;
 
 	constructor(
@@ -25,8 +38,17 @@ export class KeyManagerService {
 		private readonly logger: Logger,
 	) {}
 
-	/** Returns the current active encryption key. Throws if none exists or if multiple are found. */
+	/**
+	 * Returns the descriptor the cipher must encrypt with. The rotation on/off
+	 * decision lives here, in the module: while rotation is off, this is the
+	 * legacy instance-key descriptor (old output format, fully reversible);
+	 * with rotation on, it is the active data-encryption key from the store.
+	 */
 	async getActiveKey(): Promise<KeyInfo> {
+		if (!isKeyRotationEnabled()) {
+			return this.instanceKeyLegacyInfo();
+		}
+
 		const activeKeys = await this.deploymentKeyRepository.find({
 			where: { type: 'data_encryption', status: 'active' },
 		});
@@ -37,14 +59,14 @@ export class KeyManagerService {
 			throw new Error('Encryption key invariant violated: multiple active keys found');
 		}
 		const key = activeKeys[0];
-		return { id: key.id, value: key.value, algorithm: key.algorithm! };
+		return { id: key.id, value: key.value, algorithm: key.algorithm!, format: 'prefixed' };
 	}
 
 	/** Returns a key by id, or null if not found. */
 	async getKeyById(id: string): Promise<KeyInfo | null> {
 		const key = await this.deploymentKeyRepository.findOne({ where: { id } });
 		if (!key) return null;
-		return { id: key.id, value: key.value, algorithm: key.algorithm! };
+		return { id: key.id, value: key.value, algorithm: key.algorithm!, format: 'prefixed' };
 	}
 
 	/**
@@ -62,7 +84,7 @@ export class KeyManagerService {
 				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 			});
 			if (key) {
-				return { id: key.id, value: key.value, algorithm: key.algorithm! };
+				return { id: key.id, value: key.value, algorithm: key.algorithm!, format: 'no-prefix' };
 			}
 			if (!this.cachedInstanceKeyInfo) {
 				this.logger.warn(
@@ -106,6 +128,7 @@ export class KeyManagerService {
 			id: 'instance-key',
 			value: this.cipher.encryptDEKWithInstanceKey(this.instanceSettings.encryptionKey),
 			algorithm: 'aes-256-cbc',
+			format: 'no-prefix',
 		};
 		return this.cachedInstanceKeyInfo;
 	}

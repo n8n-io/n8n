@@ -80,3 +80,33 @@ export function findEnvelopeKey(schema: Record<string, unknown> | undefined): st
 	);
 	return candidates.length === 1 ? candidates[0][0] : undefined;
 }
+
+/**
+ * The placeholder item shape for a root with no resolved `__schema__`, from
+ * the same per-type knowledge as `describeAiRootShape` — kept next to it so
+ * the two cannot drift. `filler` is the caller's placeholder scalar.
+ *
+ * Returns `undefined` for the roots with no synthesizable shape: textClassifier
+ * passes its input through, and vendor nodes emit the provider's own response.
+ */
+export function buildAiRootPlaceholder(
+	nodeType: string,
+	filler: string,
+): Record<string, unknown> | undefined {
+	switch (nodeType) {
+		case AGENT_NODE_TYPE:
+		case '@n8n/n8n-nodes-langchain.openAiAssistant':
+		case '@n8n/n8n-nodes-langchain.informationExtractor':
+			return { output: filler };
+		case '@n8n/n8n-nodes-langchain.chainLlm':
+			return { text: filler };
+		case '@n8n/n8n-nodes-langchain.chainRetrievalQa':
+			return { response: filler };
+		case '@n8n/n8n-nodes-langchain.chainSummarization':
+			return { output: { output_text: filler } };
+		case '@n8n/n8n-nodes-langchain.sentimentAnalysis':
+			return { sentimentAnalysis: { category: filler } };
+		default:
+			return undefined;
+	}
+}
