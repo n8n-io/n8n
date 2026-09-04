@@ -121,8 +121,6 @@ runs:
       with:
         path: ${{ steps.pnpm-metadata-cache.outputs.path }}
         key: pnpm-metadata-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-metadata-cache.outputs.version }}-${{ hashFiles(inputs.cache-dependency-path) }}
-        restore-keys: |
-          pnpm-metadata-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-metadata-cache.outputs.version }}-
 
     - name: Configure SafeChain
       shell: bash
