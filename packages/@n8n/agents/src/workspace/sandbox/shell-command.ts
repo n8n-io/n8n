@@ -1,0 +1,10 @@
+/** Single-quotes a value unless it only contains characters a shell leaves untouched. */
+export function shellEscape(value: string): string {
+	return /^[A-Za-z0-9_./:=@+-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+/** Joins a command with its escaped arguments into a single shell command line. */
+export function toShellCommand(command: string, args: string[] = []): string {
+	if (args.length === 0) return command;
+	return [command, ...args.map((arg) => shellEscape(arg))].join(' ');
+}
