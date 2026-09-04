@@ -97,13 +97,13 @@ export function formatColumns(columns: string) {
 export function configurePool(credentials: IDataObject) {
 	const config = {
 		server: credentials.server as string,
-		port: credentials.port as number,
+		port: Number(credentials.port),
 		database: credentials.database as string,
 		user: credentials.user as string,
 		password: credentials.password as string,
 		domain: credentials.domain ? (credentials.domain as string) : undefined,
-		connectionTimeout: credentials.connectTimeout as number,
-		requestTimeout: credentials.requestTimeout as number,
+		connectionTimeout: Number(credentials.connectTimeout),
+		requestTimeout: Number(credentials.requestTimeout),
 		options: {
 			encrypt: credentials.tls as boolean,
 			enableArithAbort: false,
