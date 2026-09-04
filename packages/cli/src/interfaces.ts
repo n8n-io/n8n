@@ -153,6 +153,12 @@ export interface IExecutingWorkflowData {
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;
+	/**
+	 * Unique identity of the run that owns this entry, stamped by `ActiveExecutions.add`.
+	 * Lets `finalizeExecution` tell a stale finalize from an already-replaced run (which
+	 * must not resolve the resumed run's promise) from the resumed run's own finalize.
+	 */
+	runId: string;
 }
 
 export interface IActiveDirectorySettings {

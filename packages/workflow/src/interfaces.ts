@@ -3370,6 +3370,15 @@ export interface ITaskMetadata {
 	subExecution?: RelatedExecution;
 	subExecutionsCount?: number;
 	/**
+	 * Child execution ids whose waits caused this execution to park. A child
+	 * completing later may find the parent parked at a DIFFERENT wait (a sibling
+	 * already resumed the one it belongs to); this set lets the resume path tell
+	 * "my wait" from "a later wait" so it stops instead of claiming the wrong one.
+	 * Absent on parks not caused by a child (a plain Wait node) and on legacy
+	 * in-flight executions, in which case the resume falls back to claiming.
+	 */
+	waitingChildExecutionIds?: string[];
+	/**
 	 * Private-credential usage a sub-execution reported while this execution was
 	 * waiting. The waiting task is popped and the node re-runs disabled on resume,
 	 * so the usage rides on the stack entry to reach the freshly stamped task.

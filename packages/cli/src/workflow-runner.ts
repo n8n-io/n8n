@@ -104,6 +104,7 @@ export class WorkflowRunner {
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
 		hooks?: ExecutionLifecycleHooks,
+		runId?: string,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -157,7 +158,7 @@ export class WorkflowRunner {
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
-		this.activeExecutions.finalizeExecution(executionId, fullRunData);
+		this.activeExecutions.finalizeExecution(executionId, fullRunData, runId);
 
 		await hooks?.runHook('workflowExecuteAfter', [fullRunData]);
 	}
@@ -354,6 +355,7 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
 	): Promise<void> {
+		const runId = this.activeExecutions.getRunId(executionId);
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
 			data.workflowData.staticData =
@@ -490,7 +492,7 @@ export class WorkflowRunner {
 					}
 
 					this.activeExecutions.resolveExecutionResponsePromise(executionId);
-					this.activeExecutions.finalizeExecution(executionId, fullRunData);
+					this.activeExecutions.finalizeExecution(executionId, fullRunData, runId);
 				})
 				.catch(
 					async (error) =>
@@ -500,6 +502,7 @@ export class WorkflowRunner {
 							data.executionMode,
 							executionId,
 							additionalData.hooks,
+							runId,
 						),
 				);
 		} catch (error) {
@@ -514,6 +517,7 @@ export class WorkflowRunner {
 				data.executionMode,
 				executionId,
 				additionalData.hooks,
+				runId,
 			);
 
 			throw error;
@@ -528,6 +532,7 @@ export class WorkflowRunner {
 		realtime?: boolean,
 		restartExecutionId?: string,
 	): Promise<void> {
+		const runId = this.activeExecutions.getRunId(executionId);
 		const jobData: JobData = {
 			workflowId,
 			executionId,
@@ -570,7 +575,14 @@ export class WorkflowRunner {
 			// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 			// "workflowExecuteAfter" which we require.
 			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
-			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
+			await this.processError(
+				error,
+				new Date(),
+				data.executionMode,
+				executionId,
+				lifecycleHooks,
+				runId,
+			);
 			throw error;
 		}
 
@@ -590,6 +602,7 @@ export class WorkflowRunner {
 						data.executionMode,
 						executionId,
 						lifecycleHooks,
+						runId,
 					);
 
 					reject(error);
@@ -622,6 +635,7 @@ export class WorkflowRunner {
 						data.executionMode,
 						executionId,
 						lifecycleHooks,
+						runId,
 					);
 
 					this.scalingService.popJobResult(executionId);
@@ -680,7 +694,7 @@ export class WorkflowRunner {
 					};
 				}
 
-				this.activeExecutions.finalizeExecution(executionId, runData);
+				this.activeExecutions.finalizeExecution(executionId, runData, runId);
 
 				// Normally also static data should be supplied here but as it only used for sending
 				// data to editor-UI is not needed.

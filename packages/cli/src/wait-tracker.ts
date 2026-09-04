@@ -120,7 +120,12 @@ export class WaitTracker {
 						void this.startExecution(executionId).catch((error) => {
 							// Another process already resumed this execution (e.g. multi-main
 							// duplicate timer) — expected, nothing to do.
-							if (error instanceof ExecutionAlreadyResumingError) return;
+							if (error instanceof ExecutionAlreadyResumingError) {
+								this.logger.debug('Execution already claimed by another process, skipping', {
+									executionId,
+								});
+								return;
+							}
 							this.logger.error('Failed to start waiting execution', {
 								executionId,
 								error: ensureError(error).message,
@@ -204,8 +209,11 @@ export class WaitTracker {
 	 * So this retries the resume until the parent parks, then patches its stack
 	 * and claims it. It bails when the parent is gone/terminal, when a sibling
 	 * already claimed it (`ExecutionAlreadyResumingError`, expected in "run once
-	 * for each item" mode), or when the timeout elapses. Each step is retried up
-	 * to `MAX_PARENT_RESUME_ATTEMPTS` for transient failures so a flaky DB write
+	 * for each item" mode), when the parent parked at a LATER wait than the one
+	 * this child belongs to (`updateParentExecutionWithChildResults` reports the
+	 * child isn't in the wait's tagged set — a sibling already resumed its wait),
+	 * or when the timeout elapses. Each step is retried up to
+	 * `MAX_PARENT_RESUME_ATTEMPTS` for transient failures so a flaky DB write
 	 * recovers. This never rejects, so callers can invoke it fire and forget.
 	 */
 	async resumeParentExecution(
@@ -240,7 +248,7 @@ export class WaitTracker {
 
 				if (parent?.status === 'waiting') {
 					// Parent parked — patch its stack, then claim and resume it.
-					await this.withRetry(
+					const belongsToThisWait = await this.withRetry(
 						async () =>
 							await updateParentExecutionWithChildResults(
 								parentExecution.executionId,
@@ -251,6 +259,11 @@ export class WaitTracker {
 						isRetryableResumeError,
 					);
 
+					// The parent is parked at a LATER wait — a sibling already resumed the one
+					// this child belongs to. Stop instead of patching the wrong stack entry
+					// and claiming a wait this child never satisfied.
+					if (!belongsToThisWait) return;
+
 					try {
 						await this.withRetry(
 							async () => await this.startExecution(parentExecution.executionId),
@@ -260,7 +273,12 @@ export class WaitTracker {
 						);
 					} catch (error) {
 						// A sibling already claimed the parent ("run once for each item") — done.
-						if (error instanceof ExecutionAlreadyResumingError) return;
+						if (error instanceof ExecutionAlreadyResumingError) {
+							this.logger.debug('Parent execution already claimed by another process, skipping', {
+								parentExecutionId: parentExecution.executionId,
+							});
+							return;
+						}
 						throw error;
 					}
 					return;
@@ -293,15 +311,14 @@ export class WaitTracker {
 	 * optional `shouldRetry` predicate; an error it rejects is rethrown immediately
 	 * instead of being retried.
 	 */
-	private async withRetry(
-		operation: () => Promise<void>,
+	private async withRetry<T>(
+		operation: () => Promise<T>,
 		maxAttempts: number,
 		shouldRetry: (error: unknown) => boolean = () => true,
-	): Promise<void> {
+	): Promise<T> {
 		for (let attempt = 1; ; attempt++) {
 			try {
-				await operation();
-				return;
+				return await operation();
 			} catch (error) {
 				if (attempt >= maxAttempts || !shouldRetry(error)) throw error;
 				await sleep(100 * 2 ** (attempt - 1));

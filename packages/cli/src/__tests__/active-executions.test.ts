@@ -472,6 +472,68 @@ describe('ActiveExecutions', () => {
 				error: 'Connection closed',
 			});
 		});
+
+		test('a stale finalize from an already-replaced run must not resolve the resumed run promise', async () => {
+			// Reproduces the resume race: a parked run is replaced by a resume before it
+			// finalizes. The stale finalize must resolve ITS OWN (parked) promise, leaving
+			// the resumed run's promise pending so the resumed run stays tracked and its
+			// later finalize is not lost.
+			const executionId = await activeExecutions.add(executionData);
+			const oldRunId = activeExecutions.getRunId(executionId);
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+			const oldPromise = activeExecutions.getPostExecutePromise(executionId);
+			activeExecutions.setStatus(executionId, 'waiting');
+
+			// Resume replaces the entry before the old run finalizes.
+			await activeExecutions.add(executionData, { executionId, expectedStatus: 'waiting' });
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+			const newRunId = activeExecutions.getRunId(executionId);
+			const newPromise = activeExecutions.getPostExecutePromise(executionId);
+			expect(newRunId).not.toBe(oldRunId);
+
+			let newPromiseSettled = false;
+			void newPromise.finally(() => {
+				newPromiseSettled = true;
+			});
+
+			const waitingRun: IRun = { ...fullRunData, status: 'waiting' };
+			// Old run finalizes AFTER the resume — must not touch the resumed run's promise.
+			activeExecutions.finalizeExecution(executionId, waitingRun, oldRunId);
+
+			await new Promise(setImmediate);
+			// The old (parked) run's own promise resolves with the stale waiting run…
+			await expect(oldPromise).resolves.toEqual(waitingRun);
+			// …and the resumed run is still tracked with its promise still pending.
+			expect(activeExecutions.has(executionId)).toBe(true);
+			expect(activeExecutions.getStatus(executionId)).toBe('running');
+			expect(newPromiseSettled).toBe(false);
+
+			// The resumed run's own finalize still lands on its promise.
+			activeExecutions.finalizeExecution(executionId, fullRunData, newRunId);
+			await expect(newPromise).resolves.toEqual(fullRunData);
+		});
+
+		test('a stale finalize resolves its parked promise even after the resumed run was removed', async () => {
+			// If the resumed run finishes first, its entry is gone by the time the stale
+			// finalize lands. The old run must still resolve its own promise so its
+			// `.finally` runs and releases its capacity.
+			const executionId = await activeExecutions.add(executionData);
+			const oldRunId = activeExecutions.getRunId(executionId);
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+			const oldPromise = activeExecutions.getPostExecutePromise(executionId);
+			activeExecutions.setStatus(executionId, 'waiting');
+
+			await activeExecutions.add(executionData, { executionId, expectedStatus: 'waiting' });
+			const newRunId = activeExecutions.getRunId(executionId);
+			activeExecutions.finalizeExecution(executionId, fullRunData, newRunId);
+			await new Promise(setImmediate);
+			expect(activeExecutions.has(executionId)).toBe(false);
+
+			const waitingRun: IRun = { ...fullRunData, status: 'waiting' };
+			activeExecutions.finalizeExecution(executionId, waitingRun, oldRunId);
+
+			await expect(oldPromise).resolves.toEqual(waitingRun);
+		});
 	});
 
 	describe('getPostExecutePromise', () => {

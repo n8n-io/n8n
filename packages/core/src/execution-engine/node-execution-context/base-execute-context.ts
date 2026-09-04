@@ -188,6 +188,15 @@ export class BaseExecuteContext extends NodeExecutionContext {
 
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
+			// Stamp the waiting child's execution id on this node's own execute data. While a
+			// node runs its entry is popped off `nodeExecutionStack`.
+			this.setMetadata({
+				waitingChildExecutionIds: [
+					...(this.executeData.metadata?.waitingChildExecutionIds ?? []),
+					result.executionId,
+				],
+			});
+
 			// then put the parent workflow execution also into the waiting state,
 			// but do not use the sub-workflow `waitTill` to avoid WaitTracker resuming the parent execution at the same time as the sub-workflow
 			await this.putExecutionToWait(WAIT_INDEFINITELY);

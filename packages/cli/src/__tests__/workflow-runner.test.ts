@@ -90,6 +90,8 @@ beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	vi.clearAllMocks();
 	vi.spyOn(Container.get(ExecutionRepository), 'setRunning').mockResolvedValue(new Date());
+	// Most tests stub `activeExecutions.add`, so no entry exists for `getRunId` to read.
+	vi.spyOn(Container.get(ActiveExecutions), 'getRunId').mockReturnValue('test-run-id');
 });
 
 describe('processError', () => {
@@ -238,6 +240,36 @@ describe('run', () => {
 
 		// ASSERT
 		expect(recreateNodeExecutionStackSpy).not.toHaveBeenCalled();
+	});
+
+	it('threads the run identity into finalizeExecution when the run completes', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const finalizeSpy = vi.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+		vi.spyOn(activeExecutions, 'resolveExecutionResponsePromise').mockReturnValue();
+		vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+
+		const fullRunData = mock<IRun>();
+		vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
+			new PCancelable((resolve) => {
+				resolve(fullRunData);
+			}),
+		);
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: createRunExecutionData({}),
+			executionMode: 'manual',
+			triggerToStartFrom: undefined,
+			startNodes: undefined,
+			destinationNode: undefined,
+		});
+
+		await runner.run(data);
+		await new Promise(setImmediate);
+
+		expect(finalizeSpy).toHaveBeenCalledWith('1', fullRunData, 'test-run-id');
 	});
 
 	it.each([

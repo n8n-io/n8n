@@ -357,6 +357,10 @@ export const describeCommonTests = (
 			expect(result).toBe(executeWorkflowData);
 		});
 
+		beforeEach(() => {
+			executeData.metadata = undefined;
+		});
+
 		it('should put execution to wait if waitTill is returned', async () => {
 			const waitTill = new Date();
 			additionalData.executeWorkflow.mockResolvedValue({ ...executeWorkflowData, waitTill });
@@ -368,6 +372,47 @@ export const describeCommonTests = (
 			expect(additionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
 			expect(runExecutionData.waitTill).toEqual(WAIT_INDEFINITELY);
 			expect(result.waitTill).toBe(waitTill);
+		});
+
+		it('should stamp waiting child ids on this node execute data, not on the execution stack', async () => {
+			const nextNodeEntry = mock<IExecuteData>({ metadata: undefined });
+			runExecutionData.executionData = mock<IRunExecutionData['executionData']>({
+				nodeExecutionStack: [nextNodeEntry],
+			});
+			executeData.metadata = { subExecutionsCount: 1 };
+			const waitTill = new Date();
+
+			// "Run once for each item": one waiting child per call, ids accumulate.
+			additionalData.executeWorkflow.mockResolvedValueOnce({
+				...executeWorkflowData,
+				executionId: 'child_1',
+				waitTill,
+			});
+			await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
+			additionalData.executeWorkflow.mockResolvedValueOnce({
+				...executeWorkflowData,
+				executionId: 'child_2',
+				waitTill,
+			});
+			await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
+
+			expect(executeData.metadata).toEqual({
+				subExecutionsCount: 1,
+				waitingChildExecutionIds: ['child_1', 'child_2'],
+			});
+			expect(nextNodeEntry.metadata).toBeUndefined();
+		});
+
+		it('should not stamp waiting child ids when the sub-workflow did not wait', async () => {
+			additionalData.executeWorkflow.mockResolvedValue({
+				...executeWorkflowData,
+				executionId: 'child_1',
+				waitTill: undefined,
+			});
+
+			await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
+
+			expect(executeData.metadata).toBeUndefined();
 		});
 
 		describe('execution context propagation to sub-workflows', () => {

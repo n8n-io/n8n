@@ -482,16 +482,19 @@ export function shouldRestartParentExecution(
  *
  * @param parentExecutionId - The execution ID of the waiting parent workflow
  * @param subworkflowResults - The final execution results from the child workflow
- * @returns Promise that resolves when the parent execution has been updated
+ * @returns `true` if the caller may proceed to claim the parent (the child belongs to this
+ * wait, or the wait is untagged/legacy so it falls back to claiming), `false` if this child
+ * does not belong to the parent's current wait (a sibling already resumed the one it owns)
+ * and the caller must stop without claiming.
  */
 export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 	childExecution?: RelatedExecution,
-): Promise<void> {
+): Promise<boolean> {
 	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
-	if (!subworkflowError && !lastExecutedNodeData?.data) return;
+	if (!subworkflowError && !lastExecutedNodeData?.data) return true;
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
@@ -499,14 +502,23 @@ export async function updateParentExecutionWithChildResults(
 	});
 
 	if (parent?.status !== 'waiting') {
-		return;
+		return true;
 	}
 
 	const parentWithSubWorkflowResults = { data: { ...parent.data } };
 
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
-		return;
+		return true;
+	}
+
+	const waitingChildExecutionIds = nodeExecutionStack[0].metadata?.waitingChildExecutionIds;
+	if (
+		childExecution?.executionId &&
+		waitingChildExecutionIds?.length &&
+		!waitingChildExecutionIds.includes(childExecution.executionId)
+	) {
+		return false;
 	}
 
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
@@ -569,6 +581,7 @@ export async function updateParentExecutionWithChildResults(
 		parentExecutionId,
 		parentWithSubWorkflowResults,
 	);
+	return true;
 }
 
 /**
