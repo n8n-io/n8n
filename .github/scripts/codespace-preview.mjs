@@ -181,6 +181,11 @@ async function main() {
 	const label = process.env.LABEL_NAME;
 
 	const operation = operationFor(action, label);
+	console.log("Operations: ", {
+		action,
+		label,
+		operation
+	})
 	if (!operation) {
 		console.log(
 			`No preview operation for a "${action}" event on "${label ?? ''}" — nothing to do.`,

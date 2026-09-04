@@ -5272,7 +5272,7 @@
 	"settings.n8nConnect.wallet.quota": "budget",
 	"settings.n8nConnect.wallet.topUp": "Top up balance",
 	"settings.n8nConnect.usage.refresh.tooltip": "Refresh usage records",
-	"instanceAi.onboarding.title": "Hello ACDC people!",
+	"instanceAi.onboarding.title": "Build and debug faster with the AI Assistant",
 	"instanceAi.onboarding.benefit.build": "Build and edit workflows through conversation",
 	"instanceAi.onboarding.benefit.debug": "Debug failed executions and suggest fixes",
 	"instanceAi.onboarding.benefit.help": "Ask anything about n8n and get contextual help",
