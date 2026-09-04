@@ -4836,6 +4836,7 @@
 	"workflowHistory.action.unpublish.notAvailable": "This workflow has no published version to unpublish",
 	"workflowHistory.action.unpublish.modal.title": "Unpublish {versionName}",
 	"workflowHistory.action.unpublish.modal.description": "This will prevent all production executions to this workflow until you publish again.",
+	"workflowHistory.action.unpublish.modal.affected": "These resources use this workflow and will stop working until you publish again:",
 	"workflowHistory.action.unpublish.modal.button.unpublish": "Unpublish",
 	"workflowHistory.group.unnamedVersions": "1 version | {count} versions",
 	"workflowHistory.publishModal.title": "Publish {versionName}",
