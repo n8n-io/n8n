@@ -1,0 +1,28 @@
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/search.json
+  s_cf57910070a84e::t_15b57140037acf 7-8
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.ts
+  s_cf57910070a84e::t_cbd7a8cdbbc523 225-227,257-260,297-298,308-327
+  s_cf57910070a84e::t_43b14988522c4a 328-329
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/search.json
+  s_cf57910070a84e::t_15b57140037acf 7-8
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/create.json
+  s_cf57910070a84e::t_15b57140037acf 19
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.test.ts
+  s_cf57910070a84e::t_691e93f885eade 386-482
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f4de3449107ada035d775046f917563fd3b9b21c",
+  "prompts": {},
+  "sessions": {
+    "s_cf57910070a84e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ba5b66-cd0c-4f03-94e4-21a6750a8e46",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
