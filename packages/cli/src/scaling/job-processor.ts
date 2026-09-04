@@ -532,8 +532,18 @@ export class JobProcessor {
 
 	/** Ask every suspendable running job to stop at its next node boundary. */
 	suspendRunningJobs() {
+		const executionIds: string[] = [];
+
 		for (const runningJob of Object.values(this.runningJobs)) {
-			runningJob.suspend?.();
+			if (!runningJob.suspend) continue;
+			runningJob.suspend();
+			executionIds.push(runningJob.executionId);
+		}
+
+		if (executionIds.length > 0) {
+			this.logger.info(
+				`Requested suspension of ${executionIds.length} execution(s) at the next node boundary (execution IDs: ${executionIds.join(', ')})`,
+			);
 		}
 	}
 
