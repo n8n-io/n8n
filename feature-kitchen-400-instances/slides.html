@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The 400 instances dilemma — Feature Kitchen</title>
+  <style>
+    :root {
+      --bg: #0f1014;
+      --panel: #18191f;
+      --ink: #f4f1ea;
+      --muted: #b8b3a8;
+      --accent: #ea4b71;
+      --accent-2: #ff6d5a;
+      --ok: #7ee787;
+      --warn: #f0c14b;
+      --no: #ff8b8b;
+      --line: #2c2d36;
+      /* System fonts only: the deck must render offline, on conference Wi-Fi. */
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--sans); }
+    body { overflow: hidden; }
+    .deck { height: 100%; }
+    .slide {
+      display: none;
+      height: 100%;
+      padding: 4.5vh 7vw 8vh;
+      flex-direction: column;
+      justify-content: center;
+      background:
+        radial-gradient(1200px 600px at 90% -10%, rgba(234, 75, 113, 0.18), transparent 60%),
+        radial-gradient(800px 400px at -10% 110%, rgba(255, 109, 90, 0.12), transparent 55%),
+        var(--bg);
+    }
+    .slide.on { display: flex; }
+    .kicker {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 1.2rem;
+    }
+    h1 { font-size: clamp(2.4rem, 5.2vw, 4.6rem); line-height: 0.95; margin: 0 0 1.2rem; font-weight: 650; letter-spacing: -0.03em; }
+    h2 { font-size: clamp(1.8rem, 3.4vw, 3.1rem); line-height: 1.1; margin: 0 0 1.4rem; font-weight: 650; letter-spacing: -0.02em; }
+    p, li { font-size: clamp(1.05rem, 1.6vw, 1.45rem); line-height: 1.4; color: var(--muted); }
+    .lede { max-width: 42ch; color: var(--ink); }
+    .grid { display: grid; gap: 1rem; }
+    .g2 { grid-template-columns: 1fr 1fr; }
+    .g3 { grid-template-columns: repeat(3, 1fr); }
+    .g4 { grid-template-columns: repeat(4, 1fr); }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1.1rem 1.2rem 1.15rem;
+    }
+    .card h3 { margin: 0 0 0.45rem; font-size: 1.15rem; color: var(--ink); }
+    .card p, .card li { font-size: 1.02rem; margin: 0; }
+    .card ul { margin: 0; padding-left: 1.1rem; }
+    .tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      margin-bottom: 0.55rem;
+    }
+    .yes { background: rgba(126, 231, 135, 0.15); color: var(--ok); }
+    .maybe { background: rgba(240, 193, 75, 0.15); color: var(--warn); }
+    .no { background: rgba(255, 139, 139, 0.15); color: var(--no); }
+    .later { background: rgba(244, 241, 234, 0.08); color: var(--muted); }
+    .big-num { font-size: clamp(4rem, 10vw, 8rem); font-weight: 700; letter-spacing: -0.05em; color: var(--accent-2); line-height: 0.9; }
+    .prompt {
+      margin-top: 1.4rem;
+      padding: 0.9rem 1.1rem;
+      border-left: 4px solid var(--accent);
+      background: rgba(234, 75, 113, 0.08);
+      color: var(--ink);
+      font-size: 1.15rem;
+    }
+    .prompt strong { color: var(--accent-2); }
+    .footer {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.7rem 1.4rem;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: #7a776f;
+      background: linear-gradient(transparent, var(--bg) 40%);
+      pointer-events: none;
+    }
+    .help { position: fixed; top: 0.8rem; right: 1.2rem; font-family: var(--mono); font-size: 0.72rem; color: #6a675f; }
+    a { color: var(--accent-2); }
+    .tiny { font-size: 0.92rem; color: #8c877c; margin-top: 0.8rem; }
+    .matrix { width: 100%; border-collapse: collapse; font-size: clamp(0.85rem, 1.25vw, 1.18rem); }
+    .matrix th, .matrix td { padding: 0.85rem 0.7rem; text-align: left; border-bottom: 1px solid var(--line); }
+    .matrix thead th {
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 500;
+      vertical-align: bottom;
+    }
+    .matrix tbody td { color: var(--muted); }
+    .matrix tbody td:first-child { color: var(--ink); font-weight: 500; width: 28%; }
+    .matrix tbody td.c-ok { color: var(--ok); }
+    .matrix tbody td.c-warn { color: var(--warn); }
+    .matrix tbody td.c-no { color: var(--no); }
+    .matrix tbody td.c-mute { color: #6a675f; }
+    @media (max-width: 900px) {
+      .g2, .g3, .g4 { grid-template-columns: 1fr; }
+      .slide { padding: 3vh 6vw 10vh; justify-content: flex-start; overflow: auto; }
+    }
+    @media print {
+      @page { size: 13.333in 7.5in; margin: 0; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      html, body { overflow: visible; height: auto; background: var(--bg); }
+      .deck { height: auto; }
+      .slide {
+        display: flex !important;
+        width: 13.333in;
+        height: 7.5in;
+        padding: 0.75in 0.9in;
+        justify-content: center;
+        overflow: hidden;
+        page-break-after: always;
+        break-after: page;
+      }
+      .slide:last-child { page-break-after: auto; break-after: auto; }
+      .footer, .help { display: none; }
+      h1 { font-size: 58pt; }
+      h2 { font-size: 34pt; }
+      p, li { font-size: 15pt; }
+      .card h3 { font-size: 14pt; }
+      .card p, .card li { font-size: 12pt; }
+      .big-num { font-size: 100pt; }
+      .prompt { font-size: 15pt; }
+      .tiny { font-size: 11pt; }
+      .matrix { font-size: 11.5pt; }
+      .matrix thead th { font-size: 8.5pt; }
+    }
+  </style>
+</head>
+<body>
+  <div class="help">← → space · p presenter notes in run-of-show.md</div>
+  <div class="deck" id="deck">
+
+    <section class="slide on" data-notes="2 min. Introduce yourselves. Feature Kitchen is a conversation, not a pitch.">
+      <p class="kicker">n8n conference · Feature Kitchen</p>
+      <h1>The 400 instances dilemma</h1>
+      <p class="lede">How do you move a workflow from a safe place to production — without duplicating it, losing data, or shipping empty credentials?</p>
+      <p class="tiny">~40 people · 50 minutes · we need your setups, not your applause</p>
+    </section>
+
+    <section class="slide" data-notes="3 min. COLD OPEN. Tell one real, anonymized failure end to end. No company names. Land the last line, then pause.">
+      <p class="kicker">Cold open · a true story</p>
+      <h2>It worked in dev.</h2>
+      <p class="lede">Friday. A builder copies an invoice workflow into production by hand. The canvas is identical. The credential has the same name. Monday, finance asks why 1,200 invoices went nowhere.</p>
+      <div class="grid g3" style="margin-top:1.2rem">
+        <div class="card"><h3>Nothing errored</h3><p>The workflow ran. It just ran against the wrong account.</p></div>
+        <div class="card"><h3>Nobody reviewed it</h3><p>There was no diff to review. There was a copy.</p></div>
+        <div class="card"><h3>No way back</h3><p>The dev version had already moved on.</p></div>
+      </div>
+      <p class="prompt"><strong>House rule:</strong> interrupt. If a model in here would fail in your org, say it in the room.</p>
+    </section>
+
+    <section class="slide" data-notes="5 min + 3 min hands. Extreme example: hundreds of instances.">
+      <p class="kicker">Why so many instances?</p>
+      <div class="big-num">400</div>
+      <h2>is not a joke. it is a topology.</h2>
+      <div class="grid g4" style="margin-top:1.2rem">
+        <div class="card"><h3>Stages</h3><p>dev / test / staging / prod. isolation first, then promotion.</p></div>
+        <div class="card"><h3>Blast radius</h3><p>a bad workflow must not touch live money, PII, or customers.</p></div>
+        <div class="card"><h3>Tenants &amp; regions</h3><p>one template, many copies: country, brand, business unit.</p></div>
+        <div class="card"><h3>Trust boundaries</h3><p>prod is locked. credentials never leave. networks do not talk.</p></div>
+      </div>
+      <p class="prompt"><strong>Hands:</strong> 1 instance · 2–5 · 6–20 · 20+ · “don’t ask”</p>
+    </section>
+
+    <section class="slide" data-notes="4 min. The pain from the abstract.">
+      <p class="kicker">What they tell us</p>
+      <h2>Manual promotion fails in three boring ways</h2>
+      <div class="grid g3">
+        <div class="card"><span class="tag no">duplicates</span><h3>Two workflows, one name</h3><p>Copy-paste between instances. IDs drift. Nobody knows which one is true.</p></div>
+        <div class="card"><span class="tag no">data loss</span><h3>Overwrite vs skip</h3><p>Full import stomps prod edits. Partial copy leaves nodes, folders, and data tables behind.</p></div>
+        <div class="card"><span class="tag no">credentials</span><h3>It looks ready</h3><p>The graph arrives. The secrets do not. First prod execution is the test.</p></div>
+      </div>
+      <p class="prompt">The bar is not “it copied.” The bar is <strong>I trust this will work in production.</strong></p>
+    </section>
+
+    <section class="slide" data-notes="5 min. Current product: Environments = Git between instances. Also instance import.">
+      <p class="kicker">What people do today</p>
+      <h2>Two workarounds. both are load-bearing.</h2>
+      <div class="grid g2">
+        <div class="card">
+          <span class="tag yes">source control</span>
+          <h3>Git as the pipe</h3>
+          <p>Each instance is an environment. Push from dev, pull on prod. Workflows, projects, folders, tags, variables, data tables, credential <em>stubs</em> — not secrets.</p>
+        </div>
+        <div class="card">
+          <span class="tag maybe">instance import</span>
+          <h3>Move the whole world</h3>
+          <p>Export / import an instance (or a pile of workflows) when you bootstrap, migrate, or recover. Poor as a daily promote button.</p>
+        </div>
+      </div>
+      <p class="tiny">Git is already the closest thing we have to a promotion API. The UX is still “you are a Git operator.”</p>
+    </section>
+
+    <section class="slide" data-notes="4 min. Option space. Don't over-explain — table comes later.">
+      <p class="kicker">What we explored</p>
+      <h2>Four promotion models</h2>
+      <div class="grid g2">
+        <div class="card"><span class="tag yes">fits many orgs</span><h3>1. Git is the source of truth</h3><p>Instances never talk. GitHub / GitLab / Bitbucket (or any Git remote) holds the artifacts. Review, audit, rollback come for free.</p></div>
+        <div class="card"><span class="tag maybe">new UX on 1</span><h3>2. Instance → instance through a provider</h3><p>You click Promote. n8n still writes Git under the hood. The provider is the trust and audit layer.</p></div>
+        <div class="card"><span class="tag no">dropped for now</span><h3>3. Instance → instance direct</h3><p>Prod opens a hole for another n8n. Auth, network, confused deputy, “who can push live graphs?”</p></div>
+        <div class="card"><span class="tag later">maybe later</span><h3>4. Environments inside one instance</h3><p>One URL, many stages. Elegant for small teams. Painful migration, shared blast radius, credential isolation is the whole product.</p></div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="5 min. THE PAYOFF the abstract promised. Do not read the grid. Walk row 3 and admit the tension: the model we dropped is the only one that fits air-gapped prod.">
+      <p class="kicker">Which model fits which team</p>
+      <h2>Honest scorecard</h2>
+      <table class="matrix">
+        <thead>
+          <tr><th>Your situation</th><th>Git is truth</th><th>Promote via provider</th><th>Direct instance sync</th><th>Envs in one instance</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Dev → prod, org already lives in Git</td>
+            <td class="c-ok">works today</td>
+            <td class="c-ok">same, nicer</td>
+            <td class="c-mute">not needed</td>
+            <td class="c-no">loses isolation</td>
+          </tr>
+          <tr>
+            <td>Builders who must never see Git</td>
+            <td class="c-no">UX wall</td>
+            <td class="c-ok">this is the point</td>
+            <td class="c-warn">simple, risky</td>
+            <td class="c-warn">appealing</td>
+          </tr>
+          <tr>
+            <td>Production is air-gapped from Git</td>
+            <td class="c-no">blocked</td>
+            <td class="c-no">blocked</td>
+            <td class="c-warn">the only fit</td>
+            <td class="c-ok">works, one box</td>
+          </tr>
+          <tr>
+            <td>One template → many tenant instances</td>
+            <td class="c-warn">template yes, forks no</td>
+            <td class="c-warn">same gap</td>
+            <td class="c-no">400 open doors</td>
+            <td class="c-no">isolation</td>
+          </tr>
+          <tr>
+            <td>Two builders, one workflow, same day</td>
+            <td class="c-warn">conflicts, manual</td>
+            <td class="c-warn">unsolved</td>
+            <td class="c-no">no review</td>
+            <td class="c-no">no branches</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="prompt">Row 3 is the uncomfortable one. <strong>The model we dropped is the only one that fits it.</strong> Tell us if you are row 3.</p>
+    </section>
+
+    <section class="slide" data-notes="4 min. The direction we're taking.">
+      <p class="kicker">The direction</p>
+      <h2>Promote in n8n. Persist in Git.</h2>
+      <div class="grid g3">
+        <div class="card"><h3>You stay in n8n</h3><p>Pick workflows (and friends). Choose the target environment. See a diff. Confirm.</p></div>
+        <div class="card"><h3>Git still exists</h3><p>Branch, PR, history, CODEOWNERS, your existing controls. We do not replace your platform team.</p></div>
+        <div class="card"><h3>Secrets stay put</h3><p>Credential shape and IDs can travel. Values do not. Variables and external secrets fill the gap per instance.</p></div>
+      </div>
+      <p class="prompt">If Git is banned in your prod network, say so later. That constraint kills this model.</p>
+    </section>
+
+    <section class="slide" data-notes="3 min. Direct I2I and in-instance environments.">
+      <p class="kicker">Why not the other two</p>
+      <h2>Direct sync and “envs in one box”</h2>
+      <div class="grid g2">
+        <div class="card">
+          <h3>Direct instance talk</h3>
+          <ul>
+            <li>Prod must accept writes from another server</li>
+            <li>Identity: user? instance? CI job?</li>
+            <li>No natural review surface</li>
+            <li>One stolen token promotes everything</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Environments in one instance</h3>
+          <ul>
+            <li>Customers already split instances for a reason</li>
+            <li>Hard to migrate 400 boxes into one mental model</li>
+            <li>Isolation (data, credentials, RBAC) becomes our problem overnight</li>
+            <li>Still useful later for simpler teams</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Puzzle 1. 6 minutes total with discussion.">
+      <p class="kicker">Kitchen problem 01 · credentials</p>
+      <h2>The workflow that looks ready</h2>
+      <p>Dev Slack OAuth ≠ prod Slack workspace. Git syncs name, type, and id. Secrets stay on each instance. The canvas is identical. The first prod run posts to nowhere — or fails.</p>
+      <div class="grid g3" style="margin-top:1rem">
+        <div class="card"><h3>A. Block promote</h3><p>Refuse until every credential on the target is mapped and tested.</p></div>
+        <div class="card"><h3>B. Promote anyway</h3><p>Ship the graph. Mark missing secrets. Let ops fill them in.</p></div>
+        <div class="card"><h3>C. Copy secrets</h3><p>Never, sometimes, only with a vault, only same org?</p></div>
+      </div>
+      <p class="prompt"><strong>2 minutes, tables:</strong> what would you trust on a payroll workflow?</p>
+    </section>
+
+    <section class="slide" data-notes="Puzzle 2. Diffing.">
+      <p class="kicker">Kitchen problem 02 · diff</p>
+      <h2>What did we actually change?</h2>
+      <p>A workflow file is a large JSON graph. Git will say 400 lines changed. The builder changed one HTTP URL and dragged a node.</p>
+      <div class="grid g3" style="margin-top:1rem">
+        <div class="card"><h3>Text diff</h3><p>Honest, noisy, scares reviewers, misses “this node moved 8px.”</p></div>
+        <div class="card"><h3>Node-aware diff</h3><p>Added / removed / param changed. We must define equality. Positions? notes? pin data?</p></div>
+        <div class="card"><h3>Behavioral diff</h3><p>Same graph, different outcome: credentials, variables, data tables, pinned data.</p></div>
+      </div>
+      <p class="prompt"><strong>Vote:</strong> I need to approve a <em>picture</em> · a <em>param list</em> · a <em>test run on prod-like data</em></p>
+    </section>
+
+    <section class="slide" data-notes="Puzzle 3. Merge, branches, 400-fleet.">
+      <p class="kicker">Kitchen problem 03 · merge &amp; fleet</p>
+      <h2>Two builders. 400 copies.</h2>
+      <div class="grid g2">
+        <div class="card">
+          <h3>Conflict</h3>
+          <p>A and B both edit the same node on different branches. JSON merge is roulette. Last-write-wins silently drops work. A lock freezes the team.</p>
+        </div>
+        <div class="card">
+          <h3>Fleet</h3>
+          <p>One global template, 400 regional instances, local forks for tax rules. Promote-all stamps over forks — or drift lives forever.</p>
+        </div>
+      </div>
+      <p class="prompt"><strong>Pick one pain to solve first:</strong> two-person merge · branch-per-env · template vs 400 forks</p>
+    </section>
+
+    <section class="slide" data-notes="4 min. Recommendation is honest, not a roadmap promise.">
+      <p class="kicker">Do this today</p>
+      <h2>What we would run if it were our payroll</h2>
+      <div class="grid g2">
+        <div class="card">
+          <h3>Now</h3>
+          <ul>
+            <li>Separate instances for isolation</li>
+            <li>Git between them (source control)</li>
+            <li>Protect production (read-only building)</li>
+            <li>One branch per environment, keep it boring</li>
+            <li>Variables + external secrets; never Git the keys</li>
+            <li>Instance import for bootstrap / DR, not daily ship</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Next</h3>
+          <ul>
+            <li>Promote as a first-class action, Git underneath</li>
+            <li>Workflow-aware diffs, not 2k-line JSON</li>
+            <li>Credential mapping you can trust before go-live</li>
+            <li>A clear conflict story (and what we will not auto-merge)</li>
+            <li>Later, maybe: stages inside one instance for simpler teams</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Close. Thank. Point to stickies / Slack / office hours if any.">
+      <p class="kicker">Stay in the kitchen</p>
+      <h1>Your instance count is a design input.</h1>
+      <p class="lede">Find us after. Bring the weird topology. We will trade you the unsolved merge.</p>
+      <div class="grid g4" style="margin-top:1.4rem">
+        <div class="card"><h3>Tell us</h3><p>how many instances, and what each one means</p></div>
+        <div class="card"><h3>Tell us</h3><p>who is allowed to click promote</p></div>
+        <div class="card"><h3>Tell us</h3><p>whether production can reach Git</p></div>
+        <div class="card"><h3>Tell us</h3><p>the promote bug that woke you up</p></div>
+      </div>
+      <p class="tiny">Feature Kitchen · The 400 instances dilemma · n8n conference</p>
+    </section>
+  </div>
+  <div class="footer">
+    <span>n8n · Feature Kitchen</span>
+    <span id="pos">1 / 14</span>
+  </div>
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    let i = 0;
+    const pos = document.getElementById('pos');
+    function show(n) {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, idx) => s.classList.toggle('on', idx === i));
+      pos.textContent = (i + 1) + ' / ' + slides.length;
+    }
+    document.addEventListener('keydown', (e) => {
+      if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+      if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+      if (e.key === 'Home') show(0);
+      if (e.key === 'End') show(slides.length - 1);
+    });
+    let touchX = null;
+    document.addEventListener('touchstart', (e) => { touchX = e.changedTouches[0].screenX; });
+    document.addEventListener('touchend', (e) => {
+      if (touchX == null) return;
+      const dx = e.changedTouches[0].screenX - touchX;
+      if (dx < -40) show(i + 1);
+      if (dx > 40) show(i - 1);
+      touchX = null;
+    });
+  </script>
+</body>
+</html>
