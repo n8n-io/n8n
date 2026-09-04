@@ -25,7 +25,7 @@ export const RESOURCES = {
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,
 	nodeTypePolicy: ['manage'] as const,
-	orchestration: ['read', 'list'] as const,
+	orchestration: ['read', 'list', 'manage'] as const,
 	// `manageMembers` gates changes to a project's membership list: adding a member
 	// with a role, changing a member's role, and removing a member. Kept separate
 	// from `update` so a role can edit project details without being able to
