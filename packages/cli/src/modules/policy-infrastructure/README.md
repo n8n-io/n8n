@@ -159,13 +159,17 @@ warn  Policy blocked workflowSave  {
 
 - **Both ways of blocking write a line.** A violation gives `outcome: "violation"`.
   A check that threw or overran gives `outcome: "checkFailure"` with `correlationIds`,
-  which tie it to the per-check error lines holding the real errors.
+  which tie it to the per-check error lines holding the real errors. A `checkFailure`
+  line still carries the `violations` and `policyVersions` the checks that *did* answer
+  reported, so a partial run stays diagnosable.
 - **`evaluate*` writes nothing.** Previews must not pollute the trail.
 - **The violation `message` is not on the line.** It is free text saying what the
   structured fields already say.
-- **A create has no `workflowId`.** It logs `null` and the name instead. The line does
-  not reproduce the `PolicyCleared` subject, which hashes a create's content — that is
-  the enforcement point's to compute, and mirroring it here would let the two drift.
+- **A create logs `workflowId: null` and the name.** A save is a create until it has a
+  stored row, and any id on its payload is the client's claim rather than a committed
+  row — the seal discards it for the same reason, binding a create to its content. The
+  line does not reproduce that content subject: computing it is the enforcement point's
+  job, and mirroring it here would let the two drift.
 - **`warn`, not `info`**, so the line survives an operator quietening logs. It matches
   the `warning` level `PolicyViolationError` already gives itself.
 

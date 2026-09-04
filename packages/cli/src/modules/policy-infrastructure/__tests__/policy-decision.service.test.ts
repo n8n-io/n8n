@@ -65,6 +65,19 @@ const createContext: WorkflowSaveContext = {
 	projectId: 'proj-1',
 };
 
+/** `saveContext` is a create — a save is an update only once it has a stored row. */
+const updateContext: WorkflowSaveContext = {
+	...saveContext,
+	storedWorkflow: saveContext.workflow,
+};
+
+/** A create is a save with no stored row, whatever id the client put on the payload. */
+const createWithClaimedIdContext: WorkflowSaveContext = {
+	workflow: { id: 'wf-claimed', name: 'Untitled workflow', nodes: [] },
+	storedWorkflow: null,
+	projectId: 'proj-1',
+};
+
 const transferContext: WorkflowTransferContext = {
 	workflow: { id: 'wf-1', name: 'My workflow', nodes: [] },
 	targetProjectId: 'proj-2',
@@ -324,7 +337,7 @@ describe('PolicyDecisionService', () => {
 		it('writes one line naming the point, the objecting check and the violation', async () => {
 			const { service, audit } = auditedServiceWith(SlackCheck);
 
-			await service.enforce('workflowSave', saveContext);
+			await service.enforce('workflowSave', updateContext);
 
 			expect(audit).toHaveBeenCalledTimes(1);
 			expect(audit).toHaveBeenCalledWith('Policy blocked workflowSave', {
@@ -371,6 +384,18 @@ describe('PolicyDecisionService', () => {
 			});
 		});
 
+		it('does not record a create id the client supplied, which the seal discards too', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck);
+
+			await service.enforce('workflowSave', createWithClaimedIdContext);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				workflowId: null,
+				workflowName: 'Untitled workflow',
+			});
+			expect(JSON.stringify(audit.mock.calls[0][1])).not.toContain('wf-claimed');
+		});
+
 		it('records the project a transfer moves into', async () => {
 			const { service, audit } = auditedServiceWith(OtherPointsCheck);
 
@@ -410,6 +435,18 @@ describe('PolicyDecisionService', () => {
 					correlationIds: error.meta.correlationIds,
 				}),
 			);
+		});
+
+		it('keeps what the answered checks said on a check failure line', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck, BrokenCheck);
+
+			await service.enforce('workflowSave', saveContext).catch(() => {});
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				outcome: 'checkFailure',
+				violations: [slackAudited],
+				policyVersions: [{ scope: 'instance', version: 4 }],
+			});
 		});
 
 		it('stays silent when every check is silent', async () => {

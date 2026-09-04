@@ -1,4 +1,5 @@
 import type {
+	CredentialDecryptContext,
 	EnforcementPoint,
 	PolicyCheckFailure,
 	PolicyDecision,
@@ -34,6 +35,7 @@ export type PolicyDecisionAudit = {
 	/** Every check consulted at this point, whether it answered or not. */
 	checkIds: string[];
 
+	/** On a `checkFailure` these two hold what the checks that *did* answer said. */
 	violations: AuditedViolation[];
 
 	policyVersions?: PolicyVersionRef[];
@@ -67,11 +69,16 @@ const auditedViolation = ({
 });
 
 /**
- * What was policed, read off the context.
+ * The id of the row that was policed, or `null` when there is none yet.
  *
- * Deliberately not the `PolicyCleared` subject: that one hashes a create's content, and it is
- * the enforcement point's to compute — mirroring it here would let the two drift.
+ * A save with no stored row is a create, and any id on its payload is the client's claim rather
+ * than a committed row — the seal discards it for the same reason. `workflowName` is what
+ * identifies a create.
  */
+const policedWorkflowId = (context: Exclude<AnyPolicyContext, CredentialDecryptContext>) =>
+	'storedWorkflow' in context ? (context.storedWorkflow?.id ?? null) : context.workflow.id;
+
+/** What was policed, read off the context. */
 function targetOf(context: AnyPolicyContext) {
 	if ('credentialId' in context) {
 		return {
@@ -83,45 +90,41 @@ function targetOf(context: AnyPolicyContext) {
 	}
 
 	return {
-		workflowId: context.workflow.id,
-		// A create has no id, so this is all that identifies it.
+		workflowId: policedWorkflowId(context),
 		workflowName: context.workflow.name,
 		projectId: 'targetProjectId' in context ? context.targetProjectId : context.projectId,
 	};
 }
 
-export function violationAudit(
-	point: EnforcementPoint,
-	context: AnyPolicyContext,
-	decision: PolicyDecision,
-	durationMs: number,
-	checkIds: string[],
-): PolicyDecisionAudit {
+export type DecisionAuditInput = {
+	point: EnforcementPoint;
+	context: AnyPolicyContext;
+	/** Built from the checks that answered, so a partial run stays diagnosable. */
+	decision: PolicyDecision;
+	durationMs: number;
+	checkIds: string[];
+	/** Non-empty when a check did not answer, which blocks whatever the others said. */
+	failures?: PolicyCheckFailure[];
+};
+
+export function decisionAudit({
+	point,
+	context,
+	decision,
+	durationMs,
+	checkIds,
+	failures = [],
+}: DecisionAuditInput): PolicyDecisionAudit {
 	return {
 		point,
-		outcome: 'violation',
+		outcome: failures.length > 0 ? 'checkFailure' : 'violation',
 		durationMs,
 		checkIds,
 		violations: decision.violations.map(auditedViolation),
 		policyVersions: decision.policyVersions,
-		...targetOf(context),
-	};
-}
-
-export function checkFailureAudit(
-	point: EnforcementPoint,
-	context: AnyPolicyContext,
-	failures: PolicyCheckFailure[],
-	durationMs: number,
-	checkIds: string[],
-): PolicyDecisionAudit {
-	return {
-		point,
-		outcome: 'checkFailure',
-		durationMs,
-		checkIds,
-		violations: [],
-		correlationIds: failures.map((failure) => failure.correlationId),
+		...(failures.length > 0 && {
+			correlationIds: failures.map((failure) => failure.correlationId),
+		}),
 		...targetOf(context),
 	};
 }

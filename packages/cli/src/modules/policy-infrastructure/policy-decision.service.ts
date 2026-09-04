@@ -14,8 +14,8 @@ import { randomUUID } from 'node:crypto';
 import type { PolicyContext, PolicyEnforcementBackend } from '@/policy/policy-enforcement-backend';
 
 import { PolicyCheckFailedError } from './policy-check-failed.error';
-import type { PolicyDecisionAudit } from './policy-decision-audit';
-import { checkFailureAudit, violationAudit } from './policy-decision-audit';
+import type { DecisionAuditInput } from './policy-decision-audit';
+import { decisionAudit } from './policy-decision-audit';
 
 /**
  * How long one check gets. Tight on the two points that sit inside a running execution: a wedged
@@ -124,9 +124,11 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 		const startedAt = Date.now();
 		const { checkIds, results, failures } = await this.runChecks(point, context);
 		const durationMs = Date.now() - startedAt;
+		// Built from the checks that answered, so a check failure still logs what the rest found.
+		const decision = decisionFrom(results);
 
 		if (failures.length > 0) {
-			this.audit(checkFailureAudit(point, context, failures, durationMs, checkIds));
+			this.audit({ point, context, decision, durationMs, checkIds, failures });
 
 			throw new PolicyCheckFailedError(
 				point,
@@ -134,11 +136,9 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 			);
 		}
 
-		const decision = decisionFrom(results);
-
 		// The proxy throws on any violation, so this is the veto — and the only place it is logged.
 		if (decision.violations.length > 0) {
-			this.audit(violationAudit(point, context, decision, durationMs, checkIds));
+			this.audit({ point, context, decision, durationMs, checkIds });
 		}
 
 		return decision;
@@ -167,7 +167,8 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 	 * structured half only reaches the console under `N8N_LOG_FORMAT=json` — the text format
 	 * prints the message alone — so the message names the point on its own.
 	 */
-	private audit(line: PolicyDecisionAudit) {
+	private audit(input: DecisionAuditInput) {
+		const line = decisionAudit(input);
 		const message =
 			line.outcome === 'violation'
 				? `Policy blocked ${line.point}`
