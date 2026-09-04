@@ -137,6 +137,7 @@ describe('SharedWorkflowRepository', () => {
 					workflowId: In(['workflow-10000']),
 				},
 				relations: { project: { projectRelations: { user: true, role: true } } },
+				loadEagerRelations: false,
 			});
 			expect(result).toEqual([first, last]);
 		});

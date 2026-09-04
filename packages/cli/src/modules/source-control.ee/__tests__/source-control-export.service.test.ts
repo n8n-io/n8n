@@ -400,6 +400,79 @@ describe('SourceControlExportService', () => {
 		});
 	});
 
+	describe('exportCredentialsToWorkFolder batching', () => {
+		const toSharing = (credentialsId: string) =>
+			mock<SharedCredentials>({
+				credentialsId,
+				credentials: mock({
+					id: credentialsId,
+					name: `Credential ${credentialsId}`,
+					type: 'httpBasicAuth',
+					data: cipher.encrypt({ user: 'u', password: 'p' }),
+				}),
+				project: mock({ type: 'team', id: 'team-1', name: 'Team 1' }),
+			} as never) as SharedCredentials;
+
+		it('should load and write credentials in batches', async () => {
+			// Arrange
+			const credentialIds = Array.from({ length: 45 }, (_, index) => `cred-${index}`);
+			sharedCredentialsRepository.findByCredentialIds
+				.mockResolvedValueOnce(credentialIds.slice(0, 20).map(toSharing))
+				.mockResolvedValueOnce(credentialIds.slice(20, 40).map(toSharing))
+				.mockResolvedValueOnce(credentialIds.slice(40).map(toSharing));
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder(
+				credentialIds.map((id) => mock<SourceControlledFile>({ id })),
+			);
+
+			// Assert
+			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenCalledTimes(3);
+			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenNthCalledWith(
+				1,
+				credentialIds.slice(0, 20),
+				'credential:owner',
+			);
+			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenNthCalledWith(
+				2,
+				credentialIds.slice(20, 40),
+				'credential:owner',
+			);
+			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenNthCalledWith(
+				3,
+				credentialIds.slice(40),
+				'credential:owner',
+			);
+
+			const findOrder = sharedCredentialsRepository.findByCredentialIds.mock.invocationCallOrder;
+			const writeOrder = fsWriteFile.mock.invocationCallOrder;
+			expect(writeOrder).toHaveLength(45);
+			expect(writeOrder[19]).toBeLessThan(findOrder[1]);
+			expect(writeOrder[39]).toBeLessThan(findOrder[2]);
+
+			expect(result.count).toBe(45);
+			expect(result.missingIds).toEqual([]);
+			expect(result.files.map((file) => file.id)).toEqual(credentialIds);
+		});
+
+		it('should report credentials missing from any batch', async () => {
+			// Arrange
+			const credentialIds = Array.from({ length: 25 }, (_, index) => `cred-${index}`);
+			sharedCredentialsRepository.findByCredentialIds
+				.mockResolvedValueOnce(credentialIds.slice(0, 19).map(toSharing))
+				.mockResolvedValueOnce(credentialIds.slice(21).map(toSharing));
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder(
+				credentialIds.map((id) => mock<SourceControlledFile>({ id })),
+			);
+
+			// Assert
+			expect(result.count).toBe(23);
+			expect(result.missingIds).toEqual(['cred-19', 'cred-20']);
+		});
+	});
+
 	describe('exportTagsToWorkFolder', () => {
 		it('should export tags to work folder', async () => {
 			// Arrange

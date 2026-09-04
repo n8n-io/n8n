@@ -63,6 +63,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 					workflowId: In(chunk),
 				},
 				relations: { project: { projectRelations: { user: true, role: true } } },
+				loadEagerRelations: false,
 			});
 			for (const row of found) rows.set(row.workflowId, row);
 		}

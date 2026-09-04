@@ -36,6 +36,7 @@ describe('SharedCredentialsRepository', () => {
 
 			expect(entityManager.find).toHaveBeenCalledWith(SharedCredentials, {
 				relations: { credentials: true, project: { projectRelations: { user: true, role: true } } },
+				loadEagerRelations: false,
 				where: {
 					credentialsId: In(credentialIds),
 					role,

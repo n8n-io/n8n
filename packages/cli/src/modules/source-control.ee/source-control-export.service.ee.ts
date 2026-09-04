@@ -1,6 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { IWorkflowDb } from '@n8n/db';
+import type { IWorkflowDb, SharedCredentials } from '@n8n/db';
 import {
 	FolderRepository,
 	ProjectRepository,
@@ -514,81 +514,93 @@ export class SourceControlExportService {
 		}
 	}
 
+	private async writeExportableCredentialsToExportFolder(sharings: SharedCredentials[]) {
+		await Promise.all(
+			sharings.map(async (sharing) => {
+				const {
+					name,
+					type,
+					data,
+					id,
+					isGlobal = false,
+					isResolvable = false,
+					resolvableAllowFallback = false,
+				} = sharing.credentials;
+				const credentials = new Credentials({ id, name }, type, data);
+
+				let owner: RemoteResourceOwner | null = null;
+				if (sharing.project.type === 'personal') {
+					const ownerRelation = sharing.project.projectRelations.find(
+						(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
+					);
+					if (ownerRelation) {
+						owner = {
+							type: 'personal',
+							projectId: sharing.project.id,
+							projectName: sharing.project.name,
+							personalEmail: ownerRelation.user.email,
+						};
+					}
+				} else if (sharing.project.type === 'team') {
+					owner = {
+						type: 'team',
+						teamId: sharing.project.id,
+						teamName: sharing.project.name,
+					};
+				}
+
+				const sanitizedData = sanitizeCredentialData(await credentials.getData());
+
+				const stub: ExportableCredential = {
+					id,
+					name,
+					type,
+					data: sanitizedData,
+					ownedBy: owner,
+					isGlobal,
+					isResolvable,
+					resolvableAllowFallback,
+				};
+
+				const filePath = this.getCredentialsPath(id);
+				this.logger.debug(`Writing credentials stub "${name}" (ID ${id}) to: ${filePath}`);
+
+				return await fsWriteFile(filePath, JSON.stringify(stub, null, 2));
+			}),
+		);
+	}
+
 	async exportCredentialsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
 			const credentialIds = candidates.map((e) => e.id);
-			const credentialsToBeExported = await this.sharedCredentialsRepository.findByCredentialIds(
-				credentialIds,
-				'credential:owner',
-			);
+			const foundCredentialIds = new Set<string>();
+			const files: ExportResult['files'] = [];
+
+			for (const credentialIdChunk of chunk(credentialIds, SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE)) {
+				const credentialsToBeExported = await this.sharedCredentialsRepository.findByCredentialIds(
+					credentialIdChunk,
+					'credential:owner',
+				);
+				await this.writeExportableCredentialsToExportFolder(credentialsToBeExported);
+				for (const sharing of credentialsToBeExported) {
+					foundCredentialIds.add(sharing.credentialsId);
+					files.push({
+						id: sharing.credentials.id,
+						name: path.join(this.credentialExportFolder, `${sharing.credentials.name}.json`),
+					});
+				}
+			}
 
 			let missingIds: string[] = [];
-			const foundCredentialIds = new Set(credentialsToBeExported.map((e) => e.credentialsId));
 			if (foundCredentialIds.size !== credentialIds.length) {
 				missingIds = credentialIds.filter((remote) => !foundCredentialIds.has(remote));
 			}
-			await Promise.all(
-				credentialsToBeExported.map(async (sharing) => {
-					const {
-						name,
-						type,
-						data,
-						id,
-						isGlobal = false,
-						isResolvable = false,
-						resolvableAllowFallback = false,
-					} = sharing.credentials;
-					const credentials = new Credentials({ id, name }, type, data);
-
-					let owner: RemoteResourceOwner | null = null;
-					if (sharing.project.type === 'personal') {
-						const ownerRelation = sharing.project.projectRelations.find(
-							(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
-						);
-						if (ownerRelation) {
-							owner = {
-								type: 'personal',
-								projectId: sharing.project.id,
-								projectName: sharing.project.name,
-								personalEmail: ownerRelation.user.email,
-							};
-						}
-					} else if (sharing.project.type === 'team') {
-						owner = {
-							type: 'team',
-							teamId: sharing.project.id,
-							teamName: sharing.project.name,
-						};
-					}
-
-					const sanitizedData = sanitizeCredentialData(await credentials.getData());
-
-					const stub: ExportableCredential = {
-						id,
-						name,
-						type,
-						data: sanitizedData,
-						ownedBy: owner,
-						isGlobal,
-						isResolvable,
-						resolvableAllowFallback,
-					};
-
-					const filePath = this.getCredentialsPath(id);
-					this.logger.debug(`Writing credentials stub "${name}" (ID ${id}) to: ${filePath}`);
-
-					return await fsWriteFile(filePath, JSON.stringify(stub, null, 2));
-				}),
-			);
 
 			return {
-				count: credentialsToBeExported.length,
+				count: files.length,
 				folder: this.credentialExportFolder,
-				files: credentialsToBeExported.map((e) => ({
-					id: e.credentials.id,
-					name: path.join(this.credentialExportFolder, `${e.credentials.name}.json`),
-				})),
+				files,
 				missingIds,
 			};
 		} catch (error) {
