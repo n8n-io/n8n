@@ -873,6 +873,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getSandboxStatus: Mock;
 				isLocalGatewayDisabledForUser: Mock;
 				getPermissions: Mock;
+				isInstanceAiSetupPanelEnabled: Mock;
 			};
 			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
 			aiService: { isProxyEnabled: Mock };
@@ -921,6 +922,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			})),
 			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
+			isInstanceAiSetupPanelEnabled: vi.fn(() => false),
 		};
 		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };

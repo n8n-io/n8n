@@ -20,6 +20,7 @@ import type {
 	TaskList,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
+	InstanceAiSetupItem,
 	McpTool,
 	McpToolCallRequest,
 	McpToolCallResult,
@@ -1262,6 +1263,13 @@ export interface InstanceAiContext {
 	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
 	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
+	 * Setup panel v2 sink for durable `setup-items` snapshots. Wired by the host
+	 * only while the setup panel flag is on, so its presence is the package-side
+	 * flag accessor (`isSetupPanelEnabled`). Absent: the suspending setup card
+	 * paths stay in effect.
+	 */
+	setupItemsEmitter?: SetupItemsEmitter;
+	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
 	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
 	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
@@ -1321,6 +1329,29 @@ export interface InstanceAiContext {
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
 	};
+}
+
+// ── Setup panel v2 ───────────────────────────────────────────────────────────
+
+/**
+ * Publishes `setup-items` snapshots for a workflow. Full-snapshot semantics:
+ * every emission replaces the previous list for its workflowId, so callers
+ * hand over the complete current list, never a delta.
+ */
+export interface SetupItemsEmitter {
+	/** Replace the workflow's snapshot. Returns false when nothing changed (no event published). */
+	emit(workflowId: string, items: InstanceAiSetupItem[]): boolean;
+	/**
+	 * Upsert items (by id) into the workflow's last snapshot and publish the
+	 * merged list. For emitters that know only part of the checklist, e.g. a
+	 * credential announcement without node context.
+	 */
+	merge(workflowId: string, items: InstanceAiSetupItem[]): boolean;
+	/**
+	 * The workflow of the most recent emission this run, i.e. the latest saved
+	 * artifact — the workflow the panel follows. Undefined before the first save.
+	 */
+	lastWorkflowId(): string | undefined;
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
