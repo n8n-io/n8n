@@ -1,6 +1,7 @@
 import { h, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { useAiSimulatedDataGuard } from '@/app/composables/useAiSimulatedDataGuard';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
@@ -12,7 +13,7 @@ import {
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -27,6 +28,7 @@ export const useExecutionDebugging = () => {
 	const router = useRouter();
 	const i18n = useI18n();
 	const message = useMessage();
+	const aiSimulatedDataGuard = useAiSimulatedDataGuard();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -105,9 +107,19 @@ export const useExecutionDebugging = () => {
 		);
 
 		// Pin data of all nodes which do not have a parent node
-		const pinnableNodes = workflowNodes.filter(
+		let pinnableNodes = workflowNodes.filter(
 			(node: INodeUi) => !workflowDocumentStore.value.getParentNodes(node.name).length,
 		);
+
+		// Data this execution recorded for AI-simulated nodes is fabricated —
+		// copying it to the editor pins fake data, so it needs an explicit opt-in.
+		const simulatedPinnableNodes = pinnableNodes.filter((node) =>
+			aiSimulatedDataGuard.isSimulatedNodeOutput(executionId, node.name),
+		);
+		if (simulatedPinnableNodes.length > 0 && !(await aiSimulatedDataGuard.confirmAdoption())) {
+			const simulatedNames = new Set(simulatedPinnableNodes.map((node) => node.name));
+			pinnableNodes = pinnableNodes.filter((node) => !simulatedNames.has(node.name));
+		}
 
 		let pinnings = 0;
 

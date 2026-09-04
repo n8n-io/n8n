@@ -1,6 +1,6 @@
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useQuickConnect } from './useQuickConnect';
 import type { QuickConnectOption } from '@n8n/api-types';
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
@@ -96,7 +96,7 @@ const mockUsersState = vi.hoisted(() => ({
 		lastName?: string | null;
 	} | null,
 }));
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => mockUsersState,
 }));
 

@@ -11,8 +11,10 @@ post:
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
     `projectId` and `folderId` (omit or send empty for defaults). Every optional
-    mode/policy field (credential, workflow, folder, data table, variable, and tag)
-    takes its default when omitted. The required
+    mode/policy field (credential, workflow, project, folder, data table, variable,
+    and tag) takes its default when omitted; the one non-fixed default is
+    `folderConflictPolicy`, which follows `projectConflictPolicy` on a project
+    package (see its description). The required
     `workflowConflictPolicy` field controls what happens when a package workflow
     matches an existing workflow by source id in the target project. Maximum upload
     size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
@@ -93,9 +95,12 @@ post:
                 - fail
                 - skip
               description: >
-                `new-version` updates matching workflows and creates a new version,
-                `fail` rejects the import when any matching workflow exists, and
-                `skip` leaves matching workflows unchanged.
+                `new-version` updates matching workflows and creates a new version;
+                the archived state follows the package, so a matching workflow is
+                archived or unarchived to match it. `fail` rejects the import when any
+                matching workflow exists, and `skip` leaves matching workflows unchanged.
+                Archived workflows in the target project match like any other. An archive
+                state change also needs the `workflow:delete` scope.
             workflowIdPolicy:
               type: string
               enum:
@@ -143,20 +148,68 @@ post:
                 `publish-all` publishes every imported workflow.
                 `unpublish-all` leaves new workflows inactive and unpublishes
                 updated workflows that were published.
+            projectConflictPolicy:
+              type: string
+              enum:
+                - merge
+                - fail
+                - overwrite
+              default: merge
+              description: >
+                What to do when a project the package defines already exists here
+                (matched by id), and — unless `folderConflictPolicy` overrides it — how
+                its contents are treated. `merge` (default) leaves the existing
+                project's name, description, icon and custom span attributes untouched
+                and adds the package's contents alongside. `overwrite` replaces those
+                details with the package's; a detail the package omits is left as it is,
+                not cleared. `fail` rejects the import before anything is written, with
+                one `project-conflict` issue per existing project. A package project id
+                belonging to a personal project, or to a team project the caller cannot
+                update, always rejects the import. Ignored for workflow packages.
             folderConflictPolicy:
               type: string
               enum:
                 - merge
                 - fail
-              default: merge
+                - overwrite
               description: >
-                Controls what happens when a package folder (matched by id in the
-                target project) already exists at the same position. `merge`
-                (default) reuses the existing folder as-is and merges the package's
-                children into it; `fail` rejects the import. A folder whose id exists
-                under a different parent, or belongs to another project, always blocks
-                the import. Requires the `folder:create` scope and a license that
-                supports folders when the package contains folders.
+                What to do when a package folder already exists at the same position in
+                the target project. Defaults to whatever `projectConflictPolicy` is, so
+                the intent is stated once; a workflow package defines no projects, so it
+                defaults to `merge` there. `merge` reuses the existing folder and merges
+                the package's children into it. `fail` rejects the import. `overwrite`
+                reuses folders as `merge` does and additionally removes workflows the
+                package does not contain — at a project's root and in folders the
+                package defines, leaving target-only folders and their contents alone.
+                Folders it does not define are then removed too, but only once nothing is
+                left inside them. Removals are listed under `removedWorkflows` and
+                `removedFolders`; see `overwriteDeletionPolicy`. A folder whose id sits under a different
+                parent, or belongs to another project, always blocks the import.
+
+
+                `overwrite` is project-packages-only, needs the `workflow:delete` and
+                `folder:delete` scopes,
+                is rejected against a `projectConflictPolicy` other than `overwrite`,
+                and blocks up front if the caller cannot delete something it would
+                remove. Folders need the `folder:create` scope and a folders-enabled
+                licence.
+            overwriteDeletionPolicy:
+              type: string
+              enum:
+                - archive
+                - hard-delete
+              default: archive
+              description: >
+                How `folderConflictPolicy=overwrite` removes a workflow the package does
+                not contain. `archive` (default) archives it, so it stays recoverable
+                along with its execution history. `hard-delete` archives it — the step
+                that unpublishes it, which a delete will not do on its own — and then
+                deletes the workflow and its executions permanently. Each entry in
+                `removedWorkflows` reports what actually happened in its `deletion`
+                field: a `hard-delete` whose row cannot be dropped yet, because
+                unpublishing defers trigger teardown, is left `archived` rather than
+                failing an import whose content is already written. Ignored unless
+                `folderConflictPolicy` is `overwrite`.
             dataTableMatchingMode:
               type: string
               enum:
@@ -206,36 +259,74 @@ post:
                 - do-nothing
                 - must-preexist
                 - create-stub
-              default: do-nothing
+                - create-with-value
+              default: create-with-value
               description: >
                 Controls what happens when a variable referenced by the package's
                 workflows is absent from the target project and the global scope
-                (lookup order: project, then global). `do-nothing` (default)
-                imports the workflows without creating the missing variable and
+                (lookup order: project, then global). `create-with-value` (default)
+                creates the variable with its package value and lists its name under
+                `variables.created`. When the package carries no value for it — values
+                were excluded at export, or the exported value was itself empty — it
+                creates an empty stub listed under `variables.stubbed`.
+                `do-nothing` imports without creating the variable and
                 lists its name under `variables.missing`. `must-preexist` rejects
                 the import unless every referenced variable already resolves.
                 `create-stub` creates each missing variable with an empty value at
                 the placement scope (see `variableParentPolicy`) and lists the
-                created names under `variables.stubbed`. Any `create-stub` import
-                that has variable requirements needs an API key carrying the
-                `variable:create` scope (owner/admin keys only) — this applies to
-                project placement too, not only `variableParentPolicy=global`.
+                created names under `variables.stubbed`. An import that actually
+                creates a variable requires a license that permits variables and, for
+                API key callers, the `variable:create` scope; a package whose
+                variables all already resolve creates nothing and needs neither.
+            variableConflictPolicy:
+              type: string
+              enum:
+                - keep-existing
+                - overwrite
+                - fail
+              default: keep-existing
+              description: >
+                What to do when a referenced variable resolves in the target
+                project or global scope but the package bundles a *different*
+                value for it. `keep-existing` (default) leaves the target value
+                untouched and reports the name under `variables.matched`.
+                `overwrite` silently replaces the value of the existing variable
+                at whichever scope it was found — the target project or the
+                global scope, so a global variable other projects also read can
+                be rewritten by this import — and reports the name under
+                `variables.updated`; it needs a license that permits variables,
+                the `variable:update` / `projectVariable:update` permission on
+                that scope, and, for API key callers, the `variable:update`
+                scope. `fail` rejects the import with a 409 instead. Every
+                policy leaves a resolved variable alone when there is nothing
+                to change — either the package bundles no value for it (values
+                were excluded at export, or the exported value was itself
+                empty), or the value it bundles already matches the target's.
+                The reverse does not hold: a resolved variable holding an empty
+                value — a stub an earlier import created, say — still counts as
+                a value, so `overwrite` fills it and `fail` rejects it. Under
+                `overwrite`, a project package whose projects hold *different*
+                values for a name they all resolve to one row — a global none of
+                them shadows, typically — is rejected with a 409: one row cannot
+                carry both values, and the import will not pick for you. Give
+                the projects their own variables in the target, or import them
+                separately.
             variableParentPolicy:
               type: string
               enum:
                 - project
                 - global
               description: >
-                Where `create-stub` creates missing variables for workflow/folder
-                packages. `project` — also the behaviour when the field is omitted —
-                creates them in the import target project (`projectId`, else the
-                caller's personal project). `global` creates them at the global
-                scope. The `variable:create` API key scope requirement described
-                under `variableMissingMode` applies to both placements. Must be
-                omitted for project packages, which reject it with a 400: their
-                placement follows the package layout, where a variable bundled
-                under a project is created in that project and one bundled at the
-                top level is created globally.
+                Where `create-with-value` and `create-stub` create missing variables
+                for workflow/folder packages. `project` — also the behaviour when the
+                field is omitted — creates them in the import target project
+                (`projectId`, else the caller's personal project). `global` creates
+                them at the global scope. The license and `variable:create`
+                requirements described under `variableMissingMode` apply to both
+                placements. Must be omitted for project packages, which reject it
+                with a 400: their placement follows the package layout, where a
+                variable bundled under a project is created in that project and one
+                bundled at the top level is created globally.
             tagMissingMode:
               type: string
               enum:
@@ -266,10 +357,12 @@ post:
                 import (not created, not renamed, not attached anywhere; the import
                 proceeds and lists them under `tags.skipped`). `fail` rejects the
                 import with a 409. `rename` renames a drifted target tag to the
-                package name and needs an API key carrying the `tag:update` scope
-                when the import would rename a tag; a name collision — including
-                a drifted tag whose package name is held by another tag — still
-                rejects the import (rename degrades to fail).
+                package name, and reconciles a name collision by re-keying the
+                existing tag to the package (source) id — its name, workflow and
+                folder taggings follow; both need an API key carrying the
+                `tag:update` scope when the import would rename or reconcile a
+                tag. A drifted tag whose package name is held by another tag
+                still rejects the import (rename degrades to fail).
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -280,10 +373,13 @@ post:
             required:
               - package
               - workflows
+              - removedWorkflows
+              - removedFolders
               - folders
               - projects
               - bindings
               - credentials
+              - dataTables
               - variables
               - tags
             properties:
@@ -312,6 +408,7 @@ post:
                     - projectId
                     - parentFolderId
                     - activeVersionId
+                    - isArchived
                     - publishing
                     - status
                   properties:
@@ -338,6 +435,12 @@ post:
                       description: >
                         Published version on the target instance, if any. `null` when the
                         workflow is not published after import.
+                    isArchived:
+                      type: boolean
+                      description: >
+                        Whether the workflow is archived on the target after import. Under
+                        `new-version` this follows the package's `isArchived` flag. A skipped
+                        workflow keeps its own state.
                     publishing:
                       type: object
                       required:
@@ -391,6 +494,65 @@ post:
                         - updated
                         - skipped
                       description: Import outcome for this package workflow.
+              removedWorkflows:
+                type: array
+                description: >
+                  Workflows the target had that the package does not, removed by
+                  `folderConflictPolicy=overwrite`. Empty under every other policy.
+                items:
+                  type: object
+                  required:
+                    - workflowId
+                    - name
+                    - projectId
+                    - parentFolderId
+                    - deletion
+                  properties:
+                    workflowId:
+                      type: string
+                      description: Id of the removed workflow on this instance.
+                    name:
+                      type: string
+                    projectId:
+                      type: string
+                      description: Project the workflow was reconciled against.
+                    parentFolderId:
+                      type: string
+                      nullable: true
+                      description: Folder that held the workflow, or null at the project root.
+                    deletion:
+                      type: string
+                      enum:
+                        - archived
+                        - deleted
+                      description: >
+                        What actually happened, not what `overwriteDeletionPolicy` asked
+                        for: a `hard-delete` whose row could not be dropped yet is
+                        reported as `archived`.
+              removedFolders:
+                type: array
+                description: >
+                  Folders the package does not define that reconciliation left empty, removed by
+                  `folderConflictPolicy=overwrite`. A folder still holding anything survives, so
+                  target-only content is never swept up. Empty under every other policy.
+                items:
+                  type: object
+                  required:
+                    - folderId
+                    - name
+                    - projectId
+                    - parentFolderId
+                  properties:
+                    folderId:
+                      type: string
+                    name:
+                      type: string
+                    projectId:
+                      type: string
+                    parentFolderId:
+                      type: string
+                      nullable: true
+                      description: Folder that held it, or null at the project root.
               folders:
                 type: array
                 description: Folder shells created or skipped in the target project.
@@ -424,8 +586,9 @@ post:
               projects:
                 type: array
                 description: >
-                  Project shells created or matched-and-updated. Present for project
-                  packages; empty when importing loose workflows/folders.
+                  Project shells created, or matched and then updated or left as-is
+                  (see `projectConflictPolicy`). Present for project packages; empty
+                  when importing loose workflows/folders.
                 items:
                   type: object
                   required:
@@ -442,12 +605,19 @@ post:
                       description: Project id on the target instance (equal to `sourceProjectId`; project ids are reused).
                     name:
                       type: string
+                      description: >
+                        The project's name on the target: the package's under
+                        `overwrite`, the pre-existing one under `merge`.
                     status:
                       type: string
                       enum:
                         - created
                         - updated
-                      description: Import outcome for this package project.
+                        - skipped
+                      description: >
+                        Import outcome for this package project. `skipped` means the
+                        project already existed and `projectConflictPolicy=merge` left
+                        its details untouched — its contents were still imported.
               credentials:
                 type: object
                 description: >
@@ -472,19 +642,33 @@ post:
                     description: >
                       Source credential ids for which empty placeholder
                       credentials were created in the target project.
+              dataTables:
+                type: object
+                required:
+                  - matched
+                  - created
+                properties:
+                  matched:
+                    type: integer
+                    minimum: 0
+                  created:
+                    type: integer
+                    minimum: 0
               variables:
                 type: object
                 description: >
                   Resolution of the package's variable requirements. Names only —
                   values never travel in the response. For project packages these
                   arrays are package-level unions of per-destination outcomes and may
-                  overlap (a name matched in one project and stubbed in another appears
-                  in both `matched` and `stubbed`); classification under concurrent
+                  overlap (for example, a name may be created with a value in one project
+                  and stubbed in another); classification under concurrent
                   external writes is best-effort.
                 required:
                   - matched
                   - missing
+                  - created
                   - stubbed
+                  - updated
                 properties:
                   matched:
                     type: array
@@ -492,7 +676,9 @@ post:
                       type: string
                     description: >
                       Variable names that resolved to an existing variable
-                      (importing project's scope first, then global).
+                      (importing project's scope first, then global) and were
+                      left untouched. A resolved variable this import rewrote is
+                      listed under `updated` instead.
                   missing:
                     type: array
                     items:
@@ -501,14 +687,31 @@ post:
                       Variable names still unresolved after import. Under
                       `variableMissingMode=do-nothing` these are warnings — the import
                       still succeeds and nothing is created. A successful `create-stub`
-                      import normally leaves this empty.
+                      or `create-with-value` import normally leaves this empty.
+                  created:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Variable names created with a package value under
+                      `variableMissingMode=create-with-value`. Empty stubs are listed
+                      under `stubbed`.
                   stubbed:
                     type: array
                     items:
                       type: string
                     description: >
                       Variable names created with an empty value by this import under
-                      `variableMissingMode=create-stub`. Empty for other modes.
+                      `variableMissingMode=create-stub`, or because `create-with-value`
+                      had no exported value. Empty for other outcomes.
+                  updated:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Variable names whose existing value this import replaced with
+                      the package value under `variableConflictPolicy=overwrite`.
+                      Empty for other policies.
               tags:
                 type: object
                 description: >
@@ -518,6 +721,7 @@ post:
                   - matched
                   - created
                   - renamed
+                  - reconciled
                   - skipped
                 properties:
                   matched:
@@ -541,6 +745,14 @@ post:
                     description: >
                       Target tags renamed to the package name under
                       `tagConflictPolicy=rename`; listed by their new name.
+                  reconciled:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Existing target tags re-keyed to the package (source) id on
+                      a name collision under `tagConflictPolicy=rename`; their
+                      name, workflow and folder taggings are kept.
                   skipped:
                     type: array
                     items:
@@ -574,8 +786,11 @@ post:
       description: >
         Import blocked by at least one conflict among the issues — a workflow
         source-id conflict, a folder conflict (id under a different parent, id
-        owned by another project, or a `fail`-policy match), or a tag conflict
-        (rename drift or name collision).
+        owned by another project, or a `fail`-policy match), a tag conflict
+        (rename drift or name collision), a variable whose bundled value
+        differs from the resolved target's under
+        `variableConflictPolicy=fail`, or one row two projects of a package
+        would overwrite with different values.
       content:
         application/json:
           schema:

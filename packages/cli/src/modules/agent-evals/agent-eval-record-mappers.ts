@@ -1,12 +1,13 @@
 import type {
 	AgentEvalDatasetRecord,
+	AgentEvalRatingRecord,
 	AgentEvalResultRecord,
 	AgentEvalRunRecord,
 	DataTableDatasetRef,
 	DatasetRef,
 	GoogleSheetsDatasetRef,
 } from '@n8n/api-types';
-import type { AgentEvalDataset, AgentEvalResult, AgentEvalRun } from '@n8n/db';
+import type { AgentEvalDataset, AgentEvalRating, AgentEvalResult, AgentEvalRun } from '@n8n/db';
 import { UnexpectedError } from 'n8n-workflow';
 
 /**
@@ -93,5 +94,18 @@ export function toResultRecord(result: AgentEvalResult): AgentEvalResultRecord {
 		errorDetails: result.errorDetails,
 		createdAt: result.createdAt.toISOString(),
 		updatedAt: result.updatedAt.toISOString(),
+	};
+}
+
+export function toRatingRecord(rating: AgentEvalRating): AgentEvalRatingRecord {
+	return {
+		id: rating.id,
+		resultId: rating.resultId,
+		vote: rating.vote,
+		comment: rating.comment,
+		correction: rating.correction,
+		ratedById: rating.ratedById,
+		createdAt: rating.createdAt.toISOString(),
+		updatedAt: rating.updatedAt.toISOString(),
 	};
 }

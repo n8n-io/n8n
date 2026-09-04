@@ -28,7 +28,9 @@ import {
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
+import { useAiSimulatedDataGuard } from '@/app/composables/useAiSimulatedDataGuard';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { type PinDataSource, usePinnedData } from '@/app/composables/usePinnedData';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -39,6 +41,7 @@ import {
 	EnterpriseEditionFeature,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
@@ -65,7 +68,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -134,7 +137,9 @@ import {
 	TelemetryHelpers,
 	isCommunityPackageName,
 	isHitlToolType,
+	isResourceLocatorValue,
 } from 'n8n-workflow';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -251,6 +256,7 @@ export function useCanvasOperations() {
 	const toast = useToast();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
+	const aiSimulatedDataGuard = useAiSimulatedDataGuard();
 	const {
 		requireNodeTypeDescription,
 		resolveNodeParameters,
@@ -919,15 +925,11 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function toggleNodesPinned(
+	async function toggleNodesPinned(
 		ids: string[],
 		source: PinDataSource,
 		{ trackHistory = true, trackBulk = true } = {},
 	) {
-		if (trackHistory && trackBulk) {
-			historyStore.startRecordingUndo();
-		}
-
 		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
 
 		// Filter to only pinnable nodes
@@ -938,6 +940,27 @@ export function useCanvasOperations() {
 		const nextStatePinned = pinnableNodesWithPinnedData.some(
 			({ pinnedData }) => !pinnedData.hasData.value,
 		);
+
+		// Pinning copies the displayed output; when that output was simulated by
+		// the AI Assistant during verification it is fabricated sample data, so
+		// adopting it needs the same explicit opt-in as the NDV pin button.
+		if (nextStatePinned) {
+			const displayedExecutionId = useWorkflowExecutionStateStore(
+				workflowDocumentStore.value.documentId,
+			).activeExecution?.id;
+			const adoptsSimulatedData = pinnableNodesWithPinnedData.some(
+				({ node, pinnedData }) =>
+					!pinnedData.hasData.value &&
+					aiSimulatedDataGuard.isSimulatedNodeOutput(displayedExecutionId, node.name),
+			);
+			if (adoptsSimulatedData && !(await aiSimulatedDataGuard.confirmAdoption())) {
+				return;
+			}
+		}
+
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
 
 		for (const { node, pinnedData: pinnedDataForNode } of pinnableNodesWithPinnedData) {
 			if (nextStatePinned) {
@@ -1339,6 +1362,28 @@ export function useCanvasOperations() {
 			action: options.actionName,
 			next_view_shown: nextView,
 		});
+
+		if (nodeData.type === MESSAGE_AN_AGENT_NODE_TYPE) {
+			trackAddAgentNode(nodeData);
+		}
+	}
+
+	function trackAddAgentNode(nodeData: INodeUi) {
+		const { agentSource, agentId } = nodeData.parameters ?? {};
+
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE, {
+			// Raw stored value only — absent means the node was added without the
+			// agents panel preset, and analytics coalesces that to 'referenced'
+			agent_source:
+				agentSource === 'inline' || agentSource === 'referenced' ? agentSource : undefined,
+			agent_id:
+				isResourceLocatorValue(agentId) && typeof agentId.value === 'string' && agentId.value !== ''
+					? agentId.value
+					: undefined,
+			workflow_id: workflowDocumentStore.value.workflowId,
+			node_id: nodeData.id,
+			node_version: nodeData.typeVersion,
+		});
 	}
 
 	/**
@@ -1352,6 +1397,7 @@ export function useCanvasOperations() {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
 		const name =
 			node.name ??
+			getN8nAgentsNodeName(nodeTypeDescription.name) ??
 			nodeHelpers.getDefaultNodeName(node) ??
 			(nodeTypeDescription.defaults.name as string);
 		const type = node.type ?? nodeTypeDescription.name;
@@ -2666,6 +2712,7 @@ export function useCanvasOperations() {
 
 		initializedDocumentStore.setNodes(nodes);
 		initializedDocumentStore.setConnections(connections);
+		initializedDocumentStore.setHydrated(true);
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -3311,10 +3358,9 @@ export function useCanvasOperations() {
 	): INodeCredentials {
 		return Object.fromEntries(
 			Object.entries(credentials).filter(([, credential]) => {
-				return (
-					credential.id &&
-					(!usedCredentials[credential.id] || usedCredentials[credential.id]?.currentUserHasAccess)
-				);
+				if (!credential.id) return Boolean(credential.__aiGatewayManaged);
+				const used = usedCredentials[credential.id];
+				return !used || used.currentUserHasAccess;
 			}),
 		);
 	}
@@ -3484,6 +3530,7 @@ export function useCanvasOperations() {
 			projectsStore.currentProjectId,
 		);
 		workflowDocumentStore.value.setName(workflowData.name);
+		workflowDocumentStore.value.setHydrated(true);
 	}
 
 	async function tryToOpenSubworkflowInNewTab(nodeId: string): Promise<boolean> {

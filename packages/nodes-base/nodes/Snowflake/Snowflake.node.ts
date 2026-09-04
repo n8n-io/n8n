@@ -274,7 +274,7 @@ export class Snowflake implements INodeType {
 		try {
 			// Render non-finite numbers (NaN, Infinity) in VARIANT/OBJECT/ARRAY columns as
 			// null so the column output is always valid JSON for the parser above.
-			await execute(connection, 'ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE', []);
+			await execute(connection, 'ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE', [], this.getNode());
 
 			let returnData: INodeExecutionData[] = [];
 			const items = this.getInputData();
@@ -292,7 +292,7 @@ export class Snowflake implements INodeType {
 						query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
 					}
 
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
+					const options = this.getNodeParameter('options', i, {});
 					const rawReplacement = options.queryReplacement;
 					let binds: snowflake.Bind[] = [];
 
@@ -310,7 +310,7 @@ export class Snowflake implements INodeType {
 						}
 					}
 
-					const responseData = await execute(connection, query, binds);
+					const responseData = await execute(connection, query, binds, this.getNode());
 					const executionData = await prepareQueryResults.call(
 						this,
 						responseData as IDataObject[] | undefined,
@@ -334,7 +334,7 @@ export class Snowflake implements INodeType {
 				const query = `INSERT INTO ${quotedTable} (${quotedColumns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
 				const data = this.helpers.copyInputItems(items, columns);
 				const binds = data.map((element) => [...Object.values(element)]);
-				await execute(connection, query, binds as snowflake.Binds);
+				await execute(connection, query, binds as snowflake.Binds, this.getNode());
 				data.forEach((d, i) => {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(d),
@@ -373,7 +373,7 @@ export class Snowflake implements INodeType {
 					return rowBinds;
 				});
 				for (let i = 0; i < binds.length; i++) {
-					await execute(connection, query, binds[i] as snowflake.Binds);
+					await execute(connection, query, binds[i] as snowflake.Binds, this.getNode());
 				}
 				data.forEach((d, i) => {
 					const executionData = this.helpers.constructExecutionMetaData(

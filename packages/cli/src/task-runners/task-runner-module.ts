@@ -67,6 +67,14 @@ export class TaskRunnerModule {
 
 	@OnShutdown()
 	async stop() {
+		// Stop the broker server first: its drain lets in-flight tasks finish, so the
+		// runner processes are idle by the time they are stopped and exit within the
+		// short grace before the SIGKILL escalation.
+		if (this.taskBrokerHttpServer) {
+			await this.taskBrokerHttpServer.stop();
+			this.taskBrokerHttpServer = undefined;
+		}
+
 		const stopRunnerProcessTask = (async () => {
 			if (this.jsRunnerProcess) {
 				await this.jsRunnerProcess.stop();
@@ -81,14 +89,7 @@ export class TaskRunnerModule {
 			}
 		})();
 
-		const stopRunnerServerTask = (async () => {
-			if (this.taskBrokerHttpServer) {
-				await this.taskBrokerHttpServer.stop();
-				this.taskBrokerHttpServer = undefined;
-			}
-		})();
-
-		await Promise.all([stopRunnerProcessTask, stopPythonRunnerProcessTask, stopRunnerServerTask]);
+		await Promise.all([stopRunnerProcessTask, stopPythonRunnerProcessTask]);
 	}
 
 	private async loadTaskRequester() {

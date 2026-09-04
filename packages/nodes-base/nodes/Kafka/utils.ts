@@ -6,7 +6,6 @@ import type {
 	SASLOptions,
 	ConsumerConfig,
 } from 'kafkajs';
-import { logLevel } from 'kafkajs';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import type {
@@ -21,15 +20,53 @@ import type {
 	RequestHelperFunctions,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonParse, NodeOperationError, UserError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError, OperationalError, UserError } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
 import type { ConnectionOptions } from 'node:tls';
 
 // Default delay in milliseconds before retrying after a failed offset resolution.
 // This prevents rapid retry loops that could overwhelm the Kafka broker
-const DEFAULT_ERROR_RETRY_DELAY_MS = 5000;
+export const DEFAULT_ERROR_RETRY_DELAY_MS = 5000;
+
+/**
+ * Node keeps a timer's delay in a 32-bit signed integer. Anything larger
+ * overflows to a 1ms delay and only prints a process warning, so a value past
+ * this is not a long wait, it is no wait at all.
+ */
+export const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
+/** True for a delay `setTimeout` would honour as written. Zero is fine. */
+function isUsableDelay(value: number): boolean {
+	return Number.isFinite(value) && value >= 0 && value <= MAX_TIMER_DELAY_MS;
+}
+
+/**
+ * A usable retry delay in milliseconds, or the default when the value is not one.
+ *
+ * Unlike a count, zero is legitimate here and means "do not wait". Everything
+ * `setTimeout` would quietly turn into no wait at all falls back instead:
+ * `NaN`, `Infinity`, a negative, and anything past the 32-bit timer limit. The
+ * pacing would otherwise disappear without anything failing. `??` alone does
+ * not catch these, since none of them is `undefined`, and a node option can
+ * arrive as any of them from an expression.
+ * @param logger - Warns when a value was supplied and had to be replaced, so
+ * the misconfiguration is visible rather than silently corrected. An absent
+ * value is not a misconfiguration and is never warned about.
+ */
+export function resolveRetryDelay(value: number | undefined, logger?: Logger): number {
+	if (value === undefined) return DEFAULT_ERROR_RETRY_DELAY_MS;
+
+	if (typeof value !== 'number' || !isUsableDelay(value)) {
+		logger?.warn(
+			`Kafka "Retry Delay on Error" of ${String(value)} cannot be used as a delay, falling back to ${DEFAULT_ERROR_RETRY_DELAY_MS}ms`,
+		);
+		return DEFAULT_ERROR_RETRY_DELAY_MS;
+	}
+	return value;
+}
 
 export interface KafkaTriggerOptions {
 	allowAutoTopicCreation?: boolean;
@@ -82,9 +119,9 @@ interface SchemaRegistryOptions {
 type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
 
 /**
- * Normalizes a PEM credential field and returns it as a Buffer, throwing a clear
- * error when the value is not a PEM block (the most common paste mistake) so the
- * failure surfaces at config time instead of as an opaque TLS handshake error.
+ * Normalizes a PEM credential field, throwing a clear error when the value is not
+ * a PEM block (the most common paste mistake) so the failure surfaces at config
+ * time instead of as an opaque TLS handshake error.
  *
  * The strict BEGIN/END check stays here rather than in the shared `formatPemBlock`
  * normalizer: that helper is a non-throwing, best-effort formatter used by many
@@ -93,7 +130,7 @@ type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatu
  * @param value - The raw PEM string from the credential
  * @param fieldName - Human-readable field name used in the error message
  */
-function toPemBuffer(value: string, fieldName: string): Buffer {
+export function formatAndValidatePem(value: string, fieldName: string): string {
 	const formatted = formatPemBlock(value);
 	// Require a matching BEGIN/END pair with the same label — a lone BEGIN header
 	// (e.g. a truncated paste) would otherwise pass and only fail later as an
@@ -105,7 +142,12 @@ function toPemBuffer(value: string, fieldName: string): Buffer {
 				'Paste the full PEM, including the "-----BEGIN ...-----" and "-----END ...-----" lines.',
 		});
 	}
-	return Buffer.from(formatted);
+	return formatted;
+}
+
+/** kafkajs's `tls.ConnectionOptions` fields take Buffers, the v2 library takes strings. */
+function toPemBuffer(value: string, fieldName: string): Buffer {
+	return Buffer.from(formatAndValidatePem(value, fieldName));
 }
 
 /**
@@ -153,6 +195,10 @@ export function resolveKafkaSsl(credentials: KafkaCredentials): ConnectionOption
  * @returns Kafka configuration object with authentication settings
  */
 export async function createConfig(ctx: ITriggerFunctions) {
+	// Loaded lazily so importing this module (shared with the v2 node, which runs on
+	// a different Kafka library) never pulls `kafkajs` into the runtime.
+	const { logLevel } = await import('kafkajs');
+
 	const credentials = (await ctx.getCredentials('kafka')) as KafkaCredentials;
 	const clientId = credentials.clientId;
 	const brokers = (credentials.brokers ?? '').split(',').map((item) => item.trim());
@@ -414,13 +460,26 @@ export function disconnectEventListeners(
 // error message, which can be large, so the logged message is bounded.
 const MAX_REGISTRY_ERROR_MESSAGE_LENGTH = 500;
 
-function sanitizeRegistryError(error: unknown) {
+export function sanitizeRegistryError(error: unknown) {
 	const ensured = ensureError(error);
-	const redacted = ensured.message.replace(/\/\/[^/\s]+@/g, '//***@');
+
+	// URL userinfo first, and deliberately not the shared scrubber's rule for it.
+	// Ours is greedy to the last `@`, so a password containing an unencoded `@`
+	// is removed whole. The shared pattern stops at the first `@` and would leave
+	// the tail of such a password in the log.
+	const withoutUserinfo = ensured.message.replace(/\/\/[^/\s]+@/g, '//***@');
+
+	// Then the shared scrubber, for anything the registry echoes back from a
+	// response body that our URL rule cannot see: JWTs, Authorization headers,
+	// provider API keys, `password=` style assignments.
+	const scrubbed = scrubSecretsInText(withoutUserinfo);
+
+	// Length capped last, so the cap applies to the redacted text.
 	const message =
-		redacted.length > MAX_REGISTRY_ERROR_MESSAGE_LENGTH
-			? `${redacted.slice(0, MAX_REGISTRY_ERROR_MESSAGE_LENGTH)}...`
-			: redacted;
+		scrubbed.length > MAX_REGISTRY_ERROR_MESSAGE_LENGTH
+			? `${scrubbed.slice(0, MAX_REGISTRY_ERROR_MESSAGE_LENGTH)}...`
+			: scrubbed;
+
 	return {
 		message,
 		...('status' in ensured ? { status: ensured.status } : {}),
@@ -491,10 +550,6 @@ export async function createSchemaRegistry(
 	const options = await getSchemaRegistryOptions(ctx, fallbackUrl);
 
 	const filter = ctx.helpers.getSecureEgressFilter();
-	if (!filter) {
-		// Egress filtering not configured: use the default transport unchanged.
-		return new SchemaRegistry(options);
-	}
 
 	// Parse the configured host once. A valid registry host is an absolute
 	// http(s) URL; if it does not parse or uses an unexpected scheme, reject so
@@ -583,18 +638,23 @@ function getResolveOffsetMode(
  * @param ctx - The trigger function context
  * @param options - Kafka trigger options
  * @param nodeVersion - The version of the Kafka trigger node
+ * @param closeSignal - Aborted when the trigger is being closed; unblocks any wait
+ * on an in-flight execution so teardown is not delayed, leaving offsets unresolved
  * @returns Async function that emits data and waits for execution completion based on resolve mode
  */
 export function configureDataEmitter(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
 	nodeVersion: number,
+	closeSignal: AbortSignal,
 ) {
 	const resolveOffsetMode = getResolveOffsetMode(ctx, options, nodeVersion);
 
 	// For manual mode, always use immediate emit (no donePromise)
 	if (ctx.getMode() === 'manual' || resolveOffsetMode === 'immediately') {
 		return async (dataArray: INodeExecutionData[]) => {
+			// Never start an execution once the trigger is closing.
+			if (closeSignal.aborted) return { success: false };
 			ctx.emit([dataArray]);
 			return { success: true };
 		};
@@ -619,7 +679,25 @@ export function configureDataEmitter(
 		}
 	}
 
+	// Rejects on close; kept handled so it can never become an unhandled rejection.
+	const abortPromise = new Promise<never>((_, reject) => {
+		closeSignal.addEventListener(
+			'abort',
+			() =>
+				reject(
+					new OperationalError(
+						'Trigger closed before the execution finished, offsets not resolved.',
+					),
+				),
+			{ once: true },
+		);
+	});
+	void abortPromise.catch(() => undefined);
+
 	return async (dataArray: INodeExecutionData[]) => {
+		// Never start an execution once the trigger is closing.
+		if (closeSignal.aborted) return { success: false };
+
 		let timeoutId: NodeJS.Timeout | undefined;
 		try {
 			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
@@ -636,7 +714,7 @@ export function configureDataEmitter(
 				}, executionTimeoutInSeconds * 1000);
 			});
 
-			const run = await Promise.race([responsePromise.promise, timeoutPromise]);
+			const run = await Promise.race([responsePromise.promise, timeoutPromise, abortPromise]);
 
 			if (resolveOffsetMode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
@@ -647,7 +725,10 @@ export function configureDataEmitter(
 
 			return { success: true };
 		} catch (e) {
-			await sleep(errorRetryDelay);
+			// The retry backoff must not delay teardown.
+			if (!closeSignal.aborted) {
+				await Promise.race([sleep(errorRetryDelay), abortPromise.catch(() => undefined)]);
+			}
 			const error = ensureError(e);
 			ctx.logger.error(error.message, { error });
 			return { success: false };
@@ -674,6 +755,82 @@ export function getAutoCommitSettings(options: KafkaTriggerOptions) {
 		autoCommitInterval,
 		autoCommitThreshold,
 	};
+}
+
+/**
+ * Bounds a promise with a timeout, rejecting with an `OperationalError` when it
+ * does not settle in time. A late rejection of the abandoned promise stays
+ * handled, so it cannot surface as an unhandled rejection.
+ * @param promise - The promise to bound
+ * @param ms - Timeout in milliseconds
+ * @param message - Error message used when the timeout wins
+ */
+export async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+	let timer: NodeJS.Timeout | undefined;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(() => reject(new OperationalError(message)), ms);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
+/**
+ * Stops and disconnects a Kafka consumer, bounding each call so a hung broker
+ * request cannot block teardown. Assumes close was already signaled by the
+ * caller. When stop() times out while still pending, kafkajs disconnect() would
+ * join the same shared stop promise, so the disconnect is instead chained in
+ * the background for whenever stop settles.
+ * @param consumer - The Kafka consumer instance
+ * @param logger - Logger instance
+ * @param timeoutMs - Upper bound for each teardown call
+ * @returns The first teardown error, or undefined when teardown succeeded
+ */
+export async function stopAndDisconnectConsumer(
+	consumer: Consumer,
+	logger: Logger,
+	timeoutMs: number,
+): Promise<Error | undefined> {
+	let teardownError: Error | undefined;
+	let stopSettled = false;
+	// Tracker is subscribed before the race so stopSettled is accurate when the
+	// race settles.
+	const stopPromise = consumer.stop();
+	void stopPromise.then(
+		() => (stopSettled = true),
+		() => (stopSettled = true),
+	);
+	try {
+		await withTimeout(stopPromise, timeoutMs, 'Kafka consumer did not stop in time');
+	} catch (error) {
+		teardownError = ensureError(error);
+	}
+
+	if (!stopSettled) {
+		void stopPromise
+			.catch(() => undefined)
+			.then(async () => await consumer.disconnect())
+			.catch((error: unknown) => {
+				logger.warn('Kafka consumer disconnect after delayed stop failed', { error });
+			});
+		return teardownError;
+	}
+
+	// A failed stop() must not leave the broker connection open.
+	try {
+		await withTimeout(
+			consumer.disconnect(),
+			timeoutMs,
+			'Kafka consumer did not disconnect in time',
+		);
+	} catch (error) {
+		teardownError ??= ensureError(error);
+	}
+	return teardownError;
 }
 
 /**

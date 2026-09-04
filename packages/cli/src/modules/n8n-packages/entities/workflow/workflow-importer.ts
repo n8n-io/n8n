@@ -1,10 +1,19 @@
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import {
+	WorkflowCreationService,
+	type WorkflowCreateBatchContext,
+} from '@/workflows/workflow-creation.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { workflowReferences } from './references/workflow-references';
+import {
+	decideWorkflowArchiveTransition,
+	type WorkflowArchiveTransition,
+} from './workflow-archive-transition';
 import { decideWorkflowConflictAction } from './workflow-conflict-policy';
 import { decideWorkflowId } from './workflow-id-policy';
 import {
@@ -15,6 +24,7 @@ import type {
 	PersistedWorkflowOutcome,
 	PersistedWorkflowPlanItem,
 	PreparedWorkflow,
+	WorkflowArchiveForbidden,
 	WorkflowConflict,
 	WorkflowFolderConflict,
 	WorkflowImportContext,
@@ -29,6 +39,7 @@ import type {
 	PackageImportBindings,
 	WorkflowIdPolicy,
 } from '../../n8n-packages.types';
+import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
 
 export interface WorkflowImportResult {
 	outcomes: PersistedWorkflowOutcome[];
@@ -46,6 +57,7 @@ export class WorkflowImporter {
 		private readonly workflowImportMatchService: WorkflowImportMatchService,
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowService: WorkflowService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	async plan(
@@ -53,7 +65,7 @@ export class WorkflowImporter {
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
 	): Promise<WorkflowImportPlan> {
-		const existingBySourceWorkflowId =
+		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
 				context.projectId,
 				prepared.map(({ sourceWorkflowId }) => sourceWorkflowId),
@@ -66,9 +78,17 @@ export class WorkflowImporter {
 		// global id collision check below. Blocked creates are excluded: they
 		// already report a workflow-conflict for the same workflow.
 		const sourceCreateIds: string[] = [];
+		const archiveTransitionItems: ArchiveTransitionPlanItem[] = [];
+		const ambiguousSourceIds = new Set(
+			lineageConflicts.map(({ sourceWorkflowId }) => sourceWorkflowId),
+		);
 
 		for (const workflow of prepared) {
 			const existing = existingBySourceWorkflowId.get(workflow.sourceWorkflowId) ?? null;
+			if (existing && ambiguousSourceIds.has(workflow.sourceWorkflowId)) {
+				items.push({ action: 'skip', ...workflow, existing });
+				continue;
+			}
 			const { action, blocked } = decideWorkflowConflictAction(
 				options.workflowConflictPolicy,
 				existing,
@@ -81,6 +101,10 @@ export class WorkflowImporter {
 				sourceCreateIds.push(item.decidedId);
 			}
 
+			if (hasArchiveTransition(item)) {
+				archiveTransitionItems.push(item);
+			}
+
 			if (blocked && existing) {
 				conflicts.push({
 					sourceWorkflowId: workflow.sourceWorkflowId,
@@ -89,24 +113,65 @@ export class WorkflowImporter {
 				});
 			}
 
+			// Only an update writes the workflow in place, so only an update can clash on location.
 			const targetFolderId = workflow.parentFolderId ?? context.folderId;
-			if (targetFolderId && existing) {
-				const existingParentFolderId = existing.parentFolder?.id ?? null;
+			if (targetFolderId && item.action === 'update') {
+				const existingParentFolderId = item.existing.parentFolder?.id ?? null;
 				if (existingParentFolderId !== targetFolderId) {
 					folderConflicts.push({
 						sourceWorkflowId: workflow.sourceWorkflowId,
-						existingWorkflowId: existing.id,
+						existingWorkflowId: item.existing.id,
 						existingParentFolderId,
 						targetFolderId,
-						name: existing.name,
+						name: item.existing.name,
 					});
 				}
 			}
 		}
 
-		const idConflicts = await this.collectIdConflicts(sourceCreateIds);
+		const [idConflicts, archiveForbidden] = await Promise.all([
+			this.collectIdConflicts(sourceCreateIds),
+			this.collectArchiveForbidden(context, archiveTransitionItems),
+		]);
 
-		return { items, conflicts, idConflicts, folderConflicts };
+		return {
+			items,
+			conflicts,
+			lineageConflicts,
+			idConflicts,
+			folderConflicts,
+			archiveForbidden,
+		};
+	}
+
+	/**
+	 * Archive changes need `workflow:delete`, which `update` does not check. Report the misses at
+	 * plan time so nothing is written first.
+	 */
+	private async collectArchiveForbidden(
+		context: ImportContext,
+		items: ArchiveTransitionPlanItem[],
+	): Promise<WorkflowArchiveForbidden[]> {
+		if (items.length === 0) return [];
+
+		const allowed = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			items.map(({ existing }) => existing.id),
+			context.user,
+			['workflow:delete'],
+		);
+
+		return items.flatMap(({ sourceWorkflowId, existing, archiveTransition }) => {
+			if (allowed.has(existing.id)) return [];
+			return [
+				{
+					sourceWorkflowId,
+					existingWorkflowId: existing.id,
+					name: existing.name,
+					projectId: context.projectId,
+					transition: archiveTransition,
+				},
+			];
+		});
 	}
 
 	/**
@@ -148,10 +213,24 @@ export class WorkflowImporter {
 			...collectPlannedWorkflowBindings(plan.items),
 		]);
 		const resolvedBindings: PackageImportBindings = { ...bindings, workflows: workflowBindings };
+		const createItems = plan.items.filter((item) => item.action === 'create');
+		const batchContext =
+			createItems.length === 0
+				? undefined
+				: await this.workflowCreationService.prepareBatchContext(
+						context.user,
+						context.projectId,
+						createItems.flatMap((item) => {
+							const folderId = item.parentFolderId ?? context.folderId;
+							return folderId ? [folderId] : [];
+						}),
+						createItems.map(({ entity }) => entity),
+						resolvedBindings.credentials,
+					);
 
 		const outcomes: PersistedWorkflowOutcome[] = [];
 		for (const item of plan.items) {
-			outcomes.push(await this.applyItem(context, item, resolvedBindings));
+			outcomes.push(await this.applyItem(context, item, resolvedBindings, batchContext));
 		}
 
 		return { outcomes, bindings: resolvedBindings };
@@ -161,6 +240,7 @@ export class WorkflowImporter {
 		context: WorkflowImportContext,
 		item: WorkflowPlanItem,
 		bindings: PackageImportBindings,
+		batchContext: WorkflowCreateBatchContext | undefined,
 	): Promise<PersistedWorkflowOutcome> {
 		if (item.action === 'skip') {
 			return {
@@ -172,7 +252,7 @@ export class WorkflowImporter {
 
 		return {
 			status: item.action === 'create' ? 'created' : 'updated',
-			workflow: await this.persistWorkflow(context, item, bindings),
+			workflow: await this.persistWorkflow(context, item, bindings, batchContext),
 			sourceWorkflowId: item.sourceWorkflowId,
 			item,
 		};
@@ -182,6 +262,7 @@ export class WorkflowImporter {
 		context: WorkflowImportContext,
 		item: PersistedWorkflowPlanItem,
 		bindings: PackageImportBindings,
+		batchContext: WorkflowCreateBatchContext | undefined,
 	): Promise<WorkflowEntity> {
 		const tagIds =
 			item.tagIds && [...new Set(item.tagIds)].filter((id) => !context.droppedTagIds.has(id));
@@ -194,17 +275,60 @@ export class WorkflowImporter {
 				publicApi: true,
 				source: 'import',
 				sourceWorkflowId: item.sourceWorkflowId,
+				...(batchContext ? { batchContext } : {}),
 				...(tagIds !== undefined ? { tagIds } : {}),
 			});
 		}
 
 		const entity = prepareEntityForPersist(item.entity, bindings);
-		return await this.workflowService.update(context.user, entity, item.existing.id, {
+
+		const updated = await this.workflowService.update(context.user, entity, item.existing.id, {
 			publicApi: true,
 			source: 'import',
+			allowArchivedUpdate: item.existing.isArchived,
 			...(tagIds !== undefined ? { tagIds } : {}),
 		});
+
+		if (item.archiveTransition !== null) {
+			return await this.transitionArchive(context, item, item.archiveTransition);
+		}
+
+		return updated;
 	}
+
+	private async transitionArchive(
+		context: WorkflowImportContext,
+		item: UpdatePlanItem,
+		transition: WorkflowArchiveTransition,
+	): Promise<WorkflowEntity> {
+		const workflow =
+			transition === 'archive'
+				? await this.workflowService.archive(context.user, item.existing.id, {
+						skipArchived: true,
+						publicApi: true,
+					})
+				: await this.workflowService.unarchive(context.user, item.existing.id, {
+						publicApi: true,
+					});
+
+		// The plan already checked `workflow:delete`; this only trips if access changed since.
+		if (!workflow) {
+			throw new ForbiddenError(
+				`You do not have permission to ${transition} workflow ${item.existing.id}.`,
+			);
+		}
+
+		return workflow;
+	}
+}
+
+type UpdatePlanItem = Extract<WorkflowPlanItem, { action: 'update' }>;
+type ArchiveTransitionPlanItem = UpdatePlanItem & {
+	archiveTransition: WorkflowArchiveTransition;
+};
+
+function hasArchiveTransition(item: WorkflowPlanItem): item is ArchiveTransitionPlanItem {
+	return item.action === 'update' && item.archiveTransition !== null;
 }
 
 function planItemTargetId(item: WorkflowPlanItem): string {
@@ -236,16 +360,15 @@ function applyCredentialBindingsInPlace(
 	entity: WorkflowEntity,
 	credentialBindings: ImportBindingMap,
 ): void {
-	for (const node of entity.nodes) {
-		for (const details of Object.values(node.credentials ?? {})) {
-			if (!details.id) continue;
+	visitWorkflowCredentials(entity.nodes, (_credentialType, details) => {
+		if (!details.id) return false;
 
-			const targetId = credentialBindings.get(details.id);
-			if (targetId) {
-				details.id = targetId;
-			}
-		}
-	}
+		const targetId = credentialBindings.get(details.id);
+		if (!targetId || targetId === details.id) return false;
+
+		details.id = targetId;
+		return true;
+	});
 }
 
 function toPlanItem(
@@ -263,8 +386,17 @@ function toPlanItem(
 	}
 
 	switch (action) {
-		case 'update':
-			return { action, ...prepared, existing };
+		case 'update': {
+			return {
+				action,
+				...prepared,
+				existing,
+				archiveTransition: decideWorkflowArchiveTransition(
+					prepared.entity.isArchived,
+					existing.isArchived,
+				),
+			};
+		}
 		case 'skip':
 			return { action, ...prepared, existing };
 		case 'create':

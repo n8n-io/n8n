@@ -1,6 +1,7 @@
 import type {
 	AgentEvalDatasetRecord,
 	AgentEvalRunDetail,
+	AgentEvalRunList,
 	AgentEvalRunRecord,
 	AgentEvalRunSummary,
 	CreateAgentEvalDatasetDto,
@@ -29,6 +30,12 @@ import { assertRequiredModulesActive } from './agent-evals-required-modules';
 
 /** Statuses a run can still be asked to stop from. */
 const CANCELLABLE_STATUSES = new Set(['new', 'running']);
+
+/**
+ * Required, not optional, so a caller can't forget to pass a window. Note a
+ * `take` of 0 is n8n's "no limit" idiom, so this bounds the default path only.
+ */
+type PageParams = { take: number; skip: number };
 
 /**
  * Dataset CRUD, run reads and cancellation behind the agent-eval REST routes.
@@ -158,23 +165,29 @@ export class AgentEvalService {
 		agentId: string,
 		projectId: string,
 		datasetId: string,
-	): Promise<AgentEvalRunRecord[]> {
+		page: PageParams,
+	): Promise<AgentEvalRunList> {
 		await this.assertAgentInProject(agentId, projectId);
 		await this.resolveDataset(agentId, datasetId);
-		const runs = await this.runRepository.findByDatasetIdAndAgentId(datasetId, agentId);
-		return runs.map(toRunRecord);
+		const [runs, count] = await this.runRepository.findAndCountByDatasetIdAndAgentId(
+			datasetId,
+			agentId,
+			page,
+		);
+		return { count, data: runs.map(toRunRecord) };
 	}
 
-	/** A run with every per-case result — the "open a run" view. */
+	/** A run with a page of its per-case results — the "open a run" view. */
 	async getRunDetail(
 		agentId: string,
 		projectId: string,
 		runId: string,
+		page: PageParams,
 	): Promise<AgentEvalRunDetail> {
 		await this.assertAgentInProject(agentId, projectId);
 		const run = await this.resolveRun(agentId, runId);
-		const results = await this.resultRepository.findByRunId(runId);
-		return { ...toRunRecord(run), results: results.map(toResultRecord) };
+		const [results, count] = await this.resultRepository.findAndCountByRunId(runId, page);
+		return { ...toRunRecord(run), results: { count, data: results.map(toResultRecord) } };
 	}
 
 	// Per-case status counts for progress polling, ownership-resolved first so this

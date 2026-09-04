@@ -1,20 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
 	DeploymentKeyRepository,
 	ExecutionRepository,
 	SettingsRepository,
 } from '@n8n/db';
-import { Command } from '@n8n/decorators';
+import { Command, SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
+import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
 import { BinaryDataConfig } from 'n8n-core';
-import { sleep } from '@n8n/utils/sleep';
 import { jsonParse } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
@@ -38,12 +38,14 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
+import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
+import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
-import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { UrlService } from '@/services/url.service';
+import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import { BaseCommand } from './base-command';
@@ -68,9 +70,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsCommunityPackages = true;
 
+	override needsExpressionEngine = true;
+
 	override needsTaskRunner = true;
 
 	override seedsInstanceIdentity = true;
+
+	override readonly isMainServer = true;
 
 	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
 
@@ -159,8 +165,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		let scriptsString = '';
 		if (hooksUrls) {
+			// The placeholder takes the request's nonce, so `script-src` allows these scripts.
 			scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
-				return `${acc}<script src="${curr}"></script>`;
+				return `${acc}<script nonce="${HTML_NONCE_PLACEHOLDER}" src="${curr}"></script>`;
 			}, '');
 		}
 
@@ -250,6 +257,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.initCommunityPackages();
 
+		// Rewire: pick up @OnPubSubEvent handlers initCommunityPackages() just registered.
+		// The Subscriber is already live, so without this the window where incoming
+		// community-package-* commands have no listener stays open until server.ts's
+		// later PubSubRegistry.init() instead of closing here.
+		Container.get(PubSubRegistry).init();
+
 		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
 		// Only run on main instance - workers should not modify auth roles/scopes as they may have
 		// different code versions, and scope sync would incorrectly delete scopes they don't know about.
@@ -293,6 +306,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
+
+			// Catches leadership already taken over before this instance had a
+			// takeover listener subscribed, whose one-shot event would otherwise
+			// be lost for the process lifetime.
+			if (this.instanceSettings.isLeader && this.globalConfig.license.autoRenewalEnabled)
+				this.license.enableAutoRenewals();
 		}
 
 		await this.executionContextHookRegistry.init();
@@ -406,7 +425,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(WorkflowHistoryCompactionService).init();
 		Container.get(WorkflowStatisticsRollupService).init();
 		Container.get(N8NCheckpointStorage).init();
+		Container.get(SystemTaskRunner).init();
 		Container.get(DurableScheduler).start();
+
+		const systemTaskMetadata = Container.get(SystemTaskMetadata);
+		for (const taskClass of mainSystemTasks()) {
+			systemTaskMetadata.register(taskClass);
+		}
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			const { EnqueuedExecutionRecoveryService } = await import(
@@ -417,9 +442,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		// Start to get active workflows and run their triggers
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			const { PublishedWorkflowEnqueuer } = await import(
-				'@/workflows/publication/published-workflow-enqueuer.js'
-			);
 			const { WorkflowPublicationOutboxConsumer } = await import(
 				'@/workflows/publication/workflow-publication-outbox-consumer.js'
 			);
@@ -438,12 +460,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			// wake-up) after the earlier PubSubRegistry.init() calls already wired
 			// listeners, so rewire to pick them up.
 			Container.get(PubSubRegistry).init();
-
-			// Enqueue needs to happen before outbox consumer init, so it can activate
-			// everything on the first drain
-			if (this.instanceSettings.isLeader) {
-				await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
-			}
 
 			// Don't await: the immediate drain activates every trigger and can take a
 			// while, so let it run in the background instead of blocking startup.

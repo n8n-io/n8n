@@ -8,7 +8,7 @@ import N8nAiActivityStepResultSection from '../N8nAiActivityStepResultSection';
 import N8nAiActivityStepGroup from './AiActivityStepGroup.vue';
 
 export default {
-	title: 'Assistant/AiActivityStep',
+	title: 'Areas/Assistant/AiActivityStep',
 	component: N8nAiActivityStepGroup,
 	parameters: {
 		docs: {
@@ -85,13 +85,13 @@ const StoryToolResultJson = defineComponent({
 	props: {
 		value: { type: null, required: true },
 	},
+	setup() {
+		return { jsonTextStyle };
+	},
 	computed: {
 		json(): string {
 			return JSON.stringify(this.value, null, 2);
 		},
-	},
-	setup() {
-		return { jsonTextStyle };
 	},
 	template: `
 		<n8n-ai-activity-step-result-section>
@@ -107,6 +107,9 @@ const StoryToolResultRenderer = defineComponent({
 		toolName: { type: String, required: true },
 		toolArgs: { type: Object, default: undefined },
 	},
+	setup() {
+		return { codeTextStyle };
+	},
 	computed: {
 		code(): string | undefined {
 			const result = this.result as { code?: unknown };
@@ -117,9 +120,6 @@ const StoryToolResultRenderer = defineComponent({
 					: undefined
 				: undefined;
 		},
-	},
-	setup() {
-		return { codeTextStyle };
 	},
 	template: `
 		<n8n-ai-activity-step-result-section v-if="code">
@@ -137,7 +137,7 @@ const storyComponents = {
 
 const slotStyles = '';
 
-export const Group: StoryFn = () => ({
+export const Default: StoryFn = () => ({
 	components: { N8nAiActivityStepGroup, N8nAiActivityStep, ...storyComponents },
 	setup() {
 		return { steps };

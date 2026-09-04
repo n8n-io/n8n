@@ -115,14 +115,39 @@ describe('AgentEvalResultRepository', () => {
 		});
 	});
 
-	describe('findByRunId', () => {
+	describe('findAndCountByRunId', () => {
 		it('scopes to runId ordered by runIndex ascending', async () => {
-			entityManager.find.mockResolvedValueOnce([]);
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
 
-			await repo.findByRunId('run-1');
+			await repo.findAndCountByRunId('run-1');
 
-			const callArgs = entityManager.find.mock.calls[0];
-			expect(callArgs?.[1]).toEqual({ where: { runId: 'run-1' }, order: { runIndex: 'ASC' } });
+			expect(entityManager.findAndCount.mock.calls[0]?.[1]).toMatchObject({
+				where: { runId: 'run-1' },
+				order: { runIndex: 'ASC' },
+			});
+		});
+
+		// Must reach the query: slicing in memory would load the full
+		// input/output/toolCalls JSON that pagination exists to avoid.
+		it('pushes the page window into the query rather than slicing in memory', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repo.findAndCountByRunId('run-1', { take: 25, skip: 50 });
+
+			expect(entityManager.findAndCount.mock.calls[0]?.[1]).toMatchObject({
+				take: 25,
+				skip: 50,
+			});
+		});
+
+		it('returns the unpaginated total alongside the page', async () => {
+			const page = [{ id: 'res-1' }] as AgentEvalResult[];
+			entityManager.findAndCount.mockResolvedValueOnce([page, 500]);
+
+			const [results, count] = await repo.findAndCountByRunId('run-1', { take: 1, skip: 0 });
+
+			expect(results).toEqual(page);
+			expect(count).toBe(500);
 		});
 	});
 

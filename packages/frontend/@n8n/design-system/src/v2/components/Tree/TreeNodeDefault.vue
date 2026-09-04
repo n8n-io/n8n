@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { useCssModule } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 import type { TreeNodeDefaultSlots } from './Tree.types';
 import treeVariables from './Tree.variables.module.css';
+import Icon from '../../../components/N8nIcon/Icon.vue';
+import type { IconName } from '../../../components/N8nIcon/icons';
 
 const $style = useCssModule();
 

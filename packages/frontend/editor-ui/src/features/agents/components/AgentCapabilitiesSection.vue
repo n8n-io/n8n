@@ -6,7 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -17,6 +17,8 @@ import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY, AGENT_TASK_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { isWarningIssue } from '../utils/validationIssues';
+import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
@@ -35,6 +37,8 @@ const props = withDefaults(
 		isPublished: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
+		/** No agent row exists yet — an unsaved agent has no tasks to load. */
+		agentUnsaved?: boolean;
 
 		/** Structured backend validation issues — drives the invalid state on capability chips. */
 		validationIssues?: AgentConfigValidationIssue[];
@@ -76,8 +80,11 @@ const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const projectIdRef = computed(() => props.projectId);
-const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } =
-	useProjectAgentsList(projectIdRef);
+const {
+	list: projectAgents,
+	ensureLoaded: ensureProjectAgentsLoaded,
+	refresh: refreshProjectAgents,
+} = useProjectAgentsList(projectIdRef);
 
 type TaskRow = AgentTaskDto & {
 	enabled: boolean;
@@ -93,19 +100,20 @@ const selectedSubAgentIds = computed(() =>
 const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
 const availableSubAgents = computed(() =>
 	(projectAgents.value ?? []).filter(
-		(agent) =>
-			agent.id !== props.agentId &&
-			Boolean(agent.activeVersionId) &&
-			!selectedSubAgentIdSet.value.has(agent.id),
+		(agent) => agent.id !== props.agentId && !selectedSubAgentIdSet.value.has(agent.id),
 	),
 );
 const selectedSubAgents = computed(() =>
 	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
 		const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
-		const reasons = subAgentIssueMessages.value.get(agentId) ?? [];
+		const validationReasons = subAgentIssueMessages.value.get(agentId) ?? [];
+		const reasons =
+			validationReasons.length > 0 || agent || projectAgents.value === null
+				? validationReasons
+				: [i18n.baseText('agents.builder.validation.issue.subAgent.missingReference')];
 		return {
 			id: agentId,
-			name: agent?.name ?? agentId,
+			name: agent?.name ?? i18n.baseText('agents.builder.subAgents.unavailable'),
 			useWhen: useWhen ?? '',
 			invalid: reasons.length > 0,
 			invalidReasons: reasons,
@@ -166,15 +174,33 @@ const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.validation.issue.mcpServer.incompatibleCredential' as BaseTextKey,
 };
 
+/**
+ * Reason-specific overrides for `incompatible_reference` issues that carry a
+ * `reason` discriminator (currently workflow tools). Keyed by the `reason`
+ * string emitted by the backend. Takes precedence over the kind/code key so
+ * the message names the actual problem (e.g. "contains a Wait node") instead
+ * of the generic "can't be used as an agent tool".
+ */
+const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
+	incompatible_nodes:
+		'agents.builder.validation.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
+	no_supported_trigger:
+		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
+	not_published: 'agents.builder.validation.issue.tool.workflow.notPublished' as BaseTextKey,
+};
+
 function issueMessage(issue: AgentConfigValidationIssue): string {
 	const { kind, toolType, id } = issue.capability;
 	const key =
+		(issue.reason ? REASON_SPECIFIC_KEYS[issue.reason] : undefined) ??
 		(kind === 'tool' && toolType
 			? SPECIFIC_ISSUE_KEYS[`tool.${toolType}.${issue.code}`]
 			: undefined) ??
 		SPECIFIC_ISSUE_KEYS[`${kind}.${issue.code}`] ??
 		GENERIC_ISSUE_KEYS[issue.code];
-	return i18n.baseText(key, { interpolate: { id: id ?? '' } });
+	return i18n.baseText(key, {
+		interpolate: { id: id ?? '', trigger: workflowToolTriggerLabel() },
+	});
 }
 
 function issueMessages(issues: AgentConfigValidationIssue[]): string[] {
@@ -189,9 +215,11 @@ function issuesFor(kind: AgentConfigValidationIssue['capability']['kind']) {
 function groupIssueMessages<TKey>(
 	kind: AgentConfigValidationIssue['capability']['kind'],
 	keyOf: (issue: AgentConfigValidationIssue) => TKey | undefined,
+	include: (issue: AgentConfigValidationIssue) => boolean = () => true,
 ): Map<TKey, string[]> {
 	const byKey = new Map<TKey, AgentConfigValidationIssue[]>();
 	for (const issue of issuesFor(kind)) {
+		if (!include(issue)) continue;
 		const key = keyOf(issue);
 		if (key === undefined) continue;
 		const existing = byKey.get(key);
@@ -201,8 +229,17 @@ function groupIssueMessages<TKey>(
 	return new Map([...byKey].map(([key, issues]) => [key, issueMessages(issues)]));
 }
 
+// Warnings (an unpublished workflow) render orange and leave the preview usable;
+// everything else is a red error.
 const toolIssueMessages = computed(() =>
-	groupIssueMessages('tool', (issue) => issue.capability.index),
+	groupIssueMessages(
+		'tool',
+		(issue) => issue.capability.index,
+		(issue) => !isWarningIssue(issue),
+	),
+);
+const toolWarningMessages = computed(() =>
+	groupIssueMessages('tool', (issue) => issue.capability.index, isWarningIssue),
 );
 const mcpServerIssueMessages = computed(() =>
 	groupIssueMessages('mcpServer', (issue) => issue.capability.id),
@@ -219,6 +256,10 @@ const subAgentIssueMessages = computed(() =>
 
 async function reloadTasks() {
 	taskErrorMessage.value = '';
+	if (props.agentUnsaved) {
+		taskBodies.value = [];
+		return;
+	}
 	try {
 		taskBodies.value = await getAgentTasks(
 			rootStore.restApiContext,
@@ -233,13 +274,25 @@ async function reloadTasks() {
 	}
 }
 
+async function ensureSubAgentNamesLoaded() {
+	const agents = await ensureProjectAgentsLoaded();
+	const loadedIds = new Set(agents.map((agent) => agent.id));
+	if (selectedSubAgentIds.value.some((agentId) => !loadedIds.has(agentId))) {
+		await refreshProjectAgents();
+	}
+}
+
 onMounted(() => {
 	if (showSection('tasks')) void reloadTasks();
-	if (showSection('subAgents')) void ensureProjectAgentsLoaded().catch(() => {});
+	if (showSection('subAgents')) void ensureSubAgentNamesLoaded().catch(() => {});
 });
 
 watch([() => props.reloadKey, () => props.projectId, () => props.agentId], () => {
 	if (showSection('tasks')) void reloadTasks();
+});
+
+watch([() => props.projectId, selectedSubAgentIds], () => {
+	if (showSection('subAgents')) void ensureSubAgentNamesLoaded().catch(() => {});
 });
 
 function openTaskModal(task: TaskRow | null) {
@@ -372,6 +425,8 @@ const toolRows = computed<ToolRow[]>(() => {
 		capabilityTools.value.map((entry) => {
 			const nodeType = toolNodeType(entry);
 			const reasons = toolEntryReasons(entry);
+			const warningReasons =
+				entry.kind === 'tool' ? (toolWarningMessages.value.get(entry.index) ?? []) : [];
 			return {
 				index: entry.index,
 				label: toolLabel(entry),
@@ -382,6 +437,8 @@ const toolRows = computed<ToolRow[]>(() => {
 				openTarget: entry.openTarget,
 				invalid: reasons.length > 0,
 				invalidReasons: reasons,
+				warning: warningReasons.length > 0,
+				warningReasons,
 			};
 		}),
 	);
@@ -417,7 +474,12 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 	return tool.tools.map((item) => ({
 		id: toTargetKey(item.openTarget),
 		label: item.label,
-		data: { nodeType: item.nodeType, openTarget: item.openTarget },
+		data: {
+			nodeType: item.nodeType,
+			openTarget: item.openTarget,
+			invalid: item.invalid,
+			invalidReasons: item.invalidReasons,
+		},
 	}));
 }
 
@@ -480,6 +542,7 @@ function openExistingSubAgentModal(subAgent: {
 				id: subAgent.id,
 				name: subAgent.name,
 			},
+			agentHref: `/projects/${encodeURIComponent(props.projectId)}/agents/${encodeURIComponent(subAgent.id)}`,
 			useWhen: subAgent.useWhen,
 			invalidReasons: subAgent.invalidReasons,
 			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
@@ -523,6 +586,8 @@ function openExistingSubAgentModal(subAgent: {
 								<AgentChipButton
 									:invalid="tool.invalid"
 									:invalid-reasons="tool.invalidReasons"
+									:warning="tool.warning"
+									:warning-reasons="tool.warningReasons"
 									:disabled="props.disabled"
 									:class="$style.capabilityChip"
 									data-testid="agent-capabilities-tool-row"
@@ -544,11 +609,31 @@ function openExistingSubAgentModal(subAgent: {
 									:class="ui.class"
 								/>
 							</template>
+							<template #item-trailing="{ item }">
+								<N8nTooltip
+									v-if="item.data?.invalid"
+									:disabled="(item.data.invalidReasons ?? []).length === 0"
+									placement="top"
+								>
+									<N8nIcon
+										icon="triangle-alert"
+										:size="14"
+										data-testid="agent-capabilities-tool-menu-invalid-icon"
+									/>
+									<template #content>
+										<div v-for="reason in item.data.invalidReasons" :key="reason">
+											{{ reason }}
+										</div>
+									</template>
+								</N8nTooltip>
+							</template>
 						</N8nDropdownMenu>
 						<AgentChipButton
 							v-else-if="tool.nodeType"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:warning="tool.warning"
+							:warning-reasons="tool.warningReasons"
 							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
@@ -564,6 +649,8 @@ function openExistingSubAgentModal(subAgent: {
 							:icon="tool.fallbackIcon"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:warning="tool.warning"
+							:warning-reasons="tool.warningReasons"
 							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
@@ -835,18 +922,19 @@ function openExistingSubAgentModal(subAgent: {
 	align-items: center;
 	flex-wrap: nowrap;
 	gap: var(--spacing--3xs);
-	max-width: 100%;
 	min-width: 0;
+	/** Truncates chip to stop overly-long labels **/
+	max-width: min(var(--spacing--5xl), 100%);
+
+	> .capabilityChip {
+		width: 100%;
+	}
 }
 
 .addButtonEmpty {
 	--button--color: var(--text-color--subtler);
 	margin-left: calc(-1 * var(--spacing--xs));
 	margin-top: calc(-1 * var(--spacing--4xs));
-}
-
-.capabilityChip {
-	max-width: min(12rem, 100%);
 }
 
 .groupChipLabel {

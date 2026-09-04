@@ -1,5 +1,6 @@
+import { recordConsumedAuth } from './auth-redaction';
 import { UnexpectedError } from './errors';
-import type { IWebhookFunctions } from './interfaces';
+import type { IUser, IWebhookFunctions } from './interfaces';
 
 function trimTrailingSlash(url: string): string {
 	return url.endsWith('/') ? url.slice(0, -1) : url;
@@ -35,7 +36,8 @@ function sendUnauthorizedResponse(
  * and the MCP trigger — both expose it as the `n8nOAuth2` authentication mode.
  *
  * On success returns the validated `token` and `resource` URL, which the caller
- * passes to `context.establishTriggerIdentity` to run the workflow as that user.
+ * passes to `context.establishTriggerIdentity` to run the workflow as that user,
+ * plus the resolved `user` for triggers that surface the caller in their output.
  * When the token is missing or invalid the response is written here (401/403/503,
  * advertising the OAuth protected-resource metadata URL in `WWW-Authenticate`) and
  * `'handled'` is returned, so the request never reaches workflow execution.
@@ -53,10 +55,11 @@ export const n8nOAuth2Auth = async (
 			status: 'ok';
 			token: string;
 			resource: string;
+			user: IUser;
 	  }
 	| 'handled'
 > => {
-	const webhookUrl = context.getNodeWebhookUrl('default');
+	const webhookUrl = context.getWebhookResourceUrl('default');
 	if (!webhookUrl) {
 		throw new UnexpectedError('Webhook URL is not available');
 	}
@@ -94,9 +97,12 @@ export const n8nOAuth2Auth = async (
 		return 'handled';
 	}
 
+	recordConsumedAuth(req, ['authorization']);
+
 	return {
 		status: 'ok',
 		token,
 		resource: resourceUrl,
+		user: validationResult.user,
 	};
 };

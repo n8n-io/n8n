@@ -19,13 +19,16 @@ interface ImportFlags {
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
 	missingNodeTypeMode?: string;
+	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
+	overwriteDeletionPolicy?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
 	variableMissingMode?: string;
+	variableConflictPolicy?: string;
 	variableParentPolicy?: string;
 	tagMissingMode?: string;
 	tagConflictPolicy?: string;
@@ -68,13 +71,16 @@ describe('package import command', () => {
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
 			missingNodeTypeMode: 'import-anyway',
+			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
+			overwriteDeletionPolicy: 'hard-delete',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingMode: 'create-stub',
+			variableMissingMode: 'create-with-value',
+			variableConflictPolicy: 'overwrite',
 			variableParentPolicy: 'global',
 			tagMissingMode: 'do-nothing',
 			tagConflictPolicy: 'rename',
@@ -95,13 +101,16 @@ describe('package import command', () => {
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
 			missingNodeTypeMode: 'import-anyway',
+			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
+			overwriteDeletionPolicy: 'hard-delete',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingMode: 'create-stub',
+			variableMissingMode: 'create-with-value',
+			variableConflictPolicy: 'overwrite',
 			variableParentPolicy: 'global',
 			tagMissingMode: 'do-nothing',
 			tagConflictPolicy: 'rename',
@@ -197,6 +206,18 @@ describe('package import command', () => {
 			expect(importPackage).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({ projectId: 'p-1', folderId: 'f-1' }),
+			);
+		});
+
+		it('resolves the --project-conflict-policy alias', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project-conflict-policy=merge',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectConflictPolicy: 'merge' }),
 			);
 		});
 

@@ -35,6 +35,7 @@ const validConfig = {
 	prompt: 'consent' as const,
 	authenticationContextClassReference: ['mfa'],
 	additionalScopes: 'groups',
+	emailVerifiedRequired: false,
 	rpInitiatedLogoutEnabled: false,
 };
 
@@ -103,6 +104,7 @@ describe('OIDC SSO configuration in Public API', () => {
 					'clientId',
 					'clientSecret',
 					'discoveryEndpoint',
+					'emailVerifiedRequired',
 					'loginEnabled',
 					'prompt',
 					'rpInitiatedLogoutEnabled',
@@ -223,6 +225,32 @@ describe('OIDC SSO configuration in Public API', () => {
 
 			const read = await testServer.publicApiAgentFor(owner).get('/settings/sso/oidc');
 			expect(read.body.rpInitiatedLogoutEnabled).toBe(true);
+		});
+
+		it('persists emailVerifiedRequired', async () => {
+			testServer.license.enable('feat:oidc');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/oidc')
+				.send({ ...validConfig, emailVerifiedRequired: true });
+			expect(response.status).toBe(200);
+			expect(response.body.emailVerifiedRequired).toBe(true);
+
+			const read = await testServer.publicApiAgentFor(owner).get('/settings/sso/oidc');
+			expect(read.body.emailVerifiedRequired).toBe(true);
+		});
+
+		it('rejects a partial body missing emailVerifiedRequired with 400', async () => {
+			testServer.license.enable('feat:oidc');
+			const { emailVerifiedRequired: _emailVerifiedRequired, ...partial } = validConfig;
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/oidc')
+				.send(partial);
+
+			expect(response.status).toBe(400);
 		});
 
 		it('keeps the stored secret when the redacted sentinel is submitted', async () => {

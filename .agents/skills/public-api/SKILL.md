@@ -43,6 +43,11 @@ add to it.
 
 - List endpoints: cursor-based pagination (internal API uses both cursor- and
   page-based — don't copy an internal endpoint's model).
+- Pagination args are always `offset` and `limit` — on service methods, handler
+  calls, and repository methods you add. Never `skip`/`take` (TypeORM names).
+  Translate to `skip`/`take` only inside a repository, at the TypeORM `find`
+  call. The public query string is still `cursor` + `limit`; `offset` is the
+  decoded cursor field passed into the service, never a client-facing param.
 - Updates: full-object `PUT`, not `PATCH`. A successful `GET` body should be
   acceptable as a `PUT` body for the same resource (round-trip), aside from
   server-managed/immutable fields.
@@ -76,13 +81,18 @@ Open these — they are the source of truth, not this skill:
   cursor) or `workflows.public.controller.ts` (`@Param` + `@ProjectScope`), and
   `index.ts` for the barrel.
 - Decorators in `packages/@n8n/decorators/src/controller/`:
-  `public-api-controller.ts`, `api-key-scope.ts`, `api-response.ts`, `route.ts`,
-  `scoped.ts`, `args.ts`, `licensed.ts`.
+  `public-api-controller.ts`, `api-key-scope.ts`, `api-response.ts`,
+  `api-error-response.ts`, `api-summary.ts`, `api-description.ts`, `api-tags.ts`,
+  `route.ts`, `scoped.ts`, `args.ts`, `licensed.ts`.
+- The OpenAPI generator (reads the decorators above, no hand-written YAML
+  needed for a controller route): `v1/openapi-gen/generate.ts`,
+  `v1/openapi-gen/decorator-routes.ts`.
 - Pagination helpers: `v1/shared/services/pagination.service.ts`
   (`decodeCursor`, `encodeNextCursor`).
 - DTOs: `packages/@n8n/api-types/src/dto/`.
 - Gating tests: `v1/__tests__/public-api-controllers.test.ts`,
-  `v1/__tests__/scope-parity.test.ts`.
+  `v1/__tests__/scope-parity.test.ts`,
+  `v1/openapi-gen/__tests__/generated-spec-drift.test.ts`.
 - The internal controller for this resource and its neighboring functional tests.
 
 ## Declaring a controller
@@ -98,9 +108,11 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
 | `@Get/@Post/@Put/@Patch/@Delete('/path')` | Route method. |
 | `@ApiKeyScope('res:action')` | API-key grant check. |
 | `@ProjectScope/@GlobalScope('res:action')` | User RBAC check. |
-| `@ApiResponse(Dto)` | Output DTO; registry `.parse()`s + strips the return value. |
+| `@ApiResponse(status)` / `@ApiResponse(status, Dto)` | Success status + (optional) output DTO; registry `.parse()`s + strips the return value. Exactly one per route — a second `@ApiResponse` throws. `204` can't carry a DTO — throws. |
+| `@ApiErrorResponse(status)` | Declares an additional documented non-2xx status (e.g. `404`, `409`). Stack multiple for more than one. `400`/`401`/`403` are added automatically (body/query present, always, and `@ApiKeyScope` present, respectively) — don't declare those yourself. |
+| `@ApiSummary(text)` / `@ApiDescription(text)` / `@ApiTags([...])` | OpenAPI summary/description/tags. `@ApiTags` sorts alphabetically regardless of the order you pass. All optional but expected on every real route. |
 | `@Query` / `@Body` / `@Param('name')` | Bind + validate via a `Z.class` DTO / path param. |
-| `@Licensed('feat')` | Gate an EE-only endpoint. |
+| `@Licensed('feat')` | Gates the route on a single `BooleanLicenseFeature`; `PublicApiControllerRegistry` runs its own license middleware (after auth/`@ApiKeyScope`/`@ProjectScope`|`@GlobalScope`, before the handler) and 403s unlicensed requests. Only takes one feature — if the gate is an any-of/all-of combination (e.g. `LicenseState.isProvisioningLicensed()`, which is `feat:saml` OR `feat:oidc`), `@Licensed` can't express that; check manually in the handler instead, same as the internal `provisioning.controller.ee.ts`/`role-mapping-rule.controller.ee.ts` do today (throwing `ForbiddenError` on failure). |
 
 ## Authorization (easy to get wrong)
 
@@ -120,17 +132,29 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
   on `@ApiResponse` stripping to hide fields.
 - Treat the output DTO as an allowlist. Re-check nested relations, ownership
   fields, tokens, and encrypted values.
-- Make input DTOs strict so unknown/partial fields aren't silently accepted.
+- An output DTO restricts which fields you return, not which values they may hold.
+  The registry parses the handler's return value against it, so a value the schema
+  rejects becomes a `500`. Keep the schema loose enough for anything an existing
+  row may contain.
+- Build the response from the relations the route loaded, not from the entity type.
+  TypeORM relations are opt-in, so two routes over the same entity can return
+  different shapes.
+- Make input DTOs strict so unknown/partial fields aren't silently accepted:
+  `Z.class(shape, { strict: true })`.
 - Secrets: never return a real secret; use the resource's sentinel/placeholder
   (or omit). See [Updates and write-only secrets](reference.md#updates-and-write-only-secrets).
 
 ## List endpoints (cursor pagination)
 
-Copy the cursor flow from `tags.public.controller.ts`. Use `publicApiPaginationSchema`
-plus `decodeCursor` / `encodeNextCursor` from the shared pagination service; the
+Copy the cursor flow from `tags.public.controller.ts`. The input DTO takes
+`limit: publicApiPaginationSchema.limit` plus `cursor: z.string().optional()` —
+pick `limit` off the schema, never spread the whole `publicApiPaginationSchema`
+(it also exports `offset`, which must never be a Public API query param). Use
+`decodeCursor` / `encodeNextCursor` from the shared pagination service; the
 cursor is opaque; return `{ data, nextCursor }` (never a bare array) with
 `nextCursor: null` on the last page; an invalid cursor is a `400`. Preserve an
-existing endpoint's pagination as-is. Detail:
+existing endpoint's cursor semantics as-is — but an `offset` param is a
+defect to remove, not a contract to preserve. Detail:
 [List endpoints and cursor pagination](reference.md#list-endpoints-and-cursor-pagination).
 
 ## Wiring checklist
@@ -139,8 +163,16 @@ existing endpoint's pagination as-is. Detail:
    `v1/controllers/index.ts`.
 2. Public DTO in `@n8n/api-types` + export from the barrel (`src/dto/`).
 3. `@ApiKeyScope` value exists in the permissions registry.
-4. OpenAPI path with `x-required-scope` matching `@ApiKeyScope`; do **not** set
-   `x-eov-operation-*` for controller routes; keep top-level `tags:` sorted A→Z.
+4. Don't hand-write the OpenAPI path or `x-required-scope` for a controller
+   route — the generator (`v1/openapi-gen/generate.ts`) builds it from your
+   decorators (`@ApiSummary`/`@ApiDescription`/`@ApiTags`/`@ApiKeyScope`/
+   `@ApiResponse`/`@ApiErrorResponse`). Run the full `pnpm build` and commit
+   the regenerated `handlers/<feature>/spec/paths/*.generated.yml` fragment(s)
+   and `openapi.decorator-routes.generated.yml` —
+   `generated-spec-drift.test.ts` fails CI if they're stale. `pnpm run
+   build:data` alone is **not** enough after touching a controller: it runs
+   the generator against the already-compiled `dist/`, so a new/changed
+   controller silently doesn't show up unless `tsc` ran first.
 5. Add the route to `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
 6. Tests.
 
@@ -162,3 +194,5 @@ existing tests.
 - [Errors](reference.md#errors)
 - [Testing matrix](reference.md#testing-matrix)
 - [Migrating legacy EOV endpoints](reference.md#migrating-legacy-eov-endpoints)
+- [Verifying a migration](reference.md#verifying-a-migration)
+- [CI and merging](reference.md#ci-and-merging)

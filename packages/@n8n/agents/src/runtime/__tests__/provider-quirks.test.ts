@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
-import type { ReasoningLevel } from '../../types';
-import { applyToolProviderOptionDefaults, getProviderQuirks } from '../model/provider-quirks';
+import {
+	HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS,
+	applyToolProviderOptionDefaults,
+	getProviderQuirks,
+	resolveDefaultMaxOutputTokens,
+} from '../model/provider-quirks';
 
 describe('getProviderQuirks', () => {
 	it('returns an empty object for an unknown provider', () => {
@@ -94,9 +98,77 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
+	it('anthropic: enabled mode with effort keeps default budgetTokens', () => {
+		expect(
+			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
+				{ mode: 'enabled', effort: 'medium' },
+				'anthropic/claude-sonnet-4-5',
+			),
+		).toEqual({
+			anthropic: {
+				thinking: { type: 'enabled', budgetTokens: 10000 },
+				effort: 'medium',
+			},
+		});
+	});
+
+	it('anthropic: enabled mode with effort forwards explicit budgetTokens', () => {
+		expect(
+			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
+				{ mode: 'enabled', effort: 'medium', budgetTokens: 5000 },
+				'anthropic/claude-sonnet-4-5',
+			),
+		).toEqual({
+			anthropic: {
+				thinking: { type: 'enabled', budgetTokens: 5000 },
+				effort: 'medium',
+			},
+		});
+	});
+
+	it('google-vertex-anthropic: emits Anthropic adaptive thinking under the anthropic namespace', () => {
+		expect(
+			getProviderQuirks('google-vertex-anthropic').thinkingToProviderOptions?.(
+				{ mode: 'adaptive', effort: 'medium' },
+				'google-vertex-anthropic/claude-opus-4-8',
+			),
+		).toEqual({
+			anthropic: {
+				thinking: { type: 'adaptive', display: 'summarized' },
+				effort: 'medium',
+			},
+		});
+	});
+
+	it('google-vertex-anthropic: tool defaults land under the anthropic namespace', () => {
+		expect(getProviderQuirks('google-vertex-anthropic').providerOptionsNamespace).toBe('anthropic');
+		expect(applyToolProviderOptionDefaults(undefined)).toEqual({
+			anthropic: { eagerInputStreaming: false },
+		});
+	});
+
 	it('openai: defaults reasoningEffort to medium', () => {
 		expect(getProviderQuirks('openai').thinkingToProviderOptions?.({}, 'openai/gpt-5')).toEqual({
 			openai: { reasoningEffort: 'medium', reasoningSummary: null },
+		});
+	});
+
+	it('openai: forwards GPT-5.6 Sol compatible reasoningEffort values', () => {
+		expect(
+			getProviderQuirks('openai').thinkingToProviderOptions?.(
+				{ reasoningEffort: 'medium' },
+				'openai/gpt-5.6-sol',
+			),
+		).toEqual({
+			openai: { reasoningEffort: 'medium', reasoningSummary: null },
+		});
+		expect(
+			getProviderQuirks('openai').thinkingToProviderOptions?.(
+				{ reasoningEffort: 'xhigh' },
+				'openai/gpt-5.6-sol',
+			),
+		).toEqual({
+			openai: { reasoningEffort: 'xhigh', reasoningSummary: null },
 		});
 	});
 
@@ -116,36 +188,52 @@ describe('thinkingToProviderOptions', () => {
 			xai: { reasoningEffort: 'high' },
 		});
 	});
-});
 
-describe('reasoningToProviderOptions', () => {
-	const anthropicReasoning = (modelId: string, level: ReasoningLevel = 'medium') =>
-		getProviderQuirks('anthropic').reasoningToProviderOptions?.(level, modelId);
-
-	// Adaptive models withhold the thinking text unless display is summarized, so
-	// the reasoning level on its own produces empty thinking blocks.
-	it.each([
-		'anthropic/claude-sonnet-5',
-		'anthropic/claude-opus-5',
-		'anthropic/claude-opus-4-8',
-		'anthropic/claude-sonnet-4-6',
-		// Unknown Claude models follow the AI SDK's own adaptive fallback.
-		'anthropic/claude-sonnet-7',
-	])('asks %s for summarized thinking', (modelId) => {
-		expect(anthropicReasoning(modelId)).toEqual({
-			anthropic: { thinking: { type: 'adaptive', display: 'summarized' } },
+	it('custom: maps reasoningEffort to providerOptions.custom', () => {
+		expect(
+			getProviderQuirks('custom').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'high',
+				},
+				'custom/Kimi-K3',
+			),
+		).toEqual({
+			custom: { reasoningEffort: 'high' },
 		});
 	});
 
-	it.each([
-		'anthropic/claude-sonnet-4-5',
-		'anthropic/claude-haiku-4-5',
-		'anthropic/claude-opus-4-1',
-	])('leaves %s to the SDK, which maps the level to a token budget', (modelId) => {
-		expect(anthropicReasoning(modelId)).toBeUndefined();
+	it('custom: omits reasoning effort when unset', () => {
+		expect(getProviderQuirks('custom').thinkingToProviderOptions?.({}, 'custom/Kimi-K3')).toEqual(
+			{},
+		);
 	});
 
-	it.each(['none', 'provider-default'] as const)('adds nothing for reasoning %s', (level) => {
-		expect(anthropicReasoning('anthropic/claude-sonnet-5', level)).toBeUndefined();
+	it('moonshotai: maps reasoningEffort to providerOptions.moonshotai', () => {
+		expect(
+			getProviderQuirks('moonshotai').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'low',
+				},
+				'moonshotai/kimi-k3',
+			),
+		).toEqual({
+			moonshotai: { reasoningEffort: 'low' },
+		});
+	});
+});
+
+describe('resolveDefaultMaxOutputTokens', () => {
+	it.each([
+		'custom/accounts/fireworks/models/kimi-k3',
+		'openrouter/moonshotai/kimi-k3',
+		'moonshotai/kimi-k3',
+		'custom/Kimi-K3',
+	] as const)('raises the output cap to the Kimi K3 default for %s', (modelId) => {
+		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS);
+	});
+
+	it('leaves unrelated models unset', () => {
+		expect(resolveDefaultMaxOutputTokens('custom/deepseek-ai/DeepSeek-V4-Pro')).toBeUndefined();
+		expect(resolveDefaultMaxOutputTokens('anthropic/claude-sonnet-4-5')).toBeUndefined();
 	});
 });

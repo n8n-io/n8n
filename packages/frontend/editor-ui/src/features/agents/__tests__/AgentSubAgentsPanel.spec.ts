@@ -107,7 +107,7 @@ vi.mock('../composables/useAgentModelCredentials', () => ({
 	}),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({ currentUserId: 'user-1' }),
 }));
 
@@ -144,7 +144,7 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<button :disabled="disabled" v-bind="$attrs"><slot /></button>',
 		props: ['disabled', 'ariaLabel', 'icon', 'variant', 'size', 'iconSize'],
 	},
-	N8nInputNumber2: {
+	N8nInputNumber: {
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision'],
 		emits: ['update:modelValue'],
 		template:

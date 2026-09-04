@@ -39,7 +39,9 @@ export type CloudUpdateLinkSourceType =
 	| 'empty-state-builder-prompt'
 	| 'instance-ai'
 	| 'data-redaction'
-	| 'workflow-settings';
+	| 'workflow-settings'
+	| 'trial-welcome-modal'
+	| 'ai-gateway-top-up';
 
 /** Campaign attribution for an upgrade link, sent as the `utm_campaign` query param. */
 export type UTMCampaign =
@@ -70,4 +72,5 @@ export type UTMCampaign =
 	| 'upgrade-canvas-nav'
 	| 'upgrade-main-sidebar'
 	| 'upgrade-instance-ai'
-	| 'upgrade-data-redaction';
+	| 'upgrade-data-redaction'
+	| 'upgrade-ai-gateway-top-up';

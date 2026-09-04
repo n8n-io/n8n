@@ -188,6 +188,40 @@ describe('build-agent target registry (real binding)', () => {
 		);
 	});
 
+	it('continues the persisted target when a later turn names a new agent without createNew', async () => {
+		const { memory } = createThreadMemory();
+		const first = makeContext(memory);
+		vi.mocked(first.delegate.createAgent).mockResolvedValue({
+			agentId: 'agent-1',
+			projectId: 'proj-1',
+		});
+		vi.mocked(first.delegate.resolveAgentName).mockResolvedValue('New agent');
+		vi.mocked(first.delegate.streamBuild).mockResolvedValue(completedStream('Created it.'));
+
+		await executeTool(createBuildAgentTool(first.context), {
+			message: 'Build it',
+			name: 'New agent',
+		});
+
+		// Fresh context: the binding has to come back from thread metadata, which
+		// is the path the real duplicate-agent regression went through.
+		const second = makeContext(memory);
+		vi.mocked(second.delegate.streamBuild).mockResolvedValue(completedStream('Extended it.'));
+
+		const result = await executeTool<{ agentId?: string }>(createBuildAgentTool(second.context), {
+			message: 'Make it triage support mail',
+			name: 'Support Triage',
+		});
+
+		expect(second.delegate.createAgent).not.toHaveBeenCalled();
+		expect(second.delegate.streamBuild).toHaveBeenCalledWith(
+			'agent-1',
+			'Make it triage support mail',
+			expect.objectContaining({ threadId: `ia-builder:${THREAD_ID}:agent-1` }),
+		);
+		expect(result).toMatchObject({ agentId: 'agent-1' });
+	});
+
 	it('creates a separate agent for a different name in the same thread', async () => {
 		const { memory } = createThreadMemory();
 		const first = makeContext(memory);
@@ -213,10 +247,10 @@ describe('build-agent target registry (real binding)', () => {
 
 		const result = await executeTool<{ agentId?: string; agentRef?: string }>(
 			createBuildAgentTool(second.context),
-			{ message: 'Build another', name: 'Docs Helper' },
+			{ message: 'Build another', name: 'Docs Helper', createNew: true },
 		);
 
-		expect(second.delegate.createAgent).toHaveBeenCalledWith('Docs Helper');
+		expect(second.delegate.createAgent).toHaveBeenCalledWith('Docs Helper', undefined);
 		expect(result).toMatchObject({ agentId: 'agent-2', agentRef: 'docs-helper' });
 	});
 });

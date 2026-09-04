@@ -6,7 +6,6 @@ import { UserError } from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -17,11 +16,11 @@ import type { VariableImportRequest } from '../entities/variable/variable.types'
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
-import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
+import type { ImportContext, ResolvedImportRequest } from '../n8n-packages.types';
 import {
+	assertArchiveTransitionsAllowed,
 	assertPackageImportApiKeyScopes,
 	assertTagWritesAllowed,
-	assertVariableCreationAllowed,
 } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
@@ -32,8 +31,9 @@ import {
 	toTagSummary,
 	toVariableSummary,
 } from './import-result';
-import { emitPackageImportedEvent } from './import-telemetry';
+import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
+import { needsBundledVariableValues, placeByPolicy } from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 /**
@@ -48,15 +48,14 @@ export class WorkflowPackageImporter {
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
-		private readonly eventService: EventService,
 		private readonly licenseState: LicenseState,
 	) {}
 
 	async import(
-		request: ImportPackageRequest,
+		request: ResolvedImportRequest,
 		reader: PackageReader,
 		manifest: PackageManifest,
-	): Promise<ImportResult> {
+	): Promise<ImportOutcome> {
 		const folders = await this.packageParser.getFolders(reader);
 		if (folders.length > 0) {
 			this.assertFoldersLicensed();
@@ -94,19 +93,21 @@ export class WorkflowPackageImporter {
 		};
 
 		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
-		assertVariableCreationAllowed({
-			licenseState: this.licenseState,
-			apiKeyScopes: request.apiKeyScopes,
-			missingMode: request.variableMissingMode,
-			hasRequirements: (variableRequirements?.length ?? 0) > 0,
-		});
-		const globalPlacement = request.variableParentPolicy === VariableParentPolicy.Global;
+		const bundledVariables = needsBundledVariableValues(
+			request,
+			(variableRequirements?.length ?? 0) > 0,
+		)
+			? await this.packageParser.getVariables(reader)
+			: undefined;
 		const variableRequest: VariableImportRequest = {
-			requirements: variableRequirements?.map((requirement) => ({
-				...requirement,
-				globalPlacement,
-			})),
+			requirements: placeByPolicy({
+				requirements: variableRequirements,
+				manifestVariables: manifest.variables,
+				policy: request.variableParentPolicy ?? VariableParentPolicy.Project,
+				bundledVariables,
+			}),
 			missingMode: request.variableMissingMode,
+			conflictPolicy: request.variableConflictPolicy,
 		};
 
 		const tagRequest: TagImportRequest = {
@@ -128,7 +129,8 @@ export class WorkflowPackageImporter {
 		});
 
 		assertTagWritesAllowed(request.apiKeyScopes, [plan.tagPlan]);
-		await this.importOrchestrator.assertNotBlocked([plan]);
+		assertArchiveTransitionsAllowed(request.apiKeyScopes, [plan.workflowPlan]);
+		await this.importOrchestrator.assertNotBlocked([plan], { apiKeyScopes: request.apiKeyScopes });
 
 		const content = await this.importOrchestrator.apply(plan);
 
@@ -141,28 +143,27 @@ export class WorkflowPackageImporter {
 			subWorkflowRequirements: plan.input.subWorkflowRequirements,
 		});
 
-		emitPackageImportedEvent(this.eventService, {
-			request,
-			manifest,
-			scopes: [
-				{
-					context,
-					imported: content,
-					credentialRequest,
-					dataTableRequest,
-					variableRequest,
-					tagRequest,
-				},
-			],
-		});
+		const scopes: PackageImportScope[] = [
+			{
+				context,
+				imported: content,
+				credentialRequest,
+				dataTableRequest,
+				variableRequest,
+				tagRequest,
+			},
+		];
 
-		return buildImportResult({
+		const result = buildImportResult({
 			package: toPackageSummary(manifest),
 			workflows: toImportedWorkflowSummaries(
 				content.workflowOutcomes,
 				context.projectId,
 				published,
 			),
+			// Always empty: `folderConflictPolicy=overwrite` is rejected for workflow packages.
+			removedWorkflows: content.removedWorkflows,
+			removedFolders: content.removedFolders,
 			folders: content.folderSummaries,
 			projects: [],
 			bindings: content.bindings,
@@ -170,9 +171,15 @@ export class WorkflowPackageImporter {
 				matched: content.credentialResult.matched,
 				stubbed: content.credentialResult.stubbed,
 			},
+			dataTables: {
+				matched: content.dataTablePlan.matchedCount,
+				created: content.dataTablePlan.creations.length,
+			},
 			variables: toVariableSummary(content.variablePlan, content.variableResult),
 			tags: toTagSummary(content.tagPlan),
 		});
+
+		return { result, scopes };
 	}
 
 	private assertFoldersLicensed(): void {

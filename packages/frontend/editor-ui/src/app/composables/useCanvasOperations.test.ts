@@ -15,7 +15,10 @@ import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/c
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import type { AddedNode, INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import type {
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
 	AddConnectionCommand,
@@ -32,6 +35,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
+	createMockEnterpriseSettings,
 	createMockNodeTypes,
 	createTestNode,
 	createTestNodeProperties,
@@ -65,8 +69,11 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
+	EnterpriseEditionFeature,
 } from '@/app/constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
@@ -464,6 +471,99 @@ describe('useCanvasOperations', () => {
 						node_type: 'hubspot',
 					}),
 				);
+			});
+		});
+
+		describe('User added agent node telemetry', () => {
+			const agentNodeTypeDescription = mockNodeTypeDescription({
+				name: MESSAGE_AN_AGENT_NODE_TYPE,
+			});
+
+			it('tracks agent_source inline when the node carries the inline preset', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				const node = addNode(
+					{
+						type: MESSAGE_AN_AGENT_NODE_TYPE,
+						typeVersion: 3,
+						parameters: { agentSource: 'inline' },
+					},
+					agentNodeTypeDescription,
+					{ telemetry: true },
+				);
+
+				await waitFor(() => {
+					expect(telemetry.track).toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.objectContaining({
+							agent_source: 'inline',
+							agent_id: undefined,
+							node_id: node.id,
+							node_version: 3,
+						}),
+					);
+				});
+			});
+
+			it('tracks agent_source referenced with the picked agent id', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				addNode(
+					{
+						type: MESSAGE_AN_AGENT_NODE_TYPE,
+						typeVersion: 3,
+						parameters: {
+							agentSource: 'referenced',
+							agentId: { __rl: true, mode: 'list', value: 'agent-123' },
+						},
+					},
+					agentNodeTypeDescription,
+					{ telemetry: true },
+				);
+
+				await waitFor(() => {
+					expect(telemetry.track).toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.objectContaining({
+							agent_source: 'referenced',
+							agent_id: 'agent-123',
+						}),
+					);
+				});
+			});
+
+			it('omits agent_source when the node was added without the agents panel preset', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				addNode({ type: MESSAGE_AN_AGENT_NODE_TYPE, typeVersion: 3 }, agentNodeTypeDescription, {
+					telemetry: true,
+				});
+
+				await waitFor(() => {
+					expect(telemetry.track).toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.objectContaining({ agent_source: undefined, agent_id: undefined }),
+					);
+				});
+			});
+
+			it('does not fire for other node types', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				addNode({ type: 'hubspot', typeVersion: 1 }, mockNodeTypeDescription({ name: 'hubspot' }), {
+					telemetry: true,
+				});
+
+				await waitFor(() => {
+					expect(telemetry.track).not.toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.anything(),
+					);
+				});
 			});
 		});
 
@@ -4482,6 +4582,146 @@ describe('useCanvasOperations', () => {
 
 			expect(copiedData.nodeGroups).toBeUndefined();
 		});
+
+		it('keeps n8n credits credentials when copying nodes', () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: {
+					1: mockNodeTypeDescription({
+						name: SET_NODE_TYPE,
+						credentials: [{ name: 'openAiApi', required: true }],
+					}),
+				},
+			};
+
+			const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
+			const node = mockNode({ id: '1', name: 'Node 1', type: SET_NODE_TYPE });
+			node.position = [40, 40];
+			node.credentials = { openAiApi: gatewayCredential };
+
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const { getNodesToSave } = useCanvasOperations();
+			const copiedData = getNodesToSave([node]);
+
+			expect(copiedData.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		function copyNodeCredentialsWithSharing({
+			credentials,
+			usedCredentials = {},
+			usableCredentials = [],
+		}: {
+			credentials: INodeUi['credentials'];
+			usedCredentials?: Record<string, IUsedCredential>;
+			usableCredentials?: ICredentialsResponse[];
+		}) {
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.Sharing]: true,
+			});
+
+			const credentialsStore = useCredentialsStore();
+			vi.spyOn(credentialsStore, 'allCredentials', 'get').mockReturnValue(usableCredentials);
+
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: {
+					1: mockNodeTypeDescription({
+						name: SET_NODE_TYPE,
+						credentials: [{ name: 'openAiApi', required: true }],
+					}),
+				},
+			};
+
+			const node = mockNode({ id: '1', name: 'Node 1', type: SET_NODE_TYPE });
+			node.position = [40, 40];
+			node.credentials = credentials;
+
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.spyOn(workflowDocumentStoreInstance, 'usedCredentials', 'get').mockReturnValue(
+				usedCredentials,
+			);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			return useCanvasOperations().getNodesToSave([node]).nodes[0].credentials;
+		}
+
+		it('keeps n8n credits credentials when sharing is enabled', () => {
+			const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: gatewayCredential },
+				}),
+			).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		it('drops id-less credentials that are not n8n credits when sharing is enabled', () => {
+			const orphanCredential = { id: null, name: 'Orphan' };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: orphanCredential },
+				}),
+			).toEqual({});
+		});
+
+		it('keeps stored credentials that are not in usedCredentials when sharing is enabled', () => {
+			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
+			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: storedCredential },
+					usableCredentials: [ownedCredential],
+				}),
+			).toEqual({ openAiApi: storedCredential });
+		});
+
+		it('keeps stored credentials the current user can access when sharing is enabled', () => {
+			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
+			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: storedCredential },
+					usableCredentials: [ownedCredential],
+					usedCredentials: {
+						[ownedCredential.id]: {
+							id: ownedCredential.id,
+							name: ownedCredential.name,
+							credentialType: 'openAiApi',
+							currentUserHasAccess: true,
+						},
+					},
+				}),
+			).toEqual({ openAiApi: storedCredential });
+		});
+
+		it('drops stored credentials the current user cannot access when sharing is enabled', () => {
+			const foreignCredential = mock<ICredentialsResponse>({
+				id: 'cred-foreign',
+				name: 'Someone else',
+			});
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: {
+						openAiApi: { id: foreignCredential.id, name: foreignCredential.name },
+					},
+					usableCredentials: [foreignCredential],
+					usedCredentials: {
+						[foreignCredential.id]: {
+							id: foreignCredential.id,
+							name: foreignCredential.name,
+							credentialType: 'openAiApi',
+							currentUserHasAccess: false,
+						},
+					},
+				}),
+			).toEqual({});
+		});
 	});
 
 	describe('cutNodes', () => {
@@ -4569,6 +4809,29 @@ describe('useCanvasOperations', () => {
 
 			expect(setNodesSpy).toHaveBeenCalled();
 			expect(workflowDocumentStoreInstance.setConnections).toHaveBeenCalled();
+		});
+
+		it('marks the document hydrated after nodes and connections are set', async () => {
+			const workflow = createTestWorkflow({
+				id: workflowId,
+				nodes: [createTestNode()],
+				connections: {},
+			});
+
+			const setNodesSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodes');
+			const setConnectionsSpy = vi.spyOn(workflowDocumentStoreInstance, 'setConnections');
+			const setHydratedSpy = vi.spyOn(workflowDocumentStoreInstance, 'setHydrated');
+			const { initializeWorkspace } = useCanvasOperations();
+
+			await initializeWorkspace(workflow);
+
+			expect(setHydratedSpy).toHaveBeenCalledWith(true);
+			expect(setHydratedSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+				setNodesSpy.mock.invocationCallOrder[0],
+			);
+			expect(setHydratedSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+				setConnectionsSpy.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should set connections even when workflowId is initially empty', async () => {
@@ -4781,6 +5044,38 @@ describe('useCanvasOperations', () => {
 				'n8n-nodes-community.notInstalled',
 			);
 			expect(node).toBeDefined();
+		});
+
+		it('should name a new Message an Agent node AI Agent V2 when inline agents are enabled', () => {
+			const nodeTypeDescription = {
+				...mockNodeTypeDescription({ name: 'n8n-nodes-base.messageAnAgent' }),
+				defaults: { name: 'Message an Agent' },
+			};
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{ type: 'n8n-nodes-base.messageAnAgent', typeVersion: 2, position: [100, 100] },
+				nodeTypeDescription,
+			);
+
+			expect(node.name).toBe('AI Agent V2');
+		});
+
+		it('should keep the shipped Message an Agent name when inline agents are disabled', () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(null);
+			const nodeTypeDescription = {
+				...mockNodeTypeDescription({ name: 'n8n-nodes-base.messageAnAgent' }),
+				defaults: { name: 'Message an Agent' },
+			};
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{ type: 'n8n-nodes-base.messageAnAgent', typeVersion: 2, position: [100, 100] },
+				nodeTypeDescription,
+			);
+
+			expect(node.name).toBe('Message an Agent');
 		});
 	});
 

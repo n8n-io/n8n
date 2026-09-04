@@ -14,6 +14,7 @@ import type { ToolRegistry } from './tool-registry';
 /** Cap on child trace characters persisted per delegation. Tighter than the
  *  live forwarding budget because this is written into every parent execution row. */
 const CHILD_TRACE_PERSIST_CHAR_BUDGET = 4_000;
+const TIMELINE_BLOCK_MAX_DURATION_MS = 1_000;
 
 /**
  * Walk a nodeParameters tree and substitute templated values with what the
@@ -202,6 +203,61 @@ function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | u
 	return isRecord(sanitized) ? sanitized : undefined;
 }
 
+export interface ToolCallDetails {
+	toolName: string;
+	displayName?: string;
+	kind: 'tool' | 'workflow' | 'node';
+	input: unknown;
+	node?: {
+		type: string;
+		typeVersion?: number;
+		parameters?: Record<string, unknown>;
+	};
+	workflow?: {
+		id?: string;
+		name?: string;
+		triggerType?: string;
+	};
+}
+
+/** Build the sanitized, resolved tool configuration shown in preview approvals. */
+export function buildToolCallDetails(
+	registry: ToolRegistry,
+	toolName: string,
+	input: unknown,
+): ToolCallDetails {
+	const entry = registry.get(toolName);
+	const kind = entry?.kind ?? 'tool';
+	const details: ToolCallDetails = {
+		toolName,
+		kind,
+		input: sanitizeExecutionLogValue(input),
+	};
+
+	if (entry?.nodeDisplayName) details.displayName = entry.nodeDisplayName;
+
+	if (kind === 'node' && entry?.nodeType) {
+		details.node = {
+			type: entry.nodeType,
+			...(entry.nodeTypeVersion !== undefined && { typeVersion: entry.nodeTypeVersion }),
+			...(entry.nodeParameters !== undefined && {
+				parameters: sanitizeExecutionLogRecord(
+					resolveTemplatesInValue(entry.nodeParameters, isRecord(input) ? input : {}),
+				),
+			}),
+		};
+	} else if (kind === 'workflow') {
+		details.workflow = {
+			...(entry?.workflowId !== undefined && { id: entry.workflowId }),
+			...(entry?.workflowName !== undefined && { name: entry.workflowName }),
+			...(entry?.triggerType !== undefined && { triggerType: entry.triggerType }),
+		};
+		if (entry?.workflowName) details.displayName = entry.workflowName;
+	}
+
+	return details;
+}
+
 export interface RecordedUsage {
 	promptTokens: number;
 	completionTokens: number;
@@ -237,7 +293,20 @@ export type TimelineEvent =
 			nodeParameters?: Record<string, unknown>;
 			childTrace?: PersistedChildTrace;
 	  }
-	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
+	| {
+			type: 'suspension';
+			toolName: string;
+			toolCallId: string;
+			timestamp: number;
+			input?: unknown;
+			suspendPayload?: unknown;
+	  }
+	| {
+			type: 'hitl-response';
+			toolCallId: string;
+			response: unknown;
+			timestamp: number;
+	  };
 
 /**
  * Collects execution data from agent stream chunks.
@@ -258,7 +327,10 @@ export interface MessageRecord {
 export class ExecutionRecorder {
 	private readonly registry: ToolRegistry;
 
-	constructor(registry?: ToolRegistry) {
+	constructor(
+		registry?: ToolRegistry,
+		private readonly onTimelineSnapshot?: (timeline: TimelineEvent[]) => void,
+	) {
 		this.registry = registry ?? new Map();
 	}
 
@@ -286,6 +358,8 @@ export class ExecutionRecorder {
 	/** Wall-clock when the current reasoning segment started. */
 	private reasoningStartTime: number | null = null;
 
+	private timelineSnapshotTimer?: NodeJS.Timeout;
+
 	private _suspended = false;
 
 	private error: string | null = null;
@@ -294,14 +368,29 @@ export class ExecutionRecorder {
 
 	private childTraceChars = new Map<string, number>();
 
+	/** Record the human response that caused a suspended tool call to resume. */
+	recordHitlResponse(toolCallId: string, response: unknown): void {
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		this.appendCompletedEvent({
+			type: 'hitl-response',
+			toolCallId,
+			response: sanitizeExecutionLogValue(response),
+			timestamp: Date.now(),
+		});
+	}
+
 	/** Feed a stream chunk into the recorder. */
 	record(chunk: StreamChunk): void {
 		switch (chunk.type) {
 			case 'text-delta':
 				this.flushReasoningBuffer();
-				if (this.textStartTime === null) this.textStartTime = Date.now();
+				if (this.textStartTime === null) {
+					this.textStartTime = Date.now();
+				}
 				this.textParts.push(chunk.delta);
 				this.textBuffer.push(chunk.delta);
+				this.scheduleTimelineSnapshot();
 				break;
 			case 'reasoning-start':
 				this.flushTextBuffer();
@@ -310,8 +399,11 @@ export class ExecutionRecorder {
 				break;
 			case 'reasoning-delta':
 				this.flushTextBuffer();
-				if (this.reasoningStartTime === null) this.reasoningStartTime = Date.now();
+				if (this.reasoningStartTime === null) {
+					this.reasoningStartTime = Date.now();
+				}
 				this.reasoningBuffer.push(chunk.delta);
+				this.scheduleTimelineSnapshot();
 				break;
 			case 'reasoning-end':
 				this.flushReasoningBuffer();
@@ -370,17 +462,23 @@ export class ExecutionRecorder {
 				this.flushReasoningBuffer();
 				this.flushTextBuffer();
 				this._suspended = true;
-				this.timeline.push({
+				this.appendCompletedEvent({
 					type: 'suspension',
 					toolName: chunk.toolName ?? '',
 					toolCallId: chunk.toolCallId ?? '',
 					timestamp: Date.now(),
+					...(chunk.input !== undefined && {
+						input: sanitizeExecutionLogValue(chunk.input),
+					}),
+					...(chunk.suspendPayload !== undefined && {
+						suspendPayload: sanitizeExecutionLogValue(chunk.suspendPayload),
+					}),
 				});
 				break;
 			case 'error': {
 				this.flushReasoningBuffer();
 				this.flushTextBuffer();
-				this.error = normaliseStreamError(chunk.error);
+				this.error ??= normaliseStreamError(chunk.error);
 				break;
 			}
 		}
@@ -389,6 +487,10 @@ export class ExecutionRecorder {
 	/** Whether the stream ended with a tool-call suspension (incomplete cycle). */
 	get suspended(): boolean {
 		return this._suspended;
+	}
+
+	get startedAt(): Date {
+		return new Date(this.startTime);
 	}
 
 	/** Build the final message record after the stream has ended. */
@@ -410,11 +512,15 @@ export class ExecutionRecorder {
 
 	/** Flush accumulated text into a timeline event. */
 	private flushTextBuffer(): void {
+		if (this.textStartTime !== null && this.timelineSnapshotTimer) {
+			clearTimeout(this.timelineSnapshotTimer);
+			this.timelineSnapshotTimer = undefined;
+		}
 		if (this.textBuffer.length === 0) return;
 		const content = this.textBuffer.join('');
 		if (content.trim()) {
 			const now = Date.now();
-			this.timeline.push({
+			this.appendCompletedEvent({
 				type: 'text',
 				content,
 				// Generation start (first text-delta) → end (now). Falls back to `now`
@@ -429,6 +535,10 @@ export class ExecutionRecorder {
 
 	/** Flush accumulated reasoning without including it in `assistantResponse`. */
 	private flushReasoningBuffer(): void {
+		if (this.reasoningStartTime !== null && this.timelineSnapshotTimer) {
+			clearTimeout(this.timelineSnapshotTimer);
+			this.timelineSnapshotTimer = undefined;
+		}
 		if (this.reasoningBuffer.length === 0) {
 			this.reasoningStartTime = null;
 			return;
@@ -436,7 +546,7 @@ export class ExecutionRecorder {
 		const content = this.reasoningBuffer.join('');
 		if (content.trim()) {
 			const now = Date.now();
-			this.timeline.push({
+			this.appendCompletedEvent({
 				type: 'reasoning',
 				content,
 				timestamp: this.reasoningStartTime ?? now,
@@ -445,6 +555,30 @@ export class ExecutionRecorder {
 		}
 		this.reasoningBuffer = [];
 		this.reasoningStartTime = null;
+	}
+
+	private scheduleTimelineSnapshot(): void {
+		if (this.timelineSnapshotTimer) return;
+		this.timelineSnapshotTimer = setTimeout(() => {
+			this.timelineSnapshotTimer = undefined;
+			const now = Date.now();
+			if (this.textStartTime !== null && this.textBuffer.length > 0) {
+				this.emitTimelineSnapshot({
+					type: 'text',
+					content: this.textBuffer.join(''),
+					timestamp: this.textStartTime,
+					endTime: now,
+				});
+			} else if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
+				this.emitTimelineSnapshot({
+					type: 'reasoning',
+					content: this.reasoningBuffer.join(''),
+					timestamp: this.reasoningStartTime,
+					endTime: now,
+				});
+			}
+		}, TIMELINE_BLOCK_MAX_DURATION_MS);
+		this.timelineSnapshotTimer.unref();
 	}
 
 	/**
@@ -498,7 +632,10 @@ export class ExecutionRecorder {
 	private recordToolExecutionStart(toolCallId: string, startTime: number): void {
 		if (!toolCallId) return;
 		const entry = this.findOpenTimelineToolCall(toolCallId);
-		if (entry) entry.startTime = startTime;
+		if (entry) {
+			entry.startTime = startTime;
+			this.emitTimelineSnapshot();
+		}
 	}
 
 	/**
@@ -514,6 +651,7 @@ export class ExecutionRecorder {
 			entry.endTime = endTime;
 			entry.success = !isError;
 			if (entry.childTrace) settleChildTrace(entry.childTrace);
+			this.emitTimelineSnapshot();
 		}
 	}
 
@@ -572,6 +710,7 @@ export class ExecutionRecorder {
 					pendingTimeline.workflowExecutionId = execId;
 				}
 			}
+			this.emitTimelineSnapshot();
 			return;
 		}
 
@@ -606,6 +745,17 @@ export class ExecutionRecorder {
 				synthesized.workflowExecutionId = execId;
 			}
 		}
-		this.timeline.push(synthesized);
+		this.appendCompletedEvent(synthesized);
+	}
+
+	private appendCompletedEvent(event: TimelineEvent): void {
+		this.timeline.push(event);
+		this.emitTimelineSnapshot();
+	}
+
+	private emitTimelineSnapshot(activeEvent?: TimelineEvent): void {
+		if (!this.onTimelineSnapshot) return;
+		const timeline = activeEvent ? [...this.timeline, activeEvent] : this.timeline;
+		this.onTimelineSnapshot(structuredClone(timeline));
 	}
 }

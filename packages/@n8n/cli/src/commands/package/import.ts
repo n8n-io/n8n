@@ -50,10 +50,23 @@ export default class PackageImport extends BaseCommand {
 			options: ['fail', 'import-anyway'],
 			aliases: ['missing-node-type-mode'],
 		}),
+		projectConflictPolicy: Flags.string({
+			description:
+				"What to do when a project in the package already exists on the instance, and by default how its contents are treated too (default on the instance: merge). merge keeps the existing project's details and adds the package's contents alongside; overwrite replaces those details and, via --folder-conflict-policy, removes contents the package does not carry; fail rejects the import. Project packages only",
+			options: ['merge', 'fail', 'overwrite'],
+			aliases: ['project-conflict-policy'],
+		}),
 		folderConflictPolicy: Flags.string({
-			description: 'What to do when a package folder already exists in the target project',
-			options: ['merge', 'fail'],
+			description:
+				'What to do when a package folder already exists in the target project. Defaults to whatever --project-conflict-policy is, so state the intent once (merge for a workflow package, which defines no projects). merge reuses the folder and merges the package children in; fail rejects the import; overwrite additionally removes workflows the package does not contain, and is rejected unless --project-conflict-policy is also overwrite',
+			options: ['merge', 'fail', 'overwrite'],
 			aliases: ['folder-conflict-policy'],
+		}),
+		overwriteDeletionPolicy: Flags.string({
+			description:
+				'How --folder-conflict-policy=overwrite removes a workflow the package does not contain (default on the instance: archive). archive keeps it recoverable; hard-delete also drops the workflow and its execution history',
+			options: ['archive', 'hard-delete'],
+			aliases: ['overwrite-deletion-policy'],
 		}),
 		credentialMatchingMode: Flags.string({
 			description: 'How credential references are matched on the target instance',
@@ -85,13 +98,19 @@ export default class PackageImport extends BaseCommand {
 		}),
 		variableMissingMode: Flags.string({
 			description:
-				'What to do when a referenced variable is absent from the target project and the global scope (default on the instance: do-nothing). do-nothing imports the workflows and lists unresolved names as warnings without creating anything; must-preexist rejects the import unless every referenced variable already resolves; create-stub creates each missing variable with an empty value (see variable-parent-policy) and needs an API key with the variable:create scope',
-			options: ['do-nothing', 'must-preexist', 'create-stub'],
+				'What to do when a referenced variable is absent from the target project and global scope (default: create-with-value). create-with-value uses the package value, or an empty stub when the package carries no value for it; create-stub always creates an empty value; do-nothing reports unresolved names; must-preexist rejects the import. Creating modes use variable-parent-policy, and an import that creates a variable needs a variables-enabled license plus variable:create',
+			options: ['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
 			aliases: ['variable-missing-mode'],
+		}),
+		variableConflictPolicy: Flags.string({
+			description:
+				'What to do when a referenced variable already resolves in the target project or global scope but the package bundles a different value for it (default: keep-existing). keep-existing leaves the target value alone; overwrite silently replaces the value of the existing variable at whichever scope it was found — including a global one other projects read — and needs a variables-enabled license plus variable:update (projectVariable:update for a project-scoped variable); fail rejects the import. No policy touches a resolved variable when there is nothing to change: either the package bundles no value for it (excluded at export, or an exported value that was itself empty), or the value it bundles already matches the one on the target. Under overwrite, a project package whose projects hold different values for a name they all resolve to one row is rejected: one row cannot carry both values',
+			options: ['keep-existing', 'overwrite', 'fail'],
+			aliases: ['variable-conflict-policy'],
 		}),
 		variableParentPolicy: Flags.string({
 			description:
-				'Where create-stub creates missing variables for workflow/folder packages (default: project): project creates them in the target project; global creates them at global scope. Both placements need an API key with the variable:create scope when the package has variable requirements. Ignored for project packages, where placement follows the package layout',
+				'Where creating variable modes place missing variables for workflow/folder packages: project (the behaviour when omitted) uses the target project; global uses global scope. Must be omitted for project packages, which reject it with a 400 — their placement follows the package layout',
 			options: ['project', 'global'],
 			aliases: ['variable-parent-policy'],
 		}),
@@ -134,13 +153,16 @@ export default class PackageImport extends BaseCommand {
 						workflowPublishingPolicy: flags.workflowPublishingPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
 						missingNodeTypeMode: flags.missingNodeTypeMode,
+						projectConflictPolicy: flags.projectConflictPolicy,
 						folderConflictPolicy: flags.folderConflictPolicy,
+						overwriteDeletionPolicy: flags.overwriteDeletionPolicy,
 						credentialMatchingMode: flags.credentialMatchingMode,
 						credentialMissingMode: flags.credentialMissingMode,
 						dataTableMatchingMode: flags.dataTableMatchingMode,
 						dataTableMissingMode: flags.dataTableMissingMode,
 						dataTableSchemaConflictPolicy: flags.dataTableSchemaConflictPolicy,
 						variableMissingMode: flags.variableMissingMode,
+						variableConflictPolicy: flags.variableConflictPolicy,
 						variableParentPolicy: flags.variableParentPolicy,
 						tagMissingMode: flags.tagMissingMode,
 						tagConflictPolicy: flags.tagConflictPolicy,

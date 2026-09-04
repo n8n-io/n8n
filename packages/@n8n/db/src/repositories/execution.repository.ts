@@ -18,7 +18,6 @@ import {
 	LessThanOrEqual,
 	MoreThanOrEqual,
 	Not,
-	Repository,
 	And,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
@@ -49,6 +48,7 @@ import {
 	SharedWorkflow,
 	WorkflowEntity,
 } from '../entities';
+import { BaseRepository } from './base-repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type {
 	ExecutionSummaries,
@@ -56,7 +56,9 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '../entities/types-db';
+import { TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
+import { chunkIds } from '../utils/chunk-ids';
 import { separate } from '../utils/separate';
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
@@ -117,20 +119,8 @@ function parseFiltersToQueryBuilder(
 			}
 		}
 	}
-	if (filters?.startedAfter) {
-		qb.andWhere({
-			startedAt: MoreThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(filters.startedAfter)),
-			),
-		});
-	}
-	if (filters?.startedBefore) {
-		qb.andWhere({
-			startedAt: LessThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(filters.startedBefore)),
-			),
-		});
-	}
+	const startedAt = startedAtCondition(filters ?? {});
+	if (startedAt) qb.andWhere({ startedAt });
 	if (filters?.workflowId) {
 		qb.andWhere({
 			workflowId: filters.workflowId,
@@ -138,12 +128,30 @@ function parseFiltersToQueryBuilder(
 	}
 }
 
-const lessThanOrEqual = (date: string): unknown => {
-	return LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(date)));
-};
+const startedAtCondition = ({
+	startedAfter,
+	startedBefore,
+}: {
+	startedAfter?: string;
+	startedBefore?: string;
+}) => {
+	const conditions = [];
 
-const moreThanOrEqual = (date: string): unknown => {
-	return MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(date)));
+	if (startedAfter) {
+		conditions.push(
+			MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter))),
+		);
+	}
+
+	if (startedBefore) {
+		conditions.push(
+			LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore))),
+		);
+	}
+
+	if (conditions.length === 0) return undefined;
+
+	return And(...conditions);
 };
 
 // This is the max number of elements in an IN-clause.
@@ -151,7 +159,7 @@ const moreThanOrEqual = (date: string): unknown => {
 const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
-export class ExecutionRepository extends Repository<ExecutionEntity> {
+export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	private hardDeletionBatchSize = 100;
 
 	constructor(
@@ -161,8 +169,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly errorReporter: ErrorReporter,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		transactionRunner: TransactionRunner,
 	) {
-		super(ExecutionEntity, dataSource.manager);
+		super(ExecutionEntity, dataSource.manager, transactionRunner);
 	}
 
 	async findMultipleExecutions(
@@ -252,6 +261,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			vote,
 			tags: tags?.map((tag) => pick(tag, ['id', 'name'])) ?? [],
 		};
+	}
+
+	/** Whether the execution exists and belongs to one of the given workflows. */
+	async existsForAccessibleWorkflows(
+		executionId: string,
+		accessibleWorkflowIds: string[],
+	): Promise<boolean> {
+		if (accessibleWorkflowIds.length === 0) return false;
+
+		return await this.exists({
+			where: { id: executionId, workflowId: In(accessibleWorkflowIds) },
+			// Manual executions with saving off are soft-deleted but stay downloadable.
+			withDeleted: true,
+		});
 	}
 
 	async findSingleExecution(
@@ -628,19 +651,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async getExecutionsCountForPublicApi(params: {
-		limit: number;
-		lastId?: string;
-		workflowIds?: string[];
-		status?: ExecutionStatus;
-		excludedExecutionsIds?: string[];
-	}): Promise<number> {
-		const executionsCount = await this.count({
-			where: this.getFindExecutionsForPublicApiCondition(params),
-			take: params.limit,
+	async countInWorkflows(
+		workflowIds: string[],
+		options: {
+			limit: number;
+			lastId?: string;
+			status?: ExecutionStatus;
+			excludedExecutionsIds?: string[];
+			startedAfter?: string;
+			startedBefore?: string;
+		},
+	): Promise<number> {
+		return await this.count({
+			where: this.getFindManyInWorkflowsCondition(workflowIds, options),
+			take: options.limit,
 		});
-
-		return executionsCount;
 	}
 
 	private getStatusCondition(status?: ExecutionStatus) {
@@ -667,20 +692,27 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return condition;
 	}
 
-	getFindExecutionsForPublicApiCondition(params: {
-		lastId?: string;
-		workflowIds?: string[];
-		status?: ExecutionStatus;
-		excludedExecutionsIds?: string[];
-	}) {
+	getFindManyInWorkflowsCondition(
+		workflowIds: string[],
+		options: {
+			lastId?: string;
+			status?: ExecutionStatus;
+			excludedExecutionsIds?: string[];
+			startedAfter?: string;
+			startedBefore?: string;
+		} = {},
+	) {
 		const where: FindOptionsWhere<IExecutionFlattedDb> = {
 			...this.getIdCondition({
-				lastId: params.lastId,
-				excludedExecutionsIds: params.excludedExecutionsIds,
+				lastId: options.lastId,
+				excludedExecutionsIds: options.excludedExecutionsIds,
 			}),
-			...this.getStatusCondition(params.status),
-			...(params.workflowIds && { workflowId: In(params.workflowIds) }),
+			...this.getStatusCondition(options.status),
+			workflowId: In(workflowIds),
 		};
+
+		const startedAt = startedAtCondition(options);
+		if (startedAt) where.startedAt = startedAt;
 
 		return where;
 	}
@@ -964,8 +996,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
 		if (finished) qb.andWhere({ finished });
 		if (workflowId) qb.andWhere({ workflowId });
-		if (startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(startedBefore) });
-		if (startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(startedAfter) });
+		const startedAt = startedAtCondition({ startedAfter, startedBefore });
+		if (startedAt) qb.andWhere({ startedAt });
 
 		if (metadata?.length === 1) {
 			const [{ key, value, exactMatch }] = metadata;
@@ -1110,6 +1142,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return result.map((r) => r.workflowVersionId);
 	}
 
+	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {
+		const rows: Array<Pick<ExecutionEntity, 'id' | 'status'>> = [];
+		for (const chunk of chunkIds(ids)) {
+			rows.push(...(await this.find({ select: ['id', 'status'], where: { id: In(chunk) } })));
+		}
+
+		return rows;
+	}
+
 	async getAllIds() {
 		const executions = await this.find({ select: ['id'], order: { id: 'ASC' } });
 
@@ -1172,21 +1213,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			where.workflowId = query.workflowId;
 		}
 
-		const startedAtConditions = [];
-
-		if (query.startedAfter)
-			startedAtConditions.push(
-				MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter))),
-			);
-
-		if (query.startedBefore)
-			startedAtConditions.push(
-				LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore))),
-			);
-
-		if (startedAtConditions.length > 0) {
-			where.startedAt = And(...startedAtConditions);
-		}
+		const startedAt = startedAtCondition(query);
+		if (startedAt) where.startedAt = startedAt;
 
 		return await this.find({ select: ['id'], where });
 	}

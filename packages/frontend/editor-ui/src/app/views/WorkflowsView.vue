@@ -47,11 +47,11 @@ import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/Te
 import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/components/TemplateRecommendationV3.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
+import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import type {
 	BaseFilters,
@@ -68,12 +68,12 @@ import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -87,7 +87,7 @@ import {
 	type ProjectSharingData,
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -168,6 +168,7 @@ const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
+const trialIntroModalStore = useTrialIntroModalStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -536,6 +537,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				parentFolder: resource.parentFolder,
 				settings: resource.settings,
 				hasResolvableCredentials: resource.hasResolvableCredentials,
+				publicationStatus: resource.publicationStatus,
 			} satisfies WorkflowResource;
 		}
 	});
@@ -1253,6 +1255,9 @@ const onWorkflowActiveToggle = async (data: { id: string; active: boolean }) => 
 	if (!workflow) return;
 	workflow.active = data.active;
 	workflow.activeVersionId = data.active ? workflow.versionId : null;
+	// The server-derived status outranks activeVersionId on the card and is now
+	// stale either way; clearing it falls back to the legacy indicator until a refetch.
+	workflow.publicationStatus = undefined;
 
 	// Fetch the updated workflow to get the latest settings
 	try {
@@ -1273,6 +1278,8 @@ const onWorkflowUnpublished = async (data: { id: string }) => {
 
 	// Update the workflow to reflect unpublished state
 	workflow.activeVersionId = null;
+	// A stale server-derived status would keep the card indicator lit; clear it too.
+	workflow.publicationStatus = undefined;
 };
 
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
@@ -2178,8 +2185,12 @@ const onNameSubmit = async (name: string) => {
 </script>
 
 <template>
+	<div
+		v-if="trialIntroModalStore.shouldSuppressTrialBackground"
+		data-test-id="trial-intro-background-placeholder"
+	/>
 	<ResourcesListLoadingState
-		v-if="deferChromeForOnboarding"
+		v-else-if="deferChromeForOnboarding"
 		data-test-id="workflows-onboarding-loading"
 	/>
 	<EmptyStateLayout v-else-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />

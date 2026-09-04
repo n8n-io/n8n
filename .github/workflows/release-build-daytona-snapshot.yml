@@ -1,4 +1,5 @@
 name: 'Release: Build Daytona snapshot'
+run-name: 'Build Daytona snapshot for n8n@${{ inputs.n8n_version }}'
 
 on:
   workflow_call:
@@ -34,7 +35,18 @@ jobs:
   build-snapshot:
     name: Build versioned Daytona snapshot (${{ matrix.environment }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Serialize builds per version+environment: overlapping creates for the same
+    # snapshot name make Daytona reject with "an operation is already in progress"
+    # and leave the record in a failed state. Queue instead of cancel — a live
+    # build must finish, and the newer run then lands on the idempotent path.
+    concurrency:
+      group: daytona-snapshot-${{ inputs.n8n_version }}-${{ matrix.environment }}
+      cancel-in-progress: false
+    # Checkout + monorepo build (~10 min) run before the snapshot script, whose
+    # own budgets are 30 min create/verify + 5 min prune — keep headroom beyond
+    # that sum so the script's in-process timeouts always fire before the
+    # runner's hard kill.
+    timeout-minutes: 50
     # Dev is best-effort: a dev failure is reported but does not block the release.
     # Only the prod publish gates the release.
     continue-on-error: ${{ matrix.environment == 'dev' }}
@@ -59,4 +71,11 @@ jobs:
           DAYTONA_API_KEY: ${{ matrix.environment == 'dev' && secrets.DAYTONA_API_KEY_DEV || matrix.environment == 'prod' && secrets.DAYTONA_API_KEY_PROD || '' }}
           # Fall back to the shared DAYTONA_API_URL when an env-specific URL isn't set.
           DAYTONA_API_URL: ${{ matrix.environment == 'dev' && secrets.DAYTONA_API_URL_DEV || matrix.environment == 'prod' && secrets.DAYTONA_API_URL_PROD || secrets.DAYTONA_API_URL }}
+          # Prune versioned snapshots not used in 20 days (lastUsedAt-based, so
+          # versions still in use survive regardless of release cadence).
+          DAYTONA_SNAPSHOT_MAX_AGE_DAYS: '20'
+          # Hard count cap as a quota backstop (LRU eviction). Dev has a
+          # 30-snapshot org quota shared with ad-hoc testing, so keep it well
+          # below that.
+          DAYTONA_SNAPSHOT_RETENTION: ${{ matrix.environment == 'dev' && '15' || '100' }}
         run: node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version "$N8N_VERSION"

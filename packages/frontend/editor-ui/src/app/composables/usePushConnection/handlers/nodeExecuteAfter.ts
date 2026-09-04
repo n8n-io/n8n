@@ -65,10 +65,14 @@ export async function nodeExecuteAfter(
 		pushDataWithPlaceholderOutputData,
 	);
 
-	const queue = isSubExecution
-		? workflowExecutionStateStore.subExecutingNode
-		: workflowExecutionStateStore.executingNode;
-	queue.removeExecutingNode(pushData.nodeName);
+	// Agent progress is only tracked for the execution on screen, and a sub-workflow
+	// may reuse a parent node name, so clearing it stays scoped to the parent.
+	if (isSubExecution) {
+		workflowExecutionStateStore.subExecutingNode.removeExecutingNode(pushData.nodeName);
+	} else {
+		workflowExecutionStateStore.executingNode.removeExecutingNode(pushData.nodeName);
+		workflowExecutionStateStore.clearAgentNodeProgress(pushData.nodeName);
+	}
 
 	// A form waiting inside a sub-workflow still needs its popup. Telemetry and
 	// the assistant are scoped to the workflow on screen, so they skip it.

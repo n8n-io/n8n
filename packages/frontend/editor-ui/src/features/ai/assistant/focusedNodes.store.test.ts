@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { nextTick } from 'vue';
 
 import { useFocusedNodesStore } from './focusedNodes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,

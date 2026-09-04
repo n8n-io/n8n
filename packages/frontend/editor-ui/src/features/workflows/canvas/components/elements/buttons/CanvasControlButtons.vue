@@ -20,7 +20,6 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	'reset-zoom': [];
 	'zoom-in': [];
 	'zoom-out': [];
 	'zoom-to-fit': [];
@@ -37,12 +36,6 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(props.zoom));
 
 const isToggleZoomVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
-
-const isResetZoomVisible = computed(() => !isToggleZoomVisible.value && props.zoom !== 1);
-
-function onResetZoom() {
-	emit('reset-zoom');
-}
 
 function onZoomIn() {
 	emit('zoom-in');
@@ -127,20 +120,6 @@ function handleClickCollapseAll() {
 						)
 					"
 					@click="emit('toggle-zoom-mode')"
-				/>
-			</KeyboardShortcutTooltip>
-			<KeyboardShortcutTooltip
-				v-if="isResetZoomVisible"
-				:label="i18n.baseText('nodeView.resetZoom')"
-				:shortcut="{ keys: ['0'] }"
-			>
-				<N8nIconButton
-					variant="subtle"
-					size="large"
-					icon="undo-2"
-					:aria-label="i18n.baseText('nodeView.resetZoom')"
-					data-test-id="reset-zoom-button"
-					@click="onResetZoom"
 				/>
 			</KeyboardShortcutTooltip>
 			<KeyboardShortcutTooltip

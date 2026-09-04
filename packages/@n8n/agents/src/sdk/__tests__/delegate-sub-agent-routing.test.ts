@@ -2,11 +2,12 @@ import { z } from 'zod';
 
 import type * as AgentRuntimeModule from '../../runtime/loop/agent-runtime';
 import {
-	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
 	getInlineDelegateSubAgentToolOptions,
+	type DelegateSubAgentCancelRequest,
+	type DelegateSubAgentResumeRequest,
 	type DelegateSubAgentRunner,
 	type DelegateSubAgentRunnerHelpers,
 } from '../../runtime/tools/delegate-sub-agent-tool';
@@ -15,7 +16,6 @@ import type {
 	AgentExecutionCounter,
 	BuiltTool,
 	GenerateResult,
-	InterruptibleToolContext,
 	SerializableAgentState,
 } from '../../types';
 import { Agent } from '../agent';
@@ -23,7 +23,13 @@ import { wrapToolForApproval } from '../tool';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
 const runtimeGenerateOptions: Array<Record<string, unknown> | undefined> = [];
+const runtimeResumeCalls: Array<{
+	method: string;
+	data: unknown;
+	options: Record<string, unknown>;
+}> = [];
 let inlineChildGenerateResult: GenerateResult | undefined;
+let inlineChildResumeResult: GenerateResult | undefined;
 
 const mockState = (): SerializableAgentState => ({
 	status: 'success',
@@ -49,6 +55,7 @@ function chunksFromGenerateResult(result: GenerateResult): unknown[] {
 			toolName: suspension.toolName,
 			input: suspension.input,
 			suspendPayload: suspension.suspendPayload,
+			...(suspension.resumeSchema !== undefined ? { resumeSchema: suspension.resumeSchema } : {}),
 		});
 	}
 	if (result.error !== undefined) {
@@ -106,6 +113,23 @@ vi.mock('../../runtime/loop/agent-runtime', async (importOriginal) => {
 				});
 			}
 
+			async resume(method: string, data: unknown, options: Record<string, unknown>) {
+				runtimeResumeCalls.push({ method, data, options });
+				const result =
+					inlineChildResumeResult ??
+					({
+						runId: String(options.runId),
+						finishReason: 'stop',
+						messages: [],
+						getState: mockState,
+					} as GenerateResult);
+				return await Promise.resolve({
+					runId: result.runId,
+					stream: readableFromChunks(chunksFromGenerateResult(result)),
+					getState: result.getState ?? mockState,
+				});
+			}
+
 			async dispose() {
 				return await Promise.resolve();
 			}
@@ -138,13 +162,17 @@ describe('delegate sub-agent routing', () => {
 	beforeEach(() => {
 		runtimeConfigs.length = 0;
 		runtimeGenerateOptions.length = 0;
+		runtimeResumeCalls.length = 0;
 		inlineChildGenerateResult = undefined;
+		inlineChildResumeResult = undefined;
 	});
 
-	it('routes inline delegations through a host runner with runInlineSubAgent helpers', async () => {
-		const hostRunSubAgent = vi.fn<DelegateSubAgentRunner>(async (request, helpers) => {
-			expect(request.subAgentId).toBe(INLINE_SUB_AGENT_ID);
-			return await helpers.runInlineSubAgent(request);
+	it('routes inline delegations through a host without constructing an SDK child', async () => {
+		const hostRunSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			runId: 'host-child-run',
+			answer: 'host answer',
 		});
 
 		const agent = new Agent('parent')
@@ -168,14 +196,61 @@ describe('delegate sub-agent routing', () => {
 			delegateTool?.handler?.(delegateInput, { runId: 'parent-run-1' }),
 		).resolves.toMatchObject({
 			status: 'completed',
-			answer: 'inline answer',
+			answer: 'host answer',
 		});
 
 		expect(hostRunSubAgent).toHaveBeenCalledOnce();
-		const helpers = hostRunSubAgent.mock.calls[0]?.[1];
-		expect(helpers).toBeDefined();
-		expect(typeof helpers?.runInlineSubAgent).toBe('function');
-		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs).toHaveLength(0);
+	});
+
+	it('prefers host resume and cancellation handlers for inline delegations', async () => {
+		const hostResumeSubAgent = vi.fn().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			runId: 'child-run-1',
+			answer: 'resumed by host',
+		});
+		const hostCancelSubAgent = vi.fn().mockResolvedValue(undefined);
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.checkpoint('memory')
+			.tool(
+				createDelegateSubAgentTool({
+					runSubAgent: vi.fn(),
+					resumeSubAgent: hostResumeSubAgent,
+					cancelSubAgent: hostCancelSubAgent,
+				}),
+			);
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		if (!delegateTool) throw new Error('Expected delegate sub-agent tool');
+		const { resumeSubAgent, cancelSubAgent } =
+			getInlineDelegateSubAgentToolOptions(delegateTool) ?? {};
+		const request: DelegateSubAgentResumeRequest & DelegateSubAgentCancelRequest = {
+			...delegateInput,
+			taskPath: '/root/research_api_0',
+			childCount: 0,
+			childRunId: 'child-run-1',
+			childToolCallId: 'child-tool-call-1',
+			childThreadId: 'child-thread-1',
+			resumeData: { approved: true },
+			resumeContext: { agentId: 'parent-agent-1' },
+			reason: 'cancelled by parent',
+		};
+		const helpers = { runInlineSubAgent: vi.fn(), emitChunk: vi.fn() };
+
+		await expect(resumeSubAgent?.(request, helpers)).resolves.toMatchObject({
+			status: 'completed',
+			answer: 'resumed by host',
+		});
+		await cancelSubAgent?.(request, helpers);
+
+		expect(hostResumeSubAgent).toHaveBeenCalledOnce();
+		expect(hostCancelSubAgent).toHaveBeenCalledOnce();
+		expect(runtimeResumeCalls).toHaveLength(0);
 	});
 
 	it('runs inline delegations without a host runner when the tool is built on an Agent', async () => {
@@ -317,36 +392,122 @@ describe('delegate sub-agent routing', () => {
 		expect(executionCounter.incrementTokenCount).toHaveBeenCalledWith(42);
 	});
 
-	it('preserves required approval when completing inline delegate tools', async () => {
+	it('composes delegate approval with child approval and child resume', async () => {
+		inlineChildGenerateResult = {
+			runId: 'child-run-suspended',
+			finishReason: 'tool-calls',
+			messages: [],
+			pendingSuspend: [
+				{
+					runId: 'child-run-suspended',
+					toolCallId: 'child-tool-call-1',
+					toolName: 'http_request',
+					input: { url: 'https://example.com' },
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+						required: ['approved'],
+					},
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'http_request',
+						args: { url: 'https://example.com' },
+					},
+				},
+			],
+			getState: mockState,
+		};
+		inlineChildResumeResult = {
+			runId: 'child-run-suspended',
+			finishReason: 'stop',
+			messages: [
+				{
+					role: 'assistant',
+					type: 'llm',
+					content: [{ type: 'text', text: 'child completed' }],
+				},
+			],
+			getState: mockState,
+		};
 		const agent = new Agent('parent')
 			.model('openai', 'gpt-4o-mini')
 			.instructions('Delegate when needed.')
 			.checkpoint('memory')
 			.tool(wrapToolForApproval(createDelegateSubAgentTool(), { requireApproval: true }))
-			.tool(makeTool('lookup'));
-
+			.tool(wrapToolForApproval(makeTool('http_request'), { requireApproval: true }));
 		const runtimeConfig = await buildAgentConfig(agent);
-
-		expect(runtimeConfigs).toHaveLength(0);
-		const builtTools = runtimeConfig.tools;
-		const delegateTool = builtTools?.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
 		expect(delegateTool?.approval?.required).toBe(true);
-
-		const suspend = vi.fn(async (payload: unknown) => {
-			return await Promise.resolve({ suspended: payload });
-		});
-		await delegateTool?.handler?.(delegateInput, {
-			suspend: suspend as unknown as InterruptibleToolContext['suspend'],
-			resumeData: undefined,
-			runId: 'parent-run-1',
-		});
-
-		expect(suspend).toHaveBeenCalledWith({
+		const suspend = vi.fn().mockResolvedValue(undefined);
+		const outerApprovalPayload = {
 			type: 'approval',
 			toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
 			args: delegateInput,
+		};
+
+		await delegateTool?.handler?.(delegateInput, {
+			runId: 'parent-run-1',
+			toolCallId: 'parent-tool-call-1',
+			resumeData: undefined,
+			suspend,
 		});
+		expect(suspend).toHaveBeenLastCalledWith(
+			outerApprovalPayload,
+			expect.objectContaining({ resumeSchema: expect.anything() }),
+		);
 		expect(runtimeConfigs).toHaveLength(0);
+
+		await delegateTool?.handler?.(delegateInput, {
+			runId: 'parent-run-1',
+			toolCallId: 'parent-tool-call-1',
+			resumeData: { approved: true },
+			suspendPayload: outerApprovalPayload,
+			suspend,
+		});
+		const childApprovalPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com' },
+		};
+		const childContinuation = {
+			runId: 'child-run-suspended',
+			toolCallId: 'child-tool-call-1',
+			taskPath: '/root/research_api_0',
+			subAgentId: INLINE_SUB_AGENT_ID,
+			childCount: 0,
+		};
+		expect(suspend).toHaveBeenLastCalledWith(
+			childApprovalPayload,
+			expect.objectContaining({
+				continuation: childContinuation,
+				resumeSchema: inlineChildGenerateResult.pendingSuspend?.[0].resumeSchema,
+			}),
+		);
+		expect(runtimeConfig.runState).toBeDefined();
+		expect(runtimeConfigs[0]?.runState).toBe(runtimeConfig.runState);
+
+		await expect(
+			delegateTool?.handler?.(delegateInput, {
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				resumeData: { approved: true },
+				suspendPayload: childApprovalPayload,
+				continuation: childContinuation,
+				suspend,
+			}),
+		).resolves.toMatchObject({ status: 'completed', answer: 'child completed' });
+		expect(runtimeResumeCalls).toEqual([
+			{
+				method: 'stream',
+				data: { approved: true },
+				options: {
+					runId: 'child-run-suspended',
+					toolCallId: 'child-tool-call-1',
+				},
+			},
+		]);
 	});
 
 	it('lets a host-style runner delegate inline through helpers from tool metadata', async () => {
@@ -388,50 +549,6 @@ describe('delegate sub-agent routing', () => {
 		});
 
 		expect(runInlineSubAgent).toHaveBeenCalledOnce();
-	});
-
-	it('returns a failed delegate output when an inline child run suspends', async () => {
-		inlineChildGenerateResult = {
-			runId: 'child-run-suspended',
-			finishReason: 'tool-calls',
-			messages: [
-				{
-					role: 'assistant',
-					type: 'llm',
-					content: [{ type: 'text', text: 'awaiting approval' }],
-				},
-			],
-			pendingSuspend: [
-				{
-					runId: 'child-run-suspended',
-					toolCallId: 'tool-call-1',
-					toolName: 'delete_file',
-					input: { path: '/tmp/foo.txt' },
-					suspendPayload: { message: 'Delete file?' },
-				},
-			],
-			getState: mockState,
-		};
-
-		const agent = new Agent('parent')
-			.model('openai', 'gpt-4o-mini')
-			.instructions('Delegate when needed.')
-			.tool(createDelegateSubAgentTool())
-			.tool(makeTool('lookup'));
-
-		const runtimeConfig = await buildAgentConfig(agent);
-
-		const builtTools = runtimeConfig.tools;
-		const delegateTool = builtTools?.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
-		expect(delegateTool).toBeDefined();
-
-		await expect(
-			delegateTool?.handler?.(delegateInput, { runId: 'parent-run-1' }),
-		).resolves.toMatchObject({
-			status: 'failed',
-			answer: '',
-			error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
-		});
 	});
 
 	it('answers with the final assistant turn, not every text block the child streamed', async () => {

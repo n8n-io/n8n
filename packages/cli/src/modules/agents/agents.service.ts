@@ -1,16 +1,20 @@
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
+	DEFAULT_AGENT_PERSONALISATION,
+	getRandomAgentPersonalisationGradient,
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
 	type AgentJsonConfig,
+	type AgentSkill,
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { In, ProjectRelationRepository, type User } from '@n8n/db';
+import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -21,12 +25,14 @@ import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
+import { decomposeJsonConfig } from './json-config/agent-config-composition';
 import {
 	AgentRepository,
 	type AgentSummary,
 	type AgentSummaryFilters,
 } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
+import { isUnconfiguredAgent } from './utils/agent-capabilities';
 import { EventService } from '@/events/event.service';
 
 @Service()
@@ -45,28 +51,84 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
+	/**
+	 * `id` lets the caller mint the agent id before deciding to persist it, so a
+	 * surface can reference the agent (an artifact tab, a thread binding) while
+	 * it is still unsaved. The builder path may race the REST create on the same
+	 * id; with `adoptUnconfiguredOnCollision` the loser adopts a same-project
+	 * still-unconfigured row. REST stays strict (flag defaults false).
+	 *
+	 * Emits no telemetry: a row on its own is not a created agent, so the
+	 * creation events fire from the first configuring write instead (see
+	 * `AgentModificationTelemetryService`).
+	 */
 	async create(
 		projectId: string,
 		name: string,
-		{ availableInMCP = false }: { availableInMCP?: boolean } = {},
+		{
+			availableInMCP = false,
+			id,
+			adoptUnconfiguredOnCollision = false,
+			defaultModel,
+			schema,
+			skills,
+		}: {
+			availableInMCP?: boolean;
+			id?: string;
+			adoptUnconfiguredOnCollision?: boolean;
+			defaultModel?: { model: string; credential: string };
+			/** Create with this config instead of the empty draft below, so eval thread
+			 *  seeding can recreate an already-built agent in one insert. */
+			schema?: AgentJsonConfig;
+			skills?: Record<string, AgentSkill>;
+		} = {},
 	): Promise<Agent> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
 			model: '',
 			instructions: '',
+			...(defaultModel ?? {}),
 			tools: [],
 			skills: [],
+			// Seeded at birth so every agent has a distinct tile, and so the builder
+			// sees an existing icon name when it reads the config — without one it
+			// invents its own, which the icon tile cannot render.
+			personalisation: {
+				icon: DEFAULT_AGENT_PERSONALISATION.icon,
+				gradient: getRandomAgentPersonalisationGradient(),
+			},
 		};
 
+		// Integrations live on their own column; `composeJsonConfig` reads them from
+		// there, so leaving them inside `schema` loses them on the next read.
+		const { schemaConfig, integrations } = decomposeJsonConfig(schema ?? defaultConfig);
+
 		const agent = this.agentRepository.create({
+			...(id ? { id } : {}),
 			name,
 			projectId,
-			schema: defaultConfig,
+			schema: schemaConfig,
+			...(integrations.length > 0 ? { integrations } : {}),
+			...(skills ? { skills } : {}),
 			versionId: uuid(),
 			availableInMCP,
 		});
 
-		const saved = await this.agentRepository.save(agent);
+		let saved: Agent;
+		try {
+			saved = await this.agentRepository.save(agent);
+		} catch (error) {
+			if (!id || !isUniqueConstraintError(error)) throw error;
+			// Never disclose whether the id exists in another project.
+			const conflict = new ConflictError('An agent with this id already exists');
+			if (!adoptUnconfiguredOnCollision) throw conflict;
+			const existing = await this.agentRepository.findByIdAndProjectId(id, projectId);
+			if (!existing || !isUnconfiguredAgent(existing.schema, existing.integrations ?? [])) {
+				throw conflict;
+			}
+			this.logger.debug('Adopted concurrently created SDK agent', { agentId: id, projectId });
+			return existing;
+		}
 
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
 
@@ -246,7 +308,7 @@ export class AgentsService {
 			});
 		}
 
-		await this.agentKnowledgeService.destroySandbox(projectId, agentId);
+		await this.agentKnowledgeService.destroyKnowledgeSandbox(projectId, agentId);
 
 		try {
 			await this.agentChatAttachmentService.deleteByAgent(agentId);

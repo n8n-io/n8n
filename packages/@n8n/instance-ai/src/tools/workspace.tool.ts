@@ -2,7 +2,10 @@
  * Consolidated workspace tool — projects, tags, folders, execution cleanup.
  */
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	instanceAiApprovalResumeSchema,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -99,9 +102,7 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const resumeSchema = z.object({
-	approved: z.boolean(),
-});
+const resumeSchema = instanceAiApprovalResumeSchema;
 
 // ── Input union ─────────────────────────────────────────────────────────────
 
@@ -142,7 +143,17 @@ interface WorkspaceToolContext {
 
 async function handleListProjects(context: InstanceAiContext) {
 	const projects = await context.workspaceService!.listProjects();
-	return { projects };
+	// Flag the conversation's own project here rather than naming it in the system
+	// prompt: the prompt is a shared prompt-cache prefix, a tool result is not.
+	const boundProjectId = context.projectId;
+	if (boundProjectId === undefined) return { projects };
+
+	return {
+		projects: projects.map((project) => ({
+			...project,
+			...(project.id === boundProjectId ? { isCurrentProject: true } : {}),
+		})),
+	};
 }
 
 async function handleListTags(context: InstanceAiContext) {

@@ -2,6 +2,7 @@ import type { CliArgs } from '../cli/args';
 import type { BuildResult } from '../harness/build-workflow';
 import { cleanupBuild } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
+import { PROVIDER_OUTAGE_ROOT_CAUSE } from '../harness/transient-error';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type { BuildOrchestrator, CachedBuild, LaneState } from '../run/build-orchestrator';
 import { createCasePipeline, type CasePipelineDeps } from '../run/case-pipeline';
@@ -55,6 +56,7 @@ function makeLane(): LaneState {
 			client: {} as never,
 			baseUrl: 'http://lane1.test',
 			preRunWorkflowIds: new Set<string>(),
+			preRunDataTableIds: new Set<string>(),
 			claimedWorkflowIds: new Set<string>(),
 			createdCredentialIds: new Set<string>(),
 			workflowIdsToDelete: new Set<string>(),
@@ -164,6 +166,35 @@ describe('createCasePipeline', () => {
 		expect(orchestrator.buildCache.size).toBe(0);
 	});
 
+	// A staged prior run that produced no execution record leaves the case grading
+	// against history the instance does not have. The biting case is a build that
+	// SUCCEEDED: `buildFailedOnInfra` returns false there, so without this branch the
+	// row would be scored as an agent failure on a premise that never existed.
+	it('routes a successful build with a failed prior run to framework_issue', async () => {
+		const lane = makeLane();
+		const cached: CachedBuild = {
+			build: { ...okBuild(), priorRunFailed: 'seedWf1: fetch failed' },
+			lane,
+			buildDurationMs: 42,
+		};
+		const orchestrator = makeOrchestrator(cached);
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			buildSuccess: true,
+			passed: false,
+			// Not graded rather than failed — stays out of the builder's baseline.
+			incomplete: true,
+			failureCategory: 'framework_issue',
+			attribution: 'framework_issue',
+		});
+		expect(String(output.reasoning)).toContain('premise is missing');
+		// The scenario must never run: its result would describe absent history.
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
 	it('keeps everything when --keep-workflows is set', async () => {
 		const lane = makeLane();
 		vi.mocked(lane.tracedExecute).mockResolvedValue({
@@ -239,6 +270,27 @@ describe('createCasePipeline', () => {
 		const output = await pipeline.runRow(rowInputs('happy-path'));
 
 		expect(output.failureCategory).toBe('framework_issue');
+	});
+
+	it('stamps the pinned root cause on a provider-outage build so LangTracer sees infra', async () => {
+		const lane = makeLane();
+		const orchestrator = makeOrchestrator({
+			build: okBuild({
+				success: false,
+				workflowId: undefined,
+				error: 'Agent error: Internal server error; No output generated.',
+				transportFailure: true,
+				providerOutage: 'provider HTTP 529: Overloaded',
+			}),
+			lane,
+			buildDurationMs: 5,
+		});
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output.failureCategory).toBe('framework_issue');
+		expect(output.rootCause).toBe(`${PROVIDER_OUTAGE_ROOT_CAUSE}: provider HTTP 529: Overloaded`);
 	});
 
 	it('scores a build-only sentinel row from the expectation verdicts', async () => {

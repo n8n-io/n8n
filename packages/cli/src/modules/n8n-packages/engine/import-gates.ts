@@ -2,9 +2,8 @@ import type { LicenseState } from '@n8n/backend-common';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
 import type { TagImportPlan } from '../entities/tag/tag.types';
-import type { VariableMissingMode } from '../n8n-packages.types';
+import type { WorkflowImportPlan } from '../entities/workflow/workflow-import.types';
 
 export function assertPackageImportApiKeyScopes(
 	apiKeyScopes: string[] | undefined,
@@ -19,32 +18,32 @@ export function assertPackageImportApiKeyScopes(
 }
 
 /**
- * Callers decide `hasRequirements`, because each package shape looks at a different set: the
- * workflow path narrows the manifest's requirement list to the workflows it is importing, while a
- * project package takes that list whole, since it imports every project the package holds.
+ * Gated on what the import will write, not on what the package requires: a package whose variables
+ * all resolve writes nothing, so it needs neither the licence nor a scope. Mirrors the variables UI.
  */
-export function assertVariableCreationAllowed(options: {
+export function assertVariableWritesAllowed(options: {
 	licenseState: LicenseState;
 	apiKeyScopes: string[] | undefined;
-	missingMode: VariableMissingMode;
-	hasRequirements: boolean;
+	hasCreations: boolean;
+	hasOverwrites: boolean;
 }): void {
-	const { licenseState, apiKeyScopes, missingMode, hasRequirements } = options;
-	if (!hasRequirements || !variableMissingModeCreates(missingMode)) return;
+	const { licenseState, apiKeyScopes, hasCreations, hasOverwrites } = options;
+	if (!hasCreations && !hasOverwrites) return;
 
 	if (!licenseState.isVariablesLicensed()) {
 		throw new ForbiddenError(
-			'Your license does not allow variables. Importing a package that creates variables requires a license that supports variables.',
+			'Your license does not allow variables. Importing a package that writes variables requires a license that supports variables.',
 		);
 	}
-	assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
+	if (hasCreations) assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
+	if (hasOverwrites) assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:update']);
 }
 
 /**
- * Plan-derived, unlike the pre-plan variable/data-table gates: a tag must
+ * Plan-derived, unlike the pre-plan data-table gate: a tag must
  * never block an import that would not write it (skipped consumers, disabled
  * tags, dropped conflicts), so the assert looks at what the plans actually
- * create or rename.
+ * create, rename, or reconcile.
  */
 export function assertTagWritesAllowed(
 	apiKeyScopes: string[] | undefined,
@@ -53,7 +52,23 @@ export function assertTagWritesAllowed(
 	if (tagPlans.some((plan) => plan.creations.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:create']);
 	}
-	if (tagPlans.some((plan) => plan.renames.length > 0)) {
+	if (tagPlans.some((plan) => plan.renames.length > 0 || plan.reconciles.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:update']);
+	}
+}
+
+/**
+ * Archiving or unarchiving a matched workflow needs the same scope as deleting one. Checked
+ * against the plan, so a package that changes no archived state needs no extra scope.
+ */
+export function assertArchiveTransitionsAllowed(
+	apiKeyScopes: string[] | undefined,
+	workflowPlans: WorkflowImportPlan[],
+): void {
+	const hasTransitions = workflowPlans.some((plan) =>
+		plan.items.some((item) => item.action === 'update' && item.archiveTransition !== null),
+	);
+	if (hasTransitions) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['workflow:delete']);
 	}
 }

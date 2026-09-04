@@ -73,6 +73,13 @@ test.describe(
 				expect(metadata.bearer_methods_supported).toEqual(['header']);
 				expect(metadata.authorization_servers).toHaveLength(1);
 			});
+
+			test('should 404 a path-inserted authorization server probe', async ({ api }) => {
+				const response = await api.mcpOauth.getAuthorizationServerMetadata('/mcp/some-trigger');
+
+				expect(response.status()).toBe(404);
+				expect(response.headers()['content-type']).not.toContain('text/html');
+			});
 		});
 
 		test.describe('Authorization code flow', () => {
@@ -402,6 +409,28 @@ test.describe(
 
 				expect(response.status()).toBe(201);
 			});
+
+			// A client that cached the MCP resource URL skips discovery, so the
+			// authorize URL is where it must learn the resource is gone — before
+			// the user is sent through login and consent.
+			test('should refuse authorization while MCP access is disabled', async ({ api }) => {
+				const client = await api.mcpOauth.registerClientOrFail({
+					client_name: `e2e OAuth client ${nanoid(8)}`,
+					redirect_uris: ['https://example.com/callback'],
+					grant_types: ['authorization_code'],
+					token_endpoint_auth_method: 'none',
+				});
+
+				const authorizeResponse = await api.mcpOauth.authorize({
+					clientId: client.client_id,
+					redirectUri: 'https://example.com/callback',
+					challenge: api.mcpOauth.createPkcePair().challenge,
+				});
+
+				expect(authorizeResponse.status()).toBe(400);
+				const body = await authorizeResponse.json();
+				expect(body.error).toBe('invalid_target');
+			});
 		});
 
 		test.describe('Consent screen', () => {
@@ -521,7 +550,9 @@ test.describe(
 				expect(toolNames).not.toContain('create_data_table');
 				expect(toolNames).not.toContain('publish_workflow');
 
-				// Calling a write tool is rejected because it is not registered
+				// Calling a write tool is rejected because it is not registered for
+				// this grant. The tool isn't in the server, so the v2 SDK answers with
+				// a JSON-RPC "not found" error (-32602) rather than an isError result.
 				const callResponse = await api.mcp.internalMcpSendMessageNoAuth(
 					api.mcp.createMessage('tools/call', {
 						name: 'create_data_table',
@@ -529,12 +560,9 @@ test.describe(
 					}),
 					{ Authorization: `Bearer ${tokens.access_token}` },
 				);
-				const callResult = await api.mcp.parseResponse<{
-					isError?: boolean;
-					content: Array<{ text: string }>;
-				}>(callResponse);
-				expect(callResult.isError).toBe(true);
-				expect(callResult.content[0].text).toContain('Tool create_data_table not found');
+				const callEnvelope = await api.mcp.parseResponseEnvelope(callResponse);
+				expect(callEnvelope.error?.code).toBe(-32602);
+				expect(callEnvelope.error?.message).toContain('create_data_table');
 			});
 		});
 	},

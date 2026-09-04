@@ -10,7 +10,7 @@ import { nextTick } from 'vue';
 
 import { useApiKeysStore } from '../apiKeys.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { DateTime } from 'luxon';
@@ -37,7 +37,7 @@ const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
-				modalsById: {
+				modalStateById: {
 					[API_KEY_CREATE_OR_EDIT_MODAL_KEY]: { open: true },
 				},
 			},

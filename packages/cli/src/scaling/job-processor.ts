@@ -335,9 +335,14 @@ export class JobProcessor {
 
 		this.runningJobs[job.id] = runningJob;
 
-		const run = await workflowRun;
-
-		delete this.runningJobs[job.id];
+		let run: IRun;
+		try {
+			run = await workflowRun;
+		} finally {
+			// An entry left behind on rejection keeps the count of running jobs
+			// above zero forever, which prevents shutdown from ever completing.
+			delete this.runningJobs[job.id];
+		}
 
 		if (run?.status === 'canceled') {
 			throw new ManualExecutionCancelledError(executionId);
@@ -382,17 +387,18 @@ export class JobProcessor {
 				toolResult = await withExpressionIsolate(
 					workflow,
 					async () =>
-						await this.invokeTool(
+						await this.invokeTool({
 							workflow,
 							sourceNodeName,
 							toolArgs,
+							toolInput: job.data.mcpToolInput,
 							additionalData,
-							run.data,
+							runExecutionData: run.data,
 							// The execution context (e.g. the OAuth identity for private credentials)
 							// is established on the main and loaded with the execution here; pass it
 							// through so the tool node can resolve dynamic credentials on the worker.
-							execution.data?.executionData?.runtimeData,
-						),
+							executionContext: execution.data?.executionData?.runtimeData,
+						}),
 				);
 
 				// A tool result is not a response, so it has no offload path: this limit
@@ -522,18 +528,23 @@ export class JobProcessor {
 	 * For tool wrapper nodes without supplyData (e.g. httpRequestTool), calls
 	 * execute directly — mirroring the fallback in get-input-connection-data.ts.
 	 */
-	private async invokeTool(
-		workflow: Workflow,
-		sourceNodeName: string,
-		toolArgs: Record<string, unknown>,
-		additionalData: ReturnType<typeof WorkflowExecuteAdditionalData.getBase> extends Promise<
-			infer T
-		>
-			? T
-			: never,
-		runExecutionData: IRunExecutionData,
-		executionContext?: IExecutionContext,
-	): Promise<unknown> {
+	private async invokeTool({
+		workflow,
+		sourceNodeName,
+		toolArgs,
+		toolInput,
+		additionalData,
+		runExecutionData,
+		executionContext,
+	}: {
+		workflow: Workflow;
+		sourceNodeName: string;
+		toolArgs: Record<string, unknown>;
+		toolInput?: IDataObject;
+		additionalData: Awaited<ReturnType<typeof WorkflowExecuteAdditionalData.getBase>>;
+		runExecutionData: IRunExecutionData;
+		executionContext?: IExecutionContext;
+	}): Promise<unknown> {
 		const toolNode = workflow.getNode(sourceNodeName);
 		if (!toolNode) {
 			throw new UnexpectedError(`Tool node "${sourceNodeName}" not found in workflow`);
@@ -546,14 +557,15 @@ export class JobProcessor {
 		const validatedToolArgs =
 			typeof toolArgs === 'object' && toolArgs !== null && !Array.isArray(toolArgs) ? toolArgs : {};
 
-		// Create input data for the tool node with the tool arguments
-		const inputData: INodeExecutionData[][] = [
-			[
-				{
-					json: validatedToolArgs as INodeExecutionData['json'],
-				},
-			],
-		];
+		// A tool can feed several MCP triggers, and connection order says nothing about which
+		// one this execution came from — only the trigger that ran has run data. Recording it
+		// as parent points the tool's run data `source` at it, as in direct mode.
+		const { runData } = runExecutionData.resultData;
+		const triggerNames = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
+		const triggerName = triggerNames.find((name) => runData[name]) ?? triggerNames[0];
+		const parentNode = triggerName ? (workflow.getNode(triggerName) ?? undefined) : undefined;
+
+		const inputData: INodeExecutionData[][] = [[{ json: toolInput ?? {} }]];
 
 		// `executionData` must exist for output recording; init it if the run lacks it.
 		runExecutionData.executionData ??= {
@@ -577,11 +589,6 @@ export class JobProcessor {
 		};
 
 		const closeFunctions: CloseFunction[] = [];
-
-		// Parent = the node the tool feeds (the MCP trigger), so the recorded run
-		// data's `source` points back at it, as in direct mode.
-		const [parentNodeName] = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
-		const parentNode = parentNodeName ? (workflow.getNode(parentNodeName) ?? undefined) : undefined;
 
 		// Create SupplyDataContext for the tool node
 		const context = new SupplyDataContext(

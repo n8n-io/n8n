@@ -106,7 +106,7 @@ function createSetupContext(
 			listSearchable: vi.fn().mockResolvedValue([]),
 		},
 		workflowService: {
-			list: vi.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue({ workflows: [], total: 0, totalInScope: 0 }),
 			get: vi.fn(),
 		},
 		...(templatesBundle
@@ -386,7 +386,7 @@ describe('setupSandboxWorkspace', () => {
 		expect(initialized).toBe(false);
 		expect(runInSandbox).not.toHaveBeenCalledWith(
 			expect.anything(),
-			'npm install --ignore-scripts',
+			'npm install --ignore-scripts --no-audit --no-fund --prefer-offline',
 			'/sandbox',
 		);
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
@@ -448,10 +448,10 @@ describe('setupSandboxWorkspace', () => {
 		>(async () => {});
 		const context = createSetupContext();
 		const workflowService = context.workflowService as unknown as {
-			list: Mock<(...args: [{ limit: number }]) => Promise<Array<{ id: string }>>>;
+			list: Mock<(...args: [{ limit: number }]) => Promise<{ workflows: Array<{ id: string }> }>>;
 			get: Mock<(...args: [string]) => Promise<Record<string, unknown>>>;
 		};
-		workflowService.list.mockResolvedValue([{ id: '../escape' }]);
+		workflowService.list.mockResolvedValue({ workflows: [{ id: '../escape' }] });
 		workflowService.get.mockResolvedValue({ id: '../escape' });
 
 		await expect(
@@ -566,12 +566,20 @@ describe('setupSandboxWorkspace', () => {
 	});
 
 	it('retries packing linked workspace packages after a null pack result', async () => {
+		const utilsTarball = Buffer.from('utils');
 		const workflowTarball = Buffer.from('workflow');
 		const sdkTarball = Buffer.from('sdk');
 		const packSandboxLinkedWorkspacePackages = vi
 			.fn()
 			.mockResolvedValueOnce(null)
 			.mockResolvedValueOnce([
+				{
+					filename: 'n8n-utils.tgz',
+					tarball: utilsTarball,
+					version: '1.41.0',
+					packageName: '@n8n/utils',
+					packagePath: '/host/utils',
+				},
 				{
 					filename: 'n8n-workflow.tgz',
 					tarball: workflowTarball,
@@ -622,6 +630,9 @@ describe('setupSandboxWorkspace', () => {
 		await linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger);
 
 		expect(packSandboxLinkedWorkspacePackages).toHaveBeenCalledTimes(2);
+		expect(writeFile).toHaveBeenCalledWith('/workspace/n8n-utils.tgz', utilsTarball, {
+			recursive: true,
+		});
 		expect(writeFile).toHaveBeenCalledWith('/workspace/n8n-workflow.tgz', workflowTarball, {
 			recursive: true,
 		});
@@ -631,7 +642,7 @@ describe('setupSandboxWorkspace', () => {
 		expect(runInSandbox).toHaveBeenCalledWith(
 			workspace,
 			expect.stringContaining(
-				"npm install '/workspace/n8n-workflow.tgz' '/workspace/workflow-sdk.tgz'",
+				"npm install '/workspace/n8n-utils.tgz' '/workspace/n8n-workflow.tgz' '/workspace/workflow-sdk.tgz'",
 			),
 			'/workspace',
 		);

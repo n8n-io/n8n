@@ -1,14 +1,45 @@
-export { createEngineServer } from './server';
-export type { EngineServerDeps } from './server';
+export { createEngineRuntime } from './runtime';
+export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
+
+export type { EngineLogger } from './logging';
+
+export {
+	ACTION_TOKEN,
+	IDENTITY_TOKEN,
+	InvalidActionTokenError,
+	InvalidIdentityTokenError,
+	mintActionToken,
+	mintIdentityToken,
+	SharedSecretIdentityVerifier,
+	verifyActionToken,
+} from './auth';
+export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
+
+export type { EngineErrorResponse, ExecutionSnapshot, StepDetail } from './server';
+
+// The publisher stays internal: no host constructs or swaps one.
+export {
+	MAX_LIFECYCLE_EVENTS_PER_BATCH,
+	lifecycleEventBatchSchema,
+	lifecycleEventSchema,
+} from './lifecycle-events';
+export type {
+	LifecycleEventCallback,
+	LifecycleEvent,
+	LifecycleEventBatch,
+} from './lifecycle-events';
 
 export type { JsonObject, JsonValue } from './common';
 
+export { deriveLoops, isBatchStepConfig } from './graph';
 export type {
+	BatchStepConfig,
 	GraphEdge,
 	GraphNode,
 	StepConfig,
 	StepType,
 	WorkflowGraph,
+	WorkflowLoop,
 } from './graph';
 
 export type {
@@ -26,32 +57,37 @@ export type {
 	AdmittanceService,
 } from './admittance';
 
-export { InMemoryWorkQueue } from './queue';
 export type {
 	ExecutionEnqueuedEvent,
 	OrchestrationMessage,
+	StepSettledEvent,
 	StepMessage,
 	StepReadyEvent,
 	WorkQueue,
 } from './queue';
 
-export {
-	ExecutionNotFoundError,
-	ExecutionStartHandler,
-	OrchestrationWorker,
-	StepNotFoundError,
-} from './execution';
+export { ExecutionNotFoundError, StepNotFoundError } from './execution';
 export type {
 	ExecutionMode,
+	ExecutionViewStore,
 	ExecutionRecord,
 	ExecutionStatus,
 	ExecutionStore,
+	ExecutionView,
 	NewExecutionRecord,
 	NewStepRecord,
+	StartExecutionRequest,
+	StartExecutionResult,
 	StepError,
+	StepKey,
+	StepKeyId,
 	StepRecord,
+	StepSlots,
 	StepStatus,
 	StepStore,
+	StepView,
+	TriggerOutputs,
 } from './execution';
 
-export { createDataSource, TypeOrmExecutionStore, TypeOrmStepStore } from './database';
+export { createDataSource, WorkflowExecution, WorkflowStepExecution } from './database';
+export type { EngineStores } from './database';

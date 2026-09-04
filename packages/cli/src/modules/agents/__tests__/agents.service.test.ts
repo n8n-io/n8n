@@ -1,10 +1,13 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
+import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ProjectRelationRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -120,9 +123,178 @@ describe('AgentsService', () => {
 				instructions: '',
 				tools: [],
 				skills: [],
+				// A renderable icon name, not an emoji: the builder copies the idiom
+				// it reads, and the icon tile can only render registered icon names.
+				personalisation: {
+					icon: DEFAULT_AGENT_PERSONALISATION.icon,
+					gradient: expect.objectContaining({ angle: expect.any(Number) }),
+				},
 			},
 			versionId: expect.any(String),
 			availableInMCP: false,
+		});
+	});
+
+	it('creates an agent with a resolved default model and credential', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+
+		await service.create(projectId, 'Support Agent', {
+			defaultModel: {
+				model: 'openai/gpt-5-mini',
+				credential: 'managed',
+			},
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.schema).toMatchObject({
+			name: 'Support Agent',
+			model: 'openai/gpt-5-mini',
+			credential: 'managed',
+		});
+	});
+
+	it('splits a seeded config so integrations land on their own column', async () => {
+		// `composeJsonConfig` reads integrations from the entity column, so leaving
+		// them inside `schema` loses every trigger on the next read — an eval seed
+		// would restore an agent whose integrations silently vanished.
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+		const integrations = [{ type: 'slack' as const, credentialId: 'cred-slack-1' }];
+
+		await service.create(projectId, 'Support Agent', {
+			schema: {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage tickets.',
+				integrations,
+			},
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.integrations).toEqual(integrations);
+		expect(entity.schema).not.toHaveProperty('integrations');
+		expect(entity.schema).toMatchObject({ name: 'Support Agent', instructions: 'Triage tickets.' });
+	});
+
+	it('omits the integrations column when the seeded config declares none', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+
+		await service.create(projectId, 'Support Agent', {
+			schema: { name: 'Support Agent', model: '', instructions: '' },
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity).not.toHaveProperty('integrations');
+	});
+
+	describe('create with a client-minted id', () => {
+		const mintedId = 'aBcDeFgHiJkLmNoP';
+		const uniqueViolation = () =>
+			new QueryFailedError(
+				'insert',
+				undefined,
+				Object.assign(new Error('duplicate key'), { code: '23505' }),
+			);
+
+		it('persists the agent under the supplied id', async () => {
+			const { service, agentRepository } = makeService();
+			const saved = makeAgent({ id: mintedId });
+			agentRepository.create.mockReturnValue(saved);
+			agentRepository.save.mockResolvedValue(saved);
+
+			await service.create(projectId, 'Support Agent', { id: mintedId });
+
+			expect(agentRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({ id: mintedId }),
+			);
+		});
+
+		it('adopts a same-project unconfigured agent when the builder race flag is set', async () => {
+			const { service, agentRepository } = makeService();
+			const raced = makeAgent({
+				id: mintedId,
+				schema: { name: 'Support Agent', model: '', instructions: '' },
+				integrations: [],
+			});
+			agentRepository.create.mockReturnValue(raced);
+			agentRepository.save.mockRejectedValue(uniqueViolation());
+			agentRepository.findByIdAndProjectId.mockResolvedValue(raced);
+
+			await expect(
+				service.create(projectId, 'Support Agent', {
+					id: mintedId,
+					adoptUnconfiguredOnCollision: true,
+				}),
+			).resolves.toBe(raced);
+		});
+
+		it('rejects a collision without the adoption flag, even for a same-project blank row', async () => {
+			const { service, agentRepository } = makeService();
+			const raced = makeAgent({
+				id: mintedId,
+				schema: { name: 'Support Agent', model: '', instructions: '' },
+				integrations: [],
+			});
+			agentRepository.create.mockReturnValue(raced);
+			agentRepository.save.mockRejectedValue(uniqueViolation());
+
+			await expect(service.create(projectId, 'Support Agent', { id: mintedId })).rejects.toThrow(
+				ConflictError,
+			);
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the same-project row is already configured, even with the adoption flag', async () => {
+			const { service, agentRepository } = makeService();
+			const configured = makeAgent({
+				id: mintedId,
+				schema: { name: 'Support Agent', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				integrations: [],
+			});
+			agentRepository.create.mockReturnValue(configured);
+			agentRepository.save.mockRejectedValue(uniqueViolation());
+			agentRepository.findByIdAndProjectId.mockResolvedValue(configured);
+
+			await expect(
+				service.create(projectId, 'Support Agent', {
+					id: mintedId,
+					adoptUnconfiguredOnCollision: true,
+				}),
+			).rejects.toThrow(ConflictError);
+		});
+
+		it('rejects without disclosing when the id collides outside this project', async () => {
+			const { service, agentRepository } = makeService();
+			agentRepository.create.mockReturnValue(makeAgent({ id: mintedId }));
+			agentRepository.save.mockRejectedValue(uniqueViolation());
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(
+				service.create(projectId, 'Support Agent', {
+					id: mintedId,
+					adoptUnconfiguredOnCollision: true,
+				}),
+			).rejects.toThrow(ConflictError);
+		});
+
+		it('rethrows a non-unique-violation failure instead of treating it as a race', async () => {
+			const { service, agentRepository } = makeService();
+			const error = new QueryFailedError('insert', undefined, new Error('connection lost'));
+			agentRepository.create.mockReturnValue(makeAgent({ id: mintedId }));
+			agentRepository.save.mockRejectedValue(error);
+
+			await expect(service.create(projectId, 'Support Agent', { id: mintedId })).rejects.toBe(
+				error,
+			);
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		});
 	});
 
@@ -169,7 +341,7 @@ describe('AgentsService', () => {
 		);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
-		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
 	});
 
@@ -203,7 +375,7 @@ describe('AgentsService', () => {
 
 		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
-		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
 	it('returns false when deleting a missing agent', async () => {

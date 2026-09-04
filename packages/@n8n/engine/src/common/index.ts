@@ -1,2 +1,3 @@
 export type { JsonObject, JsonValue } from './json';
-export { UnimplementedError } from './errors';
+export { jsonValueSchema } from './json.schema';
+export { UnexpectedError, UnimplementedError } from './errors';

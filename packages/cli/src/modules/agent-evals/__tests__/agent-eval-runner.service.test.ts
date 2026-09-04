@@ -207,6 +207,9 @@ describe('AgentEvalRunnerService', () => {
 			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow(
 				'require these modules to be active: data-table',
 			);
+			// Not-found, so the whole agent-eval surface reads as absent when a module
+			// it depends on is off, rather than half-present.
+			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow(NotFoundError);
 			expect(runRepository.createRun).not.toHaveBeenCalled();
 		});
 
@@ -384,6 +387,29 @@ describe('AgentEvalRunnerService', () => {
 				'empty_input',
 				expect.anything(),
 			);
+			// Screened out before the queue: an unusable case must never hold a slot.
+			expect(concurrencyControl.throttle).not.toHaveBeenCalled();
+			expect(resultRepository.markAsRunning).not.toHaveBeenCalled();
+		});
+
+		it('still completes the run when recording an empty-input case fails', async () => {
+			seedFor(
+				[
+					{ id: 'row-1', question: '   ' },
+					{ id: 'row-2', question: 'Q2' },
+				],
+				{ success: 1, error: 1 },
+			);
+			// This write sits outside `runCase`'s catch, so left unguarded the rejection
+			// would settle as a dispatch failure and error an otherwise-successful run.
+			resultRepository.markAsError.mockRejectedValueOnce(new Error('db unavailable'));
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(runRepository.markAsCompleted).toHaveBeenCalled();
+			expect(runRepository.markAsError).not.toHaveBeenCalled();
 		});
 
 		it('pages through every row when the table exceeds one page', async () => {
@@ -682,8 +708,12 @@ describe('AgentEvalRunnerService', () => {
 			await finished;
 
 			expect(concurrencyControl.throttle).toHaveBeenCalledTimes(2);
+			// Prefixed so a throttled id is attributable to agent evals in log streaming.
 			expect(concurrencyControl.throttle).toHaveBeenCalledWith(
-				expect.objectContaining({ mode: 'evaluation' }),
+				expect.objectContaining({
+					mode: 'evaluation',
+					executionId: expect.stringMatching(/^agent-eval:/),
+				}),
 			);
 			expect(concurrencyControl.release).toHaveBeenCalledTimes(2);
 			expect(concurrencyControl.release).toHaveBeenCalledWith({ mode: 'evaluation' });

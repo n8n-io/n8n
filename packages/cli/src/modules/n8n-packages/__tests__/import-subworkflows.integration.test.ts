@@ -9,16 +9,8 @@ import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
+import { importPackageRequest } from './fixtures/import-request';
 import {
-	DataTableMatchingMode,
-	DataTableMissingMode,
-	DataTableSchemaConflictPolicy,
-	FolderConflictPolicy,
-	MissingNodeTypeMode,
-	TagConflictPolicy,
-	TagMissingMode,
-	VariableMissingMode,
-	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
 	type ImportPackageRequest,
@@ -30,28 +22,14 @@ import {
 	subWorkflowRefOf,
 	workflowRequirementsFromWorkflows,
 } from './fixtures/package-fixtures';
+import { executeWorkflowNode } from './utils/test-builders';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
-	Partial<Pick<ImportPackageRequest, 'workflowIdPolicy'>>;
+	Partial<Pick<ImportPackageRequest, 'workflowIdPolicy' | 'workflowPublishingPolicy'>>;
 
 async function importPackage(params: ImportPackageParams) {
-	return await Container.get(N8nPackagesService).importPackage({
-		credentialMatchingMode: 'id-only',
-		credentialMissingMode: 'must-preexist',
-		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
-		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
-		workflowIdPolicy: WorkflowIdPolicy.New,
-		missingNodeTypeMode: MissingNodeTypeMode.Fail,
-		folderConflictPolicy: FolderConflictPolicy.Merge,
-		dataTableMatchingMode: DataTableMatchingMode.ById,
-		dataTableMissingMode: DataTableMissingMode.Create,
-		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
-		variableMissingMode: VariableMissingMode.DoNothing,
-		tagMissingMode: TagMissingMode.Create,
-		tagConflictPolicy: TagConflictPolicy.Skip,
-		...params,
-	});
+	return await Container.get(N8nPackagesService).importPackage(importPackageRequest(params));
 }
 
 /** Builds a package where `workflows` carry Execute Sub-workflow refs + the derived requirements. */
@@ -63,10 +41,22 @@ async function buildSubWorkflowPackage(workflows: SerializedWorkflow[]) {
 	});
 }
 
+/** Trigger node, needed so a workflow can be published. */
+function scheduleTriggerNode() {
+	return {
+		id: 'schedule-trigger',
+		name: 'Schedule Trigger',
+		type: 'n8n-nodes-base.scheduleTrigger',
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters: {},
+	};
+}
+
 const licenseMocker = new LicenseMocker();
 
-// Import never activates these workflows (they are unpublished), but the publisher
-// path touches the active workflow manager — mock it so no real infra is needed.
+// The publisher path touches the active workflow manager — mock it so no real
+// infra is needed.
 mockInstance(ActiveWorkflowManager);
 
 beforeAll(async () => {
@@ -218,5 +208,47 @@ describe('Package import of workflows with sub-workflows', () => {
 
 		const imported = await findImported(result, 'GORGONZOLA');
 		expect(imported.name).toBe('Malformed caller ids');
+	});
+
+	it('does not publish an archived sub-workflow, and leaves the parent that calls it unpublished', async () => {
+		const owner = await createOwner();
+
+		// An export always carries the sub-workflows a parent calls, archived ones
+		// included, so this package is what a normal export produces.
+		const parent = serializedWorkflow({
+			id: 'CHEDDAR',
+			name: 'Parent',
+			isPublished: true,
+			nodes: [scheduleTriggerNode(), executeWorkflowNode('BRIE')],
+		});
+		const subWorkflow = serializedWorkflow({
+			id: 'BRIE',
+			name: 'Sub-workflow',
+			isArchived: true,
+			isPublished: true,
+			nodes: [scheduleTriggerNode()],
+		});
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildSubWorkflowPackage([parent, subWorkflow]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		const importedSub = await findImported(result, 'BRIE');
+		expect(importedSub.isArchived).toBe(true);
+		expect(importedSub.activeVersionId).toBeNull();
+
+		// A parent cannot publish while a sub-workflow it calls is unpublished, so
+		// "publish-all" reports the parent as failed instead of publishing it.
+		const parentSummary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'CHEDDAR',
+		);
+		expect(parentSummary?.publishing.state).toBe('failed');
+		expect(parentSummary?.publishing.error).toMatch(/BRIE.*not published/);
+
+		const importedParent = await findImported(result, 'CHEDDAR');
+		expect(importedParent.activeVersionId).toBeNull();
 	});
 });

@@ -1,5 +1,5 @@
-import { Logger } from '@n8n/backend-common';
 import type { SubExecutionParent } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
@@ -37,6 +37,8 @@ import { getLastExecutedNodeData } from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+// `no-cycle` still reports a cycle here, but only through the dynamic import
+// in `execute-error-workflow`, which creates no evaluation-order edge.
 // eslint-disable-next-line import-x/no-cycle
 import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';

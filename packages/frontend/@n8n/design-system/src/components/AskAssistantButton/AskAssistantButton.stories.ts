@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import AskAssistantButton from './AskAssistantButton.vue';
 
 export default {
-	title: 'Assistant/AskAssistantButton',
+	title: 'Areas/Assistant/AskAssistantButton',
 	component: AskAssistantButton,
 	argTypes: {},
 };
@@ -19,12 +19,11 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		AskAssistantButton,
 	},
-	template:
-		'<div style="display: flex; height: 50px; width: 300px; align-items: center; justify-content: center"><AskAssistantButton v-bind="args" @click="onClick" /></div>',
+	template: '<AskAssistantButton v-bind="args" @click="onClick" />',
 	methods,
 });
 
-export const Button = Template.bind({});
+export const Default = Template.bind({});
 
 export const Notifications = Template.bind({});
 Notifications.args = {

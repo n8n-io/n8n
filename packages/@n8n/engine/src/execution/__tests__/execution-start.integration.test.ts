@@ -1,5 +1,6 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
@@ -10,7 +11,9 @@ import {
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '../../database';
+import { generateId } from '../../database/generate-id';
 import type { WorkflowGraph } from '../../graph';
+import { noopLifecycleEventPublisher } from '../../lifecycle-events';
 import {
 	InMemoryWorkQueue,
 	type OrchestrationMessage,
@@ -20,6 +23,7 @@ import {
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
+import { StepSettledHandler } from '../step-settled-handler';
 
 const graph: WorkflowGraph = {
 	nodes: [
@@ -34,7 +38,7 @@ describe('execution start (integration)', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer('postgres:18-alpine').start();
+		container = await new PostgreSqlContainer(postgresVersions.primary).start();
 		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
@@ -58,7 +62,19 @@ describe('execution start (integration)', () => {
 		const stepQueue = new InMemoryWorkQueue<StepMessage>();
 		const worker = new OrchestrationWorker(
 			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, stepQueue),
+			new ExecutionStartHandler(
+				executionStore,
+				stepStore,
+				orchestrationQueue,
+				noopLifecycleEventPublisher,
+			),
+			new StepSettledHandler(
+				executionStore,
+				stepStore,
+				stepQueue,
+				orchestrationQueue,
+				noopLifecycleEventPublisher,
+			),
 		);
 		worker.start();
 		const startExecution = new StartExecutionService(
@@ -67,8 +83,8 @@ describe('execution start (integration)', () => {
 			orchestrationQueue,
 		);
 
-		// Stand in for the (not yet built) step worker: consuming the step queue is
-		// both the assertion target and the signal that orchestration finished.
+		// Stand in for the step worker: consuming the step queue is both the
+		// assertion target and the signal that orchestration finished.
 		const readySteps: StepMessage[] = [];
 		let firstReady!: () => void;
 		const ready = new Promise<void>((resolve) => (firstReady = resolve));
@@ -81,13 +97,16 @@ describe('execution start (integration)', () => {
 		const { executionId } = await startExecution.start({
 			workflowId: 'wf-1',
 			graph,
-			triggerPayload: null,
+			triggerOutputs: [[{ json: { hello: 'world' } }]],
+			executionId: generateId(),
 		});
 		await ready;
 
+		// `findOne({ where })`, not `findOneByOrFail`: the latter's overload exceeds
+		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
-			.findOneByOrFail({ id: executionId });
+			.findOneOrFail({ where: { id: executionId } });
 		expect(row.status).toBe('running');
 
 		const steps = await dataSource
@@ -96,6 +115,7 @@ describe('execution start (integration)', () => {
 		const triggerStep = steps.find((s) => s.nodeId === 'trigger');
 		const firstStep = steps.find((s) => s.nodeId === 'step-a');
 		expect(triggerStep?.status).toBe('completed');
+		expect(triggerStep?.outputs).toEqual([[{ json: { hello: 'world' } }]]);
 		expect(firstStep?.status).toBe('queued');
 
 		// step:ready references the durable step-record id, not the node id.
@@ -108,15 +128,22 @@ describe('execution start (integration)', () => {
 	it('is idempotent across duplicate execution:enqueued deliveries', async () => {
 		const { executionStore, stepStore } = stores();
 		const publish = vi.fn();
-		const stepQueue: WorkQueue<StepMessage> = { publish, start: vi.fn(), stop: vi.fn() };
-		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
+		const queue: WorkQueue<OrchestrationMessage> = { publish, start: vi.fn(), stop: vi.fn() };
+		const handler = new ExecutionStartHandler(
+			executionStore,
+			stepStore,
+			queue,
+			noopLifecycleEventPublisher,
+		);
 
-		const { id: executionId } = await executionStore.createExecution({
+		const executionId = generateId();
+		await executionStore.createExecution({
+			id: executionId,
 			workflowId: 'wf-2',
 			status: 'queued',
 			mode: 'production',
 			graph,
-			triggerPayload: null,
+			triggerOutputs: null,
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.
@@ -124,15 +151,17 @@ describe('execution start (integration)', () => {
 		await handler.handle(event);
 		await handler.handle(event);
 
+		// `findOne({ where })`, not `findOneByOrFail`: the latter's overload exceeds
+		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
-			.findOneByOrFail({ id: executionId });
+			.findOneOrFail({ where: { id: executionId } });
 		expect(row.status).toBe('running');
 
 		const steps = await dataSource
 			.getRepository(WorkflowStepExecution)
 			.find({ where: { executionId } });
-		expect(steps).toHaveLength(2); // trigger (completed) + step-a (queued)
+		expect(steps).toHaveLength(1); // the trigger's completed row; planning happens downstream
 		expect(publish).toHaveBeenCalledTimes(1);
 	});
 });

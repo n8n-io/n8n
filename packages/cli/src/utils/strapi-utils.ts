@@ -35,6 +35,7 @@ interface Pagination {
 
 export interface PaginationRequestOptions {
 	throwOnError?: boolean;
+	abortSignal?: AbortSignal;
 }
 
 export type StrapiFilters = { [key: string]: { ['$eq']?: string; ['$in']?: string[] } };
@@ -47,6 +48,7 @@ type PaginationRequestParams = {
 		pageSize: number;
 	};
 	maxAiNodeSdk?: number;
+	version?: number;
 };
 
 const REQUEST_TIMEOUT_MS = 6000;
@@ -86,7 +88,7 @@ export async function paginatedRequest<T>(
 		try {
 			response = await Container.get(OutboundHttp)
 				.requests({
-					ssrf: 'disabled', // n8n-controlled templates/Strapi host
+					useDefaultSsrfPolicy: 'unsafe', // n8n-controlled templates/Strapi host
 					timeout: REQUEST_TIMEOUT_MS,
 				})
 				.request<ResponseData<T>>({
@@ -95,14 +97,17 @@ export async function paginatedRequest<T>(
 					headers: { 'Content-Type': 'application/json' },
 					qs: params,
 					json: true,
+					abortSignal: options?.abortSignal,
 				});
 		} catch (error) {
-			Container.get(ErrorReporter).error(error, {
-				tags: { source: 'strapiPaginatedRequest' },
-			});
-			Container.get(Logger).error(
-				`Error fetching from Strapi API (${url}): ${(error as Error).message}`,
-			);
+			if (!options?.abortSignal?.aborted) {
+				Container.get(ErrorReporter).error(error, {
+					tags: { source: 'strapiPaginatedRequest' },
+				});
+				Container.get(Logger).error(
+					`Error fetching from Strapi API (${url}): ${(error as Error).message}`,
+				);
+			}
 			if (options?.throwOnError) throw error;
 
 			break;

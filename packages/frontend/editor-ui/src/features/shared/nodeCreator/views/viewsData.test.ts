@@ -8,7 +8,7 @@ import {
 } from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AIView, HitlToolView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -130,6 +130,21 @@ describe('viewsData', () => {
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
 
 			expect(messageAgentItem).toBeUndefined();
+		});
+
+		test('should include the AI templates callout by default', () => {
+			const result = AIView([]);
+
+			expect(result.items.some((item) => item.key === 'ai_templates_root')).toBe(true);
+		});
+
+		test('should not include the AI templates callout in canvas-only mode', () => {
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isCanvasOnly', 'get').mockReturnValue(true);
+
+			const result = AIView([]);
+
+			expect(result.items.some((item) => item.key === 'ai_templates_root')).toBe(false);
 		});
 
 		test('should not mutate the shared template repository parameters', () => {

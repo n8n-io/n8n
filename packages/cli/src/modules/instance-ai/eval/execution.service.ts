@@ -9,6 +9,7 @@ import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
 import {
@@ -34,6 +35,7 @@ import {
 	createRunExecutionData,
 	fileTypeFromMimeType,
 	NodeHelpers,
+	TimeoutExecutionCancelledError,
 	UserError,
 	Workflow,
 } from 'n8n-workflow';
@@ -81,6 +83,13 @@ import {
 /** Max output items per branch kept in the artifact. The full count lives in `outputCount`. */
 const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
 
+/** A caller's run budget as a wall-clock deadline; setup counts against it, so
+ *  the run gets what is left. `totalMs` is kept for the message. */
+interface RunBudget {
+	totalMs: number;
+	deadlineAt: number;
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -110,6 +119,13 @@ export class EvalExecutionService {
 		user: User,
 		options: InstanceAiEvalExecutionRequest = {},
 	): Promise<InstanceAiEvalExecutionResult> {
+		// Anchored at receipt, before any setup: setup is LLM calls, so a budget
+		// anchored later would expire after the caller's own deadline.
+		const budget: RunBudget | undefined =
+			options.timeoutMs === undefined
+				? undefined
+				: { totalMs: options.timeoutMs, deadlineAt: Date.now() + options.timeoutMs };
+
 		// Eval routes through WorkflowRunner with a configureAdditionalData closure
 		// that doesn't survive queue serialization. Refuse upfront so vendor calls
 		// can never leak to real providers from a worker that never wires the mock.
@@ -126,7 +142,7 @@ export class EvalExecutionService {
 		]);
 		if (!workflowEntity) {
 			for (const delayMs of [200, 500, 1000]) {
-				await new Promise((resolve) => setTimeout(resolve, delayMs));
+				await sleep(delayMs);
 				workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
 				]);
@@ -196,6 +212,7 @@ export class EvalExecutionService {
 			options.scenarioHints,
 			interceptionEnabled,
 			vendorLlmRouting,
+			budget,
 		);
 	}
 
@@ -412,8 +429,15 @@ export class EvalExecutionService {
 		scenarioHints?: string,
 		interceptionEnabled = false,
 		vendorLlmRouting?: VendorLlmRouting,
+		/** Caller's budget; unbounded when omitted. See awaitRunWithinBudget. */
+		budget?: RunBudget,
 	): Promise<InstanceAiEvalExecutionResult> {
-		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
+		// Null-prototype map: node names are the keys here and come from workflow
+		// input, so a reserved name (`__proto__`, `constructor`, ...) must land as an
+		// own key instead of resolving up the prototype chain. Without this, the
+		// `nodeResults[name] ??= {}` + nested-write sinks below would assign onto
+		// `Object.prototype`.
+		const nodeResults: Record<string, InstanceAiEvalNodeResult> = Object.create(null);
 
 		// Fill setup-pending resource locators BEFORE the first normalization pass:
 		// Workflow construction runs getNodeParameters(returnNoneDisplayed=false),
@@ -544,7 +568,7 @@ export class EvalExecutionService {
 			};
 
 			dbExecutionId = await this.workflowRunner.run(runData);
-			const runResult = await this.activeExecutions.getPostExecutePromise(dbExecutionId);
+			const runResult = await this.awaitRunWithinBudget(dbExecutionId, budget);
 
 			if (!runResult) {
 				return this.buildPartialFailureResult(
@@ -918,6 +942,60 @@ export class EvalExecutionService {
 			executionMode: 'pinned',
 			...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
 		};
+	}
+
+	/**
+	 * Await the execution, stopping it once the budget elapses. Eval mode skips
+	 * concurrency reservation (see `ActiveExecutions.add`), so nothing else would,
+	 * and an abandoned run keeps burning CPU on a shared instance. Omit to wait.
+	 */
+	private async awaitRunWithinBudget(
+		executionId: string,
+		budget: RunBudget | undefined,
+	): Promise<IRun | undefined> {
+		const postExecute = this.activeExecutions.getPostExecutePromise(executionId);
+		if (!budget) return await postExecute;
+
+		// Race loser: our timer's cancellation must not surface as unhandled.
+		postExecute.catch(() => {});
+
+		// Clamped: setup may have eaten the budget, which stops the run at once.
+		const remainingMs = Math.max(budget.deadlineAt - Date.now(), 0);
+		const seconds = Math.round(budget.totalMs / 1000);
+		const budgetError = () =>
+			new Error(`Execution exceeded its ${seconds}s eval budget and was stopped`);
+
+		// `stopExecution` rejects the promise being raced, so report off this flag
+		// rather than whichever arm won — else a budget stop reads as any other
+		// cancellation.
+		let stoppedForBudget = false;
+
+		let deadline: NodeJS.Timeout | undefined;
+		try {
+			return await Promise.race([
+				postExecute,
+				new Promise<never>((_resolve, reject) => {
+					deadline = setTimeout(() => {
+						stoppedForBudget = true;
+						this.logger.warn(
+							`[EvalMock] Execution ${executionId} exceeded its ${seconds}s budget — stopping it`,
+						);
+						// No try/catch: `stopExecution` returns early for an unknown id
+						// rather than throwing, so an execution that finished between the
+						// timer firing and this call needs no handling here.
+						this.activeExecutions.stopExecution(
+							executionId,
+							new TimeoutExecutionCancelledError(executionId),
+						);
+						reject(budgetError());
+					}, remainingMs);
+				}),
+			]);
+		} catch (error) {
+			throw stoppedForBudget ? budgetError() : error;
+		} finally {
+			if (deadline) clearTimeout(deadline);
+		}
 	}
 
 	/**

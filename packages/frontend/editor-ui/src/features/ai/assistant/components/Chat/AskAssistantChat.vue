@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import type { QuickReplyType } from '@n8n/api-types';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, useSlots } from 'vue';
 import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import AskModeEmptyState from './AskModeEmptyState.vue';
 

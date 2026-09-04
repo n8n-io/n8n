@@ -6,10 +6,12 @@ on:
     branches:
       - master
     paths:
-      - 'packages/cli/src/public-api/**/*.{css,yaml,yml}'
-      # cli package.json catches a Redocly (bundler) version bump, the only
-      # other thing that changes the bundled output
-      - 'packages/cli/package.json'
+      - 'packages/cli/src/public-api/**/*.yml' # Public API specs, incl. generated fragments
+      - 'packages/cli/src/public-api/**/*.yaml'
+      - 'packages/cli/src/public-api/**/*.css'
+      - 'packages/cli/src/public-api/v1/openapi-gen/**/*.ts' # changes to the OpenAPI generator
+      - 'packages/cli/scripts/build.mjs' # changes to the build script that generates the OpenAPI spec
+      - 'packages/cli/package.json' # changes to Redocly or @asteasolutions/zod-to-openapi versions
 
   # Allow manual re-publish
   workflow_dispatch:
@@ -29,10 +31,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Node.js and install dependencies
+      - name: Setup Node.js and Build
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          build-command: 'pnpm build --filter=n8n'
 
       - name: Build Public API Schema
         run: pnpm run build:data

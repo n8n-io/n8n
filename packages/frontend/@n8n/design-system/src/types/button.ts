@@ -1,8 +1,7 @@
 import { type ClassValue } from 'clsx';
 
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 import { type IconSize } from './icon';
+import { type IconName } from '../components/N8nIcon/icons';
 
 const BUTTON_VARIANT = ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'] as const;
 export type ButtonVariant = (typeof BUTTON_VARIANT)[number];

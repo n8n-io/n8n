@@ -4,23 +4,12 @@ import { RouterLink } from 'vue-router';
 
 import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
+import type { TabsProps } from './Tabs.types';
 import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
 import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
-interface TabsProps {
-	modelValue?: Value;
-	options?: Array<TabOptions<Value>>;
-	size?: 'small' | 'medium';
-	variant?: 'modern' | 'legacy';
-	/**
-	 * Spread the tabs over the full width in equal slots. Keeps every tab in
-	 * place when a label changes width, at the cost of truncating long ones.
-	 */
-	justified?: boolean;
-}
-
-const props = withDefaults(defineProps<TabsProps>(), {
+const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	modelValue: undefined,
 	options: () => [],
 	size: 'medium',

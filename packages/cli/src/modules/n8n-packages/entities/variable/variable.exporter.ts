@@ -2,6 +2,7 @@ import type { Variables } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { pickVariableForProject } from 'n8n-workflow';
+import { ZodError } from 'zod';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
@@ -11,9 +12,10 @@ import type {
 	VariableExportResult,
 	WorkflowVariableRequirement,
 } from './variable.types';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
+import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
 
 interface ResolvedName {
@@ -65,68 +67,53 @@ export class VariableExporter {
 
 		this.assertNoBundledVariableCollision(resolvedNames, request.projectTargetsById);
 
-		// One allocator per base directory: `variables/` and each
-		// `projects/<slug>/variables/` suffix collisions independently.
-		const allocators = new Map<string, UniqueFilenameAllocator>();
-		const allocatorFor = (baseDir: string) => {
-			const existing = allocators.get(baseDir);
-			if (existing) return existing;
-			const created = new UniqueFilenameAllocator(baseDir, 'variable');
-			allocators.set(baseDir, created);
-			return created;
-		};
-
 		const entries: ManifestEntry[] = [];
 		const bundledVariableIds = new Set<string>();
 		const requirements: PackageVariableRequirement[] = [];
 
 		for (const { name, usedByWorkflows, variables } of resolvedNames) {
-			let aggregateValue: string | undefined;
-			let everyWorkflowResolvedToSameValue = true;
-
 			for (const variable of variables) {
-				if (!isBundleableVariable(variable)) {
-					everyWorkflowResolvedToSameValue = false;
-					continue;
-				}
-
-				if (aggregateValue === undefined) {
-					aggregateValue = variable.value;
-				} else if (aggregateValue !== variable.value) {
-					everyWorkflowResolvedToSameValue = false;
-				}
+				if (!isBundleableVariable(variable)) continue;
 
 				if (bundledVariableIds.has(variable.id)) continue;
 				bundledVariableIds.add(variable.id);
 
-				const baseDir = this.resolveBaseDir(variable, request.projectTargetsById);
-				const target = allocatorFor(baseDir).allocate(variable.key);
-				request.writer.writeDirectory(target);
-				request.writer.writeFile(
-					`${target}/variable.json`,
-					JSON.stringify(
-						this.variableSerializer.serialize(variable, {
-							includeValue: request.includeVariableValues,
-						}),
-						null,
-						'\t',
+				entries.push(
+					await writeManifestEntry(
+						request.writer,
+						'variables',
+						projectScopedDirectory('variables', variable.project?.id, request.projectTargetsById),
+						{ id: variable.id, name: variable.key },
+						this.serializeOrBlock(variable, request.includeVariableValues),
 					),
 				);
-				entries.push({ id: variable.id, name: variable.key, target });
 			}
 
-			requirements.push({
-				name,
-				...(request.includeVariableValues &&
-				everyWorkflowResolvedToSameValue &&
-				aggregateValue !== undefined
-					? { value: aggregateValue }
-					: {}),
-				usedByWorkflows,
-			});
+			requirements.push({ name, usedByWorkflows });
 		}
 
 		return { entries, requirements };
+	}
+
+	/**
+	 * Import parses the same schema, so a contract-breaking row cannot be bundled. Name the row and the
+	 * broken rule instead of letting a raw parse failure surface as an unexplained 500.
+	 */
+	private serializeOrBlock(variable: Variables, includeValue: boolean): SerializedVariable {
+		try {
+			return this.variableSerializer.serialize(variable, { includeValue });
+		} catch (error) {
+			if (!(error instanceof ZodError)) throw error;
+
+			throw new PackageExportBlockedError(
+				`Variable "${variable.key}" does not match the expected format. Export aborted.`,
+				{
+					description: `${error.issues
+						.map((issue) => issue.message)
+						.join('; ')}. Fix the variable and retry the export.`,
+				},
+			);
+		}
 	}
 
 	/**
@@ -165,12 +152,6 @@ export class VariableExporter {
 			usedByWorkflows,
 			variables: usedByWorkflows.map((workflowId) => resolveForWorkflow(name, workflowId)),
 		}));
-	}
-
-	private resolveBaseDir(variable: Variables, projectTargetsById?: Map<string, string>): string {
-		if (!projectTargetsById || projectTargetsById.size === 0) return 'variables';
-		const prefix = variable.project ? projectTargetsById.get(variable.project.id) : undefined;
-		return prefix ? `${prefix}/variables` : 'variables';
 	}
 
 	private async resolveWorkflowProjects(workflowIds: string[]): Promise<Map<string, string>> {
@@ -218,7 +199,7 @@ export class VariableExporter {
 		const idByDir = new Map<string, string>();
 		for (const variable of variables) {
 			if (!isBundleableVariable(variable)) continue;
-			const dir = this.resolveBaseDir(variable, projectTargetsById);
+			const dir = projectScopedDirectory('variables', variable.project?.id, projectTargetsById);
 			const previousId = idByDir.get(dir);
 			if (previousId !== undefined && previousId !== variable.id) return true;
 			idByDir.set(dir, variable.id);

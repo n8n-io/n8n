@@ -58,7 +58,6 @@ describe('Test Webhook Node', () => {
 				type: 'boolean',
 				default: true,
 				displayOptions: { show: { authentication: ['n8nOAuth2'] } },
-				envFeatureFlag: 'WEBHOOK_PRIVATE_CREDENTIALS',
 			});
 		});
 	});
@@ -208,6 +207,7 @@ describe('Test Webhook Node', () => {
 				name: 'Webhook',
 			} as any);
 			context.getNodeWebhookUrl.calledWith('default').mockReturnValue(WEBHOOK_URL);
+			context.getWebhookResourceUrl.calledWith('default').mockReturnValue(WEBHOOK_URL);
 			context.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'options') return {};
 				if (paramName === 'responseMode') return 'onReceived';

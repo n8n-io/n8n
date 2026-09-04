@@ -1,10 +1,15 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import type { Author } from 'chat';
 import { mock } from 'vitest-mock-extended';
-import { type Logger } from 'n8n-workflow';
+import { UserError, type Logger } from 'n8n-workflow';
 
+import { CacheService } from '@/services/cache/cache.service';
+
+import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
 	AgentChatIntegration,
@@ -13,9 +18,11 @@ import {
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
+
+import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
@@ -37,6 +44,7 @@ function makeBot() {
 		mention?: (thread: unknown, message: unknown) => Promise<void>;
 		subscribed?: (thread: unknown, message: unknown) => Promise<void>;
 		action?: (event: unknown) => Promise<void>;
+		slashCommand?: (event: unknown) => Promise<void>;
 	} = {};
 	const bot = {
 		onNewMention: (h: typeof handlers.mention) => {
@@ -48,7 +56,11 @@ function makeBot() {
 		onAction: (h: typeof handlers.action) => {
 			handlers.action = h;
 		},
+		onSlashCommand: (_commands: unknown, h: typeof handlers.slashCommand) => {
+			handlers.slashCommand = h;
+		},
 		getAdapter: vi.fn().mockReturnValue(undefined),
+		thread: vi.fn(),
 	};
 	return { bot, handlers };
 }
@@ -165,6 +177,22 @@ class FormattedBufferedTestIntegration extends AgentChatIntegration {
 	}
 }
 
+/** Stands in for a platform with an allowlist (e.g. Telegram in Private mode). */
+class RestrictedTestIntegration extends AgentChatIntegration {
+	readonly type = 'test-restricted';
+	readonly credentialTypes: string[] = [];
+	readonly supportedComponents: readonly RichCardComponentType[] = [];
+	readonly description = '';
+	readonly displayLabel = 'Test Restricted';
+	readonly displayIcon = 'circle';
+	isUserAllowed(author: Author): boolean {
+		return author.userId === 'allowed-user';
+	}
+	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+		return {};
+	}
+}
+
 // TODO: use real Telegram integration for testing
 
 describe('AgentChatBridge — consumeStream', () => {
@@ -236,7 +264,8 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new BufferingTestIntegration());
 		registry.register(new StreamingTestIntegration());
 		registry.register(new FormattedBufferedTestIntegration());
-		registry.register(new SlackIntegration());
+		registry.register(new RestrictedTestIntegration());
+		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 
@@ -396,10 +425,16 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenNthCalledWith(3, { markdown: 'After resume.' });
 		});
 
-		it('includes tool approval details when posting a suspension card', async () => {
+		it('posts tool approval cards without raw JSON input', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+			const resumeSchema = {
+				type: 'object' as const,
+				properties: { approved: { type: 'boolean' as const } },
+				required: ['approved'],
+				additionalProperties: false,
+			};
 
 			const agentExecutor = makeAgentExecutor([
 				{
@@ -407,6 +442,7 @@ describe('AgentChatBridge — consumeStream', () => {
 					runId: 'run-1',
 					toolCallId: 'tool-1',
 					toolName: 'approval',
+					resumeSchema,
 					suspendPayload: {
 						type: 'approval',
 						toolName: 'giphy-gif-search',
@@ -439,13 +475,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						},
 						{
 							type: 'fields',
-							fields: [
-								{ label: 'Tool', value: 'GIPHY GIF Search' },
-								{
-									label: 'Input',
-									value: '{\n  "query": "project status",\n  "limit": 3\n}',
-								},
-							],
+							fields: [{ label: 'Tool', value: 'GIPHY GIF Search' }],
 						},
 						{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
 						{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
@@ -453,7 +483,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				},
 				'run-1',
 				'tool-1',
-				undefined,
+				resumeSchema,
 				undefined,
 				'test-buffered',
 			);
@@ -592,6 +622,35 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 
+		it('names the misconfiguration when the run fails with a UserError', async () => {
+			const { bot, handlers } = makeBot();
+			const agentExecutor = {
+				// The real method is an async generator: the build error surfaces on
+				// the first `next()`, inside the stream consumer.
+				// eslint-disable-next-line require-yield
+				executeForChatPublished: vi.fn(async function* () {
+					throw new UserError('Credential "OpenAI" not found.');
+				}),
+			};
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				bufferedIntegration,
+			);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(
+				'⚠️ This agent is misconfigured: Credential "OpenAI" not found. An agent owner has to fix this in n8n.',
+			);
+		});
+
 		it('does not add a generic error when text follows an errored tool result', async () => {
 			const thread = await runMention(bufferedIntegration, [
 				erroredToolResult,
@@ -609,14 +668,17 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
-		it('does not post a fallback for a cardless integration action suspension', async () => {
+		it('drops buffered card preamble but keeps text emitted after suspension', async () => {
 			const thread = await runMention(bufferedIntegration, [
+				{ type: 'text-delta', id: 't1', delta: 'Here is the approval card.' },
 				integrationActionSuspension,
+				{ type: 'text-delta', id: 't2', delta: 'The action was approved.' },
 				finishChunk,
 			]);
 
 			expect(componentMapper.toCard).not.toHaveBeenCalled();
-			expect(thread.post).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'The action was approved.' });
 		});
 
 		it('does not post an error when a failed tool call is retried successfully', async () => {
@@ -656,6 +718,12 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenNthCalledWith(
 				1,
 				expect.objectContaining({
+					sandboxPrincipalHash: hashAgentSandboxPrincipal({
+						type: 'integration-user',
+						connectionId: 'cred-1',
+						platform: 'test-streaming',
+						platformUserId: 'u1',
+					}),
 					memory: expect.objectContaining({
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
 						resourceId: 'integration:test-streaming:u1',
@@ -719,6 +787,570 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 	});
 
+	describe('session rotation', () => {
+		function integrationWithIdleTimeout(minutes: number | null): AgentIntegrationConfig {
+			return {
+				type: 'test-streaming',
+				credentialId: 'cred-1',
+				settings: { sessionIdleTimeoutMinutes: minutes },
+			} as unknown as AgentIntegrationConfig;
+		}
+
+		/** In-memory stand-in for CacheService, so state persists across calls within a test. */
+		function mockCache(seed?: [key: string, value: unknown]) {
+			const store = new Map<string, unknown>(seed ? [seed] : []);
+			const cache = {
+				get: vi.fn(async (key: string) => store.get(key)),
+				set: vi.fn(async (key: string, value: unknown) => {
+					store.set(key, value);
+				}),
+			};
+			Container.set(CacheService, cache as never);
+			return cache;
+		}
+
+		function sessionGenerationKey(baseId: string): string {
+			return `agents:chat-session-generation:${baseId}`;
+		}
+
+		it('stays on the same session while within the idle window', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 0, lastActivityAt: Date.now() },
+			]);
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+
+			await handlers.mention!(makeThread('thread-1'), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
+					}),
+				}),
+			);
+		});
+
+		it('rotates to a new session once the idle window has elapsed', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
+			]);
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+
+			await handlers.mention!(makeThread('thread-1'), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1#1' }),
+					}),
+				}),
+			);
+		});
+
+		it('rotates again from an already-rotated generation', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 3, lastActivityAt: Date.now() - 31 * 60_000 },
+			]);
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+
+			await handlers.mention!(makeThread('thread-1'), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1#4' }),
+					}),
+				}),
+			);
+		});
+
+		it('resets on the /new command without invoking the agent, even without an idle timeout', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+			);
+			const thread = makeThread('thread-1');
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('new session'));
+		});
+
+		it('resets on a native /new slash command (e.g. Telegram, which never delivers it as a message)', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('thread-1');
+			bot.thread.mockReturnValue(thread);
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+			);
+
+			await handlers.slashCommand!({
+				channel: { id: 'thread-1' },
+				user: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(bot.thread).toHaveBeenCalledWith('thread-1');
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('new session'));
+		});
+
+		it('ignores a /new slash command from a user the platform allowlist rejects', async () => {
+			const cache = mockCache();
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('thread-1');
+			bot.thread.mockReturnValue(thread);
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'test-restricted', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.slashCommand!({
+				channel: { id: 'thread-1' },
+				user: { userId: 'stranger', userName: 'stranger' },
+			});
+
+			// Nothing was reset and nothing was said back — a rejected user must not
+			// even learn that the command exists.
+			expect(cache.set).not.toHaveBeenCalled();
+			expect(messageContextStore.unbindSession).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+
+			// Same handler, allowed user: proves the gate is what rejected the
+			// command above, not a mis-wired fixture.
+			await handlers.slashCommand!({
+				channel: { id: 'thread-1' },
+				user: { userId: 'allowed-user', userName: 'insider' },
+			});
+
+			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('new session'));
+		});
+
+		it('carries a /new reset over to the next message, even without an idle timeout configured', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+			);
+			const thread = makeThread('thread-1');
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+			await handlers.mention!(thread, {
+				text: 'how many webhook tests?',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1#1' }),
+					}),
+				}),
+			);
+		});
+
+		it('does not rotate an idle-expired thread that still has an open suspension', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
+			]);
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('thread-1');
+			const agentExecutor = {
+				...makeAgentExecutor([finishChunk]),
+				findOpenSuspension: vi.fn().mockResolvedValue({ suspendPayload: {} }),
+			};
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			// Checked against the ORIGINAL (unrotated) thread id — had idle-timeout
+			// rotated first, this exact-match lookup would have missed the open
+			// suspension and silently started a second run instead of parking here.
+			expect(agentExecutor.findOpenSuspension).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				threadId: 'agent-1:thread-1',
+			});
+			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('still waiting'));
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		});
+
+		it('looks up a bound task session by the base thread id, not a rotated one', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 2, lastActivityAt: Date.now() },
+			]);
+			const { bot, handlers } = makeBot();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+				messageContextStore,
+			);
+
+			await handlers.mention!(makeThread('thread-1'), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			// The binding (if any) was written by an outbound send keyed on the
+			// base id, which has no notion of session rotation — so the lookup
+			// must use that same base id, not whatever generation (#2) is active.
+			expect(messageContextStore.resolveSession).toHaveBeenCalledWith('agent-1:thread-1');
+		});
+
+		it('/new clears a bound task session so the next message actually starts fresh', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue({
+				threadId: 'task-1-uuid',
+				resourceId: 'task:task-1',
+			});
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+				messageContextStore,
+			);
+			const thread = makeThread('thread-1');
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			// Without clearing the binding, the very next message would still be
+			// redirected into the bound task's thread and its memory regardless
+			// of the reset.
+			expect(messageContextStore.unbindSession).toHaveBeenCalledWith('agent-1:thread-1');
+		});
+
+		it('reports an error instead of confirming success when unbinding the task session fails', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			messageContextStore.unbindSession.mockRejectedValue(new Error('db unavailable'));
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+				messageContextStore,
+			);
+			const thread = makeThread('thread-1');
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.post).not.toHaveBeenCalledWith(expect.stringContaining('new session'));
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+
+			// Nothing was left half-applied: the next message resolves to the
+			// original (unrotated) thread id, as if /new had never been sent.
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
+					}),
+				}),
+			);
+		});
+
+		it('reports an error and stays on the unbound base session when the rotation write fails', async () => {
+			const cache = mockCache();
+			cache.set.mockRejectedValueOnce(new Error('cache unavailable'));
+			const { bot, handlers } = makeBot();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			let bound = true;
+			messageContextStore.resolveSession.mockImplementation(async () =>
+				bound ? { threadId: 'task-1-uuid', resourceId: 'task:task-1' } : null,
+			);
+			messageContextStore.unbindSession.mockImplementation(async () => {
+				bound = false;
+			});
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+				messageContextStore,
+			);
+			const thread = makeThread('thread-1');
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.post).not.toHaveBeenCalledWith(expect.stringContaining('new session'));
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+
+			// The two stores cannot be written atomically, so the unbind that
+			// already landed stays landed. That leaves the thread unbound but
+			// unrotated — the same state a server-side clearSessionBindings
+			// produces — so the next message runs a normal turn on the base
+			// session rather than being redirected into the task's memory. The
+			// error reply above asks the user to retry, and a retry is idempotent.
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: {
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
+						resourceId: 'integration:test-streaming:u1',
+					},
+				}),
+			);
+		});
+
+		it('unbinds and rotates as one unit — a message racing a reset of a bound thread never lands back on the bound task session', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			// Models the real store: bound until unbindSession's write actually
+			// lands, exactly as `IntegrationMessageContextService` would behave.
+			let bound = true;
+			messageContextStore.resolveSession.mockImplementation(async () =>
+				bound ? { threadId: 'task-1-uuid', resourceId: 'task:task-1' } : null,
+			);
+			// Holds the reset inside its critical section (unbind is called first,
+			// see resetSession) until the test releases it, so the concurrent
+			// message below is provably attempting to run while the reset is
+			// still in flight, not just racing on incidental scheduling.
+			let releaseUnbind!: () => void;
+			const unbindGate = new Promise<void>((resolve) => {
+				releaseUnbind = resolve;
+			});
+			let unbindStarted = false;
+			messageContextStore.unbindSession.mockImplementation(async () => {
+				unbindStarted = true;
+				await unbindGate;
+				bound = false;
+			});
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+				messageContextStore,
+			);
+			const thread = makeThread('thread-1');
+
+			const resetPromise = handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+			await vi.waitFor(() => expect(unbindStarted).toBe(true));
+
+			// Started while the reset is still gated inside its lock, with the
+			// binding still (correctly) in place. If the reset's two steps
+			// weren't one critical section, this could resolve the rotated
+			// generation while resolveSession still finds the stale binding
+			// underneath it and gets redirected into the task's old memory.
+			const messagePromise = handlers.mention!(thread, {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			// Drain every currently-pending microtask (no timers are involved
+			// anywhere in this path, so this is fully deterministic) without
+			// releasing the gate yet. If unbind+rotate weren't one critical
+			// section, nothing here would still be blocking the concurrent
+			// message, and it would already have called resolveSession — while
+			// the binding is still in place — by this point.
+			for (let i = 0; i < 20; i++) await Promise.resolve();
+			expect(messageContextStore.resolveSession).not.toHaveBeenCalled();
+
+			releaseUnbind();
+			await Promise.all([resetPromise, messagePromise]);
+
+			// Only resolvable after the lock released — i.e. after both the
+			// unbind and the generation rotation had already landed — so this
+			// runs on the fresh rotated session, never redirected to the task's.
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1#1' }),
+						resourceId: expect.not.stringContaining('task:'),
+					}),
+				}),
+			);
+		});
+	});
+
+	describe('resumeInAgentThread', () => {
+		function makeResumeBridge(integration: AgentIntegrationConfig) {
+			const { bot } = makeBot();
+			bot.thread.mockReturnValue(makeThread('1001'));
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const bridge = new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integration,
+			);
+			return { bot, bridge };
+		}
+
+		it('strips a rotation suffix before reconstructing the platform thread id', async () => {
+			const { bot, bridge } = makeResumeBridge({
+				type: 'test-formatted-buffered',
+				credentialId: 'cred-1',
+			} as unknown as AgentIntegrationConfig);
+
+			await bridge
+				.resumeInAgentThread('agent-1:chat:bot1-1001#2', 'run-1', 'tool-1', {})
+				.catch(() => {});
+
+			expect(bot.thread).toHaveBeenCalledWith('1001');
+		});
+
+		it('reconstructs an unrotated thread id unchanged', async () => {
+			const { bot, bridge } = makeResumeBridge({
+				type: 'test-formatted-buffered',
+				credentialId: 'cred-1',
+			} as unknown as AgentIntegrationConfig);
+
+			await bridge
+				.resumeInAgentThread('agent-1:chat:bot1-1001', 'run-1', 'tool-1', {})
+				.catch(() => {});
+
+			expect(bot.thread).toHaveBeenCalledWith('1001');
+		});
+
+		it('strips a rotation suffix even for platforms with no formatThreadId override', async () => {
+			const { bot, bridge } = makeResumeBridge(streamingIntegration);
+
+			await bridge.resumeInAgentThread('agent-1:thread-1#3', 'run-1', 'tool-1', {}).catch(() => {});
+
+			expect(bot.thread).toHaveBeenCalledWith('thread-1');
+		});
+	});
+
 	describe('when the inbound message carries attachments', () => {
 		function makeAttachmentService() {
 			let counter = 0;
@@ -738,6 +1370,8 @@ describe('AgentChatBridge — consumeStream', () => {
 		function makeBridge(
 			agentExecutor: ReturnType<typeof makeAgentExecutor>,
 			attachmentService: ReturnType<typeof makeAttachmentService>,
+			integration: AgentIntegrationConfig = streamingIntegration,
+			discordHttpClient?: HttpRequestClient,
 		) {
 			const { bot, handlers } = makeBot();
 			new AgentChatBridge(
@@ -747,9 +1381,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				componentMapper,
 				logger,
 				'project-1',
-				streamingIntegration,
+				integration,
 				undefined,
 				attachmentService as never,
+				discordHttpClient,
 			);
 			return handlers;
 		}
@@ -793,6 +1428,64 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: 'look at this',
+					attachments: [
+						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
+					],
+				}),
+			);
+		});
+
+		it('downloads Discord CDN attachments without fetching untrusted URLs', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const request = vi.fn().mockResolvedValue({
+				body: pngBytes,
+				headers: {},
+				statusCode: 200,
+			});
+			const httpClient = { request } as unknown as HttpRequestClient;
+			const handlers = makeBridge(
+				agentExecutor,
+				attachmentService,
+				{
+					type: 'discord',
+					credentialId: 'cred-discord',
+				} as unknown as AgentIntegrationConfig,
+				httpClient,
+			);
+			const attachmentUrl = 'https://cdn.discordapp.com/attachments/123/456/photo.png?ex=signed';
+
+			await handlers.mention!(makeThread(), {
+				text: 'what is this?',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						url: attachmentUrl,
+						name: 'photo.png',
+						mimeType: 'image/png',
+					},
+					{
+						type: 'image',
+						url: 'http://127.0.0.1/internal.png',
+						name: 'internal.png',
+						mimeType: 'image/png',
+					},
+				],
+			});
+
+			expect(request).toHaveBeenCalledOnce();
+			expect(request).toHaveBeenCalledWith(expect.objectContaining({ url: attachmentUrl }));
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					source: 'discord',
+					fileName: 'photo.png',
+					mimeType: 'image/png',
+				}),
+			);
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'what is this?\n[Attachment "internal.png" could not be processed]',
 					attachments: [
 						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
 					],
@@ -860,6 +1553,36 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
 				expect.objectContaining({
 					fileName: 'a'.repeat(MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH),
+				}),
+			);
+		});
+
+		it('runs a normal turn for a /new sent with an attachment instead of resetting the session', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			// Treating this as a reset would drop the attachment along with it —
+			// the reset command only counts when it arrives on its own.
+			expect(thread.post).not.toHaveBeenCalledWith(expect.stringContaining('new session'));
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: '/new',
+					attachments: [expect.objectContaining({ id: 'att-1', fileName: 'photo.png' })],
 				}),
 			);
 		});
@@ -1278,6 +2001,50 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
 		});
 
+		it('uses the user message as a ready thread root for Agent view DMs', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() =>
+					toStream([
+						{ type: 'text-delta', id: 't1', delta: 'Hello' },
+						{ type: 'finish', finishReason: 'stop' },
+					]),
+				),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience: 'agent' },
+				},
+			);
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(setAssistantStatus).toHaveBeenCalledWith('D123', '1779466577.518139', '');
+		});
+
 		it('retries top-level Slack assistant status when Slack has not materialized the thread yet', async () => {
 			vi.useFakeTimers();
 			const { bot, handlers } = makeBot();
@@ -1580,7 +2347,15 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
 				'agent-1:thread-1',
 				'u1',
-				expect.objectContaining({ replyExpectation: 'optional' }),
+				expect.objectContaining({
+					replyExpectation: 'optional',
+					replyTarget: {
+						type: 'thread',
+						threadId: 'thread-1',
+						channelId: 'channel-1',
+					},
+					replyMessageId: 'message-2',
+				}),
 			);
 		});
 
@@ -1736,6 +2511,425 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 	});
 
+	describe('session binding on inbound', () => {
+		it('continues the bound task session when a reply arrives in a bound thread', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:D123:1001');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue({
+				threadId: 'task-1-uuid',
+				resourceId: 'task:task-1',
+			});
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				id: '1002',
+				text: 'follow-up in the thread',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(messageContextStore.resolveSession).toHaveBeenCalledWith('agent-1:slack:D123:1001');
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'task-1-uuid' }),
+						resourceId: 'task:task-1',
+					}),
+				}),
+			);
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:slack:D123:1001',
+				'u1',
+				expect.objectContaining({ messageId: '1002', interactingUserId: 'u1' }),
+			);
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'task-1-uuid',
+				'task:task-1',
+				expect.objectContaining({
+					messageId: '1002',
+					interactingUserId: 'u1',
+					target: expect.objectContaining({ threadId: 'slack:D123:1001' }),
+				}),
+			);
+		});
+
+		it('stores inbound attachments on the bound task thread', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:D123:1001');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue({
+				threadId: 'task-1-uuid',
+				resourceId: 'task:task-1',
+			});
+			const attachmentService = {
+				storeInbound: vi.fn(
+					async (params: { fileName: string; mimeType: string; data: Buffer }) => ({
+						id: 'att-1',
+						fileName: params.fileName,
+						mimeType: params.mimeType,
+						fileSizeBytes: params.data.byteLength,
+					}),
+				),
+				deleteByIds: vi.fn(async () => {}),
+			};
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+				attachmentService as never,
+			);
+
+			const pngBytes = Buffer.from([
+				0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+				0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f,
+				0x15, 0xc4, 0x89,
+			]);
+
+			await handlers.subscribed!(thread, {
+				id: '1002',
+				text: 'see attached',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'task-1-uuid',
+					resourceId: 'task:task-1',
+					fileName: 'photo.png',
+				}),
+			);
+		});
+
+		it('starts a fresh session when no binding exists', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:D123:1001');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				id: '1002',
+				text: 'follow-up in the thread',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:D123:1001' }),
+						resourceId: 'integration:slack:u1',
+					}),
+				}),
+			);
+		});
+
+		it('keeps a conversation-scoped Slack DM on that thread id', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:D123:');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience: 'agent' },
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.mention!(thread, {
+				id: '1001',
+				text: 'hello from a dm',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(bot.thread).not.toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:D123:' }),
+					}),
+				}),
+			);
+		});
+
+		it('re-anchors a top-level Slack channel post at the message ts', async () => {
+			const { bot, handlers } = makeBot();
+			const inbound = makeThread('slack:C123:');
+			const anchored = makeThread('slack:C123:456.789');
+			bot.thread = vi.fn().mockReturnValue(anchored);
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.mention!(inbound, {
+				id: '456.789',
+				text: 'hello channel',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(bot.thread).toHaveBeenCalledWith('slack:C123:456.789');
+			expect(anchored.subscribe).toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:C123:456.789' }),
+					}),
+				}),
+			);
+		});
+
+		it('keeps a conversation-scoped Slack group DM on that thread id', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:G123:');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.mention!(thread, {
+				id: '1001',
+				text: 'hello from a group dm',
+				author: { userId: 'u1', userName: 'user1' },
+				raw: { channel_type: 'mpim', channel: 'G123' },
+			});
+
+			expect(bot.thread).not.toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:G123:' }),
+					}),
+				}),
+			);
+		});
+
+		it('re-anchors a top-level Slack private channel post at the message ts', async () => {
+			const { bot, handlers } = makeBot();
+			const inbound = makeThread('slack:G123:');
+			const anchored = makeThread('slack:G123:456.789');
+			bot.thread = vi.fn().mockReturnValue(anchored);
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.mention!(inbound, {
+				id: '456.789',
+				text: 'hello private channel',
+				author: { userId: 'u1', userName: 'user1' },
+				raw: { channel_type: 'group', channel: 'G123' },
+			});
+
+			expect(bot.thread).toHaveBeenCalledWith('slack:G123:456.789');
+			expect(anchored.subscribe).toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:G123:456.789' }),
+					}),
+				}),
+			);
+		});
+	});
+
+	describe('while the run is parked on a suspension', () => {
+		function bridgeWithOpenSuspension(suspendPayload: unknown | null) {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([])),
+				findOpenSuspension: vi
+					.fn()
+					.mockResolvedValue(suspendPayload === null ? null : { suspendPayload }),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+
+			return { handlers, thread, agentExecutor };
+		}
+
+		// Starting a second run strips the pending tool call from the model's
+		// context, so it calls the same tool again — a duplicate side effect.
+		it('answers instead of starting a second run', async () => {
+			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
+				type: 'workflow_wait',
+				title: 'Waiting on "Approval workflow"',
+				components: [{ type: 'section', text: 'paused' }],
+			});
+
+			await handlers.subscribed!(thread, {
+				text: 'any news?',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(agentExecutor.findOpenSuspension).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				threadId: 'agent-1:thread-1',
+			});
+			expect(thread.post).toHaveBeenCalledWith(
+				expect.stringContaining('Waiting on "Approval workflow"'),
+			);
+		});
+
+		// A fresh @mention lands in the same thread as the parked run, so it has
+		// to be gated on the same grounds as a follow-up message.
+		it('answers a new mention in the parked thread too', async () => {
+			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
+				title: 'Approval required',
+				components: [{ type: 'section', text: 'approve?' }],
+			});
+
+			await handlers.mention!(thread, {
+				text: '@bot hello',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('Approval required'));
+		});
+
+		// The gate must not swallow the message: nothing ran, so the handler's error
+		// reply is all that can tell the user their message went nowhere.
+		it('surfaces a failure to post the notice instead of dropping the message', async () => {
+			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
+				title: 'Approval required',
+				components: [{ type: 'section', text: 'approve?' }],
+			});
+			thread.post.mockRejectedValueOnce(new Error('platform unavailable'));
+
+			await handlers.subscribed!(thread, {
+				text: 'any news?',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenLastCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it('runs normally when nothing is parked', async () => {
+			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension(null);
+
+			await handlers.subscribed!(thread, {
+				text: 'hello',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('status handle cleanup', () => {
 		it('clears the status handle when execution fails before stream consumption', async () => {
 			const { bot, handlers } = makeBot();
@@ -1801,7 +2995,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 
 	beforeEach(() => {
 		const registry = new ChatIntegrationRegistry();
-		registry.register(new SlackIntegration());
+		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 

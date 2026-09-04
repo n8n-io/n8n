@@ -11,9 +11,14 @@ import { isRecord } from '@n8n/utils/is-record';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { agentHandler } from './artifacts/agent-handler';
+import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { writeScenarioVerificationSnapshot, type VerificationArtifact } from './scenario-execution';
-import { isTransientExecutionAbort, MAX_EXEC_ATTEMPTS } from './transient-error';
+import {
+	throwIfServerBudgetStop,
+	isTransientExecutionAbort,
+	MAX_EXEC_ATTEMPTS,
+} from './transient-error';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient } from '../clients/n8n-client';
 import type {
@@ -97,6 +102,9 @@ export async function executeAgentScenario(
 			timeoutMs,
 		);
 	}
+	// Killed for time, not by the builder — throw so the timeout path classifies it.
+	throwIfServerBudgetStop(evalResult);
+
 	const execMs = Date.now() - execStart;
 
 	logger.info(
@@ -142,6 +150,7 @@ export async function executeAgentScenario(
 		`No verification result — verifier exhausted all attempts${attemptErrors.length > 0 ? ` (${attemptErrors.join('; ')})` : ''}`;
 	const failureCategory = result?.failureCategory ?? (result ? undefined : 'verification_failure');
 	const rootCause = result?.rootCause;
+	const attribution = attributionForScenario({ passed, incomplete, failureCategory });
 
 	const categoryLabel = failureCategory ? ` [${failureCategory}]` : '';
 	const statusLabel = incomplete ? 'INCOMPLETE (excluded from scoring)' : passed ? 'PASS' : 'FAIL';
@@ -160,6 +169,7 @@ export async function executeAgentScenario(
 		score: passed ? 1 : 0,
 		reasoning,
 		failureCategory,
+		attribution,
 		rootCause,
 		...(incomplete ? { incomplete: true } : {}),
 	};

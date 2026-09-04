@@ -5,6 +5,13 @@ import path from 'node:path';
 import yaml from 'yaml';
 
 import {
+	HTTP_METHODS,
+	type HttpMethod,
+	resolvePublicApiRoutes,
+	scopeRequirementToString,
+	toOpenApiPathTemplate,
+} from '../../public-api-route-resolver';
+import {
 	extractScopeFromEovHandlerChain,
 	loadPublicControllerScopeMap,
 	publicApiRouteKey,
@@ -18,13 +25,9 @@ vi.unmock('node:fs');
 const PUBLIC_API_ROOT = path.resolve(__dirname, '..', '..');
 const OPENAPI_SPEC_PATH = path.join(PUBLIC_API_ROOT, 'v1', 'openapi.yml');
 
-const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
-
-type Method = (typeof HTTP_METHODS)[number];
-
 type Operation = {
 	pathStr: string;
-	method: Method;
+	method: HttpMethod;
 	operationId: string;
 	handlerPath: string | null;
 	requiredScope: string | null;
@@ -35,9 +38,10 @@ type RawOperation = {
 	'x-eov-operation-id'?: string;
 	'x-eov-operation-handler'?: string;
 	'x-required-scope'?: string;
+	'x-decorator-routed'?: boolean;
 };
 
-async function loadOperations(): Promise<Operation[]> {
+async function loadEovOperations(): Promise<Operation[]> {
 	const spec = await RefParser.dereference(OPENAPI_SPEC_PATH);
 	const paths = (spec as { paths?: Record<string, Record<string, RawOperation>> }).paths ?? {};
 	const ops: Operation[] = [];
@@ -45,12 +49,15 @@ async function loadOperations(): Promise<Operation[]> {
 		for (const method of HTTP_METHODS) {
 			const op = methods[method];
 			if (!op) continue;
+			if (op['x-decorator-routed'] === true) continue;
+
 			const operationId = op['x-eov-operation-id'] ?? op.operationId;
 			if (!operationId) {
 				throw new Error(
 					`Missing operationId / x-eov-operation-id for ${method.toUpperCase()} ${pathStr}`,
 				);
 			}
+
 			ops.push({
 				pathStr,
 				method,
@@ -61,6 +68,20 @@ async function loadOperations(): Promise<Operation[]> {
 		}
 	}
 	return ops;
+}
+
+function loadDecoratorOperations(): Operation[] {
+	return resolvePublicApiRoutes().map((route) => ({
+		pathStr: toOpenApiPathTemplate(route.path),
+		method: route.method,
+		operationId: route.handlerName,
+		handlerPath: null,
+		requiredScope: route.apiKeyScope ? scopeRequirementToString(route.apiKeyScope) : 'none',
+	}));
+}
+
+async function loadOperations(): Promise<Operation[]> {
+	return [...(await loadEovOperations()), ...loadDecoratorOperations()];
 }
 
 async function loadEovHandlerScope(

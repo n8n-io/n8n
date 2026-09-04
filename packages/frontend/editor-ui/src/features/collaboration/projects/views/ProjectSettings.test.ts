@@ -16,8 +16,8 @@ import type { Project } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
 import { createProjectListItem } from '../__tests__/utils';
 import { createUser } from '@/__tests__/data/users';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { FrontendSettings } from '@n8n/api-types';
@@ -173,6 +173,7 @@ describe('ProjectSettings', () => {
 
 		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
+		projectsStore.fetchProjectPoolSettings.mockResolvedValue(undefined);
 		projectsStore.globalProjectPermissions = { list: true };
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
@@ -234,7 +235,7 @@ describe('ProjectSettings', () => {
 					role: 'project:admin',
 				},
 			],
-			scopes: ['project:read', 'project:update'],
+			scopes: ['project:read', 'project:update', 'project:manageMembers'],
 			rolesManaged: false,
 		};
 
@@ -364,6 +365,56 @@ describe('ProjectSettings', () => {
 			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'true');
 			// remove action is available -> non-empty actions array
 			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '1');
+		});
+
+		it('blocks member management when the project role lacks project:manageMembers', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:update'],
+				rolesManaged: false,
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('project-members-select')).toHaveAttribute('data-disabled', 'true');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'false');
+			// removing a member needs the same scope -> no actions offered
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '0');
+		});
+
+		it('still shows member management when the role has project:manageMembers but not project:update', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:manageMembers'],
+				rolesManaged: false,
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('project-members-select')).toHaveAttribute('data-disabled', 'false');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'true');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '1');
+		});
+
+		it('exposes only member management to a project:manageMembers role, not project editing', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:manageMembers'],
+				rolesManaged: false,
+			};
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('project-members-table')).toBeInTheDocument();
+			// Editing project details and deleting the project both need project:update
+			expect(queryByTestId('project-settings-name-input')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-description-input')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-save-button')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-cancel-button')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-delete-button')).not.toBeInTheDocument();
 		});
 	});
 
@@ -724,17 +775,41 @@ describe('ProjectSettings', () => {
 	});
 
 	describe('User search for member invitation', () => {
-		it('preloads all users without projectId filter on mount when user has project:update scope', async () => {
+		it('preloads all users without projectId filter on mount when user has project:manageMembers scope', async () => {
 			renderComponent();
 			await nextTick();
 
 			expect(usersStore.fetchUsers).toHaveBeenCalledWith({ take: 50, filter: {} });
 		});
 
-		it('skips user preloading on mount when user cannot update the project', async () => {
+		it('preloads all users when the role has project:manageMembers but not project:update', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:manageMembers'],
+			};
+
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).toHaveBeenCalledWith({ take: 50, filter: {} });
+		});
+
+		it('skips user preloading on mount when user cannot manage members', async () => {
 			projectsStore.currentProject = {
 				...projectsStore.currentProject!,
 				scopes: ['project:read'],
+			};
+
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).not.toHaveBeenCalled();
+		});
+
+		it('skips user preloading when the role has project:update but not project:manageMembers', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:update'],
 			};
 
 			renderComponent();

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.26.0",
+  "version": "0.30.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -9,8 +9,8 @@
     },
     "./package.json": "./package.json",
     "./scripts/generate-types": {
-      "types": "./src/generate-types/generate-types.ts",
-      "default": "./src/generate-types/generate-types.ts"
+      "types": "./dist/generate-types/generate-types.d.ts",
+      "default": "./dist/generate-types/generate-types.js"
     },
     "./dist/generate-types/generate-types": {
       "default": "./dist/generate-types/generate-types.js"
@@ -55,6 +55,8 @@
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
     "generate-types": "npx tsx src/generate-types/generate-types.ts",
+    "schema-coverage": "node dist/generate-types/schema-coverage-cli.js",
+    "schema-harvest": "node dist/generate-types/schema-harvest-cli.js",
     "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
     "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
     "json-to-code": "npx tsx src/cli/index.ts json-to-code",

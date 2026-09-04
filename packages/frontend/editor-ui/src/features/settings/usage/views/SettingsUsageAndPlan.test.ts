@@ -6,7 +6,7 @@ import { useUsageStore } from '../usage.store';
 import SettingsUsageAndPlan from './SettingsUsageAndPlan.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@n8n/composables/useToast';
 import { waitFor } from '@testing-library/vue';
@@ -123,38 +123,7 @@ describe('SettingsUsageAndPlan', () => {
 		expect(container.querySelector('.n8n-badge')).toHaveTextContent('Registered');
 	});
 
-	it('should show correct success message for non-EULA activation (edition)', async () => {
-		usageStore.isLoading = false;
-		usageStore.planName = 'Community';
-		usageStore.planId = '';
-		usersStore.currentUser = {
-			globalScopes: ['license:manage'],
-		} as IUser;
-		rbacStore.setGlobalScopes(['license:manage']);
-		usageStore.activateLicense.mockImplementation(async () => {});
-
-		const { getByRole } = renderComponent();
-
-		await userEvent.click(getByRole('button', { name: /activation/i }));
-		const input = document.querySelector('input') as HTMLInputElement;
-		await userEvent.type(input, 'test-key-123');
-		await userEvent.click(getByRole('button', { name: /activate/i }));
-
-		await waitFor(() => {
-			expect(usageStore.activateLicense).toHaveBeenCalledTimes(1);
-			expect(usageStore.activateLicense).toHaveBeenLastCalledWith('test-key-123', undefined);
-		});
-
-		expect(mockToast.showMessage).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: 'success',
-				title: 'License activated',
-				message: 'Your Community Edition has been successfully activated.',
-			}),
-		);
-	});
-
-	it('should show correct success message for non-EULA activation (plan)', async () => {
+	it('should prompt for a restart after license activation', async () => {
 		usageStore.isLoading = false;
 		usageStore.planName = 'Business';
 		usageStore.planId = 'business-2024';
@@ -164,7 +133,7 @@ describe('SettingsUsageAndPlan', () => {
 		rbacStore.setGlobalScopes(['license:manage']);
 		usageStore.activateLicense.mockImplementation(async () => {});
 
-		const { getByRole } = renderComponent();
+		const { findByRole, findByTestId, getByRole, queryByRole } = renderComponent();
 
 		await userEvent.click(getByRole('button', { name: /activation/i }));
 		const input = document.querySelector('input') as HTMLInputElement;
@@ -176,13 +145,11 @@ describe('SettingsUsageAndPlan', () => {
 			expect(usageStore.activateLicense).toHaveBeenLastCalledWith('test-key-123', undefined);
 		});
 
-		expect(mockToast.showMessage).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: 'success',
-				title: 'License activated',
-				message: 'Your Business Plan has been successfully activated.',
-			}),
-		);
+		const successDialog = await findByRole('dialog', { name: 'License activated' });
+		expect(successDialog).toHaveTextContent('Restart n8n to make all licensed features available.');
+
+		await userEvent.click(await findByTestId('license-activation-success-close-button'));
+		await waitFor(() => expect(queryByRole('dialog', { name: 'License activated' })).toBeNull());
 	});
 
 	describe('License activation with EULA', () => {
@@ -254,12 +221,8 @@ describe('SettingsUsageAndPlan', () => {
 				);
 			});
 
-			expect(mockToast.showMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'success',
-					title: 'License activated',
-					message: 'You have accepted the EULA and successfully activated your Enterprise plan.',
-				}),
+			expect(await findByTestId('license-activation-success-dialog')).toHaveTextContent(
+				'Restart n8n to make all licensed features available.',
 			);
 		});
 
@@ -338,12 +301,6 @@ describe('SettingsUsageAndPlan', () => {
 					'https://example.com/eula.pdf',
 				);
 			});
-
-			expect(mockToast.showMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'success',
-				}),
-			);
 		});
 
 		it('should show error when activation fails without EULA requirement', async () => {
@@ -376,17 +333,17 @@ describe('SettingsUsageAndPlan', () => {
 			Object.assign(mockRouteQuery, { key: 'query-param-key' });
 			usageStore.activateLicense.mockResolvedValueOnce(undefined);
 
-			renderComponent();
+			const { findByTestId } = renderComponent();
 
 			await waitFor(
 				() => {
 					expect(usageStore.activateLicense).toHaveBeenCalledWith('query-param-key');
 					expect(mockReplace).toHaveBeenCalledWith({ query: {} });
-					expect(mockToast.showMessage).toHaveBeenCalledWith(
-						expect.objectContaining({ type: 'success' }),
-					);
 				},
 				{ timeout: 2000 },
+			);
+			expect(await findByTestId('license-activation-success-dialog')).toHaveTextContent(
+				'Restart n8n to make all licensed features available.',
 			);
 		});
 

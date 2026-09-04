@@ -4,8 +4,10 @@ import { Service } from '@n8n/di';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
+import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
+import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
@@ -24,8 +26,12 @@ export interface WorkflowExportRequest {
 	workflowIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
+	workflowVersionPolicy: WorkflowVersionPolicy;
 
-	// Directory the workflow is written under. e.g. folders/{folderId}/
+	/**
+	 * Target of the folder or project holding the workflows, which are written
+	 * under `<basePrefix>/workflows/`. Empty for a top-level workflow export.
+	 */
 	basePrefix?: string;
 }
 
@@ -50,7 +56,11 @@ export class WorkflowExporter {
 			request.workflowIds,
 			request.user,
 			['workflow:export'],
-			{ includeParentFolder: true, includeTags: request.includeTags },
+			{
+				includeParentFolder: true,
+				includeTags: request.includeTags,
+				includeActiveVersion: needsActiveVersion(request.workflowVersionPolicy),
+			},
 		);
 
 		await assertEveryRequestedEntityAccessible(
@@ -60,32 +70,28 @@ export class WorkflowExporter {
 			async (ids) => await this.workflowFinder.findExistingWorkflowIds(ids),
 		);
 
-		const workflowsForExport = this.orderWorkflowsByRequest(request.workflowIds, workflows);
+		const workflowsForExport = this.orderWorkflowsByRequest(
+			request.workflowIds,
+			applyWorkflowVersionPolicy(workflows, request.workflowVersionPolicy),
+		);
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
 		const tags: WorkflowTagUsage[] = [];
 		const nodeTypes: WorkflowNodeTypeSource[] = [];
-		const fileNames = new UniqueFilenameAllocator(
-			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
-			'workflow',
-		);
+		const workflowsDir = packageDirectory('workflows', request.basePrefix);
 
 		for (const workflow of workflowsForExport) {
-			const target = fileNames.allocate(workflow.name);
-			const serialized = this.workflowSerializer.serialize(workflow, {
-				includeTags: request.includeTags,
-			});
-
-			request.writer.writeDirectory(target);
-			request.writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
-
-			entries.push({
-				id: workflow.id,
-				name: workflow.name,
-				target,
-			});
+			entries.push(
+				await writeManifestEntry(
+					request.writer,
+					'workflows',
+					workflowsDir,
+					workflow,
+					this.workflowSerializer.serialize(workflow, { includeTags: request.includeTags }),
+				),
+			);
 
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));

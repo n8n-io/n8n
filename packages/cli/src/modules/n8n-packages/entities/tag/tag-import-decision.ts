@@ -1,4 +1,5 @@
 import type {
+	TagReconcile,
 	TagRef,
 	TagRename,
 	TagResolutionFailure,
@@ -20,6 +21,7 @@ export type TagEffect =
 	| { action: 'attach'; target: TagRef }
 	| { action: 'create'; tag: TagRef }
 	| { action: 'rename'; rename: TagRename }
+	| { action: 'reconcile'; reconcile: TagReconcile }
 	| { action: 'drop'; tag: TagRef }
 	| { action: 'fail'; failure: TagDecisionFailure };
 
@@ -33,16 +35,17 @@ const TAG_ID_MAX_LENGTH = 36;
 
 // \p{Cs}: a lone UTF-16 surrogate would collapse to U+FFFD in the database.
 // Format chars (\p{Cf}) stay allowed: entity validation accepts them and
-// ZWJ-joined emoji names are legitimate, so gating them would break re-import
-// of a package n8n itself exported.
-const FORBIDDEN_NAME_CHARS = /[\p{Cc}\p{Cs}]/u;
+// ZWJ-joined emoji names/ids are legitimate, so gating them would break
+// re-import of a package n8n itself exported.
+const FORBIDDEN_CHARS = /[\p{Cc}\p{Cs}]/u;
 
 /**
  * Decides the fate of one package tag reference. Matching is by id;
  * `targetTagWithSameId` is the target instance's occupant of the requirement's
  * id and `nameHolder` is a *different* target tag currently holding the
  * requirement's (trimmed) name. Name and id shape are only validated when the
- * effect would write (create or rename) — a dropped tag never gates.
+ * effect would write them (create/rename write the name, create/reconcile
+ * write the id) — a dropped tag never gates.
  */
 export function decideTagImportAction(
 	requirement: TagRef,
@@ -84,8 +87,9 @@ function decideForMatchedId(
 		);
 	}
 
-	// `fail`, or `rename` degraded because another tag holds the wanted
-	// name — resolving that requires id reconciliation (LIGO-874).
+	// `fail`, or `rename` degraded because another tag holds the wanted name —
+	// the drifted id-matched tag and the name holder are two live target tags,
+	// so any resolution would merge them; out of scope for an import.
 	return {
 		action: 'fail',
 		failure: {
@@ -114,6 +118,16 @@ function decideForAbsentId(
 		if (conflictPolicy === TagConflictPolicy.Skip) {
 			return { action: 'drop', tag: { id: sourceId, name } };
 		}
+		// The holder already carries the wanted name, so only the adopted id
+		// needs validating.
+		if (conflictPolicy === TagConflictPolicy.Rename) {
+			return (
+				invalidId(sourceId, name) ?? {
+					action: 'reconcile',
+					reconcile: { id: sourceId, name, oldId: nameHolder.id },
+				}
+			);
+		}
 		return {
 			action: 'fail',
 			failure: { kind: 'name-collision', sourceId, name, existingTagId: nameHolder.id },
@@ -127,7 +141,7 @@ function decideForAbsentId(
 }
 
 function invalidName(name: string, sourceId: string): TagEffect | undefined {
-	if (FORBIDDEN_NAME_CHARS.test(name)) {
+	if (FORBIDDEN_CHARS.test(name)) {
 		return { action: 'fail', failure: { kind: 'invalid-name', sourceId, name } };
 	}
 	// Code points, not UTF-16 units: both @Length (validator.js) and varchar(24) count code points.
@@ -137,6 +151,8 @@ function invalidName(name: string, sourceId: string): TagEffect | undefined {
 }
 
 function invalidId(sourceId: string, name: string): TagEffect | undefined {
-	if (sourceId.length <= TAG_ID_MAX_LENGTH) return undefined;
+	if (sourceId.length <= TAG_ID_MAX_LENGTH && !FORBIDDEN_CHARS.test(sourceId)) {
+		return undefined;
+	}
 	return { action: 'fail', failure: { kind: 'invalid-id', sourceId, name } };
 }

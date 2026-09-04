@@ -4,7 +4,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { LOCAL_STORAGE_WORKFLOW_REVIEW_SUBMITTED_DIALOG_HIDDEN } from '@/app/constants/localStorage';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import WorkflowReviewSubmittedDialog from './WorkflowReviewSubmittedDialog.vue';
 
@@ -12,7 +12,7 @@ const router = createRouter({
 	history: createMemoryHistory(),
 	routes: [
 		{
-			path: '/workflow-review-requests/:reviewRequestId?',
+			path: '/reviews/:reviewRequestId?',
 			name: WORKFLOW_REVIEW_REQUESTS_VIEW,
 			component: { template: '<div />' },
 		},
@@ -44,7 +44,7 @@ describe('WorkflowReviewSubmittedDialog', () => {
 
 		expect(getByRole('link', { name: 'your submission' })).toHaveAttribute(
 			'href',
-			'/workflow-review-requests/review-1',
+			'/reviews/review-1',
 		);
 	});
 

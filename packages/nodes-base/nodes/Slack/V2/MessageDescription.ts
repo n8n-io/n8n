@@ -222,8 +222,9 @@ export const captureResponderField: INodeProperties = {
 			responseType: ['approval'],
 		},
 	},
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 	description:
-		"Whether to use Slack interactive buttons so the responder's identity (ID, name, email) is captured and returned with the response. Requires the Slack app to have Interactivity enabled (Request URL pointed at this n8n instance), a signing secret on the credential, and the users:read and users:read.email scopes.",
+		'Whether to return the responder\'s identity with the Slack response. Requires additional setup on the Slack app — <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/approvals#id-1.-create-a-slack-app-and-credential" target="_blank">see docs</a>.',
 };
 
 export const approversField: INodeProperties = {
@@ -505,7 +506,7 @@ export const messageFields: INodeProperties[] = [
 			rows: 3,
 		},
 		description:
-			"Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
+			"Enter the JSON output from Slack's visual Block Kit Builder here, including the top-level wrapper: <code>{ \"blocks\": [ ... ] }</code>. A bare array of blocks is not accepted. You can then use expressions to add variable content to your blocks. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
 		hint: "To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
 		default: '',
 	},
@@ -1087,7 +1088,7 @@ export const messageFields: INodeProperties[] = [
 			rows: 3,
 		},
 		description:
-			"Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
+			"Enter the JSON output from Slack's visual Block Kit Builder here, including the top-level wrapper: <code>{ \"blocks\": [ ... ] }</code>. A bare array of blocks is not accepted. You can then use expressions to add variable content to your blocks. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
 		hint: "To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
 		default: '',
 	},
@@ -1333,6 +1334,8 @@ export const messageFields: INodeProperties[] = [
 		],
 		default: 'desc',
 	},
+	// Dropped from 2.7: the Real-time Search API caps how deep a search can be paged and
+	// warns that paginating past ~10 calls rate limits the whole workspace.
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -1341,6 +1344,7 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				resource: ['message'],
 				operation: ['search'],
+				'@version': [{ _cnd: { lte: 2.6 } }],
 			},
 		},
 		default: false,
@@ -1355,6 +1359,7 @@ export const messageFields: INodeProperties[] = [
 				resource: ['message'],
 				operation: ['search'],
 				returnAll: [false],
+				'@version': [{ _cnd: { lte: 2.6 } }],
 			},
 		},
 		typeOptions: {
@@ -1363,6 +1368,38 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: 25,
 		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+				'@version': [{ _cnd: { gte: 2.7 } }],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 50,
+		},
+		default: 25,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName:
+			'Searches are rate limited by Slack. <a target="_blank" href="https://docs.slack.dev/reference/methods/assistant.search.context#rate-limiting">Check the Slack docs for the current limits</a>.',
+		name: 'searchRateLimitNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+				'@version': [{ _cnd: { gte: 2.7 } }],
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -1375,6 +1412,109 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'After',
+				name: 'after',
+				type: 'dateTime',
+				default: '',
+				description: 'Only return messages sent after this date',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Before',
+				name: 'before',
+				type: 'dateTime',
+				default: '',
+				description: 'Only return messages sent before this date',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Channel Types',
+				name: 'channelTypes',
+				type: 'multiOptions',
+				default: ['public_channel', 'private_channel', 'mpim', 'im'],
+				description: 'Which kinds of conversation to search in',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+				options: [
+					{
+						name: 'Public Channel',
+						value: 'public_channel',
+					},
+					{
+						name: 'Private Channel',
+						value: 'private_channel',
+					},
+					{
+						name: 'Group DM',
+						value: 'mpim',
+					},
+					{
+						name: 'DM',
+						value: 'im',
+					},
+				],
+			},
+			{
+				displayName: 'Include Archived Channels',
+				name: 'includeArchivedChannels',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include archived channels in the results',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Include Bots',
+				name: 'includeBots',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include messages sent by bots',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Include Message Blocks',
+				name: 'includeMessageBlocks',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return the rich text blocks of each message alongside its text',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Keyword Search Only',
+				name: 'keywordSearchOnly',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to match keywords only. By default Slack also returns semantically similar messages.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
 			{
 				displayName: 'Search in Channel',
 				name: 'searchChannel',

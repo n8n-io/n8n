@@ -1,18 +1,17 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { GLOBAL_MEMBER_SCOPES, type Scope } from '@n8n/permissions';
 import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
-import { ProjectService } from '@/services/project.service.ee';
-import { GLOBAL_MEMBER_SCOPES, type Scope } from '@n8n/permissions';
+import { ProjectNotFoundError } from '@/services/project.service.ee';
 
 // Mock middleware before requiring handler
 const mockMiddleware = vi.fn(async (_req, _res, next) => next()) as any;
@@ -32,10 +31,7 @@ beforeAll(async () => {
 
 describe('DataTable Handler', () => {
 	let mockDataTableService: Mocked<DataTableService>;
-	let mockDataTableRepository: Mocked<DataTableRepository>;
-	let mockProjectRepository: Mocked<ProjectRepository>;
-	let mockProjectRelationRepository: Mocked<ProjectRelationRepository>;
-	let mockProjectService: Mocked<ProjectService>;
+	let mockDataTableAggregateService: Mocked<DataTableAggregateService>;
 	let mockResponse: Partial<Response>;
 
 	const projectId = 'test-project-id';
@@ -49,32 +45,20 @@ describe('DataTable Handler', () => {
 
 	beforeEach(() => {
 		mockDataTableService = mockInstance(DataTableService);
-		mockDataTableRepository = mockInstance(DataTableRepository);
-		mockProjectRepository = mockInstance(ProjectRepository);
-		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
-		mockProjectService = mockInstance(ProjectService);
+		mockDataTableAggregateService = mockInstance(DataTableAggregateService);
 
 		vi.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === DataTableService) {
 				return mockDataTableService;
 			}
-			if (serviceClass === DataTableRepository) {
-				return mockDataTableRepository;
-			}
-			if (serviceClass === ProjectRepository) {
-				return mockProjectRepository;
-			}
-			if (serviceClass === ProjectRelationRepository) {
-				return mockProjectRelationRepository;
-			}
-			if (serviceClass === ProjectService) {
-				return mockProjectService;
+			if (serviceClass === DataTableAggregateService) {
+				return mockDataTableAggregateService;
 			}
 			return {};
 		});
 
 		mockDataTableService.getProjectIdForDataTable.mockResolvedValue(projectId);
-		mockProjectRelationRepository.find.mockResolvedValue([]);
+		mockDataTableService.getCachedSizeBytesByIds.mockResolvedValue(new Map());
 
 		mockResponse = {
 			json: vi.fn().mockReturnThis(),
@@ -93,9 +77,7 @@ describe('DataTable Handler', () => {
 				body: { name: 'test-table', columns: [{ name: 'col1', type: 'string' }] },
 				user: makeUser(),
 			} as unknown as DataTableRequest.Create;
-			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: projectId,
-			} as never);
+			mockDataTableService.resolveOwningProjectId.mockResolvedValue(projectId);
 			mockDataTableService.createDataTable.mockResolvedValue({
 				id: dataTableId,
 				name: 'test-table',
@@ -105,41 +87,169 @@ describe('DataTable Handler', () => {
 
 			await mainHandler.createDataTable[1](req, mockResponse as Response);
 
-			expect(mockProjectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(userId);
-			expect(mockDataTableService.createDataTable).toHaveBeenCalledWith(
-				projectId,
-				expect.not.objectContaining({ projectId: expect.anything() }),
-			);
+			expect(mockDataTableService.resolveOwningProjectId).toHaveBeenCalledWith(req.user, undefined);
+			expect(mockDataTableService.createDataTable).toHaveBeenCalledWith(projectId, {
+				name: 'test-table',
+				columns: [{ name: 'col1', type: 'string' }],
+				fileId: undefined,
+				hasHeaders: undefined,
+			});
 			expect(mockResponse.status).toHaveBeenCalledWith(201);
+		});
+
+		it('should map a missing project to BadRequestError', async () => {
+			const req = {
+				body: { name: 'test-table', columns: [], projectId },
+				user: makeUser(),
+			} as unknown as DataTableRequest.Create;
+			mockDataTableService.resolveOwningProjectId.mockRejectedValue(
+				new ProjectNotFoundError(projectId),
+			);
+
+			const handlerFn = mainHandler.createDataTable[1];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(BadRequestError);
+			expect(caught).toMatchObject({
+				message: `Project with ID "${projectId}" not found`,
+				httpStatusCode: 400,
+			});
 		});
 	});
 
 	describe('listDataTables', () => {
-		it('should include personal and team projects for regular user', async () => {
+		it('should list via the aggregate service for a regular user', async () => {
 			const req = { query: {}, user: makeUser() } as unknown as DataTableRequest.List;
-			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: projectId,
+			mockDataTableAggregateService.getManyAndCount.mockResolvedValue({
+				data: [],
+				count: 0,
 			} as never);
-			mockDataTableService.getManyAndCount.mockResolvedValue({ data: [], count: 0 } as never);
 
 			await mainHandler.listDataTables[2](req, mockResponse as Response);
 
-			const callArgs = mockDataTableService.getManyAndCount.mock.calls[0][0];
-			expect(callArgs.filter?.projectId).toContain(projectId);
+			expect(mockDataTableAggregateService.getManyAndCount).toHaveBeenCalledWith(
+				req.user,
+				expect.objectContaining({ skip: 0, take: 100 }),
+			);
 		});
 
-		it('should list across all projects for user with dataTable:listProject', async () => {
+		it('should list via the aggregate service for a user with dataTable:listProject', async () => {
 			const req = {
 				query: {},
 				user: makeUser(['dataTable:listProject']),
 			} as unknown as DataTableRequest.List;
-			mockDataTableService.getManyAndCount.mockResolvedValue({ data: [], count: 0 } as never);
+			mockDataTableAggregateService.getManyAndCount.mockResolvedValue({
+				data: [],
+				count: 0,
+			} as never);
 
 			await mainHandler.listDataTables[2](req, mockResponse as Response);
 
-			const callArgs = mockDataTableService.getManyAndCount.mock.calls[0][0];
-			expect(callArgs.filter?.projectId).toBeUndefined();
-			expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
+			expect(mockDataTableAggregateService.getManyAndCount).toHaveBeenCalledWith(
+				req.user,
+				expect.objectContaining({ skip: 0, take: 100, filter: undefined }),
+			);
+		});
+	});
+
+	describe('sizeBytes', () => {
+		const otherDataTableId = 'other-data-table-id';
+
+		const makeDataTable = (id: string) => ({
+			id,
+			name: `table-${id}`,
+			columns: [],
+			project: { id: projectId },
+		});
+
+		beforeEach(() => {
+			mockDataTableService.getCachedSizeBytesByIds.mockResolvedValue(
+				new Map([
+					[dataTableId, 4096],
+					[otherDataTableId, 8192],
+				]),
+			);
+		});
+
+		it('should attach sizeBytes to every item when listing', async () => {
+			const req = {
+				query: {},
+				user: makeUser(['dataTable:listProject']),
+			} as unknown as DataTableRequest.List;
+			mockDataTableAggregateService.getManyAndCount.mockResolvedValue({
+				data: [makeDataTable(dataTableId), makeDataTable(otherDataTableId)],
+				count: 2,
+			} as never);
+
+			await mainHandler.listDataTables[2](req, mockResponse as Response);
+
+			const { data } = (mockResponse.json as Mock).mock.calls[0][0];
+			expect(data).toHaveLength(2);
+			expect(data[0]).toMatchObject({ id: dataTableId, sizeBytes: 4096 });
+			expect(data[1]).toMatchObject({ id: otherDataTableId, sizeBytes: 8192 });
+		});
+
+		it('should include sizeBytes on the create response', async () => {
+			const req = {
+				body: { name: 'test-table', columns: [] },
+				user: makeUser(),
+			} as unknown as DataTableRequest.Create;
+			mockDataTableService.resolveOwningProjectId.mockResolvedValue(projectId);
+			mockDataTableService.createDataTable.mockResolvedValue(makeDataTable(dataTableId) as never);
+
+			await mainHandler.createDataTable[1](req, mockResponse as Response);
+
+			expect(mockResponse.status).toHaveBeenCalledWith(201);
+			expect((mockResponse.json as Mock).mock.calls[0][0]).toMatchObject({ sizeBytes: 4096 });
+		});
+
+		it('should include sizeBytes when reading a single data table', async () => {
+			const req = {
+				params: { dataTableId },
+				user: makeUser(),
+			} as unknown as DataTableRequest.Get;
+			mockDataTableService.getOne.mockResolvedValue(makeDataTable(dataTableId) as never);
+
+			await mainHandler.getDataTable[2](req, mockResponse as Response);
+
+			expect((mockResponse.json as Mock).mock.calls[0][0]).toMatchObject({
+				id: dataTableId,
+				sizeBytes: 4096,
+			});
+		});
+
+		it('should include sizeBytes on the update response', async () => {
+			const req = {
+				params: { dataTableId },
+				body: { name: 'renamed' },
+				user: makeUser(),
+			} as unknown as DataTableRequest.Update;
+			mockDataTableService.getOne.mockResolvedValue(makeDataTable(dataTableId) as never);
+
+			await mainHandler.updateDataTable[2](req, mockResponse as Response);
+
+			expect((mockResponse.json as Mock).mock.calls[0][0]).toMatchObject({
+				id: dataTableId,
+				sizeBytes: 4096,
+			});
+		});
+
+		it('should serialise a table missing from the size map as 0, not undefined', async () => {
+			mockDataTableService.getCachedSizeBytesByIds.mockResolvedValue(new Map());
+			const req = {
+				params: { dataTableId },
+				user: makeUser(),
+			} as unknown as DataTableRequest.Get;
+			mockDataTableService.getOne.mockResolvedValue(makeDataTable(dataTableId) as never);
+
+			await mainHandler.getDataTable[2](req, mockResponse as Response);
+
+			expect((mockResponse.json as Mock).mock.calls[0][0].sizeBytes).toBe(0);
 		});
 	});
 
@@ -414,7 +524,7 @@ describe('DataTable Handler', () => {
 					returnData: true,
 					dryRun: false,
 				},
-				user: { id: userId },
+				user: makeUser(['dataTable:readRow']),
 			} as unknown as DataTableRequest.UpdateRows;
 
 			const mockRow = { id: 1, status: 'updated', createdAt: new Date(), updatedAt: new Date() };
@@ -440,7 +550,7 @@ describe('DataTable Handler', () => {
 					returnData: true,
 					dryRun: true,
 				},
-				user: { id: userId },
+				user: makeUser(['dataTable:readRow']),
 			} as unknown as DataTableRequest.UpdateRows;
 
 			const mockDryRunResult = [
@@ -512,7 +622,7 @@ describe('DataTable Handler', () => {
 					returnData: true,
 					dryRun: false,
 				},
-				user: { id: userId },
+				user: makeUser(['dataTable:readRow']),
 			} as unknown as DataTableRequest.UpsertRow;
 
 			const mockRow = {
@@ -580,7 +690,7 @@ describe('DataTable Handler', () => {
 					returnData: 'true',
 					dryRun: 'false',
 				},
-				user: { id: userId },
+				user: makeUser(['dataTable:readRow']),
 			} as unknown as DataTableRequest.DeleteRows;
 
 			const mockRow = { id: 1, name: 'Deleted', createdAt: new Date(), updatedAt: new Date() };
@@ -631,7 +741,7 @@ describe('DataTable Handler', () => {
 					returnData: 'true',
 					dryRun: 'true',
 				},
-				user: { id: userId },
+				user: makeUser(['dataTable:readRow']),
 			} as unknown as DataTableRequest.DeleteRows;
 
 			const mockRows = [{ id: 1, status: 'test', createdAt: new Date(), updatedAt: new Date() }];
@@ -662,12 +772,7 @@ describe('DataTable Handler', () => {
 				user: { id: userId },
 			} as unknown as DataTableRequest.GetRows;
 
-			// User's personal project is returned
-			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: projectId,
-			} as any);
-
-			// But the data table belongs to another project, so resolving project id throws
+			// The data table belongs to another project, so resolving project id throws
 			mockDataTableService.getProjectIdForDataTable.mockRejectedValue(
 				new DataTableNotFoundError(otherUserDataTableId),
 			);
@@ -703,10 +808,6 @@ describe('DataTable Handler', () => {
 				user: { id: userId },
 			} as unknown as DataTableRequest.InsertRows;
 
-			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: projectId,
-			} as any);
-
 			mockDataTableService.insertRows.mockRejectedValue(
 				new DataTableNotFoundError(otherUserDataTableId),
 			);
@@ -740,10 +841,6 @@ describe('DataTable Handler', () => {
 				},
 				user: { id: userId },
 			} as unknown as DataTableRequest.UpdateRows;
-
-			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: projectId,
-			} as any);
 
 			mockDataTableService.updateRows.mockRejectedValue(
 				new DataTableNotFoundError(otherUserDataTableId),
@@ -782,10 +879,6 @@ describe('DataTable Handler', () => {
 				user: { id: userId },
 			} as unknown as DataTableRequest.UpsertRow;
 
-			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: projectId,
-			} as any);
-
 			mockDataTableService.upsertRow.mockRejectedValue(
 				new DataTableNotFoundError(otherUserDataTableId),
 			);
@@ -823,10 +916,6 @@ describe('DataTable Handler', () => {
 				user: { id: userId },
 			} as unknown as DataTableRequest.DeleteRows;
 
-			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: projectId,
-			} as any);
-
 			mockDataTableService.deleteRows.mockRejectedValue(
 				new DataTableNotFoundError(otherUserDataTableId),
 			);
@@ -856,10 +945,6 @@ describe('DataTable Handler', () => {
 				query: { offset: '0', limit: '100' },
 				user: { id: userId },
 			} as unknown as DataTableRequest.GetRows;
-
-			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: projectId,
-			} as any);
 
 			mockDataTableService.getProjectIdForDataTable.mockRejectedValue(
 				new DataTableNotFoundError(nonExistentDataTableId),

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import { useToast } from '@n8n/composables/useToast';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -18,6 +19,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const toast = useToast();
+const mcp = useMcp();
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 const experimentStore = useExposeAllWorkflowsToMcpStore();
@@ -82,6 +84,9 @@ async function onExposeAll(close: () => void) {
 				? mcpStore.toggleAgentsMcpAccess({ allAgents: true }, true)
 				: Promise.resolve(undefined),
 		]);
+
+		await mcpStore.setAutoExposeNewWorkflows(true);
+		mcp.trackAutoExposeToggled({ enabled: true, source: 'expose_all' });
 		closedByAction.value = true;
 		experimentStore.trackConfirmed();
 		toast.showMessage({

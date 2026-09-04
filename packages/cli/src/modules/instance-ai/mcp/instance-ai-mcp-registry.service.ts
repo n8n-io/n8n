@@ -1,32 +1,37 @@
 import { type BuiltTool, McpClient } from '@n8n/agents';
 import type {
+	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpConnectionToolsResponse,
 	InstanceAiMcpUpdateConnectionRequestDto,
 } from '@n8n/api-types';
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { CustomFetch } from '@n8n/backend-network';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
-import type { CredentialsEntity, User } from '@n8n/db';
+import { OutboundHttp } from '@n8n/backend-network';
+import { isUniqueConstraintError, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
-import { QueryFailedError } from '@n8n/typeorm';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, LiteralMcpRegistryConnection } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import {
+	isSupportedMcpRegistryCredentialType,
+	prepareMcpRegistryConnection,
+	resolveMcpRegistryConnection,
+	toAgentMcpTransport,
+} from '@/modules/mcp-registry/mcp-registry-connection';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type {
-	McpRegistryRemote,
-	McpRegistryServer,
-} from '@/modules/mcp-registry/registry/mcp-registry.types';
+import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
-import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
+import { createAuthFetch } from '@/utils/auth-fetch';
 
 import type {
 	InstanceAiMcpRegistryConnection,
@@ -34,52 +39,12 @@ import type {
 } from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
-type Transport = 'sse' | 'streamableHttp';
-
 interface ResolvedRegistryServer {
 	serverSlug: string;
 	credentialId: string;
 	authType: McpRegistryServer['authType'];
-	endpointUrl: string;
-	transport: Transport;
-}
-
-interface OAuth2FetchContext {
-	credentialId: string;
-	accessToken: string;
-	projectId: string;
-	credentialData: ICredentialDataDecryptedObject;
-}
-
-function readString(data: Record<string, unknown>, key: string): string | undefined {
-	const value = data[key];
-	return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function readAccessToken(tokenData: Record<string, unknown>): string | undefined {
-	return readString(tokenData, 'accessToken') ?? readString(tokenData, 'access_token');
-}
-
-function readOAuthTokenData(data: ICredentialDataDecryptedObject): Record<string, unknown> | null {
-	const tokenData = data.oauthTokenData;
-	return isObjectLiteral(tokenData) ? tokenData : null;
-}
-
-function getPreferredRemote(remotes: McpRegistryRemote[]): {
-	transport: Transport;
-	endpointUrl: string;
-} | null {
-	const streamable = remotes.find((remote) => remote.type === 'streamable-http');
-	if (streamable?.url) {
-		return { transport: 'streamableHttp', endpointUrl: streamable.url };
-	}
-
-	const sse = remotes.find((remote) => remote.type === 'sse');
-	if (sse?.url) {
-		return { transport: 'sse', endpointUrl: sse.url };
-	}
-
-	return null;
+	/** Never templated: this path cannot resolve a template, so those are skipped. */
+	connection: LiteralMcpRegistryConnection;
 }
 
 const MCP_REGISTRY_SERVER_PREFIX = 'mcp_';
@@ -137,6 +102,13 @@ function toToolResponse(tool: BuiltTool, serverName: string): InstanceAiMcpConne
 	return response;
 }
 
+function disconnectedToolsResponse(
+	id: string,
+	failureReason: InstanceAiMcpConnectionFailureReason = 'unknown',
+): InstanceAiMcpConnectionToolsResponse {
+	return { id, status: 'disconnected', tools: [], failureReason };
+}
+
 @Service()
 export class InstanceAiMcpRegistryService {
 	private readonly logger: Logger;
@@ -147,11 +119,10 @@ export class InstanceAiMcpRegistryService {
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsService: CredentialsService,
+		private readonly credentialTypes: CredentialTypes,
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -171,6 +142,15 @@ export class InstanceAiMcpRegistryService {
 		const server = await this.mcpRegistryService.get(input.serverSlug);
 		if (!server) {
 			throw new NotFoundError(`Unknown MCP registry server: ${input.serverSlug}`);
+		}
+
+		// This path cannot resolve a templated server URL, so `getRegistryMcpServers`
+		// skips such a row at load time. Reject it here too, otherwise the connection
+		// persists and reads as connected while contributing nothing.
+		if (resolveMcpRegistryConnection(server)?.isTemplated) {
+			throw new BadRequestError(
+				`MCP registry server "${input.serverSlug}" cannot be connected here`,
+			);
 		}
 
 		// v1 invariant: at most one connection per (user, serverSlug). To switch
@@ -195,6 +175,7 @@ export class InstanceAiMcpRegistryService {
 		if (!credential) {
 			throw new NotFoundError('Credential not found or not accessible');
 		}
+		this.assertCredentialAllowed(server, credential.type);
 
 		const entity = this.connectionRepository.create({
 			id: randomUUID(),
@@ -211,7 +192,7 @@ export class InstanceAiMcpRegistryService {
 			});
 			return { connection, credential, server };
 		} catch (error) {
-			if (isUniqueConstraintViolation(error)) {
+			if (isUniqueConstraintError(error)) {
 				throw new ConflictError(
 					'A connection for this MCP server with this credential already exists',
 				);
@@ -244,22 +225,48 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		if (payload.credentialId) {
-			await this.swapCredential(user, connection, payload.credentialId);
+			const server = await this.mcpRegistryService.get(connection.serverSlug);
+			if (!server) {
+				throw new NotFoundError(`Unknown MCP registry server: ${connection.serverSlug}`);
+			}
+			await this.swapCredential(user, connection, payload.credentialId, server);
 		}
 
 		connection.toolFilter = resolveToolFilter(payload, connection.toolFilter);
 		return await this.connectionRepository.save(connection);
 	}
 
-	async listConnectionTools(
-		user: User,
-		id: string,
-	): Promise<InstanceAiMcpConnectionToolResponse[]> {
+	async listConnectionTools(user: User, id: string): Promise<InstanceAiMcpConnectionToolsResponse> {
 		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
 		if (!connection) {
 			throw new NotFoundError('MCP registry connection not found');
 		}
 
+		return await this.fetchConnectionTools(user, connection);
+	}
+
+	async listAllConnectionTools(user: User): Promise<InstanceAiMcpConnectionToolsResponse[]> {
+		const connections = await this.connectionRepository.findBy({ userId: user.id });
+		return await Promise.all(
+			connections.map(async (connection) => {
+				try {
+					return await this.fetchConnectionTools(user, connection);
+				} catch (error) {
+					this.logger.warn('Failed to check MCP connection', {
+						connectionId: connection.id,
+						serverSlug: connection.serverSlug,
+						error,
+					});
+					return disconnectedToolsResponse(connection.id);
+				}
+			}),
+		);
+	}
+
+	private async fetchConnectionTools(
+		user: User,
+		connection: InstanceAiMcpRegistryConnection,
+	): Promise<InstanceAiMcpConnectionToolsResponse> {
 		const server = await this.mcpRegistryService.get(connection.serverSlug);
 		if (!server) {
 			throw new NotFoundError(`Unknown MCP registry server: ${connection.serverSlug}`);
@@ -269,37 +276,52 @@ export class InstanceAiMcpRegistryService {
 			connection.id,
 			connection.serverSlug,
 			connection.credentialId,
-			server.authType,
-			server.remotes,
+			server,
 		);
-		if (!resolvedServer) return [];
+		if (!resolvedServer) return disconnectedToolsResponse(connection.id);
 
-		const aiMcpFetch = createAiMcpFetch(
-			this.outboundHttp,
-			this.ssrfConfig,
-			this.ssrfProtectionService,
-		);
+		const aiMcpFetch = createAiMcpFetch(this.outboundHttp);
 		const requestFetch = await this.buildRegistryServerFetch(
 			resolvedServer,
 			user,
 			connection.id,
 			aiMcpFetch,
 		);
-		if (!requestFetch) return [];
+		if (!requestFetch) return disconnectedToolsResponse(connection.id, 'authentication');
+
+		let failureReason: InstanceAiMcpConnectionFailureReason = 'unknown';
+		const classifiedFetch: CustomFetch = async (input, init) => {
+			try {
+				const response = await requestFetch(input, init);
+				if (response.status === 401 || response.status === 403) {
+					failureReason = 'authentication';
+				} else if (response.status >= 500) {
+					failureReason = 'server_unavailable';
+				}
+				return response;
+			} catch (error) {
+				failureReason = 'server_unavailable';
+				throw error;
+			}
+		};
 
 		const serverName = buildServerName(resolvedServer.serverSlug, 1);
 		const client = new McpClient([
 			{
 				name: serverName,
-				url: resolvedServer.endpointUrl,
-				transport: resolvedServer.transport,
-				fetch: requestFetch,
+				url: resolvedServer.connection.endpointUrl,
+				transport: toAgentMcpTransport(resolvedServer.connection.transport),
+				fetch: classifiedFetch,
 				connectionTimeoutMs: 10_000,
 			},
 		]);
 
 		try {
-			return (await client.listTools()).map((tool) => toToolResponse(tool, serverName));
+			const tools = (await client.listTools()).map((tool) => toToolResponse(tool, serverName));
+			if (client.getConnectionFailures().length > 0) {
+				return disconnectedToolsResponse(connection.id, failureReason);
+			}
+			return { id: connection.id, status: 'connected', tools };
 		} finally {
 			await client.close().catch((error: unknown) => {
 				this.logger.warn('Failed to close MCP client after listing tools', {
@@ -324,11 +346,7 @@ export class InstanceAiMcpRegistryService {
 		const slugCounts = new Map<string, number>();
 
 		// One proxy-aware, SSRF-protected transport shared across all resolved MCP connections.
-		const aiMcpFetch = createAiMcpFetch(
-			this.outboundHttp,
-			this.ssrfConfig,
-			this.ssrfProtectionService,
-		);
+		const aiMcpFetch = createAiMcpFetch(this.outboundHttp);
 
 		const resolved: McpServerConfig[] = [];
 		for (const connection of sortedConnections) {
@@ -346,10 +364,16 @@ export class InstanceAiMcpRegistryService {
 				connection.id,
 				connection.serverSlug,
 				connection.credentialId,
-				server.authType,
-				server.remotes,
+				server,
 			);
 			if (!resolvedServer) {
+				continue;
+			}
+			if (
+				resolvedServer.authType !== 'oauth2' &&
+				resolvedServer.authType !== 'extendsCredential' &&
+				resolvedServer.authType !== 'usesCredentials'
+			) {
 				continue;
 			}
 
@@ -357,23 +381,22 @@ export class InstanceAiMcpRegistryService {
 			slugCounts.set(resolvedServer.serverSlug, nextCount);
 			const serverConfig: McpServerConfig = {
 				name: buildServerName(resolvedServer.serverSlug, nextCount),
-				url: resolvedServer.endpointUrl,
-				transport: resolvedServer.transport,
+				url: resolvedServer.connection.endpointUrl,
+				transport: toAgentMcpTransport(resolvedServer.connection.transport),
 				cacheKey: `registry-connection:${connection.id}`,
 				toolFilter: connection.toolFilter ?? undefined,
-				metadata: { serverSlug: resolvedServer.serverSlug, userId: user.id },
+				metadata: {
+					connectionId: connection.id,
+					serverSlug: resolvedServer.serverSlug,
+					userId: user.id,
+				},
 			};
 
-			if (resolvedServer.authType === 'oauth2') {
-				const oauth2FetchContext = await this.buildOAuth2FetchContext(
-					resolvedServer,
-					user,
-					connection.id,
-				);
-				if (!oauth2FetchContext) {
-					continue;
-				}
-
+			if (
+				resolvedServer.authType === 'oauth2' ||
+				resolvedServer.authType === 'extendsCredential' ||
+				resolvedServer.authType === 'usesCredentials'
+			) {
 				const requestFetch = await this.buildRegistryServerFetch(
 					resolvedServer,
 					user,
@@ -383,7 +406,6 @@ export class InstanceAiMcpRegistryService {
 				if (!requestFetch) {
 					continue;
 				}
-
 				serverConfig.fetch = requestFetch;
 			}
 
@@ -397,12 +419,23 @@ export class InstanceAiMcpRegistryService {
 		connectionId: string,
 		serverSlug: string,
 		credentialId: string,
-		authType: McpRegistryServer['authType'],
-		remotes: McpRegistryRemote[],
+		server: McpRegistryServer,
 	): ResolvedRegistryServer | null {
-		const remote = getPreferredRemote(remotes);
-		if (!remote) {
+		const connection = resolveMcpRegistryConnection(server);
+		if (!connection) {
 			this.logger.warn('Skipping MCP registry connection without supported remote transport', {
+				connectionId,
+				serverSlug,
+				credentialId,
+			});
+			return null;
+		}
+
+		// This path reads the credential without resolving expressions, so a
+		// templated row's URL would stay an unresolved template. Skipping keeps
+		// the row out of the picker instead of offering a connection that breaks.
+		if (connection.isTemplated) {
+			this.logger.warn('Skipping MCP registry connection with a templated server URL', {
 				connectionId,
 				serverSlug,
 				credentialId,
@@ -413,9 +446,8 @@ export class InstanceAiMcpRegistryService {
 		return {
 			serverSlug,
 			credentialId,
-			authType,
-			endpointUrl: remote.endpointUrl,
-			transport: remote.transport,
+			authType: server.authType,
+			connection,
 		};
 	}
 
@@ -425,37 +457,6 @@ export class InstanceAiMcpRegistryService {
 		connectionId: string,
 		baseFetch: CustomFetch,
 	): Promise<CustomFetch | null> {
-		if (config.authType !== 'oauth2') {
-			return baseFetch;
-		}
-
-		const oauth2FetchContext = await this.buildOAuth2FetchContext(config, user, connectionId);
-		if (!oauth2FetchContext) {
-			return null;
-		}
-
-		return createAuthFetch({
-			baseFetch,
-			initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
-			onUnauthorized: async () => {
-				if (!oauth2FetchContext.projectId) {
-					return null;
-				}
-
-				return await this.oauthService.refreshOAuth2CredentialById(
-					oauth2FetchContext.credentialId,
-					oauth2FetchContext.projectId,
-				);
-			},
-			allowedDomains: resolveAllowedDomains(oauth2FetchContext.credentialData),
-		});
-	}
-
-	private async buildOAuth2FetchContext(
-		config: ResolvedRegistryServer,
-		user: User,
-		connectionId: string,
-	): Promise<OAuth2FetchContext | null> {
 		const credentialWithData = await this.getCredentialWithData(config.credentialId, user);
 		if (!credentialWithData) {
 			this.logger.warn('Skipping MCP registry connection with inaccessible credential', {
@@ -467,41 +468,43 @@ export class InstanceAiMcpRegistryService {
 			return null;
 		}
 
-		const tokenData = readOAuthTokenData(credentialWithData.data);
-		if (!tokenData) {
-			this.logger.warn('Skipping MCP registry connection without OAuth2 token data', {
+		const credentialType = credentialWithData.credential.type;
+		if (!isSupportedMcpRegistryCredentialType(this.credentialTypes, credentialType)) {
+			this.logger.warn('Skipping MCP registry connection with unsupported credential type', {
 				connectionId,
 				serverSlug: config.serverSlug,
-				credentialId: config.credentialId,
+				credentialType,
 			});
 			return null;
 		}
-
-		const accessToken = readAccessToken(tokenData);
-		if (!accessToken) {
-			this.logger.warn('Skipping MCP registry connection without access token', {
+		const prepared = prepareMcpRegistryConnection({
+			connection: config.connection,
+			credentialType,
+			credentialData: credentialWithData.data,
+		});
+		if (!prepared.ok) {
+			this.logger.warn('Skipping MCP registry connection with invalid credential', {
 				connectionId,
 				serverSlug: config.serverSlug,
 				credentialId: config.credentialId,
+				reason: prepared.error.code,
 			});
 			return null;
 		}
 
 		const projectId = credentialWithData.credential.shared?.[0]?.projectId ?? null;
-		if (!projectId) {
-			this.logger.warn('Skipping OAuth2 token refresh for credential without project sharing', {
-				connectionId,
-				serverSlug: config.serverSlug,
-				credentialId: config.credentialId,
-			});
-		}
-
-		return {
-			credentialId: config.credentialId,
-			accessToken,
-			projectId,
-			credentialData: credentialWithData.data,
-		};
+		return createAuthFetch({
+			baseFetch,
+			initialHeaders: prepared.value.headers,
+			onUnauthorized: async () =>
+				projectId
+					? await this.oauthService.refreshOAuth2CredentialById(config.credentialId, projectId)
+					: null,
+			allowedDomains: {
+				mode: 'domains',
+				domains: prepared.value.allowedDomains,
+			},
+		});
 	}
 
 	private async getCredentialWithData(
@@ -529,16 +532,8 @@ export class InstanceAiMcpRegistryService {
 		user: User,
 		connection: InstanceAiMcpRegistryConnection,
 		newCredentialId: string,
+		server: McpRegistryServer,
 	) {
-		const currentCredential = await this.credentialsFinderService.findCredentialForUser(
-			connection.credentialId,
-			user,
-			['credential:read'],
-		);
-		if (!currentCredential) {
-			throw new NotFoundError('Credential not found or not accessible');
-		}
-
 		const newCredential = await this.credentialsFinderService.findCredentialForUser(
 			newCredentialId,
 			user,
@@ -548,17 +543,18 @@ export class InstanceAiMcpRegistryService {
 			throw new NotFoundError('Credential not found or not accessible');
 		}
 
-		if (currentCredential.type !== newCredential.type) {
-			throw new ConflictError('Cannot change credential to a different type');
-		}
-
+		this.assertCredentialAllowed(server, newCredential.type);
 		connection.credentialId = newCredentialId;
 	}
-}
 
-function isUniqueConstraintViolation(error: unknown): boolean {
-	if (!(error instanceof QueryFailedError)) return false;
-	const driverError = error.driverError as { code?: string };
-	const code = driverError?.code;
-	return code === '23505' || code === 'SQLITE_CONSTRAINT_UNIQUE';
+	private assertCredentialAllowed(server: McpRegistryServer, credentialType: string): void {
+		const connection = resolveMcpRegistryConnection(server);
+		if (
+			!connection ||
+			!isSupportedMcpRegistryCredentialType(this.credentialTypes, credentialType) ||
+			!connection.credentialBindings.some((binding) => binding.credentialType === credentialType)
+		) {
+			throw new BadRequestError('Credential type is not supported by this MCP server');
+		}
+	}
 }

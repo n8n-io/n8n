@@ -11,7 +11,7 @@ import type {
 	IWorkflowBase,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { TimeoutExecutionCancelledError, UserError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -523,6 +523,78 @@ describe('EvalExecutionService', () => {
 			await service.executeWithLlmMock('wf-1', makeUser());
 
 			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(DB_EXECUTION_ID);
+		});
+
+		// Stopping rejects the promise the service awaits, as ActiveExecutions does —
+		// pinning that the budget is reported and not that rejection.
+		it('stops the execution and reports it when the run outlives the caller budget', async () => {
+			vi.useFakeTimers();
+			try {
+				let rejectRun: (error: Error) => void = () => {};
+				activeExecutions.getPostExecutePromise.mockImplementation(
+					async () =>
+						await new Promise<never>((_resolve, reject) => {
+							rejectRun = reject;
+						}),
+				);
+				activeExecutions.stopExecution.mockImplementation((_id, cancellationError) => {
+					rejectRun(cancellationError);
+				});
+
+				const pending = service.executeWithLlmMock('wf-1', makeUser(), { timeoutMs: 30_000 });
+				await vi.advanceTimersByTimeAsync(30_001);
+				const result = await pending;
+
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					DB_EXECUTION_ID,
+					expect.any(TimeoutExecutionCancelledError),
+				);
+				expect(result.success).toBe(false);
+				expect(result.errors).toEqual([expect.stringContaining('30s eval budget')]);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		// Hint generation is an LLM call, so it has to come out of the caller's
+		// budget — otherwise the request outlives the deadline it declared.
+		it('charges setup time against the caller budget', async () => {
+			vi.useFakeTimers();
+			try {
+				let rejectRun: (error: Error) => void = () => {};
+				activeExecutions.getPostExecutePromise.mockImplementation(
+					async () =>
+						await new Promise<never>((_resolve, reject) => {
+							rejectRun = reject;
+						}),
+				);
+				activeExecutions.stopExecution.mockImplementation((_id, cancellationError) => {
+					rejectRun(cancellationError);
+				});
+				// Setup burns 25s of the 30s budget. The clock moves without running
+				// timers — advancing them here would re-enter the timer queue the test
+				// drives below.
+				generateMockHintsMock.mockImplementation(async () => {
+					vi.setSystemTime(Date.now() + 25_000);
+					return makeEmptyHints();
+				});
+
+				const pending = service.executeWithLlmMock('wf-1', makeUser(), { timeoutMs: 30_000 });
+				// Only the 5s left after setup, not another full 30s.
+				await vi.advanceTimersByTimeAsync(5_001);
+				const result = await pending;
+
+				expect(activeExecutions.stopExecution).toHaveBeenCalled();
+				expect(result.errors).toEqual([expect.stringContaining('30s eval budget')]);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps waiting indefinitely when the caller sends no budget', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 		});
 
 		it('wraps additionalData.credentialsHelper inside configureAdditionalData', async () => {
@@ -1642,6 +1714,49 @@ describe('EvalExecutionService', () => {
 
 			expect(result.hints.globalContext).toBe('Users: jane@example.com, john@example.com');
 			expect(result.hints.nodeHints).toEqual({ 'HTTP Request': 'Return user profiles' });
+		});
+	});
+
+	// ── reserved node names ──────────────────────────────────────────
+
+	describe('reserved node names', () => {
+		// Object literals cannot express an own "__proto__" key; this mirrors the
+		// shape JSON.parse produces for a persisted runData column.
+		function runDataWithOwnKey(key: string, value: unknown): Record<string, unknown> {
+			const runData: Record<string, unknown> = {};
+			Object.defineProperty(runData, key, {
+				value,
+				enumerable: true,
+				writable: true,
+				configurable: true,
+			});
+			return runData;
+		}
+
+		afterEach(() => {
+			// Undo any pollution a regression would have caused so it can't leak
+			// into unrelated tests.
+			for (const key of ['iterationCount', 'outputs', 'outputCount', 'executionMode']) {
+				delete (Object.prototype as Record<string, unknown>)[key];
+			}
+		});
+
+		it('does not pollute Object.prototype when a run node is named "__proto__"', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: { runData: runDataWithOwnKey('__proto__', []) },
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect('iterationCount' in {}).toBe(false);
+			expect(Object.getOwnPropertyNames(Object.prototype)).not.toContain('iterationCount');
+			// The node is still recorded — as an own key on the result, not on the prototype.
+			expect(Object.keys(result.nodeResults)).toContain('__proto__');
 		});
 	});
 });

@@ -1,4 +1,4 @@
-import type { SsrfBridge } from '@n8n/backend-network';
+import { passthroughEgressFilter, type SsrfBridge } from '@n8n/backend-network';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type * as express from 'express';
 import { type IncomingHttpHeaders } from 'http';
@@ -63,7 +63,10 @@ type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
 	headerData?: IncomingHttpHeaders;
 };
 
-type TestPollingTriggerNodeOptions = TestTriggerNodeOptions & {};
+type TestPollingTriggerNodeOptions = TestTriggerNodeOptions & {
+	/** Overrides the poll time budget the context reports (default: 5 minutes). */
+	pollBudgetMs?: number;
+};
 
 function getNodeVersion(Trigger: new () => VersionedNodeType, version?: number) {
 	const instance = new Trigger();
@@ -102,6 +105,7 @@ export async function testTriggerNode(
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		createDeferredPromise,
 		returnJsonArray,
+		getSecureEgressFilter: () => passthroughEgressFilter,
 		registerCron: (cron: Cron, onTick) => {
 			const ctx: CronContext = {
 				expression: cron.expression,
@@ -204,6 +208,7 @@ export async function testWebhookTriggerNode(
 	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,
+		getSecureEgressFilter: () => passthroughEgressFilter,
 		registerCron: (cron: Cron, onTick) => {
 			const ctx: CronContext = {
 				expression: cron.expression,
@@ -244,6 +249,7 @@ export async function testWebhookTriggerNode(
 		getHeaderData: () => options.headerData ?? request.headers ?? {},
 		getInputConnectionData: async () => ({}),
 		getNodeWebhookUrl: (name) => `/test-webhook-url/${name}`,
+		getWebhookResourceUrl: (name) => `/test-webhook-url/${name}`,
 		getParamsData: () => ({}),
 		getQueryData: () => ({}),
 		getRequestObject: () => request,
@@ -318,7 +324,23 @@ export async function testPollingTriggerNode(
 	// don't take the eval-mock code path.
 	(additionalData as unknown as Record<string, unknown>).evalLlmMockHandler = undefined;
 
-	const pollContext = new PollContext(workflow, node, additionalData, mode, 'init');
+	const { pollBudgetMs } = options;
+	// Each undefined keeps a PollContext default: __emit, __emitError,
+	// __commitCursor, __runPoll, resolveNodeStaticData. The poll-budget getter is
+	// the only constructor argument this helper sets.
+	const pollContext = new PollContext(
+		workflow,
+		node,
+		additionalData,
+		mode,
+		'init',
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		pollBudgetMs === undefined ? undefined : () => pollBudgetMs,
+	);
 
 	pollContext.getNode = () => node;
 	pollContext.getCredentials = async <T extends object = ICredentialDataDecryptedObject>() =>

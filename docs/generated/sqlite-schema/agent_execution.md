@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, CONSTRAINT "CHK_agent_execution_storedAt" CHECK (("storedAt" IN ('db', 'fs', 's3', 'az'))), CONSTRAINT "CHK_agent_execution_status" CHECK ((((("status" IN ('success', 'error')))))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK ((((("hitlStatus" IN ('suspended', 'resumed')))))), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, "failureSummary" text, CONSTRAINT "CHK_agent_execution_storedAt" CHECK ((("storedAt" IN ('db', 'fs', 's3', 'az')))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK (((((("hitlStatus" IN ('suspended', 'resumed'))))))), CONSTRAINT "CHK_agent_execution_status" CHECK (("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted'))), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -21,6 +21,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | duration | INTEGER | 0 | false |  |  |  |
 | error | TEXT |  | true |  |  |  |
+| failureSummary | TEXT |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | model | varchar(255) |  | true |  |  |  |
@@ -40,9 +41,9 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK (("storedAt" IN ('db', 'fs', 's3', 'az'))) |
-| - | CHECK | CHECK ((((("status" IN ('success', 'error')))))) |
-| - | CHECK | CHECK ((((("hitlStatus" IN ('suspended', 'resumed')))))) |
+| - | CHECK | CHECK ((("storedAt" IN ('db', 'fs', 's3', 'az')))) |
+| - | CHECK | CHECK (((((("hitlStatus" IN ('suspended', 'resumed'))))))) |
+| - | CHECK | CHECK (("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted'))) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_execution_1 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -52,6 +53,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | Name | Definition |
 | ---- | ---------- |
 | IDX_63d3c3a68b9cebf05f967f0b1c | CREATE INDEX "IDX_63d3c3a68b9cebf05f967f0b1c" ON "agent_execution" ("threadId", "createdAt")  |
+| IDX_agent_execution_status | CREATE INDEX "IDX_agent_execution_status" ON "agent_execution" ("status") WHERE "status" = 'running' |
 | sqlite_autoindex_agent_execution_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -68,6 +70,7 @@ erDiagram
   datetime_3_ createdAt
   INTEGER duration
   TEXT error
+  TEXT failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model

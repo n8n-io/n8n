@@ -15,13 +15,11 @@ export function externalServicesSkill(): RuntimeSkill {
 		id: 'agent-builder-external-services',
 		name: 'Agent Builder External Services',
 		description:
-			'Use when connecting the target agent to any external product: deciding whether Slack, Linear, Telegram, or another platform is a chat integration/trigger versus an MCP, node, or workflow tool; adding, removing, or updating chat integrations or MCP servers; and wiring n8n node-backed tools (search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions).',
+			'Use when connecting the target agent to an external product: deciding whether Slack, Discord, Linear, Telegram, or another platform is a chat integration/trigger versus a callable service, and adding, removing, or updating chat integrations or MCP servers.',
 		recommendedTools: [
 			'resolve_integration',
 			'list_integration_types',
 			'configure_channel',
-			'search_nodes',
-			'get_node_types',
 			'ask_credential',
 			'verify_mcp_server',
 			'read_config',
@@ -32,25 +30,22 @@ export function externalServicesSkill(): RuntimeSkill {
 			'list_integration_types',
 			'configure_channel',
 			'search_mcp_servers',
-			'search_nodes',
-			'get_node_types',
 			'ask_credential',
 			'verify_mcp_server',
-			'get_resource_locator_options',
 			'ask_questions',
 			'read_config',
 			'patch_config',
 			'write_config',
+			'report_required_artifact',
 			'load_skill',
 		],
 		instructions: `\
 ## Purpose
 
-Use this to connect the target agent to external products across all three
-surfaces: chat integrations (the \`integrations\` array), MCP servers
-(\`mcpServers\`), and n8n node tools (entries in \`tools[]\` with
-\`nodeParameters\`). Decide the right surface first, then follow that
-section.
+Use this to connect the target agent to external products across chat
+integrations (the \`integrations\` array), MCP servers (\`mcpServers\`), and
+n8n node tools. Decide the right surface first. For a node tool, load
+\`agent-builder-node-tools\` and follow that skill.
 
 ## Integration vs Callable Tool Decision
 
@@ -58,15 +53,39 @@ Use an integration when the product is the agent's conversation or trigger
 surface: humans will mention, message, comment to, or resume the agent there,
 or the agent needs to respond in that same platform conversation context.
 
+Native Agent chat integrations are bidirectional within their conversation
+context. The integration both receives the triggering message and delivers the
+Agent's replies. Do not add a same-platform node, MCP, or workflow tool merely
+so the Agent can reply, send a normal conversational message, or use interaction
+features already listed in that integration's capabilities.
+
+Configured integrations also generate their listed context and action tools for
+every top-level Agent run, including scheduled tasks. A scheduled task can use
+actions such as \`send_dm\` or \`send_channel_message\` without an inbound
+message. Being proactive, scheduled, or outside an open conversation is never
+by itself a reason to add a same-platform node, MCP, or workflow tool.
+
 Use an MCP, node, or workflow tool when the product is only something the agent
 operates on: searching records, creating tickets, updating objects, or sending a
 business-process notification while the conversation happens elsewhere.
+
+When building an agent that should interact with Slack, Discord, Telegram, or
+Linear, use the matching chat integration instead of an MCP, node, or workflow
+tool when the platform is the conversation surface. Add a callable tool only
+for an explicitly requested operation that is absent from the selected
+integration's returned capabilities. Compare the exact operation; do not infer
+that the integration is unavailable merely because the run starts from a task.
 
 Examples:
 
 - Slack integration: the agent should be chatted with in Slack, respond in
   Slack threads, DM users, message channels, add reactions, or render rich UI
   to Slack users.
+- Discord integration: the agent should be mentioned or messaged in Discord,
+  respond in Discord threads or DMs, or render approval buttons there.
+- Telegram integration: the agent should receive or send Telegram messages,
+  continue conversations there, render supported interactive messages, or use
+  \`send_dm\` to initiate a scheduled message to a known Telegram user ID.
 - Linear integration: the agent should be triggered from Linear issues/comments,
   understand the current Linear subject, or reply in the same Linear
   conversation.
@@ -74,36 +93,59 @@ Examples:
   workflow and only needs to search/create/update Linear tickets via MCP or node
   tools.
 
+If \`list_integration_types\` does not return the requested conversation
+platform, do not substitute a platform messaging node as an Agent tool. The
+Agent needs an external channel-bridge workflow instead:
+
+1. Finish the Agent without a native integration for that platform.
+2. When \`report_required_artifact\` is available, call it once with an
+   \`artifact\` whose \`type\` is \`"workflow"\` and \`relationship\` is
+   \`"agent-entrypoint"\`. Require the
+   platform trigger, Message an Agent using the incoming message and a stable
+   platform conversation/sender identifier as its custom session key, and the
+   platform send action using the Agent's text response.
+3. The bridge invokes the Agent. Never add it to the Agent's \`tools\` array and
+   never report it as \`relationship: "agent-tool"\`.
+4. If the reporting tool is unavailable, state the same workflow requirement
+   clearly in the final reply so the calling surface can create it.
+
 For callable (non-chat) services, call \`resolve_integration\` separately per
 service and follow the returned \`kind\`: \`"mcp"\` -> MCP Servers section
-below, \`"node"\` -> Node Tools section below.
+below, \`"node"\` -> load \`agent-builder-node-tools\`.
+
+### Correcting a redundant channel tool
+
+If the user questions why a same-platform tool exists, inspect the current
+config and the integration's returned capabilities before answering. When the
+integration supplies the tool's purpose, remove the redundant node, MCP, or
+workflow tool and explain the correction. Do not defend it merely because the
+message is proactive, scheduled, or has no current conversation; generated
+actions such as \`send_dm\` are available without inbound message context.
 
 ## Chat Integrations
 
 The \`integrations\` array controls how the target agent is triggered.
 
-- These are connected external chat platforms, not built-in Preview chat.
+- These are configured external chat platforms, not built-in Preview chat.
 - Call \`list_integration_types\` first.
 - Read the returned \`capabilities\`, \`useIntegrationWhen\`, and
   \`useNodeToolWhen\` fields before deciding to add an integration.
 - Pick one returned \`type\` and pass it to \`configure_channel\` as
   \`integrationType\`. ALWAYS use \`configure_channel\` for chat-channel
   credentials — never \`ask_credential\` or a raw config write. The setup UI it
-  shows creates and persists the credential/connection itself; do not follow up
-  with \`patch_config\`/\`write_config\` to write the credential.
+  shows creates and persists the channel configuration without publishing the
+  agent; do not follow up with \`patch_config\`/\`write_config\` to write the
+  credential.
 - ${INITIAL_BUILD_NOTE} Instead of \`configure_channel\`: after
   \`list_integration_types\` returns the matching type, \`read_config()\` then
   \`patch_config\` adding \`{ "type": "<integrationType>", "credentialId": "" }\`
   to \`/integrations/-\` (include a minimal valid draft \`settings\` object for
   telegram) so the channel appears in the agent panel as needing setup. Pass
   the same \`integrationType\` in the trailing \`finish_setup\` call's
-  \`channels\` array — its card connects or skips the channel itself; if
+  \`channels\` array — its card configures or skips the channel itself. Do not
+  call \`configure_channel\` again after \`finish_setup\` handles the card. If
   skipped, list it in the closing setup checklist pointing at the channel
-  chip in the agent panel. If \`finish_setup\` instead reports the channel as
-  \`'blocked'\` (the agent could not be published yet), patch in the
-  credentials/model it collected first; if that resolves every reported
-  issue, call \`configure_channel\` directly for that channel as a follow-up.
-  Otherwise leave it for the closing checklist.
+  chip in the agent panel.
 - Preserve existing chat integrations unless the user asked to remove them.
 - To remove an existing chat integration, call \`read_config\` and inspect
   \`config.integrations\`.
@@ -117,12 +159,19 @@ The \`integrations\` array controls how the target agent is triggered.
 
 ### Gotchas
 
-- Chat integration types must come from \`list_integration_types\`.
+- Chat integration types must come from \`list_integration_types\`. A channel
+  absent from its result is unsupported for agents — never invent a type, never
+  draft or configure it, and never substitute a workflow node (e.g. a
+  WhatsApp/Twilio node) to fake an unsupported chat channel. Instead, explain
+  the channel is unsupported, offer the supported alternatives the tool
+  returned with their \`capabilities\`, and ask which to use (or whether the
+  user wants a workflow path after the limitation is stated).
 - Do not add a chat integration just because the agent needs CRUD or notifications
   for that product. Resolve the callable capability through \`resolve_integration\`
   unless the product itself is the chat/trigger context.
-- For recurring or scheduled runs, create a task (\`create_tasks\`), not an
-  integration.
+- For recurring or scheduled runs, create a task (\`create_tasks\`) for the
+  cadence. Keep a requested chat integration, and use its generated action
+  tools when the task sends through that same platform.
 - Omitting \`integrations\` from a config write preserves the current channels.
   To remove one, write an explicit filtered array or remove the exact array
   entry.
@@ -143,8 +192,9 @@ call \`resolve_integration\` with queries matching the requested service.
 Resolve one requested service per call; use \`queries\` only for alternative
 search terms for that service.
 
-- If it returns \`kind: "node"\` for a generic service request, follow the Node
-  Tools section with the returned node results. Stop this MCP workflow.
+- If it returns \`kind: "node"\` for a generic service request, load
+  \`agent-builder-node-tools\` and follow it with the returned node results.
+  Stop this MCP workflow.
 - If it returns \`kind: "node"\` but the user explicitly requested an MCP server,
   do not silently substitute a node tool. Continue with manual MCP setup by
   asking for the URL and transport/authentication decision through
@@ -171,8 +221,8 @@ Follow these steps for the selected MCP result:
    \`selectedResult.credentialType\` as \`credentialType\`. Never invent
    credential IDs.
 2. Verify: call \`verify_mcp_server\` with the selected result's \`name\`, \`url\`,
-   \`transport\`, and \`authentication\`, plus the returned \`credentialId\` as
-   \`credential\` when authentication is required.
+   \`transport\`, \`authentication\`, and optional \`metadata\`, plus the returned
+   \`credentialId\` as \`credential\` when authentication is required.
 3. Capability check: confirm the verified tool names and descriptions cover the
    capability the user requested.
 4. Write config: call \`read_config\`, then \`patch_config\` to add the entry to
@@ -192,9 +242,9 @@ credential into the matching entry itself (\`credentialApplied: true\`); no
 additions keep the immediate ask + verify flow above unchanged.
 
 If verification succeeds but the tools do not cover the requested capability
-for a generic service request, switch to the Node Tools section, call
-\`search_nodes\` with the same service queries, and continue with node setup. Do
-not add the MCP server merely because its registry entry matched.
+for a generic service request, load \`agent-builder-node-tools\`, call
+\`search_nodes\` with the same service queries, and follow that skill. Do not
+add the MCP server merely because its registry entry matched.
 
 Full schema reference:
 
@@ -226,8 +276,8 @@ ${mcpServerSchemaText}
 ### Testing the connection
 
 Before writing to config, call \`verify_mcp_server\` with server \`name\`,
-\`url\`, \`transport\`, and (if applicable) the credential id from
-\`ask_credential\`.
+\`url\`, \`transport\`, optional registry \`metadata\`, and (if applicable) the
+credential id from \`ask_credential\`.
 
 - Success returns \`{ ok: true, tools: [{ name, description }] }\`, and when a
   matching \`mcpServers\` entry exists, also \`credentialApplied: true,
@@ -288,78 +338,19 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 - A registry match proves server availability, not support for the requested
   capability; use the verified live tool list for that decision.
 
-## Node Tools
-
-Use this section to discover, configure, and wire node tools into the target
-agent's \`tools[]\`, including \`nodeParameters\` and n8n expressions.
-
-### Workflow
-
-- For a generic external-service request, call \`resolve_integration\` before
-  node discovery unless a resolver result is already available.
-- If it returns \`kind: "mcp"\`, follow the MCP Servers section instead and stop
-  this node-tool workflow.
-- If it returns \`kind: "node"\`, use its returned node results and call
-  \`get_node_types\`; do not repeat the same search with \`search_nodes\`.
-- Call \`search_nodes\` directly only when the user explicitly requests an n8n
-  node, when refining node results, or when a verified MCP server lacks the
-  requested capability.
-- Never guess node type names.
-- Use the tool node id from discovery, usually ending in \`Tool\`.
-- Put fixed values in \`nodeParameters\`; use complete n8n expressions for values the agent should decide at runtime:
-  \`={{ $fromAI('url', 'The URL to inspect', 'string') }}\`.
-- For stable dynamic selectors, load \`agent-builder-resource-locators\` and
-  follow it.
-- Never write literal \`"$fromAI"\` or bare \`$fromAI\`; the node will treat it as the actual value.
-- Do not pipe AI-chosen fields through \`$json\`.
-- Do not include \`inputSchema\` or \`toolDescription\` for node tools.
-- For each required credential slot, call \`ask_credential\` once before the config mutation for an addition to an existing agent. ${INITIAL_BUILD_NOTE} Add the tool with that credential slot omitted; after the trailing \`finish_setup\` resolves the credential, copy the returned credentials into \`node.credentials\` via \`patch_config\`; for resource-locator resolution follow \`agent-builder-resource-locators\` then. Pass the node's credential key as \`credentialSlot\`. On success, copy the returned \`credentials\` object directly to \`node.credentials\`. If skipped, still add the tool and omit only that credential slot.
-- When the agent already has a chat channel configured and the tool needs the same
-  credential type, \`ask_credential\` reuses the channel's credential automatically —
-  do not ask the user to pick a different one.
-
-### n8n Expressions
-
-Node tool parameters inside \`nodeParameters\` can use n8n expressions.
-Prefer \`$fromAI\` whenever the target agent should decide a value at runtime.
-Do not use \`$fromAI\` for stable resource IDs that the target agent cannot know
-at runtime, such as Linear \`teamId\`, project IDs, channel IDs, calendar IDs,
-database IDs, table IDs, or other dynamic "Name or ID" selectors. Resolve those
-with the \`agent-builder-resource-locators\` skill, \`ask_credential\`, and
-\`get_resource_locator_options\`; write the returned \`parameterValue\` into
-\`nodeParameters\`.
-
-- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}\`
-- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('count', 'How many items', 'number') }}\`
-- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('enabled', 'Whether to enable this option', 'boolean') }}\`
-- \`={{ $now.toISO() }}\` for current date/time.
-- \`={{ $today }}\` for the start of today.
-
-Always wrap expressions in \`={{ }}\`. Never pipe AI-chosen node-tool fields
-through \`$json\`; use \`$fromAI\` for those fields instead.
-
-### Gotchas
-
-- Do not include \`inputSchema\` or \`toolDescription\` for node tools.
-- \`$fromAI(...)\` placeholders define the node tool input schema; do not add it manually.
-- Follow \`agent-builder-resource-locators\` for dynamic selector lookup,
-  credentials, and \`parameterValue\` handling.
-- If a required node-tool credential is skipped, add the tool and omit only that credential slot.
-- Node tools execute inline, so never use waiting operations such as \`sendAndWait\`
-  or \`dispatchAndWait\`. When the user requests human approval, configure the
-  intended non-waiting operation and set \`requireApproval: true\` on the tool.
-
 ## Verify
 
-- Connected chat integrations were set up through \`configure_channel\`, not
-  \`ask_credential\` or a manual config write.
+- Configured chat integrations were set up through \`configure_channel\` or the
+  initial-build \`finish_setup\` channel card, not \`ask_credential\` or a manual
+  config write.
 - The chosen integration matches \`useIntegrationWhen\`; otherwise resolve the
   callable capability through \`resolve_integration\` and use MCP, node, or
   workflow tools.
+- No node, MCP, or workflow tool duplicates an action listed by a configured
+  chat integration, including for proactive scheduled tasks.
 - Generic non-chat external services were routed through \`resolve_integration\`
   before MCP or node setup.
 - The final \`integrations\` array keeps unrelated integrations intact and
-  removes only the requested channel entries.
-- Node tools use discovered tool node ids and valid node parameters.`,
+  removes only the requested channel entries.`,
 	};
 }

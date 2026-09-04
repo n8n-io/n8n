@@ -98,6 +98,16 @@ function resolveHostDepVersion(name: string): string {
 }
 
 /**
+ * Flags for every `npm install` that runs inside a sandbox or a snapshot build.
+ * `--no-audit` matters most: npm otherwise posts the whole tree to the registry's
+ * advisories endpoint and blocks until it answers or its 300s fetch timeout expires,
+ * so a slow registry turns a 10s install into minutes. Nobody reads the audit or
+ * funding output in a sandbox. `--prefer-offline` lets a warm npm cache skip
+ * freshness checks against the registry.
+ */
+export const NPM_INSTALL_FLAGS = '--ignore-scripts --no-audit --no-fund --prefer-offline';
+
+/**
  * Versions pinned from the host's installed packages. Pinning is load-bearing
  * for two reasons:
  *   1. `npm install '@n8n/workflow-sdk': '*'` inside the sandbox resolves to
@@ -190,7 +200,7 @@ export async function linkWorkspaceSdkIfEnabled(
 	if (!packedPackages?.length) {
 		linkedPackagesPromise = null;
 		throw new Error(
-			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but workspace packages could not be packed. Run `pnpm build` in packages/workflow and packages/@n8n/workflow-sdk, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but workspace packages could not be packed. Run `pnpm build` in packages/@n8n/utils, packages/workflow, and packages/@n8n/workflow-sdk, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
 		);
 	}
 
@@ -210,7 +220,7 @@ export async function linkWorkspaceSdkIfEnabled(
 		.join(' ');
 	const install = await runInSandbox(
 		workspace,
-		`npm install ${tarballArgs} --no-save --ignore-scripts --force`,
+		`npm install ${tarballArgs} --no-save --force ${NPM_INSTALL_FLAGS}`,
 		root,
 	);
 	if (install.exitCode !== 0) {
@@ -459,7 +469,7 @@ export async function setupSandboxWorkspace(
 
 	// Existing workflows as JSON (fetch in parallel)
 	try {
-		const workflows = await context.workflowService.list({ limit: 100 });
+		const { workflows } = await context.workflowService.list({ limit: 100 });
 		const results = await Promise.allSettled(
 			workflows.map(async (summary) => {
 				const detail = await context.workflowService.get(summary.id);
@@ -485,7 +495,7 @@ export async function setupSandboxWorkspace(
 
 	// npm install (must run after package.json is in place)
 	await setupStep('install-dependencies', async () => {
-		const npmResult = await runInSandbox(workspace, 'npm install --ignore-scripts', root);
+		const npmResult = await runInSandbox(workspace, `npm install ${NPM_INSTALL_FLAGS}`, root);
 		if (npmResult.exitCode !== 0) {
 			throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
 		}

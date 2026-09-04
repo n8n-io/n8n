@@ -53,7 +53,7 @@ const settingsStoreMock = {
 	},
 };
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => settingsStoreMock,
 }));
 
@@ -174,6 +174,15 @@ describe('AgentCard', () => {
 		const badge = wrapper.find('[data-test-id="agent-card-readonly-badge"]');
 		expect(badge.exists()).toBe(true);
 		expect(badge.text()).toBe('agents.list.readonly');
+	});
+
+	it('starts a new chat from the dedicated button', async () => {
+		const wrapper = await renderComponent();
+
+		expect(wrapper.find('[data-action="newChat"]').exists()).toBe(false);
+		await wrapper.find('[data-test-id="agent-card-new-chat"]').trigger('click');
+
+		expect(wrapper.emitted('new-chat')).toEqual([['agent-1', 'project-1']]);
 	});
 
 	it('shows only the favorite toggle when no scopes grant publish or delete', async () => {

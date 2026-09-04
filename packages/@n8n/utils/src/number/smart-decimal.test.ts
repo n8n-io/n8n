@@ -32,4 +32,21 @@ describe('smartDecimal', () => {
 	it('should round to two decimal if it is smaller than the given one', () => {
 		expect(smartDecimal(42.56, 3)).toBe(42.56);
 	});
+
+	it('should round exponential-notation numbers to zero at the default decimals', () => {
+		// `0.0000001` stringifies to `"1e-7"` (no decimal point)
+		expect(smartDecimal(0.0000001)).toBe(0);
+	});
+
+	it('should round exponential-notation numbers correctly at higher precision', () => {
+		expect(smartDecimal(0.0000001, 8)).toBe(0.0000001);
+	});
+
+	it('should round negative exponential-notation numbers to zero', () => {
+		const result = smartDecimal(-0.0000001);
+		// `Number((-0.0000001).toFixed(2))` yields `-0`. `toBe(0)` uses `Object.is`
+		// and would fail on `-0`, so assert value equality with `===`, which treats
+		// `-0 === 0` as `true` — the -0 pitfall.
+		expect(result === 0).toBe(true);
+	});
 });

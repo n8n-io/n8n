@@ -12,6 +12,12 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 					{ name: 'id', type: 'uuid', isPrimary: true },
 					{ name: 'execution_id', type: 'uuid' },
 					{ name: 'node_id', type: 'varchar' },
+					{
+						name: 'iteration',
+						type: 'int',
+						default: 0,
+						comment: 'Which pass over a loop body this row belongs to. 0 for non-loops.',
+					},
 					{ name: 'status', type: 'varchar', length: '32' },
 					{
 						name: 'outputs',
@@ -40,12 +46,20 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 					},
 				],
 				indices: [
-					// Composite: steps are looked up per execution, usually narrowed to
-					// specific nodes. The leading column also serves execution-only
-					// lookups and the FK's cascading delete.
+					// Index execution, node and iteration to look up inputs on the hot path.
+					// Unique to prevent double writes on failure recovery, and keyed per pass
+					// because a node inside a loop body runs once per pass.
 					{
-						name: 'idx_workflow_step_execution_execution_id_node_id',
-						columnNames: ['execution_id', 'node_id'],
+						name: 'uniq_workflow_step_execution_execution_id_node_id_iteration',
+						columnNames: ['execution_id', 'node_id', 'iteration'],
+						isUnique: true,
+					},
+					// Partial index for the failed-sibling checks: they run on every event, and
+					// loops make an execution's row count scale with its data.
+					{
+						name: 'idx_workflow_step_execution_failed',
+						columnNames: ['execution_id'],
+						where: "status = 'failed'",
 					},
 				],
 				foreignKeys: [
@@ -59,7 +73,8 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 				checks: [
 					{
 						name: 'chk_workflow_step_execution_status',
-						expression: "status IN ('queued', 'running', 'completed', 'failed', 'cancelled')",
+						expression:
+							"status IN ('queued', 'running', 'completed', 'failed', 'skipped', 'cancelled')",
 					},
 				],
 			}),

@@ -11,10 +11,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type {
-	SelectItemProps,
-	SelectValue,
-} from '@n8n/design-system/v2/components/Select/Select.types';
+import type { SelectItemProps, SelectValue } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionFloor } from '@n8n/api-types';
@@ -25,7 +22,7 @@ import {
 	EXECUTION_DATA_REDACTION_ENFORCEMENT_DOCS_URL,
 } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
 type EnforcedFloor = Exclude<RedactionFloor, 'off'>;

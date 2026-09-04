@@ -10,3 +10,14 @@ export class UnimplementedError extends Error {
 		this.name = 'UnimplementedError';
 	}
 }
+
+/**
+ * Thrown when the engine hits state that shouldn't be reachable — a bug rather
+ * than bad input or an unbuilt path.
+ */
+export class UnexpectedError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'UnexpectedError';
+	}
+}

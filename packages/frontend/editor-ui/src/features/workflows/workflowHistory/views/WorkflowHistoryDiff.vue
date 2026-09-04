@@ -9,7 +9,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
 import omit from 'lodash/omit';
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import WorkflowHistoryVersionSelect from '../components/WorkflowHistoryVersionSelect.vue';
 import { useWorkflowHistoryVersionOptions } from '../useWorkflowHistoryVersionOptions';
 import { telemetry } from '@/app/plugins/telemetry';

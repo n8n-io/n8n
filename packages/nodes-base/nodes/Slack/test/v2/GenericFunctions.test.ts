@@ -6,6 +6,7 @@ import {
 	slackApiRequest,
 	slackApiRequestAllItems,
 	slackApiRequestAllItemsWithRateLimit,
+	searchContextItems,
 	formatUserLabel,
 	processThreadOptions,
 	getMessageContent,
@@ -87,6 +88,36 @@ describe('Slack V2 > GenericFunctions', () => {
 				level: 'warning',
 			});
 		});
+
+		it.each(['ratelimited', 'rate_limited'])('should handle %s error', async (error) => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValue({ ok: false, error });
+
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'POST', '/assistant.search.context'),
+			).rejects.toMatchObject({
+				message: `Slack error response: "${error}"`,
+				description: expect.stringContaining('web-api/rate-limits'),
+				level: 'warning',
+			});
+		});
+
+		it.each(['not_allowed_token_type', 'invalid_action_token'])(
+			'should handle %s error',
+			async (error) => {
+				mockExecuteFunctions.helpers.requestWithAuthentication = vi
+					.fn()
+					.mockResolvedValue({ ok: false, error });
+
+				await expect(
+					slackApiRequest.call(mockExecuteFunctions, 'POST', '/assistant.search.context'),
+				).rejects.toMatchObject({
+					message: 'This Slack operation requires a user token',
+					level: 'warning',
+				});
+			},
+		);
 
 		it('should handle missing_scope error without needed scopes', async () => {
 			const mockResponse = {
@@ -986,6 +1017,87 @@ describe('Slack V2 > GenericFunctions', () => {
 		});
 	});
 
+	describe('searchContextItems', () => {
+		const page = (messages: object[], nextCursor: string) => ({
+			ok: true,
+			results: { messages },
+			response_metadata: { next_cursor: nextCursor },
+		});
+
+		it('should follow the cursor until it is empty', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValueOnce(page([{ content: 'one' }], 'cursor-2'))
+				.mockResolvedValueOnce(page([{ content: 'two' }], ''));
+
+			const result = await searchContextItems.call(mockExecuteFunctions, { query: 'test' }, 50);
+
+			expect(result).toEqual([{ content: 'one' }, { content: 'two' }]);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+			expect(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mock.calls[0][1].body,
+			).toEqual({ query: 'test', limit: 20 });
+			expect(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mock.calls[1][1].body,
+			).toEqual({ query: 'test', limit: 20, cursor: 'cursor-2' });
+		});
+
+		it('should cap the page size at 20 and stop once maxResults is reached', async () => {
+			const first = Array.from({ length: 20 }, (_, index) => ({ content: `msg-${index}` }));
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValueOnce(page(first, 'cursor-2'))
+				.mockResolvedValueOnce(page([{ content: 'msg-20' }, { content: 'msg-21' }], 'cursor-3'));
+
+			const result = await searchContextItems.call(mockExecuteFunctions, { query: 'test' }, 22);
+
+			expect(result).toHaveLength(22);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+			expect(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mock.calls[0][1].body,
+			).toEqual({ query: 'test', limit: 20 });
+			expect(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mock.calls[1][1].body,
+			).toEqual({ query: 'test', limit: 2, cursor: 'cursor-2' });
+		});
+
+		it('should keep the collected results when the pagination cap is hit', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValueOnce(page([{ content: 'one' }], 'cursor-2'))
+				.mockResolvedValueOnce({ ok: false, error: 'page_limit_exceeded' });
+
+			const result = await searchContextItems.call(mockExecuteFunctions, { query: 'test' }, 50);
+
+			expect(result).toEqual([{ content: 'one' }]);
+		});
+
+		it('should still throw on any other error mid-pagination', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValueOnce(page([{ content: 'one' }], 'cursor-2'))
+				.mockResolvedValueOnce({ ok: false, error: 'missing_scope', needed: 'search:read.im' });
+
+			await expect(
+				searchContextItems.call(mockExecuteFunctions, { query: 'test' }, 50),
+			).rejects.toMatchObject({
+				message: 'Your Slack credential is missing required Oauth Scopes',
+				description: 'Add the following scope(s) to your Slack App: search:read.im',
+			});
+		});
+
+		it('should stop on an empty page even when a cursor is returned', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValue(page([], 'cursor-2'));
+
+			const result = await searchContextItems.call(mockExecuteFunctions, { query: 'test' }, 50);
+
+			expect(result).toEqual([]);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('processThreadOptions', () => {
 		it('should return empty object when threadOptions is undefined', () => {
 			const result = processThreadOptions(undefined);
@@ -1283,6 +1395,35 @@ describe('Slack V2 > GenericFunctions', () => {
 					blocks: 'invalid-blocks-format',
 					text: 'Test text',
 				});
+			});
+
+			// A bare Block Kit array (`[ {...} ]`) is what `ensureType: 'object'` yields for a
+			// blocksUi string holding the array without the `{ blocks: [...] }` wrapper. Slack
+			// then gets a body with no `blocks` key and renders nothing, without erroring.
+			it('should drop the blocks when blocksUi is a bare array instead of a blocks object', () => {
+				const mockBlocksUI = [
+					{
+						type: 'section',
+						text: {
+							type: 'mrkdwn',
+							text: 'Hello World',
+						},
+					},
+				];
+
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
+					(param: string, _index: number) => {
+						if (param === 'messageType') return 'block';
+						if (param === 'otherOptions.includeLinkToWorkflow') return false;
+						if (param === 'text') return 'Fallback text';
+						if (param === 'blocksUi') return mockBlocksUI;
+						return undefined;
+					},
+				);
+
+				const result = getMessageContent.call(mockExecuteFunctions, 0, 2.1, 'instance-123');
+
+				expect(result.blocks).toBeUndefined();
 			});
 
 			it('should add text property when text parameter is provided', () => {

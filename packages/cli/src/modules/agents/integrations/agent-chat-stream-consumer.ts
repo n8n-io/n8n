@@ -4,6 +4,7 @@ import type { Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { BridgeStatusHandle } from './agent-chat-integration';
+import { isIntegrationActionSuspendPayload } from './agent-chat-suspension-cards';
 import { type TextEndFn, type TextYieldFn } from './types';
 
 type SuspendedChunk = Extract<StreamChunk, { type: 'tool-call-suspended' }>;
@@ -329,7 +330,12 @@ export class AgentChatStreamConsumer {
 						if (!responseState.suppressText) buffer += chunk.delta;
 						break;
 					case 'tool-call-suspended': {
-						await flushBuffer();
+						if (isIntegrationActionSuspendPayload(chunk.suspendPayload)) {
+							// The integration action already posted its interactive card.
+							buffer = '';
+						} else {
+							await flushBuffer();
+						}
 						await responseLifecycle.startDiscreteResponse();
 						const result = await this.options.handleSuspension(chunk, thread);
 						responseState.hasVisibleResponse ||= result === 'posted';

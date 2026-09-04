@@ -11,7 +11,6 @@ import {
 	type FocusOutsideEvent,
 } from 'reka-ui';
 import { watch } from 'vue';
-import type { CSSProperties } from 'vue';
 
 defineOptions({ name: 'N8nPopover' });
 
@@ -55,8 +54,14 @@ interface Props
 	width?: string;
 	/**
 	 * z-index of popover content
+	 *
+	 * Spelled out rather than reusing `CSSProperties['zIndex']`: that resolves to
+	 * csstype's `ZIndex`, which the compiler cannot name through pnpm's hashed
+	 * paths, and the declaration for this component was then silently skipped
+	 * (TS2883). `ZIndex` is `Globals | 'auto' | (number & {}) | (string & {})`, so
+	 * this accepts the same set of values.
 	 */
-	zIndex?: number | CSSProperties['zIndex'];
+	zIndex?: number | string;
 	/**
 	 * Popover max height
 	 */

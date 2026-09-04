@@ -63,6 +63,7 @@ function iteration1(): WorkflowTestCaseResult {
 	return {
 		testCase,
 		workflowBuildSuccess: true,
+		threadId: '3f0c9a2e-8d41-4b77-9a10-1c2d3e4f5a6b',
 		transcript,
 		workflowChecks: [passingCheck],
 		workflowJson: {
@@ -86,7 +87,12 @@ function iteration2(): WorkflowTestCaseResult {
 		workflowBuildSuccess: true,
 		buildError: 'agent stopped before producing a workflow',
 		buildExpectationResults: [
-			{ expectation: 'sends a digest', pass: false, reason: 'digest node missing' },
+			{
+				expectation: 'sends a digest',
+				pass: false,
+				reason: 'digest node missing',
+				attribution: 'builder_issue',
+			},
 		],
 		executionScenarioResults: [
 			{
@@ -95,6 +101,7 @@ function iteration2(): WorkflowTestCaseResult {
 				score: 0,
 				reasoning: 'no digest was produced',
 				failureCategory: 'mock_issue',
+				attribution: 'mock_issue',
 				rootCause: 'mock returned an empty page',
 				evalResult: { errors: ['HTTP 500 from the mocked API'] } as InstanceAiEvalExecutionResult,
 			},
@@ -118,11 +125,13 @@ interface DispatcherView {
 			expectation: string;
 			pass: boolean;
 			reason: string;
+			attribution?: string;
 		}> | null>;
 		buildCostUsdPerRun?: Array<number | null>;
 		buildTurnsPerRun?: Array<number | null>;
 		transcriptPerRun: Array<TranscriptTurn[] | null>;
 		buildErrorPerRun: Array<string | null>;
+		threadIds: Array<string | null>;
 		scenarios: Array<{
 			name: string;
 			passCount: number;
@@ -132,6 +141,7 @@ interface DispatcherView {
 				score: number;
 				reasoning: string;
 				failureCategory?: string;
+				attribution?: string;
 				rootCause?: string;
 				execErrors: string[];
 			}>;
@@ -181,7 +191,16 @@ describe('eval-results.json — dispatcher contract', () => {
 		});
 		expect(tc.buildExpectationResultsPerRun).toEqual([
 			[{ expectation: 'sends a digest', pass: true, reason: 'digest node present' }],
-			[{ expectation: 'sends a digest', pass: false, reason: 'digest node missing' }],
+			[
+				{
+					expectation: 'sends a digest',
+					pass: false,
+					reason: 'digest node missing',
+					// A missed expectation is a builder miss — the harness decides this,
+					// lang-tracer stores it (TRUST-375).
+					attribution: 'builder_issue',
+				},
+			],
 		]);
 		// Spend arrays are `--build-via-mcp`-only — absent when no iteration
 		// recorded `claude` spend, so non-MCP dispatcher output is unchanged.
@@ -206,6 +225,14 @@ describe('eval-results.json — dispatcher contract', () => {
 		// Per-iteration build-failure reason — one `string | null` per run.
 		expect(tc.buildErrorPerRun).toEqual([null, 'agent stopped before producing a workflow']);
 
+		// Build thread ids — one per iteration, null when the iteration never
+		// reached a build. LangTracer persists these (case_run_artifacts.thread_ids)
+		// as the join key from a case run to its LangSmith builder trace
+		// (`metadata.thread_id`) when eval trace capture is enabled on the n8n
+		// container. Dropping the field orphans every captured trace: the trace
+		// itself carries only a bare UUID, with no case, verdict, or version.
+		expect(tc.threadIds).toEqual(['3f0c9a2e-8d41-4b77-9a10-1c2d3e4f5a6b', null]);
+
 		// Scenario blocks serialize under the flat `scenarios` key with a flat
 		// `name` — the shape the dispatcher's fallback reader consumes today.
 		expect(tc.scenarios).toHaveLength(1);
@@ -220,9 +247,15 @@ describe('eval-results.json — dispatcher contract', () => {
 			score: 0,
 			reasoning: 'no digest was produced',
 			failureCategory: 'mock_issue',
+			// The attribution rides ALONGSIDE the legacy category — lang-tracer reads
+			// this one and only falls back to re-deriving from the category for rows
+			// written by an older pinned harness commit (TRUST-375).
+			attribution: 'mock_issue',
 			rootCause: 'mock returned an empty page',
 			execErrors: ['HTTP 500 from the mocked API'],
 		});
+		// A passing run carries no attribution at all — nobody owns a pass.
+		expect(sc.runs[0]).not.toHaveProperty('attribution');
 	});
 
 	it('serializes per-iteration `claude` build spend when a run recorded it', () => {

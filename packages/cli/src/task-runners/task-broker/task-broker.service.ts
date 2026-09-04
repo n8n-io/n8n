@@ -16,6 +16,7 @@ import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.e
 import { TaskRequesterAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-requester-accept-timeout.error';
 import { TaskRunnerAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-runner-accept-timeout.error';
 import { TaskRunnerExecutionTimeoutError } from '@/task-runners/task-broker/errors/task-runner-execution-timeout.error';
+import { TaskRunnerShutdownTimeoutError } from '@/task-runners/task-broker/errors/task-runner-shutdown-timeout.error';
 import { TaskRunnerUnreachableError } from '@/task-runners/task-broker/errors/task-runner-unreachable.error';
 import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
@@ -32,6 +33,8 @@ export interface Task {
 	requesterId: string;
 	taskType: string;
 	timeout?: NodeJS.Timeout;
+	/** Epoch ms when `timeout` fires. Lets the shutdown cap skip timers already due sooner. */
+	timesOutAt?: number;
 }
 
 export interface TaskOffer {
@@ -45,6 +48,16 @@ export interface TaskOffer {
 }
 
 const MAX_REQUEST_TIMEOUT_REFRESHES = 3;
+
+const MAX_CONSECUTIVE_ACCEPT_TIMEOUTS = 3;
+
+/**
+ * How far apart two silence observations must be to count as two.
+ * Requests pending together expire in the same tick, so without this floor a single
+ * instant of silence would satisfy the two-observation rule and could catch a runner
+ * that is only briefly offerless between tasks.
+ */
+const MIN_SILENCE_DURATION_MS = 2_000;
 
 export interface TaskRequest {
 	requestId: string;
@@ -88,6 +101,9 @@ export class TaskBroker {
 	 */
 	private isDraining = false;
 
+	/** Epoch ms by which every task timeout must fire once shutdown has begun. */
+	private shutdownDeadline?: number;
+
 	private runnerAcceptRejects: Map<
 		Task['id'],
 		{ accept: RunnerAcceptCallback; reject: TaskRejectCallback; runnerId: TaskRunner['id'] }
@@ -97,6 +113,14 @@ export class TaskBroker {
 		Task['id'],
 		{ accept: RequesterAcceptCallback; reject: TaskRejectCallback }
 	> = new Map();
+
+	private consecutiveAcceptTimeouts: Map<
+		TaskRunner['id'],
+		{ count: number; lastTimeoutAt: number }
+	> = new Map();
+
+	/** When each runner was first observed silent, cleared on any message from it. */
+	private silentRunnersSince: Map<TaskRunner['id'], number> = new Map();
 
 	private pendingTaskOffers: TaskOffer[] = [];
 
@@ -150,6 +174,9 @@ export class TaskBroker {
 		if (requestIndex === -1) return;
 
 		const request = this.pendingTaskRequests[requestIndex];
+
+		this.flagSilentRunners(request.taskType);
+
 		this.pendingTaskRequests.splice(requestIndex, 1);
 		this.mismatchWarned.delete(requestId);
 
@@ -207,6 +234,8 @@ export class TaskBroker {
 
 	deregisterRunner(runnerId: string, error: Error) {
 		this.knownRunners.delete(runnerId);
+		this.consecutiveAcceptTimeouts.delete(runnerId);
+		this.silentRunnersSince.delete(runnerId);
 
 		this.discardOffersFrom(runnerId);
 
@@ -255,6 +284,10 @@ export class TaskBroker {
 		if (!runner) {
 			return;
 		}
+
+		// Any message from the runner disproves the silence a report would be based on.
+		this.silentRunnersSince.delete(runnerId);
+
 		switch (message.type) {
 			case 'runner:taskaccepted':
 				this.handleRunnerAccept(message.taskId);
@@ -278,9 +311,11 @@ export class TaskBroker {
 				});
 				break;
 			case 'runner:taskdone':
+				this.resetAcceptTimeoutsOnOwnTask(runnerId, message.taskId);
 				await this.taskDoneHandler(message.taskId, message.data);
 				break;
 			case 'runner:taskerror':
+				this.resetAcceptTimeoutsOnOwnTask(runnerId, message.taskId);
 				await this.taskErrorHandler(message.taskId, message.error);
 				break;
 			case 'runner:taskdatarequest':
@@ -320,6 +355,7 @@ export class TaskBroker {
 	handleRunnerAccept(taskId: Task['id']) {
 		const acceptReject = this.runnerAcceptRejects.get(taskId);
 		if (acceptReject) {
+			this.consecutiveAcceptTimeouts.delete(acceptReject.runnerId);
 			acceptReject.accept();
 			this.runnerAcceptRejects.delete(taskId);
 		}
@@ -328,6 +364,7 @@ export class TaskBroker {
 	handleRunnerReject(taskId: Task['id'], reason: string) {
 		const acceptReject = this.runnerAcceptRejects.get(taskId);
 		if (acceptReject) {
+			this.consecutiveAcceptTimeouts.delete(acceptReject.runnerId);
 			acceptReject.reject(new TaskRejectError(reason));
 			this.runnerAcceptRejects.delete(taskId);
 		}
@@ -336,6 +373,7 @@ export class TaskBroker {
 	handleRunnerDeferred(taskId: Task['id']) {
 		const acceptReject = this.runnerAcceptRejects.get(taskId);
 		if (acceptReject) {
+			this.consecutiveAcceptTimeouts.delete(acceptReject.runnerId);
 			acceptReject.reject(new TaskDeferredError());
 			this.runnerAcceptRejects.delete(taskId);
 		}
@@ -562,9 +600,11 @@ export class TaskBroker {
 		const task = this.tasks.get(taskId);
 		if (!task) return;
 
+		const taskTimeoutMs = this.taskRunnersConfig.taskTimeout * Time.seconds.toMilliseconds;
+		task.timesOutAt = Math.min(Date.now() + taskTimeoutMs, this.shutdownDeadline ?? Infinity);
 		task.timeout = setTimeout(async () => {
 			await this.handleTaskTimeout(taskId);
-		}, this.taskRunnersConfig.taskTimeout * Time.seconds.toMilliseconds);
+		}, task.timesOutAt - Date.now());
 
 		await this.messageRunner(runner.id, {
 			type: 'broker:tasksettings',
@@ -577,13 +617,24 @@ export class TaskBroker {
 		const task = this.tasks.get(taskId);
 		if (!task) return;
 
+		// A capped timer fires at the shutdown deadline, not the task's own timeout.
+		const isCappedByShutdown =
+			this.shutdownDeadline !== undefined && task.timesOutAt === this.shutdownDeadline;
+
 		if (this.taskRunnersConfig.mode === 'internal') {
-			this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task');
+			// Don't restart a runner that shutdown is about to stop anyway.
+			if (this.shutdownDeadline === undefined) {
+				this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task', {
+					runnerId: task.runnerId,
+				});
+			}
 		} else if (this.taskRunnersConfig.mode === 'external') {
 			await this.messageRunner(task.runnerId, {
 				type: 'broker:taskcancel',
 				taskId,
-				reason: 'Task execution timed out',
+				reason: isCappedByShutdown
+					? 'Task aborted because this n8n instance is shutting down'
+					: 'Task execution timed out',
 			});
 		}
 
@@ -591,11 +642,13 @@ export class TaskBroker {
 
 		await this.taskErrorHandler(
 			taskId,
-			new TaskRunnerExecutionTimeoutError({
-				taskTimeout,
-				isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
-				mode,
-			}),
+			isCappedByShutdown
+				? new TaskRunnerShutdownTimeoutError()
+				: new TaskRunnerExecutionTimeoutError({
+						taskTimeout,
+						isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
+						mode,
+					}),
 		);
 	}
 
@@ -673,6 +726,7 @@ export class TaskBroker {
 				// A runner missing the acknowledgement window may be gone without its transport
 				// having reported it yet, so its remaining offers cannot be trusted either.
 				this.discardOffersFrom(offer.runnerId);
+				this.flagRunnerIfUnresponsive(offer.runnerId);
 				this.settleTasks();
 				return;
 			}
@@ -752,6 +806,129 @@ export class TaskBroker {
 		}
 	}
 
+	/**
+	 * Clears acknowledgement strikes when a runner reports on a task the broker tracks for
+	 * it, which proves its accept path is alive. A result for a task the broker no longer
+	 * tracks, or never assigned to this runner, proves nothing and is ignored.
+	 */
+	private resetAcceptTimeoutsOnOwnTask(runnerId: TaskRunner['id'], taskId: Task['id']) {
+		if (this.tasks.get(taskId)?.runnerId === runnerId) {
+			this.consecutiveAcceptTimeouts.delete(runnerId);
+		}
+	}
+
+	/**
+	 * Counts consecutive acknowledgement timeouts per runner and reports it unresponsive
+	 * once the threshold is reached. Timeouts within one acceptance window of the previous
+	 * one count as a single timeout, and any acknowledgement or task result resets the
+	 * count. Task offers do not reset it, since an alive offer loop with a dead accept path
+	 * is the state this detects.
+	 */
+	private flagRunnerIfUnresponsive(runnerId: TaskRunner['id']) {
+		const now = this.monotonicNowMs();
+		const previous = this.consecutiveAcceptTimeouts.get(runnerId);
+		const acceptWindowMs = this.taskRunnersConfig.taskAcceptTimeout * Time.seconds.toMilliseconds;
+
+		if (previous && now - previous.lastTimeoutAt < acceptWindowMs) {
+			return;
+		}
+
+		const failures = Math.min((previous?.count ?? 0) + 1, MAX_CONSECUTIVE_ACCEPT_TIMEOUTS);
+
+		this.consecutiveAcceptTimeouts.set(runnerId, { count: failures, lastTimeoutAt: now });
+
+		if (failures < MAX_CONSECUTIVE_ACCEPT_TIMEOUTS) return;
+
+		const reported = this.reportUnresponsive(
+			runnerId,
+			`failed to acknowledge ${MAX_CONSECUTIVE_ACCEPT_TIMEOUTS} consecutive task acceptances`,
+		);
+
+		if (reported) {
+			this.consecutiveAcceptTimeouts.delete(runnerId);
+		}
+	}
+
+	/**
+	 * Reports as unresponsive every reachable runner for `taskType` with no sign of life:
+	 * no pending offer, no in-flight task, no acceptance in progress, no message received.
+	 * Since a healthy runner is briefly offerless between tasks, a runner is only reported
+	 * once observed silent at two request expiries at least the minimum silence duration apart.
+	 */
+	private flagSilentRunners(taskType: string) {
+		this.expireTasks();
+
+		const now = this.monotonicNowMs();
+
+		[...this.knownRunners.values()]
+			.filter(({ runner }) => runner.taskTypes.includes(taskType))
+			.filter(({ isRunnerReachable }) => isRunnerReachable())
+			.forEach(({ runner }) => {
+				if (!this.isSilent(runner.id)) {
+					this.silentRunnersSince.delete(runner.id);
+					return;
+				}
+
+				const silentSince = this.silentRunnersSince.get(runner.id);
+
+				if (silentSince === undefined) {
+					this.silentRunnersSince.set(runner.id, now);
+				} else if (now - silentSince >= MIN_SILENCE_DURATION_MS) {
+					const reported = this.reportUnresponsive(
+						runner.id,
+						'sent no task offers while task requests expired',
+					);
+
+					if (reported) {
+						this.silentRunnersSince.delete(runner.id);
+					}
+				}
+			});
+	}
+
+	/**
+	 * Reports a runner as unresponsive, so its transport can be torn down and, in internal
+	 * mode, its process force-restarted.
+	 *
+	 * Skipped while the runner has in-flight tasks: tearing it down would fail tasks that
+	 * may still complete. A stuck runner is still recovered once those tasks hit their own
+	 * execution timeout, which force-restarts the process in internal mode and, in external
+	 * mode, untracks the tasks so the next report is no longer skipped.
+	 *
+	 * @returns whether the runner was reported.
+	 */
+	private reportUnresponsive(runnerId: TaskRunner['id'], cause: string): boolean {
+		if (this.getInFlightTaskIds(runnerId).length > 0) {
+			this.logger.debug(
+				`Runner (${runnerId}) ${cause}, but it still has tasks in flight, so not reporting it as unresponsive`,
+			);
+			return false;
+		}
+
+		this.logger.warn(`Runner (${runnerId}) ${cause}, reporting it as unresponsive`);
+		this.taskRunnerLifecycleEvents.emit('runner:unresponsive', { runnerId });
+
+		return true;
+	}
+
+	/**
+	 * Milliseconds from a monotonic clock, so a system clock adjustment cannot make two
+	 * observations look closer together or further apart than they were.
+	 */
+	private monotonicNowMs() {
+		return Number(process.hrtime.bigint() / 1_000_000n);
+	}
+
+	private isSilent(runnerId: TaskRunner['id']) {
+		const hasPendingOffer = this.pendingTaskOffers.some((offer) => offer.runnerId === runnerId);
+		const hasInFlightTask = this.getInFlightTaskIds(runnerId).length > 0;
+		const hasAcceptanceInProgress = [...this.runnerAcceptRejects.values()].some(
+			(acceptReject) => acceptReject.runnerId === runnerId,
+		);
+
+		return !hasPendingOffer && !hasInFlightTask && !hasAcceptanceInProgress;
+	}
+
 	// Find matching task offers and requests, then let the runner
 	// know that an offer has been accepted
 	//
@@ -819,6 +996,38 @@ export class TaskBroker {
 
 	hasActiveTasks() {
 		return this.tasks.size > 0;
+	}
+
+	/**
+	 * Caps every task timeout, current and future, to fire no later than `deadline`,
+	 * without extending timers already due sooner. A task that fails inside the
+	 * shutdown window lets its execution error normally and the worker drain complete.
+	 */
+	capTaskTimeoutsForShutdown(deadline: number) {
+		this.shutdownDeadline = deadline;
+
+		const cappedTaskIds: Array<Task['id']> = [];
+
+		for (const [taskId, task] of this.tasks) {
+			if (!task.timeout) continue;
+			if (task.timesOutAt !== undefined && task.timesOutAt <= deadline) continue;
+
+			clearTimeout(task.timeout);
+			task.timesOutAt = deadline;
+			task.timeout = setTimeout(
+				async () => {
+					await this.handleTaskTimeout(taskId);
+				},
+				Math.max(deadline - Date.now(), 0),
+			);
+			cappedTaskIds.push(taskId);
+		}
+
+		if (cappedTaskIds.length > 0) {
+			this.logger.info(
+				`Capped ${cappedTaskIds.length} in-flight task timeout(s) to fit the shutdown window (task IDs: ${cappedTaskIds.join(', ')})`,
+			);
+		}
 	}
 
 	/**

@@ -61,17 +61,6 @@ vi.mock('@/features/core/dataTable/components/dataGrid/n8nTheme', () => ({
 	n8nTheme: 'n8n-theme',
 }));
 
-// Mock AddColumnPopover
-vi.mock('@/features/core/dataTable/components/dataGrid/AddColumnPopover.vue', () => ({
-	default: {
-		name: 'AddColumnPopover',
-		template:
-			'<div data-test-id="add-column-popover"><button data-test-id="data-table-add-column-button" @click="$emit(\'add-column\', { column: { name: \'newColumn\', type: \'string\' } })">Add Column</button></div>',
-		props: ['dataTable'],
-		emits: ['add-column'],
-	},
-}));
-
 // Mock composables
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({

@@ -2050,6 +2050,38 @@ describe('generate-types', () => {
 			expect(result).toContain('@builderHint AI Agent — wire subnodes via the config object');
 		});
 
+		it('should mark a hidden node as deprecated above its description', () => {
+			const node = { ...mockGmailNode, hidden: true };
+
+			const result = generateTypes.generateNodeJSDoc(node);
+
+			expect(result).toContain('@deprecated');
+			expect(result).toContain('Do not use it in a new workflow');
+			// The reader must meet the marker before the parameters.
+			expect(result.indexOf('@deprecated')).toBeLessThan(
+				result.indexOf('Send and receive emails using Gmail'),
+			);
+		});
+
+		it('should name the replacement node from the builder hint of a hidden node', () => {
+			const node = {
+				...mockGmailNode,
+				hidden: true,
+				builderHint: { searchHint: 'Use `n8n-nodes-base.httpRequestTool` instead.' },
+			};
+
+			const result = generateTypes.generateNodeJSDoc(node);
+
+			expect(result).toContain('@deprecated');
+			expect(result).toContain('@builderHint Use `n8n-nodes-base.httpRequestTool` instead.');
+		});
+
+		it('should not mark a visible node as deprecated', () => {
+			const result = generateTypes.generateNodeJSDoc(mockGmailNode);
+
+			expect(result).not.toContain('@deprecated');
+		});
+
 		it('should emit unconditional extraTypeDefContent variations at the file header but skip gated ones', () => {
 			const node = {
 				...mockGmailNode,
@@ -2677,9 +2709,22 @@ describe('generate-types', () => {
 			expect(result).toContain("'httpHeaderAuth'");
 			expect(result).toContain("'httpQueryAuth'");
 			expect(result).toContain("'httpCustomAuth'");
+			expect(result).toContain("'httpTemplatedCustomAuth'");
 			expect(result).toContain("'oAuth1Api'");
 			expect(result).toContain("'oAuth2Api'");
 			expect(result).toContain('Expression<string>');
+		});
+
+		it('should emit steering JSDoc for genericAuthType', () => {
+			const prop: NodeProperty = {
+				name: 'genericAuthType',
+				displayName: 'Generic Auth Type',
+				type: 'credentialsSelect',
+				default: '',
+			};
+			const line = generateTypes.generatePropertyLine(prop, true);
+			expect(line).toContain('httpTemplatedCustomAuth');
+			expect(line).toContain('do NOT use httpBearerAuth');
 		});
 
 		it('should NOT skip credentialsSelect properties in type generation', () => {
@@ -5218,6 +5263,37 @@ describe('generate-types', () => {
 			}
 		});
 
+		it('fills gaps per file from lower minors when the exact dir is sparse', () => {
+			const nodeName = '__TestPerFileFallback__';
+			const searchSchema = { type: 'object', properties: { matches: { type: 'array' } } };
+			const postSchema = { type: 'object', properties: { ts: { type: 'string' } } };
+			const stalePostSchema = { type: 'object', properties: { old: { type: 'boolean' } } };
+
+			try {
+				// The Slack shape: v2.7.0 exists but only holds message/search.json,
+				// while v2.3.0 holds message/post.json — post must resolve from v2.3.0.
+				createTestSchemaDir(nodeName, 'v2.3.0', {
+					'message/post.json': JSON.stringify(postSchema),
+					'message/search.json': JSON.stringify(stalePostSchema),
+				});
+				createTestSchemaDir(nodeName, 'v2.7.0', {
+					'message/search.json': JSON.stringify(searchSchema),
+				});
+
+				const result = generateTypes.discoverSchemasForNode(
+					`n8n-nodes-base.${nodeName}`,
+					2.7,
+					nodeName,
+				);
+
+				expect(result).toHaveLength(2);
+				expect(result.find((s) => s.operation === 'search')?.schema).toEqual(searchSchema);
+				expect(result.find((s) => s.operation === 'post')?.schema).toEqual(postSchema);
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
 		it('never falls forward to a newer major', () => {
 			const nodeName = '__TestNoNewerMajor__';
 
@@ -5272,6 +5348,52 @@ describe('generate-types', () => {
 				});
 			} finally {
 				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('matches schema folders case-insensitively (chainLlm -> ChainLLM)', () => {
+			const nodeName = '__testchainllm__';
+			const schema = { type: 'object', properties: { text: { type: 'string' } } };
+
+			try {
+				createTestSchemaDir('Nested/__TESTCHAINLLM__', 'v1.9.0', {
+					'output.json': JSON.stringify(schema),
+				});
+
+				const result = generateTypes.discoverSchemasForNode(
+					`@n8n/n8n-nodes-langchain.${nodeName}`,
+					1.9,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].schema).toEqual(schema);
+			} finally {
+				cleanupTestDir('Nested');
+			}
+		});
+
+		it('discovers schemas from the current package before falling back to nodes-base', () => {
+			const nodeName = '__TestOwnPackageSchema__';
+			const ownSchema = { type: 'object', properties: { output: { type: 'object' } } };
+			const packageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'schema-root-test-'));
+			const originalCwd = process.cwd();
+
+			try {
+				const schemaDir = path.join(packageDir, 'dist/nodes/chains', nodeName, '__schema__/v1.2.0');
+				fs.mkdirSync(schemaDir, { recursive: true });
+				fs.writeFileSync(path.join(schemaDir, 'output.json'), JSON.stringify(ownSchema));
+
+				process.chdir(packageDir);
+				const result = generateTypes.discoverSchemasForNode(
+					`@n8n/n8n-nodes-langchain.${nodeName}`,
+					1.2,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toEqual({ resource: '', operation: 'output', schema: ownSchema });
+			} finally {
+				process.chdir(originalCwd);
+				fs.rmSync(packageDir, { recursive: true, force: true });
 			}
 		});
 

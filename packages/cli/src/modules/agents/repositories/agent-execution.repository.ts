@@ -1,7 +1,25 @@
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { AgentExecution } from '../entities/agent-execution.entity';
+import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
+import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
+
+export type RunningAgentExecution = Pick<
+	AgentExecution,
+	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
+>;
+
+type AgentExecutionFinalizationValues = Pick<
+	AgentExecution,
+	'status' | 'stoppedAt' | 'duration' | 'timeline' | 'storedAt' | 'error' | 'failureSummary'
+> &
+	Partial<
+		Pick<
+			AgentExecution,
+			'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'cost' | 'hitlStatus'
+		>
+	>;
 
 @Service()
 export class AgentExecutionRepository extends Repository<AgentExecution> {
@@ -12,6 +30,39 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	/** All executions in a thread, oldest first — used by the timeline view. */
 	async findByThreadIdOrdered(threadId: string): Promise<AgentExecution[]> {
 		return await this.find({ where: { threadId }, order: { createdAt: 'ASC' } });
+	}
+
+	async findRunning(): Promise<RunningAgentExecution[]> {
+		return await this.find({
+			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
+			where: { status: 'running' },
+		});
+	}
+
+	async touchRunning(executionId: string): Promise<void> {
+		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
+	}
+
+	async updateTimelineIfRunning(
+		executionId: string,
+		timeline: AgentExecution['timeline'],
+	): Promise<boolean> {
+		const result = await this.update({ id: executionId, status: 'running' }, {
+			timeline,
+			updatedAt: new Date(),
+		} as QueryDeepPartialEntity<AgentExecution>);
+		return result.affected === 1;
+	}
+
+	async updateIfRunning(
+		executionId: string,
+		values: AgentExecutionFinalizationValues,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status: 'running' },
+			values as QueryDeepPartialEntity<AgentExecution>,
+		);
+		return result.affected === 1;
 	}
 
 	/**
@@ -64,12 +115,62 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
 			.andWhere('e."source" IS NOT NULL')
 			.andWhere(
-				`e."createdAt" = (SELECT MIN(e2."createdAt") FROM ${tableName} e2 ` +
-					'WHERE e2."threadId" = e."threadId" AND e2."source" IS NOT NULL)',
+				`e.id = (SELECT e2.id FROM ${tableName} e2 ` +
+					'WHERE e2."threadId" = e."threadId" AND e2."source" IS NOT NULL ' +
+					'ORDER BY e2."createdAt" ASC, e2.id ASC LIMIT 1)',
 			)
 			.getRawMany<{ threadId: string; source: string }>();
 
 		return new Map(rows.map((r) => [r.threadId, r.source]));
+	}
+
+	async findLatestStatusesByThreadIds(
+		threadIds: string[],
+	): Promise<Map<string, AgentExecutionStatus>> {
+		if (threadIds.length === 0) return new Map();
+
+		const tableName = this.metadata.tablePath;
+		const rows = await this.createQueryBuilder('e')
+			.select(['e."threadId" AS "threadId"', 'e."status" AS "status"'])
+			.where('e."threadId" IN (:...threadIds)', { threadIds })
+			.andWhere(
+				`e.id = (SELECT e2.id FROM ${tableName} e2 ` +
+					'WHERE e2."threadId" = e."threadId" ' +
+					'ORDER BY e2."createdAt" DESC, e2.id DESC LIMIT 1)',
+			)
+			.getRawMany<{ threadId: string; status: AgentExecutionStatus }>();
+
+		return new Map(rows.map((row) => [row.threadId, row.status]));
+	}
+
+	async findFailureSummariesByThreadIds(
+		threadIds: string[],
+	): Promise<Map<string, ThreadFailureSummary>> {
+		if (threadIds.length === 0) return new Map();
+
+		const executions = await this.createQueryBuilder('e')
+			.select(['e.id', 'e.threadId', 'e.failureSummary'])
+			.where('e."threadId" IN (:...threadIds)', { threadIds })
+			.andWhere('e."failureSummary" IS NOT NULL')
+			.getMany();
+		const summaries = new Map<string, ThreadFailureSummary>();
+
+		for (const execution of executions) {
+			const summary = execution.failureSummary;
+			if (!summary) continue;
+
+			const latest = { ...summary.latest, executionId: execution.id };
+			const current = summaries.get(execution.threadId);
+			if (!current) {
+				summaries.set(execution.threadId, { count: summary.count, latest });
+				continue;
+			}
+
+			current.count += summary.count;
+			if (latest.occurredAt >= current.latest.occurredAt) current.latest = latest;
+		}
+
+		return summaries;
 	}
 
 	/**
@@ -94,6 +195,20 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			where: { threadId, hitlStatus: 'suspended' },
 			order: { createdAt: 'DESC' },
 		});
+	}
+
+	/**
+	 * Whether the thread ever parked a run. Counts rows on the
+	 * `(threadId, createdAt)` index without loading any execution data, so it is
+	 * cheap enough to ask on every inbound message.
+	 *
+	 * A row keeps `hitlStatus: 'suspended'` after its resume (the resumed turn is
+	 * a separate row), so this can only rule a thread out, never confirm that
+	 * something is parked right now — the checkpoint is the authority for that.
+	 */
+	async hasSuspendedRun(threadId: string): Promise<boolean> {
+		const count = await this.count({ where: { threadId, hitlStatus: 'suspended' } });
+		return count > 0;
 	}
 
 	/** Backfill model on a set of executions in a single statement. */

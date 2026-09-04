@@ -4,34 +4,38 @@ import type {
 	INodeTypeDescription,
 	IWebhookDescription,
 } from 'n8n-workflow';
+import { fromFunction, fromParameter, webhookDescriptionFields } from 'n8n-workflow';
 
 import { getResponseCode, getResponseData } from './utils';
 
-// The Webhook node's opt-in "n8n User Auth (OAuth2)" mode. Seeds the triggering
-// user's identity into the execution so the workflow can use that user's private
+// The Webhook node's "n8n User Auth (OAuth2)" mode. Seeds the triggering user's
+// identity into the execution so the workflow can use that user's private
 // credentials. Shares the `n8nOAuth2` value with the MCP trigger's equivalent mode.
-// Hidden in the editor until N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS is enabled,
-// and only offered by nodes that pass `includeN8nOAuth2` (not Wait).
+// Only offered by nodes that pass `includeN8nOAuth2` (not Wait).
 const n8nOAuth2AuthOption: INodePropertyOptions = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 	name: 'n8n User Auth (OAuth2)',
 	value: 'n8nOAuth2',
 	description: 'Require user to give consent to use their n8n account',
-	envFeatureFlag: 'WEBHOOK_PRIVATE_CREDENTIALS',
 };
 
+// Each field declares its expression template and native resolver in one place:
+// the editor evaluates the generated template strings, while the backend reads
+// parameters directly (no expression engine) whenever they are static.
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
-	httpMethod: '={{$parameter["httpMethod"] || "GET"}}',
 	isFullPath: true,
-	responseCode: `={{(${getResponseCode})($parameter)}}`,
-	responseMode: '={{$parameter["responseMode"]}}',
-	responseData: `={{(${getResponseData})($parameter)}}`,
-	responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
-	responseContentType: '={{$parameter["options"]["responseContentType"]}}',
-	responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
-	responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
-	path: '={{$parameter["path"]}}',
+	...webhookDescriptionFields({
+		httpMethod: fromParameter('httpMethod', 'GET'),
+		responseCode: fromFunction(getResponseCode),
+		responseMode: fromParameter('responseMode'),
+		responseData: fromFunction(getResponseData),
+		responseBinaryPropertyName: fromParameter('responseBinaryPropertyName'),
+		responseContentType: fromParameter(['options', 'responseContentType']),
+		responsePropertyName: fromParameter(['options', 'responsePropertyName']),
+		responseHeaders: fromParameter(['options', 'responseHeaders']),
+		path: fromParameter('path'),
+	}),
 };
 
 export const credentialsProperty = (
@@ -113,15 +117,13 @@ export const authenticationProperty = (
 // Toggle deciding whether `workflow:execute` is enforced on top of the n8n User
 // Auth (OAuth2) mode. Mirrors the MCP trigger's equivalent parameter, including
 // its on-by-default semantics (`node.parameters.requireExecuteAccess !== false`).
-// Only relevant while the n8nOAuth2 mode is selected, so it inherits that mode's
-// N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS gating and is hidden otherwise.
+// Only relevant while the n8nOAuth2 mode is selected, so it is hidden otherwise.
 export const requireExecuteAccessProperty = (propertyName = 'authentication'): INodeProperties => ({
 	displayName: 'Require Workflow Execute Permission',
 	name: 'requireExecuteAccess',
 	type: 'boolean',
 	default: true,
 	displayOptions: { show: { [propertyName]: ['n8nOAuth2'] } },
-	envFeatureFlag: 'WEBHOOK_PRIVATE_CREDENTIALS',
 	description:
 		'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
 });

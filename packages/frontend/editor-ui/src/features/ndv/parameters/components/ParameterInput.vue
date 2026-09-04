@@ -25,7 +25,7 @@ import {
 	resolveRelativePath,
 } from 'n8n-workflow';
 
-import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system';
 
 import type { CodeNodeLanguageOption } from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -62,10 +62,10 @@ import {
 	ExpressionLocalResolveContextSymbol,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
+	ToolConfigCredentialSelectedKey,
 } from '@/app/constants';
 
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
-import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
@@ -77,7 +77,7 @@ import { htmlEditorEventBus } from '@/app/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -147,6 +147,7 @@ type Props = {
 	errorHighlight?: boolean;
 	isForCredential?: boolean;
 	canBeOverridden?: boolean;
+	externalIssues?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -160,6 +161,7 @@ const props = withDefaults(defineProps<Props>(), {
 	eventBus: () => createEventBus(),
 	additionalExpressionData: () => ({}),
 	label: () => ({ size: 'small' }),
+	externalIssues: () => [],
 });
 
 const emit = defineEmits<{
@@ -183,7 +185,6 @@ const ndvStore = injectNDVStoreIfProvided();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
-const { askAi } = useEditorContext();
 const aiGateway = useAiGateway();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -194,6 +195,7 @@ const builderStore = useBuilderStore();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const onToolConfigCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
 
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
@@ -577,7 +579,7 @@ const getIssues = computed<string[]>(() => {
 	const validationError = jsonValidationError.value;
 
 	if (validationError) {
-		return [validationError];
+		return [validationError, ...props.externalIssues];
 	}
 
 	if (props.hideIssues || !node.value) {
@@ -657,10 +659,10 @@ const getIssues = computed<string[]>(() => {
 	}
 
 	if (issues?.parameters?.[props.parameter.name] !== undefined) {
-		return issues.parameters[props.parameter.name];
+		return [...issues.parameters[props.parameter.name], ...props.externalIssues];
 	}
 
-	return [];
+	return props.externalIssues;
 });
 
 const displayTitle = computed<string>(() => {
@@ -814,6 +816,9 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 		// Update the issues
 		nodeHelpers.updateNodeCredentialIssues(updateNode);
 	}
+
+	// Tool-config hosts keep a separate local draft; sync credentials onto it.
+	onToolConfigCredentialSelected?.(updateInformation);
 
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 }
@@ -1224,9 +1229,9 @@ function onJsonPasswordFieldChange(value: string) {
 	onUpdateTextInputDebounced(value);
 }
 
-function onUpdateTextInput(value: string) {
+function onUpdateTextInput(value: string | number) {
 	valueChanged(value);
-	onTextInputChange(value);
+	onTextInputChange(typeof value === 'string' ? value : String(value));
 }
 
 const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
@@ -1492,6 +1497,7 @@ onUpdated(async () => {
 			:event-source="eventSource || 'ndv'"
 			:is-read-only="isReadOnly"
 			:redact-values="shouldRedactValue"
+			:additional-expression-data="additionalExpressionData"
 			@close-dialog="closeExpressionEditDialog"
 			@update:model-value="expressionUpdated"
 		/>
@@ -1629,7 +1635,6 @@ onUpdated(async () => {
 							:default-value="parameter.default"
 							:language="editorLanguage"
 							:is-read-only="isReadOnly"
-							:disable-ask-ai="!askAi"
 							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
@@ -1702,7 +1707,6 @@ onUpdated(async () => {
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
 					:ai-button-enabled="settingsStore.isCloudDeployment"
-					:disable-ask-ai="!askAi"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
@@ -1845,7 +1849,6 @@ onUpdated(async () => {
 						:language="editorLanguage"
 						:is-read-only="true"
 						:rows="editorRows"
-						:disable-ask-ai="!askAi"
 					/>
 				</div>
 				<N8nInput
@@ -1956,7 +1959,7 @@ onUpdated(async () => {
 				v-else-if="parameter.type === 'number'"
 				ref="inputField"
 				:size="inputSize"
-				:model-value="displayValue"
+				:model-value="typeof displayValue === 'number' ? displayValue : undefined"
 				:controls="false"
 				:max="getTypeOption('maxValue')"
 				:min="getTypeOption('minValue')"

@@ -6,7 +6,7 @@ import AuthView from '@/features/core/auth/views/AuthView.vue';
 import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 const router = useRouter();
 const locale = useI18n();

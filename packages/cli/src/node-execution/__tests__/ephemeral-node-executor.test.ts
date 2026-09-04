@@ -9,11 +9,13 @@ import {
 } from '@n8n/db';
 import { StructuredToolkit } from 'n8n-core';
 import {
+	Expression,
 	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeCredentialsDetails,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -399,6 +401,26 @@ describe('EphemeralNodeExecutor', () => {
 					projectId: 'p-1',
 				}),
 			).rejects.toThrow(/has type .* but the node expects credential slot/);
+		});
+
+		it('passes an n8n Connect managed credential through without a project lookup', async () => {
+			mockToolNodeWithSupplyData();
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentialDetails: {
+					slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
+			// Managed credentials are minted per execution (CredentialsHelper.getDecrypted),
+			// so there is no stored row to resolve — the project lookup must be skipped.
+			expect(sharedCredentialsRepository.findOne).not.toHaveBeenCalled();
 		});
 	});
 
@@ -815,5 +837,56 @@ describe('EphemeralNodeExecutor', () => {
 			expect(executedNodeName).toBe('Target Node');
 			expect(base.evalLlmMockHandler).toBeUndefined();
 		});
+	});
+
+	it('resolves expressions when invoking a supplyData tool with the VM engine', async () => {
+		await Expression.initExpressionEngine({
+			engine: 'vm',
+			bridgeTimeout: 1000,
+			bridgeMemoryLimit: 128,
+			poolSize: 1,
+			maxCodeCacheSize: 10,
+		});
+
+		try {
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({
+					description: {
+						...toolDescription,
+						properties: [
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+					async supplyData(this: ISupplyDataFunctions) {
+						const resolvedValue = this.getNodeParameter('value', 0);
+						return {
+							response: {
+								invoke: async () => resolvedValue,
+							},
+						};
+					},
+				}),
+			);
+
+			const result = await executor.executeInline({
+				nodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				nodeTypeVersion: 1,
+				nodeParameters: { value: '={{ 1 + 1 }}' },
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(result).toEqual({
+				status: 'success',
+				data: [{ json: { response: 2 } }],
+			});
+		} finally {
+			await Expression.disposeExpressionEngine();
+		}
 	});
 });

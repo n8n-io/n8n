@@ -1,25 +1,27 @@
 import RefParser from '@apidevtools/json-schema-ref-parser';
-import type { ApiKeyScope } from '@n8n/permissions';
+import type { ApiKeyScopeRequirement } from '@n8n/decorators';
 import { isRecord } from '@n8n/utils/is-record';
 import path from 'path';
 
 import {
-	extractScopeFromEovHandlerChain,
-	loadPublicControllerScopeMap,
-	publicApiRouteKey,
-	resolvePublicApiImplementedScope,
-} from '../../shared/public-api-scope-lookup';
+	apiKeyScopesSatisfy,
+	HTTP_METHODS,
+	resolvePublicApiRoutes,
+	scopeRequirementFromString,
+	scopesInRequirement,
+	toOpenApiPathTemplate,
+} from '../../../public-api-route-resolver';
+import { buildRequestBodyJsonSchema } from '../../openapi-gen/decorator-routes';
+import { extractScopeFromEovHandlerChain } from '../../shared/public-api-scope-lookup';
 
 import '../../controllers';
-
-const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'] as const;
 
 interface EndpointInfo {
 	method: string;
 	path: string;
 	operationId: string;
 	tag: string;
-	scope: ApiKeyScope | null;
+	scope: ApiKeyScopeRequirement | null;
 	requestSchema?: Record<string, unknown>;
 }
 
@@ -42,7 +44,7 @@ interface FilterInfo {
 }
 
 export interface DiscoverResponse {
-	scopes: ApiKeyScope[];
+	scopes: readonly string[];
 	resources: Record<string, ResourceInfo>;
 	filters: Record<string, FilterInfo>;
 	specUrl: string;
@@ -73,13 +75,15 @@ function extractRequestSchema(
 }
 
 async function parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
-	if (!cachedEndpointsPromise) {
-		cachedEndpointsPromise = _parseEndpointsFromSpec();
-	}
+	cachedEndpointsPromise ??= buildAllEndpoints();
 	return await cachedEndpointsPromise;
 }
 
-async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
+async function buildAllEndpoints(): Promise<EndpointInfo[]> {
+	return [...(await buildEovEndpoints()), ...buildDecoratorEndpoints()];
+}
+
+async function buildEovEndpoints(): Promise<EndpointInfo[]> {
 	const specPath = path.join(__dirname, '..', '..', 'openapi.yml');
 	const publicApiRoot = path.join(__dirname, '..', '..', '..');
 
@@ -89,7 +93,6 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 
 	const endpoints: EndpointInfo[] = [];
 	const handlerCache = new Map<string, Record<string, unknown>>();
-	const controllerScopes = loadPublicControllerScopeMap();
 
 	for (const [pathKey, pathValue] of Object.entries(spec.paths)) {
 		if (!isRecord(pathValue)) continue;
@@ -97,64 +100,42 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 		for (const method of HTTP_METHODS) {
 			const operation = pathValue[method];
 			if (!isRecord(operation)) continue;
+			if (operation['x-decorator-routed'] === true) continue;
 
-			const eovOperationId = operation['x-eov-operation-id'];
+			const operationId = operation['x-eov-operation-id'];
 			const handlerPath = operation['x-eov-operation-handler'];
-			const openApiOperationId = operation.operationId;
-			const hasEovHandler = typeof eovOperationId === 'string' && typeof handlerPath === 'string';
-			const routeKey = publicApiRouteKey(method, pathKey);
-			const hasControllerHandler = controllerScopes.has(routeKey);
-
-			if (!hasEovHandler && !hasControllerHandler) {
-				continue;
-			}
-
-			const operationId =
-				(typeof eovOperationId === 'string' ? eovOperationId : undefined) ??
-				(typeof openApiOperationId === 'string' ? openApiOperationId : undefined);
-			if (!operationId) {
-				continue;
-			}
+			if (typeof operationId !== 'string' || typeof handlerPath !== 'string') continue;
 
 			const tags = Array.isArray(operation.tags) ? operation.tags : [];
 			const tag = typeof tags[0] === 'string' ? tags[0] : 'Other';
 
-			let eovHandlerScope: ApiKeyScope | undefined;
-			if (hasEovHandler) {
-				let handlerModule = handlerCache.get(handlerPath);
-				if (!handlerModule) {
-					try {
-						const fullHandlerPath = path.join(publicApiRoot, `${handlerPath}.js`);
-						const imported: unknown = await import(fullHandlerPath);
-						if (!isRecord(imported)) continue;
-						const loaded = isRecord(imported.default) ? imported.default : imported;
-						if (!isRecord(loaded)) continue;
-						handlerModule = loaded;
-						handlerCache.set(handlerPath, handlerModule);
-					} catch {
-						continue;
-					}
+			let handlerModule = handlerCache.get(handlerPath);
+			if (!handlerModule) {
+				try {
+					const fullHandlerPath = path.join(publicApiRoot, `${handlerPath}.js`);
+					const imported: unknown = await import(fullHandlerPath);
+					if (!isRecord(imported)) continue;
+					const loaded = isRecord(imported.default) ? imported.default : imported;
+					if (!isRecord(loaded)) continue;
+					handlerModule = loaded;
+					handlerCache.set(handlerPath, handlerModule);
+				} catch {
+					continue;
 				}
-
-				const middlewareChain = handlerModule[eovOperationId];
-				eovHandlerScope = Array.isArray(middlewareChain)
-					? extractScopeFromEovHandlerChain(middlewareChain)
-					: undefined;
 			}
 
-			const implemented = resolvePublicApiImplementedScope(
-				controllerScopes,
-				method,
-				pathKey,
-				eovHandlerScope,
-			);
+			const middlewareChain = handlerModule[operationId];
+			const scope = Array.isArray(middlewareChain)
+				? extractScopeFromEovHandlerChain(middlewareChain)
+				: undefined;
 
 			endpoints.push({
 				method: method.toUpperCase(),
 				path: `/api/v1${pathKey}`,
 				operationId,
 				tag,
-				scope: (implemented as ApiKeyScope | undefined) ?? null,
+				// eov middleware tags itself with a flat, possibly comma-joined scope string.
+				scope: scope ? scopeRequirementFromString(scope) : null,
 				requestSchema: extractRequestSchema(operation),
 			});
 		}
@@ -163,15 +144,36 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 	return endpoints;
 }
 
+function buildDecoratorEndpoints(): EndpointInfo[] {
+	return resolvePublicApiRoutes().map((route) => ({
+		method: route.method.toUpperCase(),
+		path: `/api/v1${toOpenApiPathTemplate(route.path)}`,
+		operationId: route.handlerName,
+		tag: route.tags?.[0] ?? 'Other',
+		scope: route.apiKeyScope ?? null,
+		requestSchema: buildRequestBodyJsonSchema(route),
+	}));
+}
+
 export async function buildDiscoverResponse(
-	callerScopes: ApiKeyScope[],
+	callerScopes: readonly string[],
 	options?: DiscoverOptions,
 ): Promise<DiscoverResponse> {
 	const allEndpoints = await parseEndpointsFromSpec();
-	const scopeSet = new Set(callerScopes);
 	const includeSchemas = options?.includeSchemas === true;
 
-	const filtered = allEndpoints.filter((ep) => ep.scope === null || scopeSet.has(ep.scope));
+	// Same any/all matching the registry enforces, so /discover shows exactly what the caller may call.
+	const filtered = allEndpoints.filter(
+		(ep) => ep.scope === null || apiKeyScopesSatisfy(callerScopes, ep.scope),
+	);
+
+	/** The `read` of `tag:read`, one per scope the requirement names. */
+	const operationsOf = (scope: ApiKeyScopeRequirement | null): string[] =>
+		scope === null
+			? []
+			: scopesInRequirement(scope)
+					.map((s) => s.split(':')[1])
+					.filter((operation): operation is string => Boolean(operation));
 
 	const resources: Record<string, ResourceInfo> = {};
 
@@ -194,9 +196,10 @@ export async function buildDiscoverResponse(
 
 		resources[resourceKey].endpoints.push(entry);
 
-		const operation = ep.scope?.split(':')[1];
-		if (operation && !resources[resourceKey].operations.includes(operation)) {
-			resources[resourceKey].operations.push(operation);
+		for (const operation of operationsOf(ep.scope)) {
+			if (!resources[resourceKey].operations.includes(operation)) {
+				resources[resourceKey].operations.push(operation);
+			}
 		}
 	}
 
@@ -211,13 +214,17 @@ export async function buildDiscoverResponse(
 	}
 
 	if (operationFilter) {
-		const scopeByOperationId = new Map(
-			filtered.map((f) => [f.operationId, f.scope?.split(':')[1]?.toLowerCase()]),
+		// A composite requirement contributes several operations, so match against all of them.
+		const operationsByOperationId = new Map(
+			filtered.map((f) => [
+				f.operationId,
+				new Set(operationsOf(f.scope).map((operation) => operation.toLowerCase())),
+			]),
 		);
 		const result: Record<string, ResourceInfo> = {};
 		for (const [key, info] of Object.entries(filteredResources)) {
-			const matchingEndpoints = info.endpoints.filter(
-				(ep) => scopeByOperationId.get(ep.operationId) === operationFilter,
+			const matchingEndpoints = info.endpoints.filter((ep) =>
+				operationsByOperationId.get(ep.operationId)?.has(operationFilter),
 			);
 			if (matchingEndpoints.length > 0) {
 				result[key] = {

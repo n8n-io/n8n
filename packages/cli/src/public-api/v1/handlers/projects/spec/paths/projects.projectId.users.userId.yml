@@ -1,6 +1,6 @@
 delete:
   x-eov-operation-id: deleteUserFromProject
-  x-required-scope: project:update
+  x-required-scope: project:manageMembers
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
     - Projects
@@ -30,7 +30,7 @@ delete:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 patch:
   x-eov-operation-id: changeUserRoleInProject
-  x-required-scope: project:update
+  x-required-scope: project:manageMembers
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
     - Projects

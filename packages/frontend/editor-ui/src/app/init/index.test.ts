@@ -4,10 +4,10 @@ import { initializeAuthenticatedFeatures, initializeCore, state } from '@/app/in
 import { AuthenticationMethod } from '@n8n/api-types';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
@@ -22,19 +22,51 @@ import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { telemetry } from '@/app/plugins/telemetry';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
+import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
 
+// Spied, not stubbed: the real registration must run so a replay that warns is
+// caught by the test that asserts the console stays quiet.
+vi.mock('@/app/moduleInitializer/moduleInitializer', async (importOriginal) => {
+	const actual = await importOriginal<typeof moduleInitializer>();
+
+	return {
+		...actual,
+		registerModuleResources: vi.fn(actual.registerModuleResources),
+		registerModuleProjectTabs: vi.fn(actual.registerModuleProjectTabs),
+		registerModuleModals: vi.fn(actual.registerModuleModals),
+		registerModuleSettingsPages: vi.fn(actual.registerModuleSettingsPages),
+		registerModulePushHandlers: vi.fn(actual.registerModulePushHandlers),
+		registerModuleCommands: vi.fn(actual.registerModuleCommands),
+	};
+});
+
+const moduleRegistrations = [
+	moduleInitializer.registerModuleResources,
+	moduleInitializer.registerModuleProjectTabs,
+	moduleInitializer.registerModuleModals,
+	moduleInitializer.registerModuleSettingsPages,
+	moduleInitializer.registerModulePushHandlers,
+	moduleInitializer.registerModuleCommands,
+];
+
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
+	// The factory replaces the whole module, so it has to name every export the
+	// real one has. Nothing here asserts on `setNotify` — its only caller,
+	// `toastNotifier`, is kept out of this graph by the mock below — so dropping
+	// this line looks safe and stays green. Loosen that mock and it is not:
+	// vitest fails every test with `No "setNotify" export is defined`.
+	setNotify: vi.fn(),
 }));
 
 vi.mock('@/app/init/toastNotifier', () => ({
 	registerToastNotifier: vi.fn(),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn().mockReturnValue({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),
@@ -277,6 +309,51 @@ describe('Init', () => {
 			await initializeAuthenticatedFeatures();
 
 			expect(cloudStoreSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('re-initializes authenticated features for the next login after the registered logout hook runs', async () => {
+			// Force registerAuthenticationHooks() (only runs once) to run again.
+			state.initialized = false;
+			const registerLogoutHookSpy = vi.spyOn(usersStore, 'registerLogoutHook');
+			await initializeCore();
+			const registeredLogoutHook = registerLogoutHookSpy.mock.calls[0][0];
+
+			const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+
+			await initializeAuthenticatedFeatures(false);
+			expect(cloudStoreSpy).toHaveBeenCalledTimes(1);
+
+			// Simulates a session-expiry logout resetting the module-level flag.
+			await registeredLogoutHook();
+
+			await initializeAuthenticatedFeatures();
+			expect(cloudStoreSpy).toHaveBeenCalledTimes(2);
+		});
+
+		it('re-runs module registration on the next login, without a duplicate-registration warning', async () => {
+			// Force registerAuthenticationHooks() (only runs once) to run again.
+			state.initialized = false;
+			const registerLogoutHookSpy = vi.spyOn(usersStore, 'registerLogoutHook');
+			await initializeCore();
+			const registeredLogoutHook = registerLogoutHookSpy.mock.calls[0][0];
+
+			vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			await initializeAuthenticatedFeatures(false);
+			await registeredLogoutHook();
+			await initializeAuthenticatedFeatures();
+
+			for (const register of moduleRegistrations) {
+				expect(register).toHaveBeenCalledTimes(2);
+			}
+			// Matched on the shared registry wording, so unrelated Vue warnings in
+			// this graph do not decide the result.
+			expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('is already registered'));
+
+			consoleSpy.mockRestore();
 		});
 
 		it('should handle cloud plan initialization error', async () => {

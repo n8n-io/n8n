@@ -1,4 +1,5 @@
 name: 'Test: MCP Workflow Evals'
+run-name: "Test: MCP Workflow Evals (branch=${{ inputs.branch || github.ref_name }}, tier=${{ inputs.tier }}, iterations=${{ inputs.iterations }}, model=${{ inputs['build-model'] }})"
 
 # Scores workflows built through the instance MCP server (packages/cli/src/modules/mcp)
 # with the Instance AI verifier, using the fused `--build-via-mcp` lane model:
@@ -191,11 +192,14 @@ jobs:
           # agents registers the agent-builder MCP tools so the suite measures
           # workflow building with the production tool surface, catching
           # tool-choice regressions the extra tools could introduce.
+          # MCP canvas-group support is PostHog-gated and PostHog is unreachable
+          # here (fails closed), so the env var force-enables it;
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
             docker run -d --name "n8n-eval-mcp-$((i + 1))" \
               -e E2E_TESTS=true \
               -e N8N_ENABLED_MODULES=instance-ai,agents \
+              -e N8N_MCP_CANVAS_GROUPS_ENABLED=true \
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
               -e N8N_AI_ASSISTANT_BASE_URL="" \

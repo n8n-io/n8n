@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectService } from '@/services/project.service.ee';
+import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { PersistedWorkflowOutcome, PersistedWorkflowPlanItem } from '../workflow-import.types';
@@ -22,15 +23,18 @@ describe('WorkflowPublisher', () => {
 	const projectRepository = mock<{ existsBy: Mock }>();
 	const projectService = mock<ProjectService>();
 	const workflowService = mock<WorkflowService>();
+	const webhookService = mock<WebhookService>();
 	let publisher: WorkflowPublisher;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		webhookService.getStaticWebhookKeys.mockReturnValue([]);
 		publisher = new WorkflowPublisher(
 			logger,
 			projectRepository as never,
 			projectService,
 			workflowService,
+			webhookService,
 		);
 	});
 
@@ -174,6 +178,7 @@ describe('WorkflowPublisher', () => {
 
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
+				archiveTransition: null,
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: false,
 				parentFolderId: null,
@@ -231,6 +236,7 @@ describe('WorkflowPublisher', () => {
 
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
+				archiveTransition: null,
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: true,
 				parentFolderId: null,
@@ -266,6 +272,7 @@ describe('WorkflowPublisher', () => {
 
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
+				archiveTransition: null,
 				sourceWorkflowId: 'wf-broken',
 				sourcePublished: true,
 				parentFolderId: null,

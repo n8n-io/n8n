@@ -1,11 +1,11 @@
 import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import { useStorage } from '@/app/composables/useStorage';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useStorage } from '@n8n/composables/useStorage';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import type { FeatureFlags, IDataObject } from 'n8n-workflow';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { FeatureFlagPayloads, FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
@@ -15,6 +15,11 @@ const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 export type PosthogStore = ReturnType<typeof usePostHog>;
 
+type FeatureFlagOverride = {
+	value: string | boolean;
+	payload?: FeatureFlagPayloads[string];
+};
+
 export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
@@ -23,10 +28,12 @@ export const usePostHog = defineStore('posthog', () => {
 	const { debounce } = useDebounce();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
+	const featureFlagPayloads: Ref<FeatureFlagPayloads | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
+	const trackedExposures: Ref<FeatureFlags> = ref({});
 	const pendingFeatureFlagsEvaluation = ref(false);
 
-	const overrides: Ref<Record<string, string | boolean>> = ref({});
+	const overrides: Ref<Record<string, FeatureFlagOverride>> = ref({});
 	let featureFlagsWaitPromise: Promise<FeatureFlags | null> | null = null;
 	let resolveFeatureFlagsWait: ((flags: FeatureFlags | null) => void) | null = null;
 
@@ -48,13 +55,20 @@ export const usePostHog = defineStore('posthog', () => {
 	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
+		featureFlagPayloads.value = null;
 		trackedDemoExp.value = {};
+		trackedExposures.value = {};
 		pendingFeatureFlagsEvaluation.value = false;
 		clearFeatureFlagsWait();
 	};
 
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
-		return overrides.value[experiment] ?? featureFlags.value?.[experiment];
+		return overrides.value[experiment]?.value ?? featureFlags.value?.[experiment];
+	};
+
+	const getFeatureFlagPayload = (flag: string) => {
+		const override = overrides.value[flag];
+		return override ? override.payload : featureFlagPayloads.value?.[flag];
 	};
 
 	const isVariantEnabled = (experiment: string, variant: string) => {
@@ -90,9 +104,15 @@ export const usePostHog = defineStore('posthog', () => {
 		if (cachedOverrides) {
 			try {
 				console.log('Overriding feature flags', cachedOverrides);
-				const parsedOverrides = JSON.parse(cachedOverrides);
+				const parsedOverrides: Record<string, FeatureFlagOverride | string | boolean> =
+					JSON.parse(cachedOverrides);
 				if (typeof parsedOverrides === 'object') {
-					overrides.value = JSON.parse(cachedOverrides);
+					overrides.value = Object.fromEntries(
+						Object.entries(parsedOverrides).map(([name, override]) => [
+							name,
+							typeof override === 'object' ? override : { value: override },
+						]),
+					);
 				}
 			} catch (e) {
 				console.log('Could not override experiment', e);
@@ -101,8 +121,11 @@ export const usePostHog = defineStore('posthog', () => {
 
 		window.featureFlags = {
 			// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
-			override: (name: string, value: string | boolean) => {
-				overrides.value[name] = value;
+			override: (name: string, value: string | boolean, payload?: FeatureFlagPayloads[string]) => {
+				overrides.value[name] = {
+					value,
+					...(payload !== undefined && payload !== null ? { payload } : {}),
+				};
 				try {
 					useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value = JSON.stringify(overrides.value);
 				} catch (e) {}
@@ -156,7 +179,10 @@ export const usePostHog = defineStore('posthog', () => {
 		debounceTime: 2000,
 	});
 
-	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
+	const init = (
+		evaluatedFeatureFlags?: FeatureFlags,
+		evaluatedFeatureFlagPayloads?: FeatureFlagPayloads,
+	) => {
 		if (!window.posthog) {
 			return;
 		}
@@ -182,13 +208,23 @@ export const usePostHog = defineStore('posthog', () => {
 			session_recording: {
 				maskAllInputs: false,
 			},
+			...(!config.disableSessionRecording && {
+				tracing_headers: [new URL(rootStore.restUrl, window.location.origin).hostname],
+			}),
 		};
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			options.bootstrap = {
 				distinctID: distinctId,
 				featureFlags: evaluatedFeatureFlags,
+				...(evaluatedFeatureFlagPayloads && {
+					featureFlagPayloads: evaluatedFeatureFlagPayloads,
+				}),
 			};
+			// Flags are server-evaluated and bootstrapped; without this, identify()/group()
+			// in the loaded callback each trigger a billed /flags refetch of values the
+			// client already has.
+			options.advanced_disable_feature_flags = true;
 		}
 
 		window.posthog?.init(config.apiKey, {
@@ -201,6 +237,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
+			featureFlagPayloads.value = evaluatedFeatureFlagPayloads ?? {};
 			resolveFeatureFlagsWaiters(featureFlags.value);
 
 			// does not need to be debounced really, but tracking does not fire without delay on page load
@@ -209,7 +246,14 @@ export const usePostHog = defineStore('posthog', () => {
 			// depend on client side evaluation if serverside evaluation fails
 			pendingFeatureFlagsEvaluation.value = true;
 			window.posthog?.onFeatureFlags?.((_, map: FeatureFlags) => {
+				const payloads: FeatureFlagPayloads = {};
+				for (const key of Object.keys(map)) {
+					const payload = window.posthog?.getFeatureFlagPayload?.(key);
+					if (payload !== undefined && payload !== null) payloads[key] = payload;
+				}
+
 				featureFlags.value = map;
+				featureFlagPayloads.value = payloads;
 				resolveFeatureFlagsWaiters(featureFlags.value);
 
 				// must be debounced because it is called multiple times by posthog
@@ -235,11 +279,29 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
+	/**
+	 * Fires PostHog's native exposure event for an experiment so results can use
+	 * built-in exposure analysis. Uses getVariant() so the recorded variant is the
+	 * one the user actually experienced, including local overrides. Deduped per
+	 * flag+variant; cleared on reset().
+	 */
+	const trackExposure = (experiment: string) => {
+		const variant = getVariant(experiment);
+		if (variant === undefined || variant === false) return;
+		if (trackedExposures.value[experiment] === variant) return;
+		capture('$feature_flag_called', {
+			$feature_flag: experiment,
+			$feature_flag_response: variant,
+		});
+		trackedExposures.value[experiment] = variant;
+	};
+
 	return {
 		init,
 		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,
+		getFeatureFlagPayload,
 		hasPendingFeatureFlags,
 		waitForFeatureFlags,
 		reset,
@@ -247,6 +309,7 @@ export const usePostHog = defineStore('posthog', () => {
 		groupIdentify,
 		setMetadata,
 		capture,
+		trackExposure,
 		overrides,
 	};
 });

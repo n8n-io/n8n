@@ -10,10 +10,9 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
-import type { AgentExecutionService } from '../agent-execution.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
-import type { AgentValidationService } from '../agent-validation.service';
+import type { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import {
@@ -26,18 +25,28 @@ function makeController() {
 		mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
-	const agentValidationService = mock<AgentValidationService>();
-	const agentExecutionService = mock<AgentExecutionService>();
+	const agentTestRunService = mock<AgentTestRunService>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
-	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+	agentTestRunService.prepareDraftRun.mockResolvedValue({
+		status: 'ready',
+		sessionId: 'thread-1',
+	});
+	agentTestRunService.streamDraftRun.mockImplementation((config) =>
+		agentExecutionOrchestratorService.executeForChat({
+			...config,
+			memory: {
+				threadId: config.sessionId,
+				resourceId: `draft-chat:${config.user.id}`,
+			},
+		}),
+	);
 
 	const controller = new AgentChatController(
 		agentExecutionOrchestratorService,
+		agentTestRunService,
 		mock<AgentTestChatService>(),
-		agentValidationService,
 		agentsBuilderService,
 		mock<CredentialsService>(),
-		agentExecutionService,
 		agentsService as unknown as AgentsService,
 		agentChatAttachmentService,
 	);
@@ -45,8 +54,7 @@ function makeController() {
 	return {
 		controller,
 		agentExecutionOrchestratorService,
-		agentValidationService,
-		agentExecutionService,
+		agentTestRunService,
 		agentChatAttachmentService,
 		agentsService: {
 			findById: agentsService.findById,
@@ -157,52 +165,14 @@ describe('AgentChatController chat message history', () => {
 });
 
 describe('AgentChatController SSE done payload', () => {
-	it('does not start a chat after the response closes during session lookup', async () => {
-		const {
-			controller,
-			agentExecutionOrchestratorService,
-			agentExecutionService,
-			agentValidationService,
-		} = makeController();
-		let resolveLookup = (_value: null) => {};
-		agentExecutionService.findThreadById.mockReturnValue(
+	it('does not start a chat after the response closes during preparation', async () => {
+		const { controller, agentTestRunService } = makeController();
+		let resolvePreparation = (_value: { status: 'ready'; sessionId: string }) => {};
+		agentTestRunService.prepareDraftRun.mockReturnValue(
 			new Promise((resolve) => {
-				resolveLookup = resolve;
+				resolvePreparation = resolve;
 			}),
 		);
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
-			yield* [];
-		});
-
-		const res = makeSseResponse([]);
-		const request = controller.chat(
-			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
-			res,
-			'agent-1',
-			{ message: 'hi', sessionId: 'thread-1' } as never,
-		);
-		await vi.waitFor(() => expect(agentExecutionService.findThreadById).toHaveBeenCalled());
-
-		(res as unknown as EventEmitter).emit('close');
-		resolveLookup(null);
-		await request;
-
-		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
-		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
-	});
-
-	it('does not start a chat after the response closes during validation', async () => {
-		const { controller, agentExecutionOrchestratorService, agentValidationService } =
-			makeController();
-		let resolveValidation = (_value: { missing: string[] }) => {};
-		agentValidationService.validateAgentIsRunnable.mockReturnValue(
-			new Promise((resolve) => {
-				resolveValidation = resolve;
-			}),
-		);
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
-			yield* [];
-		});
 
 		const res = makeSseResponse([]);
 		const request = controller.chat(
@@ -211,21 +181,17 @@ describe('AgentChatController SSE done payload', () => {
 			'agent-1',
 			{ message: 'hi' } as never,
 		);
-		await vi.waitFor(() =>
-			expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalled(),
-		);
+		await vi.waitFor(() => expect(agentTestRunService.prepareDraftRun).toHaveBeenCalled());
 
 		(res as unknown as EventEmitter).emit('close');
-		resolveValidation({ missing: [] });
+		resolvePreparation({ status: 'ready', sessionId: 'thread-1' });
 		await request;
 
-		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
+		expect(agentTestRunService.streamDraftRun).not.toHaveBeenCalled();
 	});
 
 	it('includes executionId on done when recorded', async () => {
-		const { controller, agentExecutionOrchestratorService, agentExecutionService } =
-			makeController();
-		agentExecutionService.findThreadById.mockResolvedValue(null);
+		const { controller, agentExecutionOrchestratorService } = makeController();
 		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
 			config.onExecutionRecorded?.('exec-99');
 			yield* [];
@@ -303,9 +269,7 @@ describe('AgentChatController SSE done payload', () => {
 			method: 'resumeForChat' as const,
 		},
 	])('aborts the $name when its SSE response closes early', async ({ start, method }) => {
-		const { controller, agentExecutionOrchestratorService, agentExecutionService } =
-			makeController();
-		agentExecutionService.findThreadById.mockResolvedValue(null);
+		const { controller, agentExecutionOrchestratorService } = makeController();
 
 		let receivedSignal: AbortSignal | undefined;
 		let releaseRun = () => {};
@@ -378,13 +342,8 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 	}
 
 	it('deletes stored attachments when the run fails before an execution is recorded', async () => {
-		const {
-			controller,
-			agentExecutionOrchestratorService,
-			agentExecutionService,
-			agentChatAttachmentService,
-		} = makeController();
-		agentExecutionService.findThreadById.mockResolvedValue(null);
+		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
+			makeController();
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
 			id: 'att-1',
 			fileName: 'notes.txt',
@@ -411,13 +370,8 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 	});
 
 	it('keeps stored attachments when the run fails after an execution was recorded', async () => {
-		const {
-			controller,
-			agentExecutionOrchestratorService,
-			agentExecutionService,
-			agentChatAttachmentService,
-		} = makeController();
-		agentExecutionService.findThreadById.mockResolvedValue(null);
+		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
+			makeController();
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
 			id: 'att-1',
 			fileName: 'notes.txt',
@@ -443,13 +397,8 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 	});
 
 	it('deletes earlier attachments when a later one in the same message fails to store', async () => {
-		const {
-			controller,
-			agentExecutionOrchestratorService,
-			agentExecutionService,
-			agentChatAttachmentService,
-		} = makeController();
-		agentExecutionService.findThreadById.mockResolvedValue(null);
+		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
+			makeController();
 		agentChatAttachmentService.storeInbound
 			.mockResolvedValueOnce({
 				id: 'att-1',
@@ -473,8 +422,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 	});
 
 	it('rejects an empty attachment with a dedicated error message', async () => {
-		const { controller, agentExecutionService, agentChatAttachmentService } = makeController();
-		agentExecutionService.findThreadById.mockResolvedValue(null);
+		const { controller, agentChatAttachmentService } = makeController();
 		const { res, events } = makeCleanupSseResponse();
 
 		await controller.chat(

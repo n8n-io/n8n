@@ -16,11 +16,14 @@ import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createTestingPinia } from '@pinia/testing';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+import { INSTANCE_AI_NEW_VIEW } from '@/features/ai/instanceAi/constants';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -1404,6 +1407,76 @@ describe('WorkflowCard', () => {
 				return text.includes('|') && text.trim() !== '|';
 			});
 			expect(embedsDivider).toBe(false);
+		});
+	});
+
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	describe('open in assistant experiment', () => {
+		let openInAssistantStore: MockedStore<typeof useOpenWorkflowInAssistantStore>;
+
+		beforeEach(() => {
+			openInAssistantStore = mockedStore(useOpenWorkflowInAssistantStore);
+			openInAssistantStore.opensInAssistant = false;
+		});
+
+		it('opens the workflow in the assistant for treatment users', async () => {
+			openInAssistantStore.opensInAssistant = true;
+			const data = createWorkflow({
+				scopes: ['workflow:update'],
+				homeProject: { id: 'p1', type: 'personal', name: 'Personal' },
+			});
+			const { getByRole } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByRole('heading', { level: 2, name: new RegExp(data.name) }));
+			await waitFor(() => {
+				expect(router.push).toHaveBeenCalledWith({
+					name: INSTANCE_AI_NEW_VIEW,
+					query: { workflowId: data.id },
+				});
+			});
+		});
+	});
+
+	describe('Publication status indicator', () => {
+		const renderCard = (overrides: Partial<WorkflowResource> = {}) =>
+			renderComponent({ props: { data: createWorkflow(overrides) } });
+
+		it.each([
+			['partial', 'Partial publish'],
+			['failed', 'Failed publish'],
+		] as const)('shows the %s indicator with its label and state', (status, label) => {
+			const { getByTestId, getByText } = renderCard({
+				publicationStatus: status,
+				activeVersionId: 'v1',
+			});
+			const indicator = getByTestId('workflow-card-publish-indicator');
+			expect(indicator).toBeVisible();
+			expect(indicator).toHaveAttribute('data-state', status);
+			expect(getByText(label)).toBeVisible();
+			// The explanation lives in a focus-openable tooltip; the trigger must be tabbable.
+			expect(indicator).toHaveAttribute('tabindex', '0');
+		});
+
+		it('lets the server status win over activeVersionId', () => {
+			const { getByTestId } = renderCard({ publicationStatus: 'failed', activeVersionId: null });
+			expect(getByTestId('workflow-card-publish-indicator')).toHaveAttribute(
+				'data-state',
+				'failed',
+			);
+		});
+
+		it('falls back to the legacy "Published" indicator when publicationStatus is absent', () => {
+			const { getByTestId, getByText } = renderCard({ activeVersionId: 'v1' });
+			const indicator = getByTestId('workflow-card-publish-indicator');
+			expect(indicator).toHaveAttribute('data-state', 'published');
+			expect(getByText('Published')).toBeVisible();
+			// The published state has no tooltip, so it must not be a focus stop.
+			expect(indicator).not.toHaveAttribute('tabindex');
+		});
+
+		it('shows no indicator when not published and no publicationStatus', () => {
+			const { queryByTestId } = renderCard({ activeVersionId: null });
+			expect(queryByTestId('workflow-card-publish-indicator')).toBeNull();
 		});
 	});
 });

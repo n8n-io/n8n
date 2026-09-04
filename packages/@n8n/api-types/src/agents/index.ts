@@ -5,10 +5,13 @@ export * from './agent-files.constants';
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
 export * from './agent-node-tool-operations';
+export * from './agent-personalisation';
 export * from './agent-skill.schema';
 export * from './child-trace';
 export * from './inline-agent-config.schema';
 export * from './sanitize-agent-json-config';
+export * from './sanitize-agent-tool-name';
+export * from './slack';
 export * from './agent-task.schema';
 export * from './dto';
 export * from './model-providers';
@@ -17,6 +20,7 @@ export * from './reasoning';
 export * from './rich-card.schema';
 export * from './sub-agent.schema';
 export * from './types';
+export * from './workflow-wait';
 export type {
 	AgentSseEvent,
 	AgentSseMessage,

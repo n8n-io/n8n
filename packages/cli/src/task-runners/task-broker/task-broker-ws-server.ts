@@ -1,13 +1,15 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
 import { sleep } from '@n8n/utils/sleep';
 import { jsonStringify, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
-import { WsStatusCodes } from '@/constants';
+import { HIGHEST_SHUTDOWN_PRIORITY, WsStatusCodes } from '@/constants';
+import { EventService } from '@/events/event.service';
 import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import type {
 	DisconnectAnalyzer,
@@ -15,13 +17,22 @@ import type {
 	TaskBrokerServerInitRequest,
 	TaskBrokerServerInitResponse,
 } from '@/task-runners/task-broker/task-broker-types';
-import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
+import {
+	TaskRunnerLifecycleEvents,
+	type TaskRunnerLifecycleEventMap,
+} from '@/task-runners/task-runner-lifecycle-events';
 
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
 }
+
+/**
+ * Share of the graceful-shutdown window that task work may use. The remainder is
+ * the budget for failed executions to persist before the force-kill timer fires.
+ */
+export const SHUTDOWN_TASK_BUDGET_RATIO = 0.8;
 
 type WsStatusCode = (typeof WsStatusCodes)[keyof typeof WsStatusCodes];
 
@@ -53,11 +64,22 @@ export class TaskBrokerWsServer {
 		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 		private readonly globalConfig: GlobalConfig,
+		private readonly eventService: EventService,
 	) {}
 
 	start() {
 		this.startHeartbeatChecks();
+		this.runnerLifecycleEvents.on('runner:unresponsive', this.onRunnerUnresponsive);
 	}
+
+	private readonly onRunnerUnresponsive = ({
+		runnerId,
+	}: TaskRunnerLifecycleEventMap['runner:unresponsive']) => {
+		void this.removeConnection(runnerId, {
+			reason: 'runner-unresponsive',
+			code: WsStatusCodes.CloseProtocolError,
+		});
+	};
 
 	private startHeartbeatChecks() {
 		const { heartbeatInterval } = this.taskRunnersConfig;
@@ -73,28 +95,41 @@ export class TaskBrokerWsServer {
 	}
 
 	private checkConnectionLiveness() {
-		let anyDead = false;
-
 		for (const [runnerId, connection] of this.runnerConnections) {
 			if (connection.isAlive) {
 				connection.isAlive = false;
 				connection.ping();
 			} else {
-				anyDead = true;
 				void this.removeConnection(runnerId, {
 					reason: 'failed-heartbeat-check',
 					code: WsStatusCodes.CloseProtocolError,
 					expectedConnection: connection,
 				});
-			}
-		}
 
-		if (anyDead) {
-			this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
+				this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check', { runnerId });
+			}
 		}
 	}
 
+	/**
+	 * Runs at shutdown start, concurrently with the worker's execution drain. The
+	 * regular `stop()` runs only after that drain - too late for a task timeout that
+	 * outlasts the force-kill deadline while an execution stuck on it blocks the drain.
+	 */
+	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
+	capTaskTimeoutsForShutdown() {
+		const deadline =
+			Date.now() +
+			this.globalConfig.generic.gracefulShutdownTimeout *
+				SHUTDOWN_TASK_BUDGET_RATIO *
+				Time.seconds.toMilliseconds;
+
+		this.taskBroker.capTaskTimeoutsForShutdown(deadline);
+	}
+
 	async stop() {
+		this.runnerLifecycleEvents.off('runner:unresponsive', this.onRunnerUnresponsive);
+
 		if (this.heartbeatTimer) {
 			clearInterval(this.heartbeatTimer);
 			this.heartbeatTimer = undefined;
@@ -135,6 +170,12 @@ export class TaskBrokerWsServer {
 
 				if (!isConnected) {
 					if (message.type === 'runner:info') {
+						if (this.hasLiveConnection(id)) {
+							this.logger.warn(
+								`Runner "${message.name}" registered as "${id}", an ID another live runner holds, and replaced its connection. Give each runner a unique N8N_RUNNERS_ID, else they will keep evicting each other.`,
+							);
+						}
+
 						await this.removeConnection(id);
 						isConnected = true;
 
@@ -195,6 +236,13 @@ export class TaskBrokerWsServer {
 			this.runnerConnections.delete(id);
 			connection.close(code);
 
+			if (reason === 'failed-heartbeat-check' || reason === 'runner-unresponsive') {
+				this.eventService.emit('runner-disconnected', {
+					reason,
+					mode: this.taskRunnersConfig.mode,
+				});
+			}
+
 			const inFlightTaskIds = this.taskBroker.getInFlightTaskIds(id);
 
 			const disconnectError = await this.disconnectAnalyzer.toDisconnectError({
@@ -236,6 +284,21 @@ export class TaskBrokerWsServer {
 		return this.isCurrentConnection(id, connection) && connection.readyState === connection.OPEN;
 	}
 
+	/**
+	 * Whether `id` is already held by a connection that is open and answering heartbeats.
+	 *
+	 * A reconnecting runner reuses its ID, but only once its previous connection is gone, so
+	 * a live holder means two runners claim the same ID. Requires answered heartbeats
+	 * because a dropped socket stays `OPEN` until the liveness check notices.
+	 */
+	private hasLiveConnection(id: TaskRunner['id']) {
+		const connection = this.runnerConnections.get(id);
+
+		return (
+			connection !== undefined && connection.readyState === connection.OPEN && connection.isAlive
+		);
+	}
+
 	private async stopConnectedRunners() {
 		await this.drainActiveTasks();
 
@@ -252,7 +315,9 @@ export class TaskBrokerWsServer {
 	}
 
 	private async drainActiveTasks() {
-		const drainTimeout = Math.floor(this.globalConfig.generic.gracefulShutdownTimeout * 0.8);
+		const drainTimeout = Math.floor(
+			this.globalConfig.generic.gracefulShutdownTimeout * SHUTDOWN_TASK_BUDGET_RATIO,
+		);
 
 		const drainTimeoutMs = drainTimeout * Time.seconds.toMilliseconds;
 

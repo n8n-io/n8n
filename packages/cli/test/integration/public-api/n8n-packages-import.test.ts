@@ -15,6 +15,7 @@ import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writ
 import { Telemetry } from '@/telemetry';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { getVariableByKey } from '../shared/db/variables';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -46,6 +47,7 @@ beforeEach(async () => {
 		'SharedWorkflow',
 		'CredentialsEntity',
 		'SharedCredentials',
+		'Variables',
 	]);
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 });
@@ -56,9 +58,14 @@ const testWithAPIKey = (method: 'post', url: string, apiKey: string | null) => a
 	expect(response.statusCode).toBe(401);
 };
 
-async function buildImportPackage(): Promise<Buffer> {
+async function buildImportPackage(
+	options: { variable?: { name: string; value: string } } = {},
+): Promise<Buffer> {
 	const writer = new TarPackageWriter();
 	const wfId = 'wf-http-source';
+	const variable = options.variable
+		? { ...options.variable, target: `variables/${options.variable.name}` }
+		: undefined;
 	writer.writeFile(
 		'manifest.json',
 		JSON.stringify({
@@ -67,6 +74,14 @@ async function buildImportPackage(): Promise<Buffer> {
 			sourceN8nVersion: '1.0.0',
 			sourceId: 'http-integration-source',
 			workflows: [{ id: wfId, name: 'HTTP Imported', target: `workflows/${wfId}` }],
+			...(variable
+				? {
+						variables: [{ id: 'var-http-source', name: variable.name, target: variable.target }],
+						requirements: {
+							variables: [{ name: variable.name, usedByWorkflows: [wfId] }],
+						},
+					}
+				: {}),
 		}),
 	);
 	writer.writeDirectory(`workflows/${wfId}`);
@@ -92,6 +107,14 @@ async function buildImportPackage(): Promise<Buffer> {
 			isArchived: false,
 		}),
 	);
+
+	if (variable) {
+		writer.writeDirectory(variable.target);
+		writer.writeFile(
+			`${variable.target}/variable.json`,
+			JSON.stringify({ name: variable.name, type: 'string', value: variable.value }),
+		);
+	}
 
 	const stream = writer.finalize();
 	const chunks: Buffer[] = [];
@@ -219,10 +242,13 @@ describe('POST /n8n-packages/import', () => {
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					isArchived: false,
 					publishing: { state: 'unchanged' },
 					status: 'created',
 				},
 			],
+			removedWorkflows: [],
+			removedFolders: [],
 			folders: [],
 			projects: [],
 			bindings: {
@@ -233,20 +259,50 @@ describe('POST /n8n-packages/import', () => {
 				matched: [],
 				stubbed: [],
 			},
+			dataTables: {
+				matched: 0,
+				created: 0,
+			},
 			variables: {
 				matched: [],
 				missing: [],
+				created: [],
 				stubbed: [],
+				updated: [],
 			},
 			tags: {
 				matched: [],
 				created: [],
 				renamed: [],
+				reconciled: [],
 				skipped: [],
 			},
 		});
 
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('creates a missing variable with the package value when variableMissingMode is omitted', async () => {
+		testServer.license.enable('feat:variables');
+		const tarBuffer = await buildImportPackage({
+			variable: { name: 'API_URL', value: 'https://packaged.example.com' },
+		});
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.variables).toEqual({
+			matched: [],
+			missing: [],
+			created: ['API_URL'],
+			stubbed: [],
+			updated: [],
+		});
+		const created = await getVariableByKey('API_URL');
+		expect(created).toMatchObject({ value: 'https://packaged.example.com' });
 	});
 
 	test('accepts a request that supplies every documented form field', async () => {
@@ -265,7 +321,8 @@ describe('POST /n8n-packages/import', () => {
 			.field('dataTableMatchingMode', 'by-id')
 			.field('dataTableMissingMode', 'must-preexist')
 			.field('dataTableSchemaConflictPolicy', 'fail')
-			.field('variableMissingMode', 'do-nothing')
+			.field('variableMissingMode', 'create-with-value')
+			.field('variableConflictPolicy', 'overwrite')
 			.field('variableParentPolicy', 'project')
 			.field('tagMissingMode', 'do-nothing')
 			.field('tagConflictPolicy', 'fail')

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
-import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule, useTemplateRef } from 'vue';
+import { N8nDropdownMenu, N8nIconButton, type DropdownMenuItemProps } from '@n8n/design-system';
+import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -31,8 +32,8 @@ import type { FolderShortInfo, WorkflowListEventMap } from '@/features/core/fold
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
@@ -52,6 +53,8 @@ const props = defineProps<{
 }>();
 
 const importFileRef = ref<HTMLInputElement | undefined>();
+const productionChecklistRef =
+	useTemplateRef<InstanceType<typeof WorkflowProductionChecklist>>('productionChecklist');
 const toast = useToast();
 const locale = useI18n();
 const route = useRoute();
@@ -85,6 +88,17 @@ const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
+function addWorkflowMenuTestIds(
+	item: DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>,
+): DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS> {
+	return {
+		...item,
+		testId: `workflow-menu-item-${item.id}`,
+		class: [item.class, item.disabled ? 'disabled' : undefined],
+		children: item.children?.map(addWorkflowMenuTestIds),
+	};
+}
+
 function handleFileImport() {
 	const inputRef = importFileRef.value;
 	if (inputRef?.files && inputRef.files.length !== 0) {
@@ -111,85 +125,111 @@ function handleFileImport() {
 	}
 }
 
-const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>>>(() => {
-	const actions: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
-		{
-			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
-			label: locale.baseText('menuActions.download'),
-		},
-	];
+const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>>>(() => {
+	const canEdit =
+		(props.workflowPermissions.update === true &&
+			!collaborationReadOnly.value &&
+			!props.isArchived &&
+			!sourceControlStore.preferences.branchReadOnly) ||
+		props.isNewWorkflow;
 
-	if (isSharingEnabled.value && props.workflowPermissions.share) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.SHARE,
-			label: locale.baseText('workflowDetails.share'),
-		});
-	}
-
-	if (props.workflowPermissions.move && projectsStore.isTeamProjectFeatureEnabled) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.CHANGE_OWNER,
-			label: locale.baseText('workflows.item.changeOwner'),
-			disabled: props.isNewWorkflow,
-		});
-	}
+	const nameAndMetadata: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [];
 
 	if (
 		!collaborationReadOnly.value &&
 		!props.isArchived &&
 		!sourceControlStore.preferences.branchReadOnly
 	) {
-		actions.push({
+		nameAndMetadata.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
+			icon: { type: 'icon', value: 'pencil' },
 			disabled: props.workflowPermissions.update !== true,
 		});
 	}
 
-	actions.push({
+	if (canEdit) {
+		nameAndMetadata.push({
+			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
+			label: locale.baseText('menuActions.editDescriptionAndTags'),
+			icon: { type: 'icon', value: 'tags' },
+			disabled: !props.id,
+		});
+	}
+
+	nameAndMetadata.push({
 		id: WORKFLOW_MENU_ACTIONS.FAVORITE,
 		label: favoritesStore.isFavorite(props.id, 'workflow')
 			? locale.baseText('favorites.remove')
 			: locale.baseText('favorites.add'),
+		icon: { type: 'icon', value: 'star' },
 		disabled: props.isNewWorkflow,
 	});
 
-	if (
-		(props.workflowPermissions.update === true &&
-			!collaborationReadOnly.value &&
-			!props.isArchived &&
-			!sourceControlStore.preferences.branchReadOnly) ||
-		props.isNewWorkflow
-	) {
-		actions.unshift({
+	const organization: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [];
+
+	if (props.workflowPermissions.move && projectsStore.isTeamProjectFeatureEnabled) {
+		organization.push({
+			id: WORKFLOW_MENU_ACTIONS.CHANGE_OWNER,
+			label: locale.baseText('workflows.item.changeOwner'),
+			icon: { type: 'icon', value: 'corner-up-right' },
+			disabled: props.isNewWorkflow,
+		});
+	}
+
+	if (canEdit) {
+		organization.push({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
+			icon: { type: 'icon', value: 'copy' },
 			disabled: !props.id,
 		});
-		actions.unshift({
-			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
-			label: locale.baseText('menuActions.editDescription'),
-			disabled: !props.id,
-		});
+	}
 
-		actions.push(
-			{
-				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
-				label: locale.baseText('menuActions.importFromUrl'),
-				disabled: onExecutionsTab.value,
-			},
-			{
-				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-				label: locale.baseText('menuActions.importFromFile'),
-				disabled: onExecutionsTab.value,
-			},
-		);
+	if (isSharingEnabled.value && props.workflowPermissions.share) {
+		organization.push({
+			id: WORKFLOW_MENU_ACTIONS.SHARE,
+			label: locale.baseText('workflowDetails.share'),
+			icon: { type: 'icon', value: 'share' },
+		});
+	}
+
+	const importExport: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [
+		{
+			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
+			label: locale.baseText('menuActions.exportJson'),
+			icon: { type: 'icon', value: 'download' },
+		},
+	];
+
+	if (canEdit) {
+		importExport.push({
+			id: WORKFLOW_MENU_ACTIONS.IMPORT,
+			label: locale.baseText('menuActions.import'),
+			icon: { type: 'icon', value: 'upload' },
+			disabled: onExecutionsTab.value,
+			children: [
+				{
+					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
+					label: locale.baseText('menuActions.importFromUrl'),
+					icon: { type: 'icon', value: 'link' },
+					disabled: onExecutionsTab.value,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
+					label: locale.baseText('menuActions.importFromFile'),
+					icon: { type: 'icon', value: 'file-input' },
+					disabled: onExecutionsTab.value,
+				},
+			],
+		});
 	}
 
 	if (hasPermission(['rbac'], { rbac: { scope: 'sourceControl:push' } })) {
-		actions.push({
+		importExport.push({
 			id: WORKFLOW_MENU_ACTIONS.PUSH,
 			label: locale.baseText('menuActions.push'),
+			icon: { type: 'icon', value: 'git-branch' },
 			disabled:
 				!sourceControlStore.isEnterpriseSourceControlEnabled ||
 				onExecutionsTab.value ||
@@ -197,11 +237,30 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		});
 	}
 
-	actions.push({
-		id: WORKFLOW_MENU_ACTIONS.SETTINGS,
-		label: locale.baseText('generic.settings'),
-		disabled: props.isNewWorkflow,
-	});
+	const workflowTools: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [
+		{
+			id: WORKFLOW_MENU_ACTIONS.VERSION_HISTORY,
+			label: locale.baseText('menuActions.versionHistory'),
+			icon: { type: 'icon', value: 'history' },
+			disabled: props.isNewWorkflow,
+		},
+		{
+			id: WORKFLOW_MENU_ACTIONS.SETTINGS,
+			label: locale.baseText('generic.settings'),
+			icon: { type: 'icon', value: 'settings' },
+			disabled: props.isNewWorkflow,
+		},
+	];
+
+	if (!props.isNewWorkflow && productionChecklistRef.value?.hasActions) {
+		workflowTools.push({
+			id: WORKFLOW_MENU_ACTIONS.PRODUCTION_CHECKLIST,
+			label: locale.baseText('menuActions.productionChecklist'),
+			icon: { type: 'icon', value: 'list-checks' },
+		});
+	}
+
+	const lifecycle: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [];
 
 	if (
 		(props.workflowPermissions.delete === true &&
@@ -210,48 +269,65 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		props.isNewWorkflow
 	) {
 		if (props.isArchived) {
-			actions.push({
+			lifecycle.push({
 				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
 				label: locale.baseText('menuActions.unarchive'),
+				icon: { type: 'icon', value: 'archive-restore' },
 				disabled: props.isNewWorkflow,
 			});
-			actions.push({
+			lifecycle.push({
 				id: WORKFLOW_MENU_ACTIONS.DELETE,
 				label: locale.baseText('menuActions.delete'),
+				icon: { type: 'icon', value: 'trash-2' },
 				disabled: props.isNewWorkflow,
-				customClass: $style.deleteItem,
-				divided: true,
+				class: $style.destructiveItem,
 			});
 		} else {
-			actions.push({
+			lifecycle.push({
 				id: WORKFLOW_MENU_ACTIONS.ARCHIVE,
 				label: locale.baseText('menuActions.archive'),
+				icon: { type: 'icon', value: 'archive' },
 				disabled: props.isNewWorkflow,
-				customClass: $style.deleteItem,
-				divided: true,
+				class: $style.destructiveItem,
 			});
 		}
 	}
 
-	return actions;
+	const groups = [nameAndMetadata, organization, importExport, workflowTools, lifecycle].filter(
+		(group) => group.length > 0,
+	);
+
+	// A separator above the first item of every group but the first.
+	return groups
+		.flatMap((group, index) =>
+			index === 0 ? group : group.map((item, i) => (i === 0 ? { ...item, divided: true } : item)),
+		)
+		.map(addWorkflowMenuTestIds);
 });
+
+function openDescriptionAndTagsModal(): void {
+	const workflowId = getWorkflowId(props.id, route.params.workflowId);
+	if (!workflowId) return;
+
+	const workflowDescription =
+		workflowDocumentStore?.value?.description ??
+		workflowsListStore.getWorkflowById(workflowId)?.description;
+	uiStore.openModalWithData({
+		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
+		data: {
+			workflowId,
+			workflowName: props.name,
+			workflowDescription,
+			workflowTags: [...props.tags],
+			isNewWorkflow: props.isNewWorkflow,
+		},
+	});
+}
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
-			const workflowId = getWorkflowId(props.id, route.params.workflowId);
-			if (!workflowId) return;
-
-			const workflowDescription =
-				workflowDocumentStore?.value?.description ??
-				workflowsListStore.getWorkflowById(workflowId).description;
-			uiStore.openModalWithData({
-				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
-				data: {
-					workflowId,
-					workflowDescription,
-				},
-			});
+			openDescriptionAndTagsModal();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
@@ -268,6 +344,20 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.RENAME: {
 			nodeViewEventBus.emit('renameWorkflow');
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.PRODUCTION_CHECKLIST: {
+			// Defer until the dropdown has closed and restored focus to its trigger;
+			// opening in the same tick lets that focus restore land "outside" the
+			// popover, which would immediately dismiss it.
+			setTimeout(() => productionChecklistRef.value?.open(), 0);
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.VERSION_HISTORY: {
+			void router.push({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: { workflowId: props.id },
+			});
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
@@ -407,6 +497,14 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 	}
 }
 
+onMounted(() => {
+	nodeViewEventBus.on('addTag', openDescriptionAndTagsModal);
+});
+
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('addTag', openDescriptionAndTagsModal);
+});
+
 defineExpose({
 	importFileRef,
 });
@@ -420,21 +518,43 @@ defineExpose({
 			data-test-id="workflow-import-input"
 			@change="handleFileImport()"
 		/>
-		<N8nActionDropdown
+		<!-- The zero-size anchor pins the checklist popover (start-aligned, no offset)
+		 to the canvas top-left corner, 16px in from the header's bottom-left edge. -->
+		<span :class="$style.checklistAnchor">
+			<WorkflowProductionChecklist v-if="!isNewWorkflow" ref="productionChecklist" hide-trigger />
+		</span>
+		<N8nDropdownMenu
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
+			content-test-id="workflow-menu"
+			placement="bottom-start"
 			max-height="var(--reka-dropdown-menu-content-available-height)"
 			@select="onWorkflowMenuSelect"
-		/>
+		>
+			<template #trigger>
+				<N8nIconButton
+					variant="ghost"
+					size="medium"
+					icon="ellipsis"
+					icon-size="large"
+					:aria-label="locale.baseText('node.moreActions')"
+				/>
+			</template>
+		</N8nDropdownMenu>
 	</div>
 </template>
 <style lang="scss" module>
-.deleteItem {
-	color: var(--color--danger);
+.destructiveItem,
+.destructiveItem * {
+	color: var(--text-color--danger) !important;
 }
 .group {
 	display: flex;
-	gap: var(--spacing--xs);
+}
+.checklistAnchor {
+	position: absolute;
+	top: calc(100% + var(--spacing--sm));
+	left: var(--spacing--sm);
 }
 .hiddenInput {
 	display: none;

@@ -1,11 +1,11 @@
-import { AgentJsonConfigBaseSchema } from '@n8n/api-types';
+import { AgentJsonConfigBaseSchema, WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME } from '@n8n/api-types';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export const AGENT_BUILDER_REFERENCE_URI = 'n8n://agents/reference';
 
-// Integrations are a published runtime surface managed only through
-// update_agent_integration, so they are never part of the editable draft
-// config the model reads and writes.
+// Integrations are managed only through update_agent_integration, so they are
+// never part of the editable draft config the model reads and writes.
 const EditableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.omit({ integrations: true });
 
 export const AGENT_CONFIG_JSON_SCHEMA = zodToJsonSchema(EditableAgentJsonConfigSchema, {
@@ -30,9 +30,9 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 ## Build sequence
 
 1. Use search_projects to identify the project, or search_agents and get_agent for an existing Agent.
-   By-ID tools (get_agent, mutate_agent, validate_agent, publish_agent, unpublish_agent,
-   revert_agent, list_agent_versions, delete_agent, update_agent_integration) take an agentId alone
-   and resolve the project from it.
+   By-ID tools (get_agent, mutate_agent, validate_agent, call_agent, publish_agent,
+   unpublish_agent, revert_agent, list_agent_versions, delete_agent, update_agent_integration) take
+   an agentId alone and resolve the project from it.
 2. Use discover_agent_assets plus list_credentials, search_nodes, get_node_types, and
    explore_node_resources to ground model, tool, workflow, integration, and credential choices.
 3. For a new Agent, call create_agent with the initial config after discovering its assets. The
@@ -42,19 +42,31 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
    server-generated IDs.
 5. Call validate_agent and resolve every reported error. A valid Agent is a completed draft; do not
    publish it merely to finish the build.
-6. Report that the draft is ready, include a clickable link using the \`url\` returned by
+6. After validation succeeds, if call_agent is available and authorized, send one representative
+   message before reporting the draft ready. Otherwise, report the successfully validated draft
+   ready without a test run.
+7. Report that the draft is ready, include a clickable link using the \`url\` returned by
    validate_agent, and ask whether the user wants to publish it.
-7. Call publish_agent only when the user explicitly requested publication, activation, deployment,
+8. Call publish_agent only when the user explicitly requested publication, activation, deployment,
    or making the Agent live, or confirms publication after the build.
-8. Connecting a chat integration publishes the current draft and starts the integration runtime, so
-   it requires the same explicit publication confirmation.
+9. Use update_agent_integration to configure chat integrations. Configuration never publishes the
+   Agent. A configured channel stays inactive until explicit publication unless the Agent already has an active version.
+
+## Draft test runs
+
+call_agent verifies the draft Agent's behavior through built-in Preview chat, not configured channel
+triggers, platform context, message delivery, or replies. Real tools and credentials are used, so
+side effects are possible. If the test exposes errors, report them and ask whether to fix them rather
+than mutating the Agent automatically. Every approval decision must come from the human; resume each
+returned approval individually.
 
 ## Publication approval
 
-Building, editing, or validating an Agent never implies permission to publish or republish it. Leave
-the Agent as a draft by default. An explicit request to publish, activate, deploy, make live, or
-connect a chat integration counts as approval; otherwise ask after validation and wait for the
-answer before calling publish_agent or connecting an integration.
+Building, editing, validating, or configuring an Agent never implies permission to publish or
+republish it. Leave the Agent as a draft by default. An explicit request to publish, activate,
+deploy, or make live counts as approval; otherwise ask after validation and wait for the answer
+before calling publish_agent. Configuring a channel on an already published Agent connects it
+immediately, so confirm that external connection before calling update_agent_integration.
 
 ## Version history
 
@@ -85,6 +97,8 @@ directly on that object — there is no \`value\` wrapper. For example:
 - skill.delete: Set \`skillId\` to the skill to delete; its config reference is removed.
 - task.upsert: Set \`task\` to the complete task body. Omit \`taskId\` to create and attach a new
   scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.
+  On a replace, an omitted \`timezone\` keeps the zone the task already has; send \`null\` to move it
+  back to the instance timezone.
 - task.delete: Set \`taskId\` to the task to delete; its config reference is removed.
 - customTool.upsert: Set \`code\` to the tool source; it is compiled, validated, stored, and attached.
   Only \`@n8n/agents\` and \`zod\` imports are available. The default export must be a Tool builder
@@ -115,6 +129,10 @@ Tool references use these forms:
 
 - Custom tool: { "type": "custom", "id": "tool_name" }
 - Workflow tool: { "type": "workflow", "workflow": "Workflow Name", "name": "tool_name" }
+  A workflow tool must start with a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger
+  (${EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE}) and must be published before the published Agent can
+  call it; validate_agent reports incompatible_reference with reason no_supported_trigger or
+  not_published otherwise.
 - Node tool: { "type": "node", "name": "tool_name", "node": { "nodeType": "...",
   "nodeTypeVersion": 1, "nodeParameters": {}, "credentials": {} } }
 
@@ -130,18 +148,19 @@ options first. Never place credential secret data in Agent configuration or MCP 
 credential IDs returned by list_credentials.
 
 Skills and tasks have separately persisted bodies. Always manage them through mutate_agent instead
-of manually inventing their IDs. Saved sub-agents must be published Agents from the same project.
-Use discover_agent_assets with kind=subagents to obtain valid IDs.
+of manually inventing their IDs. Saved sub-agents must be Agents from the same project. Use
+discover_agent_assets with kind=subagents to obtain valid IDs.
 
 Chat integrations are conversation surfaces, not ordinary node tools. Use an integration when users
 should invoke and converse with the Agent in Slack, Telegram, or Linear. Use a node/workflow tool
 when the Agent only needs to call that service as an API.
 
-Integrations are a published runtime surface, not editable config. get_agent reports them in a
-read-only integrations field, but config.replace and config.patch cannot add, change, or remove
-them, and they never appear in the config schema above. Manage them exclusively with
-update_agent_integration, which validates the credential and connects the live channel. Connecting
-publishes the current draft, so it needs the same explicit publication confirmation as publish_agent.
+Integrations are persisted separately from editable config. get_agent reports them in a read-only
+integrations field, but config.replace and config.patch can't add, change, or remove them, and they
+never appear in the config schema above. Manage them exclusively with update_agent_integration,
+which validates the credential and persists the configuration without publishing. A configured
+channel stays inactive until publish_agent is called unless the Agent already has an active version;
+in that case, it connects immediately to the existing active snapshot.
 
 ## MCP servers
 

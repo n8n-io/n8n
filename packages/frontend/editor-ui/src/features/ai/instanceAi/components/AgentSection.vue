@@ -10,7 +10,7 @@ import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
 import { getBuilderRoleLabel } from '../builderAgents';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;

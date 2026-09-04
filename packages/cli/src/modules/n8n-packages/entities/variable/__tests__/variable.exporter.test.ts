@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
+import { PackageExportBlockedError } from '../../package-export.errors';
 import { VariableExporter } from '../variable.exporter';
 import { VariableSerializer } from '../variable.serializer';
 import type { WorkflowVariableRequirement } from '../variable.types';
@@ -86,7 +87,7 @@ describe('VariableExporter', () => {
 	});
 
 	describe('happy path', () => {
-		it('bundles a resolvable global variable and emits a catalog entry plus a valued requirement', async () => {
+		it('bundles a resolvable global variable and emits a catalog entry plus a requirement', async () => {
 			const deps = makeExporter();
 			const variable = makeVariable({ id: 'var-url' });
 			wireVariables(deps, {
@@ -103,14 +104,12 @@ describe('VariableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'var-url', name: 'API_URL', target: 'variables/apiurl' },
+				{ id: 'var-url', name: 'API_URL', target: 'variables/apiurl-var-url' },
 			]);
-			expect(result.requirements).toEqual([
-				{ name: 'API_URL', value: 'https://api.example.com', usedByWorkflows: ['wf-1'] },
-			]);
-			expect(writer.directories).toEqual(['variables/apiurl']);
+			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-1'] }]);
+			expect(writer.directories).toEqual(['variables/apiurl-var-url']);
 			expect(writer.files).toHaveLength(1);
-			expect(writer.files[0].path).toBe('variables/apiurl/variable.json');
+			expect(writer.files[0].path).toBe('variables/apiurl-var-url/variable.json');
 			expect(jsonParse(writer.files[0].content)).toEqual({
 				name: 'API_URL',
 				type: 'string',
@@ -136,9 +135,9 @@ describe('VariableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'var-p', name: 'API_URL', target: 'projects/billing/variables/apiurl' },
+				{ id: 'var-p', name: 'API_URL', target: 'projects/billing/variables/apiurl-var-p' },
 			]);
-			expect(writer.files[0].path).toBe('projects/billing/variables/apiurl/variable.json');
+			expect(writer.files[0].path).toBe('projects/billing/variables/apiurl-var-p/variable.json');
 			expect(jsonParse(writer.files[0].content)).toEqual({
 				name: 'API_URL',
 				type: 'string',
@@ -164,11 +163,9 @@ describe('VariableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'var-p', name: 'API_URL', target: 'variables/apiurl' },
+				{ id: 'var-p', name: 'API_URL', target: 'variables/apiurl-var-p' },
 			]);
-			expect(result.requirements).toEqual([
-				{ name: 'API_URL', value: 'scoped-value', usedByWorkflows: ['wf-1'] },
-			]);
+			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-1'] }]);
 		});
 
 		it('bundles a global referenced from a member personal-project workflow', async () => {
@@ -188,11 +185,9 @@ describe('VariableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'var-g', name: 'API_URL', target: 'variables/apiurl' },
+				{ id: 'var-g', name: 'API_URL', target: 'variables/apiurl-var-g' },
 			]);
-			expect(result.requirements).toEqual([
-				{ name: 'API_URL', value: 'global-value', usedByWorkflows: ['wf-1'] },
-			]);
+			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-1'] }]);
 		});
 	});
 
@@ -218,11 +213,9 @@ describe('VariableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'var-g', name: 'API_URL', target: 'variables/apiurl' },
+				{ id: 'var-g', name: 'API_URL', target: 'variables/apiurl-var-g' },
 			]);
-			expect(result.requirements).toEqual([
-				{ name: 'API_URL', value: 'https://api.example.com', usedByWorkflows: ['wf-1'] },
-			]);
+			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-1'] }]);
 		});
 	});
 
@@ -251,85 +244,12 @@ describe('VariableExporter', () => {
 			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-1'] }]);
 			expect(writer.files).toEqual([]);
 		});
-	});
 
-	describe('strict aggregate value', () => {
-		it('omits the requirement value when workflows resolve the name to different values', async () => {
-			const deps = makeExporter();
-			const variableA = projectVariable('proj-a', { id: 'var-a', value: 'A' });
-			const variableB = projectVariable('proj-b', { id: 'var-b', value: 'B' });
-			wireVariables(deps, {
-				all: [variableA, variableB],
-				workflowProjects: [
-					['wf-a', 'proj-a'],
-					['wf-b', 'proj-b'],
-				],
-			});
-			const writer = new CapturingWriter();
-
-			const result = await deps.exporter.export({
-				user,
-				requirements: [req('wf-a', 'API_URL'), req('wf-b', 'API_URL')],
-				writer,
-				includeVariableValues: true,
-				projectTargetsById: new Map([
-					['proj-a', 'projects/a'],
-					['proj-b', 'projects/b'],
-				]),
-			});
-
-			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-a', 'wf-b'] }]);
-			// Two distinct variables still get bundled, each under its own project dir.
-			expect(result.entries.map((e) => e.id).sort()).toEqual(['var-a', 'var-b']);
-
-			expect(writer.files).toHaveLength(2);
-			expect(writer.files[0].path).toBe('projects/a/variables/apiurl/variable.json');
-			expect(jsonParse(writer.files[0].content)).toEqual({
-				name: 'API_URL',
-				type: 'string',
-				value: 'A',
-			});
-			expect(writer.files[1].path).toBe('projects/b/variables/apiurl/variable.json');
-			expect(jsonParse(writer.files[1].content)).toEqual({
-				name: 'API_URL',
-				type: 'string',
-				value: 'B',
-			});
-		});
-
-		it('keeps the value and bundles once when every workflow resolves to the same variable', async () => {
-			const deps = makeExporter();
-			const shared = makeVariable({ id: 'var-shared', value: 'shared-value' });
-			wireVariables(deps, {
-				all: [shared],
-				workflowProjects: [
-					['wf-a', 'proj-personal'],
-					['wf-b', 'proj-personal'],
-				],
-			});
-			const writer = new CapturingWriter();
-
-			const result = await deps.exporter.export({
-				user,
-				requirements: [req('wf-a', 'API_URL'), req('wf-b', 'API_URL')],
-				writer,
-				includeVariableValues: true,
-			});
-
-			expect(result.requirements).toEqual([
-				{ name: 'API_URL', value: 'shared-value', usedByWorkflows: ['wf-a', 'wf-b'] },
-			]);
-			expect(result.entries).toEqual([
-				{ id: 'var-shared', name: 'API_URL', target: 'variables/apiurl' },
-			]);
-			expect(writer.files).toHaveLength(1);
-		});
-
-		it('omits the value when one referencing workflow cannot resolve the variable', async () => {
+		it('still bundles the global when only one of the referencing workflows can resolve it', async () => {
 			const deps = makeExporter();
 			const shared = makeVariable({ id: 'var-shared', value: 'shared-value' });
 			// wf-b's project holds a hidden variable that shadows the global, so
-			// wf-b resolves nothing and cannot vouch for the aggregate value.
+			// wf-b resolves nothing while wf-a resolves the global.
 			const hiddenScoped = projectVariable('proj-secret', { id: 'var-hidden' });
 			wireVariables(deps, {
 				all: [shared, hiddenScoped],
@@ -348,16 +268,15 @@ describe('VariableExporter', () => {
 				includeVariableValues: true,
 			});
 
-			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-a', 'wf-b'] }]);
-			// The value still travels bundled from the workflow that could resolve it.
 			expect(result.entries).toEqual([
-				{ id: 'var-shared', name: 'API_URL', target: 'variables/apiurl' },
+				{ id: 'var-shared', name: 'API_URL', target: 'variables/apiurl-var-shared' },
 			]);
+			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-a', 'wf-b'] }]);
 		});
 	});
 
 	describe('includeVariableValues = false', () => {
-		it('bundles a value-less stub file and emits a valueless requirement', async () => {
+		it('bundles a value-less stub file and still lists the requirement', async () => {
 			const deps = makeExporter();
 			const variable = makeVariable({ id: 'var-url' });
 			wireVariables(deps, {
@@ -374,11 +293,11 @@ describe('VariableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'var-url', name: 'API_URL', target: 'variables/apiurl' },
+				{ id: 'var-url', name: 'API_URL', target: 'variables/apiurl-var-url' },
 			]);
 			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-1'] }]);
 			expect(writer.files).toHaveLength(1);
-			expect(writer.files[0].path).toBe('variables/apiurl/variable.json');
+			expect(writer.files[0].path).toBe('variables/apiurl-var-url/variable.json');
 			expect(jsonParse(writer.files[0].content)).toEqual({ name: 'API_URL', type: 'string' });
 		});
 	});
@@ -400,16 +319,14 @@ describe('VariableExporter', () => {
 				includeVariableValues: true,
 			});
 
-			expect(result.requirements).toEqual([
-				{ name: 'API_URL', value: 'https://api.example.com', usedByWorkflows: ['wf-1'] },
-			]);
+			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-1'] }]);
 			expect(result.entries).toHaveLength(1);
 			expect(writer.files).toHaveLength(1);
 		});
 	});
 
-	describe('filename allocation', () => {
-		it('disambiguates targets when two distinct variable names slug to the same base', async () => {
+	describe('target naming', () => {
+		it('keeps targets apart when two distinct variable names slug to the same base', async () => {
 			const deps = makeExporter();
 			const first = makeVariable({ id: 'var-1', key: 'Region EU', value: 'a' });
 			const second = makeVariable({ id: 'var-2', key: 'Region-EU', value: 'b' });
@@ -427,12 +344,12 @@ describe('VariableExporter', () => {
 			});
 
 			expect(result.entries.map((e) => e.target)).toEqual([
-				'variables/region-eu',
-				'variables/region-eu-2',
+				'variables/region-eu-var-1',
+				'variables/region-eu-var-2',
 			]);
 		});
 
-		it('allocates independently per base directory so a global and project variable do not collide', async () => {
+		it('keeps a global and a project variable of the same name in their own directories', async () => {
 			const deps = makeExporter();
 			const globalVariable = makeVariable({ id: 'var-g', key: 'API_URL', value: 'global' });
 			const scopedVariable = projectVariable('proj-x', {
@@ -458,8 +375,8 @@ describe('VariableExporter', () => {
 			});
 
 			expect(result.entries.map((e) => e.target).sort()).toEqual([
-				'projects/x/variables/apiurl',
-				'variables/apiurl',
+				'projects/x/variables/apiurl-var-p',
+				'variables/apiurl-var-g',
 			]);
 			expect(result.requirements).toEqual([
 				{ name: 'API_URL', usedByWorkflows: ['wf-global', 'wf-scoped'] },
@@ -599,8 +516,41 @@ describe('VariableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'var-shared', name: 'API_URL', target: 'variables/apiurl' },
+				{ id: 'var-shared', name: 'API_URL', target: 'variables/apiurl-var-shared' },
 			]);
+		});
+	});
+
+	describe('contract-violating row', () => {
+		it.each([
+			{
+				field: 'a value past the limit',
+				row: { value: 'x'.repeat(1001) },
+				rule: /1000 characters/,
+			},
+			{ field: 'a type outside the enum', row: { type: 'json' }, rule: /Expected 'string'/ },
+		])('blocks the export and names the variable for $field', async ({ row, rule }) => {
+			const deps = makeExporter();
+			wireVariables(deps, {
+				all: [makeVariable(row)],
+				workflowProjects: [['wf-1', 'proj-personal']],
+			});
+			const writer = new CapturingWriter();
+
+			const error = await deps.exporter
+				.export({
+					user,
+					requirements: [req('wf-1', 'API_URL')],
+					writer,
+					includeVariableValues: true,
+				})
+				.catch((caught: unknown) => caught);
+
+			expect(error).toBeInstanceOf(PackageExportBlockedError);
+			const blocked = error as PackageExportBlockedError;
+			expect(blocked.message).toContain('Variable "API_URL"');
+			expect(blocked.description).toMatch(rule);
+			expect(writer.files).toEqual([]);
 		});
 	});
 });

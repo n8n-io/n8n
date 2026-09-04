@@ -18,6 +18,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
+import { lastSavedWorkflowIdFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
@@ -275,7 +276,20 @@ function formatMemoryTasksForLog(
 // Multi-turn conversation loop
 // ---------------------------------------------------------------------------
 
-export type NextMessageDecision = { kind: 'followUp'; message: string } | { kind: 'done' };
+export type NextMessageDecision =
+	| {
+			kind: 'followUp';
+			message: string;
+			/**
+			 * The user-proxy asked for the last saved workflow to be renamed from
+			 * outside the conversation, driven by a stage direction. Lets a case
+			 * exercise the optimistic-concurrency path ("modified outside this
+			 * conversation"), which the agent otherwise only reaches by accident when
+			 * its own setup or credential work happens to advance the checksum.
+			 */
+			renameWorkflowTo?: string;
+	  }
+	| { kind: 'done' };
 
 export interface MultiTurnConfig extends WaitConfig {
 	nextMessageDecider: () => Promise<NextMessageDecision>;
@@ -298,6 +312,13 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 			return;
 		}
 
+		// After the decision, so an edit never lands on the boundary that ends the
+		// conversation: there the agent would get no turn to react, and the renamed
+		// workflow would still be what the judge and workflow checks read.
+		if (decision.renameWorkflowTo !== undefined) {
+			await applyExternalRename(config, decision.renameWorkflowTo);
+		}
+
 		config.logger.verbose(
 			`[multi-turn] Sending follow-up: ${decision.message.slice(0, 80)}${decision.message.length > 80 ? '...' : ''}`,
 		);
@@ -309,6 +330,64 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 			config.logger.verbose(`[multi-turn] sendMessage failed: ${msg} — exiting loop`);
 			return;
 		}
+	}
+}
+
+/**
+ * Renames the workflow this run last saved, from outside the conversation — the
+ * side effect behind a `renameWorkflowTo` stage direction.
+ *
+ * The proxy only ever sees the transcript, so it decides a workflow exists from
+ * what the agent *claimed*. Both guards below re-derive that from ground truth
+ * before writing anything.
+ *
+ * Logging is deliberately loud on every path. Skips and failures are `warn`, and
+ * the success is `info` rather than `verbose` — the failure that matters most is
+ * a direction that stops driving `renameWorkflowTo` at all, and that one never
+ * reaches this function, so it cannot log anything itself. Printing the rename
+ * in a normal run is what makes its ABSENCE meaningful: without it, a case whose
+ * direction silently stopped working reds on its name assertion and reads as an
+ * agent regression, with nothing in the log to say the conflict never happened.
+ *
+ * A failure is logged and swallowed rather than thrown — the case grades the
+ * agent's recovery, and killing the run here would report that as a build
+ * failure instead.
+ */
+async function applyExternalRename(config: MultiTurnConfig, rename: string): Promise<void> {
+	// Only builds that actually SAVED. Failed builds are excluded deliberately:
+	// they still report a workflowId, and acting on one would rename a workflow
+	// this run never created (an attached or pre-existing one). Last rather than
+	// first — the proxy fires at a turn boundary, so "the workflow under
+	// discussion" is the most recent one to reach the instance.
+	const workflowId = lastSavedWorkflowIdFromEvents(config.events);
+	if (workflowId === undefined) {
+		config.logger.warn(
+			`[external-edit] Skipped rename to "${rename}": this run has saved no workflow yet, so there is nothing to conflict`,
+		);
+		return;
+	}
+
+	try {
+		const current = await config.client.getWorkflow(workflowId);
+		if (current.name === rename) {
+			// Re-issuing the same rename advances the checksum a second time and
+			// re-conflicts a save the agent may already have recovered from, which
+			// would grade a successful recovery as a failure.
+			config.logger.warn(
+				`[external-edit] Skipped rename of ${workflowId}: it is already named "${rename}"`,
+			);
+			return;
+		}
+
+		await config.client.updateWorkflow(workflowId, { name: rename });
+		config.logger.info(
+			`[external-edit] Renamed ${workflowId} from "${current.name}" to "${rename}" outside the conversation`,
+		);
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		config.logger.warn(
+			`[external-edit] Failed to rename ${workflowId} to "${rename}": ${message} — the conflict path was not exercised`,
+		);
 	}
 }
 
