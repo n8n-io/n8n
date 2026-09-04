@@ -65,10 +65,20 @@ describe('step execution (integration)', () => {
 			workflowId = 'wf-1',
 			graph: workflowGraph = graph,
 			lifecycleEventCallback,
+			waitSweepIntervalMs,
+			resolveOn = 'finish',
 		}: {
 			workflowId?: string;
 			graph?: WorkflowGraph;
 			lifecycleEventCallback?: LifecycleEventCallback;
+			waitSweepIntervalMs?: number;
+			/**
+			 * Which write means the engine has gone quiet. An execution that
+			 * suspends and stays suspended never finishes, so those cases wait on
+			 * the suspension instead — but a wait the sweep goes on to fire has to
+			 * wait for the finish, or the runtime stops before the sweep runs.
+			 */
+			resolveOn?: 'finish' | 'suspend';
 		} = {},
 	) {
 		let done!: () => void;
@@ -81,19 +91,18 @@ describe('step execution (integration)', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			// also how the test reaches the stores the runtime owns
+			waitSweepIntervalMs,
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
 					const recorded = await finishExecution(id, status);
-					done();
+					if (resolveOn === 'finish') done();
 					return recorded;
 				});
-				// An execution that suspends never finishes, so a suspension is
-				// the other signal that the engine has gone quiet.
 				const suspendStep = stepStore.suspendStep.bind(stepStore);
 				vi.spyOn(stepStore, 'suspendStep').mockImplementation(async (id, wait) => {
 					const recorded = await suspendStep(id, wait);
-					done();
+					if (resolveOn === 'suspend') done();
 					return recorded;
 				});
 				return {
@@ -229,8 +238,9 @@ describe('step execution (integration)', () => {
 				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
 			],
 		};
+		// far future, so no sweep in a later case can fire this leftover row
 		const wait = {
-			resumeAt: '2026-09-02T12:00:00.000Z',
+			resumeAt: '2099-01-01T00:00:00.000Z',
 			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
 			acceptsResumeRequest: false,
 		};
@@ -244,6 +254,7 @@ describe('step execution (integration)', () => {
 		const { execution, steps } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-wait',
 			graph: waitGraph,
+			resolveOn: 'suspend',
 		});
 
 		// nothing settled the step, so the execution has no outcome to record
@@ -257,6 +268,57 @@ describe('step execution (integration)', () => {
 		expect(waiting?.outputs).toBeNull();
 		// planning stalls behind the wait: node-b has no row at all
 		expect(steps.map(({ nodeId }) => nodeId).sort()).toEqual(['node-a', 'trigger']);
+	});
+
+	it('fires a due wait, resumes the step and runs the execution to the end', async () => {
+		const waitGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		// already past, so the first sweep finds it due
+		const wait = {
+			resumeAt: '2020-01-01T00:00:00.000Z',
+			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+			acceptsResumeRequest: false,
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return request.node.id === 'node-a'
+					? { wait }
+					: { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-wait-fires',
+			graph: waitGraph,
+			waitSweepIntervalMs: 20,
+		});
+
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
+
+		const nodeA = steps.find(({ nodeId }) => nodeId === 'node-a');
+		expect(nodeA?.status).toBe('completed');
+		expect(nodeA?.resume).toEqual({ kind: 'deadline' });
+		// the declaration's captured outputs are what the step emitted
+		expect(nodeA?.outputs).toEqual(wait.outputsAtDeadline);
+
+		// node-a ran once, to declare the wait — the deadline resume did not run it
+		// again, and its captured outputs became node-b's input
+		expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-b']);
+		expect(requests[1].inputs).toEqual([[{ json: { passed: 'through' } }]]);
+		expect(steps.find(({ nodeId }) => nodeId === 'node-b')?.status).toBe('completed');
 	});
 
 	it('runs the execution to completion even when every status batch is refused', async () => {

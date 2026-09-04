@@ -16,6 +16,7 @@ import {
 } from '../execution/execution.types';
 import {
 	StepNotFoundError,
+	type DueStep,
 	type NewStepRecord,
 	type StepRecord,
 	type StepStore,
@@ -49,6 +50,7 @@ type ClaimedStepRow = {
 	wait: WaitDeclaration | null;
 	resume: StepResume | null;
 };
+type DueStepRow = { id: string; execution_id: string };
 
 /**
  * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
@@ -196,6 +198,37 @@ export class TypeOrmStepStore implements StepStore {
 
 	async resumeStep(id: string, resume: StepResume): Promise<boolean> {
 		return await this.transition(id, 'waiting', 'queued', { resume });
+	}
+
+	async resumeDueSteps(due: Date, limit: number): Promise<DueStep[]> {
+		// `SKIP LOCKED` so two sweepers split a backlog instead of one waiting out
+		// the other's batch. The subquery carries the `wait_till` test, so the row
+		// that is updated is the row that was found due.
+		//
+		// Through the query builder, not `manager.query`: a raw UPDATE resolves to
+		// `[rows, rowCount]`, whereas `.execute()` puts the RETURNING rows in
+		// `result.raw` — as `claimStep` and `createSteps` also rely on.
+		const result = await this.repo
+			.createQueryBuilder()
+			.update(WorkflowStepExecution)
+			.set({ status: 'queued', resume: { kind: 'deadline' } })
+			.where(
+				`id IN (
+					SELECT id FROM workflow_step_execution
+					WHERE status = 'waiting' AND wait_till <= :due
+					ORDER BY wait_till
+					LIMIT :limit
+					FOR UPDATE SKIP LOCKED
+				)`,
+				{ due, limit },
+			)
+			.returning(['id', 'executionId'])
+			.execute();
+
+		return (result.raw as DueStepRow[]).map(({ id, execution_id: executionId }) => ({
+			id,
+			executionId,
+		}));
 	}
 
 	async cancelQueuedSteps(executionId: string): Promise<void> {

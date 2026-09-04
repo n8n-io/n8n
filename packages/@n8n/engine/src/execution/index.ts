@@ -25,10 +25,15 @@ export type {
 	StepView,
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
-export type { NewStepRecord, StepRecord, StepStore, StepSummary } from './step-store';
+export type { DueStep, NewStepRecord, StepRecord, StepStore, StepSummary } from './step-store';
 export { ExecutionStartHandler } from './execution-start-handler';
 export { ExecutionQueryService } from './execution-query.service';
 export { OrchestrationWorker } from './orchestration-worker';
 export { StepSettledHandler } from './step-settled-handler';
 export { StepReadyHandler } from './step-ready-handler';
 export { StepWorker } from './step-worker';
+export {
+	WaitSweeper,
+	DEFAULT_WAIT_SWEEP_BATCH_SIZE,
+	DEFAULT_WAIT_SWEEP_INTERVAL_MS,
+} from './wait-sweeper';

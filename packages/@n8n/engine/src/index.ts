@@ -72,6 +72,7 @@ export type {
 	ExecutionViewStore,
 	ExecutionRecord,
 	ExecutionStatus,
+	DueStep,
 	ExecutionStore,
 	ExecutionView,
 	NewExecutionRecord,
