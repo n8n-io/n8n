@@ -2626,6 +2626,9 @@ importers:
 
   packages/@n8n/imap:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       iconv-lite:
         specifier: 'catalog:'
         version: 0.6.3

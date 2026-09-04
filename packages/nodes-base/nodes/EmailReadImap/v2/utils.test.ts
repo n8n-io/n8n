@@ -3,7 +3,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 import { returnJsonArray } from 'n8n-core';
 import type { INode, ITriggerFunctions, IDataObject } from 'n8n-workflow';
 
-import { getNewEmails } from '../../v2/utils';
+import { getNewEmails } from './utils';
 
 describe('Test IMap V2 utils', () => {
 	afterEach(() => vi.resetAllMocks());
@@ -26,75 +26,64 @@ describe('Test IMap V2 utils', () => {
 			],
 		};
 
-		const imapConnection = mock<ImapSimple>({
-			search: vi.fn().mockReturnValue(Promise.resolve([message])),
-		});
-		const getText = vi.fn().mockReturnValue('text');
-		const getAttachment = vi.fn().mockReturnValue(['attachment']);
-
-		it('should return new emails', async () => {
-			const expectedResults = [
-				{
-					format: 'resolved',
-					expected: {
-						json: {
-							attachments: undefined,
-							headers: { '': 'Body content' },
-							headerLines: undefined,
-							html: false,
-							attributes: {
-								uid: 873,
-							},
-						},
-						binary: undefined,
-					},
-				},
-				{
-					format: 'simple',
-					expected: {
-						json: {
-							textHtml: 'text',
-							textPlain: 'text',
-							metadata: {
-								'0': 'h',
-							},
-							attributes: {
-								uid: 873,
-							},
-						},
-					},
-				},
-				{
-					format: 'raw',
-					expected: {
-						json: { raw: 'txt' },
-					},
-				},
-			];
-
-			expectedResults.forEach(async (expectedResult) => {
-				triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
-				triggerFunctions.getNodeParameter
-					.calledWith('format')
-					.mockReturnValue(expectedResult.format);
-				triggerFunctions.getNodeParameter
-					.calledWith('dataPropertyAttachmentsPrefixName')
-					.mockReturnValue('resolved');
-				triggerFunctions.getWorkflowStaticData.mockReturnValue({});
-
-				const onEmailBatch = vi.fn();
-				await getNewEmails.call(triggerFunctions, {
-					imapConnection,
-					searchCriteria: [],
-					postProcessAction: '',
-					getText,
-					getAttachment,
-					onEmailBatch,
-				});
-
-				expect(onEmailBatch).toHaveBeenCalledTimes(1);
-				expect(onEmailBatch).toHaveBeenCalledWith([expectedResult.expected]);
+		const connectionReturning = (...batches: unknown[][]) => {
+			const search = vi.fn();
+			for (const batch of batches) search.mockResolvedValueOnce(batch);
+			return mock<ImapSimple>({
+				search,
+				downloadText: vi.fn().mockResolvedValue('text'),
+				downloadAttachments: vi.fn().mockResolvedValue([]),
 			});
+		};
+
+		it.each([
+			{
+				format: 'resolved',
+				expected: {
+					json: {
+						attachments: undefined,
+						headers: { '': 'Body content' },
+						headerLines: undefined,
+						html: false,
+						attributes: { uid: 873 },
+					},
+					binary: undefined,
+				},
+			},
+			{
+				format: 'simple',
+				expected: {
+					json: {
+						textHtml: 'text',
+						textPlain: 'text',
+						metadata: { '0': 'h' },
+						attributes: { uid: 873 },
+					},
+				},
+			},
+			{
+				format: 'raw',
+				expected: { json: { raw: 'txt' } },
+			},
+		])('returns a new email in $format format', async ({ format, expected }) => {
+			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
+			triggerFunctions.getNodeParameter.calledWith('format').mockReturnValue(format);
+			triggerFunctions.getNodeParameter
+				.calledWith('dataPropertyAttachmentsPrefixName')
+				.mockReturnValue('resolved');
+			triggerFunctions.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
+			triggerFunctions.getWorkflowStaticData.mockReturnValue({});
+
+			const onEmailBatch = vi.fn();
+			await getNewEmails.call(triggerFunctions, {
+				imapConnection: connectionReturning([message]),
+				searchCriteria: [],
+				postProcessAction: '',
+				onEmailBatch,
+			});
+
+			expect(onEmailBatch).toHaveBeenCalledTimes(1);
+			expect(onEmailBatch).toHaveBeenCalledWith([expected]);
 		});
 
 		const rawEmailWithDate = 'Date: Wed, 01 Jan 2020 12:00:00 +0000\r\nSubject: Hello\r\n\r\nBody';
@@ -104,9 +93,7 @@ describe('Test IMap V2 utils', () => {
 				attributes: { uuid: 1, uid: 950, struct: {} },
 				parts: [{ which: '', body: rawEmailWithDate }],
 			};
-			const localConnection = mock<ImapSimple>({
-				search: vi.fn().mockResolvedValue([messageWithDate]),
-			});
+			const localConnection = connectionReturning([messageWithDate]);
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion }));
 			triggerFunctions.getNodeParameter.calledWith('format').mockReturnValue('resolved');
@@ -120,8 +107,6 @@ describe('Test IMap V2 utils', () => {
 				imapConnection: localConnection,
 				searchCriteria: [],
 				postProcessAction: '',
-				getText,
-				getAttachment,
 				onEmailBatch,
 			});
 			return onEmailBatch.mock.calls[0][0][0] as { json: { date: unknown } };
@@ -143,9 +128,7 @@ describe('Test IMap V2 utils', () => {
 				parts: [{ which: 'TEXT', body: 'txt' }],
 			};
 
-			const localConnection = mock<ImapSimple>({
-				search: vi.fn().mockResolvedValue([messageWithoutHeader]),
-			});
+			const localConnection = connectionReturning([messageWithoutHeader]);
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 			triggerFunctions.getNodeParameter.calledWith('format').mockReturnValue('simple');
@@ -157,8 +140,6 @@ describe('Test IMap V2 utils', () => {
 				imapConnection: localConnection,
 				searchCriteria: [],
 				postProcessAction: 'nothing',
-				getText,
-				getAttachment,
 				onEmailBatch,
 			});
 
@@ -194,9 +175,7 @@ describe('Test IMap V2 utils', () => {
 				},
 			];
 
-			const localConnection = mock<ImapSimple>({
-				search: vi.fn().mockResolvedValue(messages),
-			});
+			const localConnection = connectionReturning(messages);
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 			triggerFunctions.getNodeParameter.calledWith('format').mockReturnValue('simple');
@@ -208,8 +187,6 @@ describe('Test IMap V2 utils', () => {
 				imapConnection: localConnection,
 				searchCriteria: [],
 				postProcessAction: 'read',
-				getText,
-				getAttachment,
 				onEmailBatch,
 			});
 
@@ -236,9 +213,7 @@ describe('Test IMap V2 utils', () => {
 				},
 			];
 
-			const localConnection = mock<ImapSimple>({
-				search: vi.fn().mockResolvedValue(messages),
-			});
+			const localConnection = connectionReturning(messages);
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 			triggerFunctions.getNodeParameter.calledWith('format').mockReturnValue('simple');
@@ -250,8 +225,6 @@ describe('Test IMap V2 utils', () => {
 				imapConnection: localConnection,
 				searchCriteria: [],
 				postProcessAction: 'read',
-				getText,
-				getAttachment,
 				onEmailBatch,
 			});
 
@@ -285,9 +258,7 @@ describe('Test IMap V2 utils', () => {
 				},
 			];
 
-			const localConnection = mock<ImapSimple>({
-				search: vi.fn().mockResolvedValueOnce(batch1).mockResolvedValueOnce(batch2),
-			});
+			const localConnection = connectionReturning(batch1, batch2);
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 			triggerFunctions.getNodeParameter.calledWith('format').mockReturnValue('simple');
@@ -305,8 +276,6 @@ describe('Test IMap V2 utils', () => {
 				imapConnection: localConnection,
 				searchCriteria: [],
 				postProcessAction: 'nothing',
-				getText,
-				getAttachment,
 				onEmailBatch,
 			});
 
