@@ -477,7 +477,7 @@ describe('mcp server schema regression', () => {
 		const output = jsonSchemaToCompactText(schema);
 
 		expect(output).toContain(
-			'authentication?: "none" | "bearerAuth" | "headerAuth" | "multipleHeadersAuth" | "mcpOAuth2Api" | string [pattern: OAuth2(?:Api)?$] (default: "none")',
+			'authentication?: "none" | "bearerAuth" | "headerAuth" | "multipleHeadersAuth" | "mcpOAuth2Api" | string [pattern: ^(?:oAuth2Api|.*OAuth2(?:Api)?)$] (default: "none") — Auth method. Named variants or an OAuth2 credential type returned by the registry',
 		);
 		expect(output).toContain(
 			'toolFilter?: one of <discriminated by "mode"> — Restricts which tools are surfaced. Tools matched by original un-prefixed name',
