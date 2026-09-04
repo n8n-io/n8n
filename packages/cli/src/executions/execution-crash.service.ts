@@ -16,10 +16,21 @@ export class ExecutionCrashService {
 	) {}
 
 	async markAsCrashed(executionIds: string | string[]): Promise<CrashedExecution[]> {
-		return await this.executionRepository.markAsCrashed(executionIds, (batch) => {
-			if (batch.length === 0) return;
+		return await this.executionRepository.markAsCrashed(executionIds, (batch) => this.count(batch));
+	}
 
-			this.workflowStatisticsService.emit('executionsCrashed', { executions: batch });
-		});
+	/** Mark the workflow's in-progress executions as `crashed`. */
+	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
+		const crashed = await this.executionRepository.markWorkflowExecutionsAsCrashed(workflowId);
+
+		this.count(crashed);
+
+		return crashed;
+	}
+
+	private count(executions: CrashedExecution[]) {
+		if (executions.length === 0) return;
+
+		this.workflowStatisticsService.emit('executionsCrashed', { executions });
 	}
 }

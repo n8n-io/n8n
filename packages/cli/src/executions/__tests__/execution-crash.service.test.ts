@@ -68,4 +68,24 @@ describe('ExecutionCrashService', () => {
 		expect(crashed).toEqual([]);
 		expect(workflowStatisticsService.emit).not.toHaveBeenCalled();
 	});
+
+	test('reports the executions it transitioned for a whole workflow', async () => {
+		const first = crashedExecution('1');
+		const second = crashedExecution('2');
+		executionRepository.markWorkflowExecutionsAsCrashed.mockResolvedValue([first, second]);
+
+		const crashed = await crashService.markWorkflowExecutionsAsCrashed('workflow-1');
+
+		expect(crashed).toEqual([first, second]);
+		expect(emitted()).toEqual([['executionsCrashed', { executions: [first, second] }]]);
+	});
+
+	test('reports nothing when a workflow has no execution to transition', async () => {
+		executionRepository.markWorkflowExecutionsAsCrashed.mockResolvedValue([]);
+
+		const crashed = await crashService.markWorkflowExecutionsAsCrashed('workflow-1');
+
+		expect(crashed).toEqual([]);
+		expect(workflowStatisticsService.emit).not.toHaveBeenCalled();
+	});
 });

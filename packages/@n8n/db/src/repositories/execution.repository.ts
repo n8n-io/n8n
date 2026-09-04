@@ -395,40 +395,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const crashed: CrashedExecution[] = [];
 
 		for (const batch of chunk(ids, MAX_UPDATE_BATCH_SIZE)) {
-			// `stoppedAt` doubles as a claim token, so the read below can match the rows this
-			// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
-			// batch that partly overlaps a concurrent sweep still reads the shared rows back.
-			const stoppedAt = new Date();
-
-			const transitioned = await this.runInTransaction({}, async (tx) => {
-				// Guard against overwriting executions that have since moved to a `waiting` or
-				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
-				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
-				const updateResult = await tx.update(
-					ExecutionEntity,
-					{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
-					{ status: 'crashed', stoppedAt, waitTill: null },
-				);
-
-				// An UPDATE that matched nothing has nothing to report. An unreported `affected`
-				// is unknown rather than zero, so it falls through to the read.
-				if (updateResult?.affected === 0) return [];
-
-				const rows = await tx.find(ExecutionEntity, {
-					select: { id: true, workflowId: true, mode: true, workflow: { id: true, name: true } },
-					relations: { workflow: true },
-					where: { id: In(batch), status: 'crashed', stoppedAt },
-					// The UPDATE above also crashes soft-deleted rows, so keep them in the read.
-					withDeleted: true,
-				});
-
-				return rows.map(({ id, workflowId, mode, workflow }) => ({
-					id,
-					workflowId,
-					workflowName: workflow?.name,
-					mode,
-				}));
-			});
+			const transitioned = await this.transitionToCrashed({ id: In(batch) });
 
 			crashed.push(...transitioned);
 			// Report each batch as it commits, so a later batch that throws keeps the earlier reports.
@@ -437,6 +404,66 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}
 
 		return crashed;
+	}
+
+	/**
+	 * Set the workflow's in-progress executions to `crashed`. Returns the executions this
+	 * call transitioned.
+	 */
+	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
+		const transitioned = await this.transitionToCrashed({ workflowId });
+
+		if (transitioned.length > 0) {
+			this.logger.info('Marked executions as `crashed`', {
+				executionIds: transitioned.map(({ id }) => id),
+			});
+		}
+
+		return transitioned;
+	}
+
+	/**
+	 * Set the rows matching `where` to `crashed`, and return the rows this call transitioned.
+	 * The caller's predicate selects the candidates; the status guard and the identity of the
+	 * written rows are added here.
+	 */
+	private async transitionToCrashed(
+		where: FindOptionsWhere<ExecutionEntity>,
+	): Promise<CrashedExecution[]> {
+		// `stoppedAt` doubles as a claim token, so the read below can match the rows this
+		// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
+		// batch that partly overlaps a concurrent sweep still reads the shared rows back.
+		const stoppedAt = new Date();
+
+		return await this.runInTransaction({}, async (tx) => {
+			// Guard against overwriting executions that have since moved to a `waiting` or
+			// terminal status: recovery can race a `running` -> `waiting` transition and flag a
+			// healthy execution as dangling, but only genuinely in-progress rows should be crashed
+			const updateResult = await tx.update(
+				ExecutionEntity,
+				{ ...where, status: In(CRASHABLE_EXECUTION_STATUSES) },
+				{ status: 'crashed', stoppedAt, waitTill: null },
+			);
+
+			// An UPDATE that matched nothing has nothing to report. An unreported `affected`
+			// is unknown rather than zero, so it falls through to the read.
+			if (updateResult?.affected === 0) return [];
+
+			const rows = await tx.find(ExecutionEntity, {
+				select: { id: true, workflowId: true, mode: true, workflow: { id: true, name: true } },
+				relations: { workflow: true },
+				where: { ...where, status: 'crashed', stoppedAt },
+				// The UPDATE above also crashes soft-deleted rows, so keep them in the read.
+				withDeleted: true,
+			});
+
+			return rows.map(({ id, workflowId, mode, workflow }) => ({
+				id,
+				workflowId,
+				workflowName: workflow?.name,
+				mode,
+			}));
+		});
 	}
 
 	async setRunning(executionId: string) {
@@ -1191,16 +1218,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 	async getAllIds() {
 		const executions = await this.find({ select: ['id'], order: { id: 'ASC' } });
-
-		return executions.map(({ id }) => id);
-	}
-
-	/** Retrieve the IDs of the workflow's executions with `new` or `running` status. */
-	async findInProgressExecutionIdsForWorkflow(workflowId: string) {
-		const executions = await this.find({
-			select: ['id'],
-			where: { workflowId, status: In(['new', 'running']) },
-		});
 
 		return executions.map(({ id }) => id);
 	}

@@ -102,10 +102,7 @@ export class ExecutionRecoveryService {
 					}
 				}
 
-				const inProgressIds =
-					await this.executionRepository.findInProgressExecutionIdsForWorkflow(workflowId);
-
-				await this.executionCrashService.markAsCrashed(inProgressIds);
+				await this.executionCrashService.markWorkflowExecutionsAsCrashed(workflowId);
 			}
 		}
 	}

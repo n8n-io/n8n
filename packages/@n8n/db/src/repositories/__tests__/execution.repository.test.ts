@@ -349,6 +349,65 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
+	describe('markWorkflowExecutionsAsCrashed', () => {
+		const crashableRow = () =>
+			mock<ExecutionEntity>({
+				id: '1',
+				workflowId: 'workflow-1',
+				mode: 'trigger',
+				workflow: mock<WorkflowEntity>({ id: 'workflow-1', name: 'Workflow 1' }),
+			});
+
+		test('should select the rows to crash by workflow rather than by id', async () => {
+			entityManager.find.mockResolvedValue([crashableRow()]);
+
+			await executionRepository.markWorkflowExecutionsAsCrashed('workflow-1');
+
+			expect(entityManager.update).toBeCalledTimes(1);
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ workflowId: 'workflow-1', status: In(['new', 'running', 'unknown']) },
+				expect.objectContaining({ status: 'crashed', waitTill: null }),
+			);
+		});
+
+		test('should only report rows carrying the `stoppedAt` it wrote', async () => {
+			entityManager.find.mockResolvedValue([crashableRow()]);
+
+			await executionRepository.markWorkflowExecutionsAsCrashed('workflow-1');
+
+			const [, , update] = entityManager.update.mock.calls[0];
+			const [, options] = entityManager.find.mock.calls[0];
+
+			expect(options).toMatchObject({
+				where: {
+					workflowId: 'workflow-1',
+					status: 'crashed',
+					stoppedAt: (update as { stoppedAt: Date }).stoppedAt,
+				},
+			});
+		});
+
+		test('should report the workflow, name and mode of each execution it transitioned', async () => {
+			entityManager.find.mockResolvedValue([crashableRow()]);
+
+			const crashed = await executionRepository.markWorkflowExecutionsAsCrashed('workflow-1');
+
+			expect(crashed).toEqual([
+				{ id: '1', workflowId: 'workflow-1', workflowName: 'Workflow 1', mode: 'trigger' },
+			]);
+		});
+
+		test('should skip the read-back and report nothing when the UPDATE affects no rows', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+			const crashed = await executionRepository.markWorkflowExecutionsAsCrashed('workflow-1');
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+			expect(crashed).toEqual([]);
+		});
+	});
+
 	describe('setRunning', () => {
 		beforeEach(() => {
 			entityManager.transaction.mockImplementation(async (fn: unknown) => {
