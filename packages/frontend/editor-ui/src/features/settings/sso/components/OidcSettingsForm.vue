@@ -165,14 +165,15 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		}
 	}
 
-	// The global redirect setting is saved independently of the OIDC config, so a
-	// toggle-only change does not require a valid OIDC configuration.
+	// The global redirect setting is saved independently of the OIDC config (its own
+	// endpoint), so a toggle-only change does not require a valid OIDC configuration
+	// and a failure must surface its own error, not the generic OIDC save error.
 	if (isRedirectLoginToSsoChanged.value) {
 		try {
 			savingForm.value = true;
 			await ssoStore.toggleRedirectLoginToSso(redirectLoginToSso.value);
 		} catch (error) {
-			toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
+			toast.showError(error, i18n.baseText('settings.sso.settings.redirectToSso.error'));
 			return false;
 		} finally {
 			savingForm.value = false;

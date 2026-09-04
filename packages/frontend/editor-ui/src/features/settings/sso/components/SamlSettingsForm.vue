@@ -242,10 +242,16 @@ const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<bo
 	try {
 		savingForm.value = true;
 
-		// The global redirect setting is saved independently of the SAML config, so a
-		// toggle-only change does not require valid SAML metadata.
+		// The global redirect setting is saved independently of the SAML config (its
+		// own endpoint), so a toggle-only change does not require valid SAML metadata
+		// and a failure must surface its own error, not the generic SAML save error.
 		if (isRedirectLoginToSsoChanged.value) {
-			await ssoStore.toggleRedirectLoginToSso(redirectLoginToSso.value);
+			try {
+				await ssoStore.toggleRedirectLoginToSso(redirectLoginToSso.value);
+			} catch (error) {
+				toast.showError(error, i18n.baseText('settings.sso.settings.redirectToSso.error'));
+				return false;
+			}
 		}
 		if (!isSamlConfigDirty.value) {
 			toast.showMessage({

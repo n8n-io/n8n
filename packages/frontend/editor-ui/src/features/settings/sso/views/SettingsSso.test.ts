@@ -754,6 +754,26 @@ describe('SettingsSso View', () => {
 
 			expect(getByTestId('sso-save')).not.toBeDisabled();
 		});
+
+		it('shows the dedicated redirect error (not the SAML save error) when the toggle save fails', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isSamlLoginEnabled = false;
+			ssoStore.redirectLoginToSso = true;
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+			ssoStore.toggleRedirectLoginToSso.mockRejectedValueOnce(new Error('nope'));
+
+			const { getByTestId } = renderView();
+
+			await userEvent.click(await waitFor(() => getByTestId('sso-redirect-login-switch')));
+			await userEvent.click(getByTestId('sso-save'));
+
+			await waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(
+					expect.anything(),
+					'Error updating SSO login redirect setting',
+				),
+			);
+		});
 	});
 
 	describe('Protocol Selection Persistence', () => {
