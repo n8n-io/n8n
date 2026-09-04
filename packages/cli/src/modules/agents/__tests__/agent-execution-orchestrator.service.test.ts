@@ -6,6 +6,7 @@ import type {
 } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -26,6 +27,11 @@ import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.servic
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { ToolRegistry } from '../tool-registry';
+
+const aiConfigMock = mock<AiConfig>({
+	modelStreamIdleTimeoutMs: 90_000,
+	modelStreamFirstOutputTimeoutMs: 180_000,
+});
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -140,6 +146,7 @@ function makeService(sandboxEnabled = false) {
 		agentRunTracingService,
 		externalHooks,
 		agentSandboxRuntimeService,
+		aiConfigMock,
 	);
 
 	return {
@@ -289,6 +296,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				},
 				executionCounter: expect.any(Object),
 				abortSignal: abortController.signal,
+				modelStreamIdleTimeoutMs: 90_000,
+				modelStreamFirstOutputTimeoutMs: 180_000,
 			}),
 		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(

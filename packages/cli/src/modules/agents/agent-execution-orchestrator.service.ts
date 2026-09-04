@@ -8,6 +8,7 @@ import {
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -34,6 +35,7 @@ import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { buildToolCallDetails, ExecutionRecorder, type MessageRecord } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { modelStreamStallOptions } from './model-stream-stall-options';
 import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
@@ -269,6 +271,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly agentRunTracingService: AgentRunTracingService,
 		private readonly externalHooks: ExternalHooks,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
+		private readonly aiConfig: AiConfig,
 	) {}
 
 	/**
@@ -456,6 +459,7 @@ export class AgentExecutionOrchestratorService {
 					userId: user?.id,
 					runType,
 				}),
+				...modelStreamStallOptions(this.aiConfig),
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
 			});
@@ -772,6 +776,7 @@ export class AgentExecutionOrchestratorService {
 					userId,
 					runType: telemetry.runType,
 				}),
+				...modelStreamStallOptions(this.aiConfig),
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
 			});

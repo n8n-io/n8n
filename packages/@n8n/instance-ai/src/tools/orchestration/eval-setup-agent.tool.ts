@@ -174,6 +174,7 @@ export function startEvalSetupAgentTask(
 					maxIterations: MAX_STEPS.EVAL_SETUP,
 					abortSignal: signal,
 					persistence,
+					...(context.modelStreamStallOptions ?? {}),
 					providerOptions: {
 						anthropic: { cacheControl: { type: 'ephemeral' } },
 					},
@@ -192,6 +193,10 @@ export function startEvalSetupAgentTask(
 					drainCorrections,
 					waitForCorrection,
 					maxIterations: MAX_STEPS.EVAL_SETUP,
+					// Resumed streams must keep the same stall deadlines as the initial run.
+					...(context.modelStreamStallOptions
+						? { resumeOptions: { ...context.modelStreamStallOptions } }
+						: {}),
 					persistence,
 				});
 

@@ -1,3 +1,5 @@
+import type { StreamTextTransform, ToolSet } from 'ai';
+
 import type {
 	CompleteEmission,
 	ModelCallContext,
@@ -18,6 +20,7 @@ import {
 	DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
 	DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
 	MAX_MODEL_STREAM_STALL_RETRIES,
+	MAX_MODEL_STREAM_TIMEOUT_MS,
 	ModelStreamStallError,
 	raceWithStallDeadline,
 	withChunkIdleTimeout,
@@ -115,27 +118,68 @@ export class StreamSink implements RunOutputSink<void> {
 		return { role: 'assistant', content: [{ type: 'text', text: this.partialText }] };
 	}
 
-	private buildSmoothStreamTransformOptions(): {
-		experimental_transform?: ReturnType<ReturnType<typeof loadAi>['smoothStream']>;
+	/**
+	 * Timestamps every chunk (keepalives included) for the stall watchdog, then
+	 * consumes `raw` chunks: the readers get their raw values here, and nothing
+	 * downstream ever sees them. Must run BEFORE smoothStream — it flushes its
+	 * word buffer on every non-text chunk, so raw chunks interleaved with text
+	 * deltas would silently defeat smoothing.
+	 *
+	 * The readers are bound per attempt, not read off `this`: an abandoned
+	 * attempt's pipeline can still drain buffered chunks after a stall retry
+	 * swapped in fresh readers, which would bill its usage against the retry.
+	 */
+	private buildRawChunkTap(
+		activity: { lastAt: number },
+		readers: { usage: RawUsageReader | undefined; error: RawErrorReader | undefined },
+	): StreamTextTransform<ToolSet> {
+		return () =>
+			new TransformStream({
+				transform: (chunk, controller) => {
+					activity.lastAt = Date.now();
+					if (chunk.type === 'raw') {
+						readers.usage?.capture(chunk.rawValue);
+						readers.error?.capture(chunk.rawValue);
+						return;
+					}
+					controller.enqueue(chunk);
+				},
+			});
+	}
+
+	private buildTransformOptions(rawChunkTap: StreamTextTransform<ToolSet> | undefined): {
+		experimental_transform?: Array<StreamTextTransform<ToolSet>>;
 	} {
-		if (this.options?.smoothStream === false) return {};
-		const { smoothStream } = loadAi();
-		return { experimental_transform: smoothStream(this.options?.smoothStream ?? {}) };
+		const transforms: Array<StreamTextTransform<ToolSet>> = [];
+		if (rawChunkTap) transforms.push(rawChunkTap);
+		if (this.options?.smoothStream !== false) {
+			const { smoothStream } = loadAi();
+			transforms.push(smoothStream(this.options?.smoothStream ?? {}));
+		}
+		return transforms.length > 0 ? { experimental_transform: transforms } : {};
 	}
 
 	async callModel(ctx: ModelCallContext): Promise<ModelTurnResult> {
-		const idleMs = this.options?.modelStreamIdleTimeoutMs ?? DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS;
+		// Clamped to MAX_MODEL_STREAM_TIMEOUT_MS: above it setTimeout fires after
+		// 1ms, turning an "effectively disable" override into instant stalls.
+		const idleMs = Math.min(
+			this.options?.modelStreamIdleTimeoutMs ?? DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
+			MAX_MODEL_STREAM_TIMEOUT_MS,
+		);
 		// Pre-first-output silence tolerates prompt processing (large cache-miss
 		// prompts send nothing for minutes); never let it undercut the idle limit.
-		const firstOutputMs = Math.max(
-			idleMs,
-			this.options?.modelStreamFirstOutputTimeoutMs ?? DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+		const firstOutputMs = Math.min(
+			Math.max(
+				idleMs,
+				this.options?.modelStreamFirstOutputTimeoutMs ??
+					DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+			),
+			MAX_MODEL_STREAM_TIMEOUT_MS,
 		);
 		for (let attempt = 0; ; attempt++) {
-			// Opt-in: only build the reader (and request raw chunks) when the host bills
-			// stopped runs. Also requires a reader for the provider, so an unsupported
-			// provider never pays the cost even with the option on. Re-created per
-			// attempt so a retried turn starts from a clean raw capture.
+			// Opt-in: only build the reader when the host bills stopped runs, and only
+			// for providers with a reader. Re-created per attempt so a retried turn
+			// starts from a clean raw capture.
 			this.rawUsageReader = this.options?.recoverUsageOnAbort
 				? createRawUsageReader(this.services.modelId)
 				: undefined;
@@ -177,6 +221,19 @@ export class StreamSink implements RunOutputSink<void> {
 	): Promise<ModelTurnResult> {
 		const { idleMs, firstOutputMs } = deadlines;
 		const { streamText } = loadAi();
+		// Raw chunks serve two consumers: the usage/error readers parse them, and
+		// the stall watchdog counts them as liveness — keepalive events the SDK
+		// otherwise drops (e.g. Anthropic `ping`, a gateway's empty-delta frames)
+		// are the only sign of life on a slow turn. Deliberately not gated by
+		// provider: keepalives are injected by proxies and gateways too, and a
+		// false stall is worse than the extra chunk volume. The raw-chunk tap
+		// (see buildRawChunkTap) consumes them right inside the SDK pipeline.
+		const needsRawChunks =
+			idleMs > 0 || this.rawUsageReader !== undefined || this.rawErrorReader !== undefined;
+		// Liveness bookkeeping the chunk iterator cannot see: the tap stamps this
+		// on every chunk before the raw ones are consumed, and the stall deadline
+		// re-arms while it stays fresh.
+		const activity = { lastAt: Date.now() };
 		const result = streamText({
 			model: ctx.model,
 			instructions: ctx.system,
@@ -186,17 +243,20 @@ export class StreamSink implements RunOutputSink<void> {
 			// this attempt's fetch.
 			abortSignal: AbortSignal.any([ctx.abortSignal, turnAbort.signal]),
 			...(ctx.reasoning ? { reasoning: ctx.reasoning } : {}),
-			// Surface the provider's raw message_start/message_delta events so an
-			// aborted run can recover its usage — the SDK reports none on abort.
-			...(this.rawUsageReader !== undefined || this.rawErrorReader !== undefined
-				? { include: { rawChunks: true } }
-				: {}),
+			...(needsRawChunks ? { include: { rawChunks: true } } : {}),
 			...(ctx.hasTools ? { tools: ctx.aiTools } : {}),
 			...(ctx.providerOptions ? { providerOptions: ctx.providerOptions } : {}),
 			...(ctx.outputSpec ? { output: ctx.outputSpec } : {}),
 			...(ctx.maxOutputTokens !== undefined ? { maxOutputTokens: ctx.maxOutputTokens } : {}),
 			...ctx.aiSdkOptions,
-			...this.buildSmoothStreamTransformOptions(),
+			...this.buildTransformOptions(
+				needsRawChunks
+					? this.buildRawChunkTap(activity, {
+							usage: this.rawUsageReader,
+							error: this.rawErrorReader,
+						})
+					: undefined,
+			),
 		});
 
 		// A healthy streaming response emits chunks continuously (raw provider
@@ -211,6 +271,7 @@ export class StreamSink implements RunOutputSink<void> {
 						result.stream,
 						() => (attemptState.streamedContent ? idleMs : firstOutputMs),
 						() => turnAbort.abort(),
+						() => activity.lastAt,
 					)
 				: result.stream;
 
@@ -218,16 +279,18 @@ export class StreamSink implements RunOutputSink<void> {
 		// cancels the underlying fetch and the async iterator throws; the error
 		// propagates to the StreamSession which closes the consumer stream.
 		for await (const chunk of chunkStream) {
-			// Anything beyond transport bookkeeping counts as content: once seen,
-			// a stalled attempt is no longer silently retryable (see callModel).
-			if (!STALL_RETRY_SAFE_CHUNK_TYPES.has(chunk.type)) attemptState.streamedContent = true;
-			// Track usage from raw provider events so an aborted turn (which never
-			// reaches the post-loop awaits) can still be billed via getTerminalFinish.
+			// Raw chunks are normally consumed by the raw-chunk tap inside the SDK
+			// pipeline and never reach this loop; this branch is the fallback for
+			// streams the tap was not applied to (e.g. mocked streams in tests) and
+			// is why 'raw' stays in the retry-safe set.
 			if (chunk.type === 'raw') {
 				this.rawUsageReader?.capture(chunk.rawValue);
 				this.rawErrorReader?.capture(chunk.rawValue);
 				continue;
 			}
+			// Anything beyond transport bookkeeping counts as content: once seen,
+			// a stalled attempt is no longer silently retryable (see callModel).
+			if (!STALL_RETRY_SAFE_CHUNK_TYPES.has(chunk.type)) attemptState.streamedContent = true;
 			// Filter only the SDK's terminal `finish` chunk — the runtime emits its
 			// own consolidated `finish` after the loop completes. `start-step` /
 			// `finish-step` are passed through as LLM-iteration boundaries.
