@@ -175,9 +175,7 @@ describe('TcrExecutor', () => {
 			// The default `npx playwright test` would fetch playwright from the registry in this
 			// dependency-less temp dir; a hermetic command keeps the run off the network.
 			const tcr = new TcrExecutor();
-			console.error(`[diag] run start ${new Date().toISOString()}`);
-			const result = tcr.run({ verbose: true, testCommand: 'true' });
-			console.error(`[diag] run end ${new Date().toISOString()} ${result.durationMs}ms`);
+			const result = tcr.run({ verbose: false, testCommand: 'true' });
 
 			// Should detect the actual test file, not just the directory
 			expect(result.changedFiles.some((f) => f.includes('staged-feature.spec.ts'))).toBe(true);
