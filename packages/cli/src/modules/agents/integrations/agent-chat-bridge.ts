@@ -11,7 +11,7 @@ import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
-import type { Logger } from 'n8n-workflow';
+import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -983,7 +983,13 @@ export class AgentChatBridge {
 				);
 				return;
 			}
-			await thread.post('⚠️ Something went wrong while processing your request. Please try again.');
+			// A `UserError` is written for people and names the misconfiguration,
+			// which lets an agent owner fix it without reading server logs.
+			const text =
+				error instanceof UserError
+					? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
+					: '⚠️ Something went wrong while processing your request. Please try again.';
+			await thread.post(text);
 		} catch (postError) {
 			this.logger.error('[AgentChatBridge] Failed to post error message', {
 				agentId: this.agentId,

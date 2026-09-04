@@ -17,7 +17,11 @@ import {
 } from 'n8n-workflow';
 
 import type { DatabricksOAuth2Credential } from './token-provider';
-import { createDatabricksFetch, getDatabricksTokenProvider } from './token-provider';
+import {
+	CHAT_MODEL_USER_AGENT,
+	createDatabricksFetch,
+	getDatabricksTokenProvider,
+} from './token-provider';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
 // Every request carries a secret (bearer token, or the client secret on the
@@ -55,7 +59,7 @@ async function searchModels(
 		{
 			method: 'GET',
 			url: `${host}/api/2.0/serving-endpoints`,
-			headers: { Accept: 'application/json' },
+			headers: { Accept: 'application/json', 'User-Agent': CHAT_MODEL_USER_AGENT },
 			json: true,
 		},
 	);

@@ -257,11 +257,17 @@ export class ExecutionService {
 		return execution;
 	}
 
-	async retry(
-		req: ExecutionRequest.Retry,
-		sharedWorkflowIds: string[],
-	): Promise<Omit<IExecutionResponse, 'createdAt'>> {
-		const { id: executionId } = req.params;
+	async retry({
+		executionId,
+		options = {},
+		sharedWorkflowIds,
+		user,
+	}: {
+		executionId: string;
+		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
+		sharedWorkflowIds: string[];
+		user: User;
+	}): Promise<Omit<IExecutionResponse, 'createdAt'>> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -271,7 +277,7 @@ export class ExecutionService {
 			this.logger.info(
 				'Attempt to retry an execution was blocked due to insufficient permissions',
 				{
-					userId: req.user.id,
+					userId: user.id,
 					executionId,
 				},
 			);
@@ -295,9 +301,9 @@ export class ExecutionService {
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode,
 			executionData: execution.data,
-			retryOf: req.params.id,
+			retryOf: executionId,
 			workflowData: execution.workflowData,
-			userId: req.user.id,
+			userId: user.id,
 		};
 
 		const { lastNodeExecuted } = data.executionData!.resultData;
@@ -318,7 +324,7 @@ export class ExecutionService {
 			}
 		}
 
-		if (req.body.loadWorkflow) {
+		if (options.loadWorkflow) {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
 			const workflowId = execution.workflowData.id;
@@ -352,7 +358,7 @@ export class ExecutionService {
 				const node = workflowInstance.getNode(stack.node.name);
 				if (node === null) {
 					this.logger.error('Failed to retry an execution because a node could not be found', {
-						userId: req.user.id,
+						userId: user.id,
 						executionId,
 						nodeName: stack.node.name,
 					});
@@ -381,11 +387,11 @@ export class ExecutionService {
 
 		this.eventService.emit('workflow-executed', {
 			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
 			},
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
@@ -411,13 +417,9 @@ export class ExecutionService {
 			storedAt: execution.storedAt,
 		};
 
-		const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
-		const redactExecutionData = redactQuery.success
-			? redactQuery.data.redactExecutionData
-			: undefined;
 		await this.executionRedactionServiceProxy.processExecution(response, {
-			user: req.user,
-			redactExecutionData,
+			user,
+			redactExecutionData: options.redactExecutionData,
 		});
 
 		return response;

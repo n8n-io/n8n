@@ -119,10 +119,10 @@
 			"status": "covered",
 			"nodeOperation": "execution:delete"
 		},
-		"POST /executions/{id}/retry": {
+		"POST /executions/{executionId}/retry": {
 			"status": "gap"
 		},
-		"POST /executions/{id}/stop": {
+		"POST /executions/{executionId}/stop": {
 			"status": "gap"
 		},
 		"POST /executions/stop": {
@@ -242,6 +242,9 @@
 			"status": "gap"
 		},
 		"POST /source-control/pull": {
+			"status": "gap"
+		},
+		"GET /source-control/status": {
 			"status": "gap"
 		},
 		"POST /git-connections/{id}/push": {

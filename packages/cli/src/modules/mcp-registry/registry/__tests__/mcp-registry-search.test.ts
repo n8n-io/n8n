@@ -1,5 +1,6 @@
 import { searchMcpRegistryServers } from '../mcp-registry-search';
 import type { McpRegistryServer } from '../mcp-registry.types';
+import { githubUsesCredentialsMockServer } from '../mock-servers';
 
 function server(overrides: Partial<McpRegistryServer> = {}): McpRegistryServer {
 	return {
@@ -47,6 +48,7 @@ describe('searchMcpRegistryServers', () => {
 			credentialType: 'githubMcpOAuth2Api',
 			tools: [{ name: 'create_issue', title: 'Create issue' }],
 			metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			isTemplated: false,
 		});
 	});
 
@@ -67,6 +69,21 @@ describe('searchMcpRegistryServers', () => {
 		expect(result.credentialType).toBe('googleDriveMcpOAuth2Api');
 	});
 
+	it('uses the native OAuth2 credential type as agent authentication', () => {
+		const [result] = searchMcpRegistryServers(
+			[
+				{
+					...githubUsesCredentialsMockServer,
+					usesCredentials: [{ credentialType: 'githubOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
+				},
+			],
+			['git-hub'],
+		);
+
+		expect(result.authentication).toBe('githubOAuth2Api');
+		expect(result.credentialType).toBe('githubOAuth2Api');
+	});
+
 	it('ranks name matches above description matches', () => {
 		const servers = [
 			server({ slug: 'ci-bot', title: 'CI Bot', tagline: 'Mirrors issues to GitHub' }),
@@ -84,5 +101,27 @@ describe('searchMcpRegistryServers', () => {
 	it('skips servers that have no usable remote', () => {
 		const noRemote = server({ slug: 'no-remote', remotes: [] });
 		expect(searchMcpRegistryServers([noRemote], ['no-remote'])).toEqual([]);
+	});
+
+	it('keeps a streamable-http-templated tile in results, surfacing its unresolved url as-is', () => {
+		const templated = server({
+			slug: 'databricks-genie',
+			title: 'Databricks Genie',
+			remotes: [{ type: 'streamable-http-templated', url: '={{$self["host"]}}/api/2.0/mcp/genie' }],
+		});
+
+		const [result] = searchMcpRegistryServers([templated], ['databricks-genie']);
+
+		expect(result.transport).toBe('streamableHttp');
+		expect(result.url).toBe('={{$self["host"]}}/api/2.0/mcp/genie');
+		expect(result.metadata).toEqual({ nodeTypeName: '@n8n/mcp-registry.databricksGenie' });
+		// Marks the url as unresolved so a consumer that cannot resolve it can skip.
+		expect(result.isTemplated).toBe(true);
+	});
+
+	it('marks a literal tile as not templated', () => {
+		const [result] = searchMcpRegistryServers([server({ slug: 'notion' })], ['notion']);
+
+		expect(result.isTemplated).toBe(false);
 	});
 });
