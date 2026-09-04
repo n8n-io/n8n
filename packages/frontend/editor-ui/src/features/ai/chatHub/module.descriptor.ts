@@ -12,8 +12,6 @@ import {
 	CHAT_SETTINGS_VIEW,
 	CHAT_PROVIDER_SETTINGS_MODAL_KEY,
 } from '@/features/ai/chatHub/constants';
-import { i18n } from '@n8n/i18n';
-import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
 const ChatWorkflowAgentsView = async () =>
@@ -196,13 +194,11 @@ export const ChatModule: FrontendModuleDescription = {
 		{
 			id: 'settings-chat-hub',
 			icon: 'message-circle',
-			label: i18n.baseText('settings.chatHub'),
+			labelKey: 'settings.chatHub',
 			position: 'top',
 			route: { to: { name: CHAT_SETTINGS_VIEW } },
 			preview: true,
-			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'chatHub:manage' } });
-			},
+			requiredScopes: 'chatHub:manage',
 		},
 	],
 };

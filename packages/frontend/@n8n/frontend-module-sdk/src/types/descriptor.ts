@@ -1,9 +1,9 @@
-import type { IMenuItem } from '@n8n/design-system';
 import type { RouteRecordRaw } from 'vue-router';
 
 import type { ModuleBanner } from './banner';
 import type { CommandBarEntry } from './command';
 import type { ModuleLocaleMessages } from './locale';
+import type { ModuleSettingsPage } from './menu';
 import type { ModalDefinition } from './modal';
 import type { ModulePushHandlers } from './push';
 import type { ResourceMetadata } from './resource';
@@ -36,7 +36,7 @@ export type FrontendModuleDescription = {
 	 * here so they arrive on the same path as `modals`, not by import side effect.
 	 */
 	adHocModalKeyPrefixes?: string[];
-	settingsPages?: IMenuItem[];
+	settingsPages?: ModuleSettingsPage[];
 
 	// --- descriptor v2 (all optional, additive) ---
 

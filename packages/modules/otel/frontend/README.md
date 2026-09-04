@@ -19,7 +19,13 @@ yet. Turbo builds them first; the bare pnpm form does not.
 This is the first extracted module with a UI surface. Its descriptor declares a
 lazy route (`SettingsOpenTelemetryView`) and a `settingsPages` entry. The shell
 gates both on `isModuleActive('otel')`; the sidebar item additionally gates on
-the `otel:manage` scope through the descriptor's `available` getter.
+the `otel:manage` scope, which the entry declares as `requiredScopes`.
+
+The entry declares its label as `labelKey`, not as a translated string, and its
+scope gate as data. `ui.store`'s `settingsSidebarItems` resolves both. That is
+why `otel.module.ts` imports only the SDK — a descriptor that translates its own
+label has to import `@n8n/i18n` as a value, and one that checks its own scope has
+to import an RBAC store.
 
 The route name is owned here (`OTEL_SETTINGS_VIEW` in `otel.constants.ts`), not
 by the shared `VIEWS` enum. `assertUniqueRouteNames` in `@n8n/frontend-module-sdk`

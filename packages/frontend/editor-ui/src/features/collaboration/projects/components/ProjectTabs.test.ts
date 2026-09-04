@@ -1,3 +1,5 @@
+import { i18n, loadLanguage, setLanguage } from '@n8n/i18n';
+import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
@@ -139,5 +141,34 @@ describe('ProjectTabs', () => {
 
 		const tabValues = getTabValuesInOrder(container);
 		expect(tabValues[tabValues.length - 1]).toBe('agents');
+	});
+
+	describe('a tab that declares a label key', () => {
+		afterEach(() => {
+			setLanguage('en');
+		});
+
+		it('should render the resolved label', () => {
+			const { getByText } = renderComponent({
+				props: { additionalTabs: [{ labelKey: 'dataTable.dataTables', value: 'dataTables' }] },
+			});
+
+			expect(getByText(i18n.baseText('dataTable.dataTables'))).toBeInTheDocument();
+		});
+
+		it('should re-render the label after a locale change, without a remount', async () => {
+			const { getByText, queryByText } = renderComponent({
+				props: { additionalTabs: [{ labelKey: 'dataTable.dataTables', value: 'dataTables' }] },
+			});
+			const english = i18n.baseText('dataTable.dataTables');
+
+			loadLanguage('de', { 'dataTable.dataTables': 'Datentabellen' } as unknown as Parameters<
+				typeof loadLanguage
+			>[1]);
+			await nextTick();
+
+			expect(getByText('Datentabellen')).toBeInTheDocument();
+			expect(queryByText(english)).not.toBeInTheDocument();
+		});
 	});
 });

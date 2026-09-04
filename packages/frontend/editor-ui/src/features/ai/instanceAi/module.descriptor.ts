@@ -1,4 +1,3 @@
-import { i18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_MODALS } from './modals';
@@ -18,7 +17,6 @@ import {
 	useInstanceAiAvailable,
 	useInstanceAiReady,
 } from './composables/useInstanceAiAvailability';
-import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
@@ -73,6 +71,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 
 						// The thread view sends the stashed kickoff after it hydrates, so the
 						// guard never races the runtime.
+						const { i18n } = await import('@n8n/i18n');
 						const threadId = await provisionLaunchedThread(
 							projectId,
 							{
@@ -178,15 +177,11 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		{
 			id: 'settings-instance-ai',
 			icon: 'sparkles',
-			label: i18n.baseText('settings.n8nAgent'),
+			labelKey: 'settings.n8nAgent',
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			preview: true,
-			get available() {
-				return hasPermission(['rbac'], {
-					rbac: { scope: ['instanceAi:message', 'instanceAi:manage'] },
-				});
-			},
+			requiredScopes: ['instanceAi:message', 'instanceAi:manage'],
 		},
 	],
 };
