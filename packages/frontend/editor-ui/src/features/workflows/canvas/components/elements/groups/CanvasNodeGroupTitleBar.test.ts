@@ -581,15 +581,57 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.queryByTestId('canvas-node-group-toolbar')).toBeNull();
 		});
 
-		it('shows the generate button and emits generate with the group id when the group is empty', async () => {
+		it('shows the EMPTY badge when the group is empty', () => {
 			const wrapper = render({ data: makeData({ isEmptyGroup: true }) });
-			const button = wrapper.getByTestId('canvas-node-group-generate');
+			expect(wrapper.getByTestId('canvas-node-group-empty-badge')).toBeInTheDocument();
+		});
+
+		it('hides the EMPTY badge when the group is not empty', () => {
+			const wrapper = render({ data: makeData({ isEmptyGroup: false }) });
+			expect(wrapper.queryByTestId('canvas-node-group-empty-badge')).toBeNull();
+		});
+
+		it('shows a centered add-node button and emits add-node when the group is empty', async () => {
+			const wrapper = render({ data: makeData({ isEmptyGroup: true }) });
+			const button = wrapper.getByTestId('canvas-node-group-add-node');
 			await fireEvent.click(button);
+			expect(wrapper.emitted()['add-node']).toEqual([['g1']]);
+		});
+
+		it('hides the add-node button when the group is not empty', () => {
+			const wrapper = render({ data: makeData({ isEmptyGroup: false }) });
+			expect(wrapper.queryByTestId('canvas-node-group-add-node')).toBeNull();
+		});
+
+		it('hides the add-node button in read-only mode', () => {
+			const wrapper = render({ data: makeData({ isEmptyGroup: true }), readOnly: true });
+			expect(wrapper.queryByTestId('canvas-node-group-add-node')).toBeNull();
+		});
+
+		it('shows Build in the description editor and emits update:description then generate', async () => {
+			const wrapper = render({ data: makeData({ isEmptyGroup: true }) });
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'Pull CRM contacts');
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-build'));
+
+			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'Pull CRM contacts']]);
 			expect(wrapper.emitted().generate).toEqual([['g1']]);
 		});
 
-		it('hides the generate button when the group is not empty', () => {
-			const wrapper = render({ data: makeData({ isEmptyGroup: false }) });
+		it('does not emit generate when Save is clicked in the description editor', async () => {
+			const wrapper = render({ data: makeData({ isEmptyGroup: true }) });
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'Pull CRM contacts');
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-save'));
+
+			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'Pull CRM contacts']]);
+			expect(wrapper.emitted().generate).toBeUndefined();
+		});
+
+		it('does not show the standalone generate button on an empty group', () => {
+			const wrapper = render({ data: makeData({ isEmptyGroup: true }) });
 			expect(wrapper.queryByTestId('canvas-node-group-generate')).toBeNull();
 		});
 

@@ -1099,6 +1099,24 @@ async function onCreateEmptyGroup() {
 	canvasEventBus.emit('rename:group', { groupId: group.id });
 }
 
+// Fill an empty group by hand: open the node creator targeting the group's
+// placeholder. Picking a node runs the existing replace path
+// (addNodesAndConnections replaceNodeId → replaceGroupedNodeConnections), which
+// swaps the placeholder for the node inside the group and hands over its
+// boundary connections. The placeholder has one main input and output, so the
+// regular (non-trigger) creator is the right entry.
+function onAddNodeToGroup(groupId: string) {
+	const placeholder = workflowDocumentStore.value.getEmptyGroupPlaceholder(groupId);
+	if (!placeholder) return;
+
+	nodeCreatorReplaceTargetId.value = placeholder.id;
+	nodeCreatorStore.openingContext = 'replacement';
+	nodeCreatorStore.openNodeCreatorForRegularNodes(
+		workflowId.value,
+		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+	);
+}
+
 async function onGenerateGroup(groupId: string) {
 	const group = workflowDocumentStore.value.getGroupById(groupId);
 	const placeholder = workflowDocumentStore.value.getEmptyGroupPlaceholder(groupId);
@@ -2204,6 +2222,7 @@ onBeforeUnmount(() => {
 			@delete:node="onDeleteNode"
 			@create:connection="onCreateConnection"
 			@generate:group="onGenerateGroup"
+			@add-node:group="onAddNodeToGroup"
 			@create:connection:cancelled="onCreateConnectionCancelled"
 			@delete:connection="onDeleteConnection"
 			@click:connection:add="onClickConnectionAdd"

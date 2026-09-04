@@ -7806,6 +7806,13 @@ describe('useCanvasOperations', () => {
 					expect.objectContaining({ type: 'error' }),
 				);
 			});
+
+			// The "+" button fill path (onAddNodeToGroup in NodeView) runs exactly
+			// this replaceNode against the group's placeholder, so the grouped-node
+			// case above — Source → Target → Next, Target replaced, connections moved
+			// to the replacement, group membership transferred — is the fill contract:
+			// Start → Middle → End with Middle filled. Node type does not change the
+			// replacement logic, so a placeholder-typed target needs no separate case.
 		});
 		it('should not track history if flag is false', () => {
 			const { replaceNode } = useCanvasOperations();

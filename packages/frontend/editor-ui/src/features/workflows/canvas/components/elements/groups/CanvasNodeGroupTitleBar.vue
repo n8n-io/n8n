@@ -65,6 +65,7 @@ const emit = defineEmits<{
 	ungroup: [id: string];
 	extract: [id: string];
 	generate: [id: string];
+	'add-node': [id: string];
 	'add-nodes-to-chat': [id: string];
 	toggle: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent];
@@ -103,6 +104,7 @@ const wrapperClasses = computed(() => [
 	$style.wrapper,
 	{
 		[$style.collapsed]: isCollapsed.value,
+		[$style.empty]: isEmptyGroup.value,
 		[$style.selected]: props.selected,
 		[$style.deactivated]: allNodesDisabled.value,
 		[$style.success]: executionStatus.value === 'success',
@@ -166,7 +168,14 @@ function onUngroupClick() {
 	emit('ungroup', group.value.id);
 }
 
-function onGenerateClick() {
+function onAddNodeClick() {
+	emit('add-node', group.value.id);
+}
+
+// Build in the description editor = save the objective, then generate. The
+// description is already committed by saveDescription's update:description emit.
+function onBuildClick() {
+	saveDescription();
 	emit('generate', group.value.id);
 }
 
@@ -462,18 +471,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 				data-test-id="canvas-node-group-toolbar"
 			>
 				<div :class="$style.toolbarItems">
-					<N8nTooltip v-if="isEmptyGroup" :content="i18n.baseText('canvas.nodeGroup.generate')">
-						<N8nIconButton
-							class="nodrag"
-							variant="ghost"
-							size="small"
-							icon="sparkles"
-							:aria-label="i18n.baseText('canvas.nodeGroup.generate')"
-							data-test-id="canvas-node-group-generate"
-							@click.stop="onGenerateClick"
-						/>
-					</N8nTooltip>
-					<!-- Ungrouping an empty group would leave its placeholder bare on the canvas. -->
+					<!-- Empty groups build through the description editor's Build button,
+					not a standalone toolbar sparkle. Ungrouping an empty group would
+					leave its placeholder bare on the canvas. -->
 					<KeyboardShortcutTooltip
 						v-if="!isEmptyGroup"
 						:label="i18n.baseText('canvas.selection.toolbar.ungroup')"
@@ -563,6 +563,14 @@ function onWrapperPointerDown(event: PointerEvent) {
 							</N8nTooltip>
 						</div>
 
+						<span
+							v-if="isEmptyGroup"
+							:class="$style.emptyBadge"
+							data-test-id="canvas-node-group-empty-badge"
+						>
+							{{ i18n.baseText('canvas.nodeGroup.emptyBadge') }}
+						</span>
+
 						<N8nIcon
 							v-if="showInfoIcon"
 							class="nodrag"
@@ -597,6 +605,23 @@ function onWrapperPointerDown(event: PointerEvent) {
 						/>
 					</div>
 				</div>
+				<!-- An empty group fills by picking a node here instead of expanding. -->
+				<N8nTooltip
+					v-if="isEmptyGroup && !readOnly"
+					:content="i18n.baseText('canvas.nodeGroup.addNode')"
+					placement="bottom"
+				>
+					<N8nIconButton
+						class="nodrag"
+						:class="$style.addNode"
+						variant="ghost"
+						size="large"
+						icon="plus"
+						:aria-label="i18n.baseText('canvas.nodeGroup.addNode')"
+						data-test-id="canvas-node-group-add-node"
+						@click.stop="onAddNodeClick"
+					/>
+				</N8nTooltip>
 				<!-- An empty group always renders as the chip, so collapse has no effect. -->
 				<N8nIconButton
 					v-if="!isEmptyGroup"
@@ -700,12 +725,28 @@ function onWrapperPointerDown(event: PointerEvent) {
 					>
 						<N8nIconButton
 							class="nodrag"
-							variant="solid"
+							variant="ghost"
 							size="small"
 							icon="check"
 							:aria-label="i18n.baseText('canvas.nodeGroup.saveDescription')"
 							data-test-id="canvas-node-group-description-save"
 							@click.stop="saveDescription"
+						/>
+					</N8nTooltip>
+					<!-- Build = save the objective, then generate. Empty groups only. -->
+					<N8nTooltip
+						v-if="isEmptyGroup"
+						:content="i18n.baseText('canvas.nodeGroup.build')"
+						placement="bottom"
+					>
+						<N8nIconButton
+							class="nodrag"
+							variant="solid"
+							size="small"
+							icon="sparkles"
+							:aria-label="i18n.baseText('canvas.nodeGroup.build')"
+							data-test-id="canvas-node-group-description-build"
+							@click.stop="onBuildClick"
 						/>
 					</N8nTooltip>
 				</template>
@@ -774,6 +815,12 @@ function onWrapperPointerDown(event: PointerEvent) {
 	box-sizing: border-box;
 	.wrapper.collapsed & {
 		border-radius: var(--radius--lg);
+	}
+
+	// An empty group reads as a plan placeholder, not a finished block, so its
+	// chip carries the same dashed border the group frame uses.
+	.wrapper.empty & {
+		@include styles.canvas-node-border(dashed);
 	}
 
 	// When expanded, the selection ring is drawn by .selectionRing around the
@@ -921,6 +968,20 @@ function onWrapperPointerDown(event: PointerEvent) {
 	flex-shrink: 0;
 	color: var(--text-color--subtler);
 	cursor: pointer;
+}
+
+// Small uppercase tag on an empty group chip, muted next to the title.
+.emptyBadge {
+	flex-shrink: 0;
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--text-color--subtler);
+}
+
+.addNode {
+	flex-shrink: 0;
 }
 
 // Overlay the bottom-right corner, matching node status icons (CanvasNodeDefault)
