@@ -71,6 +71,7 @@ import {
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
+import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 
 const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
 /** Prefix for the synthetic ids of gateway-backed rows in the n8n Connect section. */
@@ -732,7 +733,9 @@ function disabledWorkflowReasonText(reason: WorkflowToolIncompatibilityReason): 
 	if (reason.reason === 'incompatible_nodes') {
 		return i18n.baseText('agents.tools.workflow.disabled.incompatibleNodes');
 	}
-	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger');
+	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger', {
+		interpolate: { trigger: workflowToolTriggerLabel() },
+	});
 }
 
 /**

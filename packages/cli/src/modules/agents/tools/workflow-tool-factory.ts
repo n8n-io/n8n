@@ -4,6 +4,7 @@ import {
 	getWorkflowToolIncompatibilityReason,
 	WORKFLOW_WAIT_ACTION_CANCEL,
 	WORKFLOW_WAIT_ACTION_CHECK,
+	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
 	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type AgentJsonToolConfig,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
@@ -193,7 +194,7 @@ export function detectTriggerNode(workflow: WorkflowEntity): DetectedTrigger {
 function noSupportedTriggerError(workflow: WorkflowEntity): WorkflowToolUnavailableError {
 	return new WorkflowToolUnavailableError(
 		'incompatible',
-		`Workflow "${workflow.name}" needs a 'When Executed by Another Workflow' trigger to run as an agent tool.`,
+		`Workflow "${workflow.name}" needs a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger to run as an agent tool.`,
 	);
 }
 

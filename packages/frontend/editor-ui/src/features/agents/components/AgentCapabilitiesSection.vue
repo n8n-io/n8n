@@ -18,6 +18,7 @@ import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY, AGENT_TASK_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { isWarningIssue } from '../utils/validationIssues';
+import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
@@ -197,7 +198,9 @@ function issueMessage(issue: AgentConfigValidationIssue): string {
 			: undefined) ??
 		SPECIFIC_ISSUE_KEYS[`${kind}.${issue.code}`] ??
 		GENERIC_ISSUE_KEYS[issue.code];
-	return i18n.baseText(key, { interpolate: { id: id ?? '' } });
+	return i18n.baseText(key, {
+		interpolate: { id: id ?? '', trigger: workflowToolTriggerLabel() },
+	});
 }
 
 function issueMessages(issues: AgentConfigValidationIssue[]): string[] {

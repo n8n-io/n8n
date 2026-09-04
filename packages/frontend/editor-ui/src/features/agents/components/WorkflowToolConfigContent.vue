@@ -40,6 +40,7 @@ import {
 	listWorkflowToolInputFields,
 	parseWorkflowToolFixedValue,
 } from '../utils/workflowToolInputFields';
+import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 
 const props = defineProps<{
 	initialRef: WorkflowToolRef;
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const triggerLabel = workflowToolTriggerLabel();
 
 const router = useRouter();
 const { availableWorkflows, projectWorkflows, loadWorkflows } = useAgentToolCatalog();
@@ -375,7 +377,11 @@ defineExpose({
 		</div>
 
 		<N8nCallout theme="warning" data-test-id="agent-workflow-tool-target-notice">
-			{{ i18n.baseText('agents.toolConfig.workflow.target.notice') }}
+			{{
+				i18n.baseText('agents.toolConfig.workflow.target.notice', {
+					interpolate: { trigger: triggerLabel },
+				})
+			}}
 		</N8nCallout>
 
 		<div :class="$style.field">
@@ -455,7 +461,11 @@ defineExpose({
 				color="danger"
 				data-test-id="agent-workflow-tool-target-id-unresolvable"
 			>
-				{{ i18n.baseText('agents.toolConfig.workflow.target.idNotFound') }}
+				{{
+					i18n.baseText('agents.toolConfig.workflow.target.idNotFound', {
+						interpolate: { trigger: triggerLabel },
+					})
+				}}
 			</N8nText>
 			<N8nText
 				v-else-if="isMissing"

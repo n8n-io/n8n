@@ -5,6 +5,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { isWarningIssue } from '../utils/validationIssues';
+import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 
 const props = withDefaults(
 	defineProps<{
@@ -98,7 +99,9 @@ function issueMessage(issue: AgentConfigValidationIssue): string {
 			: undefined) ??
 		SPECIFIC_ISSUE_KEYS[`${kind}.${issue.code}`] ??
 		GENERIC_ISSUE_KEYS[issue.code];
-	const message = i18n.baseText(key, { interpolate: { id: id ?? '' } });
+	const message = i18n.baseText(key, {
+		interpolate: { id: id ?? '', trigger: workflowToolTriggerLabel() },
+	});
 
 	return `${capabilityLabel(issue)}: ${message}`;
 }
