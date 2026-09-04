@@ -49,6 +49,7 @@ const workflowNodeWritePublicSchema = z
 			.optional()
 			.openapi({ example: [...workflowNodeFieldDocs.position.example] }),
 		parameters: z.record(z.unknown()).optional(),
+		parentId: z.string().optional().openapi(workflowNodeFieldDocs.parentId),
 		credentials: z.record(z.unknown()).optional().openapi(workflowNodeFieldDocs.credentials),
 		customTelemetryTags: z
 			.object({ tag: z.array(customTelemetryTagPublicSchema).optional() })

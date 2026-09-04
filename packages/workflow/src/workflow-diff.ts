@@ -53,6 +53,7 @@ export function compareNodes<T extends DiffableNode>(
 		'webhookId',
 		'credentials',
 		'parameters',
+		'parentId',
 		'disabled',
 		'notes',
 		'notesInFlow',

@@ -26,6 +26,7 @@ export const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 
 //n8n-nodes-base
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
+export const GROUP_NODE_TYPE = 'n8n-nodes-base.group';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';

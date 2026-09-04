@@ -36,6 +36,8 @@ export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
 export * from './node-validation';
+export * from './group-execution-graph';
+export * from './group-node';
 export * from './node-grouping-validation';
 export * from './mcp-helpers';
 export * from './tool-helpers';

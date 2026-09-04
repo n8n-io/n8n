@@ -1671,6 +1671,13 @@ export interface INode {
 		tag?: ICustomTelemetryTag[];
 	};
 	parameters: INodeParameters;
+	/**
+	 * Id of the group node that holds this node in its interior. Absent when the
+	 * node sits on the canvas itself. The interior is flat: a group's members are
+	 * every node whose `parentId` is that group's id, not a nested sub-graph.
+	 * See `.agents/specs/group-as-first-class-node.md`.
+	 */
+	parentId?: string;
 	credentials?: INodeCredentials;
 	webhookId?: string;
 	extendsCredential?: string;

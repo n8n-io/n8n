@@ -615,6 +615,7 @@
       "dist/nodes/Gotify/Gotify.node.js",
       "dist/nodes/GoToWebinar/GoToWebinar.node.js",
       "dist/nodes/Grafana/Grafana.node.js",
+      "dist/nodes/Group/Group.node.js",
       "dist/nodes/GraphQL/GraphQL.node.js",
       "dist/nodes/Grist/Grist.node.js",
       "dist/nodes/Gumroad/GumroadTrigger.node.js",

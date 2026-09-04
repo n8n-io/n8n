@@ -16,6 +16,10 @@ export const workflowNodeFieldDocs = {
 	continueOnFail: { example: false, description: 'use onError instead' },
 	onError: { example: 'stopWorkflow' },
 	position: { example: [-100, 80] },
+	parentId: {
+		example: '9b1c8e2a-3f4d-4b7a-8c1e-2d5f6a7b8c9d',
+		description: 'Id of the group node that holds this node in its interior',
+	},
 	// No `id` in this example: ajv reads a nested `id` as a schema `$id`, and this schema is
 	// inlined at two places, so a duplicate stops the bundle compiling.
 	credentials: { example: { jiraSoftwareCloudApi: { name: 'jiraApi' } } },
@@ -172,6 +176,7 @@ export const nodesOpenApi: ZodOpenAPIMetadata = {
 			onError: { type: 'string', ...workflowNodeFieldDocs.onError },
 			position: { type: 'array', items: { type: 'number' }, ...workflowNodeFieldDocs.position },
 			parameters: { type: 'object', additionalProperties: true },
+			parentId: { type: 'string', ...workflowNodeFieldDocs.parentId },
 			credentials: { type: 'object', ...workflowNodeFieldDocs.credentials },
 			customTelemetryTags: {
 				type: 'object',
