@@ -6,10 +6,11 @@ import {
 	N8nBadge,
 	N8nCard,
 	N8nIcon,
+	N8nIconButton,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { MODAL_CONFIRM } from '@/app/constants';
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -74,12 +75,7 @@ const favoriteStore = useFavoritesStore();
 const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
 
 const actions = computed(() => {
-	const items: Array<{ value: string; label: string; divided?: boolean }> = [
-		{
-			value: 'newChat',
-			label: locale.baseText('agents.list.actions.newChat' as BaseTextKey),
-		},
-	];
+	const items: Array<{ value: string; label: string; divided?: boolean }> = [];
 
 	if (isPublished.value && canUnpublish.value) {
 		items.push({
@@ -135,9 +131,7 @@ const formattedCreatedAtDate = computed(() => {
 });
 
 async function onAction(action: string) {
-	if (action === 'newChat') {
-		emit('new-chat', props.agent.id, props.projectId);
-	} else if (action === 'publish') {
+	if (action === 'publish') {
 		const updated = await publish(props.projectId, props.agent.id);
 		if (updated) emit('published', updated);
 	} else if (action === 'unpublish') {
@@ -220,6 +214,16 @@ async function toggleMCPAccess(enabled: boolean) {
 						{{ locale.baseText('agents.list.published') }}
 					</N8nText>
 				</div>
+				<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
+					<N8nIconButton
+						icon="message-circle-plus"
+						variant="ghost"
+						size="medium"
+						:aria-label="locale.baseText('agents.list.actions.newChat')"
+						data-test-id="agent-card-new-chat"
+						@click="emit('new-chat', agent.id, projectId)"
+					/>
+				</N8nTooltip>
 				<N8nActionToggle
 					v-if="showActions"
 					:actions="actions"
@@ -273,7 +277,7 @@ async function toggleMCPAccess(enabled: boolean) {
 
 .cardActions {
 	display: flex;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;

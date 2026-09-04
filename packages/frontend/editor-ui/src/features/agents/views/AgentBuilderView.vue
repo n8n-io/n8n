@@ -1552,7 +1552,8 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			}
 		})();
 
-		if (isStandalonePreview.value && route.query[NEW_SESSION_PARAM] === 'true') {
+		if (!isArtifactMode.value && route.query[NEW_SESSION_PARAM] === 'true') {
+			persistedPreviewOpen.value = true;
 			onNewChat();
 		} else if (isPreviewActive.value) {
 			bindPreviewSession();

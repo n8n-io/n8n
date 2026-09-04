@@ -3,7 +3,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { databricksApiRequest } from '../actions/helpers';
-import { DATABRICKS_NODE_VERSION, databricksUserAgent } from '../constants';
+import { databricksUserAgent } from '../constants';
 
 describe('databricksApiRequest', () => {
 	let httpRequestWithAuthentication: Mock;
@@ -29,7 +29,7 @@ describe('databricksApiRequest', () => {
 
 		expect(capturedOptions().headers).toEqual({
 			'Content-Type': 'application/octet-stream',
-			'User-Agent': 'n8n_DatabricksNode/1.0',
+			'User-Agent': 'n8n_DatabricksNode',
 		});
 	});
 
@@ -39,7 +39,7 @@ describe('databricksApiRequest', () => {
 			url: 'https://example.databricks.com/api/2.1/unity-catalog/catalogs',
 		});
 
-		expect(capturedOptions().headers).toEqual({ 'User-Agent': 'n8n_DatabricksNode/1.0' });
+		expect(capturedOptions().headers).toEqual({ 'User-Agent': 'n8n_DatabricksNode' });
 	});
 
 	it('should override a caller-supplied User-Agent', async () => {
@@ -49,7 +49,7 @@ describe('databricksApiRequest', () => {
 			headers: { 'User-Agent': 'something-else' },
 		});
 
-		expect(capturedOptions().headers).toEqual({ 'User-Agent': 'n8n_DatabricksNode/1.0' });
+		expect(capturedOptions().headers).toEqual({ 'User-Agent': 'n8n_DatabricksNode' });
 	});
 
 	it('should pass non-header options through untouched', async () => {
@@ -69,7 +69,7 @@ describe('databricksApiRequest', () => {
 			returnFullResponse: true,
 			qs: { page_token: 'abc' },
 			json: true,
-			headers: { 'User-Agent': 'n8n_DatabricksNode/1.0' },
+			headers: { 'User-Agent': 'n8n_DatabricksNode' },
 		});
 	});
 
@@ -108,7 +108,7 @@ describe('databricksApiRequest', () => {
 		});
 	});
 
-	it('should derive the User-Agent from the integration version constant', () => {
-		expect(databricksUserAgent()).toBe(`n8n_DatabricksNode/${DATABRICKS_NODE_VERSION}.0`);
+	it('should send the unversioned partner User-Agent', () => {
+		expect(databricksUserAgent()).toBe('n8n_DatabricksNode');
 	});
 });
