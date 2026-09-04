@@ -98,6 +98,8 @@ export {
 } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
+export { SourceControlStatusQueryPublicDto } from './source-control/source-control-status-query-public.dto';
+export { SourceControlStatusPublicDto } from './source-control/source-control-status-public.dto';
 export {
 	CloneGitConnectionDto,
 	CreateGitConnectionDto,
@@ -337,6 +339,8 @@ export {
 	type SecurityPolicyResponse,
 } from './security-settings/security-policy.dto';
 
+export { UpdateProjectPoolSettingsDto } from './worker-pools/update-project-pool-settings.dto';
+
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
 export {
@@ -367,12 +371,36 @@ export {
 } from './executions/execution-redaction-query.dto';
 export { DeleteExecutionsDto } from './executions/delete-executions.dto';
 export { GetExecutionQueryDto } from './executions/get-execution-query.dto';
+export { ListExecutionsQueryDto } from './executions/list-executions-query.dto';
 export {
 	ExecutionPublicDto,
 	DeletedExecutionPublicDto,
+	ExecutionListPublicDto,
 	executionPublicSchema,
 	deletedExecutionPublicSchema,
+	executionListItemPublicSchema,
 } from './executions/execution-public.dto';
+export {
+	RetriedExecutionPublicDto,
+	retriedExecutionPublicSchema,
+} from './executions/retried-execution-public.dto';
+export {
+	RetryExecutionPublicDto,
+	retryExecutionPublicSchema,
+} from './executions/retry-execution-public.dto';
+export {
+	StoppedExecutionPublicDto,
+	StoppedExecutionsPublicDto,
+	stoppedExecutionPublicSchema,
+	stoppedExecutionsPublicSchema,
+} from './executions/stopped-execution-public.dto';
+export {
+	StopManyExecutionsPublicDto,
+	STOPPABLE_PUBLIC_EXECUTION_STATUSES,
+	STOPPABLE_PUBLIC_TO_INTERNAL_STATUS,
+	type StoppablePublicExecutionStatus,
+} from './executions/stop-many-executions-public.dto';
+export { ExecutionTagsPublicDto } from './executions/execution-tags-public.dto';
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
@@ -407,3 +435,14 @@ export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';
+
+export {
+	promotableResourceSchema,
+	promotableResourceStatusSchema,
+	promotableResourceTypeSchema,
+	promoteRequestSchema,
+	type PromotableResource,
+	type PromotableResourceStatus,
+	type PromotableResourceType,
+	type PromoteRequest,
+} from './promotions/promotable-resource.dto';

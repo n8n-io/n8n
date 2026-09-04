@@ -2824,6 +2824,139 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 			nodeData: {},
 		},
 	},
+	{
+		description:
+			'should keep executing when a loop-back edge lands on a later input of a multi-input node',
+		input: {
+			workflowData: {
+				nodes: [
+					{
+						parameters: {},
+						id: 'b8b0b1a0-0000-4000-8000-000000000001',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						parameters: {},
+						id: 'b8b0b1a0-0000-4000-8000-000000000002',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2.1,
+						position: [200, 0],
+					},
+					{
+						parameters: {
+							conditions: {
+								number: [
+									{
+										value1: '={{ $json.attempt || 0 }}',
+										operation: 'larger',
+										value2: 0,
+									},
+								],
+							},
+						},
+						id: 'b8b0b1a0-0000-4000-8000-000000000003',
+						name: 'IF',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 1,
+						position: [400, 0],
+					},
+					{
+						parameters: {
+							values: {
+								number: [
+									{
+										name: 'attempt',
+										value: '={{ ($input.first().json.attempt || 0) + 1 }}',
+									},
+								],
+							},
+							options: {},
+						},
+						id: 'b8b0b1a0-0000-4000-8000-000000000004',
+						name: 'Retry',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 2,
+						position: [400, 200],
+					},
+					{
+						parameters: {},
+						id: 'b8b0b1a0-0000-4000-8000-000000000005',
+						name: 'Done',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [600, 0],
+					},
+				],
+				connections: {
+					Start: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: NodeConnectionTypes.Main,
+									index: 0,
+								},
+							],
+						],
+					},
+					Merge: {
+						main: [
+							[
+								{
+									node: 'IF',
+									type: NodeConnectionTypes.Main,
+									index: 0,
+								},
+							],
+						],
+					},
+					IF: {
+						main: [
+							[
+								{
+									node: 'Done',
+									type: NodeConnectionTypes.Main,
+									index: 0,
+								},
+							],
+							[
+								{
+									node: 'Retry',
+									type: NodeConnectionTypes.Main,
+									index: 0,
+								},
+							],
+						],
+					},
+					Retry: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: NodeConnectionTypes.Main,
+									index: 1,
+								},
+							],
+						],
+					},
+				},
+			},
+		},
+		output: {
+			nodeExecutionOrder: ['Start', 'Merge', 'IF', 'Retry', 'Merge', 'IF', 'Done'],
+			nodeData: {
+				Start: [[{}]],
+				Merge: [[{}], [{ attempt: 1 }]],
+				IF: [[], [{ attempt: 1 }]],
+				Retry: [[{ attempt: 1 }]],
+				Done: [[{ attempt: 1 }]],
+			},
+		},
+	},
 ];
 
 export const v1WorkflowExecuteTests: WorkflowTestData[] = [

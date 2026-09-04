@@ -3,6 +3,7 @@ import type { AgentIntegrationSettings, AgentTelegramIntegrationSettings } from 
 export const DEFAULT_TELEGRAM_PUBLIC_SETTINGS = {
 	accessMode: 'public',
 	allowedUsers: [],
+	sessionIdleTimeoutMinutes: null,
 } satisfies AgentTelegramIntegrationSettings;
 
 /**
