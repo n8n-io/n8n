@@ -202,6 +202,9 @@ describe('Expression Parser', () => {
 			expect(() => evaluate('={{ numberList(NaN, 5) }}')).toThrow(ExpressionExtensionError);
 			expect(() => evaluate('={{ numberList(Infinity, 5) }}')).toThrow(ExpressionExtensionError);
 			expect(() => evaluate('={{ numberList(1.5, 5) }}')).toThrow(ExpressionExtensionError);
+			expect(() => evaluate('={{ numberList(1, NaN) }}')).toThrow(ExpressionExtensionError);
+			expect(() => evaluate('={{ numberList(1, Infinity) }}')).toThrow(ExpressionExtensionError);
+			expect(() => evaluate('={{ numberList(1, 1.5) }}')).toThrow(ExpressionExtensionError);
 		});
 
 		test('zip', () => {
