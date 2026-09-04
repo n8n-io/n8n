@@ -291,7 +291,10 @@ function startEditingDescription() {
 	void nextTick(() => {
 		descriptionTextarea.value?.focus();
 		descriptionTextarea.value?.select();
-		autoResizeTextarea();
+		// Measure after the browser lays out the textarea with its content: a
+		// bare nextTick can run before layout, so scrollHeight reads the collapsed
+		// one-line height and the editor opens too short until the next keystroke.
+		requestAnimationFrame(autoResizeTextarea);
 	});
 }
 
@@ -871,7 +874,12 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 .descriptionInput {
+	display: block;
 	width: 100%;
+	// One line tall to start; autoResizeTextarea grows it to fit the content.
+	// A fixed starting height (not the browser's default rows=2) keeps the
+	// measurement stable across the canvas zoom transform. 1lh is one line box.
+	height: 1lh;
 	margin: 0;
 	padding: 0;
 	border: none;
