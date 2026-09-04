@@ -16,11 +16,13 @@ describe('enforceWorkflowPublishPolicy', () => {
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(mock<Project>({ id: 'project-1' }));
 	});
 
+	// A feature that is merely absent must not cost a lookup on every publish.
 	it('skips the project lookup and the check when nothing is registered for workflowPublish', async () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(false);
 
 		await enforceWorkflowPublishPolicy(policyEnforcementService, ownershipService, workflow);
 
+		expect(policyEnforcementService.hasChecksFor).toHaveBeenCalledWith('workflowPublish');
 		expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 		expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();
 	});

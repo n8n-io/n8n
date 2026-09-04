@@ -5,11 +5,16 @@ import type { OwnershipService } from '@/services/ownership.service';
 import type { PolicyEnforcementService } from './policy-enforcement.service';
 
 /**
- * Enforces the `workflowPublish` policy for a workflow, resolving its owning project only
- * when a check would actually run.
+ * Enforces the `workflowPublish` policy for a workflow. It resolves the owning project only
+ * when a check will run.
  *
- * The lookup is unguarded, as in `PolicyLifecycleHandler`: an unevaluated project rule is
- * not a passed one, so a failed lookup fails the publish.
+ * The short-circuit is deliberate. The owning project is read only to give the check its
+ * scope, so nothing consumes it when no check is registered. `getWorkflowProjectCached` is
+ * a read-through cache, so a caller that later needs the project fills it on its own miss.
+ * An absent feature must not cost a lookup on every publish.
+ *
+ * When a check is registered, the lookup is unguarded, as in `PolicyLifecycleHandler`: an
+ * unevaluated project rule is not a passed one, so a failed lookup fails the publish.
  */
 export async function enforceWorkflowPublishPolicy(
 	policyEnforcementService: PolicyEnforcementService,
