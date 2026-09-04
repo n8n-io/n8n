@@ -2,6 +2,9 @@ import { isRecord } from '@n8n/utils/is-record';
 
 import type { ICredentialDataDecryptedObject } from './interfaces';
 
+const OAUTH2_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
+
 /** Covers `mcpOAuth2Api` and registry-specific variants like `notionMcpOAuth2Api`. */
 export type McpOAuth2CredentialType = 'mcpOAuth2Api' | `${string}McpOAuth2Api`;
 
@@ -82,6 +85,22 @@ export function isMcpOAuth2Authentication(
 	authentication: string,
 ): authentication is McpOAuth2CredentialType {
 	return authentication === 'mcpOAuth2Api' || authentication.endsWith('McpOAuth2Api');
+}
+
+/** Return true when an MCP OAuth2 token is close enough to expiry to refresh it. */
+export function shouldRefreshMcpOAuth2Token(tokenData: unknown): boolean {
+	if (!isRecord(tokenData) || !tokenData.refresh_token) return false;
+
+	const expiresAt = Number(tokenData.n8n_expires_at);
+	if (!Number.isFinite(expiresAt)) return false;
+
+	const expiresInMs = Number(tokenData.expires_in) * 1000;
+	const refreshBufferMs =
+		Number.isFinite(expiresInMs) && expiresInMs > 0
+			? Math.min(OAUTH2_REFRESH_BUFFER_MS, expiresInMs * OAUTH2_REFRESH_BUFFER_RATIO)
+			: OAUTH2_REFRESH_BUFFER_MS;
+
+	return Date.now() + refreshBufferMs >= expiresAt;
 }
 
 export function getMcpAuthHeaders(

@@ -20,6 +20,7 @@ import {
 	assertUrlAllowed,
 	getMcpAuthHeaders,
 	NodeOperationError,
+	shouldRefreshMcpOAuth2Token,
 } from 'n8n-workflow';
 
 import {
@@ -80,13 +81,6 @@ function isForbiddenError(error: unknown): boolean {
 type OnUnauthorizedHandler = (
 	headers?: Record<string, string>,
 ) => Promise<Record<string, string> | null>;
-
-const OAUTH2_REFRESH_BUFFER_MS = 2 * 60 * 1000;
-const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
-
-type McpOAuth2Credentials = ICredentialDataDecryptedObject & {
-	oauthTokenData?: ClientOAuth2TokenData;
-};
 
 type ConnectMcpClientError =
 	| { type: 'invalid_url'; error: Error }
@@ -325,24 +319,6 @@ function createAuthFetch(
 	});
 }
 
-function shouldRefreshOAuth2Token(credentials: McpOAuth2Credentials): boolean {
-	const tokenData = credentials.oauthTokenData;
-	if (!tokenData?.refresh_token) return false;
-
-	const expiresAt = Number(tokenData.n8n_expires_at);
-	if (!Number.isFinite(expiresAt)) {
-		return false;
-	}
-
-	const expiresInMs = Number(tokenData.expires_in) * 1000;
-	const refreshBufferMs =
-		Number.isFinite(expiresInMs) && expiresInMs > 0
-			? Math.min(OAUTH2_REFRESH_BUFFER_MS, expiresInMs * OAUTH2_REFRESH_BUFFER_RATIO)
-			: OAUTH2_REFRESH_BUFFER_MS;
-
-	return Date.now() + refreshBufferMs >= expiresAt;
-}
-
 export async function getAuthHeaders(
 	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	authentication: McpAuthenticationOption,
@@ -370,7 +346,10 @@ export async function getAuthHeaders(
 		.catch(() => null);
 	if (!credentials) return {};
 
-	if (isMcpOAuth2Authentication(authentication) && shouldRefreshOAuth2Token(credentials)) {
+	if (
+		isMcpOAuth2Authentication(authentication) &&
+		shouldRefreshMcpOAuth2Token(credentials.oauthTokenData)
+	) {
 		const refreshedHeaders = await tryRefreshOAuth2Token(ctx, authentication);
 		if (refreshedHeaders) return { headers: refreshedHeaders, credentials };
 	}

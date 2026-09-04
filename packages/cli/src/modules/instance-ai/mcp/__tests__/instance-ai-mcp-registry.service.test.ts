@@ -358,7 +358,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			.mockResolvedValueOnce(new Response('unauthorized', { status: 401 }))
 			.mockResolvedValueOnce(new Response('ok', { status: 200 }));
 		oauthService.refreshOAuth2CredentialById.mockResolvedValue({
-			Authorization: 'Bearer fresh-token',
+			headers: { Authorization: 'Bearer fresh-token' },
 		});
 
 		const [server] = await service.getRegistryMcpServers(user);

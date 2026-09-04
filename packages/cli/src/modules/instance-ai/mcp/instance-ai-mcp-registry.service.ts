@@ -467,10 +467,14 @@ export class InstanceAiMcpRegistryService {
 		return createAuthFetch({
 			baseFetch,
 			initialHeaders: prepared.value.headers,
-			onUnauthorized: async () =>
-				projectId
-					? await this.oauthService.refreshOAuth2CredentialById(config.credentialId, projectId)
-					: null,
+			onUnauthorized: async () => {
+				if (!projectId) return null;
+				const result = await this.oauthService.refreshOAuth2CredentialById(
+					config.credentialId,
+					projectId,
+				);
+				return result?.headers ?? null;
+			},
 			allowedDomains: {
 				mode: 'domains',
 				domains: prepared.value.allowedDomains,
