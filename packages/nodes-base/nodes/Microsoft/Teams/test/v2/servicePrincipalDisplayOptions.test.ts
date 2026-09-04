@@ -32,6 +32,19 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		});
 	});
 
+	// The per-resource loops below assert "every field is hidden under SP", which is vacuously
+	// true for a field that was never added. Pin that the mention picker is one they cover.
+	it.each(['channelMessage', 'chatMessage'])('%s:create has a mentions field', (resource) => {
+		const mentions = actionProps.find(
+			(p) =>
+				p.name === 'mentions' &&
+				p.displayOptions?.show?.resource?.includes(resource) &&
+				p.displayOptions?.show?.operation?.includes('create'),
+		);
+
+		expect(mentions).toBeDefined();
+	});
+
 	describe('chatMessage — hidden under SP via the slash-prefixed field-level key', () => {
 		it('operation selector carries hide["/authentication"] = [SP]', () => {
 			const op = actionProps.find(

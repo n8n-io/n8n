@@ -217,9 +217,11 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 		// An explicit `uri` (e.g. a next-page link from Graph) is used verbatim,
 		// but it must stay on the credential's Graph host: the bearer token must
 		// never travel to an unexpected origin. Graph's own @odata.nextLink is
-		// always same-origin, so nothing legitimate is refused.
+		// always same-origin, so nothing legitimate is refused. An unparseable
+		// `uri` is refused the same way, so a client-supplied pagination token
+		// cannot escape as a bare TypeError.
 		const target = uri || `${baseUrl}${resource}`;
-		if (new URL(target).origin !== new URL(baseUrl).origin) {
+		if (!URL.canParse(target) || new URL(target).origin !== new URL(baseUrl).origin) {
 			throw new NodeOperationError(
 				this.getNode(),
 				'Refusing to send credentials to an unexpected host',

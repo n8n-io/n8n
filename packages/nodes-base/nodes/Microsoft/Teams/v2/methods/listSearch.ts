@@ -315,3 +315,71 @@ export async function getMembers(
 	const results = filterSortSearchListItems(returnData, filter);
 	return { results };
 }
+
+/**
+ * Org-wide user picker on Graph `/v1.0/users`, shared by every Teams field that targets a
+ * person. Deliberately generic: no resource/operation reads, no team scoping. Filtering is
+ * `$search` (word-prefix, so `unc` will not find `Tuncsik`) and ordering is `$orderby`, both
+ * server-side, hence no `filterSortSearchListItems` call unlike its siblings above: filtering
+ * again client-side would delete legitimate results and break pagination.
+ */
+export async function getUsers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const qs: IDataObject = {
+		$select: 'id,displayName,userPrincipalName',
+		$top: 100,
+		$orderby: 'displayName',
+	};
+
+	// Graph rejects the whole $search expression for four characters, so drop them rather than
+	// let the picker error: `"` unterminates the quoted term, `\` starts a KQL escape sequence,
+	// and `&`/`#` split the query string because Graph re-splits it AFTER percent-decoding (so
+	// encoding them is not enough). Verified against a live tenant 2026-09-02. Dropping them
+	// degrades to a broader match instead of "Could not load list"; $search is word-prefix
+	// anyway, so "Jones & Co" still finds the user by "Jones".
+	const term = (filter ?? '').replace(/["\\&#]/g, '').trim();
+	if (term) {
+		qs.$search = `"displayName:${term}" OR "mail:${term}" OR "userPrincipalName:${term}"`;
+	}
+
+	const response = (await microsoftApiRequest.call(
+		this,
+		'GET',
+		'/v1.0/users',
+		{},
+		// `@odata.nextLink` already carries the query, so a paginated call sends none.
+		paginationToken ? {} : qs,
+		paginationToken,
+		// `$search` on /users is an advanced query and 400s without this header; harmless on
+		// the unfiltered first page, so send it always.
+		{ ConsistencyLevel: 'eventual' },
+	)) as IDataObject;
+
+	// An unexpected shape is not an empty directory: keeping the token would offer "load more"
+	// into nothing.
+	if (!Array.isArray(response.value)) {
+		return { results: [], paginationToken: undefined };
+	}
+
+	// Display names are not unique (a real tenant showed 135 unique names across 136 users), so the
+	// UPN has to disambiguate. It goes in `name`, not `description` alone, because the
+	// resource-locator dropdown renders only `name` (see ResourceLocatorDropdown.vue), so a
+	// `description`-only UPN would be invisible and two identical names indistinguishable. Same
+	// pattern as `Gong.node.ts`. `description` stays populated for consumers that do read it.
+	// Falls back like `resolveMentions`, so a nameless directory object still shows a label.
+	const results: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => {
+		const displayName = user.displayName as string;
+		const upn = user.userPrincipalName as string;
+		const label = displayName && upn ? `${displayName} (${upn})` : displayName || upn;
+		return {
+			name: label || (user.id as string),
+			value: user.id as string,
+			description: upn,
+		};
+	});
+
+	return { results, paginationToken: response['@odata.nextLink'] as string | undefined };
+}

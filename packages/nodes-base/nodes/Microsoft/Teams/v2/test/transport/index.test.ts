@@ -11,6 +11,7 @@ import {
 	getMembers,
 	getPlans,
 	getTeams,
+	getUsers,
 } from '../../methods/listSearch';
 import { joinedTeamsEndpoint, SERVICE_PRINCIPAL_AUTH } from '../../transport/index';
 
@@ -210,6 +211,22 @@ describe('Microsoft Teams Transport', () => {
 			expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
 		});
+
+		// `getUsers` is the first Teams path handing a client-supplied string to the
+		// transport's `uri` argument: an unparseable token must surface as a node error rather
+		// than a bare TypeError from `new URL`, and a parseable one must still stay on the
+		// credential's Graph host.
+		it.each(['not-a-url', 'http', 'https://evil.example/users'])(
+			'getUsers rejects the pagination token %j before any request',
+			async (paginationToken) => {
+				mockLoadOptions.getNodeParameter.mockReturnValue(undefined);
+
+				await expect(getUsers.call(mockLoadOptions, undefined, paginationToken)).rejects.toThrow(
+					'Refusing to send credentials to an unexpected host',
+				);
+				expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
+			},
+		);
 
 		// MAJOR B hard gate: every SP-reachable listSearch method that interpolates an id
 		// must reject a malformed id via buildTeamsPath, before any request.

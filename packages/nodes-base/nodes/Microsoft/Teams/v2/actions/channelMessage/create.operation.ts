@@ -2,8 +2,15 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { channelRLC, includeLinkToWorkflowOption, teamRLC } from '../../descriptions';
-import { prepareMessage } from '../../helpers/utils';
+import {
+	channelRLC,
+	includeLinkToWorkflowOption,
+	mentionPlacementOption,
+	mentionsField,
+	teamRLC,
+} from '../../descriptions';
+import type { MentionPlacement } from '../../helpers/utils';
+import { prepareMessage, resolveMentions } from '../../helpers/utils';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChannelMessageSendUnsupported } from './sharedGuard';
 
@@ -39,6 +46,7 @@ const properties: INodeProperties[] = [
 			rows: 2,
 		},
 	},
+	mentionsField,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -47,6 +55,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			includeLinkToWorkflowOption,
+			mentionPlacementOption,
 			{
 				displayName: 'Reply to ID',
 				name: 'makeReply',
@@ -94,12 +103,16 @@ export async function execute(
 		includeLinkToWorkflow = nodeVersion >= 1.1;
 	}
 
+	const mentions = await resolveMentions.call(this, i);
+
 	const body: IDataObject = prepareMessage.call(
 		this,
 		message,
 		contentType,
 		includeLinkToWorkflow as boolean,
 		instanceId,
+		mentions,
+		(options.mentionPlacement as MentionPlacement) || 'start',
 	);
 
 	if (options.makeReply) {

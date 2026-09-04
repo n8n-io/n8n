@@ -63,7 +63,17 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		['get', 'get'],
 		['getAll', 'getAll'],
 	])('chatMessage:%s throws a static error and issues no request under SP', async (_label, op) => {
-		selectSp({ resource: 'chatMessage', operation: op, chatId: 'chatID', returnAll: true });
+		selectSp({
+			resource: 'chatMessage',
+			operation: op,
+			chatId: 'chatID',
+			returnAll: true,
+			// a mention row, so moving the guard below resolveMentions fires a GET /v1.0/users/...
+			'mentions.mention': [
+				{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
+			],
+			'mentions.mention[0].userId': '714c1202-cbac-40ff-9160-53ab5c4df9b8',
+		});
 
 		await expect(node.execute.call(ctx)).rejects.toThrow(
 			'Chat messages are not available with the Service Principal credential',
@@ -115,6 +125,11 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			contentType: 'text',
 			message: 'hi',
 			options: {},
+			// a mention row, so moving the guard below resolveMentions fires a GET /v1.0/users/...
+			'mentions.mention': [
+				{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
+			],
+			'mentions.mention[0].userId': '714c1202-cbac-40ff-9160-53ab5c4df9b8',
 		});
 
 		await expect(node.execute.call(ctx)).rejects.toThrow(
