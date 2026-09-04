@@ -137,6 +137,9 @@ const KAFKA_CHECK = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
 	'../.github/scripts/docker/kafka-native-smoke-check.mjs',
 );
+const EXPECTED_PNPM_VERSION = (await fs.readJson(
+	path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../package.json'),
+)).packageManager.replace('pnpm@', '');
 
 async function runKafkaBindingCheck() {
 	const name = 'kafka native binding loads in image';
@@ -172,6 +175,22 @@ async function runRunnersInterpreterCheck(image) {
 	}
 }
 
+async function runRunnersPnpmCheck(image) {
+	const name = `pnpm ${EXPECTED_PNPM_VERSION} runs offline in ${image}`;
+	try {
+		const { stdout } = await $({
+			timeout: TIMEOUT,
+		})`docker run --rm --network none --entrypoint pnpm ${image} --version`;
+		if (stdout.trim() !== EXPECTED_PNPM_VERSION) {
+			throw new Error(`expected ${EXPECTED_PNPM_VERSION}, got ${stdout.trim()}`);
+		}
+		echo(chalk.green(`✓ ${name}`));
+		return true;
+	} catch (err) {
+		return reportFailure(name, err);
+	}
+}
+
 // Derived images add packages with `pnpm add` in the JS runner directory (docs:
 // "Adding extra dependencies"). pnpm prunes packages the recorded importer no
 // longer needs, so a deploy that records the closure differently makes this
@@ -186,7 +205,7 @@ async function runRunnersExtensionCheck(image) {
 	const script = [
 		`cd ${RUNNER_JS_DIR}`,
 		'before=$(ls node_modules/.pnpm | wc -l)',
-		'pnpm add uuid --prod --no-lockfile --config.minimum-release-age=0',
+		'pnpm add uuid --save-prod --no-lockfile --config.minimum-release-age=0',
 		'after=$(ls node_modules/.pnpm | wc -l)',
 		'[ "$after" -gt "$before" ] || { echo "pnpm add pruned the closure: $before -> $after packages"; exit 1; }',
 		`node -e "require('uuid'); require('moment'); require.resolve('n8n-core')"`,
@@ -241,6 +260,7 @@ const ok = (
 		runKafkaBindingCheck(),
 		...RUNNERS_IMAGES.map(runRunnersInterpreterCheck),
 		// The distroless image ships no shell or pnpm; only the standard image is extendable.
+		...RUNNERS_IMAGES.filter((image) => !image.endsWith('-distroless')).map(runRunnersPnpmCheck),
 		...RUNNERS_IMAGES.filter((image) => !image.endsWith('-distroless')).map(
 			runRunnersExtensionCheck,
 		),

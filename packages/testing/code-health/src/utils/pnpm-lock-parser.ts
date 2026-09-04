@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { parse as parseYaml } from 'yaml';
+import { parseAllDocuments } from 'yaml';
 
 export interface LockData {
 	resolvedVersions: Map<string, Set<string>>;
@@ -23,14 +23,23 @@ interface LockFile {
 	packages?: Record<string, unknown>;
 }
 
+function parseProjectLockfile(content: string): LockFile | null {
+	const document = parseAllDocuments(content).at(-1);
+	if (!document) return null;
+	if (document.errors.length > 0) throw document.errors[0];
+
+	const value: unknown = document.toJS();
+	return typeof value === 'object' && value !== null ? value : null;
+}
+
 export function parsePnpmLock(rootDir: string, lockFile = 'pnpm-lock.yaml'): LockData {
 	const filePath = path.join(rootDir, lockFile);
 	const empty: LockData = { resolvedVersions: new Map(), requestedRanges: new Map() };
 	if (!fs.existsSync(filePath)) return empty;
 
 	const content = fs.readFileSync(filePath, 'utf-8');
-	const lock = parseYaml(content) as LockFile | null;
-	if (!lock || typeof lock !== 'object') return empty;
+	const lock = parseProjectLockfile(content);
+	if (!lock) return empty;
 
 	const resolvedVersions = new Map<string, Set<string>>();
 	const requestedRanges = new Map<string, Set<string>>();

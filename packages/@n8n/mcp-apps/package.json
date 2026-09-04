@@ -56,7 +56,7 @@
     "rimraf": "catalog:",
     "semver": "catalog:",
     "@typescript/native": "catalog:typescript-tooling",
-    "typescript": "catalog:typescript-tooling",
+    "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-plugin-singlefile": "catalog:",

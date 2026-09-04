@@ -4,9 +4,9 @@
   "private": true,
   "engines": {
     "node": ">=24.0.0",
-    "pnpm": ">=11.25.0"
+    "pnpm": ">=12.3.4"
   },
-  "packageManager": "pnpm@11.25.0",
+  "packageManager": "pnpm@12.3.4",
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
@@ -88,7 +88,7 @@
     "worker": "./packages/cli/bin/n8n worker",
     "dev:computer-use": "pnpm --filter @n8n/computer-use build && node packages/@n8n/computer-use/dist/cli.js serve",
     "stop:computer-use": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'computer-use stopped'",
-    "install-workflow-scripts": "pnpm install --dir .github/scripts --ignore-workspace"
+    "install-workflow-scripts": "pnpm install --dir .github/scripts --lockfile-dir . --ignore-workspace"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",
