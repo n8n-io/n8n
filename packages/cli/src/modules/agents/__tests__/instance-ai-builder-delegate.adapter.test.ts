@@ -7,6 +7,7 @@ import type {
 } from '@n8n/agents';
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { Like } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -24,6 +25,8 @@ import {
 	InstanceAiBuilderDelegateAdapterService,
 } from '../instance-ai-builder-delegate.adapter';
 import type { AgentConfigService } from '../agent-config.service';
+import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from '../agent-capabilities';
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { N8nMemory, N8nMemoryImpl } from '../integrations/n8n-memory';
@@ -36,6 +39,8 @@ function setup() {
 	const agentThreadRepository = mock<AgentThreadRepository>();
 	const agentConfig = mock<AgentConfigService>();
 	const agentSkills = mock<AgentSkillsService>();
+	const credentialService = mock<InstanceAiCredentialService>();
+	const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
 
 	const service = new InstanceAiBuilderDelegateAdapterService(
 		agentsService,
@@ -44,11 +49,12 @@ function setup() {
 		agentThreadRepository,
 		agentConfig,
 		agentSkills,
+		agentIntegrationPersistenceService,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
-	const delegate = service.createDelegate(user, 'project-1', credentialProvider);
+	const delegate = service.createDelegate(user, 'project-1', credentialProvider, credentialService);
 
 	return {
 		service,
@@ -60,7 +66,9 @@ function setup() {
 		agentThreadRepository,
 		agentConfig,
 		agentSkills,
+		agentIntegrationPersistenceService,
 		credentialProvider,
+		credentialService,
 	};
 }
 
@@ -111,7 +119,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		});
 
 		it('builds the sub-agent session from the delegate session: thread ids, run id, model config, and addendum', async () => {
-			const { delegate, agentsBuilderService, user, credentialProvider } = setup();
+			const { delegate, agentsBuilderService, user, credentialProvider, credentialService } =
+				setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
 			const sentinel = { functionId: 'host' } as unknown as BuiltTelemetry;
@@ -132,6 +141,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				'project-1',
 				'hi',
 				credentialProvider,
+				credentialService,
 				user,
 				{
 					threadId: 'ia-builder:t:agent-1',
@@ -142,6 +152,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
 					mcpTools,
+					onRequiredArtifact: expect.any(Function),
 				},
 			);
 		});
@@ -159,7 +170,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				abortSignal,
 			});
 
-			const [, , , , , sessionArg] = agentsBuilderService.buildAgent.mock.calls[0];
+			const [, , , , , , sessionArg] = agentsBuilderService.buildAgent.mock.calls[0];
 			expect(sessionArg).not.toHaveProperty('telemetry');
 		});
 
@@ -182,7 +193,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 	describe('resumeBuild', () => {
 		it('forwards to agentsBuilderService.resumeBuild and accumulates text-delta chunks', async () => {
-			const { delegate, agentsBuilderService, user, credentialProvider } = setup();
+			const { delegate, agentsBuilderService, user, credentialProvider, credentialService } =
+				setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			const mcpTools = fakeMcpTools();
 
@@ -217,6 +229,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				'call-1',
 				{ approved: true },
 				credentialProvider,
+				credentialService,
 				user,
 				{
 					threadId: 'ia-builder:t:agent-1',
@@ -226,6 +239,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					mcpTools,
+					onRequiredArtifact: expect.any(Function),
 				},
 			);
 		});
@@ -511,6 +525,43 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			await expect(delegate.listAgents()).rejects.toThrow(ForbiddenError);
 			expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+				projectId: 'project-1',
+			});
+		});
+	});
+
+	describe('listAgentCapabilities', () => {
+		it('returns channels from the registry plus the module agent capabilities and limitations', async () => {
+			const { delegate, agentIntegrationPersistenceService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			const channels = [
+				{
+					type: 'slack',
+					label: 'Slack',
+					icon: 'slack',
+					credentialTypes: ['slackApi'],
+					capabilities: ['send messages'],
+					useIntegrationWhen: ['the agent should reply in Slack'],
+					useNodeToolWhen: ['only operating on Slack data'],
+				},
+			];
+			agentIntegrationPersistenceService.listChatIntegrations.mockReturnValue(channels);
+
+			await expect(delegate.listAgentCapabilities()).resolves.toEqual({
+				channels,
+				agentCapabilities: [...AGENT_CAPABILITIES],
+				limitations: [...AGENT_LIMITATIONS],
+			});
+			expect(agentIntegrationPersistenceService.listChatIntegrations).toHaveBeenCalledWith();
+		});
+
+		it('rejects when the user lacks agent:read scope', async () => {
+			const { delegate, agentIntegrationPersistenceService, user } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			await expect(delegate.listAgentCapabilities()).rejects.toThrow(ForbiddenError);
+			expect(agentIntegrationPersistenceService.listChatIntegrations).not.toHaveBeenCalled();
 			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
 				projectId: 'project-1',
 			});

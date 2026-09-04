@@ -7,7 +7,10 @@ import type { CronDefinition } from '@n8n/scheduler';
 import type { CronExpression, INode, TriggerTime } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
+
 import type { DurableJobProvisioner } from '../../durable-job-provisioner';
+import type { WorkflowScheduledJobOwner } from '../../workflow-scheduled-job-owner';
 import { PollTriggerJobRegistrar } from '../poll-trigger-job-registrar';
 import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
 
@@ -28,22 +31,32 @@ const jobNamePattern = new RegExp(`^${WORKFLOW_ID}:${NODE_ID}:[0-9a-f]{16}:\\d+$
 
 const pollNode = mock<INode>({ id: NODE_ID, type: 'n8n-nodes-base.rssFeedReadTrigger' });
 
+const OWNER = { ownerType: 'workflow', ownerId: WORKFLOW_ID, ownerMemberId: NODE_ID };
+const OWNER_REF = { ownerType: 'workflow', ownerId: WORKFLOW_ID };
+
 describe('PollTriggerJobRegistrar', () => {
 	const jobProvisioner = mock<DurableJobProvisioner>();
+	const pollBackoffService = mock<PollBackoffService>();
+	const owner = mock<WorkflowScheduledJobOwner>();
 
 	const makeRegistrar = () =>
 		new PollTriggerJobRegistrar(
 			mockLogger(),
 			mock<GlobalConfig>({ generic: { timezone: TIMEZONE } }),
 			jobProvisioner,
+			pollBackoffService,
+			owner,
 		);
 
-	const lastDesired = () => jobProvisioner.provision.mock.calls.at(-1)![4];
+	const lastRequest = () => jobProvisioner.provision.mock.calls.at(-1)![0];
+	const lastDesired = () => lastRequest().desired;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
+		owner.member.mockReturnValue(OWNER);
+		owner.ref.mockReturnValue(OWNER_REF);
 		jobProvisioner.provision.mockResolvedValue({
 			inserted: [],
 			redefined: [],
@@ -65,12 +78,12 @@ describe('PollTriggerJobRegistrar', () => {
 				TIMEZONE,
 			);
 
-			expect(jobProvisioner.provision).toHaveBeenCalledWith(
-				WORKFLOW_ID,
-				NODE_ID,
-				POLL_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				[
+			expect(owner.member).toHaveBeenCalledWith(WORKFLOW_ID, NODE_ID);
+			expect(jobProvisioner.provision).toHaveBeenCalledWith({
+				owner: OWNER,
+				taskType: POLL_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				desired: [
 					{
 						name: expect.stringMatching(jobNamePattern),
 						schedule: { kind: 'cron', cronExpression: '0 0 9 * * *', timezone: TIMEZONE },
@@ -82,8 +95,8 @@ describe('PollTriggerJobRegistrar', () => {
 						firstRunAt: NEXT_TEN,
 					},
 				],
-				ScheduledJobMisfirePolicy.Skip,
-			);
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+			});
 		});
 
 		it('seeds a generated cadence deterministically, so re-activation keeps the same job identity', async () => {
@@ -144,6 +157,32 @@ describe('PollTriggerJobRegistrar', () => {
 			},
 		);
 
+		it('clears backoff state when a job is newly inserted', async () => {
+			jobProvisioner.provision.mockResolvedValueOnce({
+				inserted: [{ id: 1, name: 'wf-1:node-1:abc:0' }],
+				redefined: [],
+				unchanged: [],
+				removed: [],
+			});
+
+			await makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE);
+
+			expect(pollBackoffService.reset).toHaveBeenCalledWith(WORKFLOW_ID, NODE_ID);
+		});
+
+		it('leaves backoff state untouched on a pure reconcile that inserts nothing', async () => {
+			jobProvisioner.provision.mockResolvedValueOnce({
+				inserted: [],
+				redefined: [{ id: 1, name: 'wf-1:node-1:abc:0' }],
+				unchanged: [],
+				removed: [],
+			});
+
+			await makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE);
+
+			expect(pollBackoffService.reset).not.toHaveBeenCalled();
+		});
+
 		it("spreads a generated cadence's seeded seconds across different nodes, to avoid a thundering herd", async () => {
 			const registrar = makeRegistrar();
 
@@ -201,14 +240,13 @@ describe('PollTriggerJobRegistrar', () => {
 		it('provisions an empty desired set for a node with no poll times', async () => {
 			await makeRegistrar().register(WORKFLOW_ID, pollNode, [], TIMEZONE);
 
-			expect(jobProvisioner.provision).toHaveBeenCalledWith(
-				WORKFLOW_ID,
-				NODE_ID,
-				POLL_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				[],
-				ScheduledJobMisfirePolicy.Skip,
-			);
+			expect(jobProvisioner.provision).toHaveBeenCalledWith({
+				owner: OWNER,
+				taskType: POLL_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				desired: [],
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+			});
 		});
 
 		it('throws on an invalid cron expression', async () => {
@@ -253,7 +291,8 @@ describe('PollTriggerJobRegistrar', () => {
 		it('removes the scheduler jobs of a deactivated node', async () => {
 			await makeRegistrar().remove(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.deprovision).toHaveBeenCalledWith(WORKFLOW_ID, NODE_ID);
+			expect(owner.member).toHaveBeenCalledWith(WORKFLOW_ID, NODE_ID);
+			expect(jobProvisioner.deprovisionOwnerMember).toHaveBeenCalledWith(OWNER);
 		});
 	});
 
@@ -261,8 +300,8 @@ describe('PollTriggerJobRegistrar', () => {
 		it('removes the poll jobs of all nodes of a deactivated workflow', async () => {
 			await makeRegistrar().removeWorkflow(WORKFLOW_ID);
 
-			expect(jobProvisioner.deprovisionWorkflow).toHaveBeenCalledWith(
-				WORKFLOW_ID,
+			expect(jobProvisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
+				OWNER_REF,
 				POLL_TRIGGER_TASK_TYPE,
 			);
 		});
@@ -274,9 +313,9 @@ describe('PollTriggerJobRegistrar', () => {
 
 			await makeRegistrar().removeWorkflowInTransaction(manager, WORKFLOW_ID);
 
-			expect(jobProvisioner.deprovisionWorkflowInTransaction).toHaveBeenCalledWith(
+			expect(jobProvisioner.deprovisionOwnerTaskTypeInTransaction).toHaveBeenCalledWith(
 				manager,
-				WORKFLOW_ID,
+				OWNER_REF,
 				POLL_TRIGGER_TASK_TYPE,
 			);
 		});

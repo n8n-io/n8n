@@ -4,16 +4,24 @@ import type {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
+import { SharedSecretIdentityVerifier } from '@n8n/engine';
 import type { StartExecutionRequest } from '@n8n/engine';
+import type { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { ExecutionIdV2 } from '@/executions/execution-id';
+
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
+
+const authSecret = 'a'.repeat(32);
+const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
 
 describe('EngineDataPlaneClient', () => {
 	const request: StartExecutionRequest = {
 		workflowId: 'wf-1',
 		graph: { nodes: [], edges: [] },
+		executionId: EXECUTION_ID,
 	};
 
 	let http: HttpRequestClient;
@@ -42,8 +50,9 @@ describe('EngineDataPlaneClient', () => {
 		});
 
 		return new EngineDataPlaneClient(
-			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', ...config }),
+			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', authSecret, ...config }),
 			outboundHttp,
+			mock<InstanceSettings>({ instanceId: 'instance-1' }),
 		);
 	};
 
@@ -66,6 +75,16 @@ describe('EngineDataPlaneClient', () => {
 			);
 		});
 
+		it('does not follow redirects, so the identity token reaches only the configured host', async () => {
+			respondWith(201, { executionId: 'exec-1' });
+
+			await client.startExecution(request);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({ disableFollowRedirect: true }),
+			);
+		});
+
 		it('dials the loopback, not the bind host', () => {
 			expect(clientOptions?.baseURL).toBe('http://127.0.0.1:3000');
 		});
@@ -83,7 +102,20 @@ describe('EngineDataPlaneClient', () => {
 		});
 
 		it('opts out of SSRF protection for the n8n-controlled engine host', () => {
-			expect(clientOptions?.ssrf).toBe('disabled');
+			expect(clientOptions?.useDefaultSsrfPolicy).toBe('unsafe');
+		});
+
+		it('sends an identity token the engine accepts, proving the caller is the instance id', () => {
+			const headers = clientOptions?.headers;
+			const resolved = typeof headers === 'function' ? headers() : headers;
+			const authorization = resolved?.authorization ?? '';
+
+			expect(authorization).toMatch(/^Bearer .+/);
+
+			const token = authorization.replace('Bearer ', '');
+			const verifier = new SharedSecretIdentityVerifier(authSecret);
+
+			expect(verifier.verify(token)).toEqual({ cpId: 'instance-1', tenantId: 'instance-1' });
 		});
 
 		it.each([
@@ -123,6 +155,13 @@ describe('EngineDataPlaneClient', () => {
 				message: 'Engine responded with 500: boom',
 			},
 			{
+				case: 'a redirect the client refused to follow',
+				statusCode: 302,
+				body: '',
+				errorClass: OperationalError,
+				message: 'Engine responded with 302',
+			},
+			{
 				case: 'a body that is not the engine error shape',
 				statusCode: 502,
 				body: '<html>bad gateway</html>',
@@ -136,6 +175,49 @@ describe('EngineDataPlaneClient', () => {
 
 			expect(error).toBeInstanceOf(errorClass);
 			expect(error).toHaveProperty('message', message);
+		});
+	});
+
+	describe('getExecution', () => {
+		it('reads the execution from the engine', async () => {
+			const snapshot = { id: EXECUTION_ID, workflowId: 'wf-1', status: 'completed' };
+			respondWith(200, snapshot);
+
+			await expect(client.getExecution(EXECUTION_ID)).resolves.toEqual(snapshot);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: `/api/workflow-executions/${EXECUTION_ID}`,
+					method: 'GET',
+					qs: undefined,
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('asks for the steps on the same request, so a read is one round trip', async () => {
+			const snapshot = { id: EXECUTION_ID, workflowId: 'wf-1', steps: [] };
+			respondWith(200, snapshot);
+
+			await expect(client.getExecution(EXECUTION_ID, { includeSteps: true })).resolves.toEqual(
+				snapshot,
+			);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({ qs: { includeSteps: 'true' } }),
+			);
+		});
+
+		it('returns undefined for an execution the engine does not have', async () => {
+			respondWith(404, { error: 'not_found' });
+
+			await expect(client.getExecution(EXECUTION_ID)).resolves.toBeUndefined();
+		});
+
+		it('throws on any other engine failure', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.getExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
 		});
 	});
 });

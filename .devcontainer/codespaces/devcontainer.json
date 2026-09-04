@@ -5,9 +5,9 @@
 	// Codespaces clones the repo into /workspaces/<repo>, unlike the laptop config
 	"workspaceFolder": "/workspaces/n8n",
 	"hostRequirements": {
-		"cpus": 8,
-		"memory": "32gb",
-		"storage": "64gb"
+		"cpus": 2,
+		"memory": "8gb",
+		"storage": "32gb"
 	},
 	"features": {
 		"ghcr.io/devcontainers/features/github-cli:1": {},
@@ -38,11 +38,17 @@
 		"ANTHROPIC_API_KEY": {
 			"description": "Anthropic API key for Claude Code / OpenCode sessions"
 		},
+		"OPENROUTER_API_KEY": {
+			"description": "OpenRouter API key for Flaky's OpenCode sessions"
+		},
 		"AGENT_WORKER_TOKEN": {
 			"description": "The shared bearer token. The poll worker sends it to n8n on each dequeue. See .devcontainer/codespaces/agent-worker.mjs."
 		},
 		"N8N_DEQUEUE_URL": {
 			"description": "n8n webhook the poll worker calls to claim a pending turn"
+		},
+		"SLACK_BOT_TOKEN": {
+			"description": "Slack bot token for agent progress messages. It needs the chat:write scope."
 		},
 		"CLAUDE_CODE_OAUTH_TOKEN": {
 			"description": "Alternative to an API key: token from `claude setup-token` (Max subscription)"

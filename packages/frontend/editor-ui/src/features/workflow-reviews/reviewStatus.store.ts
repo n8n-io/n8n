@@ -1,5 +1,4 @@
 import type {
-	WorkflowReviewStatus,
 	WorkflowReviewRequestForWorkflow,
 	WorkflowReviewRequestSummary,
 } from '@n8n/api-types';
@@ -8,10 +7,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { readonly, ref } from 'vue';
 
-import {
-	fetchWorkflowReviewRequests,
-	fetchWorkflowReviewStatuses,
-} from '@/features/workflow-reviews/workflowReviews.api';
+import { fetchWorkflowReviewRequests } from '@/features/workflow-reviews/workflowReviews.api';
 
 /**
  * Authoritative state of a workflow's *latest* review — one request serves both
@@ -77,89 +73,27 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 	};
 
 	/**
-	 * Batched open-review statuses (one per workflow), fed by the statuses
-	 * endpoint and kept apart from `latestReviewByWorkflowId`: the editor status
-	 * carries decision actors and publication state these consumers never need.
-	 * `null` means "fetched, no open review"; a missing key means "not fetched
-	 * yet" — consumers show nothing in both cases.
-	 */
-	const reviewStatusByWorkflowId = ref<Record<string, WorkflowReviewStatus | null>>({});
-	const reviewStatusSequenceByWorkflowId: Record<string, number> = {};
-
-	const reviewStatus = (workflowId: string): WorkflowReviewStatus | null => {
-		return reviewStatusByWorkflowId.value[workflowId] ?? null;
-	};
-
-	/**
-	 * One batch per page of workflows. Existing values stay visible while the
-	 * request is in flight — pre-clearing would blank every consumer on each
-	 * refetch — and are overwritten latest-wins per workflow, so an older request
-	 * can never restore stale status. Access or feature revocation clears the
-	 * requested IDs to "no open review"; other failures keep the last known
-	 * status, matching `fetchStatus`.
-	 */
-	const fetchReviewStatuses = async (workflowIds: string[]): Promise<void> => {
-		if (workflowIds.length === 0) return;
-
-		const sequences = new Map<string, number>();
-		for (const workflowId of workflowIds) {
-			const sequence = (reviewStatusSequenceByWorkflowId[workflowId] ?? 0) + 1;
-			reviewStatusSequenceByWorkflowId[workflowId] = sequence;
-			sequences.set(workflowId, sequence);
-		}
-
-		let statuses: Record<string, WorkflowReviewStatus | null> = {};
-		try {
-			({ data: statuses } = await fetchWorkflowReviewStatuses(rootStore.restApiContext, [
-				...sequences.keys(),
-			]));
-		} catch (error) {
-			// only a revoked access clears entries
-			const isRevoked =
-				error instanceof ResponseError &&
-				(error.httpStatusCode === 404 || error.httpStatusCode === 403);
-			if (!isRevoked) return;
-		}
-
-		for (const [workflowId, sequence] of sequences) {
-			if (reviewStatusSequenceByWorkflowId[workflowId] !== sequence) continue;
-			reviewStatusByWorkflowId.value[workflowId] = statuses[workflowId] ?? null;
-		}
-	};
-
-	/**
 	 * Adopt a freshly opened review as the latest one, without waiting for a
 	 * refetch. Mutation responses carry the minimal summary: a brand-new review is
-	 * pending, so neither derived field applies yet.
+	 * pending, so neither derived field applies yet. The pinned version's name
+	 * comes from the caller for the same reason — the summary omits it, and
+	 * without it the banner would label the version the caller just named by id.
 	 */
 	const setOpenReview = (
 		workflowId: string,
 		review: WorkflowReviewRequestSummary,
 		description: string | null = null,
+		workflowVersionName: string | null = null,
 	): void => {
 		latestSequenceByWorkflowId[workflowId] = (latestSequenceByWorkflowId[workflowId] ?? 0) + 1;
 		latestReviewByWorkflowId.value[workflowId] = {
 			...review,
 			description,
+			workflowVersionName,
 			decisionBy: null,
 			// The caller just opened this review, so they are its requester-author.
 			viewerCanOpen: true,
 		};
-	};
-
-	/**
-	 * Drops every cached status on logout, so a soft re-login (no page reload)
-	 * cannot show the previous user's badges while the new batch is in flight.
-	 */
-	const reset = () => {
-		latestReviewByWorkflowId.value = {};
-		reviewStatusByWorkflowId.value = {};
-		for (const workflowId of Object.keys(latestSequenceByWorkflowId)) {
-			latestSequenceByWorkflowId[workflowId] += 1;
-		}
-		for (const workflowId of Object.keys(reviewStatusSequenceByWorkflowId)) {
-			reviewStatusSequenceByWorkflowId[workflowId] += 1;
-		}
 	};
 
 	return {
@@ -171,8 +105,5 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 		hasOpenReview,
 		fetchStatus,
 		setOpenReview,
-		reviewStatus,
-		fetchReviewStatuses,
-		reset,
 	};
 });

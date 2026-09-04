@@ -30,6 +30,7 @@ import {
 	createCanvasGroupNodeId,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
+import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 const EXTRACT_WORKFLOW_SHORTCUT = { altKey: true, keys: ['X'] };
@@ -63,11 +64,13 @@ const emit = defineEmits<{
 	'title:focused': [id: string];
 	ungroup: [id: string];
 	extract: [id: string];
+	'add-nodes-to-chat': [id: string];
 	toggle: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent];
 }>();
 
 const i18n = useI18n();
+const isNodeContextEnabled = useIsNodeContextEnabled();
 const $style = useCssModule();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 const titleText = useTemplateRef<HTMLElement>('titleText');
@@ -155,6 +158,10 @@ function onUngroupClick() {
 
 function onExtractClick() {
 	emit('extract', group.value.id);
+}
+
+function onAddToChatClick() {
+	emit('add-nodes-to-chat', group.value.id);
 }
 
 // Matches the context menu wording for group targets:
@@ -459,6 +466,20 @@ function onWrapperPointerDown(event: PointerEvent) {
 							:aria-label="extractLabel"
 							data-test-id="canvas-node-group-extract"
 							@click.stop="onExtractClick"
+						/>
+					</KeyboardShortcutTooltip>
+					<KeyboardShortcutTooltip
+						v-if="isNodeContextEnabled"
+						:label="i18n.baseText('canvas.nodeGroup.addToChat')"
+					>
+						<N8nIconButton
+							class="nodrag"
+							variant="ghost"
+							size="small"
+							icon="sparkles"
+							:aria-label="i18n.baseText('canvas.nodeGroup.addToChat')"
+							data-test-id="canvas-node-group-add-to-chat"
+							@click.stop="onAddToChatClick"
 						/>
 					</KeyboardShortcutTooltip>
 				</div>

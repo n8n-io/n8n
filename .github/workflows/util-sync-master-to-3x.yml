@@ -13,11 +13,13 @@
 # data files) are resolved in place during the replay — no PR, no commit, no human. When
 # master genuinely conflicts with 3.x on real code, 3.x is left untouched: a draft conflict
 # PR carrying the conflict markers (mechanical files pre-resolved) is opened on the sync
-# branch and #alerts-v3-sync is notified. The resolver fixes the markers in a commit of their
-# own and merges that PR with the normal merge button — never closes it, since closing
-# resolves nothing and the conflict returns. No further syncs run until it is merged. 3.x
-# itself never has markers at its tip (nightly images build from it) and the merge commit
-# holding them drops out of its history at the next replay.
+# branch and #alerts-v3-sync is notified. Delete/modify conflicts, which git cannot express
+# as markers, are resolved toward 3.x's side and listed in that PR as an explicit decision.
+# The resolver fixes the markers in a commit of their own and merges that PR with the normal
+# merge button — never closes it, since closing resolves nothing and the conflict returns.
+# No further syncs run until it is merged. 3.x itself never has markers at its tip (nightly
+# images build from it) and the merge commit holding them drops out of its history at the
+# next replay.
 #
 # See .github/DEVELOPING_V3.md for the full v3 development model.
 
@@ -67,11 +69,12 @@ jobs:
           persist-credentials: false # we push with an explicit token URL instead
 
       # Node + pnpm toolchain for the mechanical lockfile resolution
-      # (`pnpm install --lockfile-only`). No dependency install, no build.
+      # (`pnpm install --lockfile-only`). Only the script deps, no build.
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          install-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
           build-command: ''
 
       - name: Sync master into 3.x

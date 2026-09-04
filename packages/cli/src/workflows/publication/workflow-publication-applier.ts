@@ -15,7 +15,13 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { INode, WorkflowActivateMode } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
+import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
+import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
+import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';
 import type {
 	PublicationResult,
@@ -29,6 +35,7 @@ import {
 	type TriggerActivationFailure,
 	type TriggerActivationOutcome,
 	type TriggerOperationAbort,
+	type TriggerTeardownFailure,
 } from '@/workflows/triggers/workflow-trigger-activator';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
@@ -68,6 +75,10 @@ export class WorkflowPublicationApplier {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowService: WorkflowService,
 		private readonly telemetry: Telemetry,
+		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly ownershipService: OwnershipService,
+		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
+		private readonly durableJobProvisioner: DurableJobProvisioner,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -131,6 +142,9 @@ export class WorkflowPublicationApplier {
 		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
 		if (healSkip !== null) return healSkip;
 
+		const blocked = await this.enforcePublishPolicy(workflow, newVersion);
+		if (blocked !== null) return blocked;
+
 		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
@@ -180,15 +194,32 @@ export class WorkflowPublicationApplier {
 		abort.signal.throwIfAborted();
 
 		// Must happen BEFORE advancing the version, using the currently published
-		// version so the right webhooks are deregistered. A teardown failure here
-		// bubbles up so the version is not advanced.
+		// version so the right webhooks are deregistered. Teardown is best-effort
+		// for external webhook state (local routing stops first inside
+		// `deactivate`): abandoned external deregistrations ride along on the
+		// result rather than blocking the new version behind a third party. Only
+		// a failure that leaves local trigger state possibly live (a non-webhook
+		// close failure, or an abort) bubbles up so the version is not advanced.
+		let teardownFailures: TriggerTeardownFailure[] = [];
 		if (toRemove.size > 0 && oldVersion) {
-			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort);
+			({ externalTeardownFailures: teardownFailures } =
+				await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort));
 		}
+		// Whatever the activation outcome, the remove phase already ran (and the
+		// version advances below), so its abandoned external deregistrations must
+		// ride along for the reporter to surface.
+		const withTeardownFailures = (result: PublicationResult): PublicationResult =>
+			(result.type === 'completed' || result.type === 'partial' || result.type === 'failed') &&
+			teardownFailures.length > 0
+				? { ...result, teardownFailures }
+				: result;
 
-		await this.advancePublishedVersion(record);
-
+		// Inside the try: once teardown has run, any failure — advancing the
+		// version included — must return a `failed` result (not throw) so the
+		// teardown failures collected above still reach the reporter.
 		try {
+			await this.advancePublishedVersion(record);
+
 			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
 				const activationMode = this.resolveActivationMode(record, oldVersion);
@@ -199,23 +230,79 @@ export class WorkflowPublicationApplier {
 					activationMode,
 					abort,
 				);
-				return this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds);
+				return withTeardownFailures(
+					this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds),
+				);
 			}
 
 			if (toRemove.size > 0) {
 				await this.workflowTriggerActivator.updateTriggerCount(workflow, newVersion);
 			}
 		} catch (e) {
-			return { type: 'failed', error: ensureError(e) };
+			return withTeardownFailures({ type: 'failed', error: ensureError(e) });
 		}
 
-		return {
+		return withTeardownFailures({
 			type: 'completed',
 			triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
 				activated: [],
 				failures: [],
 			}),
-		};
+		});
+	}
+
+	/**
+	 * Blocks a version that policy objects to, or `null` to carry on.
+	 *
+	 * Runs before the trigger diff: the no-change branch still advances the
+	 * published version, which running triggers re-read on their next fire.
+	 */
+	private async enforcePublishPolicy(
+		workflow: WorkflowEntity,
+		newVersion: WorkflowHistory,
+	): Promise<PublicationResult | null> {
+		if (!this.policyEnforcementService.hasChecksFor('workflowPublish')) return null;
+
+		// Unguarded, as in `PolicyLifecycleHandler`: an unevaluated project rule is not
+		// a passed one, so a failed lookup fails the publication.
+		const project = await this.ownershipService.getWorkflowProjectCached(workflow.id);
+
+		try {
+			await this.policyEnforcementService.enforceWorkflowPublish({
+				workflow: { id: workflow.id, name: workflow.name, nodes: newVersion.nodes },
+				projectId: project.id,
+			});
+
+			return null;
+		} catch (e) {
+			// `instanceof`, not `isPolicyRefusal`: the violations and the `Error` shape
+			// below both need the typed instance.
+			if (!(e instanceof PolicyViolationError)) throw e;
+
+			this.logger.warn('Workflow publication blocked by policy', {
+				workflowId: workflow.id,
+				versionId: newVersion.versionId,
+				violations: e.violations.map((violation) => violation.kind),
+			});
+
+			// Report every trigger as failed: `activated` rows left behind read as drift
+			// to the reconciler, which would then re-enqueue this forever.
+			const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
+			const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+
+			return {
+				type: 'failed',
+				error: e,
+				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+					activated: [],
+					failures: desiredTriggerNodes.map((node) => ({
+						nodeId: node.id,
+						nodeName: node.name,
+						error: e,
+					})),
+				}),
+			};
+		}
 	}
 
 	/**
@@ -243,8 +330,14 @@ export class WorkflowPublicationApplier {
 	 * successful `unpublished` to support idempotent retries — the reporter then
 	 * clears any trigger-status rows left behind by an interrupted unpublish.
 	 *
-	 * A teardown failure bubbles up (the consumer turns it into a `failed` result)
-	 * so the mapping is only removed once teardown has succeeded.
+	 * Only a teardown failure that leaves local trigger state possibly live (a
+	 * non-webhook close failure, or an abort) bubbles up — the consumer turns it
+	 * into a `failed` result and the mapping stays for the retry. A webhook's
+	 * external deregistration failure does not: local routing already stopped
+	 * inside `deactivate` (rows deleted before any external call), so the
+	 * unpublish completes with the abandoned nodes in `teardownFailures`.
+	 * Keeping the mapping for external garbage would make the reconciler
+	 * re-enqueue this unpublish forever and block deleting the workflow.
 	 */
 	private async unpublish(
 		workflow: WorkflowEntity,
@@ -259,18 +352,36 @@ export class WorkflowPublicationApplier {
 			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion).map((node) => node.id),
 		);
 
+		let teardownFailures: TriggerTeardownFailure[] = [];
 		if (oldVersion && toRemove.size > 0) {
 			abort.signal.throwIfAborted();
-			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort);
+			({ externalTeardownFailures: teardownFailures } =
+				await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort));
 		}
 
 		// Invalidate before the mapping is removed, so reads fall through to the
 		// database instead of the cache ever serving a version for an unpublished
 		// workflow. No repopulation follows: the end state has no published version.
 		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
+
+		// Before the mapping goes, not after. The mapping is what makes the workflow an
+		// owner of scheduled jobs, so removing it first would turn any job this misses
+		// into an orphan only the reconciliation sweep could find. The two are not one
+		// transaction: a crash between them, or a failing mapping removal, leaves no
+		// jobs and an intact mapping. The reconciler re-enqueues that unpublish, and
+		// the retry deprovisions nothing before it removes the mapping.
+		//
+		// Keyed by the workflow alone, not by the nodes deactivated above, so a job
+		// whose node is gone from the version goes too.
+		await this.durableJobProvisioner.deprovisionOwner(
+			this.workflowScheduledJobOwner.ref(record.workflowId),
+		);
+
 		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
 
-		return { type: 'unpublished' };
+		return teardownFailures.length > 0
+			? { type: 'unpublished', teardownFailures }
+			: { type: 'unpublished' };
 	}
 
 	/**
@@ -330,9 +441,9 @@ export class WorkflowPublicationApplier {
 	private toActivationError(failures: TriggerActivationFailure[]): Error {
 		if (failures.length === 1) return failures[0].error;
 
-		const detail = failures
-			.map((failure) => `"${failure.nodeName}": ${failure.error.message}`)
-			.join('; ');
+		const detail = formatNodeFailures(
+			failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+		);
 
 		return new Error(`Triggers failed to activate: ${detail}`);
 	}

@@ -10,7 +10,6 @@ import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -20,7 +19,6 @@ export function useSettingsItems() {
 	const { canUserAccessRouteByName } = useUserHelpers(router);
 	const { balance } = useAiGateway();
 	const { openTopUp } = useAiGatewayTopUp();
-	const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
 		const menuItems: IMenuItem[] = [
@@ -120,6 +118,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
 			},
 			{
+				id: 'settings-git-connections',
+				icon: 'git-branch',
+				label: i18n.baseText('settings.gitConnections.title'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.GIT_CONNECTIONS_SETTINGS),
+				route: { to: { name: VIEWS.GIT_CONNECTIONS_SETTINGS } },
+			},
+			{
 				id: 'settings-sso',
 				icon: 'user-lock',
 				label: i18n.baseText('settings.sso'),
@@ -133,7 +139,7 @@ export function useSettingsItems() {
 				label: i18n.baseText('settings.encryptionKeys'),
 				position: 'top',
 				available:
-					envFeatureFlagCheck.value('ENCRYPTION_KEY_ROTATION') &&
+					settingsStore.moduleSettings['encryption-key-manager']?.rotationEnabled === true &&
 					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
 				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
 			},
@@ -172,17 +178,6 @@ export function useSettingsItems() {
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS),
 			route: { to: { name: VIEWS.LOG_STREAMING_SETTINGS } },
-		});
-
-		menuItems.push({
-			id: 'settings-opentelemetry',
-			icon: 'telescope',
-			label: i18n.baseText('settings.opentelemetry'),
-			position: 'top',
-			available:
-				settingsStore.isModuleActive('otel') &&
-				hasPermission(['rbac'], { rbac: { scope: 'otel:manage' } }),
-			route: { to: { name: VIEWS.OPENTELEMETRY_SETTINGS } },
 		});
 
 		menuItems.push({

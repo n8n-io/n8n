@@ -35,7 +35,7 @@ tags:
     description: API capability discovery
   - name: Evaluation
     description: Operations about evaluation test runs
-  - name: Execution
+  - name: Executions
     description: Operations about executions
   - name: Folders
     description: Operations about folders
@@ -101,32 +101,14 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
   /credentials/{id}/transfer:
     $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
-  /executions:
-    $ref: './handlers/executions/spec/paths/executions.yml'
-  /executions/{id}:
-    $ref: './handlers/executions/spec/paths/executions.id.yml'
   /executions/{id}/retry:
     $ref: './handlers/executions/spec/paths/executions.id.retry.yml'
-  /executions/{id}/stop:
-    $ref: './handlers/executions/spec/paths/executions.id.stop.yml'
-  /executions/stop:
-    $ref: './handlers/executions/spec/paths/executions.stop.yml'
-  /executions/{id}/tags:
-    $ref: './handlers/executions/spec/paths/executions.id.tags.yml'
   /tags:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
-  /workflows:
-    $ref: './handlers/workflows/spec/paths/workflows.yml'
-  /workflows/{id}:
-    $ref: './handlers/workflows/spec/paths/workflows.id.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
-  /workflows/{id}/activate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
-  /workflows/{id}/deactivate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
   /workflows/{id}/test-runs:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
   /workflows/{id}/test-runs/{runId}:

@@ -69,21 +69,42 @@ jobs:
               ;;
           esac
 
+      # Checking out `base-branch` directly (rather than fetching everything and switching
+      # afterwards) keeps that case to a single-commit fetch. scope=changed does need history back
+      # to `base-ref`, but only to diff it: `git diff --name-only --no-renames` reads trees, so the
+      # blobs can stay on the server. Nothing after this step reads an object outside the working
+      # tree, which the checkout materializes in full.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          fetch-depth: 0
+          ref: ${{ inputs.base-branch }}
+          fetch-depth: ${{ inputs.base-branch != '' && 1 || 0 }}
+          filter: blob:none
           persist-credentials: false
 
-      - name: Switch to base branch
-        if: inputs.base-branch != ''
+      # A `base-branch` can point at a release line that predates this tooling (the v1 patch track
+      # is the live case), where there is simply nothing to verify. Without a base-branch the ref is
+      # the caller's own revision, on which the package must exist — a move or rename has to fail
+      # loudly rather than quietly turn this into a green job that verified nothing.
+      - name: Check the verifier is present on this ref
+        id: verifier
         env:
           BASE_BRANCH: ${{ inputs.base-branch }}
-        run: git checkout "$BASE_BRANCH"
+        run: |
+          if [ -f packages/testing/code-health/package.json ]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          elif [ -n "$BASE_BRANCH" ]; then
+            echo 'present=false' >> "$GITHUB_OUTPUT"
+            echo "::notice::packages/testing/code-health is absent on \"$BASE_BRANCH\"; nothing to verify."
+          else
+            echo '::error::packages/testing/code-health is missing (moved or renamed?).'
+            exit 1
+          fi
 
       # Only the verifier's own closure needs compiling. The check reads package.json out of the
-      # npm-install graph, so the packed tarballs' contents don't matter, and the two packages with
-      # a prepack hook build themselves.
+      # npm-install graph, so the packed tarballs' contents don't matter — packing skips lifecycle
+      # scripts, and the workspace install exists so `pnpm pack` can resolve `workspace:` specs.
       - name: Setup and Build
+        if: steps.verifier.outputs.present == 'true'
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm turbo run build --filter=@n8n/code-health...
@@ -91,7 +112,7 @@ jobs:
       # `--dir` rather than `--filter`: a filter matching nothing exits 0, so a renamed or moved
       # package would turn this into a green job that verified nothing.
       - name: Verify npm-install closure (changed packages)
-        if: inputs.scope == 'changed'
+        if: steps.verifier.outputs.present == 'true' && inputs.scope == 'changed'
         env:
           BASE_REF: ${{ inputs.base-ref }}
         run: |
@@ -101,7 +122,7 @@ jobs:
           pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --changed="$BASE_REF" $REPORT_ONLY
 
       - name: Verify npm-install closure (all packages)
-        if: inputs.scope == 'all'
+        if: steps.verifier.outputs.present == 'true' && inputs.scope == 'all'
         run: |
           # shellcheck disable=SC2086 # see the scoped step above
           pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --all $REPORT_ONLY

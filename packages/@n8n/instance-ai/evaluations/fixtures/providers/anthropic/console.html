@@ -14,13 +14,16 @@
       combobox "Expires", button "Add", button "Close"
     dialog "Save your API key" [level=2]: button "Copy Key", button "Done"
 
-  Two properties that are load-bearing, both taken from the real page:
+  Three properties that are load-bearing, all taken from the real page:
   1. The list is PRE-POPULATED with truncated keys. An agent that grabs a
      displayed value instead of the freshly issued one captures an ellipsised
      string — a real failure mode, and one the exact-value check is meant to
      catch. An empty list would hide it.
   2. The submit button is "Add", NOT "Create Key" — "Create Key" only opens the
      dialog. An agent that clicks the wrong one never creates anything.
+  3. "Add" is DISABLED until Expires has a value, and Expires opens unselected —
+     the real dialog's own rule, and the required-field gap NODE-5755 tracks.
+     Defaulting it to "Never" tested past the bug.
 
   The captured tree was German (the user's browser locale). Rendered in English
   here because the eval corpus is English; re-check names if a locale-specific
@@ -95,13 +98,26 @@
 				</select>
 				<label for="key-name">Name</label>
 				<input id="key-name" name="key-name" type="text" value="" />
-				<label for="expires">Expires</label>
-				<select id="expires" name="expires">
-					<option value="never" selected>Never</option>
-					<option value="30d">30 days</option>
-					<option value="90d">90 days</option>
-				</select>
-				<button id="create-submit" type="button">Add</button>
+				<!-- A custom dropdown, not a native <select>: in the real trace the
+				     agent set this by CLICKING items. A native <option> cannot be
+				     clicked, which would invent a dead end the real console lacks. -->
+				<span id="expires-label">Expires</span>
+				<button
+					id="expires-trigger"
+					type="button"
+					role="combobox"
+					aria-labelledby="expires-label"
+					aria-expanded="false"
+					aria-controls="expires-list"
+				>
+					Select an option
+				</button>
+				<ul id="expires-list" role="listbox" aria-labelledby="expires-label" hidden>
+					<li role="option" data-value="never">Never</li>
+					<li role="option" data-value="30d">30 days</li>
+					<li role="option" data-value="90d">90 days</li>
+				</ul>
+				<button id="create-submit" type="button" disabled>Add</button>
 			</div>
 
 			<!-- Reveal dialog — the ONLY place the full key ever appears. -->
@@ -120,6 +136,32 @@
 			const reveal = document.getElementById('reveal');
 			const keyValue = document.getElementById('key-value');
 			const nameInput = document.getElementById('key-name');
+			const expiresTrigger = document.getElementById('expires-trigger');
+			const expiresList = document.getElementById('expires-list');
+			const submit = document.getElementById('create-submit');
+			let expiresValue = '';
+
+			expiresTrigger.addEventListener('click', () => {
+				const willOpen = expiresList.hidden;
+				expiresList.hidden = !willOpen;
+				expiresTrigger.setAttribute('aria-expanded', String(willOpen));
+			});
+
+			// Add stays disabled until Expires has a value — the dead end the agent
+			// has to diagnose.
+			const options = [...expiresList.querySelectorAll('[role="option"]')];
+			for (const option of options) {
+				option.addEventListener('click', () => {
+					expiresValue = option.dataset.value;
+					expiresTrigger.textContent = option.textContent;
+					for (const other of options) {
+						other.setAttribute('aria-selected', String(other === option));
+					}
+					expiresList.hidden = true;
+					expiresTrigger.setAttribute('aria-expanded', 'false');
+					submit.disabled = false;
+				});
+			}
 
 			document.getElementById('create-key').addEventListener('click', () => {
 				dialog.hidden = false;
@@ -135,7 +177,7 @@
 					body: JSON.stringify({
 						name: nameInput.value || 'Untitled',
 						workspace: document.getElementById('workspace').value,
-						expires: document.getElementById('expires').value,
+						expires: expiresValue,
 					}),
 				});
 				const { key } = await response.json();
@@ -152,7 +194,9 @@
 					key.slice(-4) +
 					'</code></td><td>' +
 					document.getElementById('workspace').value +
-					'</td><td>Eval Owner</td><td>just now</td><td>Never</td><td>—</td>' +
+					'</td><td>Eval Owner</td><td>just now</td><td>' +
+					expiresTrigger.textContent +
+					'</td><td>—</td>' +
 					'<td><button type="button">Delete</button></td>';
 				document.getElementById('key-rows').prepend(row);
 				const count = document.getElementById('key-count');

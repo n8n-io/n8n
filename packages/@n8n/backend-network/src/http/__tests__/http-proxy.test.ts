@@ -1,6 +1,7 @@
+import dns from 'dns';
 import http from 'http';
 import https from 'https';
-import type { AddressInfo } from 'net';
+import type { AddressInfo, LookupFunction } from 'net';
 import nock from 'nock';
 import { promisify } from 'util';
 
@@ -59,12 +60,12 @@ async function createMockProxyServer() {
 	};
 }
 
-async function makeRequest(url: string): Promise<TestResponse> {
+async function makeRequest(url: string, options: http.RequestOptions = {}): Promise<TestResponse> {
 	return await new Promise((resolve, reject) => {
 		const urlObj = new URL(url);
 		const httpModule = urlObj.protocol === 'https:' ? https : http;
 
-		const req = httpModule.get(url, { timeout: 5000 }, (res) => {
+		const req = httpModule.get(url, { timeout: 5000, ...options }, (res) => {
 			let data = '';
 			res.on('data', (chunk) => (data += chunk));
 			res.on('end', () => {
@@ -232,6 +233,38 @@ describe('HTTP Proxy Tests', () => {
 			expectProxiedResponse(response);
 		} else {
 			expectDirectResponse(response, scope);
+		}
+	});
+
+	test('should honour a per-request lookup on the direct path', async () => {
+		const targetServer = http.createServer((_req, res) => {
+			res.setHeader('Content-Type', 'application/json');
+			res.end(JSON.stringify({ message: 'direct', timestamp: Date.now() }));
+		});
+		await new Promise<void>((resolve, reject) => {
+			targetServer.listen(0, '127.0.0.1', resolve);
+			targetServer.on('error', reject);
+		});
+		const { port } = targetServer.address() as AddressInfo;
+
+		process.env.HTTP_PROXY = proxyServer.url;
+		process.env.NO_PROXY = 'localhost';
+		installGlobalProxyAgent();
+
+		const lookedUp: string[] = [];
+		const lookup: LookupFunction = (hostname, options, onResult) => {
+			lookedUp.push(hostname);
+			dns.lookup(hostname, { ...options, family: 4 }, onResult);
+		};
+
+		try {
+			const response = await makeRequest(`http://localhost:${port}/test`, { lookup });
+
+			expect(response.message).toBe('direct');
+			expect(lookedUp).toEqual(['localhost']);
+			expect(proxyServer.capturedRequests).toHaveLength(0);
+		} finally {
+			await promisify(targetServer.close.bind(targetServer))();
 		}
 	});
 

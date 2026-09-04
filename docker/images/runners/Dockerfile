@@ -1,5 +1,5 @@
-ARG NODE_VERSION=26.5.1
-ARG PNPM_VERSION=10.32.1
+ARG NODE_VERSION=26.7.0
+ARG PNPM_VERSION=11.25.0
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
@@ -11,13 +11,7 @@ COPY ./dist/task-runner-javascript /app/task-runner-javascript
 WORKDIR /app/task-runner-javascript
 
 # Pin pnpm to the repo's packageManager version. `pnpm deploy` drops the
-# packageManager field from the deployed package.json, so nothing else here pins it,
-# and pnpm 11.x defaults minimumReleaseAge to 1440 (24h), which would make the
-# `pnpm add` below reject any dependency published less than a day ago — e.g. a
-# first-party @n8n_io/ai-assistant-sdk bump landed within hours of its npm publish.
-# This container step only re-resolves an already-vetted, already-pinned dependency
-# set; the real supply-chain age policy is enforced by the host install
-# (pnpm-workspace.yaml + SafeChain).
+# packageManager field from the deployed package.json, so nothing else here pins it.
 ARG PNPM_VERSION
 RUN npm i -g "pnpm@${PNPM_VERSION}"
 
@@ -36,9 +30,14 @@ RUN node -e "const pkg = require('./package.json'); \
     delete pkg.devDependencies; \
     require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
 
+# `--config.minimum-release-age=0`: pnpm 11 defaults it to 1440 (24h), which would make
+# this reject any dependency published less than a day ago — e.g. a first-party
+# @n8n_io/ai-assistant-sdk bump landed within hours of its npm publish. This step only
+# re-resolves an already-vetted, already-pinned dependency set; the real supply-chain age
+# policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
 # Install moment (special case for backwards compatibility)
 RUN rm -f node_modules/.modules.yaml && \
-    pnpm add moment@2.30.1 --prod --no-lockfile
+    pnpm add moment@2.30.1 --prod --no-lockfile --config.minimum-release-age=0
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv

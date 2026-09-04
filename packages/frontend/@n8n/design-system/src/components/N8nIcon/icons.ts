@@ -160,8 +160,10 @@ import IconLucideInfo from '~icons/lucide/info';
 import IconLucideItalic from '~icons/lucide/italic';
 import IconLucideKeyRound from '~icons/lucide/key-round';
 import IconLucideLanguages from '~icons/lucide/languages';
+import IconLucideLaptop from '~icons/lucide/laptop';
 import IconLucideLayers from '~icons/lucide/layers';
 import IconLucideLayoutTemplate from '~icons/lucide/layout-template';
+import IconLucideLifeBuoy from '~icons/lucide/life-buoy';
 import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
@@ -665,8 +667,10 @@ export const updatedIconSet = {
 	italic: IconLucideItalic,
 	'key-round': IconLucideKeyRound,
 	languages: IconLucideLanguages,
+	laptop: IconLucideLaptop,
 	layers: IconLucideLayers,
 	'layout-template': IconLucideLayoutTemplate,
+	'life-buoy': IconLucideLifeBuoy,
 	lightbulb: IconLucideLightbulb,
 	link: IconLucideLink,
 	list: IconLucideList,

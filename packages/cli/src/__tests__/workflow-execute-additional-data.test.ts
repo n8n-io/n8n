@@ -271,7 +271,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 			);
 
-			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
+			// getBase backfills projectId from the workflow owner (mocked to
+			// 'project-id-1' in this describe's beforeEach) before calling getVariables.
+			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, 'project-id-1');
 		});
 
 		describe('credential permission check routing', () => {
@@ -1330,6 +1332,52 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(additionalData.workflowSettings).toBe(workflowSettings);
 		});
+
+		describe('projectId resolution', () => {
+			const ownershipService = mockInstance(OwnershipService);
+
+			beforeEach(() => {
+				ownershipService.getWorkflowProjectCached.mockReset();
+				// Both this and the executeWorkflow/executeAgent describes call
+				// mockInstance(OwnershipService), which each Container.set a fresh mock.
+				// Re-bind ours so the source resolves it.
+				Container.set(OwnershipService, ownershipService);
+			});
+
+			it('backfills projectId from the workflow owner when missing', async () => {
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(
+					mock<Project>({ id: 'owning-project-1' }),
+				);
+
+				const additionalData = await getBase({ workflowId: 'workflow-1' });
+
+				expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
+				expect(additionalData.projectId).toBe('owning-project-1');
+			});
+
+			it('keeps the given projectId untouched when already present', async () => {
+				const additionalData = await getBase({
+					workflowId: 'workflow-1',
+					projectId: 'given-project',
+				});
+
+				expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+				expect(additionalData.projectId).toBe('given-project');
+			});
+
+			it('leaves projectId unset when workflowId is missing', async () => {
+				const additionalData = await getBase();
+
+				expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+				expect(additionalData.projectId).toBeUndefined();
+			});
+
+			it('rejects when the workflow has no resolvable owning project', async () => {
+				ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('not found'));
+
+				await expect(getBase({ workflowId: 'workflow-1' })).rejects.toThrow('not found');
+			});
+		});
 	});
 
 	describe('executeAgent', () => {
@@ -1641,6 +1689,61 @@ describe('WorkflowExecuteAdditionalData', () => {
 				projectId: 'project-1',
 				sessionId: THREAD_ID,
 				threadId: PROJECT_THREAD_ID,
+			});
+		});
+
+		it('bridges the invocation context to response chunks and editor progress', async () => {
+			const sendDataToUI = vi.fn();
+			const sendResponseChunk = vi.fn().mockResolvedValue(undefined);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+				sendDataToUI,
+			});
+
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'webhook',
+				undefined,
+				undefined,
+				{
+					nodeId: 'node-1',
+					nodeName: 'Message an Agent',
+					runIndex: 2,
+					itemIndex: 3,
+					sendResponseChunk,
+				},
+			);
+
+			expect(agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[9]).toEqual(
+				executionSandboxScope,
+			);
+			const streamObserver = agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[10];
+			expect(streamObserver).toEqual(expect.any(Function));
+
+			await streamObserver?.({ type: 'response-delta', delta: 'hello' });
+			await streamObserver?.({
+				type: 'capability-start',
+				toolCallId: 'tc-1',
+				capability: { kind: 'tool', name: 'lookup' },
+			});
+
+			expect(sendResponseChunk).toHaveBeenCalledWith('item', 'hello');
+			expect(sendDataToUI).toHaveBeenCalledWith('agentNodeProgress', {
+				executionId: EXEC_ID,
+				nodeId: 'node-1',
+				nodeName: 'Message an Agent',
+				runIndex: 2,
+				itemIndex: 3,
+				sequenceNumber: 0,
+				toolCallId: 'tc-1',
+				capability: { kind: 'tool', name: 'lookup' },
+				status: 'running',
 			});
 		});
 

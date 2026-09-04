@@ -32,7 +32,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
@@ -48,6 +52,7 @@ import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	clearPendingAgentAttachment,
+	consumePendingDraftAttachment,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
@@ -56,6 +61,7 @@ import {
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	stashPendingComposerDraft,
+	stashPendingFirstMessage,
 	stashPendingHandoffContext,
 } from './composables/useInstanceAiHandoff';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
@@ -86,6 +92,8 @@ import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavai
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
@@ -169,8 +177,8 @@ watch(
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // True when at least one pending confirmation should occupy the chat-input
-// slot (generic approvals + domain/web-search access). Drives the swap
-// between the input and the floating confirmation panel.
+// slot (questions, generic approvals, or domain/web-search access). Drives
+// the swap between the input and the floating confirmation panel.
 const hasFloatingConfirmation = computed(() =>
 	thread.pendingConfirmations.some(isPendingItemFloating),
 );
@@ -652,6 +660,14 @@ watch(chatInputRef, (el) => {
 });
 
 watch(
+	() => store.composerFocusRequest,
+	() => {
+		isPreviewExpanded.value = false;
+		void nextTick(() => chatInputRef.value?.focus());
+	},
+);
+
+watch(
 	[chatInputRef, pendingComposerDraft, () => thread.activePlanEdit],
 	([input, draft, planEdit]) => {
 		if (!input || !draft || planEdit) return;
@@ -729,6 +745,8 @@ function reconnectThreadAfterHydration(): void {
 		pendingAgentAttachment.value = agentAttachment;
 		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
 	}
+	const draftAttachment = consumePendingDraftAttachment(props.threadId);
+	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();
@@ -738,12 +756,20 @@ function reconnectThreadAfterHydration(): void {
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
 		const pending = consumePendingFirstMessage(props.threadId);
 		if (pending) {
-			void thread.sendMessage(
-				pending.message,
-				pending.attachments,
-				rootStore.pushRef,
-				pending.context,
-			);
+			void thread
+				.sendMessage(pending.message, pending.attachments, rootStore.pushRef, pending.context)
+				.then((sent) => {
+					if (sent) return;
+					// Consuming already removed it, so a refused send (e.g. a concurrency cap)
+					// would otherwise discard a message the user typed in another tab. Put it
+					// back so the next mount replays it -- but only while there is still a
+					// thread to replay it into, otherwise the payload would be stranded in
+					// localStorage for a thread that no longer exists.
+					if (!store.threads.some((t) => t.id === props.threadId)) return;
+					stashPendingFirstMessage(props.threadId, pending);
+				});
+			// Experiment cleanup: remove with openWorkflowInAssistant.
+			useOpenWorkflowInAssistantStore().handleRedirectLanding(props.threadId);
 		}
 	});
 }
@@ -860,6 +886,8 @@ function handleSubmit(
 		? [...(attachments ?? []), agentAttachment]
 		: attachments;
 
+	const nodeCount = countAttachedNodes(attachments);
+
 	void thread
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
@@ -868,6 +896,18 @@ function handleSubmit(
 				const input = chatInputRef.value;
 				if (input && !input.isDirty()) input.setText(message);
 				return;
+			}
+			// Track message-with-nodes only after a successful send, so failed
+			// sends and retries don't inflate the node-count metric.
+			if (nodeCount > 0) {
+				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
+					node_count: nodeCount,
+				});
+			}
+			// Clear the canvas selection only once the send succeeded — clearing it
+			// up front loses the selection on a failed send that the user retries.
+			if (submittedAttachments?.some((a) => a.type === 'nodes')) {
+				store.requestClearCanvasSelection();
 			}
 			const isCurrentHandoff = !handoffContext || pendingComposerContext.value === handoffContext;
 			const isCurrentDraft =
@@ -1165,8 +1205,8 @@ async function dismissComposerContextChip() {
 										:agent-node="builder"
 									/>
 								</div>
-								<!-- Inline confirmations (questions, plan review, text, setup,
-									 credential, gateway resource-decision, continue) render in
+								<!-- Inline confirmations (plan review, text, setup, credential,
+									 gateway resource-decision, continue) render in
 									 the chat flow. Floating-eligible items take over the chat
 									 input slot below instead - see `hasFloatingConfirmation`. -->
 								<InstanceAiConfirmationPanel kind="inline" />
@@ -1197,7 +1237,7 @@ async function dismissComposerContextChip() {
 							</div>
 
 							<!-- Floating input slot - replaced by the confirmation panel while a
-								 floating-eligible approval is pending. The credit banner stays
+								 floating interaction is pending. The credit banner stays
 								 anchored above the slot in both states. The leaving child is
 								 positioned absolutely during the cross-fade so the in-flow child
 								 can size the slot to its natural height. -->
@@ -1227,7 +1267,6 @@ async function dismissComposerContextChip() {
 										/>
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
-											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
 											:amounts-hidden="quotaLocked"
@@ -1325,7 +1364,6 @@ async function dismissComposerContextChip() {
 					:supported-directions="['left']"
 					:is-resizing-enabled="!isPreviewExpanded"
 					:grid-size="8"
-					:outset="true"
 					@resize="handlePreviewResize"
 					@resizestart="isResizingPreview = true"
 					@resizeend="isResizingPreview = false"
@@ -1383,6 +1421,8 @@ async function dismissComposerContextChip() {
 				</N8nResizeWrapper>
 			</div>
 		</Transition>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<OpenWorkflowInAssistantNotification :thread-id="threadId" />
 	</div>
 </template>
 
@@ -1431,31 +1471,6 @@ async function dismissComposerContextChip() {
 	flex-shrink: 0;
 	min-width: 0;
 	border-left: var(--border);
-
-	// Widen the resize handle hit area for easier grabbing
-	:global([data-test-id='resize-handle']) {
-		width: 12px !important;
-		left: -6px !important;
-
-		// Visible drag indicator line
-		&::after {
-			content: '';
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			width: 2px;
-			height: 32px;
-			border-radius: 1px;
-			background: var(--color--foreground);
-			opacity: 0;
-			transition: opacity 0.15s ease;
-		}
-
-		&:hover::after {
-			opacity: 1;
-		}
-	}
 }
 
 .canvasAreaExpanded {

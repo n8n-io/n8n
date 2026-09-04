@@ -10,6 +10,7 @@ import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBo
 import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
@@ -23,6 +24,8 @@ import {
 import { useInstanceAiMcpStore } from '../../instanceAiMcp.store';
 import type { InstanceAiMcpConnection } from '../../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../../instanceAiMcp.telemetry';
+import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
+import { useInstanceAiComputerUseTelemetry } from '../../instanceAiComputerUse.telemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useMcpServerConnect } from '../../composables/useMcpServerConnect';
 import type {
@@ -31,6 +34,7 @@ import type {
 	McpRegistryServerToolResponse,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+
 import { iconForTool } from '../../toolIcons';
 import BrowserUseSetupContent from './BrowserUseSetupContent.vue';
 import ComputerUseSetupContent from './ComputerUseSetupContent.vue';
@@ -49,6 +53,9 @@ interface ServiceConnectionDefinition {
 	isConnected: boolean;
 }
 
+// Needed to properly handle `isOpen`
+defineOptions({ inheritAttrs: false });
+
 const props = defineProps<{
 	modalName: string;
 }>();
@@ -57,6 +64,8 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
+const browserUseTelemetry = useInstanceAiBrowserUseTelemetry();
+const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
 const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
@@ -72,7 +81,6 @@ const isComputerUseEnabled = computed(
 const isBrowserUseEnabled = computed(
 	() => isBrowserUseFeatureEnabled.value && settingsStore.isBrowserUseEnabledByAdmin,
 );
-
 function readConnectionIdPayload(data: unknown): string | null {
 	if (data === null || typeof data !== 'object') return null;
 	const value = (data as Record<string, unknown>).connectionId;
@@ -377,17 +385,23 @@ async function handleDisconnect(item: ToolConnectionItem) {
 	activeItemId.value = null;
 }
 
+function handleDetailItemUpdate(item: ToolConnectionItem | null) {
+	activeItemId.value = item?.id ?? null;
+	if (item?.kind !== 'service') return;
+
+	if (item.serviceId === BROWSER_USE_CONNECTION_TYPE) {
+		browserUseTelemetry.trackModalOpened('tools_modal');
+	} else if (item.serviceId === COMPUTER_USE_CONNECTION_TYPE) {
+		computerUseTelemetry.trackModalOpened(settingsStore.isGatewayConnected, 'tools_modal');
+	}
+}
+
 async function handleConnect(item: ToolConnectionItem) {
-	switch (item.kind) {
-		case 'service':
-			activeItemId.value = item.id;
-			break;
-		case 'mcp-server':
-			const server = findServerForItem(item);
-			if (server) {
-				showConnectedServer(await connectServer(server));
-			}
-			break;
+	if (item.kind !== 'mcp-server') return;
+
+	const server = findServerForItem(item);
+	if (server) {
+		showConnectedServer(await connectServer(server));
 	}
 }
 </script>
@@ -397,10 +411,12 @@ async function handleConnect(item: ToolConnectionItem) {
 		v-model:open="isOpen"
 		:items="items"
 		:categories="['all', 'built-in', 'mcp']"
+		:title="i18n.baseText('instanceAi.connections.modal.title')"
+		:search-placeholder="i18n.baseText('instanceAi.connections.modal.searchPlaceholder')"
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
 		:hide-back-button="isDirectConnectionOpen"
-		@update:detail-item="(item) => (activeItemId = item?.id ?? null)"
+		@update:detail-item="handleDetailItemUpdate"
 		@select-credential="handleSelectCredential"
 		@credential-dropdown-open="handleCredentialDropdownOpen"
 		@first-credential-connect="handleFirstCredentialConnect"
@@ -409,6 +425,12 @@ async function handleConnect(item: ToolConnectionItem) {
 		@save="handleSave"
 		@disconnect="handleDisconnect"
 	>
+		<template #suggestion-footer>
+			<McpRegistrySuggestionFooter
+				:prompt="i18n.baseText('instanceAi.connections.modal.suggestion.prompt')"
+				:action="i18n.baseText('instanceAi.connections.modal.suggestion.action')"
+			/>
+		</template>
 		<template #detail-body="{ item }">
 			<template v-if="item.kind === 'service' && activeServiceDefinition">
 				<component

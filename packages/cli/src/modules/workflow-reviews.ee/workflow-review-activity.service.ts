@@ -20,9 +20,9 @@ import { Service } from '@n8n/di';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 
-import { WorkflowReviewAccessService } from './workflow-review-access.service';
-import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
+import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toActivityEntry, toEligibleReviewer } from './workflow-review.mapper';
 
@@ -30,14 +30,14 @@ import { toActivityEntry, toEligibleReviewer } from './workflow-review.mapper';
 export class WorkflowReviewActivityService {
 	constructor(
 		private readonly featureGate: WorkflowReviewFeatureGate,
-		private readonly accessService: WorkflowReviewAccessService,
-		private readonly eligibilityService: WorkflowReviewEligibilityService,
+		private readonly authorizationService: WorkflowReviewAuthorizationService,
 		private readonly activityRepository: WorkflowReviewActivityRepository,
 		private readonly activityCommentRepository: WorkflowReviewActivityCommentRepository,
 		private readonly requestRepository: WorkflowReviewRequestRepository,
 		private readonly userRepository: UserRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
 	) {}
 
 	async listActivity(
@@ -46,7 +46,7 @@ export class WorkflowReviewActivityService {
 		query: ListWorkflowReviewActivityQueryDto,
 	): Promise<ListWorkflowReviewActivityResponse> {
 		await this.featureGate.assertAvailable();
-		await this.accessService.findReadableRequestOrFail(user, workflowReviewRequestId);
+		await this.authorizationService.findReadableRequestOrFail(user, workflowReviewRequestId);
 
 		const { entries, hasMore } = await this.activityRepository.findFeedPage(
 			{
@@ -70,12 +70,12 @@ export class WorkflowReviewActivityService {
 	): Promise<WorkflowReviewActivityEntry> {
 		await this.featureGate.assertAvailable();
 
-		const access = await this.accessService.findReadableRequestOrFail(
+		const access = await this.authorizationService.findReadableRequestOrFail(
 			user,
 			workflowReviewRequestId,
 		);
 
-		const eligibility = await this.eligibilityService.resolveViewerEligibility(user, access);
+		const eligibility = await this.authorizationService.resolveViewerEligibility(user, access);
 		if (!eligibility.canComment) {
 			throw new ForbiddenError('You are not allowed to comment on this review');
 		}
@@ -107,6 +107,11 @@ export class WorkflowReviewActivityService {
 				ctx,
 			);
 			return { activity, message };
+		});
+
+		this.eventService.emit('workflow-review-comment-created', {
+			user,
+			workflowReviewRequestId,
 		});
 
 		return toActivityEntry(

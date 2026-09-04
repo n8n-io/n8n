@@ -6,6 +6,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
 	findVectorStoreToolNameCollisions,
+	getAgentModelProviderCredentialTypes,
 	getWorkflowToolIncompatibilityReason,
 	isDraftAgentConfig,
 	isDraftIntegration,
@@ -28,7 +29,6 @@ import { NodeTypes } from '@/node-types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
-import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -273,7 +273,7 @@ export class AgentValidationService {
 
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
-		await this.collectMainCredentialIssues(config, findCredential, issues);
+		await this.collectMainCredentialIssues(config, findCredential, ctx.credentialProvider, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
 		if (scope === 'publish') {
@@ -353,6 +353,7 @@ export class AgentValidationService {
 	private async collectMainCredentialIssues(
 		config: AgentJsonConfig,
 		findCredential: FindCredential,
+		credentialProvider: CredentialProvider,
 		issues: AgentConfigValidationIssue[],
 	) {
 		if (!config.credential?.trim()) {
@@ -392,11 +393,33 @@ export class AgentValidationService {
 		) {
 			issues.push(agentIssue('incompatible_credential', 'credential'));
 		}
+
+		// Azure OpenAI classic deployments are user-named in Azure and surfaced in
+		// the deployment-based URL path. The catalog model id is not the deployment
+		// id, so a classic endpoint without a deployment name 404s at run time
+		// ("resource not found"). Surface that at save/publish time instead. Foundry
+		// and other endpoint types are unaffected.
+		const provider = model ? getProviderPrefix(model) : undefined;
+		if (provider === 'azure-openai' && !config.modelDeploymentName?.trim()) {
+			let endpointType: unknown;
+			try {
+				const data = await credentialProvider.resolve(credentialId);
+				endpointType = data?.endpointType;
+			} catch {
+				// A credential that can't be resolved here will already be reported
+				// elsewhere; don't let a transient resolve failure block publish
+				// by assuming Classic and requiring a deployment name.
+				return;
+			}
+			if (endpointType !== 'foundry') {
+				issues.push(agentIssue('missing_required', 'modelDeploymentName'));
+			}
+		}
 	}
 
 	private collectSubAgentRefIssues(
 		ctx: ConfigurationValidationContext,
-		agentsById: Map<string, Pick<Agent, 'id' | 'activeVersionId'>>,
+		agentsById: Map<string, Pick<Agent, 'id'>>,
 		issues: AgentConfigValidationIssue[],
 	) {
 		const refs = ctx.config.subAgents?.agents ?? [];
@@ -417,11 +440,6 @@ export class AgentValidationService {
 			const target = agentsById.get(ref.agentId);
 			if (!target) {
 				issues.push(issue('missing_reference', path, capability));
-				continue;
-			}
-
-			if (!target.activeVersionId) {
-				issues.push(issue('incompatible_reference', path, capability));
 			}
 		}
 	}
@@ -736,7 +754,9 @@ export class AgentValidationService {
 	}
 
 	private credentialSupportsModel(credentialType: string, model: string) {
-		return LLM_PROVIDER_DEFAULTS[credentialType]?.provider === getProviderPrefix(model);
+		const provider = getProviderPrefix(model);
+		if (!provider) return false;
+		return getAgentModelProviderCredentialTypes(provider).includes(credentialType);
 	}
 
 	/**

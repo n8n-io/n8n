@@ -445,11 +445,16 @@ export class PlaywrightAdapter {
 		const locator = await this.resolveLocator(pageId, target);
 		await this.ensureActionable(locator, target, 'editable');
 
-		if (options?.clear) {
-			await locator.clear();
-		}
+		if (options?.mode === 'paste') {
+			// Code editors mangle key-by-key entry: auto-close and auto-indent fire per keystroke.
+			await locator.fill(text);
+		} else {
+			if (options?.clear) {
+				await locator.clear();
+			}
 
-		await locator.pressSequentially(text, { delay: options?.delay });
+			await locator.pressSequentially(text, { delay: options?.delay });
+		}
 
 		if (options?.submit) {
 			await locator.press('Enter');

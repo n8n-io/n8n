@@ -417,6 +417,7 @@ async function fetchAgent(
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	agent.value = data;
 	agentName.value = data.name;
+	upsertProjectAgentsListCache(targetProjectId, data);
 }
 
 async function fetchAgentFiles(
@@ -1230,6 +1231,15 @@ const headerActions = computed(() => {
 		});
 	}
 
+	actions.push({
+		id: 'version-history',
+		label: locale.baseText('agents.versionHistory.title'),
+		icon: 'history',
+		disabled: !agent.value?.hasPublishHistory,
+		checked: isVersionHistoryOpen.value,
+		divided: true,
+	});
+
 	if (canDeleteAgent.value) {
 		actions.push({
 			id: 'delete',
@@ -1279,6 +1289,10 @@ function openImportJsonModal() {
 }
 
 async function onHeaderAction(action: string) {
+	if (action === 'version-history') {
+		onToggleVersionHistory();
+		return;
+	}
 	if (action === 'export-json') {
 		await exportAgentJson();
 		return;
@@ -1502,7 +1516,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		// credentials the current user can use in this project context.
 		credentialsStore.setCredentials([]);
 		await Promise.all([
-			credentialsStore.fetchAllCredentialsForWorkflow({ projectId: targetProjectId }),
+			credentialsStore.fetchUsableCredentials({ projectId: targetProjectId }),
 			credentialsStore.fetchCredentialTypes(false),
 		]).catch(() => undefined);
 		if (!isCurrentInitialization()) return;
@@ -1818,10 +1832,10 @@ function onSwitchAgent(nextAgentId: string) {
 			:header-actions="headerActions"
 			:save-status="saveStatus"
 			:before-revert-to-published="settleAutosave"
-			:is-version-history-open="isVersionHistoryOpen"
 			:artifact-mode="isArtifactMode"
 			:editing-locked="props.artifactEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"
+			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
 			@header-action="onHeaderAction"
@@ -1831,7 +1845,6 @@ function onSwitchAgent(nextAgentId: string) {
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
-			@toggle-version-history="onToggleVersionHistory"
 		/>
 		<div
 			ref="builderContainer"
@@ -2017,51 +2030,11 @@ function onSwitchAgent(nextAgentId: string) {
 	justify-content: center;
 }
 
-.chatResizer {
-	flex-shrink: 0;
-	min-width: var(--agent-builder-chat-min-width);
-
-	:global([data-test-id='resize-handle']) {
-		width: var(--spacing--xs) !important;
-		right: calc(var(--spacing--xs) / -2) !important;
-
-		&::after {
-			content: '';
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			width: var(--spacing--5xs);
-			height: var(--spacing--xl);
-			border-radius: var(--radius--4xs);
-			background: var(--color--foreground);
-			opacity: 0;
-			transform: translate(-50%, -50%);
-			transition: opacity 0.15s ease;
-		}
-
-		&:hover::after {
-			opacity: 1;
-		}
-	}
-}
-
-.chatResizerFullWidth {
-	flex: 1 1 auto;
-}
-
 .showBuildChatButton {
 	position: absolute;
 	top: var(--spacing--2xs);
 	left: var(--spacing--2xs);
 	z-index: 3;
-}
-
-.isResizingChat {
-	.chatResizer {
-		:global([data-test-id='resize-handle'])::after {
-			opacity: 1;
-		}
-	}
 }
 
 .editorColumn {

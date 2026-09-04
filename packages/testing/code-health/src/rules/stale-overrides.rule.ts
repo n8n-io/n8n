@@ -20,7 +20,7 @@ export class StaleOverridesRule extends BaseRule<CodeHealthContext> {
 	readonly id = 'stale-overrides';
 	readonly name = 'Stale Overrides';
 	readonly description =
-		'Detect pnpm.overrides that duplicate catalog entries, target packages absent from the dep graph, or are redundant against current resolution';
+		'Detect pnpm-workspace overrides that duplicate catalog entries, target packages absent from the dep graph, or are redundant against current resolution';
 	readonly severity = 'warning' as const;
 
 	analyze(context: CodeHealthContext): Violation[] {
@@ -29,13 +29,13 @@ export class StaleOverridesRule extends BaseRule<CodeHealthContext> {
 		const workspaceFile = (options.workspaceFile as string) ?? 'pnpm-workspace.yaml';
 		const lockFile = (options.lockFile as string) ?? 'pnpm-lock.yaml';
 
-		const overrides = parseOverrides(rootDir);
+		const overrides = parseOverrides(rootDir, workspaceFile);
 		if (overrides.length === 0) return [];
 
 		const catalogData = parseCatalog(rootDir, workspaceFile);
 		const lockData = parsePnpmLock(rootDir, lockFile);
 		const declaredRanges = scanDeclaredRanges(rootDir);
-		const filePath = path.join(rootDir, 'package.json');
+		const filePath = path.join(rootDir, workspaceFile);
 
 		return [
 			...this.findCatalogDuplicates(overrides, catalogData, filePath),

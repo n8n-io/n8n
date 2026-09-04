@@ -43,6 +43,7 @@ import {
 import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
+import { executePriorRuns } from './prior-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -225,6 +226,11 @@ export interface BuildResult {
 	/** Agents restored by a seed — tracked here, not just in `artifactRefs`, so one
 	 *  the live turn never touched still gets cleaned up. */
 	createdAgentIds?: string[];
+	/** Projects a seed created. Torn down in `cleanupBuild` rather than at the
+	 *  end of the build turn: deleting a project cascades to what lives in it, and if
+	 *  a regression ever did let the agent write into one, an early delete would
+	 *  destroy the workflow under grading and read as a build failure. */
+	createdProjectIds?: string[];
 	/** Maps each scenario seed table's declared NAME to the real id it was created
 	 *  under (empty) before the build turn, so each scenario can reset+seed its
 	 *  rows into the table the built workflow actually bound (TRUST-311 follow-up).
@@ -257,6 +263,11 @@ export interface BuildResult {
 	/** Transport-level failure (network error, or the lane unreachable right
 	 *  after failing — e.g. timed out against a dead lane). Routed to `framework_issue`. */
 	transportFailure?: boolean;
+	/** Set when a `seed.priorRuns` staging run produced no execution record, so the
+	 *  history the case grades against does not exist. Unlike the other infra flags this
+	 *  one applies even when the BUILD SUCCEEDED, which is exactly the case that would
+	 *  otherwise be scored as an agent failure. */
+	priorRunFailed?: string;
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
@@ -458,6 +469,11 @@ export interface BuildWorkflowConfig {
 	/** Credential type for a `local` run, where there is no fixture manifest to
 	 *  read it from. */
 	credentialSetupType?: string;
+	/** Which case this build is, and which repeat of it. Recorded on the thread
+	 *  as sourceContext, which n8n surfaces on the LangSmith trace — the only
+	 *  thing that distinguishes one build from the hundreds of near-identical
+	 *  ones a suite produces. */
+	caseIdentity?: { fileSlug: string; iteration: number };
 }
 
 /** A case needs a workflow iff something judges one: execution scenarios or
@@ -490,6 +506,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
 	let restoredAgentIds: string[] = [];
+	/** Projects this run created, torn down after it — instance-level, so they
+	 *  outlive the thread and would otherwise pile up across runs. */
+	const seededProjectIds: string[] = [];
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
 	// TRUST-311 follow-up: scenario seed tables are created empty before the build
@@ -505,6 +524,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let builtDataTableIds: string[] = [];
 	let seededTranscript: TranscriptTurn[] = [];
 	let seedingFailed = false;
+	let priorRunFailed: string | undefined;
 	// Seed-declared workflow id -> the workflow as actually restored (fresh id and
 	// name). Lets an authored `attach` reference survive the per-run remap.
 	let seedWorkflowsBySeedId = new Map<string, { id: string; name: string }>();
@@ -571,6 +591,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				foreignCredentialIds,
 				fixture: lane.fixture,
 				verifyBaseUrl: lane.verifyBaseUrl,
+				urlField: lane.credentialUrlField,
 				local: lane.local,
 				logger,
 			}),
@@ -636,7 +657,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		);
 
 		const projectId = await client.getPersonalProjectId();
-		await client.ensureThread(threadId, projectId);
+		await client.ensureThread(
+			threadId,
+			projectId,
+			config.caseIdentity
+				? {
+						evalCase: config.caseIdentity.fileSlug,
+						evalIteration: config.caseIdentity.iteration,
+					}
+				: undefined,
+		);
 
 		// Pin the thread's credential view to the case's declared set (empty by
 		// default) before the first message, so every build-workflow call inside
@@ -654,10 +684,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const seededCredentialIds = createdCredentials.map((c) => c.id);
 		// `createDeclaredCredentials` returns one entry per `declaredCredentials`, in
 		// the same order — index-zip to find which seeded ids the case marked
-		// already-broken (`valid: false`) and must NOT bypass, so their real
-		// connection test runs and fails.
+		// already-broken (`valid: false`) or empty (`blank: true`) and must NOT
+		// bypass, so their real connection test runs and fails.
 		const bypassCredentialTestIds = createdCredentials
-			.filter((_, i) => declaredCredentials[i]?.valid !== false)
+			.filter((_, i) => declaredCredentials[i]?.valid !== false && !declaredCredentials[i]?.blank)
 			.map((c) => c.id);
 		try {
 			// A seeded credential models one the user already has connected, so its
@@ -731,13 +761,39 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					logger,
 					config.laneTag,
 				);
-				const restoreResult = await client.restoreThread(
-					threadId,
-					remapped.messages,
-					remapped.workflows,
-					remapped.dataTables,
-					remapped.agents,
-				);
+				// Seeded projects are instance-level, so they go through the project API
+				// rather than `restore-thread` (which seeds into the thread's project).
+				// Created BEFORE the live turn so the agent's first `list-projects` already
+				// sees them.
+				//
+				// Deliberately NOT uniquified, unlike seed workflow names: the case names
+				// this project in its LIVE turn, and the harness only rewrites mentions
+				// inside seeded history — a suffixed name would leave the prompt asking for
+				// a project that doesn't exist. Leftovers from a crashed run are evicted by
+				// name first so repeated runs don't accumulate duplicates the agent would
+				// have to disambiguate.
+				for (const project of remapped.projects) {
+					await evictLeftoverSeedProjects(client, project.name, logger, config.laneTag);
+					const created = await client.createTeamProject(project.name);
+					seededProjectIds.push(created.id);
+				}
+				// A fixture-only seed (projects, no history) has nothing thread-scoped to
+				// restore, and `restore-thread` with an empty message list would be a
+				// pointless round-trip that logs "Seeded 0 prior message(s)".
+				const hasThreadScopedSeed =
+					remapped.messages.length > 0 ||
+					remapped.workflows.length > 0 ||
+					remapped.dataTables.length > 0 ||
+					remapped.agents.length > 0;
+				const restoreResult = hasThreadScopedSeed
+					? await client.restoreThread(
+							threadId,
+							remapped.messages,
+							remapped.workflows,
+							remapped.dataTables,
+							remapped.agents,
+						)
+					: { restored: 0, workflowIds: [], dataTableIds: [], agentIds: [] };
 				restoredWorkflowIds = restoreResult.workflowIds;
 				restoredDataTableIds = restoreResult.dataTableIds;
 				restoredAgentIds = restoreResult.agentIds;
@@ -752,14 +808,52 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						: '';
 				const agentSuffix =
 					restoredAgentIds.length > 0 ? `, ${String(restoredAgentIds.length)} agent(s)` : '';
+				// Logged explicitly, not folded into the counts above: a project-scope case
+				// is graded on the agent SEEING this project, so a run where the fixture
+				// silently didn't land has to be readable from the log alone.
+				const projectSuffix =
+					seededProjectIds.length > 0 ? `, ${String(seededProjectIds.length)} project(s)` : '';
 				logger.info(
-					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${config.laneTag ?? ''}`,
+					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${projectSuffix}${config.laneTag ?? ''}`,
 				);
 			} catch (error: unknown) {
 				seedingFailed = true;
 				throw new Error(
 					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
 				);
+			}
+			// Run AFTER the seeding try/catch, so a prior-run problem is not reported as
+			// "Seeding failed" — the artifacts did land, it is the pre-turn history that did
+			// not. Before the live turn, so the agent's first look already sees it.
+			if (config.seed?.mode === 'inline' && config.seed.priorRuns?.length) {
+				// A throw here (an id the seed never created) is an authoring/harness fault.
+				// Without the flag the outer catch returns a plain failed build and the case
+				// is recorded as `build_failure` / `builder_issue` — a builder red for
+				// something the builder had no part in.
+				try {
+					const outcomes = await executePriorRuns({
+						client,
+						priorRuns: config.seed.priorRuns,
+						// Already maps authored seed id → the restored workflow, and it is built
+						// from `remapped`, which the server pins its ids to.
+						seedWorkflows: seedWorkflowsBySeedId,
+						logger,
+						laneTag: config.laneTag,
+					});
+					// A staged run that never produced an execution record leaves the case's
+					// premise missing, so the graded turn answers a question the instance cannot
+					// support. Recorded rather than thrown: the build itself is fine, and the
+					// case is routed to infra instead of scored.
+					const missing = outcomes.filter((outcome) => !outcome.ran);
+					if (missing.length > 0) {
+						priorRunFailed = missing
+							.map((outcome) => `${outcome.workflow}: ${outcome.errors.join('; ') || 'unknown'}`)
+							.join(' | ');
+					}
+				} catch (error: unknown) {
+					seedingFailed = true;
+					throw error;
+				}
 			}
 		}
 
@@ -979,6 +1073,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					createdWorkflowIds: restoredWorkflowIds,
 					createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 					createdAgentIds: restoredAgentIds,
+					createdProjectIds: seededProjectIds,
 					conversationMetrics,
 					events,
 					threadId,
@@ -986,6 +1081,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					transcript,
 					credentialViewPinned,
 					seedingFailed,
+					...(priorRunFailed ? { priorRunFailed } : {}),
 					credentialSetup: await credentialSetupFacts(),
 				};
 			}
@@ -997,6 +1093,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdWorkflowIds: restoredWorkflowIds,
 				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 				createdAgentIds: restoredAgentIds,
+				createdProjectIds: seededProjectIds,
 				artifactRefs,
 				conversationMetrics,
 				events,
@@ -1005,6 +1102,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				transcript,
 				credentialViewPinned,
 				seedingFailed,
+				...(priorRunFailed ? { priorRunFailed } : {}),
 				credentialSetup: await credentialSetupFacts(),
 			};
 		}
@@ -1030,12 +1128,18 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// per-scenario rows are seeded in runScenario via seededScenarioTableIdsByName.
 		return {
 			success: true,
+			// Carried on the SUCCESS path too. A staged run that never landed is the one
+			// infra signal that outlives a healthy build, and that is exactly the case
+			// `case-pipeline` has to catch — the graded turn answered a question the
+			// instance cannot support.
+			...(priorRunFailed ? { priorRunFailed } : {}),
 			workflowId: outcome.workflowsCreated[0].id,
 			workflowJsons: outcome.workflowJsons,
 			buildTrace,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
 			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 			createdAgentIds: restoredAgentIds,
+			createdProjectIds: seededProjectIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
 			artifactRefs,
 			conversationMetrics,
@@ -1058,11 +1162,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdWorkflowIds: [...restoredWorkflowIds, ...builtWorkflowIds],
 			createdDataTableIds: [...restoredDataTableIds, ...builtDataTableIds],
 			createdAgentIds: restoredAgentIds,
+			createdProjectIds: seededProjectIds,
 			conversationMetrics,
 			events,
 			threadId,
 			credentialViewPinned,
 			seedingFailed,
+			...(priorRunFailed ? { priorRunFailed } : {}),
 			laneBootFailed,
 			credentialSetup: await credentialSetupFacts(),
 		};
@@ -1160,6 +1266,43 @@ async function evictLeftoverSeedWorkflows(
 	} catch (error: unknown) {
 		logger.info(
 			`  Could not evict leftover seed workflows (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
+		);
+	}
+}
+
+/**
+ * Delete any team project already sitting on the instance under a seed project's
+ * name, so a crashed run's leftover doesn't turn into a second "Foobar" the agent
+ * has to disambiguate. Exact-name match: seed project names are NOT suffixed (the
+ * live turn names them), so there is no pattern to key off — which also means this
+ * would delete a same-named project a human created. Seed names should therefore be
+ * distinctive enough not to collide with real ones.
+ *
+ * Best-effort: a failure here is logged and the run continues, since a duplicate
+ * duplicate still leaves the case's premise (a visible project that isn't the bound
+ * one) intact.
+ */
+async function evictLeftoverSeedProjects(
+	client: N8nClient,
+	name: string,
+	logger: EvalLogger,
+	laneTag?: string,
+): Promise<void> {
+	try {
+		const stale = (await client.listTeamProjects()).filter((project) => project.name === name);
+		for (const project of stale) {
+			try {
+				await client.deleteProject(project.id);
+				logger.info(`  Evicted leftover seed project "${name}" before restore${laneTag ?? ''}`);
+			} catch (error: unknown) {
+				logger.info(
+					`  Could not evict leftover seed project "${name}" (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
+				);
+			}
+		}
+	} catch (error: unknown) {
+		logger.info(
+			`  Could not list projects to evict leftovers (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
 		);
 	}
 }

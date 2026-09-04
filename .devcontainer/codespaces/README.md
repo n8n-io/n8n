@@ -11,8 +11,9 @@ Playwright system deps, and Docker-in-Docker (for testcontainers and
 
 ## One-time setup (~5 min)
 
-1. Add your key at [github.com/settings/codespaces](https://github.com/settings/codespaces)
-   → **New secret** → name `ANTHROPIC_API_KEY`, repository access `n8n-io/n8n`.
+1. Add provider keys at [github.com/settings/codespaces](https://github.com/settings/codespaces).
+   Add `ANTHROPIC_API_KEY` for Claude Code. Add `OPENROUTER_API_KEY` for OpenCode.
+   Give both secrets access to `n8n-io/n8n`.
    (Alternative for Max subscriptions: `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`.)
 2. Give the GitHub CLI the codespace scope:
 
@@ -23,18 +24,24 @@ Playwright system deps, and Docker-in-Docker (for testcontainers and
 ## Daily flow
 
 ```bash
-pnpm session              # attach the default agent session (creates everything on first run)
-pnpm session fix-flaky    # a second, parallel agent in its own git worktree
-pnpm session ls           # what's running
-pnpm session tunnel       # forward n8n ports (default 5678, 8080) to localhost; Ctrl-C to stop
-pnpm session stop         # end of day: billing stops, disk survives
-pnpm session rm           # delete the codespace
+pnpm session                       # attach Claude Code (creates everything on first run)
+pnpm session:shell                 # open a shell in the default checkout
+pnpm session:opencode              # attach OpenCode in auto mode
+pnpm session:opencode fix-flaky    # OpenCode in a separate worktree
+pnpm session fix-flaky             # Claude Code in a separate worktree
+pnpm session ls                    # what's running
+pnpm session tunnel                # forward n8n ports (default 5678, 8080); Ctrl-C to stop
+pnpm session stop                  # end of day: billing stops, disk survives
+pnpm session rm                    # delete the codespace
 ```
+
+The dev container supports Codespaces with 2, 4, or 8 cores. The session commands
+create an 8-core Codespace by default.
 
 - **Detach** with `Ctrl-b d` — the agent keeps working without you.
 - **Scroll** with the mouse wheel (tmux mouse mode is on). To use the
   terminal's own text selection, hold **Shift** and drag.
-- **Reattach** by running the same `pnpm session <name>` from any machine.
+- **Reattach** by running the same session command from any machine.
 - Each named session gets its own worktree (`/workspaces/wt-<name>`, branch
   `session/<name>`), so parallel agents never touch each other's tree. Builds
   in fresh worktrees are cache-hits via a shared turbo cache.
@@ -43,10 +50,12 @@ pnpm session rm           # delete the codespace
 
 ## Agent worker (drive a session from n8n)
 
-`agent-worker.mjs` lets an n8n workflow drive a Claude Code session on the
+`agent-worker.mjs` lets an n8n workflow drive an OpenCode session on the
 codespace. This is how Slack (the Flaky bot) steers a session that runs here.
-Each turn is one headless `claude -p`. The session state is on disk. So
-`--resume` continues a conversation across turns, and across a stop/start.
+Each turn runs `openrouter/openai/gpt-5.6-sol` through
+`opencode run --format json --auto`. The session state remains on disk. The
+returned session ID continues a conversation across turns and a Codespace
+restart.
 
 **The worker polls outward. Nothing inbound is exposed.** GitHub sets every
 forwarded port to private on start. It gives no API to make a port public. So
@@ -55,17 +64,36 @@ instead. It asks n8n for a turn addressed to this box's owner (`$GITHUB_USER`).
 It runs the turn. It sends the result to the turn's resume URL. It uses no
 tunnel, no open port, and no domain.
 
-The worker starts on each container start (`postStartCommand`). It needs two
-secrets. Add them at
+The worker starts on each container start (`postStartCommand`). It needs three
+secrets and uses three optional secrets. Add them at
 [github.com/settings/codespaces](https://github.com/settings/codespaces), the
 same way as `ANTHROPIC_API_KEY`:
 
 - `AGENT_WORKER_TOKEN` — the shared bearer token. The worker sends it on each poll.
 - `N8N_DEQUEUE_URL` — the n8n webhook that returns a pending turn.
+- `OPENROUTER_API_KEY` — the model provider key for Sol.
+- `SLACK_BOT_TOKEN` — optional bot token for progress messages. It needs `chat:write` only.
+- `FLAKY_MCP_URL` and `FLAKY_MCP_TOKEN` — optional Flaky MCP connection for OpenCode.
+
+The worker explicitly reloads `/usr/local/lib/codespaces-env.sh` when its tmux
+session starts. An existing tmux server can otherwise retain an environment
+that did not load the Codespaces secrets.
+
+The dequeue payload can include `slack.channel` and `slack.thread_ts`. The
+worker posts one placeholder in that thread. It coalesces completed tool calls.
+It updates the message at most once every 1.5 seconds. It does not send reasoning
+text. The worker replaces the placeholder with the final answer.
+If the Slack API fails, the turn still completes through the n8n resume URL.
+The worker does not export its dequeue or Slack credentials to OpenCode.
+Interactive sessions remove all worker-only credentials before they start.
+
+An idle worker starts with a 3-second poll interval. After each empty dequeue,
+it doubles the interval and limits it to 30 seconds. Work resets the interval
+to 3 seconds. Queued turns run without a delay between them.
 
 The log is at `/tmp/agent-worker.log`. The tmux session is `agent-worker`. To
 watch it, run `tmux attach -t agent-worker`. The worker does not start if a
-secret or `$GITHUB_USER` is missing.
+required secret or `$GITHUB_USER` is missing.
 
 A turn stops after about 25 minutes (`TURN_TIMEOUT_MS`). This limit is below the
 n8n Wait limit. So the worker reports a clear message before n8n reports a
@@ -79,8 +107,8 @@ report back in — the turn's resume URL continues one waiting n8n execution and
 then spent, so nothing on the box can post to the thread unprompted. A session
 that backgrounds a build and signs off with "I'll verify once it finishes" is
 therefore describing something that cannot happen. The worker states this in
-`--append-system-prompt` on every turn (`turnContract`), together with a pointer
-to this file for the box-specific parts. This is only the n8n/Slack path: an
+each OpenCode prompt (`turnContract`), together with a pointer to this file for
+the box-specific parts. This is only the n8n/Slack path: an
 interactive session (`pnpm session`, tmux) is long-lived, so background work,
 monitors and notifications behave normally there.
 
@@ -120,19 +148,30 @@ session rarely needs a cold `pnpm install` or a full `pnpm build`. Both are slow
 
 ## Flaky tools (MCP)
 
-Claude sessions get the `flaky` MCP server automatically: Currents
+Claude sessions and the headless OpenCode worker get the `flaky` MCP server automatically: Currents
 flaky/quarantine data, the `qa_*` BigQuery dataset, Sentry RCA, live Linear,
-and repo investigation. Login registers it from the repo-level
-`FLAKY_MCP_TOKEN` / `FLAKY_MCP_URL` secrets. Forks have no secrets and skip
-it. Tell the agent to call `get_flaky_context` first — it returns the rules
+and repo investigation. The worker keeps the token in its environment and puts
+only an environment reference in the OpenCode config. Claude login registers
+the same server without writing the token to disk. Forks have no secrets and
+skip it. Tell the agent to call `get_flaky_context` first — it returns the rules
 the tools assume.
 
-## Quality skills (Claude plugin)
+## Quality and security skills (Claude plugins)
 
-Claude sessions can also load the private quality skills from the
-`n8n-io/n8n-agent-skills` repository (bug insights, defect attribution,
-mutation testing, and more). `post-start.mjs` installs the `quality` plugin on each
-container start, so every session gets the skills with no per-session step.
+Claude sessions can also load the private skills from the
+`n8n-io/n8n-agent-skills` repository. `post-start.mjs` installs both plugins on
+each container start, so every session gets the skills with no per-session step:
+
+- `quality` — bug insights, defect attribution, flaky test investigation,
+  mutation and property testing, PR council, and more.
+- `security` — security code review, adversarial review of security-fix PRs,
+  regression test generation, and Security Hub report triage.
+
+Together they add roughly 5k always-on tokens to every session. Drop a plugin
+from `PLUGINS` in `plugins.mjs` if that budget matters more than the skills.
+`post-start.mjs` and the `pnpm session` prelude in `scripts/cloud-session.mjs`
+both read that list, so a session that races the container start still gets
+every plugin.
 
 The private marketplace uses the codespace's own GitHub auth — no extra token.
 `devcontainer.json` grants the codespace read access to
@@ -147,9 +186,34 @@ clones `owner/repo` shorthand over SSH and the private clone fails.
 
 If a user does not authorize the grant, the clone fails and the skills step is
 skipped (the worker still starts). Existing codespaces created before this change
-need a recreate to get the prompt. The log is at `/tmp/post-start.log`: a failed
-`skills repo reachable` line means the grant was not authorized; a failed
-`marketplace add` after a reachable repo means a loader-auth problem.
+need a recreate to get the prompt.
+
+### When the skills are missing
+
+`/tmp/post-start-status.json` lists what installed and what did not, and
+`/tmp/post-start.log` has the detail. Reading the log:
+
+- A failed `skills repo reachable` line means the grant was not authorized.
+- A `marketplace add` failure mentioning `File exists` is a clone that died
+  partway through `~/.claude/plugins/marketplaces/n8n-io-n8n-agent-skills`, the
+  path the loader stages into before renaming it to the cache. This has been
+  seen once as a transient failure, so the script removes that path and retries
+  the add once.
+- Any other `marketplace add` failure after a reachable repo means a
+  loader-auth problem.
+
+A failure that survives the retry needs a human — the container still starts and
+the worker still runs, only the skills are missing.
+
+Both `marketplace add` and `plugin install` are idempotent, so re-running the
+script by hand is safe:
+
+```bash
+node /workspaces/n8n/.devcontainer/codespaces/post-start.mjs
+```
+
+Verify with `claude plugin list`, then restart the session (or `/reload-plugins`)
+to pull the skills into context.
 
 ## Viewing the dev UI locally
 

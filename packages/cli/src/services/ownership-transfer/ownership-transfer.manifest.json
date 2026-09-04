@@ -20,6 +20,11 @@
 	],
 	"notTransferred": [
 		{
+			"name": "ActivityEvent",
+			"path": "packages/@n8n/db/src/entities/activity-event.ts",
+			"reason": "Append-only record of what happened in the deleted project; re-homing entries would misstate where the events occurred. Dropped via FK cascade."
+		},
+		{
 			"name": "ProjectRelation",
 			"path": "packages/@n8n/db/src/entities/project-relation.ts",
 			"reason": "Membership rows; they describe the deleted project itself."
@@ -30,9 +35,19 @@
 			"reason": "Per-project secrets-provider config; scoped to the deleted project."
 		},
 		{
+			"name": "ProjectPoolSettings",
+			"path": "packages/@n8n/db/src/entities/project-pool-settings.ee.ts",
+			"reason": "Per-project worker-pool config; scoped to the deleted project and dropped via FK cascade."
+		},
+		{
 			"name": "RoleMappingRule",
 			"path": "packages/@n8n/db/src/entities/role-mapping-rule.ts",
 			"reason": "SSO role-mapping config attached to the project, not user data."
+		},
+		{
+			"name": "TypeAvailabilityPolicyScope",
+			"path": "packages/cli/src/modules/type-availability-policies/database/entities/type-availability-policy-scope.entity.ts",
+			"reason": "Governance config attached to the project, not user data; dropped via FK cascade. Transferring it could not work anyway: a destination project may already own a scope of the same kind, which uq_type_availability_policy_scope_project rejects."
 		},
 		{
 			"name": "Variables",

@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { parse as parseYaml } from 'yaml';
 
 export interface ParsedOverride {
 	rawKey: string;
@@ -10,23 +11,26 @@ export interface ParsedOverride {
 	line: number;
 }
 
-interface RootPackageJson {
-	pnpm?: { overrides?: Record<string, string> };
+interface WorkspaceManifest {
+	overrides?: Record<string, string>;
 }
 
-export function parseOverrides(rootDir: string): ParsedOverride[] {
-	const filePath = path.join(rootDir, 'package.json');
+export function parseOverrides(
+	rootDir: string,
+	workspaceFile = 'pnpm-workspace.yaml',
+): ParsedOverride[] {
+	const filePath = path.join(rootDir, workspaceFile);
 	if (!fs.existsSync(filePath)) return [];
 
 	const content = fs.readFileSync(filePath, 'utf-8');
-	let pkg: RootPackageJson;
+	let workspace: WorkspaceManifest | null;
 	try {
-		pkg = JSON.parse(content) as RootPackageJson;
+		workspace = parseYaml(content) as WorkspaceManifest | null;
 	} catch {
 		return [];
 	}
 
-	const overrides = pkg.pnpm?.overrides;
+	const overrides = workspace?.overrides;
 	if (!overrides || typeof overrides !== 'object') return [];
 
 	const lines = content.split('\n');
@@ -47,15 +51,17 @@ export function parseOverrides(rootDir: string): ParsedOverride[] {
 
 function findOverridesBlockStart(lines: string[]): number {
 	for (let i = 0; i < lines.length; i++) {
-		if (lines[i].includes('"overrides"')) return i;
+		if (/^overrides:\s*$/.test(lines[i])) return i;
 	}
 	return 0;
 }
 
 function findKeyLine(lines: string[], key: string, startIdx: number): number {
-	const needle = `"${key.replace(/"/g, '\\"')}"`;
+	const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	// Mapping keys are indented and may be single- or double-quoted.
+	const pattern = new RegExp(`^\\s+(['"]?)${escaped}\\1\\s*:`);
 	for (let i = startIdx; i < lines.length; i++) {
-		if (lines[i].includes(needle)) return i + 1;
+		if (pattern.test(lines[i])) return i + 1;
 	}
 	return startIdx + 1;
 }

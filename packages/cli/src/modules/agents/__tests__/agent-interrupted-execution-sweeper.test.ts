@@ -1,15 +1,33 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentInterruptedExecutionSweeper } from '../agent-interrupted-execution-sweeper';
 import type { AgentExecutionService } from '../agent-execution.service';
+import { AgentInterruptedExecutionSweeper } from '../agent-interrupted-execution-sweeper';
+import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
+function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
+	const repository = mock<AgentExecutionRepository>();
+	const executionService = mock<AgentExecutionService>();
+	const backgroundJobService = mock<AgentBackgroundJobService>();
+	const agentsConfig = mock<AgentsConfig>({
+		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
+	});
+	const sweeper = new AgentInterruptedExecutionSweeper(
+		mockLogger(),
+		repository,
+		executionService,
+		backgroundJobService,
+		agentsConfig,
+	);
+	return { sweeper, repository, executionService, backgroundJobService };
+}
+
 describe('AgentInterruptedExecutionSweeper', () => {
 	it('terminalizes an abandoned running execution', async () => {
-		const repository = mock<AgentExecutionRepository>();
-		const executionService = mock<AgentExecutionService>();
+		const { sweeper, repository, executionService } = setup();
 		const execution = {
 			id: 'execution-1',
 			threadId: 'thread-1',
@@ -19,11 +37,6 @@ describe('AgentInterruptedExecutionSweeper', () => {
 		} as AgentExecution;
 		repository.findRunning.mockResolvedValue([execution]);
 		executionService.finalizeInterruptedExecution.mockResolvedValue(true);
-		const sweeper = new AgentInterruptedExecutionSweeper(
-			mockLogger(),
-			repository,
-			executionService,
-		);
 
 		await sweeper.sweep();
 
@@ -31,8 +44,7 @@ describe('AgentInterruptedExecutionSweeper', () => {
 	});
 
 	it('leaves a recently active execution running in another process', async () => {
-		const repository = mock<AgentExecutionRepository>();
-		const executionService = mock<AgentExecutionService>();
+		const { sweeper, repository, executionService } = setup();
 		repository.findRunning.mockResolvedValue([
 			{
 				id: 'execution-1',
@@ -42,14 +54,23 @@ describe('AgentInterruptedExecutionSweeper', () => {
 				updatedAt: new Date(),
 			} as AgentExecution,
 		]);
-		const sweeper = new AgentInterruptedExecutionSweeper(
-			mockLogger(),
-			repository,
-			executionService,
-		);
 
 		await sweeper.sweep();
 
 		expect(executionService.finalizeInterruptedExecution).not.toHaveBeenCalled();
+	});
+
+	it('runs full reconciliation when the feature is on, and still reconciles workflow jobs when it is off', async () => {
+		const disabled = setup();
+		disabled.repository.findRunning.mockResolvedValue([]);
+		await disabled.sweeper.sweep();
+		expect(disabled.backgroundJobService.reconcile).not.toHaveBeenCalled();
+		expect(disabled.backgroundJobService.reconcileWorkflowJobs).toHaveBeenCalled();
+
+		const enabled = setup({ backgroundTasksEnabled: true });
+		enabled.repository.findRunning.mockResolvedValue([]);
+		await enabled.sweeper.sweep();
+		expect(enabled.backgroundJobService.reconcile).toHaveBeenCalled();
+		expect(enabled.backgroundJobService.reconcileWorkflowJobs).not.toHaveBeenCalled();
 	});
 });

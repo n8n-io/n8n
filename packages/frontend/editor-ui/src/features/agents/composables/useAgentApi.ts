@@ -4,6 +4,7 @@ import type {
 	AgentConfigValidationResponse,
 	AgentDisconnectIntegrationResponse,
 	AgentFileDto,
+	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
@@ -187,8 +188,8 @@ export const connectIntegration = async (
 	credentialId: string,
 	settings?: AgentIntegrationSettings,
 	options?: ConnectIntegrationOptions,
-): Promise<Pick<AgentIntegrationStatusResponse, 'status'>> => {
-	return await makeRestApiRequest<Pick<AgentIntegrationStatusResponse, 'status'>>(
+): Promise<AgentIntegrationConnectResponse> => {
+	return await makeRestApiRequest<AgentIntegrationConnectResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
@@ -491,7 +492,7 @@ export const getChatMessages = async (
 	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/messages`,
 	);
 };
 

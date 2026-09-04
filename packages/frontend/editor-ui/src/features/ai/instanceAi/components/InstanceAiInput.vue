@@ -7,10 +7,17 @@ import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
+import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
-import { base64EncodedSize, type InstanceAiAttachment } from '@n8n/api-types';
+import {
+	base64EncodedSize,
+	type InstanceAiAttachment,
+	type InstanceAiResourceAttachment,
+} from '@n8n/api-types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
+import { useInstanceAiStore } from '../instanceAi.store';
+import { mergeNodeSets } from '../utils/buildNodesAttachment';
 
 type AmendContext = { agentId: string; role: string } | null;
 type SuggestionPromptPayload =
@@ -101,8 +108,10 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
+const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
+const attachedResources = ref<InstanceAiResourceAttachment[]>([]);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const previewPrompt = ref<string | null>(null);
@@ -161,7 +170,7 @@ function clearTextIfMatches(text: string) {
 }
 
 function isDirty() {
-	return inputText.value.trim().length > 0 || attachedFiles.value.length > 0;
+	return inputText.value.trim().length > 0 || hasAttachments.value;
 }
 
 defineExpose({
@@ -180,7 +189,9 @@ const isBusy = computed(() =>
 );
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
-const hasAttachments = computed(() => attachedFiles.value.length > 0);
+const hasAttachments = computed(
+	() => attachedFiles.value.length > 0 || attachedResources.value.length > 0,
+);
 // Fed to the composer so its size guard can account for what is already staged.
 // Summed per file after encoding — base64 pads each file individually, so encoding
 // a raw total would undercount and disagree with the backend's per-file measurement.
@@ -289,16 +300,22 @@ function emitSubmittedMessage(
 function resetDraftComposer() {
 	inputText.value = '';
 	attachedFiles.value = [];
+	attachedResources.value = [];
 }
 
 function canSubmitMessage(message: string, attachmentCount = 0) {
 	return (message.length > 0 || attachmentCount > 0) && !isBusy.value && !isGatedBySetup.value;
 }
 
-function restoreSubmittedDraft(message: string, files: File[]) {
+function restoreSubmittedDraft(
+	message: string,
+	files: File[],
+	resources: InstanceAiResourceAttachment[],
+) {
 	if (isDirty()) return false;
 	inputText.value = message;
 	attachedFiles.value = [...files];
+	attachedResources.value = [...resources];
 	return true;
 }
 
@@ -308,11 +325,15 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 	}
 
 	trackSelectedSuggestionSubmitted(message);
+
 	const submittedFiles = [...attachedFiles.value];
+	const submittedResources = [...attachedResources.value];
 	emitSubmittedMessage(
 		message,
 		attachments,
-		submittedFiles.length > 0 ? () => restoreSubmittedDraft(message, submittedFiles) : undefined,
+		submittedFiles.length > 0 || submittedResources.length > 0
+			? () => restoreSubmittedDraft(message, submittedFiles, submittedResources)
+			: undefined,
 	);
 	resetDraftComposer();
 }
@@ -328,23 +349,49 @@ function submitSuggestion(payload: SuggestionSelectionPayload) {
 
 async function handleSubmit() {
 	const text = inputText.value.trim();
-	if (!canSubmitMessage(text, attachedFiles.value.length)) {
+	if (!canSubmitMessage(text, attachedFiles.value.length + attachedResources.value.length)) {
 		return;
 	}
 
-	let attachments: InstanceAiAttachment[] | undefined;
-	if (attachedFiles.value.length > 0) {
-		const binaryData = await Promise.all(attachedFiles.value.map(convertFileToBinaryData));
-		attachments = binaryData.map((b) => ({
-			type: 'file' as const,
-			data: b.data,
-			mimeType: b.mimeType,
-			fileName: b.fileName ?? 'unnamed',
-		}));
-	}
+	const fileAttachments: InstanceAiAttachment[] = attachedFiles.value.length
+		? (await Promise.all(attachedFiles.value.map(convertFileToBinaryData))).map((b) => ({
+				type: 'file' as const,
+				data: b.data,
+				mimeType: b.mimeType,
+				fileName: b.fileName ?? 'unnamed',
+			}))
+		: [];
+	const attachments = [...fileAttachments, ...attachedResources.value];
 
-	submitComposerMessage(text, attachments);
+	submitComposerMessage(text, attachments.length ? attachments : undefined);
 }
+
+function removeResource(index: number) {
+	attachedResources.value = attachedResources.value.filter((_, i) => i !== index);
+}
+
+watch(
+	() => instanceAiStore.pendingComposerAttachments,
+	(pending) => {
+		if (pending.length === 0) return;
+		const consumed = instanceAiStore.consumePendingAttachments();
+		for (const attachment of consumed) {
+			if (attachment.type === 'file') continue;
+			if (attachment.type === 'nodes') {
+				const existing = attachedResources.value.find(
+					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
+						a.type === 'nodes' && a.workflowId === attachment.workflowId,
+				);
+				if (existing) {
+					existing.sets = mergeNodeSets(existing.sets, attachment.sets);
+					continue;
+				}
+			}
+			attachedResources.value = [...attachedResources.value, attachment];
+		}
+	},
+	{ deep: true, immediate: true },
+);
 
 function handleStop() {
 	emit('stop');
@@ -483,6 +530,7 @@ const resizable = computed(() => {
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="!props.isPlanEditMode"
+			:show-attach-button="false"
 			:attached-encoded-bytes="attachedEncodedBytes"
 			@submit="handleSubmit"
 			@stop="handleStop"
@@ -548,6 +596,19 @@ const resizable = computed(() => {
 						</template>
 					</N8nTag>
 				</div>
+				<div
+					v-if="!props.isPlanEditMode && attachedResources.length > 0"
+					:class="$style.attachments"
+				>
+					<AttachmentPreview
+						v-for="(attachment, index) in attachedResources"
+						:key="`res-${index}`"
+						:attachment="attachment"
+						:is-removable="true"
+						@remove-resource="removeResource(index)"
+						@update:attachment="attachedResources[index] = $event"
+					/>
+				</div>
 				<div v-if="!props.isPlanEditMode && attachedFiles.length > 0" :class="$style.attachments">
 					<AttachmentPreview
 						v-for="(file, index) in attachedFiles"
@@ -557,6 +618,12 @@ const resizable = computed(() => {
 						@remove="handleFileRemove"
 					/>
 				</div>
+			</template>
+			<template v-if="!props.isPlanEditMode" #footer-start>
+				<InstanceAiInputMenu
+					:disabled="isBusy || isGatedBySetup"
+					@attach-files="chatInputRef?.openFilePicker()"
+				/>
 			</template>
 		</ChatInputBase>
 		<slot name="footer"></slot>
