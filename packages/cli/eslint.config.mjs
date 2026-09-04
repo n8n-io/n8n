@@ -60,7 +60,8 @@ export default defineConfig(
 						},
 						{
 							rule: 'no-repository-in-public-api-handler',
-							message: 'Migrate to `@PublicApiController`.',
+							message:
+								'Call a service instead of the repository, or add the file to the allowlist in packages/cli/eslint.config.mjs.',
 						},
 						{
 							rule: 'require-public-api-controller',
