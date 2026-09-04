@@ -156,6 +156,18 @@ The running node process holds the old dist in memory. Rebuilding on disk
 changes nothing until the restart, and a "no measurable effect" result from a
 stale process is the most demoralising way to waste an hour.
 
+**Editing a skill's markdown needs the restart too, and no build at all.**
+`skills/*/SKILL.md` is read from the package root at runtime, not compiled — so
+`pnpm build` does nothing for it and it is tempting to conclude a restart is
+unnecessary either. But `loadInstanceAiRuntimeSkillSource()` memoises the whole
+registry (`cachedRuntimeSkillSource ??= …`), so a process that has already
+served one build keeps the old text for its lifetime. Skip the restart here and
+the after-run silently re-measures the before-state.
+
+Whatever you changed, prove it was live before you believe an unchanged result
+— confirm the process started after your edit, and check the run's transcript
+for the thing you touched (e.g. a `load_skill` call for the skill you edited).
+
 ### 4. Measure
 
 Same command, same N, same instance — only the output dir changes:
