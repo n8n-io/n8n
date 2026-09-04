@@ -372,11 +372,12 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		expect(pendingRetries.has('my-vault')).toBe(true);
 	});
 
-	it('should heal a published hydration failure when its retry succeeds', async () => {
+	it('should keep serving the last secrets of an errored provider until its hydration retry succeeds', async () => {
 		const existingProvider = new DummyProvider();
 		providersMap.set('my-vault', existingProvider);
 
 		const replacementProvider = new DummyProvider();
+		replacementProvider.secrets = { test1: 'last-good' };
 		vi.spyOn(replacementProvider, 'update').mockRejectedValueOnce(new Error('Hydration failed'));
 		mockProviderLifecycle.initialize.mockResolvedValue({
 			success: true,
@@ -389,13 +390,12 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 
 		await upsertProvider();
 
-		// No connected predecessor, so the errored candidate takes the slot. It has fetched nothing
-		// yet, which is the accepted price of leaving it there while it retries.
+		// No connected predecessor, so the errored candidate takes the slot and keeps serving.
 		await vi.waitFor(() => {
 			expect(providersMap.get('my-vault')).toBe(replacementProvider);
 		});
 		expect(replacementProvider.state).toBe('error');
-		expect(providersMap.get('my-vault')?.getSecret('test1')).toBeUndefined();
+		expect(providersMap.get('my-vault')?.getSecret('test1')).toBe('last-good');
 
 		await runPendingRetry();
 
@@ -472,7 +472,67 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		await upsertB;
 	});
 
-	it('should disconnect a candidate waiting on a hydration retry when the connection is removed', async () => {
+	it.each(['removeProviderConnection', 'disconnectProvider'] as const)(
+		'should disconnect a candidate waiting on a hydration retry when %s runs',
+		async (method) => {
+			const existingProvider = new DummyProvider();
+			existingProvider.setState('connected');
+			providersMap.set('my-vault', existingProvider);
+
+			const replacementProvider = new DummyProvider();
+			vi.spyOn(replacementProvider, 'update').mockRejectedValue(new Error('Hydration failed'));
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: replacementProvider,
+			});
+
+			await upsertProvider();
+			await vi.waitFor(() => {
+				expect(pendingRetries.has('my-vault')).toBe(true);
+			});
+			expect(disconnectedProviders()).not.toContain(replacementProvider);
+
+			await manager[method]('my-vault');
+
+			expect(disconnectedProviders()).toContain(replacementProvider);
+			expect(providersMap.has('my-vault')).toBe(false);
+		},
+	);
+
+	it('should disconnect an outgoing candidate whose pending retry a new replacement supersedes', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const candidateA = new DummyProvider();
+		vi.spyOn(candidateA, 'update').mockRejectedValue(new Error('Hydration failed'));
+		const candidateB = new DummyProvider();
+		mockProviderLifecycle.initialize
+			.mockResolvedValueOnce({ success: true, provider: candidateA })
+			.mockResolvedValueOnce({ success: true, provider: candidateB });
+
+		await upsertProvider();
+		await vi.waitFor(() => {
+			expect(pendingRetries.has('my-vault')).toBe(true);
+		});
+
+		const connectionB = createDeferred<{ success: boolean }>();
+		mockProviderLifecycle.connect.mockReturnValue(connectionB.promise);
+		const upsertB = upsertProvider();
+
+		expect(disconnectedProviders()).toContain(candidateA);
+		expect(pendingRetries.has('my-vault')).toBe(false);
+		expect(providersMap.get('my-vault')).toBe(existingProvider);
+
+		connectionB.resolve({ success: true });
+		await upsertB;
+
+		await vi.waitFor(() => {
+			expect(providersMap.get('my-vault')).toBe(candidateB);
+		});
+	});
+
+	it('should disconnect a candidate waiting on a hydration retry on shutdown', async () => {
 		const existingProvider = new DummyProvider();
 		existingProvider.setState('connected');
 		providersMap.set('my-vault', existingProvider);
@@ -490,10 +550,58 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		});
 		expect(disconnectedProviders()).not.toContain(replacementProvider);
 
-		await manager.removeProviderConnection('my-vault');
+		manager.shutdown();
 
 		expect(disconnectedProviders()).toContain(replacementProvider);
-		expect(providersMap.has('my-vault')).toBe(false);
+		expect(pendingRetries.has('my-vault')).toBe(false);
+	});
+
+	it('should keep a connected old provider active when replacement initialization fails', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const failedProvider = new DummyProvider();
+		mockProviderLifecycle.initialize.mockResolvedValue({
+			success: false,
+			provider: failedProvider,
+			error: new Error('Init failed'),
+		});
+
+		await upsertProvider();
+
+		expect(providersMap.get('my-vault')).toBe(existingProvider);
+		expect(disconnectedProviders()).not.toContain(existingProvider);
+		expect(disconnectedProviders()).toContain(failedProvider);
+		expect(scopedLogger.error).toHaveBeenCalledWith(
+			'External secrets provider replacement failed; previous provider stays active',
+			expect.objectContaining({
+				providerKey: 'my-vault',
+				phase: 'initialization',
+				error: expect.any(Error),
+			}),
+		);
+		expect(scopedLogger.error).not.toHaveBeenCalledWith(
+			'External secrets provider replacement reached terminal failure',
+			expect.objectContaining({ phase: 'initialization' }),
+		);
+	});
+
+	it('should keep a connected old provider active when a replacement has no provider to fall back on', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		mockProviderLifecycle.initialize.mockResolvedValue({
+			success: false,
+			error: new Error('Provider class not found: dummy'),
+		});
+
+		await upsertProvider();
+
+		expect(providersMap.get('my-vault')).toBe(existingProvider);
+		expect(mockProviderRegistry.remove).not.toHaveBeenCalledWith('my-vault');
+		expect(disconnectedProviders()).not.toContain(existingProvider);
 	});
 
 	it('should not disconnect a superseded candidate that is still connecting', async () => {
