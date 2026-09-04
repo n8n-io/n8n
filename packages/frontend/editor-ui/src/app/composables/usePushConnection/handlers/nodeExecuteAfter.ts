@@ -20,11 +20,11 @@ export async function nodeExecuteAfter(
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const assistantStore = useAssistantStore();
 
-	// Ignore node events that don't belong to the execution this document is
-	// tracking — a concurrent execution's node must not write into this
-	// document's data or fire its side effects (form popups, tracking, assistant).
+	// Ignore events for anything but the tracked execution or its sub-executions,
+	// so a concurrent run can't write here or fire side effects.
 	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
-	if (activeExecutionId !== pushData.executionId) {
+	const isSubExecution = workflowExecutionStateStore.isTrackedSubExecution(pushData.executionId);
+	if (activeExecutionId !== pushData.executionId && !isSubExecution) {
 		return;
 	}
 
@@ -65,15 +65,24 @@ export async function nodeExecuteAfter(
 		pushDataWithPlaceholderOutputData,
 	);
 
-	workflowExecutionStateStore.executingNode.removeExecutingNode(pushData.nodeName);
-	workflowExecutionStateStore.clearAgentNodeProgress(pushData.nodeName);
+	// Agent progress is only tracked for the execution on screen, and a sub-workflow
+	// may reuse a parent node name, so clearing it stays scoped to the parent.
+	if (isSubExecution) {
+		workflowExecutionStateStore.subExecutingNode.removeExecutingNode(pushData.nodeName);
+	} else {
+		workflowExecutionStateStore.executingNode.removeExecutingNode(pushData.nodeName);
+		workflowExecutionStateStore.clearAgentNodeProgress(pushData.nodeName);
+	}
 
-	// Side effects
+	// A form waiting inside a sub-workflow still needs its popup. Telemetry and
+	// the assistant are scoped to the workflow on screen, so they skip it.
 	if (pushData.data.executionStatus === 'waiting' && pushData.data.metadata?.resumeFormUrl) {
 		openFormPopupWindow(pushData.data.metadata.resumeFormUrl);
-	} else if (pushData.data.executionStatus !== 'waiting') {
+	} else if (pushData.data.executionStatus !== 'waiting' && !isSubExecution) {
 		void trackNodeExecution(pushData, workflowExecutionStateStore.workflowId);
 	}
 
-	void assistantStore.onNodeExecution(pushData);
+	if (!isSubExecution) {
+		void assistantStore.onNodeExecution(pushData);
+	}
 }

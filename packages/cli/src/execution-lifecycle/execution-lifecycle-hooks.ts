@@ -1,3 +1,4 @@
+import type { SubExecutionParent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
@@ -153,6 +154,8 @@ type HooksSetupParameters = {
 	parentExecution?: RelatedExecution;
 	source?: IWorkflowExecutionDataProcess['source'];
 	suppressErrorWorkflow?: IWorkflowExecutionDataProcess['suppressErrorWorkflow'];
+	/** Node run that started this execution as a sub-workflow. */
+	subExecutionParent?: SubExecutionParent;
 };
 
 function hookFunctionsWorkflowEvents(
@@ -273,7 +276,7 @@ function buildRedactableExecution(
  */
 function hookFunctionsPush(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf }: HooksSetupParameters,
+	{ pushRef, retryOf, subExecutionParent }: HooksSetupParameters,
 	userId?: string,
 	source?: IWorkflowExecutionDataProcess['source'],
 ) {
@@ -346,6 +349,14 @@ function hookFunctionsPush(
 			pushRef,
 		);
 
+		// A sub-execution streams to the parent's session only so the canvas and log
+		// tree can follow it live, and the metadata push above already covers that:
+		// the editor builds placeholder run data from `itemCountByConnectionType`.
+		// Item payloads are ~90% of a sub-execution's wire traffic and a loop keeps
+		// only its last iteration, so they are not streamed; the editor backfills
+		// the sub-executions still on display over REST once the parent run ends.
+		if (subExecutionParent) return;
+
 		// Fail-closed redaction: if user cannot be resolved, skip the data push
 		// entirely rather than sending unredacted data to the client.
 		const user = await getUser();
@@ -410,9 +421,11 @@ function hookFunctionsPush(
 		// Apply copy-on-write redaction to flattedRunData when retrying/resuming.
 		// Fail-closed: if user cannot be resolved or redaction throws, send
 		// empty runData rather than skipping the push or leaking unredacted data.
-		const user = await getUser();
 		let runDataToStringify: IRunData = {};
 		const hasRunData = data?.resultData.runData && Object.keys(data.resultData.runData).length > 0;
+		// Only needed to redact run data, so an execution that starts empty (every
+		// sub-execution) skips the lookup.
+		const user = hasRunData ? await getUser() : null;
 
 		if (hasRunData && user) {
 			try {
@@ -453,6 +466,7 @@ function hookFunctionsPush(
 					workflowId,
 					workflowName,
 					flattedRunData: stringify(runDataToStringify),
+					parent: subExecutionParent,
 				},
 			},
 			pushRef,
@@ -790,19 +804,35 @@ function hookFunctionsSaveWorker(
 	});
 }
 
+export type SubExecutionHooksOptions = {
+	mode: WorkflowExecuteMode;
+	executionId: string;
+	workflowData: IWorkflowBase;
+	userId?: string;
+	parentExecution?: RelatedExecution;
+	projectId?: string;
+	projectName?: string;
+	/** Set to stream this sub-execution's lifecycle events to the editor too. */
+	pushRef?: string;
+	/** Node run that started this sub-execution. */
+	subExecutionParent?: SubExecutionParent;
+};
+
 /**
  * Returns ExecutionLifecycleHooks instance for running integrated workflows
  * (Workflows which get started inside of another workflow)
  */
-export function getLifecycleHooksForSubExecutions(
-	mode: WorkflowExecuteMode,
-	executionId: string,
-	workflowData: IWorkflowBase,
-	userId?: string,
-	parentExecution?: RelatedExecution,
-	projectId?: string,
-	projectName?: string,
-): ExecutionLifecycleHooks {
+export function getLifecycleHooksForSubExecutions({
+	mode,
+	executionId,
+	workflowData,
+	userId,
+	parentExecution,
+	projectId,
+	projectName,
+	pushRef,
+	subExecutionParent,
+}: SubExecutionHooksOptions): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
@@ -812,6 +842,10 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+	// Without this the editor never hears about the sub-execution, leaving its
+	// branch idle until the calling node returns. No-ops without a `pushRef`,
+	// i.e. for every production run.
+	hookFunctionsPush(hooks, { saveSettings, pushRef, subExecutionParent }, userId);
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }

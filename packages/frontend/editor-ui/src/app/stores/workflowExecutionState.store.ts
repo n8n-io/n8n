@@ -28,6 +28,7 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 import { useExecutingNode } from '@/app/composables/useExecutingNode';
+import { useSubExecutions, type SubExecutionLink } from '@/app/composables/useSubExecutions';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createExecutionDataId,
@@ -264,6 +265,9 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			);
 		}
 
+		/** Sub-workflow executions of the run being watched. */
+		const subExecutions = useSubExecutions();
+
 		const onWorkflowExecutionStateChange = createEventHook<WorkflowExecutionStateChangeEvent>();
 
 		function fireChange(action: ChangeAction, field: WorkflowExecutionStateField) {
@@ -454,23 +458,142 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		// consistent with `activeExecutionRunData`; falls back to an empty Map
 		// sentinel only when no execution is being tracked.
 
-		const activeExecutionStatusByNodeId = computed(() => {
+		// Live sub-execution overlay: fills in per-node state from the live
+		// sub-executions wherever this execution has none, lighting up the branch of
+		// a workflow calling itself. Node ids only line up in that self-call case,
+		// so a different sub-workflow contributes nothing and the maps come through
+		// untouched. Reading from separate stores means the authoritative run data
+		// fetched at the end replaces only the parent's own state, so the branch
+		// stays lit.
+
+		/** Registered sub-executions of the tracked run, in the order they started. */
+		const subExecutionLinks = computed(() =>
+			Array.from(subExecutions.byExecutionId.value.values()),
+		);
+
+		/**
+		 * Live sub-executions' data stores, oldest first. Reading the registry here
+		 * is what re-resolves the overlays when one starts or is superseded.
+		 */
+		function subExecutionStores() {
+			return Array.from(subExecutions.byExecutionId.value.keys(), (executionId) =>
+				useExecutionDataStore(createExecutionDataId(executionId)),
+			);
+		}
+
+		/** Node ids present in any of the given maps. */
+		function unionOfNodeIds(maps: Array<Map<string, unknown>>): Set<string> {
+			const nodeIds = new Set<string>();
+			for (const map of maps) for (const nodeId of map.keys()) nodeIds.add(nodeId);
+			return nodeIds;
+		}
+
+		function ownStatusByNodeId() {
 			const executionId = getResolvedActiveExecutionId();
-			if (!executionId) return EMPTY_EXECUTION_STATUS_BY_NODE_ID;
-			return useExecutionDataStore(createExecutionDataId(executionId)).executionStatusByNodeId;
+			return executionId
+				? useExecutionDataStore(createExecutionDataId(executionId)).executionStatusByNodeId
+				: EMPTY_EXECUTION_STATUS_BY_NODE_ID;
+		}
+
+		function ownRunDataByNodeId() {
+			const executionId = getResolvedActiveExecutionId();
+			return executionId
+				? useExecutionDataStore(createExecutionDataId(executionId)).executionRunDataByNodeId
+				: EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID;
+		}
+
+		function computeOverlaidStatus(nodeId: string): ExecutionStatus {
+			const ownStatus = ownStatusByNodeId().get(nodeId)?.value;
+			if (ownStatus !== undefined && ownStatus !== 'new') return ownStatus;
+			// Newest wins, so an earlier iteration doesn't outrank the current one.
+			const stores = subExecutionStores();
+			for (let i = stores.length - 1; i >= 0; i--) {
+				const status = stores[i].executionStatusByNodeId.get(nodeId)?.value;
+				if (status !== undefined && status !== 'new') return status;
+			}
+			return ownStatus ?? 'new';
+		}
+
+		function computeOverlaidRunData(nodeId: string): ITaskData[] | null {
+			const ownTasks = ownRunDataByNodeId().get(nodeId)?.value;
+			if (ownTasks) return ownTasks;
+			const stores = subExecutionStores();
+			for (let i = stores.length - 1; i >= 0; i--) {
+				const tasks = stores[i].executionRunDataByNodeId.get(nodeId)?.value;
+				if (tasks) return tasks;
+			}
+			return null;
+		}
+
+		// Entries resolve the active execution and the registry on read, so they are
+		// created once per node rather than once per node per iteration — a long loop
+		// would otherwise churn through thousands of computeds. Owned by a scope
+		// stopped on disposal; entries drop alongside the running maps below.
+		const overlayScope = effectScope();
+		const overlayStatusEntries = new Map<string, ComputedRef<ExecutionStatus>>();
+		const overlayRunDataEntries = new Map<string, ComputedRef<ITaskData[] | null>>();
+
+		function overlayStatusEntry(nodeId: string): ComputedRef<ExecutionStatus> {
+			let entry = overlayStatusEntries.get(nodeId);
+			if (!entry) {
+				entry = overlayScope.run(() => structuralComputed(() => computeOverlaidStatus(nodeId)))!;
+				overlayStatusEntries.set(nodeId, entry);
+			}
+			return entry;
+		}
+
+		function overlayRunDataEntry(nodeId: string): ComputedRef<ITaskData[] | null> {
+			let entry = overlayRunDataEntries.get(nodeId);
+			if (!entry) {
+				// Plain `computed`: task data can be megabytes, so reference identity is
+				// the right gate (same reason as the per-execution store).
+				entry = overlayScope.run(() => computed(() => computeOverlaidRunData(nodeId)))!;
+				overlayRunDataEntries.set(nodeId, entry);
+			}
+			return entry;
+		}
+
+		const activeExecutionStatusByNodeId = computed(() => {
+			const own = ownStatusByNodeId();
+			const overlays = subExecutionStores().map((store) => store.executionStatusByNodeId);
+			if (overlays.length === 0) return own;
+
+			const merged = new Map<string, ComputedRef<ExecutionStatus>>();
+			for (const nodeId of unionOfNodeIds([own, ...overlays])) {
+				merged.set(nodeId, overlayStatusEntry(nodeId));
+			}
+			return merged;
 		});
 
 		const activeExecutionRunDataByNodeId = computed(() => {
-			const executionId = getResolvedActiveExecutionId();
-			if (!executionId) return EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID;
-			return useExecutionDataStore(createExecutionDataId(executionId)).executionRunDataByNodeId;
+			const own = ownRunDataByNodeId();
+			const overlays = subExecutionStores().map((store) => store.executionRunDataByNodeId);
+			if (overlays.length === 0) return own;
+
+			const merged = new Map<string, ComputedRef<ITaskData[] | null>>();
+			for (const nodeId of unionOfNodeIds([own, ...overlays])) {
+				merged.set(nodeId, overlayRunDataEntry(nodeId));
+			}
+			return merged;
 		});
 
 		const activeExecutionRunDataOutputMapByNodeId = computed(() => {
 			const executionId = getResolvedActiveExecutionId();
-			if (!executionId) return EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID;
-			return useExecutionDataStore(createExecutionDataId(executionId))
-				.executionRunDataOutputMapByNodeId;
+			const own = executionId
+				? useExecutionDataStore(createExecutionDataId(executionId))
+						.executionRunDataOutputMapByNodeId
+				: EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID;
+			const overlays = subExecutionStores().map((store) => store.executionRunDataOutputMapByNodeId);
+			if (overlays.length === 0) return own;
+
+			// Only nodes that produced output have an entry, so a missing key is the
+			// emptiness signal — no per-node wrapper needed.
+			const merged = new Map<string, ExecutionOutputMap>();
+			for (const overlay of overlays) {
+				for (const [nodeId, outputMap] of overlay.entries()) merged.set(nodeId, outputMap);
+			}
+			for (const [nodeId, outputMap] of own.entries()) merged.set(nodeId, outputMap);
+			return merged;
 		});
 
 		const activeExecutionWaitingByNodeId = computed(() => {
@@ -535,7 +658,12 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			// Pinia unwraps it to a Map at the store boundary.
 			const node = documentStore.nodesById.get(nodeId);
 			if (!node) return false;
-			return executingNode.isNodeExecuting(node.name);
+			// Both queues count: the calling node stays running while its child
+			// advances.
+			return (
+				executingNode.isNodeExecuting(node.name) ||
+				subExecutions.executingNode.isNodeExecuting(node.name)
+			);
 		}
 
 		function computeExecutionWaitingForNext(nodeId: string): boolean {
@@ -569,6 +697,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			runningScopes.delete(nodeId);
 			executionRunningByNodeId.delete(nodeId);
 			executionWaitingForNextByNodeId.delete(nodeId);
+			overlayStatusEntries.delete(nodeId);
+			overlayRunDataEntries.delete(nodeId);
 		}
 
 		function applyReconcileRunningEntries(nodeIds: string[]) {
@@ -626,6 +756,9 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			runningScopes.clear();
 			executionRunningByNodeId.clear();
 			executionWaitingForNextByNodeId.clear();
+			overlayScope.stop();
+			overlayStatusEntries.clear();
+			overlayRunDataEntries.clear();
 			clearAgentProgress();
 		});
 
@@ -738,11 +871,54 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		}
 
 		/**
+		 * Binds a starting sub-execution to the run this document is watching, so its
+		 * node events are accepted. Ignored unless its parent chain reaches the
+		 * tracked execution. Returns whether it was registered.
+		 */
+		function registerSubExecution(link: SubExecutionLink): boolean {
+			const belongsToTrackedRun =
+				link.parentExecutionId === activeExecutionId.value ||
+				subExecutions.has(link.parentExecutionId);
+			if (!belongsToTrackedRun) return false;
+
+			// The superseded iteration is no longer shown, so drop its data rather
+			// than keeping every loop iteration in memory.
+			for (const id of subExecutions.register(link)) {
+				disposeExecutionDataStore(useExecutionDataStore(createExecutionDataId(id)));
+				trackedExecutionIds.value.delete(id);
+			}
+			trackExecutionId(link.executionId);
+			return true;
+		}
+
+		/**
+		 * A sub-execution finished. Its data stays registered (the canvas and log
+		 * view keep showing it) but nothing in it runs, so the queue is cleared; a
+		 * sibling still running re-fills it on its next node event.
+		 */
+		function markSubExecutionFinished(executionId: string) {
+			if (!subExecutions.has(executionId)) return;
+			subExecutions.executingNode.clearNodeExecutionQueue();
+		}
+
+		/** Empties the sub-execution registry and disposes the data it was showing. */
+		function clearSubExecutions() {
+			for (const id of subExecutions.clear()) {
+				disposeExecutionDataStore(useExecutionDataStore(createExecutionDataId(id)));
+				trackedExecutionIds.value.delete(id);
+			}
+		}
+
+		/**
 		 * Applies a fetched/started execution result to this document's session state:
 		 * clears it when null, stages it as the pending scaffold while in progress, or
 		 * tracks it as a displayed execution once it has a backend id.
 		 */
 		function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
+			// Starts, clears, or swaps the displayed execution, so the previous run's
+			// sub-executions stop being relevant.
+			clearSubExecutions();
+
 			if (workflowResultData === null) {
 				setPendingExecution(null);
 				clearDisplayedExecution();
@@ -983,6 +1159,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			lastSuccessfulExecutionId.value = null;
 			stoppedExecutionId.value = null;
 			executingNode.clearNodeExecutionQueue();
+			// Stores already disposed by the loop above; just drop the registry.
+			subExecutions.clear();
 			clearAgentProgress();
 			fireChange(CHANGE_ACTION.DELETE, 'state');
 		}
@@ -999,6 +1177,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 
 			setActiveExecutionId(undefined);
 			executingNode.clearNodeExecutionQueue();
+			// Sub-executions abort too, but their data stays on display.
+			subExecutions.executingNode.clearNodeExecutionQueue();
 			setExecutionWaitingForWebhook(false);
 
 			useDocumentTitle().setDocumentTitle(useWorkflowDocumentStore(documentId).name, 'IDLE');
@@ -1055,6 +1235,10 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			lastSuccessfulExecutionId: readonly(lastSuccessfulExecutionId),
 			stoppedExecutionId: readonly(stoppedExecutionId),
 			executingNode,
+			/** Node currently executing inside a sub-execution of the tracked run. */
+			subExecutingNode: subExecutions.executingNode,
+			subExecutionLinks,
+			isTrackedSubExecution: subExecutions.has,
 			activeExecution,
 			isExecutionDataDisplayed,
 			activeExecutionRunData,
@@ -1081,6 +1265,9 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			resolveExecutionTriggerNodeName,
 			// Write API
 			trackExecutionId,
+			registerSubExecution,
+			markSubExecutionFinished,
+			clearSubExecutions,
 			setActiveExecutionId,
 			setWorkflowExecutionData,
 			setDisplayedExecutionId,

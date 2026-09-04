@@ -1794,12 +1794,11 @@ describe('Execution Lifecycle Hooks', () => {
 
 	describe('getLifecycleHooksForSubExecutions', () => {
 		beforeEach(() => {
-			lifecycleHooks = getLifecycleHooksForSubExecutions(
-				'manual',
+			lifecycleHooks = getLifecycleHooksForSubExecutions({
+				mode: 'manual',
 				executionId,
 				workflowData,
-				undefined,
-			);
+			});
 		});
 
 		workflowEventTests();
@@ -1824,6 +1823,89 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
+		it('installs no push handlers without a push ref', async () => {
+			await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+			await lifecycleHooks.runHook('nodeExecuteBefore', [
+				'test-node',
+				{ startTime: 0, executionIndex: 0, source: [] },
+			]);
+
+			expect(push.send).not.toHaveBeenCalled();
+		});
+
+		describe('when the parent run carries a push ref', () => {
+			const subExecutionParent = {
+				executionId: 'parent-execution-id',
+				nodeName: 'Execute Sub-workflow',
+				runIndex: 2,
+			};
+
+			beforeEach(() => {
+				lifecycleHooks = getLifecycleHooksForSubExecutions({
+					mode: 'manual',
+					executionId,
+					workflowData,
+					// Resolvable, so skipping the payload push is the gate's doing and not
+					// the fail-closed redaction path.
+					userId,
+					pushRef,
+					subExecutionParent,
+				});
+			});
+
+			it('reports the node run that started it, so the editor can bind it', async () => {
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'executionStarted',
+						data: expect.objectContaining({ executionId, parent: subExecutionParent }),
+					}),
+					pushRef,
+				);
+			});
+
+			it('pushes its node events', async () => {
+				await lifecycleHooks.runHook('nodeExecuteBefore', [
+					'test-node',
+					{ startTime: 0, executionIndex: 0, source: [] },
+				]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'nodeExecuteBefore',
+						data: expect.objectContaining({ executionId, nodeName: 'test-node' }),
+					}),
+					pushRef,
+				);
+			});
+
+			it('pushes node metadata but not item payloads', async () => {
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+
+				// Item counts still ride along, so the editor can build placeholders.
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'nodeExecuteAfter',
+						data: expect.objectContaining({ executionId, nodeName }),
+					}),
+					pushRef,
+				);
+
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
+					pushRef,
+					true,
+				);
+			});
+
+			it('does not resolve the user for redaction, having no payload to redact', async () => {
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+			});
+		});
+
 		describe('when parentExecution is provided', () => {
 			const parentWorkflowId = 'parent-workflow-id';
 			const parentExecutionId = 'parent-execution-id';
@@ -1833,13 +1915,12 @@ describe('Execution Lifecycle Hooks', () => {
 			};
 
 			beforeEach(() => {
-				lifecycleHooks = getLifecycleHooksForSubExecutions(
-					'integrated',
+				lifecycleHooks = getLifecycleHooksForSubExecutions({
+					mode: 'integrated',
 					executionId,
 					workflowData,
-					undefined,
 					parentExecution,
-				);
+				});
 			});
 
 			it('should duplicate binary data to parent execution', async () => {
