@@ -32,6 +32,7 @@ export const mcpRegistryUsesCredentialSchema = z.object({
 	credentialType: z.string().min(1),
 	name: z.string().min(1),
 	value: z.string().min(1),
+	default: z.boolean().optional(),
 });
 
 export const mcpRegistryUsesCredentialsSchema = z
@@ -58,6 +59,13 @@ export const mcpRegistryUsesCredentialsSchema = z
 			}
 			credentialTypes.add(credential.credentialType);
 			values.add(credential.value);
+		}
+
+		if (credentials.filter((credential) => credential.default === true).length > 1) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'Only one credential can be the default',
+			});
 		}
 	});
 
@@ -107,21 +115,24 @@ const mcpRegistryServerBaseSchema = z.object({
 		.union([z.array(z.string()), z.object({ data: z.array(z.string()).nullish() })])
 		.nullish()
 		.transform((value) => (Array.isArray(value) ? value : (value?.data ?? undefined))),
+	authType: z.enum(['oauth2', 'extendsCredential', 'usesCredentials']),
+	extendsCredential: mcpRegistryExtendsCredentialSchema
+		.nullish()
+		.transform((value) => value ?? undefined),
+	usesCredentials: mcpRegistryUsesCredentialsSchema
+		.nullish()
+		.transform((value) => value ?? undefined),
+	packagePrerequisite: z
+		.object({
+			packageName: z.string().min(1),
+			nodeType: z.string().min(1),
+			credentialTypes: z.array(z.string().min(1)).min(1),
+		})
+		.nullish()
+		.transform((value) => value ?? undefined),
 });
 
-const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [
-	z.object({ authType: z.literal('oauth2') }),
-	z.object({
-		authType: z.literal('extendsCredential'),
-		extendsCredential: mcpRegistryExtendsCredentialSchema,
-	}),
-	z.object({
-		authType: z.literal('usesCredentials'),
-		usesCredentials: mcpRegistryUsesCredentialsSchema,
-	}),
-]);
-
-export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegistryServerAuthSchema);
+export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema;
 
 export type McpRegistryServer = z.output<typeof mcpRegistryServerSchema>;
 export type McpRegistryIcon = McpRegistryServer['icons'][number];

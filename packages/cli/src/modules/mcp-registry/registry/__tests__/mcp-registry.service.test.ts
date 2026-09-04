@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialTypes } from '@/credential-types';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -37,6 +38,14 @@ function createService(options: CreateServiceOptions = {}) {
 		instanceType: options.instanceType ?? 'main',
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({ loaders: {} });
+	const credentialTypes = mock<CredentialTypes>();
+	credentialTypes.recognizes.mockReturnValue(true);
+	credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+	credentialTypes.getByName.mockImplementation((name) => ({
+		name,
+		displayName: name,
+		properties: [],
+	}));
 	const push = mock<Push>({ broadcast: vi.fn() });
 	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
 
@@ -76,6 +85,7 @@ function createService(options: CreateServiceOptions = {}) {
 		apiClient,
 		instanceSettings,
 		loadNodesAndCredentials,
+		credentialTypes,
 		push,
 		publisher,
 	);
@@ -87,6 +97,7 @@ function createService(options: CreateServiceOptions = {}) {
 		push,
 		publisher,
 		loadNodesAndCredentials,
+		credentialTypes,
 	};
 }
 
@@ -138,6 +149,96 @@ describe('McpRegistryService', () => {
 
 			expect(notion).toEqual(notionMockServer);
 			expect(missing).toBeUndefined();
+		});
+
+		it('hides a server when its only credential requires a missing package', async () => {
+			const firecrawlServer: McpRegistryServer = {
+				...notionMockServer,
+				slug: 'firecrawl',
+				authType: 'usesCredentials',
+				usesCredentials: [
+					{ credentialType: 'firecrawlApi', name: 'Firecrawl API', value: 'firecrawlApi' },
+				],
+				packagePrerequisite: {
+					packageName: '@mendable/n8n-nodes-firecrawl',
+					nodeType: '@mendable/n8n-nodes-firecrawl.firecrawl',
+					credentialTypes: ['firecrawlApi'],
+				},
+			};
+			const { service, loadNodesAndCredentials } = createService({
+				storedServers: [firecrawlServer],
+			});
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+
+			expect(await service.getAll()).toEqual([]);
+			expect(await service.get('firecrawl')).toBeUndefined();
+		});
+
+		it('keeps other auth options when a prerequisite package is missing', async () => {
+			const firecrawlServer: McpRegistryServer = {
+				...notionMockServer,
+				slug: 'firecrawl',
+				authType: 'oauth2',
+				usesCredentials: [
+					{
+						credentialType: 'firecrawlApi',
+						name: 'Firecrawl API',
+						value: 'firecrawlApi',
+						default: true,
+					},
+				],
+				packagePrerequisite: {
+					packageName: '@mendable/n8n-nodes-firecrawl',
+					nodeType: '@mendable/n8n-nodes-firecrawl.firecrawl',
+					credentialTypes: ['firecrawlApi'],
+				},
+			};
+			const { service, loadNodesAndCredentials } = createService({
+				storedServers: [firecrawlServer],
+			});
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+
+			const servers = await service.getAll();
+			expect(servers).toHaveLength(1);
+			expect(servers[0].slug).toBe('firecrawl');
+			expect(servers[0]).not.toHaveProperty('usesCredentials');
+		});
+
+		it('keeps prerequisite credentials when the package and credential are available', async () => {
+			const firecrawlServer: McpRegistryServer = {
+				...notionMockServer,
+				slug: 'firecrawl',
+				authType: 'usesCredentials',
+				usesCredentials: [
+					{
+						credentialType: 'firecrawlApi',
+						name: 'Firecrawl API',
+						value: 'firecrawlApi',
+						default: true,
+					},
+				],
+				packagePrerequisite: {
+					packageName: '@mendable/n8n-nodes-firecrawl',
+					nodeType: '@mendable/n8n-nodes-firecrawl.firecrawl',
+					credentialTypes: ['firecrawlApi'],
+				},
+			};
+			const { service, loadNodesAndCredentials, credentialTypes } = createService({
+				storedServers: [firecrawlServer],
+			});
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(true);
+			credentialTypes.getParentTypes.mockReturnValue([]);
+			credentialTypes.getByName.mockReturnValue({
+				name: 'firecrawlApi',
+				displayName: 'Firecrawl API',
+				properties: [],
+				authenticate: {
+					type: 'generic',
+					properties: { headers: { Authorization: '=Bearer {{$credentials.apiKey}}' } },
+				},
+			});
+
+			expect(await service.getAll()).toEqual([firecrawlServer]);
 		});
 
 		it('returns empty array for getBySlugs when input is empty', async () => {

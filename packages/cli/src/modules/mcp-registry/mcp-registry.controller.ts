@@ -32,5 +32,6 @@ function toResponse(server: McpRegistryServer): McpRegistryServerResponse {
 		isOfficial: server.isOfficial,
 		status: server.status,
 		tags: server.tags,
+		packagePrerequisite: server.packagePrerequisite,
 	};
 }

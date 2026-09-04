@@ -175,6 +175,14 @@ describe('useQuickConnect()', () => {
 				);
 			});
 
+			it('allows a registry node to reuse an option for its credential type', () => {
+				const { getQuickConnectOption } = useQuickConnect();
+
+				expect(
+					getQuickConnectOption('googleSheetsOAuth2Api', '@n8n/mcp-registry.googleSheets'),
+				).toEqual(quickConnectOptionData);
+			});
+
 			it('extracts package name from node type by splitting on first dot', () => {
 				settingsStore.moduleSettings['quick-connect'] = {
 					options: [

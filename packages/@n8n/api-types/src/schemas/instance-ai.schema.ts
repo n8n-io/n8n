@@ -661,9 +661,17 @@ export const mcpConnectServerSchema = z.object({
 				credentialType: z.string(),
 				name: z.string(),
 				value: z.string(),
+				default: z.boolean().optional(),
 			}),
 		)
 		.min(1),
+	packagePrerequisite: z
+		.object({
+			packageName: z.string(),
+			nodeType: z.string(),
+			credentialTypes: z.array(z.string()),
+		})
+		.optional(),
 });
 export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
 

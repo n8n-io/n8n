@@ -9,17 +9,16 @@ import type {
 
 import {
 	getMcpRegistryCredentialTypeName,
+	getMcpRegistryCredentialOptions,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
 import {
 	mcpRegistryExtendsCredentialSchema,
-	mcpRegistryUsesCredentialsSchema,
 	type McpRegistryExtendsCredential,
 	type McpRegistryIcon,
 	type McpRegistryServer,
-	type McpRegistryUsesCredential,
 } from './registry/mcp-registry.types';
 
 export {
@@ -149,20 +148,6 @@ function getValidatedExtendsCredential(
 	return { parentType, overrides };
 }
 
-function getValidatedUsesCredentials(
-	server: McpRegistryServer,
-	isKnownCredentialType: IsKnownCredentialType,
-): McpRegistryUsesCredential[] | null {
-	if (server.authType !== 'usesCredentials') return null;
-
-	const parseResult = mcpRegistryUsesCredentialsSchema.safeParse(server.usesCredentials);
-	if (!parseResult.success) return null;
-	const supportedCredentials = parseResult.data.filter(({ credentialType }) =>
-		isKnownCredentialType(credentialType),
-	);
-	return supportedCredentials.length > 0 ? supportedCredentials : null;
-}
-
 /**
  * Builds a dedicated credential type extending a known n8n credential.
  */
@@ -199,37 +184,26 @@ function getNodeDescriptionCredentials(
 	server: McpRegistryServer,
 	isKnownCredentialType: IsKnownCredentialType,
 ): INodeCredentialDescription[] {
-	switch (server.authType) {
-		case 'oauth2':
-			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
-		case 'extendsCredential': {
-			const validated = getValidatedExtendsCredential(server, isKnownCredentialType);
-			if (!validated) return [];
-			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
-		}
-		case 'usesCredentials': {
-			const credentials = getValidatedUsesCredentials(server, isKnownCredentialType);
-			if (!credentials) return [];
-			if (credentials.length === 1) {
-				return [{ name: credentials[0].credentialType, required: true }];
-			}
-			return credentials.map(({ credentialType, value }) => ({
-				name: credentialType,
-				required: true,
-				displayOptions: { show: { authentication: [value] } },
-			}));
-		}
-		default:
-			return [];
+	const credentials = getMcpRegistryCredentialOptions(server, isKnownCredentialType);
+	if (credentials.length === 1) {
+		return [{ name: credentials[0].credentialType, required: true }];
 	}
+	return credentials.map(({ credentialType, value }) => ({
+		name: credentialType,
+		required: true,
+		displayOptions: { show: { authentication: [value] } },
+	}));
 }
 
 function getAuthenticationProperty(
 	server: McpRegistryServer,
 	isKnownCredentialType: IsKnownCredentialType,
 ): INodeProperties | null {
-	const credentials = getValidatedUsesCredentials(server, isKnownCredentialType);
-	if (!credentials || credentials.length < 2) return null;
+	const credentials = getMcpRegistryCredentialOptions(server, isKnownCredentialType);
+	if (credentials.length < 2) return null;
+
+	const defaultCredential =
+		credentials.find((credential) => credential.default === true) ?? credentials[0];
 
 	return {
 		displayName: 'Authentication',
@@ -237,7 +211,7 @@ function getAuthenticationProperty(
 		type: 'options',
 		noDataExpression: true,
 		options: credentials.map(({ name, value }) => ({ name, value })),
-		default: credentials[0].value,
+		default: defaultCredential.value,
 	};
 }
 const ICON_MIME_PREFERENCE: Array<McpRegistryIcon['mimeType']> = [

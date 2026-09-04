@@ -23,6 +23,14 @@ const notionResult: McpRegistrySearchResult = {
 	transport: 'streamableHttp',
 	authentication: 'notionMcpOAuth2Api',
 	credentialType: 'notionMcpOAuth2Api',
+	credentials: [
+		{
+			credentialType: 'notionMcpOAuth2Api',
+			name: 'OAuth2',
+			value: 'oAuth2',
+			default: true,
+		},
+	],
 	tools: [
 		{ name: 'notion-search', title: 'Search Notion and connected sources' },
 		{ name: 'notion-fetch', title: 'Fetch Notion entities' },

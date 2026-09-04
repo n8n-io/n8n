@@ -19,6 +19,7 @@ const experiment = vi.hoisted(() => ({ enabled: false }));
 const easySetup = vi.hoisted(() => ({ available: false }));
 const mockTelemetryTrack = vi.hoisted(() => vi.fn());
 const mockBrowserModalOpened = vi.hoisted(() => vi.fn());
+const mockQuickConnect = vi.hoisted(() => vi.fn());
 
 vi.mock('@/experiments/instanceAiBrowserCredentialSetup', () => ({
 	useInstanceAiBrowserCredentialSetupExperiment: () => ({
@@ -30,6 +31,7 @@ vi.mock('@/features/credentials/quickConnect/composables/useQuickConnect', () =>
 	useQuickConnect: () => ({
 		getQuickConnectOptionByCredentialTypes: () =>
 			easySetup.available ? { packageName: 'x' } : undefined,
+		connect: mockQuickConnect,
 	}),
 }));
 
@@ -187,6 +189,9 @@ describe('InstanceAiCredentialSetup', () => {
 		setActivePinia(pinia);
 		store = useInstanceAiStore();
 		thread = store.getOrCreateRuntime('thread-1');
+		easySetup.available = false;
+		mockQuickConnect.mockReset();
+		mockQuickConnect.mockResolvedValue(null);
 
 		const credentialsStore = useCredentialsStore();
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
@@ -275,6 +280,29 @@ describe('InstanceAiCredentialSetup', () => {
 
 			expect(getByTestId('instance-ai-credential-setup-button')).toBeTruthy();
 			expect(queryByTestId('credential-picker')).toBeNull();
+		});
+
+		it('uses configured quick connect from the setup button', async () => {
+			const credentialsStore = useCredentialsStore();
+			stubUsableCredentials(credentialsStore, () => []);
+			easySetup.available = true;
+			mockQuickConnect.mockResolvedValue({ id: 'quick-credential' });
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: makeCredentialRequests(1),
+					message: 'Set up credentials',
+				},
+			});
+
+			await userEvent.click(getByTestId('instance-ai-credential-setup-button'));
+
+			expect(mockQuickConnect).toHaveBeenCalledWith({
+				credentialTypeName: 'type1',
+				nodeType: 'x.quickConnect',
+				source: 'credential_type',
+				serviceName: 'type1',
+			});
 		});
 
 		it('opens the credential modal pre-filled with the recipe for a Templated Custom Auth request', async () => {

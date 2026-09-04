@@ -529,6 +529,9 @@ export class InstanceAiAdapterService {
 						title: server.title,
 						description: server.tagline,
 						usesCredentials: getMcpRegistryCredentialOptions(server),
+						...(server.packagePrerequisite
+							? { packagePrerequisite: server.packagePrerequisite }
+							: {}),
 						tools: server.tools.map((tool) => tool.name),
 					}));
 			},

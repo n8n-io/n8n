@@ -31,6 +31,17 @@ vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	}),
 }));
 
+const { mockGetQuickConnectOption, mockQuickConnect } = vi.hoisted(() => ({
+	mockGetQuickConnectOption: vi.fn(),
+	mockQuickConnect: vi.fn(),
+}));
+vi.mock('@/features/credentials/quickConnect/composables/useQuickConnect', () => ({
+	useQuickConnect: () => ({
+		getQuickConnectOption: mockGetQuickConnectOption,
+		connect: mockQuickConnect,
+	}),
+}));
+
 const credentialCreatedListeners = new Set<(credential: ICredentialsResponse) => void>();
 vi.mock('@/features/credentials/credentials.store', async (importOriginal) => ({
 	...(await importOriginal<object>()),
@@ -61,7 +72,11 @@ const makeConnection = (overrides: Partial<InstanceAiMcpConnection> = {}) =>
 		...overrides,
 	}) as InstanceAiMcpConnection;
 
-const linear = { slug: 'linear', credentialType: 'linearMcpOAuth2Api' };
+const linear = {
+	slug: 'linear',
+	credentialType: 'linearMcpOAuth2Api',
+	serviceName: 'Linear',
+};
 
 describe('useMcpServerConnect', () => {
 	let mcpStore: ReturnType<typeof mockedStore<typeof useInstanceAiMcpStore>>;
@@ -88,6 +103,7 @@ describe('useMcpServerConnect', () => {
 		mcpStore.connect.mockResolvedValue(makeConnection({ id: 'conn-new' }));
 		mcpStore.updateConnection.mockResolvedValue(makeConnection({ id: 'conn-1' }));
 		mockCanQuickConnect.mockReturnValue(false);
+		mockGetQuickConnectOption.mockReturnValue(undefined);
 	});
 
 	afterEach(async () => {
@@ -185,6 +201,26 @@ describe('useMcpServerConnect', () => {
 			await expect(useMcpServerConnect().connectServer(linear)).resolves.toBeNull();
 
 			expect(mcpStore.connect).not.toHaveBeenCalled();
+		});
+
+		it('uses configured quick connect for a declarative credential', async () => {
+			mockGetQuickConnectOption.mockReturnValue({ quickConnectType: 'firecrawl' });
+			mockQuickConnect.mockResolvedValue({ id: 'cred-new' });
+			const firecrawl = {
+				slug: 'firecrawl',
+				credentialType: 'firecrawlApi',
+				serviceName: 'Firecrawl',
+			};
+
+			await expect(useMcpServerConnect().connectServer(firecrawl)).resolves.toBe('conn-new');
+
+			expect(mockQuickConnect).toHaveBeenCalledWith({
+				credentialTypeName: 'firecrawlApi',
+				nodeType: '@n8n/mcp-registry.firecrawl',
+				source: 'node_type',
+				serviceName: 'Firecrawl',
+			});
+			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open).toBe(false);
 		});
 
 		it('opens the credential modal for the server credential type', async () => {
@@ -357,6 +393,7 @@ describe('useMcpServerConnect', () => {
 			const connectingNotion = connectServer({
 				slug: 'notion',
 				credentialType: 'notionMcpOAuth2Api',
+				serviceName: 'Notion',
 			});
 			await flushPromises();
 

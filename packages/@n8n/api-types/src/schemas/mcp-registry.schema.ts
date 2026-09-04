@@ -26,6 +26,13 @@ export interface McpRegistryCredentialOption {
 	credentialType: string;
 	name: string;
 	value: string;
+	default?: boolean;
+}
+
+export interface McpRegistryPackagePrerequisite {
+	packageName: string;
+	nodeType: string;
+	credentialTypes: string[];
 }
 
 export interface McpRegistryServerResponse {
@@ -43,4 +50,5 @@ export interface McpRegistryServerResponse {
 	isOfficial: boolean;
 	status: McpRegistryServerStatus;
 	tags?: string[];
+	packagePrerequisite?: McpRegistryPackagePrerequisite;
 }

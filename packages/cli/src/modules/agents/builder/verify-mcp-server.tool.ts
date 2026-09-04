@@ -1,6 +1,6 @@
 import type { BuiltTool, CredentialProvider, McpClient, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema } from '@n8n/api-types';
+import { McpAuthenticationSchemaTypes, McpCredentialTypeSchema } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { z } from 'zod';
 
@@ -91,7 +91,7 @@ const verifyMcpServerInputSchema = z.object({
 		.default('streamableHttp')
 		.describe('Transport type. Defaults to streamableHttp'),
 	authentication: z
-		.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
+		.union([McpAuthenticationSchemaTypes, McpCredentialTypeSchema])
 		.default('none')
 		.describe('Authentication scheme'),
 	credential: z

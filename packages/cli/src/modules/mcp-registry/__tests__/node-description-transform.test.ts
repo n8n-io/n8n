@@ -384,6 +384,47 @@ describe('serverToNodeDescription', () => {
 	});
 
 	describe('with usesCredentials', () => {
+		it('combines OAuth2 with direct credentials and honors an explicit default', () => {
+			const server: McpRegistryServer = {
+				...notionMockServer,
+				usesCredentials: [
+					{
+						credentialType: 'firecrawlApi',
+						name: 'Firecrawl API',
+						value: 'firecrawlApi',
+						default: true,
+					},
+				],
+			};
+
+			const description = serverToNodeDescription(
+				server,
+				baseDescription,
+				(name) => name === 'firecrawlApi',
+			);
+
+			expect(description?.credentials).toEqual([
+				{
+					name: 'firecrawlApi',
+					required: true,
+					displayOptions: { show: { authentication: ['firecrawlApi'] } },
+				},
+				{
+					name: 'notionMcpOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+			]);
+			expect(description?.properties[0]).toMatchObject({
+				name: 'authentication',
+				default: 'firecrawlApi',
+				options: [
+					{ name: 'Firecrawl API', value: 'firecrawlApi' },
+					{ name: 'OAuth2', value: 'oAuth2' },
+				],
+			});
+		});
+
 		it('adds an authentication selector and direct credential descriptions', () => {
 			const description = serverToNodeDescription(
 				githubUsesCredentialsMockServer,

@@ -554,7 +554,13 @@ export interface McpRegistryConnectServerSummary extends McpRegistryServerSummar
 		credentialType: string;
 		name: string;
 		value: string;
+		default?: boolean;
 	}>;
+	packagePrerequisite?: {
+		packageName: string;
+		nodeType: string;
+		credentialTypes: string[];
+	};
 }
 
 /** A service the user connected, with those of its tools that reached the agent.

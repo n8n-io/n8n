@@ -702,6 +702,40 @@ describe('AgentValidationService — structured issues', () => {
 		expect(result).toEqual({ status: 'valid', issues: [] });
 	});
 
+	it('requires an exact credential type match for declarative registry authentication', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				mcpServers: [
+					{
+						name: 'firecrawl',
+						url: 'https://mcp.firecrawl.dev/v2/mcp',
+						transport: 'streamableHttp',
+						authentication: 'firecrawlApi',
+						credential: 'firecrawl-cred',
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([
+				{ id: 'openai-main', type: 'openAiApi' },
+				{ id: 'firecrawl-cred', type: 'perplexityApi' },
+			]),
+		);
+
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'incompatible_credential',
+				path: 'mcpServers.0.credential',
+			}),
+		]);
+	});
+
 	it('flags channels with a missing credential or a credential type the integration does not support', async () => {
 		const { service, agentRepository, chatIntegrationRegistry } = makeService();
 		chatIntegrationRegistry.get.mockReturnValue({

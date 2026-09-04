@@ -409,16 +409,8 @@ onMounted(async () => {
 		}
 
 		// Default to quick connect mode for new credentials when available and not forced to manual
-		if (
-			props.mode === 'new' &&
-			!forceManual &&
-			credentialTypeName.value &&
-			ndvStore.value.activeNode
-		) {
-			const qcOption = getQuickConnectOption(
-				credentialTypeName.value,
-				ndvStore.value.activeNode.type,
-			);
+		if (props.mode === 'new' && !forceManual && credentialTypeName.value && contextNode.value) {
+			const qcOption = getQuickConnectOption(credentialTypeName.value, contextNode.value.type);
 			if (qcOption) {
 				isQuickConnectMode.value = true;
 			}
@@ -1323,13 +1315,13 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 }
 
 async function onQuickConnect(): Promise<void> {
-	if (!credentialTypeName.value || !ndvStore.value.activeNode) return;
+	if (!credentialTypeName.value || !contextNode.value) return;
 
 	const serviceName = getAppNameFromCredType(credentialType.value?.displayName ?? '');
 
 	const credential = await quickConnect({
 		credentialTypeName: credentialTypeName.value,
-		nodeType: ndvStore.value.activeNode.type,
+		nodeType: contextNode.value.type,
 		source: 'credential_type',
 		serviceName,
 	});

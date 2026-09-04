@@ -238,6 +238,7 @@ async function handleConnect(
 				serverSlug: server.slug,
 				title: server.title,
 				usesCredentials: server.usesCredentials,
+				...(server.packagePrerequisite ? { packagePrerequisite: server.packagePrerequisite } : {}),
 				...(server.description ? { tagline: server.description } : {}),
 			})),
 		},

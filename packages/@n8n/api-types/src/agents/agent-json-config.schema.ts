@@ -219,6 +219,7 @@ export const McpAuthenticationSchemaTypes = z.enum([
 ]);
 
 export const McpOAuth2CredentialTypeSchema = z.string().regex(/OAuth2(?:Api)?$/);
+export const McpCredentialTypeSchema = z.string().min(1).max(128);
 
 /**
  * Configuration for a single MCP (Model Context Protocol) server attached to
@@ -241,11 +242,9 @@ export const McpServerConfigSchema = z
 			.default('streamableHttp')
 			.describe('Transport protocol'),
 		authentication: z
-			.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
+			.union([McpAuthenticationSchemaTypes, McpCredentialTypeSchema])
 			.default('none')
-			.describe(
-				'Auth method. Named variants or an OAuth2 credential type returned by the registry',
-			),
+			.describe('Auth method. Named variants or a credential type returned by the registry'),
 		credential: z
 			.string()
 			.optional()

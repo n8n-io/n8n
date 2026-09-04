@@ -6,8 +6,12 @@
  */
 import { camelCase } from 'change-case';
 
-import type { McpRegistryServer } from './mcp-registry.types';
-import { resolveMcpRegistryConnection, toAgentMcpTransport } from '../mcp-registry-connection';
+import type { McpRegistryServer, McpRegistryUsesCredential } from './mcp-registry.types';
+import {
+	getMcpRegistryCredentialOptions,
+	resolveMcpRegistryConnection,
+	toAgentMcpTransport,
+} from '../mcp-registry-connection';
 
 export interface McpRegistrySearchResult {
 	slug: string;
@@ -18,6 +22,7 @@ export interface McpRegistrySearchResult {
 	transport: 'streamableHttp' | 'sse';
 	authentication: string;
 	credentialType: string;
+	credentials: McpRegistryUsesCredential[];
 	tools: Array<{ name: string; title?: string }>;
 	metadata: { nodeTypeName: string };
 }
@@ -25,7 +30,8 @@ export interface McpRegistrySearchResult {
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
 	const connection = resolveMcpRegistryConnection(server);
 	if (!connection) return null;
-	const defaultCredential = connection.credentialBindings[0];
+	const credentials = getMcpRegistryCredentialOptions(server);
+	const defaultCredential = credentials[0];
 	if (!defaultCredential) return null;
 	return {
 		slug: server.slug,
@@ -36,6 +42,7 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 		transport: toAgentMcpTransport(connection.transport),
 		authentication: defaultCredential.credentialType,
 		credentialType: defaultCredential.credentialType,
+		credentials,
 		tools: server.tools.map((tool) => ({
 			name: tool.name,
 			...(tool.title ? { title: tool.title } : {}),

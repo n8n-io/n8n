@@ -16,6 +16,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUsersStore } from '@n8n/stores/users.store';
 
+const MCP_REGISTRY_NODE_PREFIX = '@n8n/mcp-registry.';
+
 export function useQuickConnect() {
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
@@ -57,6 +59,9 @@ export function useQuickConnect() {
 		}
 		const option = optionsByCredentialType.value.get(credentialType);
 		if (!option) return undefined;
+		// MCP registry nodes can use quick connect options for the original node
+		// Skip the check because mcp registry node types don't match the package name
+		if (nodeType.startsWith(MCP_REGISTRY_NODE_PREFIX)) return option;
 		const pkg = nodeType.split('.')[0];
 		return option.packageName.split('.')[0] === pkg ? option : undefined;
 	}

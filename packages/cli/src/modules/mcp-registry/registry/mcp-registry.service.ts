@@ -6,6 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { McpRegistryConnection } from 'n8n-workflow';
 
 import { inE2ETests } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -22,6 +23,10 @@ import {
 import type { McpRegistryServer } from './mcp-registry.types';
 import { toEntity, fromEntity } from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
+import {
+	getMcpRegistryCredentialOptions,
+	isSupportedMcpRegistryCredentialType,
+} from '../mcp-registry-connection';
 
 type RefreshReason = 'startup' | 'leader-takeover' | 'interval';
 
@@ -43,6 +48,7 @@ export class McpRegistryService {
 		private readonly apiClient: McpRegistryApiClient,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly credentialTypes: CredentialTypes,
 		private readonly push: Push,
 		private readonly publisher: Publisher,
 	) {
@@ -90,6 +96,12 @@ export class McpRegistryService {
 	async getAll({
 		includeDeprecated = false,
 	}: { includeDeprecated?: boolean } = {}): Promise<McpRegistryServer[]> {
+		return (await this.getAllRaw(includeDeprecated))
+			.map((server) => this.withSupportedAuthentication(server))
+			.filter((server): server is McpRegistryServer => server !== null);
+	}
+
+	private async getAllRaw(includeDeprecated: boolean): Promise<McpRegistryServer[]> {
 		const entities = includeDeprecated
 			? await this.repository.find()
 			: await this.repository.findBy({ status: 'active' });
@@ -98,7 +110,8 @@ export class McpRegistryService {
 
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
 		const entity = await this.repository.findOneBy({ slug });
-		return entity ? fromEntity(entity) : undefined;
+		if (!entity) return undefined;
+		return this.withSupportedAuthentication(fromEntity(entity)) ?? undefined;
 	}
 
 	async getBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
@@ -107,7 +120,38 @@ export class McpRegistryService {
 		}
 
 		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
-		return entities.map(fromEntity);
+		return entities
+			.map(fromEntity)
+			.map((server) => this.withSupportedAuthentication(server))
+			.filter((server): server is McpRegistryServer => server !== null);
+	}
+
+	private withSupportedAuthentication(server: McpRegistryServer): McpRegistryServer | null {
+		const prerequisiteMissing =
+			server.packagePrerequisite !== undefined &&
+			!this.loadNodesAndCredentials.isKnownNode(server.packagePrerequisite.nodeType);
+		const blockedCredentialTypes = prerequisiteMissing
+			? new Set(server.packagePrerequisite?.credentialTypes ?? [])
+			: new Set<string>();
+		const isSupported = (credentialType: string) =>
+			!blockedCredentialTypes.has(credentialType) &&
+			isSupportedMcpRegistryCredentialType(this.credentialTypes, credentialType);
+		const usesCredentials = server.usesCredentials?.filter(({ credentialType }) =>
+			isSupported(credentialType),
+		);
+		const extendsCredential =
+			server.extendsCredential && isSupported(server.extendsCredential.extends)
+				? server.extendsCredential
+				: undefined;
+		const supportedServer = { ...server };
+		if (extendsCredential) supportedServer.extendsCredential = extendsCredential;
+		else delete supportedServer.extendsCredential;
+		if (usesCredentials?.length) supportedServer.usesCredentials = usesCredentials;
+		else delete supportedServer.usesCredentials;
+
+		return getMcpRegistryCredentialOptions(supportedServer, isSupported).length > 0
+			? supportedServer
+			: null;
 	}
 
 	/**
@@ -169,7 +213,7 @@ export class McpRegistryService {
 
 	private async refreshFromApiInternal(reason: RefreshReason): Promise<void> {
 		try {
-			const existingServers = await this.getAll({ includeDeprecated: true });
+			const existingServers = await this.getAllRaw(true);
 			let updatedServers: McpRegistryServer[];
 			if (existingServers.length === 0) {
 				updatedServers = await this.apiClient.fetchAllServers();
@@ -259,7 +303,7 @@ export class McpRegistryService {
 			return;
 		}
 
-		const servers = await this.getAll({ includeDeprecated: true });
+		const servers = await this.getAllRaw(true);
 		loader.setServers(servers);
 		await loader.loadAll();
 		await this.loadNodesAndCredentials.postProcessLoaders();

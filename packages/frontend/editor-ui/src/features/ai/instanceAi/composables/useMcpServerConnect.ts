@@ -8,12 +8,14 @@ import {
 } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { ToolConnectionCredentialAdapter } from '@/features/shared/toolsConnection/types';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 
 export interface McpConnectTarget {
 	slug: string;
 	credentialType: string;
+	serviceName: string;
 }
 
 const inFlightConnectsByServerSlug = new Map<string, Promise<string | null>>();
@@ -29,6 +31,7 @@ export function useMcpServerConnect() {
 	const credentialsStore = useCredentialsStore();
 	const toast = useToast();
 	const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
+	const { connect: quickConnect, getQuickConnectOption } = useQuickConnect();
 
 	/**
 	 * Patches the existing connection instead of creating a second one — the
@@ -82,6 +85,16 @@ export function useMcpServerConnect() {
 	async function startConnect(server: McpConnectTarget): Promise<string | null> {
 		if (canOAuthCredentialQuickConnect(server.credentialType)) {
 			const credential = await createAndAuthorize(server.credentialType);
+			return credential ? await connectWithCredential(server.slug, credential.id) : null;
+		}
+		const nodeType = `@n8n/mcp-registry.${server.slug}`;
+		if (getQuickConnectOption(server.credentialType, nodeType)) {
+			const credential = await quickConnect({
+				credentialTypeName: server.credentialType,
+				nodeType,
+				source: 'node_type',
+				serviceName: server.serviceName,
+			});
 			return credential ? await connectWithCredential(server.slug, credential.id) : null;
 		}
 		return await connectViaCredentialModal(server);

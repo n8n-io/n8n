@@ -122,13 +122,26 @@ function resolveCredentialId(credentials: INodeCredentials | undefined): string 
 }
 
 function resolveAuthenticationFromNode(node: INode): string {
-	const authentication = toStringValue(node.parameters.authentication);
-	if (authentication) return authentication;
-
 	const credentialType = resolveCredentialType(node.credentials);
 	if (credentialType) return CREDENTIAL_TYPE_TO_AUTHENTICATION[credentialType] ?? credentialType;
 
+	const authentication = toStringValue(node.parameters.authentication);
+	if (authentication) return authentication;
+
 	return 'none';
+}
+
+function resolveNodeAuthentication(
+	authentication: string,
+	credentialType: string | undefined,
+	nodeTypeDescription: INodeTypeDescription,
+): string {
+	if (!credentialType) return authentication;
+	const credentialDescription = nodeTypeDescription.credentials?.find(
+		(credential) => credential.name === credentialType,
+	);
+	const selector = credentialDescription?.displayOptions?.show?.authentication?.[0];
+	return typeof selector === 'string' ? selector : authentication;
 }
 
 function isMcpRegistryNodeType(nodeTypeName: string): boolean {
@@ -233,6 +246,11 @@ export function mcpServerToNode(
 	nodeTypeDescription: INodeTypeDescription,
 ): INode {
 	const credentialType = authenticationToCredentialType(server.authentication);
+	const nodeAuthentication = resolveNodeAuthentication(
+		server.authentication,
+		credentialType,
+		nodeTypeDescription,
+	);
 	const credentials =
 		credentialType && server.credential
 			? {
@@ -253,7 +271,7 @@ export function mcpServerToNode(
 		parameters: {
 			endpointUrl: server.url,
 			serverTransport: toNodeTransport(server.transport),
-			authentication: server.authentication,
+			authentication: nodeAuthentication,
 			...toolFilterParams,
 			options,
 		},

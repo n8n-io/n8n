@@ -2,7 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { nodeTypeToNewMcpServer } from '../composables/useMcpServerAdapter';
+import {
+	mcpServerToNode,
+	nodeToMcpServer,
+	nodeTypeToNewMcpServer,
+} from '../composables/useMcpServerAdapter';
 
 vi.mock('uuid', () => ({ v4: () => 'mocked-uuid' }));
 
@@ -71,6 +75,73 @@ describe('useMcpServerAdapter', () => {
 			const server = nodeTypeToNewMcpServer(makeMcpNodeType(1.1));
 
 			expect(server.transport).toBe('sse');
+		});
+
+		it('uses the registry credential type selected as the node default', () => {
+			const nodeType = makeMcpNodeType(1.2);
+			nodeType.name = '@n8n/mcp-registry.firecrawl';
+			nodeType.credentials = [
+				{
+					name: 'firecrawlApi',
+					required: true,
+					displayOptions: { show: { authentication: ['firecrawlApi'] } },
+				},
+				{
+					name: 'firecrawlMcpOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+			];
+			nodeType.properties = [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					default: 'firecrawlApi',
+					options: [
+						{ name: 'Firecrawl API', value: 'firecrawlApi' },
+						{ name: 'OAuth2', value: 'oAuth2' },
+					],
+				},
+				...nodeType.properties,
+			];
+
+			const server = nodeTypeToNewMcpServer(nodeType);
+
+			expect(server.authentication).toBe('firecrawlApi');
+			expect(server.metadata).toEqual({ nodeTypeName: '@n8n/mcp-registry.firecrawl' });
+		});
+
+		it('round-trips a non-default registry credential through its selector value', () => {
+			const nodeType = makeMcpNodeType(1.2);
+			nodeType.name = '@n8n/mcp-registry.firecrawl';
+			nodeType.credentials = [
+				{
+					name: 'firecrawlApi',
+					required: true,
+					displayOptions: { show: { authentication: ['firecrawlApi'] } },
+				},
+				{
+					name: 'firecrawlMcpOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+			];
+
+			const node = mcpServerToNode(
+				{
+					name: 'firecrawl',
+					url: 'https://mcp.firecrawl.dev/v2/mcp',
+					transport: 'streamableHttp',
+					authentication: 'firecrawlMcpOAuth2Api',
+					credential: 'oauth-credential',
+					metadata: { nodeTypeName: nodeType.name },
+				},
+				nodeType,
+			);
+
+			expect(node.parameters.authentication).toBe('oAuth2');
+			expect(nodeToMcpServer(node).authentication).toBe('firecrawlMcpOAuth2Api');
 		});
 	});
 });

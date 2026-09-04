@@ -311,7 +311,13 @@ provide(
 				uiStore.openNewCredential(authType);
 				return;
 			}
-			showConnectedServer(await connectServer({ slug: server.slug, credentialType: authType }));
+			showConnectedServer(
+				await connectServer({
+					slug: server.slug,
+					credentialType: authType,
+					serviceName: server.title,
+				}),
+			);
 		})();
 	}),
 );
@@ -401,7 +407,9 @@ async function handleConnect(item: ToolConnectionItem) {
 	const server = findServerForItem(item);
 	const credentialType = item.credentials?.[0]?.authType;
 	if (server && credentialType) {
-		showConnectedServer(await connectServer({ slug: server.slug, credentialType }));
+		showConnectedServer(
+			await connectServer({ slug: server.slug, credentialType, serviceName: server.title }),
+		);
 	}
 }
 </script>

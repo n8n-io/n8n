@@ -580,6 +580,26 @@ describe('AgentJsonConfigSchema — model/credential coupling', () => {
 	});
 });
 
+describe('MCP server authentication', () => {
+	it('accepts a registry credential type', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			mcpServers: [
+				{
+					name: 'Firecrawl',
+					url: 'https://mcp.firecrawl.dev/v2/mcp',
+					transport: 'streamableHttp',
+					authentication: 'firecrawlApi',
+					credential: 'credential-id',
+					metadata: { nodeTypeName: '@n8n/mcp-registry.firecrawl' },
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+	});
+});
+
 describe('formatAgentConfigZodError', () => {
 	it('formats an invalid MCP server name as path: message without a Zod JSON dump', () => {
 		const result = AgentJsonConfigSchema.safeParse({

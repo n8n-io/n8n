@@ -325,7 +325,7 @@ const isInstanceAiCredentialHelpAvailable = computed(
 		!(props.isOAuthType && props.requiredPropertiesFilled),
 );
 
-const activeNode = computed(() => ndvStore.value.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode ?? props.contextNode);
 
 const quickConnectOption = computed(() => {
 	if (!activeNode.value) return undefined;

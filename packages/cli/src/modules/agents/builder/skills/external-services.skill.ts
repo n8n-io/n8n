@@ -206,20 +206,23 @@ search terms for that service.
     \`ask_questions\` returns \`{ answered: false }\`, stop MCP setup without
     selecting a server, asking for credentials, verifying a connection, or
     mutating config. Do not re-present the question.
-- Use \`name\`, \`url\`, \`transport\`, \`authentication\`, \`credentialType\`,
-  \`tools\`, and optional \`metadata\` only from \`selectedResult\`.
+- Use \`name\`, \`url\`, \`transport\`, \`credentials\`, \`tools\`, and optional
+  \`metadata\` only from \`selectedResult\`. The first item in \`credentials\`
+  is the registry default.
 
 Follow these steps for the selected MCP result:
 
-1. Credential: call \`ask_credential\` with a short \`purpose\`, using
-   \`selectedResult.credentialType\` as \`credentialType\`. Never invent
-   credential IDs.
-2. Verify: call \`verify_mcp_server\` with the selected result's \`name\`, \`url\`,
-   \`transport\`, \`authentication\`, and optional \`metadata\`, plus the returned
-   \`credentialId\` as \`credential\` when authentication is required.
-3. Capability check: confirm the verified tool names and descriptions cover the
+1. Authentication: when \`selectedResult.credentials\` has more than one item,
+   use \`${ASK_QUESTIONS_TOOL_NAME}\` to let the user select one by its \`name\`.
+   Recommend the first item. With one item, select it without asking.
+2. Credential: call \`ask_credential\` with a short \`purpose\`, using the
+   selected item's \`credentialType\`. Never invent credential IDs.
+3. Verify: call \`verify_mcp_server\` with the selected result's \`name\`, \`url\`,
+   and \`transport\`; the selected credential type as \`authentication\`; optional
+   \`metadata\`; and the returned \`credentialId\` as \`credential\`.
+4. Capability check: confirm the verified tool names and descriptions cover the
    capability the user requested.
-4. Write config: call \`read_config\`, then \`patch_config\` to add the entry to
+5. Write config: call \`read_config\`, then \`patch_config\` to add the entry to
    \`mcpServers[]\` using the patch pattern below. When the entry already
    exists and verify returned \`credentialApplied: true\`, skip this step — the
    credential is already persisted.
@@ -227,9 +230,10 @@ Follow these steps for the selected MCP result:
 ${INITIAL_BUILD_NOTE} For MCP that means: pick the best candidate as an
 assumption (above), then \`read_config()\` and \`patch_config\` a draft
 \`/mcpServers/-\` entry using \`name\`, \`url\`, \`transport\`,
-\`authentication\`, and \`metadata.nodeTypeName\` from \`selectedResult\` with
-\`credential\` omitted, and skip \`verify_mcp_server\` — there is nothing to
-authenticate yet. Include the credential in the trailing \`finish_setup\` call;
+\`metadata.nodeTypeName\` from \`selectedResult\`, and the selected credential
+type as \`authentication\`, with \`credential\` omitted. Skip
+\`verify_mcp_server\` — there is nothing to authenticate yet. Include the
+credential in the trailing \`finish_setup\` call;
 verify with the returned credential id — on success the tool writes the
 credential into the matching entry itself (\`credentialApplied: true\`); no
 \`read_config\`/\`patch_config\` follow-up for the credential. Existing-agent
@@ -302,8 +306,8 @@ setup later:
 
 ### Selecting credentials
 
-When using a registry-backed server, always use the \`credentialType\` returned
-by \`selectedResult\`.
+When using a registry-backed server, always use a credential type from
+\`selectedResult.credentials\`. Never substitute another type.
 
 For custom MCP servers, if credential type is unknown, ask the user which
 credential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers

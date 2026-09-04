@@ -160,6 +160,7 @@ describe('InstanceAiMcpConnectCard', () => {
 		expect(connectServerMock).toHaveBeenCalledWith({
 			slug: 'brave',
 			credentialType: 'braveMcpOAuth2Api',
+			serviceName: 'Brave Search',
 		});
 		expect(emitted().resolve).toEqual([[{ approved: true, connectedSlugs: ['brave'] }]]);
 	});
@@ -315,6 +316,7 @@ describe('InstanceAiMcpConnectCard', () => {
 		expect(connectServerMock).toHaveBeenCalledWith({
 			slug: 'brave',
 			credentialType: 'braveMcpOAuth2Api',
+			serviceName: 'Brave',
 		});
 	});
 
@@ -387,6 +389,7 @@ describe('InstanceAiMcpConnectCard', () => {
 			expect(connectServerMock).toHaveBeenCalledWith({
 				slug: 'brave',
 				credentialType: 'braveMcpOAuth2Api',
+				serviceName: 'Brave Search',
 			});
 		});
 
@@ -432,6 +435,7 @@ describe('InstanceAiMcpConnectCard', () => {
 			expect(connectServerMock).toHaveBeenCalledWith({
 				slug: 'duck',
 				credentialType: 'braveMcpOAuth2Api',
+				serviceName: 'Duck Search',
 			});
 		});
 

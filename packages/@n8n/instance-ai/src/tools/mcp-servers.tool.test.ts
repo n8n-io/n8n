@@ -16,6 +16,11 @@ const notion: McpRegistryConnectServerSummary = {
 	title: 'Notion',
 	description: 'Work with Notion pages and databases',
 	usesCredentials: [{ credentialType: 'notionMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
+	packagePrerequisite: {
+		packageName: '@example/notion',
+		nodeType: '@example/notion.notion',
+		credentialTypes: ['notionMcpOAuth2Api'],
+	},
 	tools: ['create_page', 'search_pages'],
 };
 
@@ -92,6 +97,7 @@ interface SuspendPayload {
 			title: string;
 			tagline?: string;
 			usesCredentials: McpRegistryConnectServerSummary['usesCredentials'];
+			packagePrerequisite?: McpRegistryConnectServerSummary['packagePrerequisite'];
 		}>;
 	};
 }
@@ -427,6 +433,7 @@ describe('mcp-servers tool', () => {
 						serverSlug: 'notion',
 						title: 'Notion',
 						usesCredentials: notion.usesCredentials,
+						packagePrerequisite: notion.packagePrerequisite,
 						tagline: 'Work with Notion pages and databases',
 					},
 				],

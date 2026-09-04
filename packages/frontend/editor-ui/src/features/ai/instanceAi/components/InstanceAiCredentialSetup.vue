@@ -52,7 +52,7 @@ const settingsStore = useInstanceAiSettingsStore();
 
 const { isFeatureEnabled: isBrowserCredentialSetupEnabled } =
 	useInstanceAiBrowserCredentialSetupExperiment();
-const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
+const { connect: quickConnect, getQuickConnectOptionByCredentialTypes } = useQuickConnect();
 const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
 
 // ---------------------------------------------------------------------------
@@ -334,9 +334,21 @@ const instanceAiCredentialHelp = computed(() => instanceAiCredentialHelpFactory(
 
 /** Create flow: the regular credential modal, pre-filled from the recipe when
  *  the request carries a Templated Custom Auth setup hint. */
-function openCreateCredential() {
+async function openCreateCredential() {
 	const req = currentRequest.value;
 	if (!req) return;
+	const quickConnectOption = getQuickConnectOptionByCredentialTypes([req.credentialType]);
+	if (quickConnectOption) {
+		const credentialType = credentialsStore.getCredentialTypeByName(req.credentialType);
+		const credential = await quickConnect({
+			credentialTypeName: req.credentialType,
+			nodeType: `${quickConnectOption.packageName}.quickConnect`,
+			source: 'credential_type',
+			serviceName: getAppNameFromCredType(credentialType?.displayName ?? req.credentialType),
+		});
+		if (credential) selections.value[req.credentialType] = credential.id;
+		return;
+	}
 	uiStore.openNewCredential(
 		req.credentialType,
 		false,

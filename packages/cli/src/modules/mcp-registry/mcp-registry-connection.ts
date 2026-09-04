@@ -23,17 +23,94 @@ export function getMcpRegistryCredentialTypeName(
 	return `${camelCase(server.slug)}McpOAuth2Api`;
 }
 
+function getSyntheticCredential(
+	server: McpRegistryServer,
+	isKnownCredentialType: (name: string) => boolean,
+): McpRegistryUsesCredential | undefined {
+	const extendsOauthCredential =
+		server.authType === 'extendsCredential' &&
+		server.extendsCredential &&
+		isKnownCredentialType(server.extendsCredential.extends);
+	const usesOAuth2 = server.authType === 'oauth2' || extendsOauthCredential;
+
+	if (!usesOAuth2) return undefined;
+
+	return {
+		credentialType: getMcpRegistryCredentialTypeName(server),
+		name: 'OAuth2',
+		value: 'oAuth2',
+	};
+}
+
+function deduplicateCredentialOptions(
+	credentials: McpRegistryUsesCredential[],
+): McpRegistryUsesCredential[] {
+	const uniqueCredentials: McpRegistryUsesCredential[] = [];
+
+	for (const credential of credentials) {
+		const duplicateIndex = uniqueCredentials.findIndex(
+			(candidate) =>
+				candidate.credentialType === credential.credentialType ||
+				candidate.value === credential.value,
+		);
+
+		if (duplicateIndex === -1) {
+			uniqueCredentials.push(credential);
+		} else if (credential.default === true) {
+			uniqueCredentials[duplicateIndex] = credential;
+		}
+	}
+
+	return uniqueCredentials;
+}
+
+function prioritizeDefaultCredential(
+	credentials: McpRegistryUsesCredential[],
+	defaultCredential: McpRegistryUsesCredential | undefined,
+): McpRegistryUsesCredential[] {
+	if (!defaultCredential) return credentials;
+
+	const orderedCredentials = [
+		defaultCredential,
+		...credentials.filter((credential) => credential.value !== defaultCredential.value),
+	];
+
+	return orderedCredentials.map(({ default: _default, ...credential }, index) => ({
+		...credential,
+		...(index === 0 ? { default: true } : {}),
+	}));
+}
+
+function findDefaultCredential(
+	credentials: McpRegistryUsesCredential[],
+	primaryCredential: McpRegistryUsesCredential | undefined,
+): McpRegistryUsesCredential | undefined {
+	const explicitDefault = credentials.find((credential) => credential.default === true);
+	if (explicitDefault) return explicitDefault;
+	if (!primaryCredential) return credentials[0];
+
+	return credentials.find(
+		(credential) => credential.credentialType === primaryCredential.credentialType,
+	);
+}
+
 export function getMcpRegistryCredentialOptions(
 	server: McpRegistryServer,
+	isKnownCredentialType: (name: string) => boolean = () => true,
 ): McpRegistryUsesCredential[] {
-	if (server.authType === 'usesCredentials') return server.usesCredentials ?? [];
-	return [
-		{
-			credentialType: getMcpRegistryCredentialTypeName(server),
-			name: 'OAuth2',
-			value: 'oAuth2',
-		},
-	];
+	const syntheticCredential = getSyntheticCredential(server, isKnownCredentialType);
+	const reusedCredentials = (server.usesCredentials ?? []).filter(({ credentialType }) =>
+		isKnownCredentialType(credentialType),
+	);
+	const credentials = deduplicateCredentialOptions([
+		...(syntheticCredential ? [syntheticCredential] : []),
+		...reusedCredentials,
+	]);
+	// select synthetic credential or credential with default:true from `usesCredentials` field
+	const defaultCredential = findDefaultCredential(credentials, syntheticCredential);
+
+	// reorder list
+	return prioritizeDefaultCredential(credentials, defaultCredential);
 }
 
 export function isSupportedMcpRegistryCredentialType(
@@ -68,7 +145,9 @@ export function isSupportedMcpRegistryCredentialType(
 		}
 
 		const sections = Object.keys(credentialType.authenticate.properties);
-		return sections.length > 0 && sections.every((section) => section === 'headers' || section === 'qs');
+		return (
+			sections.length > 0 && sections.every((section) => section === 'headers' || section === 'qs')
+		);
 	} catch {
 		return false;
 	}
@@ -162,7 +241,11 @@ export async function prepareMcpRegistryConnection(
 	});
 	const headers = toStringRecord(authenticated.headers);
 	const query = toStringRecord(authenticated.qs);
-	if (!headers || !query || (Object.keys(headers).length === 0 && Object.keys(query).length === 0)) {
+	if (
+		!headers ||
+		!query ||
+		(Object.keys(headers).length === 0 && Object.keys(query).length === 0)
+	) {
 		return {
 			ok: false,
 			error: {

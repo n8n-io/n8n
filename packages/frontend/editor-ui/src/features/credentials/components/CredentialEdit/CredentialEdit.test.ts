@@ -12,6 +12,7 @@ import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NewCredentialsModal } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor, screen } from '@testing-library/vue';
@@ -393,6 +394,71 @@ describe('CredentialEdit', () => {
 			pinia,
 		});
 		await retry(() => expect(queryByTestId('credential-save-button')).toBeInTheDocument());
+	});
+
+	test('shows quick connect text for a credential opened from an agent MCP node', async () => {
+		const contextNode: INode = {
+			id: 'firecrawl-mcp',
+			name: 'Firecrawl MCP',
+			type: '@n8n/mcp-registry.firecrawl',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalStateById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true, contextNode },
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: { sharing: false, externalSecrets: false },
+						templates: { host: '' },
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+		const credentialsStore = useCredentialsStore(pinia);
+		credentialsStore.state.credentialTypes = {
+			firecrawlApi: {
+				name: 'firecrawlApi',
+				displayName: 'Firecrawl API',
+				properties: [],
+			} as ICredentialType,
+		};
+		const settingsStore = useSettingsStore(pinia);
+		settingsStore.moduleSettings['quick-connect'] = {
+			options: [
+				{
+					packageName: '@mendable/n8n-nodes-firecrawl',
+					credentialType: 'firecrawlApi',
+					text: 'Special Firecrawl setup',
+					quickConnectType: 'firecrawl',
+				},
+			],
+		};
+
+		const { getByTestId } = renderComponent({
+			props: {
+				activeId: 'firecrawlApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		await retry(() =>
+			expect(getByTestId('quick-connect-banner')).toHaveTextContent('Special Firecrawl setup'),
+		);
 	});
 
 	test('hides the save button when credentialId exists and there are no unsaved changes', async () => {

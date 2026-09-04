@@ -88,6 +88,13 @@ function isNativeOAuth2Credential(authentication: string): boolean {
 	);
 }
 
+function isDirectMcpAuthentication(authentication: string): boolean {
+	return (
+		['none', 'bearerAuth', 'headerAuth', 'multipleHeadersAuth'].includes(authentication) ||
+		isMcpOAuth2Authentication(authentication)
+	);
+}
+
 function withQuery(url: string, query: Record<string, string> | undefined): string {
 	if (!query) return url;
 	const parsed = new URL(url);
@@ -174,9 +181,12 @@ export async function buildMcpClientForServer(
 		: undefined;
 
 	const registryNodeName = server.metadata?.nodeTypeName;
-	if (!registryNodeName && credentialType?.endsWith('McpOAuth2Api')) {
+	if (
+		!registryNodeName &&
+		(credentialType?.endsWith('McpOAuth2Api') || !isDirectMcpAuthentication(server.authentication))
+	) {
 		credentialError = new OperationalError(
-			`Credential type "${credentialType}" requires an MCP registry node`,
+			`Credential type "${credentialType ?? server.authentication}" requires an MCP registry node`,
 		);
 	} else if (registryNodeName) {
 		try {

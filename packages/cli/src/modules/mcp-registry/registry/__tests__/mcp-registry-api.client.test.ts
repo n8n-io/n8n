@@ -2,7 +2,6 @@ import type { Logger } from '@n8n/backend-common';
 import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialTypes } from '@/credential-types';
 import { paginatedRequest } from '@/utils/strapi-utils';
 
 import { githubUsesCredentialsMockServer, notionMockServer } from '../mock-servers';
@@ -21,7 +20,6 @@ const DEV_DEFAULT_URL = 'http://127.0.0.1:1337/api/mcp-servers';
 describe('McpRegistryApiClient', () => {
 	let client: McpRegistryApiClient;
 	let logger: Logger;
-	let credentialTypes: CredentialTypes;
 	const originalEnv = process.env.ENVIRONMENT;
 	const originalDevUrl = process.env.N8N_MCP_SERVERS_DEV_URL;
 
@@ -30,15 +28,7 @@ describe('McpRegistryApiClient', () => {
 		delete process.env.ENVIRONMENT;
 		delete process.env.N8N_MCP_SERVERS_DEV_URL;
 		logger = mock<Logger>();
-		credentialTypes = mock<CredentialTypes>();
-		credentialTypes.recognizes = vi.fn().mockReturnValue(true);
-		credentialTypes.getParentTypes = vi.fn().mockReturnValue(['oAuth2Api']);
-		credentialTypes.getByName = vi.fn().mockImplementation((name) => ({
-			name,
-			displayName: name,
-			properties: [],
-		}));
-		client = new McpRegistryApiClient(logger, credentialTypes);
+		client = new McpRegistryApiClient(logger);
 	});
 
 	afterEach(() => {
@@ -143,7 +133,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					pagination: { page: 1, pageSize: 25 },
 				},
 				{ throwOnError: true },
@@ -188,34 +178,29 @@ describe('McpRegistryApiClient', () => {
 			expect(result[0].tags).toEqual(expected);
 		});
 
-		it('should keep only OAuth2 credential options', async () => {
-			mockPaginatedRequest.mockResolvedValue([githubUsesCredentialsMockServer]);
-			vi.mocked(credentialTypes.getParentTypes).mockImplementation((credentialType) =>
-				credentialType === 'githubOAuth2Api' ? ['oAuth2Api'] : [],
-			);
-
-			const result = await client.fetchAllServers();
-
-			expect(result[0]).toMatchObject({
-				authType: 'usesCredentials',
-				usesCredentials: [{ credentialType: 'githubOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
-			});
-		});
-
-		it('should skip servers without an OAuth2 credential option', async () => {
-			mockPaginatedRequest.mockResolvedValue([
-				{
-					...githubUsesCredentialsMockServer,
-					usesCredentials: [
-						{ credentialType: 'githubApi', name: 'Access Token', value: 'accessToken' },
-					],
+		it('should preserve v3 credential and package prerequisite data', async () => {
+			const server = {
+				...githubUsesCredentialsMockServer,
+				authType: 'oauth2',
+				usesCredentials: [
+					{
+						credentialType: 'firecrawlApi',
+						name: 'Firecrawl API',
+						value: 'firecrawlApi',
+						default: true,
+					},
+				],
+				packagePrerequisite: {
+					packageName: '@mendable/n8n-nodes-firecrawl',
+					nodeType: '@mendable/n8n-nodes-firecrawl.firecrawl',
+					credentialTypes: ['firecrawlApi'],
 				},
-			]);
-			vi.mocked(credentialTypes.getParentTypes).mockReturnValue([]);
+			};
+			mockPaginatedRequest.mockResolvedValue([server]);
 
 			const result = await client.fetchAllServers();
 
-			expect(result).toEqual([]);
+			expect(result).toEqual([server]);
 		});
 	});
 
@@ -228,7 +213,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					fields: ['slug', 'version', 'updatedAt'],
 					pagination: { page: 1, pageSize: 500 },
 				},
@@ -258,7 +243,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: ['server-a', 'server-b', 'server-c'],
@@ -299,7 +284,7 @@ describe('McpRegistryApiClient', () => {
 				1,
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: slugs.slice(0, 100),
@@ -315,7 +300,7 @@ describe('McpRegistryApiClient', () => {
 				2,
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: slugs.slice(100, 200),
@@ -331,7 +316,7 @@ describe('McpRegistryApiClient', () => {
 				3,
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: slugs.slice(200, 250),

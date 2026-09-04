@@ -46,6 +46,14 @@ describe('searchMcpRegistryServers', () => {
 			transport: 'streamableHttp',
 			authentication: 'githubMcpOAuth2Api',
 			credentialType: 'githubMcpOAuth2Api',
+			credentials: [
+				{
+					credentialType: 'githubMcpOAuth2Api',
+					name: 'OAuth2',
+					value: 'oAuth2',
+					default: true,
+				},
+			],
 			tools: [{ name: 'create_issue', title: 'Create issue' }],
 			metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
 		});

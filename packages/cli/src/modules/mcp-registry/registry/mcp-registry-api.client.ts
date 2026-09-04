@@ -1,10 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { CredentialTypes } from '@/credential-types';
 import { paginatedRequest } from '@/utils/strapi-utils';
 
-import { isSupportedMcpRegistryCredentialType } from '../mcp-registry-connection';
 import { parseMcpRegistryServer, type McpRegistryServer } from './mcp-registry.types';
 
 export type McpRegistryServerMetadata = Pick<McpRegistryServer, 'slug' | 'version' | 'updatedAt'>;
@@ -17,15 +15,13 @@ const MCP_SERVERS_PRODUCTION_URL = 'https://api.n8n.io/api/mcp-servers';
 const STRAPI_ARRAY_LIMIT = 100;
 /** Version history:
  * 2 - introduced authType: `usesCredentials` field
+ * 3 - introduced packagePrerequisite
  */
-const STRAPI_API_VERSION = 2;
+const STRAPI_API_VERSION = 3;
 
 @Service()
 export class McpRegistryApiClient {
-	constructor(
-		private readonly logger: Logger,
-		private readonly credentialTypes: CredentialTypes,
-	) {}
+	constructor(private readonly logger: Logger) {}
 
 	async fetchAllServers(): Promise<McpRegistryServer[]> {
 		const servers = await paginatedRequest<unknown>(
@@ -94,27 +90,11 @@ export class McpRegistryApiClient {
 	private parseServers(servers: unknown[]): McpRegistryServer[] {
 		const parsedServers = servers
 			.map(parseMcpRegistryServer)
-			.map((server) => (server ? this.withSupportedCredentials(server) : null))
 			.filter((server): server is McpRegistryServer => server !== null);
 		const skippedCount = servers.length - parsedServers.length;
 		if (skippedCount > 0) {
 			this.logger.warn('Skipped invalid MCP registry entries', { skippedCount });
 		}
 		return parsedServers;
-	}
-
-	private withSupportedCredentials(server: McpRegistryServer): McpRegistryServer | null {
-		if (server.authType === 'extendsCredential') {
-			return server.extendsCredential &&
-				isSupportedMcpRegistryCredentialType(this.credentialTypes, server.extendsCredential.extends)
-				? server
-				: null;
-		}
-		if (server.authType !== 'usesCredentials') return server;
-
-		const usesCredentials = (server.usesCredentials ?? []).filter(({ credentialType }) =>
-			isSupportedMcpRegistryCredentialType(this.credentialTypes, credentialType),
-		);
-		return usesCredentials.length > 0 ? { ...server, usesCredentials } : null;
 	}
 }

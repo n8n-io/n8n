@@ -21,7 +21,7 @@ export function buildSearchMcpServersTool(deps: SearchMcpServersDeps): BuiltTool
 	return new Tool(BUILDER_TOOLS.SEARCH_MCP_SERVERS)
 		.description(
 			'Search the MCP registry for available MCP servers. Returns MCP config-ready server details, ' +
-				'including credentialType for ask_credential and server metadata needed for patch_config.',
+				'including credential choices for ask_credential and server metadata needed for patch_config.',
 		)
 		.input(searchMcpServersInputSchema)
 		.handler(async ({ queries }: { queries: string[] }) => {

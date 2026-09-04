@@ -21,7 +21,7 @@ import {
 } from '@n8n/api-types';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8n-workflow';
+import { NodeHelpers, type INodeParameters } from 'n8n-workflow';
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
@@ -726,7 +726,7 @@ export class AgentValidationService {
 			case 'multipleHeadersAuth':
 				return credentialType === 'httpMultipleHeadersAuth';
 			default:
-				return isMcpOAuth2Authentication(authentication) ? credentialType === authentication : true;
+				return credentialType === authentication;
 		}
 	}
 

@@ -90,10 +90,21 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		const { description: baseDescription } = NodeHelpers.getVersionedNodeType(baseNode);
 
 		const credentialTypes = this.getCredentialTypes();
-		const isKnownCredentialType: IsKnownCredentialType = (name) =>
-			isSupportedMcpRegistryCredentialType(credentialTypes, name);
 
 		for (const server of this.servers) {
+			const prerequisiteMissing =
+				server.packagePrerequisite &&
+				!this.loadNodesAndCredentials.isKnownNode(server.packagePrerequisite.nodeType);
+
+			const blockedCredentialTypes = prerequisiteMissing
+				? new Set(server.packagePrerequisite?.credentialTypes ?? [])
+				: new Set<string>();
+
+			// don't load credentials from not installed nodes
+			const isKnownCredentialType: IsKnownCredentialType = (name) =>
+				!blockedCredentialTypes.has(name) &&
+				isSupportedMcpRegistryCredentialType(credentialTypes, name);
+
 			const nodeDescription = serverToNodeDescription(
 				server,
 				baseDescription,
@@ -101,7 +112,6 @@ export class McpRegistryNodeLoader implements NodeLoader {
 			);
 			const credentialDescription = serverToCredentialDescription(server, isKnownCredentialType);
 			if (!nodeDescription) continue;
-			if (server.authType !== 'usesCredentials' && !credentialDescription) continue;
 
 			const bareName = camelCase(server.slug);
 			const connection = resolveMcpRegistryConnection(server);
