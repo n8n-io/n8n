@@ -251,6 +251,7 @@ describe('GmailTrigger', () => {
 		expect(workflowStaticData.possibleDuplicates).toBeUndefined();
 		expect(workflowStaticData['Gmail Trigger']).toEqual({
 			lastTimeChecked: 2000000000,
+			noProgressTicks: 0,
 			possibleDuplicates: ['2'],
 			pendingMessageIds: [],
 		});
@@ -289,6 +290,7 @@ describe('GmailTrigger', () => {
 		expect(Object.hasOwn(workflowStaticData, 'toString')).toBe(true);
 		expect(Object.getOwnPropertyDescriptor(workflowStaticData, 'toString')?.value).toEqual({
 			lastTimeChecked: 2000000000,
+			noProgressTicks: 0,
 			possibleDuplicates: ['1'],
 			pendingMessageIds: [],
 		});
@@ -1658,13 +1660,9 @@ describe('GmailTrigger', () => {
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
 				mode: 'manual',
-<<<<<<< HEAD
-				node: { parameters: { simple: true, maxResults: 2 } },
-=======
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 1 } },
+				node: { parameters: { simple: true, maxResults: 1 } },
 				workflowStaticData,
 				pollBudgetMs: 0,
->>>>>>> fd105a6dc2cd51b5e5fd64c2efad57e6801d2325
 			});
 
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1', '2']);
@@ -2458,38 +2456,6 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual([]);
 		});
 
-<<<<<<< HEAD
-=======
-		it('should ignore the page token and the poll budget on versions before 1.4', async () => {
-			// Both are scoped to v1.4+: older versions have no pendingMessageIds
-			// machinery. Following the token there would change their behavior, and a
-			// stop on the budget would drop the messages the poll did not fetch while
-			// the cursor advances past them.
-			// Only one page is mocked, so a second page request fails the poll,
-			// and the assertions below catch the resulting empty response.
-			const workflowStaticData: Record<string, Record<string, unknown>> = {
-				'Gmail Trigger': { lastTimeChecked: 1000000 },
-			};
-
-			mockLabels();
-			mockList(listPage(['1', '2'], 'token-1'));
-			mockGet('1', 2_000_000_000_000);
-			mockGet('2', 3_000_000_000_000);
-
-			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.3, parameters: { simple: true } },
-				workflowStaticData,
-				pollBudgetMs: 0,
-			});
-
-			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1', '2']);
-			// The queue belongs to v1.4+; older versions must not persist one their
-			// own drain path would ignore. The same holds for the no-progress count.
-			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toBeUndefined();
-			expect(workflowStaticData['Gmail Trigger']).not.toHaveProperty('noProgressTicks');
-		});
-
->>>>>>> fd105a6dc2cd51b5e5fd64c2efad57e6801d2325
 		it('should keep the beyond-budget remainder when a drain exactly consumed the budget', async () => {
 			// The drain empties the queue, so there is no early return, but it also
 			// leaves no budget: the fetch loop never runs, and only the pre-fetch
