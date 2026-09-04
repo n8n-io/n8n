@@ -353,10 +353,17 @@ decision after testing.
   that the credential (or Gateway credits) is being used.
 - Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
   code; replace them with `newCredential()` when editing roundtripped code.
-- If a required credential type is not listed, call
-  `credentials(action="search-types")` with the service name. Pick in this
-  order:
+- `credentials(action="list")` returns connected credential instances, not all
+  supported credential types. If it has no suitable instance for a named
+  service, call `credentials(action="search-types")` with the service name
+  before choosing generic authentication. Pick in this order:
   1. A **dedicated credential type** whenever search finds one.
+     For an HTTP Request node, use the most specific type for the target service
+     and operation. Set `authentication` to `'predefinedCredentialType'` and
+     `nodeCredentialType` to the returned type. If no credential instance
+     exists, leave `newCredential('Suggested Name')` unresolved for setup. Do
+     not use generic authentication only because the user has not connected an
+     account.
   2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
      without a dedicated type whose auth is expressible as header/query/body
      values — this covers API keys and bearer tokens. When the provider
