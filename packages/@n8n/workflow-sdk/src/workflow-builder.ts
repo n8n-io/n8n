@@ -28,6 +28,7 @@ import {
 import { shouldGeneratePinData } from './workflow-builder/pin-data-utils';
 import { registerDefaultPlugins } from './workflow-builder/plugins/defaults';
 import { pluginRegistry, type PluginRegistry } from './workflow-builder/plugins/registry';
+import { safeNodeTypesProvider } from './workflow-builder/plugins/safe-node-types-provider';
 import { jsonSerializer } from './workflow-builder/plugins/serializers';
 import type {
 	PluginContext,
@@ -690,7 +691,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			validationOptions: {
 				allowDisconnectedNodes: options.allowDisconnectedNodes,
 				allowNoTrigger: options.allowNoTrigger,
-				nodeTypesProvider: options.nodeTypesProvider,
+				// Guarded: a validator must not turn an unresolvable node type or
+				// version into a failed validation pass.
+				nodeTypesProvider: options.nodeTypesProvider
+					? safeNodeTypesProvider(options.nodeTypesProvider)
+					: undefined,
 			},
 		};
 

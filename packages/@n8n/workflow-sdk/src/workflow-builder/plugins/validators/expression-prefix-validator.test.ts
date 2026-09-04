@@ -292,6 +292,19 @@ describe('expressionPrefixValidator', () => {
 			expect(issues).toHaveLength(0);
 		});
 
+		it('reports a prefix-free $fromAI() template on a non-editor parameter', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { jsCode: "{{ $fromAI('query') }}" },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.message).toContain('used literally');
+		});
+
 		it('leaves the = prefix alone on a parameter that supports expressions', () => {
 			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
 				parameters: { projectId: '={{ $json.project }}' },

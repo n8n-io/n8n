@@ -125,11 +125,12 @@ export const expressionPrefixValidator: ValidatorPlugin = {
 		for (const [parameter, isSqlEditor] of noExpressionParams) {
 			const value = (params as Record<string, unknown>)[parameter];
 			if (typeof value !== 'string' || isPlaceholderValue(value)) continue;
-			// A lone $fromAI() placeholder keeps its '=' by design, so it is correct
-			// as written (see getNodeParameters).
-			if (isFromAIOnlyExpression(value)) continue;
 
 			const hasPrefix = value.startsWith('=');
+			// A lone $fromAI() placeholder keeps its '=' by design, so a prefixed one
+			// is correct as written (see getNodeParameters). Without the prefix it is
+			// not protected by anything, so it is reported like any other template.
+			if (hasPrefix && isFromAIOnlyExpression(value)) continue;
 			// A prefix-free inline template is the working form on a SQL editor field,
 			// and a value with neither a prefix nor a template says nothing about
 			// expressions.
