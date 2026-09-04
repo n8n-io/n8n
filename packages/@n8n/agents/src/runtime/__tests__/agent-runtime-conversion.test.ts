@@ -771,7 +771,8 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		]);
 	});
 	it('keeps provider result metadata only on provider-executed tool results', () => {
-		const providerOptions = { anthropic: { cacheControl: { type: 'ephemeral' } } };
+		const callProviderOptions = { openai: { itemId: 'call_item' } };
+		const providerOptions = { openai: { itemId: 'output_item' } };
 		const aiMessages: ModelMessage[] = [
 			{
 				role: 'assistant',
@@ -782,6 +783,7 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 						toolName: 'web_search',
 						input: { query: 'n8n' },
 						providerExecuted: true,
+						providerOptions: callProviderOptions,
 					},
 					{
 						type: 'tool-result',
@@ -810,10 +812,11 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		const replayed = toAiMessages(fromAiMessages(aiMessages) as Message[]);
 
 		expect(replayed[0].content).toMatchObject([
-			{ type: 'tool-call', toolCallId: 'srvtoolu_1' },
+			{ type: 'tool-call', toolCallId: 'srvtoolu_1', providerOptions: callProviderOptions },
 			{ type: 'tool-result', toolCallId: 'srvtoolu_1', providerOptions },
 			{ type: 'tool-call', toolCallId: 'call_1' },
 		]);
+		expect(replayed[0].content[2]).not.toHaveProperty('providerOptions');
 		expect(replayed[1].content[0]).not.toHaveProperty('providerOptions');
 	});
 

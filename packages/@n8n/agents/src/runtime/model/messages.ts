@@ -268,11 +268,11 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 function toolCallToResultPart(
 	block: ContentToolCall & { state: 'resolved' | 'rejected' },
 ): ToolResultPart {
-	// Providers replay their own result metadata; local results carry none.
-	const replay =
-		block.providerExecuted && block.providerOptions
-			? { providerOptions: block.providerOptions }
-			: {};
+	// Provider-executed results carry their own replay metadata, separate from
+	// the tool-call part's; local results carry none.
+	const replay = block.resultProviderOptions
+		? { providerOptions: block.resultProviderOptions }
+		: {};
 
 	if (block.state === 'resolved') {
 		return {
@@ -548,8 +548,10 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 				mutableBlock.state = 'rejected';
 				mutableBlock.error = JSON.stringify(output);
 			}
-			if (block.providerExecuted && part.providerOptions)
-				block.providerOptions = part.providerOptions;
+			if (block.providerExecuted && part.providerOptions) {
+				const settled = block as Extract<ContentToolCall, { state: 'resolved' | 'rejected' }>;
+				settled.resultProviderOptions = part.providerOptions;
+			}
 		}
 	};
 
