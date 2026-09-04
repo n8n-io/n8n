@@ -99,7 +99,7 @@ describe('WorkflowToolWorkflowLoader', () => {
 		await expect(
 			service.loadWorkflow('project-1', reference, { usePublishedVersion: true }),
 		).rejects.toThrow(
-			'Workflow "Workflow" is not published. Publish it before using it in a production agent run.',
+			'Workflow "Workflow" is not published. Publish it so the published agent can use it.',
 		);
 	});
 

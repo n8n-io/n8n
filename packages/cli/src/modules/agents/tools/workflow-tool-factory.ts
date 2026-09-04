@@ -187,10 +187,13 @@ export function detectTriggerNode(workflow: WorkflowEntity): DetectedTrigger {
 		}
 	}
 
-	throw new WorkflowToolUnavailableError(
+	throw noSupportedTriggerError(workflow);
+}
+
+function noSupportedTriggerError(workflow: WorkflowEntity): WorkflowToolUnavailableError {
+	return new WorkflowToolUnavailableError(
 		'incompatible',
-		`Workflow "${workflow.name}" has no supported trigger node. ` +
-			`Supported triggers: ${Object.keys(SUPPORTED_TRIGGERS).join(', ')}`,
+		`Workflow "${workflow.name}" needs a 'When Executed by Another Workflow' trigger to run as an agent tool.`,
 	);
 }
 
@@ -218,12 +221,7 @@ export function validateCompatibility(workflow: WorkflowEntity): void {
 		);
 	}
 
-	// `no_supported_trigger` — surface the supported set so the message is fixable.
-	throw new WorkflowToolUnavailableError(
-		'incompatible',
-		`Workflow "${workflow.name}" has no supported trigger node. ` +
-			`Supported triggers: ${Object.keys(SUPPORTED_TRIGGERS).join(', ')}`,
-	);
+	throw noSupportedTriggerError(workflow);
 }
 
 // ---------------------------------------------------------------------------
@@ -808,6 +806,29 @@ export async function resolveWorkflowTool(
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
 	return await buildWorkflowTool(descriptor, context);
+}
+
+/**
+ * Stands in for a workflow tool that cannot be built right now (workflow gone or
+ * incompatible). It keeps the configured name in the tool list, so the model gets
+ * the reason when it calls the tool instead of a bare "tool not found".
+ */
+export function buildUnavailableWorkflowTool(
+	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
+	error: WorkflowToolUnavailableError,
+): BuiltTool {
+	return {
+		name: toToolName(descriptor.name ?? descriptor.workflow),
+		description: descriptor.description ?? `Execute the "${descriptor.workflow}" workflow`,
+		editable: false,
+		inputSchema: z.object({}).passthrough(),
+		handler: async () => await Promise.reject(error),
+		metadata: {
+			kind: 'workflow',
+			workflowId: descriptor.workflowId,
+			workflowName: descriptor.workflow,
+		},
+	};
 }
 
 async function buildWorkflowTool(

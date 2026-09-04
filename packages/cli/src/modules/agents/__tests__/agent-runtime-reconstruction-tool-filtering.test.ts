@@ -355,7 +355,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		});
 	});
 
-	it('drops a workflow tool that cannot be built and keeps the runtime', async () => {
+	it('stubs a workflow tool that cannot be built so a call reports the reason', async () => {
 		const { service, telemetry } = makeService({});
 		resolveWorkflowToolMock.mockRejectedValue(
 			new WorkflowToolUnavailableError('not_found', 'Workflow "Lookup customer" not found'),
@@ -369,11 +369,17 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			'production',
 		);
 
-		expect(resolved).toEqual([null]);
-		expect(telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.AGENTS.AGENT_DROPPED_UNAVAILABLE_TOOL,
-			{ agent_id: 'agent-1', run_type: 'production', tool_type: 'workflow', reason: 'not_found' },
+		expect(resolved).toHaveLength(1);
+		expect(resolved[0]?.name).toBe('lookup-customer');
+		await expect(resolved[0]?.handler?.({}, mock())).rejects.toThrow(
+			'Workflow "Lookup customer" not found',
 		);
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_TOOL_UNAVAILABLE, {
+			agent_id: 'agent-1',
+			run_type: 'production',
+			tool_type: 'workflow',
+			reason: 'not_found',
+		});
 	});
 
 	it('still fails the build for any other workflow tool error', async () => {

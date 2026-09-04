@@ -171,7 +171,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		const draft = makeWorkflow({ id: 'wf-draft', name: 'Draft Only' });
 		const context = { ...makeContext(draft), usePublishedWorkflowVersion: true };
 		const notPublished = new UserError(
-			'Workflow "Draft Only" is not published. Publish it before using it in a production agent run.',
+			'Workflow "Draft Only" is not published. Publish it so the published agent can use it.',
 		);
 		context.workflowLoader.loadWorkflow = vi
 			.fn()
@@ -324,7 +324,9 @@ describe('workflow tool compatibility', () => {
 			makeExecuteWorkflowTriggerNode({ type: 'n8n-nodes-base.scheduleTrigger' }),
 		);
 
-		expect(() => detectTriggerNode(workflow)).toThrow('no supported trigger node');
+		expect(() => detectTriggerNode(workflow)).toThrow(
+			"needs a 'When Executed by Another Workflow' trigger",
+		);
 	});
 
 	it('allows Respond to Webhook nodes in workflow tools', () => {

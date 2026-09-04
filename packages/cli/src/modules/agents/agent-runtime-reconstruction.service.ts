@@ -187,7 +187,10 @@ export interface UserToolAccessSnapshot {
 	workflowIds: string[];
 }
 
-/** A configured node/workflow tool that was left out of the runtime, and why. */
+/**
+ * A configured node/workflow tool the runtime cannot use, and why. `no_access`
+ * tools are dropped; the rest stay as stubs that report the reason when called.
+ */
 export interface UnavailableTool {
 	toolName: string;
 	toolType: 'workflow' | 'node';
@@ -368,7 +371,8 @@ export class AgentRuntimeReconstructionService {
 			// ref.type === 'workflow'
 			const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
 			if (!workflow) {
-				drop(ref, 'not_found', `Workflow "${ref.workflow}" not found`);
+				// Nothing to gate: the tool factory turns a missing workflow into a stub.
+				filtered.push(ref);
 				continue;
 			}
 
@@ -490,7 +494,7 @@ export class AgentRuntimeReconstructionService {
 		instrumentation?: AgentRuntimeInstrumentation;
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
-		/** Tools the access filter already dropped; reported together with build-time drops. */
+		/** Tools the access filter already dropped; reported together with build-time stubs. */
 		unavailableTools?: UnavailableTool[];
 	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const {
@@ -574,16 +578,19 @@ export class AgentRuntimeReconstructionService {
 				try {
 					resolved = await toolResolver(ref);
 				} catch (error) {
-					// A missing or incompatible workflow costs the agent one tool, not the
-					// whole run. `resolveToolRef` drops the tool for `null`.
-					if (!(error instanceof WorkflowToolUnavailableError)) throw error;
+					// A missing or incompatible workflow costs the agent one tool call, not
+					// the whole run: the stub keeps the tool listed and reports the reason.
+					if (!(error instanceof WorkflowToolUnavailableError) || ref.type !== 'workflow') {
+						throw error;
+					}
 					unavailable.push({
 						toolName: toolRefName(ref),
 						toolType: 'workflow',
 						reason: error.reason,
 						message: error.message,
 					});
-					return null;
+					const { buildUnavailableWorkflowTool } = await import('./tools/workflow-tool-factory.js');
+					resolved = buildUnavailableWorkflowTool(ref, error);
 				}
 				if (resolved) resolvedTools.push(resolved);
 				return resolved;
@@ -601,13 +608,13 @@ export class AgentRuntimeReconstructionService {
 		});
 
 		if (unavailable.length > 0) {
-			this.logger.warn('Agent runtime built without unavailable tools', {
+			this.logger.warn('Agent runtime built with unavailable tools', {
 				agentId: memoryOwnerAgentId,
 				runType,
 				tools: unavailable,
 			});
 			for (const tool of unavailable) {
-				this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_DROPPED_UNAVAILABLE_TOOL, {
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_TOOL_UNAVAILABLE, {
 					agent_id: memoryOwnerAgentId,
 					run_type: runType,
 					tool_type: tool.toolType,

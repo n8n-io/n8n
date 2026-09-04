@@ -51,7 +51,7 @@ export class WorkflowToolWorkflowLoader {
 				Object.assign(workflow, { nodes: published.nodes, connections: published.connections });
 			} else if (!options.fallbackToDraft) {
 				throw new UserError(
-					`Workflow "${workflow.name}" is not published. Publish it before using it in a production agent run.`,
+					`Workflow "${workflow.name}" is not published. Publish it so the published agent can use it.`,
 				);
 			}
 		}
