@@ -371,6 +371,9 @@ describe('GlobalConfig', () => {
 			nodeUsageEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
+			maxConcurrentRuns: -1,
+			maxConcurrentRunsPerUser: -1,
+			maxConcurrentSubAgents: -1,
 		},
 		queue: {
 			health: {
@@ -408,6 +411,10 @@ describe('GlobalConfig', () => {
 					lockRenewTime: 10_000,
 					stalledInterval: 30_000,
 				},
+			},
+			workerPool: {
+				enabled: false,
+				name: '',
 			},
 		},
 		taskRunners: {

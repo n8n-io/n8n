@@ -61,7 +61,7 @@ describe('FolderExporter', () => {
 		const { exporter, workflowFinder, workflowExporter } = makeExporter([makeFolder()]);
 		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(new Map([['fld-1', ['w1']]]));
 		workflowExporter.export.mockResolvedValue({
-			entries: [{ id: 'w1', name: 'W1', target: 'folders/toproduction/workflows/w1' }],
+			entries: [{ id: 'w1', name: 'W1', target: 'folders/toproduction-fld-1/workflows/w1' }],
 			requirements: {
 				credentials: [
 					{
@@ -88,10 +88,14 @@ describe('FolderExporter', () => {
 
 		// The folder's own target is passed as basePrefix, so workflows nest under it.
 		expect(workflowExporter.export).toHaveBeenCalledWith(
-			expect.objectContaining({ user, workflowIds: ['w1'], basePrefix: 'folders/toproduction' }),
+			expect.objectContaining({
+				user,
+				workflowIds: ['w1'],
+				basePrefix: 'folders/toproduction-fld-1',
+			}),
 		);
 		expect(result.workflowEntries).toEqual([
-			{ id: 'w1', name: 'W1', target: 'folders/toproduction/workflows/w1' },
+			{ id: 'w1', name: 'W1', target: 'folders/toproduction-fld-1/workflows/w1' },
 		]);
 		expect(result.requirements.credentials).toEqual([
 			{

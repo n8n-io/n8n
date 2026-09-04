@@ -1,6 +1,7 @@
 import { Time } from '@n8n/constants';
 
 import { Config, Env } from '../decorators';
+import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
@@ -229,4 +230,48 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
 	activationLockMessageThreshold: number = 1;
+
+	/**
+	 * Max orchestrator runs executing concurrently on this process. A new user turn over
+	 * the cap is refused with HTTP 429; resumes and internal follow-up runs are always
+	 * admitted so an in-flight conversation is never stranded.
+	 *
+	 * `-1` (the default) means unlimited
+	 *
+	 * Size it against memory rather than throughput: measured peak is ~600MB
+	 * base plus ~20MB per concurrent run. The unit is the user turn, so sub-agents are
+	 * capped separately rather than counted here.
+	 *
+	 * Counts executing runs only. A suspended run keeps its agent in memory but releases
+	 * its slot, so leave headroom for threads that wait on an approval card.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_RUNS', concurrencyLimitSchema)
+	maxConcurrentRuns: number = -1;
+
+	/**
+	 * Max orchestrator runs one user may have executing at once, across all their threads.
+	 * Bounds credit overshoot: usage is only claimed when a run segment ends, so every run
+	 * a user can start in parallel is one more run's worth of spend that can land after
+	 * they cross quota.
+	 *
+	 * `-1` (the default) means unlimited.
+	 *
+	 * Counts executing runs only, a HITL-suspended run spends nothing while it waits,
+	 * and counting those would lock a user out for the whole confirmation timeout.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_RUNS_PER_USER', concurrencyLimitSchema)
+	maxConcurrentRunsPerUser: number = -1;
+
+	/**
+	 * Max background sub-agent tasks running concurrently on this process, across all
+	 * threads. Guards the fan-out case the per-thread limit misses: a handful of runs each
+	 * spawning their full complement of sub-agents. A spawn over the cap fails as a tool
+	 * error, which the orchestrator handles by doing the work inline or retrying later.
+	 *
+	 * `-1` (the default) means unlimited.
+	 *
+	 * The per-thread constant limit of MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD (5) applies regardless.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_SUB_AGENTS', concurrencyLimitSchema)
+	maxConcurrentSubAgents: number = -1;
 }
