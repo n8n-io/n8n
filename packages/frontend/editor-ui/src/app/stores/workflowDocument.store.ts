@@ -521,6 +521,20 @@ export function disposeWorkflowDocumentStore(store: WorkflowDocumentStore) {
 }
 
 /**
+ * The live store for this document if one exists — never creates one.
+ * Existence is read from pinia's state registry: creation writes the key,
+ * `disposeWorkflowDocumentStore` deletes it. The `in` check is reactive, so
+ * a computed caller follows dispose/recreate cycles.
+ */
+export function useExistingWorkflowDocumentStore(
+	id: WorkflowDocumentId,
+): WorkflowDocumentStore | undefined {
+	const pinia = getActivePinia();
+	if (!pinia || !(getWorkflowDocumentStoreId(id) in pinia.state.value)) return undefined;
+	return useWorkflowDocumentStore(id);
+}
+
+/**
  * Injects the workflow document store from the current component tree.
  * Returns fallback document store if not within a component context
  *

@@ -38,6 +38,10 @@ directly for out-of-scope.
 - The user's request or scenario prompt.
 - Whether the user is mid-build on an existing workflow or agent in this
   conversation — incremental requests default to extending that primitive.
+- Whether the editor/canvas context the conversation opened from shows an
+  existing **agent** or an existing **workflow** (or both). An existing agent
+  in context that the user asks to change is an agent-anchored request — see
+  Context continuity and Existing-agent modification.
 - Any explicit constraints about determinism, auditability, latency, cost,
   compliance, reusability, or allowed tools.
 - If the request is underspecified on an anchor-deciding axis, ask for the
@@ -236,6 +240,35 @@ Only cross into the other primitive when the
 incremental request itself carries its own anchor signal — and even then,
 prefer asking before switching paradigm if it isn't clearly load-bearing.
 
+**Existing-agent modification**: context continuity extends to an agent the
+user did not build in this conversation but opened in the editor. When the
+editor/canvas context shows an existing agent and the user asks to change,
+add, or remove its configuration or capabilities (instructions, model,
+tools, skills, tasks, channels, memory, sub-agents), classify
+**agent-anchored** and route to `build-agent` targeting that agent. Do not
+route to `workflow-builder`, and do not treat the request as a workflow
+change even when a workflow is also in context, unless the user explicitly
+names the workflow as the target. A capability the agent cannot have is
+still an agent-anchored request — handle it per Unsupported capabilities
+below, do not reclassify it as a workflow.
+
+**Mixed agent + workflow context**: when both an agent and a workflow are in
+context and the request is ambiguous about which one the user wants to
+change, classify **needs-clarification** and ask which target — do not
+assume the workflow. Once the user names the target, follow context
+continuity for that primitive.
+
+**Unsupported capabilities**: when the user names a specific channel or
+capability for an agent (e.g. "WhatsApp", "Teams"), call
+`list-agent-capabilities` before classifying. If the named channel is
+absent, it is unsupported for agents — do not classify the request as a
+workflow substitute, do not improvise workflow nodes to fake the channel,
+and do not claim it can be configured. Explain that it is unavailable for
+agents, offer the supported alternatives the tool returned (with their
+`capabilities`), and only build a workflow if the user explicitly chooses
+that path after the limitation is stated. This is an agent-anchored request
+that the agent cannot fully satisfy, not a workflow-anchored one.
+
 **Clarify triggers**: rule-based vs judgment-based (what defines "important"
 or "urgent"?), scope/autonomy (act on its own vs draft for review),
 interaction mode (one-shot vs chat). Do not clarify when the criterion could
@@ -330,6 +363,23 @@ instead.
 - "Tell me when something important happens with our shipments." ->
   **needs-clarification**: "important" is undefined; ask whether concrete
   rules exist or this needs judgment-based triage.
+- "Build me an agent my team can @mention on WhatsApp to triage customer
+  messages." -> **agent-anchored** (explicit agent artifact + chat
+  interaction), but call `list-agent-capabilities` first: WhatsApp is absent,
+  so do not build. Explain WhatsApp is unsupported for agents, offer the
+  supported chat channels the tool returned, with their
+  `capabilities`, and ask which to use — or whether the user wants a
+  workflow path instead. Do not improvise a workflow with a WhatsApp node
+  and do not claim the channel is configured.
+- (An existing agent is open in the editor.) "Make it also file a Linear
+  ticket when it can't resolve an issue." -> **agent-anchored**: the open
+  agent is the target; route to `build-agent` targeting that agent to add the
+  capability. Do not start a workflow build, even though a workflow could
+  also file a ticket — the user asked to change the agent.
+- (Both an agent and a workflow are open.) "Add a daily summary of new
+  signups to the data warehouse." -> **needs-clarification**: ask whether
+  the summary belongs to the agent (a scheduled task on it) or the workflow
+  (a new branch in the graph); do not assume the workflow.
 
 ## Gotchas
 
@@ -353,6 +403,11 @@ instead.
   *node* exists only for `embeds_other: true` steps inside a genuinely
   workflow-anchored pipeline. A Chat Trigger workflow is correct only when
   chat is merely the manual trigger for a fixed graph.
+- Never improvise a workflow substitute for an unsupported agent channel or
+  capability. When the user names a channel not in `list-agent-capabilities`,
+  explain the limitation and offer supported alternatives — do not add
+  workflow nodes that fake the channel or silently translate the request
+  into a workflow change.
 - Do not demote an explicitly requested agent to an embedded AI Agent step
   inside a workflow — workflow-anchored with `embeds_other: true` is for
   agent steps inside a pipeline the user described as a pipeline.

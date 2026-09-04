@@ -23,6 +23,18 @@ describe('ToolHttpRequest', () => {
 		executeFunctions.addInputData.mockReturnValue({ index: 0 });
 	});
 
+	describe('Deprecation', () => {
+		it('stays hidden and names the node that replaces it', () => {
+			// The node still runs, but a builder that reads the description must
+			// find the supported node. The type-definition header carries the
+			// searchHint through to the builder.
+			expect(httpTool.description.hidden).toBe(true);
+			expect(httpTool.description.builderHint?.searchHint).toContain(
+				'n8n-nodes-base.httpRequestTool',
+			);
+		});
+	});
+
 	describe('Binary response', () => {
 		it('should return the error when receiving a binary response', async () => {
 			helpers.httpRequest.mockResolvedValue({

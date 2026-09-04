@@ -61,8 +61,10 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
+import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -119,6 +121,8 @@ export class WorkflowService {
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
+		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
+		private readonly durableJobProvisioner: DurableJobProvisioner,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowHookContextService: WorkflowHookContextService,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
@@ -1487,7 +1491,21 @@ export class WorkflowService {
 		// to hit a DB statement timeout, however large the execution history.
 		await this.executionPersistence.hardDeleteByWorkflowId(workflowId);
 
-		await this.workflowRepository.delete(workflowId);
+		// The workflow stops owning scheduled jobs here, and nothing in the database
+		// removes them with it. Normally there are none left, since a published
+		// workflow cannot be deleted and unpublishing deprovisions them. This covers
+		// the paths that never published and anything an interrupted unpublish left.
+		//
+		// Both writes commit together. A deprovision of its own would leave a workflow
+		// whose delete then failed alive with its schedules stripped.
+		await this.workflowRepository.runInTransaction({}, async (trx) => {
+			await this.durableJobProvisioner.deprovisionOwnerInTransaction(
+				trx,
+				this.workflowScheduledJobOwner.ref(workflowId),
+			);
+
+			await trx.delete(WorkflowEntity, { id: workflowId });
+		});
 
 		await this.ownershipService.invalidateWorkflowProjectCacheByIds([workflowId]);
 
