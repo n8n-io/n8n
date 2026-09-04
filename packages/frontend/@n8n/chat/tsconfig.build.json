@@ -1,0 +1,24 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": false,
+		"declaration": true,
+		"emitDeclarationOnly": true,
+		"outDir": "dist",
+		// `rootDir` is what puts the declarations at `dist/index.d.ts`, where the `types` of the
+		// manifest points. Without it vite-plugin-dts takes the common directory of the program,
+		// which is the package root, and writes them to `dist/src/` instead.
+		"rootDir": "src",
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"types": ["vite/client"],
+		// No entry for `@n8n/design-system`: the sibling `paths` of `tsconfig.json` map it to `src`,
+		// which pulls files outside `rootDir` into the program (TS6059) and points the declarations
+		// at another package's sources rather than its published types.
+		"paths": {
+			"@n8n/chat/*": ["./src/*"]
+		}
+	},
+	"include": ["src/**/*.ts", "src/**/*.vue"],
+	"exclude": ["src/__tests__/**", "src/__stories__/**", "src/**/*.spec.ts", "src/**/*.test.ts"]
+}

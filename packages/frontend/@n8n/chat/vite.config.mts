@@ -11,6 +11,10 @@ const includeVue = process.env.INCLUDE_VUE === 'true';
 const srcPath = resolve(__dirname, 'src');
 const packagesDir = resolve(__dirname, '..', '..', '..');
 
+// Only the published package reads these declarations; editor-ui reads `src` instead.
+// `RELEASE` marks the paths that ship `dist`.
+const emitDeclarations = !!process.env.RELEASE;
+
 const banner = `/*! Package version @n8n/chat@${pkg.version} */`;
 
 // https://vitejs.dev/config/
@@ -23,7 +27,17 @@ export default mergeConfig(
 				autoInstall: true,
 			}),
 			// The bundle pass emits the same declarations as the lib pass — skip the ~12s duplicate run.
-			...(includeVue ? [] : [dts()]),
+			...(includeVue || !emitDeclarations
+				? []
+				: [
+						dts({
+							// `tsconfig.build.json` sets the `rootDir` that puts the declarations at
+							// `dist/index.d.ts`, where the `types` of the manifest points, and drops the
+							// tests and stories from the published surface.
+							tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
+							entryRoot: srcPath,
+						}),
+					]),
 			{
 				name: 'rename-css-file',
 				closeBundle() {
