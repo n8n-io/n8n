@@ -85,6 +85,27 @@ describe('InstanceContextService', () => {
 			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
 		});
 
+		it('builds nothing on a machine follow-up turn, and reads nothing either', async () => {
+			const service = serviceWith();
+			workflowRepository.findRecentForProjects.mockResolvedValue({
+				total: 5,
+				workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: true }],
+			});
+
+			const built = await service.buildBlock({
+				userId: USER_ID,
+				projectId: PROJECT_ID,
+				cursor: null,
+				isMachineFollowUp: true,
+				now: NOW,
+			});
+
+			expect(built).toBeNull();
+			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
+			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
+			expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
+		});
+
 		/** Project is the only boundary the run leg has, so no project means no block. */
 		it('builds nothing when the user has no project in scope', async () => {
 			const service = serviceWith();

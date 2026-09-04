@@ -165,9 +165,15 @@ export class InstanceContextService {
 		userId: string;
 		projectId?: string;
 		cursor: InstanceContextCursor | null;
+		/**
+		 * The agent continuing its own task — a checkpoint or a planned build — rather than a
+		 * person saying something. Nobody is reading intent on those turns, so the block would be
+		 * paid for unread. Checked before any read, so a skipped turn costs nothing.
+		 */
+		isMachineFollowUp?: boolean;
 		now?: Date;
 	}): Promise<InstanceContextBlock | null> {
-		if (!this.enabled) return null;
+		if (!this.enabled || input.isMachineFollowUp) return null;
 
 		try {
 			const now = input.now ?? new Date();

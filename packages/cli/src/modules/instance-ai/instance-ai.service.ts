@@ -136,6 +136,11 @@ import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
+import {
+	INSTANCE_CONTEXT_CURSOR,
+	InstanceContextService,
+	readInstanceContextCursor,
+} from './instance-context.service';
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
@@ -840,6 +845,7 @@ export class InstanceAiService {
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
 		private readonly push: Push,
+		private readonly instanceContext: InstanceContextService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -3949,6 +3955,29 @@ export class InstanceAiService {
 				});
 			}
 
+			// Sent in full on a thread's first turn and as additions after that: the earlier block
+			// stays in the conversation, so re-sending it pays for the same context twice.
+			//
+			// Skipped entirely on a machine follow-up. A checkpoint or a planned-build turn is the
+			// agent continuing its own task, where nobody is reading the user's intent, so the whole
+			// block would be paid for unread.
+			const instanceContext = await this.instanceContext.buildBlock({
+				userId: user.id,
+				...(context.projectId !== undefined ? { projectId: context.projectId } : {}),
+				cursor: readInstanceContextCursor(thread?.metadata),
+				isMachineFollowUp:
+					checkpoint?.isCheckpointFollowUp === true ||
+					plannedBuild?.isPlannedBuildFollowUp === true,
+			});
+			if (instanceContext) {
+				await patchThread(memory, {
+					threadId,
+					update: ({ metadata }) => ({
+						metadata: { ...metadata, [INSTANCE_CONTEXT_CURSOR]: instanceContext.cursor },
+					}),
+				});
+			}
+
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {
 				this.eventBus.publish(threadId, {
@@ -3985,7 +4014,14 @@ export class InstanceAiService {
 			// The context block (an editor hand-off) leads the message so the agent
 			// knows what the user is looking at. On an empty-text hand-off it is the
 			// entire prompt, and the agent greets rather than investigating.
-			const messageWithContext = [contextResourcesBlock, handoffContextBlock, messageBody]
+			// Instance context sits last of the leading blocks, nearest the user's own words: it is
+			// background for reading their intent, not a statement of what they are looking at now.
+			const messageWithContext = [
+				contextResourcesBlock,
+				handoffContextBlock,
+				instanceContext?.block ?? '',
+				messageBody,
+			]
 				.filter(Boolean)
 				.join('\n\n');
 			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
