@@ -98,8 +98,13 @@ export interface ResumeForChatConfig {
 	runId: string;
 	toolCallId: string;
 	resumeData: unknown;
-	/** Expected memory scope used to prevent resuming another user's or thread's checkpoint. */
-	expectedMemory?: Partial<AgentMemoryScope>;
+	/**
+	 * Expected memory scope — binds the resume to a chat's own checkpoint so a
+	 * run id obtained elsewhere cannot be replayed here. Required so callers
+	 * must state what they bind to (draft chat binds the caller's resourceId,
+	 * platform integrations bind the acting thread).
+	 */
+	expectedMemory: Partial<AgentMemoryScope>;
 	/** Identifies the surface that resumed the execution. */
 	source?: string;
 	/**

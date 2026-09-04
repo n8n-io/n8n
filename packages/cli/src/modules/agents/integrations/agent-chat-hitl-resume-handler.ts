@@ -13,6 +13,7 @@ import { onceStatusHandle } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
+import { toInternalThreadId } from './types';
 import type { InternalThread } from './types';
 
 interface ResumeExecutor {
@@ -23,6 +24,7 @@ interface ResumeExecutor {
 		toolCallId: string;
 		resumeData: unknown;
 		integrationType?: string;
+		expectedMemory: { threadId: string };
 	}): AsyncGenerator<StreamChunk>;
 }
 
@@ -241,6 +243,9 @@ export class AgentChatHitlResumeHandler {
 
 		this.activeResumedRuns.add(runId);
 		try {
+			// Bind the resume to this thread's session so a run id captured in
+			// another conversation cannot be replayed here.
+			const expectedThreadId = await this.resolveMemoryThreadId(thread);
 			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
 			const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
 			try {
@@ -251,6 +256,7 @@ export class AgentChatHitlResumeHandler {
 					toolCallId,
 					resumeData,
 					integrationType: this.options.integration.type,
+					expectedMemory: { threadId: expectedThreadId },
 				});
 				await this.options.streamConsumer.consume(stream, thread, {
 					...resumeExecutionContext,
@@ -265,5 +271,17 @@ export class AgentChatHitlResumeHandler {
 		} finally {
 			this.activeResumedRuns.delete(runId);
 		}
+	}
+
+	/**
+	 * The thread a checkpoint parks against — the acting thread, or the session
+	 * it is bound to when a reply continues an earlier session (mirrors the
+	 * binding resolution in `AgentChatBridge.executeAndStream`).
+	 */
+	private async resolveMemoryThreadId(thread: Thread<unknown, unknown>): Promise<string> {
+		const platformThreadId = this.options.resolvePlatformThreadId(thread);
+		const threadId: InternalThread = this.options.toAgentThreadId(platformThreadId);
+		const sessionOrigin = await this.options.messageContextBridge.resolveSession(threadId.id);
+		return sessionOrigin ? toInternalThreadId(sessionOrigin.threadId).id : threadId.id;
 	}
 }

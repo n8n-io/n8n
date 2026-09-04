@@ -42,7 +42,10 @@ it.each([
 			'discord:800000000000000001:700000000000000001:600000000000000001',
 		toAgentThreadId: () => ({ id: 'agent-thread-1' }) as never,
 		getPlatformAgentContext: () => ({}),
-		messageContextBridge: { updateLatest: vi.fn().mockResolvedValue(undefined) } as never,
+		messageContextBridge: {
+			updateLatest: vi.fn().mockResolvedValue(undefined),
+			resolveSession: vi.fn().mockResolvedValue(null),
+		} as never,
 		streamConsumer: { consume: vi.fn().mockResolvedValue(undefined) } as never,
 		createResumeExecutionContext: async () => ({}),
 	});

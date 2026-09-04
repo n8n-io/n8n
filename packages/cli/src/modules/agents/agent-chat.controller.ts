@@ -213,6 +213,9 @@ export class AgentChatController {
 					runId,
 					toolCallId,
 					resumeData,
+					// Bind the checkpoint to the calling user's chat memory so a run id
+					// from another member's conversation cannot be replayed here.
+					expectedMemory: { resourceId: draftChatMemoryResourceId(req.user.id) },
 					user: req.user,
 					usePublishedVersion: false,
 					integrationType: N8N_CHAT_INTEGRATION_TYPE,
@@ -277,11 +280,17 @@ export class AgentChatController {
 			agentId,
 			threadId,
 		);
+		// Open suspensions carry resume coordinates and tool arguments; only the
+		// user whose chat memory owns the checkpoint may see them.
+		const ownCheckpoint =
+			checkpoint?.persistence?.resourceId === draftChatMemoryResourceId(req.user.id)
+				? checkpoint
+				: null;
 		if (!history) {
-			if (checkpoint) return withOpenSuspensions([], checkpoint);
+			if (ownCheckpoint) return withOpenSuspensions([], ownCheckpoint);
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		return withOpenSuspensions(history, checkpoint, {
+		return withOpenSuspensions(history, ownCheckpoint, {
 			appendInactiveCheckpointMessages: false,
 		});
 	}
