@@ -3,7 +3,7 @@ import { TSESTree } from '@typescript-eslint/utils';
 import {
 	isNodeTypeClass,
 	isTriggerNode,
-	findClassProperty,
+	findNodeDescriptionObject,
 	findObjectProperty,
 	createRule,
 } from '../utils/index.js';
@@ -38,13 +38,8 @@ export const NodeUsableAsToolRule = createRule({
 					return;
 				}
 
-				const descriptionProperty = findClassProperty(node, 'description');
-				if (!descriptionProperty) {
-					return;
-				}
-
-				const descriptionValue = descriptionProperty.value;
-				if (descriptionValue?.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) {
+				const descriptionValue = findNodeDescriptionObject(node);
+				if (!descriptionValue) {
 					return;
 				}
 
@@ -96,23 +91,19 @@ export const NodeUsableAsToolRule = createRule({
 						node,
 						messageId: 'missingUsableAsTool',
 						fix(fixer) {
-							if (descriptionValue?.type === TSESTree.AST_NODE_TYPES.ObjectExpression) {
-								const properties = descriptionValue.properties;
-								if (properties.length === 0) {
-									const openBrace = descriptionValue.range[0] + 1;
-									return fixer.insertTextAfterRange(
-										[openBrace, openBrace],
-										'\n\t\tusableAsTool: true,',
-									);
-								} else {
-									const lastProperty = properties.at(-1);
-									if (lastProperty) {
-										return fixer.insertTextAfter(lastProperty, ',\n\t\tusableAsTool: true');
-									}
-								}
+							const properties = descriptionValue.properties;
+							if (properties.length === 0) {
+								const openBrace = descriptionValue.range[0] + 1;
+								return fixer.insertTextAfterRange(
+									[openBrace, openBrace],
+									'\n\t\tusableAsTool: true,',
+								);
 							}
 
-							return null;
+							const lastProperty = properties.at(-1);
+							return lastProperty
+								? fixer.insertTextAfter(lastProperty, ',\n\t\tusableAsTool: true')
+								: null;
 						},
 					});
 				}

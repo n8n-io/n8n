@@ -3,7 +3,7 @@ import { TSESTree } from '@typescript-eslint/utils';
 import {
 	isNodeTypeClass,
 	isTriggerNodeClass,
-	findClassProperty,
+	findNodeDescriptionObject,
 	findObjectProperty,
 	getStringLiteralValue,
 	isFileType,
@@ -42,11 +42,10 @@ export const TriggerNodeConventionsRule = createRule({
 					return;
 				}
 
-				const descriptionProperty = findClassProperty(node, 'description');
-				if (descriptionProperty?.value?.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) {
+				const description = findNodeDescriptionObject(node);
+				if (!description) {
 					return;
 				}
-				const description = descriptionProperty.value;
 
 				const displayNameProperty = findObjectProperty(description, 'displayName');
 				const displayNameValue = displayNameProperty
