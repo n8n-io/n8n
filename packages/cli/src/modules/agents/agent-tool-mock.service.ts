@@ -22,8 +22,8 @@ import type {
 import { MAX_TOOL_MOCK_ITEMS_SIZE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
-import { createEvalAgent, extractText } from '@n8n/instance-ai';
+import { Container, Service } from '@n8n/di';
+import { extractText } from '@n8n/instance-ai';
 import type {
 	IDataObject,
 	NodeSchemaContext,
@@ -43,16 +43,13 @@ import {
 import type { JsonValue } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
-import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { AgentConfigService } from './agent-config.service';
-import { resolveCredentialAwareModelConfig } from './json-config/model-config';
-import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 
-/** The minimal generate surface both model lanes' agents share. */
-type GeneratorAgent = Pick<ReturnType<typeof createEvalAgent>, 'generate'>;
+/** The minimal generate surface the mock generator needs from an Agent. */
+type GeneratorAgent = Pick<InstanceType<typeof import('@n8n/agents').Agent>, 'generate'>;
 
 /**
  * Hang guard for the mock-generation LLM call. A single-tool prompt is small
@@ -82,7 +79,6 @@ export class AgentToolMockService {
 		private readonly logger: Logger,
 		private readonly agentConfigService: AgentConfigService,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly credentialsService: CredentialsService,
 	) {}
 
 	/**
@@ -110,12 +106,7 @@ export class AgentToolMockService {
 			throw new NotFoundError(`Node tool "${toolName}" not found on this agent`);
 		}
 
-		const { items: rawItems, fallbackUsed } = await this.generateMockItems(
-			config,
-			tool,
-			projectId,
-			user,
-		);
+		const { items: rawItems, fallbackUsed } = await this.generateMockItems(config, tool, user);
 		const items = rawItems.map(toJsonRecord);
 
 		const size = new TextEncoder().encode(JSON.stringify(items)).length;
@@ -161,7 +152,6 @@ export class AgentToolMockService {
 	async generateMockItems(
 		agentConfig: AgentJsonConfig,
 		tool: AgentJsonNodeToolConfig,
-		projectId: string,
 		user: User,
 	): Promise<GenerateMockItemsResult> {
 		const outputSchemaLookup = this.buildOutputSchemaLookup();
@@ -170,7 +160,7 @@ export class AgentToolMockService {
 		const contexts = buildSchemaContexts([node], outputSchemaLookup);
 
 		try {
-			const generator = await this.resolveGeneratorAgent(agentConfig, projectId, user);
+			const generator = await this.resolveGeneratorAgent(user);
 			const items = await this.generateWithLlm(generator, agentConfig, tool, workflow, contexts);
 			if (items.length > 0) {
 				return { items, fallbackUsed: false };
@@ -203,50 +193,25 @@ export class AgentToolMockService {
 	}
 
 	/**
-	 * Pick the model the mock generator runs on. The agent's own configured
-	 * model + credential come first, resolved exactly as the agent runtime does
-	 * (`from-json-config.ts` → `resolveCredentialAwareModelConfig`): that covers
-	 * Gateway-credits deployments, which have no provider API keys in the
-	 * environment at all, and bills BYOK setups to the same credential the agent
-	 * itself uses. The instance-AI env lane (N8N_INSTANCE_AI_EVAL_MODEL →
-	 * N8N_INSTANCE_AI_MODEL → default) remains as a fallback for drafts with no
-	 * model configured yet — and if neither lane resolves, the caller's
-	 * placeholder fallback still applies.
+	 * The mock generator runs on the Instance AI connection —
+	 * `InstanceAiModelService.resolveAgentModelConfig` is the same resolver
+	 * chain the AI Assistant chat uses (AI-service proxy with token auth when
+	 * enabled, HTTP_PROXY, then env/settings), so generation works wherever the
+	 * assistant works, including proxied deployments with no provider API keys.
+	 * If it can't resolve (module disabled, nothing configured), the caller's
+	 * placeholder fallback applies.
 	 */
-	private async resolveGeneratorAgent(
-		agentConfig: AgentJsonConfig,
-		projectId: string,
-		user: User,
-	): Promise<GeneratorAgent> {
-		if (agentConfig.model && agentConfig.credential) {
-			try {
-				const credentialProvider = createAgentCredentialProvider(
-					this.credentialsService,
-					projectId,
-					user,
-				);
-				const modelConfig = await resolveCredentialAwareModelConfig(
-					agentConfig.model,
-					agentConfig.credential,
-					credentialProvider,
-					agentConfig.modelDeploymentName,
-				);
-				// Lazy-load the agents SDK the same way the runtime does.
-				const { Agent } = await import('@n8n/agents');
-				return new Agent('agent-tool-mock-generator')
-					.model(modelConfig)
-					.instructions(PIN_DATA_SYSTEM_PROMPT);
-			} catch (error) {
-				this.logger.debug(
-					'Tool mock generation could not use the agent model; trying the instance AI lane',
-					{ error: error instanceof Error ? error.message : String(error) },
-				);
-			}
-		}
-
-		return createEvalAgent('agent-tool-mock-generator', {
-			instructions: PIN_DATA_SYSTEM_PROMPT,
-		});
+	private async resolveGeneratorAgent(user: User): Promise<GeneratorAgent> {
+		// Lazy Container lookup: agents must not statically import the
+		// instance-ai module (instance-ai already imports agents heavily).
+		const { InstanceAiModelService } = await import(
+			'@/modules/instance-ai/instance-ai-model.service.js'
+		);
+		const modelConfig = await Container.get(InstanceAiModelService).resolveAgentModelConfig(user);
+		const { Agent } = await import('@n8n/agents');
+		return new Agent('agent-tool-mock-generator')
+			.model(modelConfig)
+			.instructions(PIN_DATA_SYSTEM_PROMPT);
 	}
 
 	private async generateWithLlm(
