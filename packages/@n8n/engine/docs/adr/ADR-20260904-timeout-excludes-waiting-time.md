@@ -1,4 +1,4 @@
-# ADR-2026-09-04: The execution timeout does not run while an execution waits
+# The execution timeout does not run while an execution waits
 
 Date: 2026-09-04
 Status: Active
@@ -53,7 +53,7 @@ something, not against one that is deliberately paused.
 - An execution that waits forever is never stopped by its timeout. Nothing
   should rely on the timeout to bound a wait; a wait that must end needs a
   deadline of its own.
-- The derived `waiting` status (ADR-2026-09-02, decision 6) is the signal the
+- The derived `waiting` status (ADR-20260902, decision 6) is the signal the
   clock reads. An execution with one waiting branch and one executing branch
   reports `running`, so its clock runs — which is correct, since it is working.
 
@@ -61,4 +61,4 @@ something, not against one that is deliberately paused.
 
 RFC: -
 Tickets: -
-Related ADRs: ADR-2026-09-02-steps-declare-waits
+Related ADRs: ADR-20260902-steps-declare-waits
