@@ -202,12 +202,18 @@ describe('Microsoft Teams v2 — getChats', () => {
 			expect(result.results.map((r) => r.value)).toEqual(['c2', 'c3', 'c1']);
 		});
 
-		it('explains the empty list when chatMember:add filters every chat away', async () => {
+		// Only one page is fetched, so the message must describe this list, never claim the
+		// account has no group chats: a full page of 1:1 chats can still be followed by
+		// group chats the picker never asked for.
+		it('explains the empty list without claiming the account has no group chats', async () => {
 			apiRequest.mockResolvedValue({
-				value: [
-					{ id: 'c1', topic: 'Alice', chatType: 'oneOnOne', webUrl: 'https://teams/chat/c1' },
-					{ id: 'c2', topic: 'Bob', chatType: 'oneOnOne', webUrl: 'https://teams/chat/c2' },
-				],
+				value: Array.from({ length: 50 }, (_, i) => ({
+					id: `c${i}`,
+					topic: `Person ${i}`,
+					chatType: 'oneOnOne',
+					webUrl: `https://teams/chat/c${i}`,
+				})),
+				'@odata.nextLink': 'https://graph.microsoft.com/v1.0/chats?$skiptoken=x',
 			});
 			setParams({
 				authentication: 'microsoftOAuth2Api',
@@ -215,7 +221,7 @@ describe('Microsoft Teams v2 — getChats', () => {
 				operation: 'add',
 			});
 
-			await expect(getChats.call(ctx)).rejects.toThrow('No group chats found');
+			await expect(getChats.call(ctx)).rejects.toThrow('No group chats available to select');
 		});
 
 		// The message must not fire when the tenant simply has no chats, or it would
