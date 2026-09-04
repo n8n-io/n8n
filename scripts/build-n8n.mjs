@@ -95,7 +95,8 @@ startTimer('package_build');
 
 echo(chalk.yellow('INFO: Running pnpm install and build...'));
 try {
-	const installProcess = $`cd ${config.rootDir} && pnpm install --frozen-lockfile`;
+	const installFlags = ['--frozen-lockfile', ...(isCI ? ['--trust-lockfile'] : [])];
+	const installProcess = $`cd ${config.rootDir} && pnpm install ${installFlags}`;
 	installProcess.pipe(process.stdout);
 	await installProcess;
 
