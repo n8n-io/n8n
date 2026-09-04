@@ -98,6 +98,45 @@ describe('nodeExecuteAfter', () => {
 		});
 	});
 
+	it('routes a sub-execution node to the sub queue and leaves parent agent progress alone', async () => {
+		const clearAgentNodeProgress = vi.spyOn(workflowExecutionStateStore, 'clearAgentNodeProgress');
+		vi.spyOn(workflowExecutionStateStore.subExecutingNode, 'removeExecutingNode');
+
+		workflowExecutionStateStore.registerSubExecution({
+			executionId: 'sub-exec-1',
+			workflowId: 'test-wf',
+			parentExecutionId: 'exec-1',
+			parentNodeName: 'Execute Sub-workflow',
+			parentNodeRunIndex: 0,
+		});
+
+		// Reusing the parent's node name is what makes clearing agent progress by
+		// name alone unsafe for a sub-execution.
+		const event: NodeExecuteAfter = {
+			type: 'nodeExecuteAfter',
+			data: {
+				executionId: 'sub-exec-1',
+				nodeName: 'Test Node',
+				sequenceNumber: 1,
+				itemCountByConnectionType: { main: [1] },
+				data: {
+					executionTime: 100,
+					startTime: 1234567890,
+					executionIndex: 0,
+					source: [],
+				},
+			},
+		};
+
+		await nodeExecuteAfter(event, options);
+
+		expect(workflowExecutionStateStore.subExecutingNode.removeExecutingNode).toHaveBeenCalledWith(
+			'Test Node',
+		);
+		expect(workflowExecutionStateStore.executingNode.removeExecutingNode).not.toHaveBeenCalled();
+		expect(clearAgentNodeProgress).not.toHaveBeenCalled();
+	});
+
 	it('tracks a non-waiting node execution exactly once', async () => {
 		const event: NodeExecuteAfter = {
 			type: 'nodeExecuteAfter',
