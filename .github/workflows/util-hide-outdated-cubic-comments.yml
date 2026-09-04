@@ -58,6 +58,15 @@ jobs:
             const keep = reviews.find((r) => r.id === keepId);
             const keepAt = keep ? new Date(keep.submitted_at).getTime() : Infinity;
 
+            // `submitted_at` has second granularity, so two reviews can tie.
+            // Review ids grow with submission order, which breaks the tie and
+            // makes this a total order -- without it a tie hides neither review
+            // and both summaries stay visible.
+            const precedesKeep = (r) => {
+              const at = new Date(r.submitted_at).getTime();
+              return at < keepAt || (at === keepAt && r.id < keepId);
+            };
+
             const toHide = reviews.filter(
               (r) =>
                 r.id !== keepId &&
@@ -65,7 +74,7 @@ jobs:
                 r.user.login === 'cubic-dev-ai[bot]' &&
                 r.body &&
                 r.body.trim().length > 0 &&
-                new Date(r.submitted_at).getTime() < keepAt
+                precedesKeep(r)
             );
 
             for (const review of toHide) {
