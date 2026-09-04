@@ -62,7 +62,10 @@ export default defineConfig(
 							rule: 'no-repository-in-public-api-handler',
 							message: 'Migrate to `@PublicApiController`.',
 						},
-						{ rule: 'require-public-api-controller', message: 'Migrate to `@PublicApiController`.' },
+						{
+							rule: 'require-public-api-controller',
+							message: 'Migrate to `@PublicApiController`.',
+						},
 						{
 							rule: 'no-unsealed-workflow-entity-write',
 							message: 'Route the write through a token-gated `WorkflowRepository` method.',
