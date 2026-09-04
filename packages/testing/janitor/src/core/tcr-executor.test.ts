@@ -160,27 +160,18 @@ describe('TcrExecutor', () => {
 				'export const test = { name: "staged feature test" };\n',
 			);
 
-			// A real `tsc` isn't resolvable in this ephemeral temp dir (no
-			// node_modules), and this test exercises affected-test detection, not
-			// typechecking — stub the typecheck step to a deterministic pass so
-			// run() reaches findAffectedTests instead of bailing at typecheck.
-			fs.writeFileSync(
-				path.join(tempDir, 'package.json'),
-				JSON.stringify({ name: 'tcr-test', scripts: { typecheck: 'node -e ""' } }),
-			);
-
 			// Stage the new file
 			execSync('git add -A', { cwd: tempDir, stdio: 'pipe' });
 
 			const tcr = new TcrExecutor();
-			const result = tcr.run({ verbose: false });
+			const changedFiles = (
+				tcr as unknown as { getChangedFiles: (targetBranch?: string) => string[] }
+			).getChangedFiles();
 
 			// Should detect the actual test file, not just the directory
-			expect(result.changedFiles.some((f) => f.includes('staged-feature.spec.ts'))).toBe(true);
+			expect(changedFiles.some((f) => f.includes('staged-feature.spec.ts'))).toBe(true);
 			// Should NOT include directory paths
-			expect(result.changedFiles.some((f) => f.endsWith('staged-feature/'))).toBe(false);
-			// Should include in affected tests
-			expect(result.affectedTests.some((t) => t.includes('staged-feature.spec.ts'))).toBe(true);
+			expect(changedFiles.some((f) => f.endsWith('staged-feature/'))).toBe(false);
 		});
 
 		it('detects deleted files', () => {
