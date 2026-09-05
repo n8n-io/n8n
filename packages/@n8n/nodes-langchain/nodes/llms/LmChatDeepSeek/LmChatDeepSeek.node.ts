@@ -179,6 +179,32 @@ export class LmChatDeepSeek implements INodeType {
 						type: 'number',
 					},
 					{
+						displayName: 'Reasoning Effort',
+						name: 'reasoningEffort',
+						default: 'medium',
+						description:
+							'Controls how much reasoning the model performs. Applies to reasoning-capable models (e.g. deepseek-reasoner); lower values favor speed and fewer tokens, higher values favor more complete reasoning.',
+						type: 'options',
+						options: [
+							{
+								name: 'Low',
+								value: 'low',
+								description: 'Favors speed and economical token usage',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+								description: 'Balance between speed and reasoning accuracy',
+							},
+							{
+								name: 'High',
+								value: 'high',
+								description:
+									'Favors more complete reasoning at the cost of more tokens generated and slower responses',
+							},
+						],
+					},
+					{
 						displayName: 'Sampling Temperature',
 						name: 'temperature',
 						default: 0.7,
@@ -229,6 +255,7 @@ export class LmChatDeepSeek implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			reasoningEffort?: 'low' | 'medium' | 'high';
 		};
 
 		const timeout = options.timeout;
@@ -250,11 +277,15 @@ export class LmChatDeepSeek implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs:
+				options.responseFormat || options.reasoningEffort
+					? {
+							...(options.responseFormat
+								? { response_format: { type: options.responseFormat } }
+								: {}),
+							...(options.reasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
+						}
+					: undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
