@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity, type Project } from '@n8n/db';
@@ -11,13 +12,17 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
+import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
+import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
+import { NON_FATAL_OPERATION_TYPES } from '../tools/workflow-builder/workflow-operations';
+
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
@@ -26,8 +31,6 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { shapeToStandardSchema } from '../tool-schema.util';
-import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
-import { NON_FATAL_OPERATION_TYPES } from '../tools/workflow-builder/workflow-operations';
 
 const mockAutoPopulateNodeCredentials = vi.fn();
 const mockTrackAutoassignOutcomes = vi.fn();
@@ -193,6 +196,11 @@ describe('update-workflow MCP tool', () => {
 	const aiGatewayService = mock<AiGatewayService>();
 	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 
+	const logger = mockInstance(Logger, { error: vi.fn(), warn: vi.fn() });
+	const postSaveMetrics = mockInstance(McpPostSaveMetricsService, {
+		incrementPostSaveFailure: vi.fn(),
+	});
+
 	const createTool = (options?: { canvasGroupsEnabled?: boolean }) =>
 		createUpdateWorkflowTool(
 			user,
@@ -211,6 +219,8 @@ describe('update-workflow MCP tool', () => {
 			workflowPublishedDataService,
 			aiGatewayService,
 			options,
+			logger,
+			postSaveMetrics,
 		);
 
 	const callHandler = async (
@@ -1371,6 +1381,539 @@ describe('update-workflow MCP tool', () => {
 			expect(b.parameters).toEqual({ url: 'https://old', method: 'GET' });
 		});
 
+		test('returns success when post-save side effect fails but DB write committed', async () => {
+			// workflowService.update succeeds, but telemetry throws afterwards —
+			// mimics an `workflow.afterUpdate` hook or reactivate step that explodes
+			// after the row is already on disk.
+			(telemetry.track as Mock).mockImplementationOnce(() => {
+				throw new Error('Telemetry pipeline exploded');
+			});
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(postSaveMetrics.incrementPostSaveFailure).toHaveBeenCalledWith(
+				'update',
+				expect.any(Error),
+			);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Post-save side effect failed for update_workflow',
+				expect.objectContaining({ workflowId: 'wf-1' }),
+			);
+		});
+
+		test('does not record post-save failure metric when telemetry fails on error path', async () => {
+			findWorkflowMock.mockResolvedValue(null);
+			(telemetry.track as Mock).mockImplementationOnce(() => {
+				throw new Error('Telemetry pipeline exploded');
+			});
+
+			const result = await callHandler({
+				workflowId: 'non-existent-id',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			expect(result.isError).toBe(true);
+			expect(postSaveMetrics.incrementPostSaveFailure).not.toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith(
+				'Telemetry failed for update_workflow (error path)',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		test('recovers from a thrown post-save error when persisted nodes and connections match expected', async () => {
+			const expectedWf = buildExistingWorkflow();
+			expectedWf.nodes.find((n) => n.name === 'B')!.parameters = {
+				url: 'https://new',
+				method: 'GET',
+			};
+
+			updateMock.mockImplementation(async (_user, _workflow: WorkflowEntity, _id: string) => {
+				throw new Error('workflow.afterUpdate hook failed');
+			});
+			// The first findWorkflowForUser call is the pre-update read; the second
+			// is the post-save recovery check.
+			findWorkflowMock
+				.mockResolvedValueOnce(buildExistingWorkflow())
+				.mockResolvedValueOnce(expectedWf);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.name).toBe('Existing');
+			expect(response.url).toBe('https://n8n.example.com/workflow/wf-1');
+			expect(response.note).toContain('post-save operation failed');
+			// Verify recovery output payload is trimmed (nodes, active, updatedAt, versionId removed)
+			expect(response.nodes).toBeUndefined();
+			expect(response.active).toBeUndefined();
+			expect(response.updatedAt).toBeUndefined();
+			expect(response.versionId).toBeUndefined();
+		});
+
+		test('records post-save failure metric when recovery returns success', async () => {
+			const postSaveError = new Error('workflow.afterUpdate hook failed');
+			const expectedWf = buildExistingWorkflow();
+			expectedWf.nodes.find((n) => n.name === 'B')!.parameters = {
+				url: 'https://new',
+				method: 'GET',
+			};
+
+			updateMock.mockRejectedValue(postSaveError);
+			findWorkflowMock
+				.mockResolvedValueOnce(buildExistingWorkflow())
+				.mockResolvedValueOnce(expectedWf);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			expect(result.isError).toBeUndefined();
+			expect(postSaveMetrics.incrementPostSaveFailure).toHaveBeenCalledWith(
+				'update',
+				postSaveError,
+			);
+		});
+
+		test('does not recover graph update when persisted graph differs', async () => {
+			const older = new Date('2024-01-01T00:00:00.000Z');
+			const recent = new Date('2024-01-02T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('workflow.afterUpdate hook failed'));
+
+			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = older;
+			const recovered = buildExistingWorkflow();
+			recovered.updatedAt = recent;
+			recovered.nodes.find((n) => n.name === 'B')!.parameters = {
+				url: 'https://new',
+				method: 'GET',
+				normalized: true,
+			};
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('workflow.afterUpdate hook failed');
+			expect(response.errorCode).toBe('UNKNOWN_ERROR');
+		});
+
+		test('reports a genuine failure for a no-op graph operation that throws before commit', async () => {
+			const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('Update failed before commit'));
+
+			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = sameTimestamp;
+			const recovered = buildExistingWorkflow();
+			recovered.updatedAt = sameTimestamp;
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://old' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('Update failed before commit');
+			expect(response.errorCode).toBe('UNKNOWN_ERROR');
+			expect(postSaveMetrics.incrementPostSaveFailure).not.toHaveBeenCalledWith(
+				'update',
+				expect.any(Error),
+			);
+		});
+
+		test('recovers graph update when content changed but updatedAt has the same millisecond timestamp', async () => {
+			const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('workflow.afterUpdate hook failed'));
+
+			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = sameTimestamp;
+			const recovered = buildExistingWorkflow();
+			recovered.updatedAt = sameTimestamp;
+			recovered.nodes.find((n) => n.name === 'B')!.parameters = {
+				url: 'https://new',
+				method: 'GET',
+			};
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.note).toContain('post-save operation failed');
+		});
+
+		test('recovers node-group-only update when updatedAt has the same millisecond timestamp', async () => {
+			const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('workflow.afterUpdate hook failed'));
+
+			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = sameTimestamp;
+			const recovered = buildExistingWorkflow();
+			recovered.updatedAt = sameTimestamp;
+			recovered.nodeGroups = [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }];
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [{ type: 'addNodeGroup', id: 'g1', name: 'Group', nodeNames: ['A', 'B'] }],
+				},
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.note).toContain('post-save operation failed');
+		});
+
+		test('recovers graph update when node parameter undefined is omitted after persistence', async () => {
+			const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('workflow.afterUpdate hook failed'));
+
+			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = sameTimestamp;
+			const recovered = buildExistingWorkflow();
+			recovered.updatedAt = sameTimestamp;
+			recovered.nodes.find((n) => n.name === 'B')!.parameters = {
+				url: 'https://new',
+				method: 'GET',
+			};
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{
+						type: 'updateNodeParameters',
+						nodeName: 'B',
+						parameters: { url: 'https://new', optional: undefined },
+					},
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.note).toContain('post-save operation failed');
+		});
+
+		test.each([
+			['renameNode', { type: 'renameNode', oldName: 'B', newName: 'B renamed' }],
+			['setNodePosition', { type: 'setNodePosition', nodeName: 'B', position: [300, 100] }],
+			['setNodeDisabled', { type: 'setNodeDisabled', nodeName: 'B', disabled: true }],
+		])(
+			'does not recover %s when persisted graph does not match expected graph',
+			async (_operationType, operation) => {
+				const older = new Date('2024-01-01T00:00:00.000Z');
+				const recent = new Date('2024-01-02T00:00:00.000Z');
+				updateMock.mockRejectedValue(new Error('workflow.afterUpdate hook failed'));
+
+				const preUpdate = buildExistingWorkflow();
+				preUpdate.updatedAt = older;
+				const recovered = buildExistingWorkflow();
+				recovered.updatedAt = recent;
+
+				findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [operation],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toBe('workflow.afterUpdate hook failed');
+				expect(response.errorCode).toBe('UNKNOWN_ERROR');
+			},
+		);
+
+		test('recovers settings-only update when updatedAt changed', async () => {
+			const older = new Date('2024-01-01T00:00:00.000Z');
+			const recent = new Date('2024-01-02T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('Post-save hook failed'));
+
+			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = older;
+			const recovered = buildExistingWorkflow();
+			recovered.updatedAt = recent;
+			recovered.nodes.push(makeNode({ id: 'c', name: 'C' }));
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'setWorkflowSettings', settings: { executionTimeout: 120 } }],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.note).toContain('post-save operation failed');
+		});
+
+		test('recovers settings-only update when updatedAt has the same millisecond timestamp', async () => {
+			const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('Post-save hook failed'));
+
+			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = sameTimestamp;
+			const recovered = buildExistingWorkflow();
+			recovered.updatedAt = sameTimestamp;
+			recovered.settings = { availableInMCP: true, executionTimeout: 120 };
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'setWorkflowSettings', settings: { executionTimeout: 120 } }],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.note).toContain('post-save operation failed');
+		});
+
+		test.each([
+			{
+				name: 'DEFAULT settings',
+				initialSettings: { availableInMCP: true, saveManualExecutions: false },
+				operationSettings: { saveManualExecutions: 'DEFAULT' },
+			},
+			{
+				name: 'default executionTimeout',
+				initialSettings: { availableInMCP: true, executionTimeout: 120 },
+				operationSettings: { executionTimeout: -1 },
+			},
+		])(
+			'recovers settings-only update that normalizes $name when updatedAt has the same millisecond timestamp',
+			async ({ initialSettings, operationSettings }) => {
+				const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
+				updateMock.mockRejectedValue(new Error('Post-save hook failed'));
+
+				const preUpdate = buildExistingWorkflow();
+				preUpdate.updatedAt = sameTimestamp;
+				preUpdate.settings = initialSettings;
+				const recovered = buildExistingWorkflow();
+				recovered.updatedAt = sameTimestamp;
+				recovered.settings = { availableInMCP: true };
+
+				findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: operationSettings }],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBeUndefined();
+				expect(response.workflowId).toBe('wf-1');
+				expect(response.note).toContain('post-save operation failed');
+			},
+		);
+
+		test('does not recover tag update when persisted tags do not match expected tags', async () => {
+			const older = new Date('2024-01-01T00:00:00.000Z');
+			const recent = new Date('2024-01-02T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('Tag mapping failed'));
+			findOrCreateByNamesMock.mockResolvedValue([
+				{ id: 'tag-0', name: 'production' },
+				{ id: 'tag-1', name: 'critical' },
+			]);
+
+			const preUpdate = Object.assign(buildExistingWorkflow(), {
+				updatedAt: older,
+				tags: [{ id: 'tag-0', name: 'production' }],
+			});
+			const recovered = Object.assign(buildExistingWorkflow(), {
+				updatedAt: recent,
+				tags: [{ id: 'tag-0', name: 'production' }],
+			});
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'addTags', names: ['critical'] }],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('Tag mapping failed');
+			expect(findWorkflowMock).toHaveBeenLastCalledWith(
+				'wf-1',
+				user,
+				['workflow:read'],
+				expect.objectContaining({ includeTags: true }),
+			);
+		});
+
+		test('recovers tag update when persisted names match expected after trimming and case-deduplication', async () => {
+			// The LLM sometimes supplies tag names with surrounding whitespace or
+			// repeats the same name in different casings. The tag service normalizes
+			// those via dedupeNamesPreservingCase before persisting, so the recovery
+			// check must compare against the normalized expected names — not the raw
+			// input — otherwise a successful save would be reported as failed.
+			const older = new Date('2024-01-01T00:00:00.000Z');
+			const recent = new Date('2024-01-02T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('Tag mapping failed'));
+			findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'Production' }]);
+
+			const preUpdate = Object.assign(buildExistingWorkflow(), {
+				updatedAt: older,
+				tags: [],
+			});
+			const recovered = Object.assign(buildExistingWorkflow(), {
+				updatedAt: recent,
+				tags: [{ id: 'tag-0', name: 'Production' }],
+			});
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'addTags', names: [' Production ', 'production'] }],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.note).toContain('post-save operation failed');
+		});
+
+		test('reports a genuine failure when persisted nodes differ from expected (concurrent edit or uncommitted update)', async () => {
+			updateMock.mockRejectedValue(new Error('Connection lost mid-save'));
+			// Recovery fetch returns a workflow with different nodes (e.g. edited concurrently by another process)
+			const concurrentWf = buildExistingWorkflow();
+			concurrentWf.nodes.push(makeNode({ id: 'c', name: 'C' }));
+
+			findWorkflowMock
+				.mockResolvedValueOnce(buildExistingWorkflow())
+				.mockResolvedValueOnce(concurrentWf);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('Connection lost mid-save');
+			expect(response.errorCode).toBe('UNKNOWN_ERROR');
+		});
+
+		test('maps NotFoundError to errorCode HTTP_404', async () => {
+			findWorkflowMock.mockRejectedValue(new NotFoundError('Workflow not found'));
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.errorCode).toBe('HTTP_404');
+		});
+
+		test('reports a genuine failure when the recovery lookup returns null', async () => {
+			updateMock.mockRejectedValue(new Error('DB write exploded'));
+			// Pre-update read: empty (workflow not yet seen), then recovery read:
+			// still empty (the row really does not exist).
+			findWorkflowMock.mockResolvedValueOnce(buildExistingWorkflow());
+			findWorkflowMock.mockResolvedValueOnce(null);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('DB write exploded');
+			expect(response.errorCode).toBe('UNKNOWN_ERROR');
+		});
+
+		test('logs and falls through to genuine failure when the recovery lookup throws', async () => {
+			updateMock.mockRejectedValue(new Error('Outer failure'));
+			// Pre-update read OK; the post-save recovery lookup itself throws.
+			findWorkflowMock.mockResolvedValueOnce(buildExistingWorkflow());
+			findWorkflowMock.mockRejectedValueOnce(new Error('Lookup DB outage'));
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('Outer failure');
+			expect(response.errorCode).toBe('UNKNOWN_ERROR');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Post-update verification lookup failed',
+				expect.objectContaining({ workflowId: 'wf-1' }),
+			);
+		});
+
+		test('includes errorCode on validation error responses', async () => {
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'invalidOp' as never, nodeName: 'B' }],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(typeof response.errorCode).toBe('string');
+			expect(response.error).toContain('Invalid operations');
+		});
+
 		describe('setWorkflowSettings', () => {
 			// Published error workflow: the Error Trigger lives in the active version,
 			// while the draft nodes are empty — proving validation reads the published
@@ -1835,6 +2378,9 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
+					logger,
+					postSaveMetrics,
 				);
 				findWorkflowMock.mockImplementation(async (id: string) =>
 					id === 'wf-1'
@@ -3194,6 +3740,9 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
+					logger,
+					postSaveMetrics,
 				);
 
 				await callHandler(
@@ -3231,6 +3780,9 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
+					logger,
+					postSaveMetrics,
 				);
 
 				const result = await callHandler(
@@ -3268,6 +3820,9 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
+					logger,
+					postSaveMetrics,
 				);
 
 				const result = await callHandler(

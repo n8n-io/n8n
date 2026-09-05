@@ -1,29 +1,12 @@
 import type { ValidationWarning } from '@n8n/ai-workflow-builder';
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import isEqual from 'lodash/isEqual';
 import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
-
-import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { NodeTypes } from '@/node-types';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { TagService } from '@/services/tag.service';
-import type { UrlService } from '@/services/url.service';
-import type { Telemetry } from '@/telemetry';
-import {
-	dropInvalidWorkflowGroups,
-	makeGetNodeTypeForGrouping,
-	resolveNodeWebhookIds,
-} from '@/workflow-helpers';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
@@ -34,6 +17,7 @@ import {
 	type AutoAssignResult,
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
+import { getErrorCode } from './error-code.utils';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import {
 	buildUpdateVersionMetadata,
@@ -41,6 +25,7 @@ import {
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
 } from './version-metadata';
+
 import {
 	applyOperations,
 	NON_FATAL_OPERATION_TYPES,
@@ -55,7 +40,29 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
+import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { TagService } from '@/services/tag.service';
+import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
+import {
+	dropInvalidWorkflowGroups,
+	makeGetNodeTypeForGrouping,
+	removeDefaultValues,
+	resolveNodeWebhookIds,
+} from '@/workflow-helpers';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
+
 const MAX_OPERATIONS_PER_CALL = 100;
+const normalize = (value: unknown) => JSON.parse(JSON.stringify(value ?? null));
 const baseOperationTypes = [
 	'updateNodeParameters',
 	'setNodeParameter',
@@ -88,6 +95,23 @@ const gatedGroupOperationTypes = [
 const GATED_GROUP_OP_TYPES: ReadonlySet<PartialUpdateOperation['type']> = new Set(
 	gatedGroupOperationTypes,
 );
+const GRAPH_OPERATION_TYPES: ReadonlySet<PartialUpdateOperation['type']> = new Set([
+	'addNode',
+	'removeNode',
+	'renameNode',
+	'updateNodeParameters',
+	'setNodeParameter',
+	'addConnection',
+	'removeConnection',
+	'setNodeCredential',
+	'setNodePosition',
+	'setNodeDisabled',
+	'setNodeGroups',
+	'addNodeGroup',
+	'removeNodeGroup',
+	'updateNodeGroup',
+	'setNodeSettings',
+]);
 const buildOperationTypeSchema = (canvasGroupsEnabled: boolean) =>
 	canvasGroupsEnabled
 		? z.enum([...baseOperationTypes, ...gatedGroupOperationTypes])
@@ -320,7 +344,6 @@ const outputSchema = {
 		.describe(
 			'Graph and JSON validation warnings on the resulting workflow. Warnings marked preExisting (also tagged [pre-existing] in the message) were already present before this update; only self-correct the rest on the next call.',
 		),
-	note: z.string().optional(),
 	skippedOperations: z
 		.array(
 			z.object({
@@ -351,6 +374,8 @@ const outputSchema = {
 		.string()
 		.optional()
 		.describe('Error message explaining why the update failed. Present only on failure.'),
+	errorCode: z.string().optional().describe('Machine-readable error code.'),
+	note: z.string().optional(),
 } satisfies z.ZodRawShape;
 /**
  * The success payload, derived from `outputSchema` so the handler cannot build a
@@ -684,6 +709,25 @@ function dedupeNamesPreservingCase(names: string[]): string[] {
 	}
 
 	return result;
+}
+
+function haveSameTagNames(
+	actualTags: Array<{ name: string }> | undefined,
+	expectedTagNames: string[] | undefined,
+): boolean {
+	if (!actualTags || !expectedTagNames) {
+		return false;
+	}
+
+	// expectedTagNames still carries the raw LLM-supplied names (with possible
+	// surrounding whitespace and case-duplicates). The tag service normalizes
+	// them via `dedupeNamesPreservingCase` before persisting, so comparing the
+	// raw input against canonical persisted names would always report a mismatch
+	// after a successful save — false negative in the recovery check.
+	return isEqual(
+		actualTags.map((tag) => tag.name).sort(),
+		dedupeNamesPreservingCase(expectedTagNames).sort(),
+	);
 }
 
 // Renames are followed so the key matches the node's name in the post-apply
@@ -1116,6 +1160,8 @@ export const createUpdateWorkflowTool = (
 		 */
 		canvasGroupsEnabled?: boolean;
 	} = {},
+	logger: Logger,
+	postSaveMetrics: McpPostSaveMetricsService,
 ): ToolDefinition<ReturnType<typeof buildInputSchema>> => {
 	const canvasGroupsEnabled = options.canvasGroupsEnabled === true;
 
@@ -1167,18 +1213,30 @@ export const createUpdateWorkflowTool = (
 				versionDescription,
 			});
 
+			let updateAttempted = false;
+			let hasGraphOps = false;
+			let hasTagOperations = false;
+			let expectedWorkflow: { nodes: unknown; connections: unknown; nodeGroups?: unknown } | null =
+				null;
+			let expectedSettings: IWorkflowSettings | undefined;
+			let expectedTagNames: string[] | undefined;
+			let existingWorkflow: Awaited<
+				ReturnType<WorkflowFinderService['findWorkflowForUser']>
+			> | null = null;
+
 			try {
 				const strictOperations = parseStrictOperations(operations);
-				const hasTagOperations = strictOperations.some(isTagOperation);
+				hasTagOperations = strictOperations.some(isTagOperation);
 				const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
 				const hasSettingsOperations = strictOperations.some(isSettingsOperation);
+				hasGraphOps = strictOperations.some((op) => GRAPH_OPERATION_TYPES.has(op.type));
 
 				assertOperationsSupported(strictOperations, {
 					canvasGroupsEnabled,
 					tagsDisabled: globalConfig.tags.disabled,
 				});
 
-				const existingWorkflow = await getMcpWorkflow(
+				existingWorkflow = await getMcpWorkflow(
 					workflowId,
 					user,
 					['workflow:update'],
@@ -1217,7 +1275,7 @@ export const createUpdateWorkflowTool = (
 				const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
 					{ nodes: result.workflow.nodes, connections: result.workflow.connections },
 					nodeTypes,
-					(errorMessage) => ({ error: errorMessage }),
+					(errorMessage) => ({ error: errorMessage, errorCode: 'INVALID_AI_TOOL_SOURCE' }),
 					telemetryPayload,
 					telemetry,
 				);
@@ -1298,6 +1356,22 @@ export const createUpdateWorkflowTool = (
 					),
 				);
 
+				expectedWorkflow = {
+					nodes: workflowUpdateData.nodes,
+					connections: workflowUpdateData.connections,
+					...(workflowUpdateData.nodeGroups !== undefined
+						? { nodeGroups: workflowUpdateData.nodeGroups }
+						: {}),
+				};
+				expectedSettings =
+					hasSettingsOperations && workflowUpdateData.settings
+						? removeDefaultValues(
+								{ ...(existingWorkflow.settings ?? {}), ...workflowUpdateData.settings },
+								globalConfig.executions.timeout,
+							)
+						: undefined;
+				expectedTagNames = result.tagNames;
+				updateAttempted = true;
 				const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 					aiBuilderAssisted: hasNonTagOperations,
 					source: 'n8n-mcp',
@@ -1306,32 +1380,8 @@ export const createUpdateWorkflowTool = (
 					...(tagIds !== undefined ? { tagIds } : {}),
 				});
 
-				if (autoAssignOutcomes.length > 0) {
-					const nodeTypesByName = new Map(updatedWorkflow.nodes.map((n) => [n.name, n.type]));
-					trackAutoassignOutcomes(
-						telemetry,
-						user.id,
-						'update_workflow',
-						autoAssignOutcomes,
-						nodeTypesByName,
-						workflowId,
-					);
-				}
-
-				void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
-
 				const baseUrl = urlService.getInstanceBaseUrl();
 				const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;
-
-				telemetryPayload.results = {
-					success: true,
-					data: {
-						workflowId: updatedWorkflow.id,
-						nodeCount: updatedWorkflow.nodes.length,
-					},
-				};
-
-				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 				const notAppliedCount = countOperationsWithNoEffect(
 					skippedOperations,
@@ -1359,20 +1409,160 @@ export const createUpdateWorkflowTool = (
 						: undefined,
 				};
 
+				try {
+					if (autoAssignOutcomes.length > 0) {
+						const nodeTypesByName = new Map(updatedWorkflow.nodes.map((n) => [n.name, n.type]));
+						trackAutoassignOutcomes(
+							telemetry,
+							user.id,
+							'update_workflow',
+							autoAssignOutcomes,
+							nodeTypesByName,
+							workflowId,
+						);
+					}
+
+					void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
+
+					telemetryPayload.results = {
+						success: true,
+						data: {
+							workflowId: updatedWorkflow.id,
+							nodeCount: updatedWorkflow.nodes.length,
+						},
+					};
+					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+				} catch (sideEffectError) {
+					logger.error('Post-save side effect failed for update_workflow', {
+						workflowId: updatedWorkflow.id,
+						error: sideEffectError,
+					});
+					postSaveMetrics.incrementPostSaveFailure('update', sideEffectError);
+				}
+
 				return {
 					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
 					structuredContent: output,
 				};
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
+				const errorCode = getErrorCode(error);
 
-				telemetryPayload.results = {
-					success: false,
+				if (updateAttempted && existingWorkflow) {
+					let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
+						null;
+					try {
+						persisted = await workflowFinderService.findWorkflowForUser(
+							workflowId,
+							user,
+							['workflow:read'],
+							{ includeTags: hasTagOperations },
+						);
+					} catch (lookupError) {
+						logger.warn('Post-update verification lookup failed', {
+							workflowId,
+							error: lookupError,
+						});
+					}
+
+					const matchesExpected =
+						persisted &&
+						expectedWorkflow &&
+						isEqual(normalize(persisted.nodes), normalize(expectedWorkflow.nodes)) &&
+						isEqual(normalize(persisted.connections), normalize(expectedWorkflow.connections)) &&
+						(expectedWorkflow.nodeGroups === undefined ||
+							isEqual(normalize(persisted.nodeGroups), normalize(expectedWorkflow.nodeGroups)));
+					const contentChanged =
+						!isEqual(normalize(existingWorkflow.nodes), normalize(expectedWorkflow?.nodes)) ||
+						!isEqual(
+							normalize(existingWorkflow.connections),
+							normalize(expectedWorkflow?.connections),
+						) ||
+						(expectedWorkflow?.nodeGroups !== undefined &&
+							!isEqual(
+								normalize(existingWorkflow.nodeGroups),
+								normalize(expectedWorkflow.nodeGroups),
+							));
+
+					const existingUpdatedAt = existingWorkflow.updatedAt
+						? new Date(existingWorkflow.updatedAt).getTime()
+						: undefined;
+					const persistedUpdatedAt = persisted?.updatedAt
+						? new Date(persisted.updatedAt).getTime()
+						: undefined;
+					const hasNewerTimestamp =
+						existingUpdatedAt !== undefined &&
+						persistedUpdatedAt !== undefined &&
+						persistedUpdatedAt > existingUpdatedAt;
+					const hasPersistedExpectedSettings =
+						expectedSettings !== undefined &&
+						persisted &&
+						isEqual(normalize(persisted.settings), normalize(expectedSettings)) &&
+						!isEqual(normalize(existingWorkflow.settings), normalize(expectedSettings));
+					const wasTouched = Boolean(hasNewerTimestamp || hasPersistedExpectedSettings);
+					const tagsMatchExpected =
+						!hasTagOperations || haveSameTagNames(persisted?.tags, expectedTagNames);
+
+					const recovered =
+						tagsMatchExpected &&
+						(hasGraphOps
+							? Boolean(matchesExpected) && (contentChanged || hasNewerTimestamp)
+							: wasTouched);
+					if (persisted && recovered) {
+						const baseUrl = urlService.getInstanceBaseUrl();
+						const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
+
+						try {
+							telemetryPayload.results = {
+								success: true,
+								data: {
+									workflowId: persisted.id,
+									nodeCount: persisted.nodes.length,
+									postSaveError: errorMessage,
+								},
+							};
+							telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+						} catch (telemetryError) {
+							logger.error('Post-save telemetry failed for update_workflow (recovery path)', {
+								workflowId: persisted.id,
+								error: telemetryError,
+							});
+							postSaveMetrics.incrementPostSaveFailure('update', telemetryError);
+						}
+
+						const output: UpdateWorkflowOutput = {
+							workflowId: persisted.id,
+							name: persisted.name,
+							nodeCount: persisted.nodes.length,
+							url: workflowUrl,
+							note: `Workflow was updated successfully, but a post-save operation failed: ${errorMessage}`,
+						};
+
+						postSaveMetrics.incrementPostSaveFailure('update', error);
+
+						return {
+							content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+							structuredContent: output,
+						};
+					}
+				}
+
+				try {
+					telemetryPayload.results = {
+						success: false,
+						error: errorMessage,
+					};
+					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+				} catch (telemetryError) {
+					logger.error('Telemetry failed for update_workflow (error path)', {
+						error: telemetryError,
+					});
+				}
+
+				const output: UpdateWorkflowOutput = {
 					error: errorMessage,
+					errorCode,
 				};
-				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-				const output = { error: errorMessage };
 
 				return {
 					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

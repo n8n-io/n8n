@@ -128,6 +128,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_PUBLICATION_METRICS')
 	includeWorkflowPublicationMetrics: boolean = false;
 
+	/** Whether to include MCP workflow-builder post-save failure metrics. */
+	@Env('N8N_METRICS_INCLUDE_MCP_POST_SAVE_METRICS')
+	includeMcpPostSaveMetrics: boolean = false;
+
 	/** How often (in seconds) to refresh the cached workflow publication outbox gauges. */
 	@Env('N8N_METRICS_WORKFLOW_PUBLICATION_METRIC_INTERVAL')
 	workflowPublicationMetricInterval: number = 60;
