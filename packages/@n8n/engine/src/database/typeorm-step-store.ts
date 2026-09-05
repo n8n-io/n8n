@@ -6,6 +6,8 @@ import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
+	type StepResume,
+	type WaitDeclaration,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
@@ -14,6 +16,7 @@ import {
 } from '../execution/execution.types';
 import {
 	StepNotFoundError,
+	type DueStep,
 	type NewStepRecord,
 	type StepRecord,
 	type StepStore,
@@ -39,7 +42,15 @@ type StepSummaryRow = {
 
 /** RETURNING rows come back keyed by database column name (snake_case). */
 type InsertedStepRow = { id: string; node_id: string; iteration: number };
-type ClaimedStepRow = { id: string; execution_id: string; node_id: string; iteration: number };
+type ClaimedStepRow = {
+	id: string;
+	execution_id: string;
+	node_id: string;
+	iteration: number;
+	wait: WaitDeclaration | null;
+	resume: StepResume | null;
+};
+type DueStepRow = { id: string; execution_id: string };
 
 /**
  * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
@@ -120,9 +131,13 @@ export class TypeOrmStepStore implements StepStore {
 
 	async claimStep(id: string): Promise<StepRecord | null> {
 		// The one transition that hands the row back, so the claimant doesn't
-		// need a second query to learn which node it now runs. RETURNING covers
-		// only the identity columns: a step claimed out of `queued` can't have
-		// an outcome yet, so `outputs` is `null` by the lifecycle.
+		// need a second query to learn which node it now runs. `outputs` is not
+		// among the returned columns: a step claimed out of `queued` can't have
+		// an outcome yet, so it is `null` by the lifecycle.
+		//
+		// `wait` and `resume` are, because a resumed step is also claimed out of
+		// `queued` and carries both — a deadline resume reads its captured
+		// outputs straight off the claim, so dispatching one costs no extra read.
 		//
 		// The execution-row lock serializes the claim with `failStep`, so no
 		// step starts running once its execution has a failed step. Claims
@@ -148,7 +163,7 @@ export class TypeOrmStepStore implements StepStore {
 					)`,
 					{ executionId: execution.id },
 				)
-				.returning(['id', 'executionId', 'nodeId', 'iteration'])
+				.returning(['id', 'executionId', 'nodeId', 'iteration', 'wait', 'resume'])
 				.execute();
 
 			const [row] = result.raw as ClaimedStepRow[];
@@ -161,12 +176,59 @@ export class TypeOrmStepStore implements StepStore {
 				iteration: row.iteration,
 				status: 'running',
 				outputs: null,
+				wait: row.wait,
+				resume: row.resume,
 			};
 		});
 	}
 
 	async completeStep(id: string, outputs: StepSlots): Promise<boolean> {
 		return await this.transition(id, 'running', 'completed', { outputs });
+	}
+
+	async suspendStep(id: string, wait: WaitDeclaration): Promise<boolean> {
+		// `wait_till` is derived from the declaration in the same statement that
+		// writes it, so the column the sweep reads can never disagree with the
+		// declaration it fires.
+		return await this.transition(id, 'running', 'waiting', {
+			wait,
+			waitTill: wait.resumeAt === undefined ? null : new Date(wait.resumeAt),
+		});
+	}
+
+	async resumeStep(id: string, resume: StepResume): Promise<boolean> {
+		return await this.transition(id, 'waiting', 'queued', { resume });
+	}
+
+	async resumeDueSteps(due: Date, limit: number): Promise<DueStep[]> {
+		// `SKIP LOCKED` so two sweepers split a backlog instead of one waiting out
+		// the other's batch. The subquery carries the `wait_till` test, so the row
+		// that is updated is the row that was found due.
+		//
+		// Through the query builder, not `manager.query`: a raw UPDATE resolves to
+		// `[rows, rowCount]`, whereas `.execute()` puts the RETURNING rows in
+		// `result.raw` — as `claimStep` and `createSteps` also rely on.
+		const result = await this.repo
+			.createQueryBuilder()
+			.update(WorkflowStepExecution)
+			.set({ status: 'queued', resume: { kind: 'deadline' } })
+			.where(
+				`id IN (
+					SELECT id FROM workflow_step_execution
+					WHERE status = 'waiting' AND wait_till <= :due
+					ORDER BY wait_till
+					LIMIT :limit
+					FOR UPDATE SKIP LOCKED
+				)`,
+				{ due, limit },
+			)
+			.returning(['id', 'executionId'])
+			.execute();
+
+		return (result.raw as DueStepRow[]).map(({ id, execution_id: executionId }) => ({
+			id,
+			executionId,
+		}));
 	}
 
 	async cancelQueuedSteps(executionId: string): Promise<void> {
@@ -201,7 +263,13 @@ export class TypeOrmStepStore implements StepStore {
 		id: string,
 		from: StepStatus,
 		to: StepStatus,
-		fields: { outputs?: StepSlots; error?: StepError } = {},
+		fields: {
+			outputs?: StepSlots;
+			error?: StepError;
+			wait?: WaitDeclaration;
+			waitTill?: Date | null;
+			resume?: StepResume;
+		} = {},
 	): Promise<boolean> {
 		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });
 		return result.affected === 1;

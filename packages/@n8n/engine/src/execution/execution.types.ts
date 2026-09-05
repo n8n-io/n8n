@@ -9,9 +9,17 @@ export type ExecutionMode = 'production' | 'manual';
 /**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
- * never runs.
+ * never runs. `waiting` is the opposite end: the step ran, produced no outcome,
+ * and still owes the execution one.
  */
-export type StepStatus = 'queued' | 'running' | 'completed' | 'failed' | 'skipped' | 'cancelled';
+export type StepStatus =
+	| 'queued'
+	| 'running'
+	| 'waiting'
+	| 'completed'
+	| 'failed'
+	| 'skipped'
+	| 'cancelled';
 
 /**
  * A settled step has reached a terminal state: its status and outputs are
@@ -51,6 +59,52 @@ export type TriggerOutputs = StepSlots;
 
 /** Slots recorded for a trigger that fired without a payload: no slots at all. */
 export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
+
+/**
+ * A step's declaration that it is not done: instead of outputs, it says when
+ * to resume. The executor produces it, the engine persists it on the step row,
+ * and whatever resumes the step reads it back - the engine never interprets
+ * what a resume means to the node.
+ *
+ * A deadline ends the wait, or a resume request does, or either one first. A
+ * deadline comes paired with the slots it emits: the step is never re-run, so
+ * a deadline with nothing captured would resume into nothing.
+ */
+export type WaitDeclaration =
+	| {
+			/** Deadline, ISO-8601. */
+			resumeAt: string;
+			/**
+			 * The slots the step emits when the deadline fires. The step is never
+			 * re-run, so the outputs it would have produced are captured up front.
+			 */
+			outputsAtDeadline: StepSlots;
+			/** Whether a resume request may end the wait early. */
+			acceptsResumeRequest: boolean;
+	  }
+	| {
+			/** No deadline, so only a resume request ends this wait. */
+			resumeAt?: never;
+			outputsAtDeadline?: never;
+			acceptsResumeRequest: true;
+	  };
+
+/**
+ * What ended a step's wait, recorded on the row when it resumed. The engine
+ * emits a deadline's captured outputs itself; only a request reaches an
+ * executor, which runs the node's resume path with the payload.
+ */
+export type StepResume = { kind: 'deadline' } | { kind: 'request'; payload: JsonValue };
+
+/**
+ * A wait with neither condition would never end, stranding the execution. The
+ * union above rules that out, so this only ever catches an executor that built
+ * a declaration outside the type system - as `assertCreatableRecord` does for
+ * step creation.
+ */
+export function hasResumeCondition(wait: WaitDeclaration): boolean {
+	return wait.acceptsResumeRequest || wait.resumeAt !== undefined;
+}
 
 /**
  * The error that failed a step, as persisted on its row. Shared: the execution

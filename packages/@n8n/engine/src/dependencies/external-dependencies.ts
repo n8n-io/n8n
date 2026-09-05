@@ -1,4 +1,5 @@
-import type { ExecutionMode, StepSlots } from '../execution';
+import type { JsonValue } from '../common';
+import type { ExecutionMode, StepSlots, WaitDeclaration } from '../execution';
 import type { GraphNode } from '../graph';
 import type { LifecycleEventCallback } from '../lifecycle-events';
 
@@ -40,12 +41,34 @@ export interface StepExecutionRequest {
 	/** Input slots gathered from predecessor steps; slot contents are opaque. */
 	inputs: StepSlots;
 	context: StepExecutionContext;
+	/**
+	 * Present when this run resumes a wait on request: the executor runs the
+	 * node's resume path with this payload instead of its execute path. A
+	 * deadline resume never arrives here - the engine emits the declaration's
+	 * captured outputs itself.
+	 */
+	resumeRequest?: { payload: JsonValue };
 }
 
-export interface StepExecutionResult {
-	/** Output slots; persisted by the engine without inspecting slot contents. */
-	outputs: StepSlots;
-}
+/**
+ * What running a step produced: its output slots, or a declaration that it is
+ * not done. Exclusive - a step that waits has no outputs yet, and the outputs
+ * a deadline would emit ride inside the declaration.
+ *
+ * The `?: never` members give both branches the same keys, so `result.wait`
+ * reads on the union and narrows it — without them a caller could only test
+ * `'wait' in result`, and a value carrying both fields would type-check.
+ */
+export type StepExecutionResult =
+	| {
+			/** Output slots; persisted by the engine without inspecting slot contents. */
+			outputs: StepSlots;
+			wait?: never;
+	  }
+	| {
+			wait: WaitDeclaration;
+			outputs?: never;
+	  };
 
 /**
  * Executes a step whose behaviour the engine does not implement itself.
