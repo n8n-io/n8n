@@ -107,6 +107,21 @@ describe('NodeCreation', () => {
 		expect(emitted('addNodes')).toEqual([[addedNodesAndConnections]]);
 	});
 
+	it('emits addEmptyGroup with a canvas position when the add-group button is clicked', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			pinia,
+			props: { nodeViewScale: 1, createNodeActive: false, focusPanelActive: false },
+		});
+
+		getByTestId('add-empty-group-button').click();
+
+		await vi.waitFor(() => {
+			expect(emitted('addEmptyGroup')).toHaveLength(1);
+		});
+		const [position] = emitted('addEmptyGroup')[0] as [unknown];
+		expect(position).toEqual([expect.any(Number), expect.any(Number)]);
+	});
+
 	it('renders the command bar button by default', () => {
 		const { queryByTestId } = renderComponent({
 			pinia,

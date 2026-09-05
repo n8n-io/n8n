@@ -26,10 +26,6 @@ import {
 	mapGroupsToVueFlowNodes,
 } from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
-import {
-	NodeGroupDescriptionVisibilityKey,
-	useCanvasNodeGroupDescriptionVisibility,
-} from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
 import { ContextMenuGroupViewKey } from '@/features/shared/contextMenu/composables/contextMenuGroupView';
 import Canvas from './Canvas.vue';
@@ -109,19 +105,12 @@ const nodeGroupView = useCanvasNodeGroupView({
 	getGroupExpansionMode: () => props.groupExpansionMode,
 });
 
-const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility({
-	workflowId: () => workflowDocumentStore.value.workflowId,
-	getCurrentGroups: () => workflowDocumentStore.value.allGroups,
-	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
-});
-
 // Keep the group view in sync with the currently displayed document
 watch(
 	() => workflowDocumentStore.value.documentId,
 	() => {
 		nodeGroupView.reinitialize();
 		applyGroupExpansion();
-		nodeGroupDescriptionVisibility.reinitialize();
 	},
 );
 
@@ -144,6 +133,7 @@ const {
 	renderData,
 	allGroups,
 	nodeGroupView,
+	isEmptyGroup: (id) => workflowDocumentStore.value.isEmptyGroup(id),
 	isExperimentalNdvActive,
 	getAgentNodeHeight: (id) => agentNodeGeometryStore.getNodeHeight(props.id, id),
 });
@@ -181,6 +171,7 @@ const layoutComponents = computed(() =>
 				getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 				getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
 				isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+				isEmptyGroup: (id) => workflowDocumentStore.value.isEmptyGroup(id),
 			}),
 );
 
@@ -195,6 +186,7 @@ const mappedGroupVueFlowNodes = computed(() =>
 		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
 		getGroupVisualOffset: (id) => nodeGroupView.getVisualOffsetForComponent(id),
 		isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+		isEmptyGroup: (id) => workflowDocumentStore.value.isEmptyGroup(id),
 		readOnly: readOnlyRef.value || suppressInteractionRef.value,
 		getNodeExecutionSnapshot,
 	}),
@@ -206,12 +198,10 @@ const mappedNodes = computed(() => [
 ]);
 
 provide(NodeGroupViewKey, nodeGroupView);
-provide(NodeGroupDescriptionVisibilityKey, nodeGroupDescriptionVisibility);
 // Collapse state for the context menu's expand/collapse item enablement —
 // the menu lives in the shared layer and can't reach this canvas' view state.
 provide(ContextMenuGroupViewKey, {
 	isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
-	isDescriptionVisible: (id) => nodeGroupDescriptionVisibility.isVisible(id),
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636

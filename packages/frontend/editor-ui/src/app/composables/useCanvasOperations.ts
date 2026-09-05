@@ -39,6 +39,7 @@ import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormaliza
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
 	EnterpriseEditionFeature,
+	GROUP_PLACEHOLDER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
@@ -132,6 +133,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	deepCopy,
+	mapConnectionsByDestination,
 	NodeConnectionTypes,
 	NodeHelpers,
 	TelemetryHelpers,
@@ -559,6 +561,75 @@ export function useCanvasOperations() {
 		}
 	}
 
+	/**
+	 * Keeps a group alive as an empty group when its last real node is removed:
+	 * inserts a placeholder at the node's position and moves the node's main
+	 * boundary connections onto it. Returns false when the node is not the sole
+	 * real member of a group.
+	 */
+	function replaceLastGroupMemberWithPlaceholder(
+		node: INodeUi,
+		{ trackHistory = false } = {},
+	): boolean {
+		const group = workflowDocumentStore.value.getGroupForNode(node.id);
+		if (!group || node.type === GROUP_PLACEHOLDER_NODE_TYPE) {
+			return false;
+		}
+		// Stickies can't be connected, so they don't keep a group alive: a group
+		// of one node plus stickies still loses its last real member here. The
+		// deleted node must be that member — deleting a sticky leaves it behind.
+		const connectableMembers = group.nodeIds.filter(
+			(id) => workflowDocumentStore.value.getNodeById(id)?.type !== STICKY_NODE_TYPE,
+		);
+		if (connectableMembers.length !== 1 || connectableMembers[0] !== node.id) {
+			return false;
+		}
+
+		const placeholder: INodeUi = {
+			id: window.crypto.randomUUID(),
+			name: uniqueNodeName(group.name),
+			type: GROUP_PLACEHOLDER_NODE_TYPE,
+			typeVersion: 1,
+			position: [...node.position],
+			parameters: {},
+		};
+		workflowDocumentStore.value.addNode(placeholder);
+		workflowDocumentStore.value.addNodesToGroup(group.id, [placeholder.id]);
+		if (trackHistory) {
+			historyStore.pushCommandToUndo(new AddNodeCommand(placeholder, Date.now()));
+		}
+
+		const bySource = workflowDocumentStore.value.connectionsBySourceNode;
+		const byDestination = mapConnectionsByDestination(bySource);
+		const main = NodeConnectionTypes.Main;
+
+		// The placeholder is not a group member yet as far as the connection
+		// policy is concerned, so add its edges through the raw store and record
+		// them by hand — undo then removes them with the placeholder.
+		const addPlaceholderConnection = (connection: [IConnection, IConnection]) => {
+			workflowDocumentStore.value.addConnection({ connection });
+			if (trackHistory) {
+				historyStore.pushCommandToUndo(new AddConnectionCommand(connection, Date.now()));
+			}
+		};
+
+		for (const incoming of byDestination[node.name]?.[main]?.flat() ?? []) {
+			if (!incoming) continue;
+			addPlaceholderConnection([
+				{ node: incoming.node, type: main, index: incoming.index },
+				{ node: placeholder.name, type: main, index: 0 },
+			]);
+		}
+		for (const outgoing of bySource[node.name]?.[main]?.flat() ?? []) {
+			if (!outgoing) continue;
+			addPlaceholderConnection([
+				{ node: placeholder.name, type: main, index: 0 },
+				{ node: outgoing.node, type: main, index: outgoing.index },
+			]);
+		}
+		return true;
+	}
+
 	function deleteNode(id: string, { trackHistory = false, trackBulk = true } = {}) {
 		const node = workflowDocumentStore.value.getNodeById(id);
 		if (!node) {
@@ -575,16 +646,21 @@ export function useCanvasOperations() {
 			uiStore.lastInteractedWithNodeId = undefined;
 		}
 
-		connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
-		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
-
-		// Snapshot the group first so its membership change is reverted with the node.
+		// Snapshot the group before anything touches its membership, so undo
+		// restores the state from before the placeholder was inserted too.
 		const groupBeforeDelete = trackHistory
 			? workflowDocumentStore.value.getGroupForNode(id)
 			: undefined;
 		const groupSnapshot = groupBeforeDelete
 			? { ...groupBeforeDelete, nodeIds: [...groupBeforeDelete.nodeIds] }
 			: undefined;
+
+		// A group's last real node hands its connections to a placeholder
+		// instead of bridging its neighbours, so the plan stays wired.
+		if (!replaceLastGroupMemberWithPlaceholder(node, { trackHistory })) {
+			connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
+		}
+		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
 		useWorkflowExecutionStateStore(
 			workflowDocumentStore.value.documentId,
@@ -2196,11 +2272,22 @@ export function useCanvasOperations() {
 		connectionsToAdd?: Array<[IConnection, IConnection]>;
 		trackHistory?: boolean;
 	}): boolean {
+		// Auto-extending an empty group would pull a real node in and stop it
+		// being empty, so such a change is rejected instead. Like every other
+		// group rule this is decided on release, with the blocked toast; node
+		// handles have no earlier per-group validation either, so an empty card
+		// behaves exactly as a node does during the drag.
+		const touchesEmptyGroup = params.nodeIds.some((nodeId) => {
+			const group = workflowDocumentStore.value.getGroupForNode(nodeId);
+			return group !== undefined && workflowDocumentStore.value.isEmptyGroup(group.id);
+		});
+
 		const decision = isConnectionReplacementAllowedForNodeGroups({
 			nodeIds: params.nodeIds,
 			connectionsToRemove: params.connectionsToRemove ?? [],
 			connectionsToAdd: params.connectionsToAdd ?? [],
 			connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
+			allowAutoExtend: !touchesEmptyGroup,
 		});
 		switch (decision.outcome) {
 			case 'abort':
@@ -3681,6 +3768,52 @@ export function useCanvasOperations() {
 		return { addedNodes };
 	}
 
+	/**
+	 * Adds an empty group: a group whose only member is a hidden placeholder
+	 * node. The node and the group land in one undo step, so undo removes both.
+	 *
+	 * Both store mutations run in the same synchronous block on purpose. The
+	 * canvas mapping turns them into a single VueFlow update; two updates a
+	 * microtask apart can be dropped by VueFlow, which pauses its props sync for
+	 * a tick after every store echo (see `watchNodesValue` in @vue-flow/core).
+	 */
+	async function addEmptyGroup({
+		position,
+		trackHistory = true,
+	}: { position?: XYPosition; trackHistory?: boolean } = {}): Promise<IWorkflowGroup | undefined> {
+		const name = workflowDocumentStore.value.getNextDefaultName(
+			i18n.baseText('canvas.nodeGroup.defaultTitle'),
+		);
+		const type = GROUP_PLACEHOLDER_NODE_TYPE;
+		const nodeTypeDescription = requireNodeTypeDescription(type);
+		const typeVersion = resolveNodeVersion(nodeTypeDescription);
+		// The only await, before any mutation: everything below is one flush.
+		await loadNodeTypesProperties([{ type, typeVersion }]);
+
+		if (trackHistory) {
+			historyStore.startRecordingUndo();
+		}
+		let group: IWorkflowGroup | undefined;
+		try {
+			const placeholder = addNode(
+				{ type, typeVersion, name, id: window.crypto.randomUUID(), position },
+				nodeTypeDescription,
+				{ trackHistory, telemetry: true },
+			);
+			group = workflowDocumentStore.value.createGroup([placeholder.id], name);
+			if (trackHistory) {
+				historyStore.pushCommandToUndo(new AddNodeGroupCommand(group, Date.now()));
+			}
+		} catch (error) {
+			toast.showError(error, i18n.baseText('error'));
+		} finally {
+			if (trackHistory) {
+				historyStore.stopRecordingUndo();
+			}
+		}
+		return group;
+	}
+
 	function fitView() {
 		setTimeout(() => canvasEventBus.emit('fitView'));
 	}
@@ -3864,6 +3997,7 @@ export function useCanvasOperations() {
 		initializeUnknownNodes,
 		replaceNode,
 		addNodesAndConnections,
+		addEmptyGroup,
 		fitView,
 		openWorkflowTemplate,
 		openWorkflowTemplateFromJSON,

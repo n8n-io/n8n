@@ -160,8 +160,15 @@ export type CanvasNode = Node<CanvasNodeData>;
 
 export const CANVAS_NODE_GROUP_TYPE = 'canvas-node-group';
 export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
-export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
-export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
+// The group card's connection handles carry the same port-string ids that node
+// handles use (inputs/outputs, main, index 0). A source node validates a drop
+// with parseCanvasConnectionHandleString(targetHandle); a bare id like 'left'
+// parses to the wrong mode/type and the drop is refused, so these must be real
+// port strings. The left handle is a target (input), the right one a source
+// (output). NodeView.resolveGroupEndpoint still rewrites the endpoint onto the
+// placeholder node, so the actual stored connection is unchanged.
+export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'inputs/main/0';
+export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'outputs/main/0';
 
 // Host override for group expansion; leaves persisted view state untouched.
 export type GroupExpansionMode = 'all' | 'errored';
@@ -205,6 +212,8 @@ export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
 	isCollapsed: boolean;
+	/** True when the group's only member is a placeholder node. */
+	isEmptyGroup: boolean;
 	executionStatus?: GroupExecutionStatus;
 	allNodesDisabled?: boolean;
 }
@@ -279,6 +288,8 @@ export type CanvasEventBusEvents = {
 		trackBulk?: boolean;
 	};
 	'create:sticky': never;
+	/** Open the rename flow for a group, as if the user had pressed Space on it. */
+	'rename:group': { groupId: string };
 	'deprecated:tab-shortcut': never;
 };
 

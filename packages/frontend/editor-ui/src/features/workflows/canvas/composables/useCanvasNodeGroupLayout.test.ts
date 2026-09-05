@@ -13,6 +13,10 @@ import {
 	createCanvasGroupNodeId as groupComponentId,
 	type BoundingBox,
 } from '@/features/workflows/canvas/canvas.types';
+import {
+	GROUP_EMPTY_BODY_HEIGHT,
+	GROUP_HEADER_HEIGHT,
+} from '@/features/workflows/canvas/stores/canvasNodeGroups.constants';
 
 function makeNode(id: string, x: number, y: number): INodeUi {
 	return {
@@ -86,6 +90,26 @@ describe('useCanvasNodeGroupLayout', () => {
 		});
 		return computeOffsets(components, expanded, options);
 	}
+
+	// An empty group's card is taller than a plain collapsed header, and it never
+	// expands, so its component rect must be the full card for pushes to clear it.
+	it('sizes an empty group component to its card, add-node body included', () => {
+		const emptyGroup: IWorkflowGroup = { id: 'e1', name: 'Plan', nodeIds: ['p1'] };
+		const nodes = [makeNode('p1', 100, 200)];
+		const [component] = buildNodeGroupLayoutComponents({
+			allGroups: [emptyGroup],
+			nodes,
+			getNodeById: nodeStore(nodes),
+			isGroupCollapsed: () => true,
+			isEmptyGroup: (id) => id === 'e1',
+		});
+
+		expect(component.kind).toBe('group');
+		expect(component.rect.height).toBe(GROUP_HEADER_HEIGHT + GROUP_EMPTY_BODY_HEIGHT);
+		if (component.kind === 'group') {
+			expect(component.collapsedRect.height).toBe(GROUP_HEADER_HEIGHT + GROUP_EMPTY_BODY_HEIGHT);
+		}
+	});
 
 	it('pushes components in the right-side region to the right', () => {
 		const offsets = layout([

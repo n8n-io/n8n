@@ -52,6 +52,7 @@ export function useCanvasMapping({
 	renderData,
 	allGroups = ref([]),
 	nodeGroupView,
+	isEmptyGroup = () => false,
 	isExperimentalNdvActive = ref(false),
 	getAgentNodeHeight,
 }: {
@@ -60,6 +61,8 @@ export function useCanvasMapping({
 	renderData: Ref<CanvasRenderData>;
 	allGroups?: Ref<IWorkflowGroup[]>;
 	nodeGroupView?: CanvasNodeGroupView;
+	/** True when the group's only member is a placeholder node. */
+	isEmptyGroup?: (id: string) => boolean;
 	isExperimentalNdvActive?: Ref<boolean>;
 	getAgentNodeHeight?: (id: string) => number | undefined;
 }) {
@@ -100,7 +103,10 @@ export function useCanvasMapping({
 	// Node id → its collapsed group, for nodes hidden by a collapsed group.
 	const collapsedGroupByNodeId = computed<Map<string, IWorkflowGroup>>(() => {
 		if (!nodeGroupView) return new Map();
-		return buildCollapsedGroupByNodeId(allGroups.value, (id) => nodeGroupView.isGroupCollapsed(id));
+		return buildCollapsedGroupByNodeId(
+			allGroups.value,
+			(id) => isEmptyGroup(id) || nodeGroupView.isGroupCollapsed(id),
+		);
 	});
 
 	// Display size by node id. WorkflowCanvas uses this for group bounds so

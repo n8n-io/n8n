@@ -51,7 +51,9 @@ import type {
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
+	parseCanvasGroupNodeId,
 } from '@/features/workflows/canvas/canvas.types';
+import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
@@ -68,6 +70,8 @@ import {
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
+import { SET_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -78,6 +82,7 @@ import {
 	isTriggerNode,
 	NodeHelpers,
 	NodeConnectionTypes,
+	mapConnectionsByDestination,
 } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
@@ -122,6 +127,7 @@ import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { usePostMessageControls } from '@/app/composables/usePostMessageHandler';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -209,6 +215,7 @@ const evaluationsWizardSidepanelStore = useEvaluationsWizardSidepanelStore();
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
 const builderStore = useBuilderStore();
+const chatPanelStore = useChatPanelStore();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
@@ -262,6 +269,7 @@ const {
 	lastClickPosition,
 	startChat,
 	addNodesAndConnections,
+	addEmptyGroup,
 	fitView,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
@@ -837,8 +845,38 @@ async function loadCredentials() {
  * Connections
  */
 
+/** Map a `group:<id>` endpoint onto the group's placeholder node main port. */
+function resolveGroupEndpoint(
+	id: string,
+	mode: CanvasConnectionMode,
+): { id: string; handle: string } | undefined {
+	const groupId = parseCanvasGroupNodeId(id);
+	if (groupId === undefined) return undefined;
+	const placeholder = workflowDocumentStore.value.getEmptyGroupPlaceholder(groupId);
+	if (!placeholder) return undefined;
+	return {
+		id: placeholder.id,
+		handle: createCanvasConnectionHandleString({
+			mode,
+			type: NodeConnectionTypes.Main,
+			index: 0,
+		}),
+	};
+}
+
 function onCreateConnection(connection: Connection) {
-	createConnection(connection, { trackHistory: true });
+	const source = resolveGroupEndpoint(connection.source, CanvasConnectionMode.Output);
+	const target = resolveGroupEndpoint(connection.target, CanvasConnectionMode.Input);
+	createConnection(
+		{
+			...connection,
+			source: source?.id ?? connection.source,
+			sourceHandle: source?.handle ?? connection.sourceHandle,
+			target: target?.id ?? connection.target,
+			targetHandle: target?.handle ?? connection.targetHandle,
+		},
+		{ trackHistory: true },
+	);
 }
 
 function onRevertCreateConnection({ connection }: { connection: [IConnection, IConnection] }) {
@@ -1041,6 +1079,157 @@ function closeNodeCreator() {
 
 function onCreateSticky() {
 	void onAddNodesAndConnections({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
+}
+
+// From the toolbar (with the canvas-centre position) or the context menu
+// (at the last click position, which addEmptyGroup resolves when omitted).
+async function onCreateEmptyGroup(position?: XYPosition) {
+	if (!checkIfEditingIsAllowed()) return;
+
+	const group = await addEmptyGroup({ position });
+	if (!group) return;
+	// Same rename flow as grouping nodes, so the user can type the title straight
+	// away. An empty group renders as a card, so this opens the rename modal.
+	await nextTick();
+	canvasEventBus.emit('rename:group', { groupId: group.id });
+}
+
+// Fill an empty group by hand: open the node creator targeting the group's
+// placeholder. Picking a node runs the existing replace path
+// (addNodesAndConnections replaceNodeId → replaceGroupedNodeConnections), which
+// swaps the placeholder for the node inside the group and hands over its
+// boundary connections. The placeholder has one main input and output, so the
+// regular (non-trigger) creator is the right entry.
+function onAddNodeToGroup(groupId: string) {
+	const placeholder = workflowDocumentStore.value.getEmptyGroupPlaceholder(groupId);
+	if (!placeholder) return;
+
+	nodeCreatorReplaceTargetId.value = placeholder.id;
+	nodeCreatorStore.openingContext = 'replacement';
+	nodeCreatorStore.openNodeCreatorForRegularNodes(
+		workflowId.value,
+		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+	);
+}
+
+async function onGenerateGroup(groupId: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	const placeholder = workflowDocumentStore.value.getEmptyGroupPlaceholder(groupId);
+	if (!group || !placeholder) return;
+
+	// ponytail: when the AI builder is unavailable, mock generation by dropping
+	// three demo nodes into the group so the round trip is demoable without a
+	// live model. Replace both branches with an Instance AI tool later.
+	if (!builderStore.isAIBuilderEnabled) {
+		mockGenerateGroup(groupId, placeholder);
+		return;
+	}
+
+	const text = [
+		`Generate the nodes for the node group "${group.name}".`,
+		group.description ? `Objective: ${group.description}` : '',
+		`Replace the placeholder node "${placeholder.name}" with the generated nodes.`,
+		`Keep the generated nodes inside the group "${group.name}" and keep the placeholder's incoming connections attached to the generated section's entry and its outgoing connections attached to the section's exit.`,
+		'Do not change any other node group.',
+	]
+		.filter(Boolean)
+		.join('\n');
+
+	await chatPanelStore.open({ mode: 'builder' });
+	await builderStore.sendChatMessage({ text, source: 'canvas' });
+}
+
+// Demo stand-in for AI generation: replaces the group's placeholder with three
+// chained nodes, keeps them inside the group, and hands the placeholder's main
+// boundary connections to the first and last node. Reuses the tested canvas
+// operations so undo, grouping, and connection handling behave like real edits.
+async function mockGenerateGroup(groupId: string, placeholder: INodeUi) {
+	const store = workflowDocumentStore.value;
+	const [px, py] = placeholder.position;
+	const main = NodeConnectionTypes.Main;
+	const bySource = store.connectionsBySourceNode;
+	const byDestination = mapConnectionsByDestination(bySource);
+	const incoming = (byDestination[placeholder.name]?.[main]?.flat() ?? []).filter(
+		(c): c is IConnection => Boolean(c),
+	);
+	const outgoing = (bySource[placeholder.name]?.[main]?.flat() ?? []).filter(
+		(c): c is IConnection => Boolean(c),
+	);
+
+	const { uniqueNodeName } = useUniqueNodeName();
+	const names = ['Extract', 'Transform', 'Load'].map((label) => uniqueNodeName(label));
+
+	// Add the three nodes chained left to right.
+	await addNodesAndConnections(
+		names.map((name, i) => ({
+			type: SET_NODE_TYPE,
+			name,
+			position: [px + i * 240, py] as XYPosition,
+		})),
+		names.slice(0, -1).map((_name, i) => ({
+			from: { nodeIndex: i },
+			to: { nodeIndex: i + 1 },
+		})),
+		{},
+	);
+
+	const firstId = store.getNodeByName(names[0])?.id;
+	const lastName = names[names.length - 1];
+	if (!firstId) return;
+
+	// Reattach the placeholder's boundary edges to the section entry and exit.
+	for (const c of incoming) {
+		const src = store.getNodeByName(c.node);
+		if (src) {
+			createConnection(
+				{
+					source: src.id,
+					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: main,
+						index: c.index,
+					}),
+					target: firstId,
+					targetHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						type: main,
+						index: 0,
+					}),
+				},
+				{ trackHistory: true },
+			);
+		}
+	}
+	for (const c of outgoing) {
+		const tgt = store.getNodeByName(c.node);
+		const lastId = store.getNodeByName(lastName)?.id;
+		if (tgt && lastId) {
+			createConnection(
+				{
+					source: lastId,
+					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: main,
+						index: 0,
+					}),
+					target: tgt.id,
+					targetHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						type: main,
+						index: c.index,
+					}),
+				},
+				{ trackHistory: true },
+			);
+		}
+	}
+
+	// Move the generated nodes into the group, then drop the placeholder.
+	const createdIds = names
+		.map((name) => store.getNodeByName(name)?.id)
+		.filter((id): id is string => Boolean(id));
+	store.addNodesToGroup(groupId, createdIds);
+	deleteNode(placeholder.id, { trackHistory: true });
 }
 
 function onClickConnectionAdd(connection: Connection) {
@@ -2027,12 +2216,15 @@ onBeforeUnmount(() => {
 			@copy:test:url="onCopyTestUrl"
 			@delete:node="onDeleteNode"
 			@create:connection="onCreateConnection"
+			@generate:group="onGenerateGroup"
+			@add-node:group="onAddNodeToGroup"
 			@create:connection:cancelled="onCreateConnectionCancelled"
 			@delete:connection="onDeleteConnection"
 			@click:connection:add="onClickConnectionAdd"
 			@click:pane="onClickPane"
 			@create:node="onOpenNodeCreatorFromCanvas"
 			@create:sticky="onCreateSticky"
+			@create:empty-group="onCreateEmptyGroup"
 			@delete:nodes="onDeleteNodes"
 			@update:nodes:enabled="onToggleNodesDisabled"
 			@update:nodes:pin="onPinNodes"
@@ -2140,6 +2332,7 @@ onBeforeUnmount(() => {
 					:focus-panel-active="focusPanelStore.focusPanelActive"
 					@toggle-node-creator="onToggleNodeCreator"
 					@add-nodes="onAddNodesAndConnections"
+					@add-empty-group="onCreateEmptyGroup"
 					@close="onNodeCreatorClose"
 				/>
 			</Suspense>

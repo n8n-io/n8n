@@ -1,16 +1,26 @@
-import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
 export const GROUP_PADDING_X = 56;
 export const GROUP_PADDING_Y_TOP = 40;
 export const GROUP_PADDING_Y_BOTTOM = 88;
-/** Matches node height */
+/**
+ * Card header: title row plus the description clamped to two lines. Matches
+ * the node height so a collapsed card lines up with the nodes around it.
+ */
 export const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1];
+/** Body under the header of an empty group's card, holding the add-node "+". */
+export const GROUP_EMPTY_BODY_HEIGHT = GRID_SIZE * 4;
 /** Fixed width when collapsed; also the minimum width when expanded. */
 export const GROUP_HEADER_WIDTH_COLLAPSED = 400;
 /** Character cap on a group description; shared with the backend so validation matches. */
 export { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
-/** Below this zoom level all group descriptions and their affordances are hidden. */
-export const GROUP_DESCRIPTION_MIN_ZOOM = 0.66;
+/**
+ * Below this zoom level all group descriptions and their affordances are hidden.
+ * Kept low enough that a fit-to-view of a normal workflow still shows the
+ * description (and its click-to-edit target), so an empty group stays editable
+ * after "fit view" instead of losing its only affordance.
+ */
+export const GROUP_DESCRIPTION_MIN_ZOOM = 0.4;
 
 /**
  * Canvas stacking contract (VueFlow resolves `node.zIndex ?? style.zIndex ?? 0`

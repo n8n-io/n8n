@@ -40,6 +40,7 @@ export type ContextMenuAction =
 	| 'deselect_all'
 	| 'add_node'
 	| 'add_sticky'
+	| 'add_empty_group'
 	| 'change_color'
 	| 'open_sub_workflow'
 	| 'tidy_up'
@@ -51,10 +52,6 @@ export type ContextMenuAction =
 	| 'collapse_all_groups'
 	| 'expand_selected_groups'
 	| 'collapse_selected_groups'
-	| 'show_all_group_descriptions'
-	| 'hide_all_group_descriptions'
-	| 'show_group_description'
-	| 'hide_group_description'
 	| 'focus_ai_on_selected'
 	| 'add_nodes_to_chat';
 
@@ -190,60 +187,6 @@ export function useContextMenuItems(
 		// worded for the group as a whole, plus the group's own actions on top.
 		const isGroupTarget = targetGroupId?.value !== undefined;
 
-		// Workflow-wide show/hide, for the empty-canvas menu only. A view
-		// preference, so it stays enabled in read-only mode.
-		const allGroupsDescriptionActions: Item[] = (() => {
-			if (groupView === undefined) return [];
-
-			const groupsWithDescription = (workflowDocumentStore?.value?.allGroups ?? []).filter(
-				(group) => !!group.description?.trim(),
-			);
-			if (groupsWithDescription.length === 0) return [];
-
-			const anyDisplayed = groupsWithDescription.some((group) =>
-				groupView.isDescriptionVisible(group.id),
-			);
-			const anyHidden = groupsWithDescription.some(
-				(group) => !groupView.isDescriptionVisible(group.id),
-			);
-
-			const items: Item[] = [];
-			if (anyHidden) {
-				items.push({
-					id: 'show_all_group_descriptions',
-					label: i18n.baseText('contextMenu.showAllGroupDescriptions'),
-				});
-			}
-			if (anyDisplayed) {
-				items.push({
-					id: 'hide_all_group_descriptions',
-					label: i18n.baseText('contextMenu.hideAllGroupDescriptions'),
-				});
-			}
-			return items;
-		})();
-
-		// Show/hide the targeted group's own description. Collapsed only — the
-		// pinned panel it toggles exists only then.
-		const groupDescriptionActions: Item[] = (() => {
-			const groupId = targetGroupId?.value;
-			if (groupView === undefined || groupId === undefined) return [];
-
-			const group = workflowDocumentStore?.value?.allGroups.find((g) => g.id === groupId);
-			if (!group?.description?.trim() || !groupView.isGroupCollapsed(groupId)) return [];
-
-			const visible = groupView.isDescriptionVisible(groupId);
-			return [
-				{
-					id: visible ? 'hide_group_description' : 'show_group_description',
-					divided: true,
-					label: visible
-						? i18n.baseText('contextMenu.hideGroupDescription')
-						: i18n.baseText('contextMenu.showGroupDescription'),
-				},
-			];
-		})();
-
 		const groupActions: Item[] = isGroupTarget
 			? [
 					{
@@ -256,9 +199,12 @@ export function useContextMenuItems(
 						id: 'ungroup_nodes',
 						label: i18n.baseText('contextMenu.ungroupNodes'),
 						shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
-						disabled: isReadOnly.value,
+						// Ungrouping an empty group would strand its placeholder on the canvas.
+						disabled:
+							isReadOnly.value ||
+							(targetGroupId?.value !== undefined &&
+								(workflowDocumentStore?.value?.isEmptyGroup(targetGroupId.value) ?? false)),
 					},
-					...groupDescriptionActions,
 				]
 			: [];
 
@@ -454,10 +400,13 @@ export function useContextMenuItems(
 					label: i18n.baseText('contextMenu.addSticky'),
 					disabled: isReadOnly.value,
 				},
+				{
+					id: 'add_empty_group',
+					label: i18n.baseText('contextMenu.addEmptyGroup'),
+					disabled: isReadOnly.value,
+				},
 				...layoutActions,
 				...groupViewActions,
-				// Join the group-view section
-				...allGroupsDescriptionActions.map((item) => ({ ...item, divided: false })),
 				...selectionActions,
 			];
 		} else {

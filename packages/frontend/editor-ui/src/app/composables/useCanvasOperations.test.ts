@@ -22,6 +22,7 @@ import type {
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
 	AddConnectionCommand,
+	AddNodeCommand,
 	AddNodeGroupCommand,
 	RemoveNodeCommand,
 	RemoveNodeGroupCommand,
@@ -60,6 +61,7 @@ import {
 	AGENT_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	GROUP_PLACEHOLDER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
@@ -1422,6 +1424,44 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('addEmptyGroup', () => {
+		it('creates the placeholder node and its group in one undo step', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[GROUP_PLACEHOLDER_NODE_TYPE]: {
+					1: mockNodeTypeDescription({ name: GROUP_PLACEHOLDER_NODE_TYPE }),
+				},
+			};
+			const historyStore = mockedStore(useHistoryStore);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNextDefaultName').mockReturnValue('Group');
+			const createGroupSpy = vi
+				.spyOn(workflowDocumentStoreInstance, 'createGroup')
+				.mockImplementation((nodeIds, name) => ({ id: 'g1', name, nodeIds: [...nodeIds] }));
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addEmptyGroup } = useCanvasOperations();
+			// Grid-aligned so the snapped position matches the input exactly.
+			const group = await addEmptyGroup({ position: [96, 192] });
+
+			expect(addNodeSpy).toHaveBeenCalledTimes(1);
+			const placeholder = addNodeSpy.mock.calls[0][0];
+			expect(placeholder).toMatchObject({
+				type: GROUP_PLACEHOLDER_NODE_TYPE,
+				name: 'Group',
+				position: [96, 192],
+			});
+			expect(createGroupSpy).toHaveBeenCalledWith([placeholder.id], 'Group');
+			expect(group?.nodeIds).toEqual([placeholder.id]);
+
+			// One bulk: the node and the group undo together.
+			expect(historyStore.startRecordingUndo).toHaveBeenCalledTimes(1);
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalledTimes(1);
+			const commands = historyStore.pushCommandToUndo.mock.calls.map(([command]) => command);
+			expect(commands.some((command) => command instanceof AddNodeCommand)).toBe(true);
+			expect(commands.some((command) => command instanceof AddNodeGroupCommand)).toBe(true);
+		});
+	});
+
 	describe('addNodes', () => {
 		it('should add nodes at specified positions', async () => {
 			const nodeTypesStore = useNodeTypesStore();
@@ -1793,6 +1833,186 @@ describe('useCanvasOperations', () => {
 			deleteNode(node.id);
 
 			expect(updateNodesCredentialsIssuesSpy).not.toHaveBeenCalled();
+		});
+
+		/**
+		 * Trigger -> Member -> Next, with `Member` the only real node of group `g1`.
+		 * `extraMembers` join the group without being connectable (e.g. a sticky).
+		 */
+		function setupLastGroupMemberDelete(extraMembers: INodeUi[] = []) {
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const trigger = createTestNode({ id: 't', name: 'Trigger', position: [0, 0] });
+			const member = createTestNode({
+				id: 'm',
+				name: 'Member',
+				type: SET_NODE_TYPE,
+				position: [200, 0],
+			});
+			const next = createTestNode({ id: 'n', name: 'Next', position: [400, 0] });
+			const nodes: INodeUi[] = [trigger, member, next, ...extraMembers];
+			workflowDocumentStoreInstance.allNodes = nodes;
+
+			const connections: IConnections = {
+				Trigger: { main: [[{ node: 'Member', type: NodeConnectionTypes.Main, index: 0 }]] },
+				Member: { main: [[{ node: 'Next', type: NodeConnectionTypes.Main, index: 0 }]] },
+			};
+			workflowDocumentStoreInstance.connectionsBySourceNode = connections;
+
+			const memberIds = ['m', ...extraMembers.map((node) => node.id)];
+			const group = { id: 'g1', name: 'Plan', nodeIds: memberIds };
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodes.find((node) => node.id === id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name) => nodes.find((node) => node.name === name) ?? null,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((nodeId) =>
+				group.nodeIds.includes(nodeId) ? group : undefined,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockImplementation((id) =>
+				id === group.id ? group : undefined,
+			);
+
+			const state: { placeholder?: INodeUi } = {};
+			vi.mocked(workflowDocumentStoreInstance.addNode).mockImplementation((node) => {
+				state.placeholder = node;
+				nodes.push(node);
+			});
+			vi.mocked(workflowDocumentStoreInstance.addNodesToGroup).mockImplementation((id, nodeIds) => {
+				if (id !== group.id) return;
+				group.nodeIds = [...group.nodeIds, ...nodeIds];
+			});
+			vi.mocked(workflowDocumentStoreInstance.removeNodeById).mockImplementation((id) => {
+				group.nodeIds = group.nodeIds.filter((nodeId) => nodeId !== id);
+			});
+			vi.mocked(workflowDocumentStoreInstance.addConnection).mockImplementation(
+				({ connection }: { connection: IConnection[] }) => {
+					const [sourceData, destinationData] = connection;
+					if (!sourceData || !destinationData) return;
+					connections[sourceData.node] ??= {};
+					connections[sourceData.node][sourceData.type] ??= [];
+					connections[sourceData.node][sourceData.type][sourceData.index] ??= [];
+					connections[sourceData.node][sourceData.type][sourceData.index]?.push(destinationData);
+				},
+			);
+			vi.mocked(workflowDocumentStoreInstance.removeConnection).mockImplementation(
+				({ connection }: { connection: IConnection[] }) => {
+					const [sourceData, destinationData] = connection;
+					if (!sourceData || !destinationData) return;
+					const existing = connections[sourceData.node]?.[sourceData.type]?.[sourceData.index];
+					if (!existing) return;
+					connections[sourceData.node][sourceData.type][sourceData.index] = existing.filter(
+						(entry) =>
+							entry.node !== destinationData.node ||
+							entry.type !== destinationData.type ||
+							entry.index !== destinationData.index,
+					);
+				},
+			);
+
+			return { group, connections, state };
+		}
+
+		it('re-inserts a placeholder when the last real member of a group is deleted', () => {
+			const { group, connections, state } = setupLastGroupMemberDelete();
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('m');
+
+			const placeholder = state.placeholder;
+			expect(group.nodeIds).toEqual([placeholder?.id]);
+			expect(placeholder?.type).toBe(GROUP_PLACEHOLDER_NODE_TYPE);
+			expect(placeholder?.position).toEqual([200, 0]);
+			expect(connections.Trigger?.main?.[0]).toEqual([
+				{ node: placeholder?.name, type: NodeConnectionTypes.Main, index: 0 },
+			]);
+			expect(placeholder?.name).toBeTruthy();
+			expect(connections[placeholder!.name]?.main?.[0]).toEqual([
+				{ node: 'Next', type: NodeConnectionTypes.Main, index: 0 },
+			]);
+		});
+
+		// Stickies can't be connected, so a group of one node plus a sticky still
+		// loses its last real member and must keep the placeholder.
+		it('re-inserts a placeholder when the group also holds a sticky note', () => {
+			const sticky = createTestNode({
+				id: 's',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [150, -100],
+			});
+			const { group, connections, state } = setupLastGroupMemberDelete([sticky]);
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('m');
+
+			const placeholder = state.placeholder;
+			expect(placeholder?.type).toBe(GROUP_PLACEHOLDER_NODE_TYPE);
+			expect(group.nodeIds).toEqual(['s', placeholder?.id]);
+			expect(connections.Trigger?.main?.[0]).toEqual([
+				{ node: placeholder?.name, type: NodeConnectionTypes.Main, index: 0 },
+			]);
+		});
+
+		// Deleting the sticky leaves the real node behind, so the group is not
+		// losing its last real member and must not gain a placeholder.
+		it('does not re-insert a placeholder when a sticky is deleted from the group', () => {
+			const sticky = createTestNode({
+				id: 's',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [150, -100],
+			});
+			const { group, state } = setupLastGroupMemberDelete([sticky]);
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('s');
+
+			expect(state.placeholder).toBeUndefined();
+			expect(group.nodeIds).toEqual(['m']);
+		});
+
+		// Undo must revert the whole re-insert: the placeholder, both of its
+		// connections, and the group membership from before it was inserted.
+		it('records the placeholder re-insert so undo reverts it as a unit', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const { state } = setupLastGroupMemberDelete();
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('m', { trackHistory: true });
+
+			const placeholder = state.placeholder;
+			const commands = historyStore.pushCommandToUndo.mock.calls.map(([command]) => command);
+
+			const addNodeCommand = commands.find(
+				(command): command is AddNodeCommand => command instanceof AddNodeCommand,
+			);
+			expect(addNodeCommand?.node.id).toBe(placeholder?.id);
+
+			const addedConnections = commands
+				.filter(
+					(command): command is AddConnectionCommand => command instanceof AddConnectionCommand,
+				)
+				.map((command) => command.connectionData);
+			expect(addedConnections).toEqual([
+				[
+					{ node: 'Trigger', type: NodeConnectionTypes.Main, index: 0 },
+					{ node: placeholder?.name, type: NodeConnectionTypes.Main, index: 0 },
+				],
+				[
+					{ node: placeholder?.name, type: NodeConnectionTypes.Main, index: 0 },
+					{ node: 'Next', type: NodeConnectionTypes.Main, index: 0 },
+				],
+			]);
+
+			// The group snapshot predates the placeholder, so reverting the
+			// commands above leaves the group holding only the real node again.
+			const groupCommand = commands.find(
+				(command): command is UpdateNodeGroupCommand => command instanceof UpdateNodeGroupCommand,
+			);
+			expect(groupCommand?.before.nodeIds).toEqual(['m']);
+			expect(groupCommand?.after.nodeIds).toEqual([placeholder?.id]);
 		});
 
 		it('should delete node without tracking history', () => {
@@ -7624,6 +7844,13 @@ describe('useCanvasOperations', () => {
 					expect.objectContaining({ type: 'error' }),
 				);
 			});
+
+			// The "+" button fill path (onAddNodeToGroup in NodeView) runs exactly
+			// this replaceNode against the group's placeholder, so the grouped-node
+			// case above — Source → Target → Next, Target replaced, connections moved
+			// to the replacement, group membership transferred — is the fill contract:
+			// Start → Middle → End with Middle filled. Node type does not change the
+			// replacement logic, so a placeholder-typed target needs no separate case.
 		});
 		it('should not track history if flag is false', () => {
 			const { replaceNode } = useCanvasOperations();

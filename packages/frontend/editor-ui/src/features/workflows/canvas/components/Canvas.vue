@@ -96,7 +96,6 @@ import {
 	type CanvasNodeGroupEventSource,
 } from '../composables/useCanvasNodeGroupTelemetry';
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
-import { NodeGroupDescriptionVisibilityKey } from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -139,6 +138,9 @@ const emit = defineEmits<{
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
 	'create:sticky': [];
+	'create:empty-group': [];
+	'generate:group': [groupId: string];
+	'add-node:group': [groupId: string];
 	'delete:nodes': [ids: string[]];
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
@@ -299,7 +301,6 @@ const selectableNodesAndGroups = computed(() =>
 const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
 const injectedNodeGroupView = inject(NodeGroupViewKey, null);
-const injectedNodeGroupDescriptionVisibility = inject(NodeGroupDescriptionVisibilityKey, null);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -866,14 +867,30 @@ function onCanvasGroupNameUpdate(groupId: string, name: string) {
 	renameGroup(groupId, name);
 }
 
+// What the canvas actually renders, which is what the inline title editor keys
+// off. An empty group is force-collapsed by the mapping regardless of what the
+// view store says, so the view store alone is not enough here.
+function isGroupRenderedCollapsed(groupId: string): boolean {
+	return (
+		workflowDocumentStore.value.isEmptyGroup(groupId) ||
+		(injectedNodeGroupView?.isGroupCollapsed(groupId) ?? false)
+	);
+}
+
 // Collapsed groups have no inline title editor, so they rename through a
 // prompt (mirroring node rename); expanded groups focus the inline editor.
 function openGroupRename(groupId: string) {
-	if (injectedNodeGroupView?.isGroupCollapsed(groupId)) {
+	if (isGroupRenderedCollapsed(groupId)) {
 		void onOpenGroupRenameModal(groupId);
 	} else {
 		autofocusGroupTitleId.value = groupId;
 	}
+}
+
+// Lets a group created outside the canvas (e.g. the "add empty group" menu
+// item) open the same rename flow the in-canvas grouping shortcuts use.
+function onRenameGroupRequested({ groupId }: CanvasEventBusEvents['rename:group']) {
+	openGroupRename(groupId);
 }
 
 // Space renames a selected group the same way it renames a selected node.
@@ -960,6 +977,10 @@ function onCanvasGroupUngroup(
 	groupId: string,
 	source: CanvasNodeGroupEventSource = 'group-toolbar',
 ) {
+	// Ungrouping an empty group would strand its placeholder as a bare node on
+	// the canvas. Every entry point (toolbar, shortcut, context menu) lands here.
+	if (workflowDocumentStore.value.isEmptyGroup(groupId)) return;
+
 	// Capture before deletion — the group is gone by the time we track.
 	const group = workflowDocumentStore.value.getGroupById(groupId);
 	// Ungrouping a collapsed group makes its hidden members reappear, so expand
@@ -1017,22 +1038,6 @@ function onSetAllGroupsExpanded(expanded: boolean, source: CanvasNodeGroupEventS
 		expanded,
 		source,
 	);
-}
-
-// Pin or unpin the descriptions of every group that has one — the workflow-wide
-// counterpart to the per-group pin toggle in the title bar.
-function onSetAllDescriptionsVisible(visible: boolean) {
-	if (!injectedNodeGroupDescriptionVisibility) return;
-	const groupIds = workflowDocumentStore.value.allGroups
-		.filter((group) => !!group.description?.trim())
-		.map((group) => group.id);
-	injectedNodeGroupDescriptionVisibility.setVisibleForGroups(groupIds, visible);
-}
-
-// Pin or unpin a single group's description, from its own context menu.
-function onSetGroupDescriptionVisible(groupId: string | undefined, visible: boolean) {
-	if (!injectedNodeGroupDescriptionVisibility || !groupId) return;
-	injectedNodeGroupDescriptionVisibility.setVisible(groupId, visible);
 }
 
 // Distinct groups behind a context menu target: the carried group when a
@@ -1095,7 +1100,9 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 		// emitting this event) and toggles collapse. Staying selected pairs the
 		// click with Space-to-rename, like nodes.
 		const groupId = parseCanvasGroupNodeId(node.id);
-		if (groupId) {
+		// An empty group always renders as the chip, so collapse is a no-op: skip
+		// the view-store flip and its telemetry.
+		if (groupId && !workflowDocumentStore.value.isEmptyGroup(groupId)) {
 			const isRepeatClick =
 				lastHeaderToggle?.groupId === groupId &&
 				event.timeStamp - lastHeaderToggle.at < CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION;
@@ -1537,6 +1544,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return emit('create:node', 'context_menu');
 		case 'add_sticky':
 			return emit('create:sticky');
+		case 'add_empty_group':
+			return emit('create:empty-group');
 		case 'copy':
 			return emit('copy:nodes', nodeIds);
 		case 'delete':
@@ -1596,14 +1605,6 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return setGroupsExpanded(resolveTargetGroupIds(nodeIds, groupId), true, 'context-menu');
 		case 'collapse_selected_groups':
 			return setGroupsExpanded(resolveTargetGroupIds(nodeIds, groupId), false, 'context-menu');
-		case 'show_all_group_descriptions':
-			return onSetAllDescriptionsVisible(true);
-		case 'hide_all_group_descriptions':
-			return onSetAllDescriptionsVisible(false);
-		case 'show_group_description':
-			return onSetGroupDescriptionVisible(groupId, true);
-		case 'hide_group_description':
-			return onSetGroupDescriptionVisible(groupId, false);
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}
@@ -1757,6 +1758,7 @@ onMounted(() => {
 	props.eventBus.on('nodes:select', onSelectNodes);
 	props.eventBus.on('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.on('tidyUp', onTidyUp);
+	props.eventBus.on('rename:group', onRenameGroupRequested);
 	window.addEventListener('blur', onWindowBlur);
 	document.addEventListener('visibilitychange', onVisibilityChange);
 });
@@ -1768,6 +1770,7 @@ onUnmounted(() => {
 	props.eventBus.off('nodes:select', onSelectNodes);
 	props.eventBus.off('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
+	props.eventBus.off('rename:group', onRenameGroupRequested);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);
 });
@@ -1904,6 +1907,8 @@ defineExpose({
 				@update:description="onCanvasGroupDescriptionUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
+				@generate="emit('generate:group', $event)"
+				@add-node="emit('add-node:group', $event)"
 				@extract="onCanvasGroupExtract"
 				@add-nodes-to-chat="onCanvasGroupAddNodesToChat"
 				@open:contextmenu="onOpenGroupContextMenu"
