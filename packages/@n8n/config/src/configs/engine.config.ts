@@ -62,4 +62,15 @@ export class EngineConfig {
 	/** Where the engine dials the control plane server. Defaults to loopback; set it when that is not reachable. */
 	@Env('N8N_ENGINE_CONTROL_PLANE_BASE_URL')
 	controlPlaneBaseUrl: string = '';
+
+	/**
+	 * Engine a workflow runs on when it carries no `engineType` setting of its
+	 * own. `v2` points an instance's whole manual traffic at engine 2.0, for
+	 * dogfooding and e2e runs where setting it per workflow is impractical. A
+	 * workflow that names an engine always keeps it.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_DEFAULT_ENGINE_TYPE', z.enum(['v1', 'v2']))
+	defaultEngineType: 'v1' | 'v2' = 'v1';
 }
