@@ -1,3 +1,5 @@
+import { DATA_TABLE_SYSTEM_COLUMNS } from './data-table.types';
+
 export const DIGITS = '0123456789';
 export const UPPERCASE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 export const LOWERCASE_LETTERS = UPPERCASE_LETTERS.toLowerCase();
@@ -31,6 +33,17 @@ export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
+// Fields the Evaluation Trigger adds to its output alongside dataset columns,
+// regardless of source (Data table or Google Sheets).
+export const EVALUATION_TRIGGER_METADATA_FIELDS = ['row_number', 'row_id', '_rowsLeft'] as const;
+// Additional bookkeeping columns spread into the trigger's output as-is
+// (DATA_TABLE_SYSTEM_COLUMNS) — only present when the trigger's source is
+// Data table. A Google Sheets-sourced trigger can have a genuine user column
+// with one of these names, so callers must only apply this when they know
+// the trigger's source is Data table.
+export const EVALUATION_TRIGGER_DATA_TABLE_METADATA_FIELDS = [
+	...DATA_TABLE_SYSTEM_COLUMNS,
+] as const;
 export const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
