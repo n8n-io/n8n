@@ -66,6 +66,56 @@ describe('InstanceAiInput — staged node attachments', () => {
 		await waitFor(() => expect(queryAllByTestId('nodes-chip-node')).toHaveLength(2));
 	});
 
+	it('renders the canvas selection as a greyed-out unconfirmed chip', async () => {
+		const { findByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.setUnconfirmedNodes({
+			type: 'nodes',
+			workflowId: 'w1',
+			sets: [{ nodes: [{ id: 'n1', name: 'A' }] }],
+		});
+
+		const chip = await findByTestId('nodes-chip-node');
+		// Unconfirmed chips are non-removable; the remove control must be absent.
+		expect(chip.querySelector('[data-test-id="nodes-chip-remove"]')).toBeNull();
+	});
+
+	it('confirms an unconfirmed chip on click: stages its sets and clears the preview', async () => {
+		const { findByTestId, queryByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.setUnconfirmedNodes({
+			type: 'nodes',
+			workflowId: 'w1',
+			sets: [{ nodes: [{ id: 'n1', name: 'A' }] }],
+		});
+
+		const chip = await findByTestId('nodes-chip-node');
+		await userEvent.click(chip);
+
+		// Preview cleared, and the set landed in the confirmed (now removable) attachment.
+		expect(store.unconfirmedNodesAttachment).toBeNull();
+		await waitFor(() => expect(queryByTestId('nodes-chip-remove')).toBeInTheDocument());
+	});
+
+	it('hides an unconfirmed set that is already confirmed for the same workflow', async () => {
+		const { queryAllByTestId, findAllByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
+		await findAllByTestId('nodes-chip-node');
+
+		// Same selection re-offered as an unconfirmed preview → deduped away.
+		store.setUnconfirmedNodes({
+			type: 'nodes',
+			workflowId: 'w1',
+			sets: [{ nodes: [{ id: 'n1', name: 'A' }] }],
+		});
+
+		await waitFor(() => expect(queryAllByTestId('nodes-chip-node')).toHaveLength(1));
+	});
+
 	it('enables send with staged chips and empty text, and restores chips on failed send', async () => {
 		const { emitted, findAllByTestId, findByTestId, queryAllByTestId } = renderComponent();
 		const store = useInstanceAiStore();

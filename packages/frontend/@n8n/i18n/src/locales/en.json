@@ -7509,6 +7509,7 @@
 	"instanceAi.nodeContext.nodesBundle": "{count} nodes",
 	"instanceAi.nodeContext.collapse": "Collapse",
 	"instanceAi.nodeContext.expand": "Expand",
+	"instanceAi.nodeContext.unconfirmedTooltip": "Add canvas selection as context",
 	"instanceAi.nodeContext.truncated.title": "Some nodes were left out",
 	"instanceAi.nodeContext.truncated.message": "The selection was too large, so only some of the nodes were added to chat.",
 	"agents.home.untitledAgent": "Untitled Agent",
