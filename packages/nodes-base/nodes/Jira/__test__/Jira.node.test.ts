@@ -164,6 +164,68 @@ describe('Jira Node', () => {
 			);
 		});
 
+		it('should send expand as a comma-separated string on Jira Cloud', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
+				switch (parameterName) {
+					case 'resource':
+						return 'issue';
+					case 'operation':
+						return 'getAll';
+					case 'jiraVersion':
+						return 'cloud';
+					case 'returnAll':
+						return false;
+					case 'limit':
+						return 10;
+					case 'options':
+						return { expand: ['changelog', 'names'] };
+					default:
+						return null;
+				}
+			});
+
+			await jiraNode.execute.call(executeFunctionsMock);
+
+			expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
+				'/api/2/search/jql',
+				'POST',
+				expect.objectContaining({
+					expand: 'changelog,names',
+				}),
+			);
+		});
+
+		it('should send expand as an array on Jira Server', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
+				switch (parameterName) {
+					case 'resource':
+						return 'issue';
+					case 'operation':
+						return 'getAll';
+					case 'jiraVersion':
+						return 'server';
+					case 'returnAll':
+						return false;
+					case 'limit':
+						return 10;
+					case 'options':
+						return { expand: ['changelog', 'names'] };
+					default:
+						return null;
+				}
+			});
+
+			await jiraNode.execute.call(executeFunctionsMock);
+
+			expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
+				'/api/2/search',
+				'POST',
+				expect.objectContaining({
+					expand: ['changelog', 'names'],
+				}),
+			);
+		});
+
 		it('should use custom JQL filter when provided', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
 				switch (parameterName) {
