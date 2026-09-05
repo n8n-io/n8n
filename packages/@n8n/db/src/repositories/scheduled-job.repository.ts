@@ -50,6 +50,7 @@ export type ScheduledJobDefinitionUpdate = Pick<
 	| 'intervalSeconds'
 	| 'fireAt'
 	| 'nextRunAt'
+	| 'maxAttempts'
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
 >;
@@ -222,11 +223,11 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		await manager.update(ScheduledJob, { id }, update);
 	}
 
-	/** Updates misfire policy and grace only, leaving schedule and clock untouched. */
-	async updateMisfirePolicy(
+	/** Updates the run options only, leaving schedule and clock untouched. */
+	async updateRunOptions(
 		manager: EntityManager,
 		ids: number[],
-		update: Pick<ScheduledJob, 'misfirePolicy' | 'misfireGraceSeconds'>,
+		update: Pick<ScheduledJob, 'maxAttempts' | 'misfirePolicy' | 'misfireGraceSeconds'>,
 	): Promise<void> {
 		if (ids.length === 0) return;
 		await manager.update(ScheduledJob, ids, update);
