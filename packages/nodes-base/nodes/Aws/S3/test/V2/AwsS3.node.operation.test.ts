@@ -4,6 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { AwsS3V2 } from '../../V2/AwsS3V2.node';
 import * as GenericFunctions from '../../V2/GenericFunctions';
+import * as AwsUtils from '../../../../../credentials/common/aws/utils';
 import type { MockInstance } from 'vitest';
 
 const mockLocationResponse = {
@@ -522,5 +523,212 @@ describe('AWS S3 V2 Node - Bucket Search', () => {
 
 		expect(result[0]).toHaveLength(1);
 		expect(result[0][0].json).toEqual(singleItem);
+	});
+});
+
+describe('AWS S3 V2 Node - Get Presigned URL', () => {
+	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
+	let awsApiRequestRESTSpy: MockInstance;
+	let node: AwsS3V2;
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		awsApiRequestRESTSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
+		node = new AwsS3V2({
+			displayName: 'AWS S3',
+			name: 'awsS3',
+			icon: 'file:s3.svg',
+			group: ['output'],
+			description: 'Sends data to AWS S3',
+		});
+
+		executeFunctionsMock.getNode.mockReturnValue({
+			typeVersion: 2,
+		} as INode);
+
+		executeFunctionsMock.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctionsMock.continueOnFail.mockReturnValue(false);
+
+		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((data) =>
+			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
+		);
+		executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
+			(data) => data as any,
+		);
+	});
+
+	it('should generate a presigned URL using standard IAM credentials', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			accessKeyId: 'test-key',
+			secretAccessKey: 'test-secret',
+			region: 'us-east-1',
+		});
+
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			switch (paramName) {
+				case 'resource':
+					return 'file';
+				case 'operation':
+					return 'getPresignedUrl';
+				case 'bucketName':
+					return 'my-bucket';
+				case 'fileKey':
+					return 'my-file.txt';
+				case 'additionalFields':
+					return { expires: 3600 };
+				default:
+					return undefined;
+			}
+		});
+
+		const result = await node.execute.call(executeFunctionsMock);
+		expect(result[0][0].json).toHaveProperty('url');
+		expect(result[0][0].json.url).toContain('my-bucket.s3.us-east-1.amazonaws.com/my-file.txt');
+		expect(result[0][0].json.url).toContain('X-Amz-Signature=');
+	});
+
+	it('should generate a presigned URL using Assume Role credentials', async () => {
+		vi.spyOn(AwsUtils, 'assumeRole').mockResolvedValue({
+			accessKeyId: 'assumed-key',
+			secretAccessKey: 'assumed-secret',
+			sessionToken: 'assumed-token',
+		});
+
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			stsAccessKeyId: 'sts-key',
+			stsSecretAccessKey: 'sts-secret',
+			stsSessionToken: 'sts-token',
+			region: 'us-east-1',
+			roleArn: 'arn:aws:iam::123456789012:role/MyRole',
+			useSystemCredentialsForRole: false,
+		});
+
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			switch (paramName) {
+				case 'authentication':
+					return 'assumeRole';
+				case 'resource':
+					return 'file';
+				case 'operation':
+					return 'getPresignedUrl';
+				case 'bucketName':
+					return 'my-bucket';
+				case 'fileKey':
+					return 'my-file.txt';
+				case 'additionalFields':
+					return { expires: 3600 };
+				default:
+					return undefined;
+			}
+		});
+
+		const result = await node.execute.call(executeFunctionsMock);
+		expect(result[0][0].json).toHaveProperty('url');
+		expect(result[0][0].json.url).toContain('my-bucket.s3.us-east-1.amazonaws.com/my-file.txt');
+		expect(result[0][0].json.url).toContain('X-Amz-Credential=assumed-key');
+		expect(result[0][0].json.url).toContain('X-Amz-Security-Token=assumed-token');
+		expect(result[0][0].json.url).not.toContain('sts-key');
+	});
+
+	it('should generate a presigned URL using assumed role session credentials', async () => {
+		vi.spyOn(AwsUtils, 'assumeRole').mockResolvedValue({
+			accessKeyId: 'assumed-key',
+			secretAccessKey: 'assumed-secret',
+			sessionToken: 'assumed-token',
+		});
+
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			stsAccessKeyId: 'sts-key',
+			stsSecretAccessKey: 'sts-secret',
+			stsSessionToken: 'sts-token',
+			region: 'us-east-1',
+			roleArn: 'arn:aws:iam::123456789012:role/MyRole',
+			useSystemCredentialsForRole: true,
+		});
+
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			switch (paramName) {
+				case 'authentication':
+					return 'assumeRole';
+				case 'resource':
+					return 'file';
+				case 'operation':
+					return 'getPresignedUrl';
+				case 'bucketName':
+					return 'my-bucket';
+				case 'fileKey':
+					return 'my-file.txt';
+				case 'additionalFields':
+					return { expires: 3600 };
+				default:
+					return undefined;
+			}
+		});
+
+		const result = await node.execute.call(executeFunctionsMock);
+
+		expect(AwsUtils.assumeRole).toHaveBeenCalledWith(
+			expect.objectContaining({ roleArn: 'arn:aws:iam::123456789012:role/MyRole' }),
+			'us-east-1',
+		);
+		expect(result[0][0].json.url).toContain('X-Amz-Credential=assumed-key');
+		expect(result[0][0].json.url).toContain('X-Amz-Security-Token=assumed-token');
+		expect(result[0][0].json.url).not.toContain('sts-key');
+	});
+
+	it('should encode file key with special characters', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			accessKeyId: 'test-key',
+			secretAccessKey: 'test-secret',
+			region: 'us-east-1',
+		});
+
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			switch (paramName) {
+				case 'resource':
+					return 'file';
+				case 'operation':
+					return 'getPresignedUrl';
+				case 'bucketName':
+					return 'my-bucket';
+				case 'fileKey':
+					return 'folder/my file?.txt';
+				case 'additionalFields':
+					return { expires: 3600 };
+				default:
+					return undefined;
+			}
+		});
+
+		const result = await node.execute.call(executeFunctionsMock);
+		expect(result[0][0].json.url).toContain('folder/my%20file%3F.txt');
+	});
+
+	it('should handle bucket names with dots', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			accessKeyId: 'test-key',
+			secretAccessKey: 'test-secret',
+			region: 'us-east-1',
+		});
+
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			switch (paramName) {
+				case 'resource':
+					return 'file';
+				case 'operation':
+					return 'getPresignedUrl';
+				case 'bucketName':
+					return 'my.bucket';
+				case 'fileKey':
+					return 'file.txt';
+				case 'additionalFields':
+					return { expires: 3600 };
+				default:
+					return undefined;
+			}
+		});
+
+		const result = await node.execute.call(executeFunctionsMock);
+		expect(result[0][0].json.url).toContain('my.bucket.s3.us-east-1.amazonaws.com/file.txt');
 	});
 });
