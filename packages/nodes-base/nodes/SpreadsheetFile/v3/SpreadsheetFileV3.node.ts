@@ -7,30 +7,24 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { oldVersionNotice } from '../../../utils/descriptions';
-import * as fromFile from './fromFile.operation';
-import * as toFile from './toFile.operation';
+import * as fromFile from '../v2/fromFile.operation';
+import * as toFile from '../v2/toFile.operation';
 import { operationProperty } from '../description';
 
-export class SpreadsheetFileV2 implements INodeType {
+export class SpreadsheetFileV3 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: 2,
+			version: 3,
 			defaults: {
 				name: 'Spreadsheet File',
 				color: '#2244FF',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
-			properties: [
-				oldVersionNotice,
-				operationProperty,
-				...fromFile.description,
-				...toFile.description,
-			],
+			properties: [operationProperty, ...fromFile.description, ...toFile.description],
 		};
 	}
 
@@ -40,7 +34,9 @@ export class SpreadsheetFileV2 implements INodeType {
 		let returnData: INodeExecutionData[] = [];
 
 		if (operation === 'fromFile') {
-			returnData = await fromFile.execute.call(this, items);
+			returnData = await fromFile.execute.call(this, items, 'fileFormat', {
+				enableCellDates: true,
+			});
 		}
 
 		if (operation === 'toFile') {

@@ -3,6 +3,7 @@ import { VersionedNodeType } from 'n8n-workflow';
 
 import { SpreadsheetFileV1 } from './v1/SpreadsheetFileV1.node';
 import { SpreadsheetFileV2 } from './v2/SpreadsheetFileV2.node';
+import { SpreadsheetFileV3 } from './v3/SpreadsheetFileV3.node';
 
 export class SpreadsheetFile extends VersionedNodeType {
 	constructor() {
@@ -13,12 +14,13 @@ export class SpreadsheetFile extends VersionedNodeType {
 			icon: 'fa:table',
 			group: ['transform'],
 			description: 'Reads and writes data from a spreadsheet file like CSV, XLS, ODS, etc',
-			defaultVersion: 2,
+			defaultVersion: 3,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new SpreadsheetFileV1(baseDescription),
 			2: new SpreadsheetFileV2(baseDescription),
+			3: new SpreadsheetFileV3(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
