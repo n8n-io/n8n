@@ -86,7 +86,10 @@ downstream node reference the data node explicitly.
 ## Escalation
 
 Follow the shared question and recovery rules. Ask before building only when
-intent or topology is unresolved. Discover unnamed service options first.
+intent, topology, or required input data is unresolved. Inspect the existing
+source schema or sample payload before choosing field paths and types. If it
+is unavailable, ask for the missing details. Do not invent incoming field
+names from business labels. Discover unnamed service options first.
 Use placeholders or unresolved `newCredential()` calls for setup values and
 credential choices. Route them through post-build workflow setup.
 Reuse the user's answers and respect skips. Do not collect secrets in chat.
@@ -219,7 +222,11 @@ follow its build → publish → assign steps.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
    task's final deliverable.
-9. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
+9. Trace the saved graph from each intended trigger through its required actions.
+   Connections are indexed by source node. Confirm the trigger has an outgoing
+   main connection and each required action is reachable in the intended order.
+   AI model and memory connections do not replace the main data path.
+   For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    branches are wired on the workflow builder (`.to(ifNode).onTrue(...).onFalse(...)`
    or `.to(ifNode.onTrue(...).onFalse(...))`), not as standalone calls on the IF

@@ -291,6 +291,8 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
+		expect(loaded?.instructions).toContain('Connections are indexed by source node');
+		expect(loaded?.instructions).toContain('each required action is reachable');
 		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
 		expect(loaded?.instructions).toContain('follow the inlined\n    `postBuildFlow.instructions`');
 		expect(loaded?.instructions).toContain('Do not call\n    `verify-built-workflow` directly');
@@ -313,7 +315,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('together with the `load_skill` call');
 		expect(loaded?.instructions).toContain('Do not create a plan\njust for verification');
 		expect(loaded?.instructions).toContain(
-			'Ask before building only when\nintent or topology is unresolved',
+			'Ask before building only when\nintent, topology, or required input data is unresolved',
 		);
 		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');

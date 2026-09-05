@@ -186,7 +186,9 @@ Do not add checkpoints for routine verification-only work.
 If the user rejects the plan with requested changes, revise surgically, load
 `create-tasks` via `load_tool` if needed, and call `create-tasks` again in the
 same orchestrator run with
-`planningContext.source: "planning-skill"`.
+`planningContext.source: "planning-skill"`. Wait for approval of the revised
+plan before building. Do not bypass that approval with a direct build.
+Requested changes do not approve the revised plan.
 
 If the user denies the plan outright, stop. Do not call `create-tasks` again in
 the same message group.

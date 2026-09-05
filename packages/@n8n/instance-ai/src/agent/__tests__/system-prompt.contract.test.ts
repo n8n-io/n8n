@@ -25,6 +25,13 @@ describe('Instance AI prompt contract', () => {
 		expect(prompt).toContain('planned-task build/checkpoint follow-ups');
 	});
 
+	it('requires input evidence and renewed approval after a plan rejection', () => {
+		const prompt = getSystemPrompt({});
+		expect(prompt).toContain('inspect its schema or sample payload');
+		expect(prompt).toContain('Do not invent incoming fields from business labels');
+		expect(prompt).toContain('Requested changes do not approve the revised plan');
+	});
+
 	it('keeps secure credential entry without manual trigger token advice', () => {
 		const prompt = getSystemPrompt({ browserAvailable: true });
 		expect(prompt).toContain('secure Computer Use capture');
