@@ -190,10 +190,14 @@ jobs:
           echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
       # Generated here because a reusable workflow cannot resolve its own matrix.
+      # PRs run SQLite plus the primary Postgres leg. The merge queue runs the
+      # full Postgres range, so every merge still gates on the older majors.
       - name: Generate DB test matrix
         id: generate-db-test-matrix
         if: fromJSON(steps.ci-filter.outputs.results).db
-        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs)" >> "$GITHUB_OUTPUT"
+        env:
+          DB_MATRIX_SCOPE: ${{ github.event_name == 'merge_group' && 'full' || 'pr' }}
+        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE")" >> "$GITHUB_OUTPUT"
 
       - name: Compute affected packages
         id: affected-packages
