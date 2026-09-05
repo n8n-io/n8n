@@ -740,6 +740,7 @@ catalogs:
       version: 7.29.0
 
 overrides:
+  eslint-plugin-import-x>@typescript-eslint/utils: 8.35.0
   libphonenumber-js: npm:empty-npm-package@1.0.0
   '@browserbasehq/stagehand': npm:empty-npm-package@1.0.0
   sharp: npm:empty-npm-package@1.0.0

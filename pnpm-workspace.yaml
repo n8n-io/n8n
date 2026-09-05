@@ -346,6 +346,13 @@ catalogs:
     undici: ^7.29.0
 
 overrides:
+  # `eslint-plugin-import-x` declares `@typescript-eslint/utils` as an optional peer,
+  # so pnpm re-resolves it to the newest match on any install that rewrites the lockfile.
+  # `@n8n/node-cli` pins `typescript-eslint` at ^8.35.0 and passes an import-x flat config
+  # into `tseslint.config()`, so a drifting peer breaks its build with a TS2322 that names
+  # neither the cause nor the dependency that triggered it. Pin the peer until the three
+  # `typescript-eslint` consumers are aligned.
+  'eslint-plugin-import-x>@typescript-eslint/utils': 8.35.0
   libphonenumber-js: npm:empty-npm-package@1.0.0
   '@browserbasehq/stagehand': npm:empty-npm-package@1.0.0
   sharp: npm:empty-npm-package@1.0.0
