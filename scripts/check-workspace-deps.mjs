@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync } from 'node:fs';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const isPackageJson = (file) => file.endsWith('package.json');
 const files = process.argv.slice(2).filter((file) => file && isPackageJson(file) && existsSync(file));
