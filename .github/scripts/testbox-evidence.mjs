@@ -164,6 +164,8 @@ const workflowPath = options.workflow || '.github/workflows/testbox-evidence-spi
 if (!existsSync(workflowPath)) fail(`workflow does not exist: ${workflowPath}`);
 const workflowDigest = sha256(readFileSync(workflowPath));
 const commandDigest = sha256(JSON.stringify(command));
+const hydratedPath = optionalFile('/tmp/.testbox/path');
+if (hydratedPath) process.env.PATH = hydratedPath;
 
 let result;
 try {

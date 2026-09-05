@@ -81,5 +81,8 @@ jobs:
         with:
           build-command: ''
 
+      - name: Preserve toolchain path
+        run: printf '%s\n' "$PATH" > /tmp/.testbox/path
+
       - name: Run Testbox
         uses: useblacksmith/run-testbox@3f60ff9ceb2c10c3feefa87dc0c6490cffae059d # main
