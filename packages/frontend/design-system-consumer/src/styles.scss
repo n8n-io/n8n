@@ -1,0 +1,21 @@
+// The SCSS sources ship next to the compiled CSS, so a consumer with its own sass
+// toolchain can reach the mixins and token maps. Proves the `./css/*` export.
+@use '@n8n/design-system/css/mixins/breakpoints' as breakpoints;
+
+.harness-page {
+	padding: var(--spacing--lg);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+
+	@include breakpoints.breakpoint('sm-and-down') {
+		padding: var(--spacing--2xs);
+	}
+}
+
+.harness-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}

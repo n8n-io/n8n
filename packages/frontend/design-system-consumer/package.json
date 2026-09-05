@@ -1,0 +1,24 @@
+{
+  "name": "design-system-consumer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Contract harness: a minimal Vite app that consumes @n8n/design-system the way an out-of-repo project would \u2014 through the package exports map, with no source aliases.",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview --port 4399",
+    "typecheck": "vue-tsc --noEmit",
+    "typecheck:libcheck": "vue-tsc --noEmit -p tsconfig.libcheck.json"
+  },
+  "dependencies": {
+    "@n8n/design-system": "workspace:*",
+    "vue": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vue-tsc": "catalog:frontend"
+  }
+}

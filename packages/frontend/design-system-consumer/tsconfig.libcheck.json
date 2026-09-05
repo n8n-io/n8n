@@ -1,0 +1,11 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		// The default `typecheck` runs with `skipLibCheck: true`, which is what a real
+		// consumer app uses (it is `true` in Vue's own `create-vue` template). This
+		// config turns it off to check the *shipped declarations themselves*. It is a
+		// diagnostic probe, not a gate: it currently fails, and the failures are
+		// catalogued in README.md.
+		"skipLibCheck": false
+	}
+}
