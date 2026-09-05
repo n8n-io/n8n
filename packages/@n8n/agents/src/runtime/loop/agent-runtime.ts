@@ -66,6 +66,7 @@ import {
 	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
 	getEffectiveAnthropicCacheTtl,
+	getModelProvider,
 	mergeProviderOptions,
 } from '../model/prompt-cache';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
@@ -141,6 +142,15 @@ export interface AgentRuntimeConfig {
 }
 
 const MAX_LOOP_ITERATIONS = 30;
+
+// Keep the stable instruction prefix separate only where the provider accepts
+// multiple leading system messages. Custom endpoints can use strict chat templates.
+const PROVIDERS_SUPPORTING_SPLIT_SYSTEM_MESSAGES = new Set([
+	'anthropic',
+	'google-vertex-anthropic',
+	'openai',
+	'openrouter',
+]);
 
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
 const MAX_EMPTY_TURN_RETRIES = 2;
@@ -875,6 +885,7 @@ export class AgentRuntime {
 				effectiveInstructions,
 				instructionProviderOptions,
 				volatileInstructions,
+				PROVIDERS_SUPPORTING_SPLIT_SYSTEM_MESSAGES.has(getModelProvider(this.modelIdString)),
 			);
 			// Runtime breakpoints (conversation history, static tools) are per-call
 			// only — never persisted back to the message list or tool set.

@@ -6598,11 +6598,15 @@ describe('AgentRuntime — mid-run observation', () => {
 
 	function buildMidRunRuntime(
 		memory: InMemoryMemory,
-		extra?: { tools?: BuiltTool[]; checkpointStorage?: CheckpointStore },
+		extra?: {
+			tools?: BuiltTool[];
+			checkpointStorage?: CheckpointStore;
+			model?: { id: string; baseURL: string };
+		},
 	): AgentRuntime {
 		return new AgentRuntime({
 			name: 'mid-run-agent',
-			model: 'openai/gpt-4o-mini',
+			model: extra?.model ?? 'openai/gpt-4o-mini',
 			instructions: 'You are a test assistant.',
 			memory,
 			tools: extra?.tools ?? [makeStepTool()],
@@ -6634,6 +6638,7 @@ describe('AgentRuntime — mid-run observation', () => {
 		const second = capturedCall(1);
 		expect(second.messages).toEqual([{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER }]);
 		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
+		expect(second.instructions).toHaveLength(2);
 
 		// The caller still receives the full response set of the turn.
 		expect(result.messages).toHaveLength(3);
@@ -6644,6 +6649,24 @@ describe('AgentRuntime — mid-run observation', () => {
 		});
 		expect(observations.length).toBeGreaterThanOrEqual(1);
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
+	});
+
+	it('merges system messages after compaction for custom OpenAI-compatible endpoints', async () => {
+		const memory = new InMemoryMemory();
+		const runtime = buildMidRunRuntime(memory, {
+			model: { id: 'custom/test-model', baseURL: 'https://example.test/v1' },
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
+
+		await runtime.generate('start work', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const second = capturedCall(1);
+		expect(second.instructions).not.toBeInstanceOf(Array);
+		expect(flattenInstructions(second.instructions)).toContain('You are a test assistant.');
+		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
 	});
 
 	it('re-derives the mask from the cursor when resuming a suspended run', async () => {
