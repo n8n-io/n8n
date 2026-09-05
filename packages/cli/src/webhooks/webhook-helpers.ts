@@ -48,6 +48,7 @@ import {
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	getExecutableNodeNames,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
@@ -748,7 +749,23 @@ export async function executeWebhook(
 			return undefined;
 		}
 
-		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext);
+		// Check only the nodes the firing trigger can actually reach, taken from THIS
+		// executing workflow so the check is pinned to the running version (not a
+		// diverging draft re-read from the DB). A disjoint branch or a second trigger's
+		// chain isn't reachable, so it never demands accounts this run won't use.
+		const rootNodes = [
+			...getExecutableNodeNames(
+				workflow.connectionsBySourceNode,
+				workflow.connectionsByDestinationNode,
+				workflowStartNode.name,
+			),
+		]
+			.map((nodeName) => workflow.nodes[nodeName])
+			.filter((node): node is INode => node !== undefined);
+
+		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext, {
+			rootNodes,
+		});
 	};
 
 	let didSendResponse = false;

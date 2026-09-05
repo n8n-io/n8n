@@ -1205,12 +1205,30 @@ export type CredentialCheckResult = {
 	credentials: CredentialCheckStatus[];
 };
 
+/**
+ * The authoritative root-workflow nodes to check, taken from the SAME workflow snapshot
+ * that is executing — the published version on a live webhook, the execution snapshot on a
+ * waiting form, the draft on a test webhook. Passing the node objects (rather than a
+ * persisted workflow id alone) fixes two things at once: it restricts the check to the
+ * nodes that can actually run on this trigger (disjoint branches and other triggers' chains
+ * are simply not in the list), AND it pins the check to the running snapshot, so a node
+ * renamed or re-wired in a draft that differs from the running version can't make the
+ * resolver silently skip a credential.
+ *
+ * When omitted, every enabled node of the persisted workflow is checked (the safe default,
+ * used by callers that only have a workflow id — e.g. the form connect panel).
+ */
+export type CredentialCheckOptions = {
+	rootNodes?: INode[];
+};
+
 export type DynamicCredentialCheckProxyProvider = {
 	checkCredentialStatus(
 		workflowId: string,
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1221,6 +1239,7 @@ export type CredentialCheckProxyFunctions = {
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
