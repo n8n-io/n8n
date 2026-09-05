@@ -1,0 +1,205 @@
+{
+	"name": "MondayCom boardItem:getAll Paginated Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-1",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "boardItem",
+				"operation": "getAll",
+				"boardId": "9876543210",
+				"groupId": "group1",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "monday-getall-paginated-1",
+			"name": "Get All Items Paginated",
+			"credentials": {
+				"mondayComApi": {
+					"id": "test-cred-1",
+					"name": "Monday.com Test"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "output-1",
+			"name": "Get All Items Paginated - Output"
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [[{ "node": "Get All Items Paginated", "type": "main", "index": 0 }]]
+		},
+		"Get All Items Paginated": {
+			"main": [[{ "node": "Get All Items Paginated - Output", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"Get All Items Paginated - Output": [
+			{
+				"json": {
+					"id": "1234567890",
+					"name": "Test Item",
+					"created_at": "2026-02-20T10:00:00Z",
+					"state": "active",
+					"subitems": [{ "id": "111222333", "name": "Subtask A" }],
+					"column_values": [
+						{
+							"id": "status",
+							"text": "Working on it",
+							"type": "status",
+							"value": "{\"index\":1}",
+							"column": {
+								"title": "Status",
+								"archived": false,
+								"description": null,
+								"settings_str": "{}"
+							}
+						},
+						{
+							"id": "connect_boards",
+							"text": null,
+							"type": "board_relation",
+							"value": null,
+							"display_value": "Related Item 1",
+							"linked_item_ids": ["5566778899"],
+							"column": {
+								"title": "Connected Board",
+								"archived": false,
+								"description": null,
+								"settings_str": "{}"
+							}
+						},
+						{
+							"id": "subtasks_col",
+							"text": null,
+							"type": "subtasks",
+							"value": null,
+							"column": {
+								"title": "Subitems",
+								"archived": false,
+								"description": null,
+								"settings_str": "{}"
+							}
+						},
+						{
+							"id": "dependency_col",
+							"text": null,
+							"type": "dependency",
+							"value": null,
+							"display_value": "Dep Item 1",
+							"linked_item_ids": ["4433221100"],
+							"column": {
+								"title": "Dependencies",
+								"archived": false,
+								"description": null,
+								"settings_str": "{}"
+							}
+						},
+						{
+							"id": "mirror_col",
+							"text": null,
+							"type": "mirror",
+							"value": null,
+							"display_value": "Mirrored Value",
+							"column": {
+								"title": "Mirror",
+								"archived": false,
+								"description": null,
+								"settings_str": "{}"
+							}
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"id": "9999999999",
+					"name": "Second Item",
+					"created_at": "2026-02-20T10:00:00Z",
+					"state": "active",
+					"subitems": [{ "id": "111222333", "name": "Subtask A" }],
+					"column_values": [
+						{
+							"id": "status",
+							"text": "Working on it",
+							"type": "status",
+							"value": "{\"index\":1}",
+							"column": {
+								"title": "Status",
+								"archived": false,
+								"description": null,
+								"settings_str": "{}"
+							}
+						},
+						{
+							"id": "connect_boards",
+							"text": null,
+							"type": "board_relation",
+							"value": null,
+							"display_value": "Related Item 1",
+							"linked_item_ids": ["5566778899"],
+							"column": {
+								"title": "Connected Board",
+								"archived": false,
+								"description": null,
+								"settings_str": "{}"
+							}
+						},
+						{
+							"id": "subtasks_col",
+							"text": null,
+							"type": "subtasks",
+							"value": null,
+							"column": {
+								"title": "Subitems",
+								"archived": false,
+								"description": null,
+								"settings_str": "{}"
+							}
+						},
+						{
+							"id": "dependency_col",
+							"text": null,
+							"type": "dependency",
+							"value": null,
+							"display_value": "Dep Item 1",
+							"linked_item_ids": ["4433221100"],
+							"column": {
+								"title": "Dependencies",
+								"archived": false,
+								"description": null,
+								"settings_str": "{}"
+							}
+						},
+						{
+							"id": "mirror_col",
+							"text": null,
+							"type": "mirror",
+							"value": null,
+							"display_value": "Mirrored Value",
+							"column": {
+								"title": "Mirror",
+								"archived": false,
+								"description": null,
+								"settings_str": "{}"
+							}
+						}
+					]
+				}
+			}
+		]
+	}
+}
