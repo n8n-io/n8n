@@ -4,6 +4,7 @@ export interface RefreshingAuthFetchOptions {
 	baseFetch: typeof fetch;
 	initialHeaders?: HeadersInit;
 	refreshHeaders?: (current: Headers) => Promise<HeadersInit | null>;
+	shouldRefresh?: () => boolean;
 	assertAllowedUrl?: (url: string) => void | Promise<void>;
 }
 
@@ -21,6 +22,7 @@ export function createRefreshingAuthFetch({
 	baseFetch,
 	initialHeaders,
 	refreshHeaders,
+	shouldRefresh,
 	assertAllowedUrl,
 }: RefreshingAuthFetchOptions): typeof fetch {
 	let authHeaders = new Headers(initialHeaders);
@@ -51,6 +53,10 @@ export function createRefreshingAuthFetch({
 			requestInput: RequestInfo | URL,
 			requestInit?: RequestInit,
 		): Promise<Response> => {
+			if (sendAuth && refreshHeaders && shouldRefresh?.()) {
+				await refresh();
+			}
+
 			const requestAuthVersion = authVersion;
 			const execute = async () =>
 				await baseFetch(requestInput instanceof Request ? requestInput.clone() : requestInput, {

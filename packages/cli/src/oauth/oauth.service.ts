@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { LockNamespace, LockService, Logger, SingleFlightLease } from '@n8n/backend-common';
 import {
 	OutboundHttp,
 	SsrfProtectionService,
@@ -9,6 +9,7 @@ import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
@@ -94,6 +95,17 @@ export type OauthFlowState = {
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
 const OAUTH_REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds; // This might be added to a OAuth Config (there is currently none)
 
+export interface OAuth2CredentialRefreshResult {
+	headers: Record<string, string>;
+	expiresAt?: number;
+	expiresInSeconds?: number;
+}
+
+export interface OAuth2CredentialTokenRevision {
+	accessToken?: string;
+	expiresAt?: number;
+}
+
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
 	return value === 'true';
@@ -119,8 +131,11 @@ export class InvalidOAuthUrlError extends BadRequestError {
 
 @Service()
 export class OauthService {
+	private readonly oauth2Refreshes = new SingleFlightLease<OAuth2CredentialRefreshResult | null>();
+
 	constructor(
 		protected readonly logger: Logger,
+		private readonly lockService: LockService,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
@@ -717,21 +732,75 @@ export class OauthService {
 		refreshedData: ClientOAuth2TokenData,
 		resource?: string,
 	) {
-		return {
+		const merged = {
 			...oauthTokenData,
 			...refreshedData,
 			...(!refreshedData.resource && resource ? { resource } : {}),
 		};
+		const expiresInSeconds = Number(merged.expires_in);
+		return Number.isFinite(expiresInSeconds) && expiresInSeconds > 0
+			? {
+					...merged,
+					n8n_expires_at: String(Date.now() + expiresInSeconds * 1000),
+				}
+			: merged;
+	}
+
+	private getOAuth2AccessToken(tokenData: unknown): string | undefined {
+		if (!isRecord(tokenData)) return undefined;
+		const accessToken = tokenData.access_token ?? tokenData.accessToken;
+		return typeof accessToken === 'string' && accessToken.length > 0 ? accessToken : undefined;
+	}
+
+	private getOAuth2TokenRevision(tokenData: unknown): OAuth2CredentialTokenRevision {
+		const accessToken = this.getOAuth2AccessToken(tokenData);
+		const expiresAt = isRecord(tokenData) ? Number(tokenData.n8n_expires_at) : Number.NaN;
+		return {
+			...(accessToken ? { accessToken } : {}),
+			...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
+		};
+	}
+
+	private oauth2TokenRevisionChanged(
+		initial: OAuth2CredentialTokenRevision,
+		current: ClientOAuth2TokenData,
+	): boolean {
+		const currentRevision = this.getOAuth2TokenRevision(current);
+		return (
+			initial.accessToken !== currentRevision.accessToken ||
+			initial.expiresAt !== currentRevision.expiresAt
+		);
+	}
+
+	private buildOAuth2RefreshResult(
+		tokenData: ClientOAuth2TokenData,
+		accessToken = this.getOAuth2AccessToken(tokenData),
+	): OAuth2CredentialRefreshResult | null {
+		if (!accessToken) return null;
+
+		const expiresAt = Number(tokenData.n8n_expires_at);
+		const expiresInSeconds = Number(tokenData.expires_in);
+		return {
+			headers: { Authorization: `Bearer ${accessToken}` },
+			...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
+			...(Number.isFinite(expiresInSeconds) && expiresInSeconds > 0 ? { expiresInSeconds } : {}),
+		};
+	}
+
+	private isRevokedOAuth2GrantError(error: unknown): boolean {
+		if (!(error instanceof OAuth2AuthError)) return false;
+		return (error.body as { error?: unknown } | undefined)?.error === 'invalid_grant';
 	}
 
 	/**
-	 * Refresh the OAuth2 token stored on a credential by id, persist the refreshed token data,
-	 * and return the new auth headers to inject into outbound requests.
+	 * Refresh the OAuth2 token stored on a credential by ID. Save the new token data.
+	 * Return the auth headers and expiry time for outbound requests.
 	 */
 	async refreshOAuth2CredentialById(
 		credentialId: string,
 		projectId: string,
-	): Promise<Record<string, string> | null> {
+		knownTokenRevision?: OAuth2CredentialTokenRevision,
+	): Promise<OAuth2CredentialRefreshResult | null> {
 		const credential = await this.credentialsRepository.findOne({
 			where: { id: credentialId, usageScope: 'project' },
 			relations: { shared: true },
@@ -743,49 +812,88 @@ export class OauthService {
 		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
 		if (!oauthTokenData) return null;
+		const tokenRevision = knownTokenRevision ?? this.getOAuth2TokenRevision(oauthTokenData);
 
-		const resource = this.resolveOAuth2Resource(oauthCredentials, oauthTokenData);
-		const oAuthClient = this.createOAuth2ClientForRefresh(oauthCredentials, resource);
+		const runRefresh = async (): Promise<OAuth2CredentialRefreshResult | null> => {
+			const currentCredential = await this.credentialsRepository.findOne({
+				where: { id: credentialId, usageScope: 'project' },
+				relations: { shared: true },
+			});
+			if (!currentCredential) return null;
+			if (!this.credentialIsAccessibleToProject(currentCredential, projectId)) return null;
 
-		const token = oAuthClient.createToken(
-			{
-				...oauthTokenData,
-				...(oauthTokenData.access_token ? { access_token: oauthTokenData.access_token } : {}),
-				...(oauthTokenData.refresh_token ? { refresh_token: oauthTokenData.refresh_token } : {}),
+			const currentOAuthCredentials =
+				await this.getOAuthCredentials<OAuth2CredentialData>(currentCredential);
+			const currentTokenData = currentOAuthCredentials.oauthTokenData as
+				| ClientOAuth2TokenData
+				| undefined;
+			if (!currentTokenData) return null;
+
+			if (this.oauth2TokenRevisionChanged(tokenRevision, currentTokenData)) {
+				return this.buildOAuth2RefreshResult(currentTokenData);
+			}
+
+			const resource = this.resolveOAuth2Resource(currentOAuthCredentials, currentTokenData);
+			const oAuthClient = this.createOAuth2ClientForRefresh(currentOAuthCredentials, resource);
+			const token = oAuthClient.createToken(
+				{
+					...currentTokenData,
+					...(currentTokenData.access_token ? { access_token: currentTokenData.access_token } : {}),
+					...(currentTokenData.refresh_token
+						? { refresh_token: currentTokenData.refresh_token }
+						: {}),
+				},
+				currentTokenData.token_type,
+			);
+
+			let refreshed;
+			try {
+				refreshed =
+					currentOAuthCredentials.grantType === 'clientCredentials'
+						? await token.client.credentials.getToken()
+						: await token.refresh();
+			} catch (error) {
+				if (this.isRevokedOAuth2GrantError(error)) {
+					throw new UserError('This credential needs to be reconnected.', { cause: error });
+				}
+				this.logger.warn('Failed to refresh OAuth2 token for credential', {
+					credentialId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return null;
+			}
+
+			const refreshedTokenData = this.mergeRefreshedOAuthTokenData(
+				currentTokenData,
+				refreshed.data,
+				resource,
+			);
+
+			try {
+				await this.encryptAndSaveData(currentCredential, { oauthTokenData: refreshedTokenData });
+			} catch (error) {
+				this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
+					credentialId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				throw new OperationalError('Could not save the refreshed OAuth2 token.', { cause: error });
+			}
+
+			return this.buildOAuth2RefreshResult(refreshedTokenData, refreshed.accessToken);
+		};
+
+		return await this.oauth2Refreshes.run(credentialId, runRefresh, {
+			lockService: this.lockService,
+			namespace: LockNamespace.CREDENTIALS,
+			waitTimeoutMs: 10_000,
+			leaseTtlMs: 30_000,
+			onLeaseTimeout: (error) => {
+				this.logger.warn('Could not acquire the OAuth2 credential refresh lock', {
+					credentialId,
+					error: error.message,
+				});
 			},
-			oauthTokenData.token_type,
-		);
-
-		let refreshed;
-		try {
-			refreshed =
-				oauthCredentials.grantType === 'clientCredentials'
-					? await token.client.credentials.getToken()
-					: await token.refresh();
-		} catch (error) {
-			this.logger.warn('Failed to refresh OAuth2 token for credential', {
-				credentialId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return null;
-		}
-
-		const refreshedTokenData = this.mergeRefreshedOAuthTokenData(
-			oauthTokenData,
-			refreshed.data,
-			resource,
-		);
-
-		try {
-			await this.encryptAndSaveData(credential, { oauthTokenData: refreshedTokenData });
-		} catch (error) {
-			this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
-				credentialId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-
-		return { Authorization: `Bearer ${refreshed.accessToken}` };
+		});
 	}
 
 	/**
