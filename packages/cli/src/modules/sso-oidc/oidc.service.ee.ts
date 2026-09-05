@@ -21,8 +21,6 @@ import { inspect } from 'util';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
 import {
@@ -32,6 +30,7 @@ import {
 	reloadAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
+import { SsoProvisioningHooks } from '@/sso.ee/sso-provisioning-hooks';
 
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 
@@ -100,7 +99,7 @@ export class OidcService {
 		private readonly logger: Logger,
 		private readonly jwtService: JwtService,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly provisioningService: ProvisioningService,
+		private readonly provisioningHooks: SsoProvisioningHooks,
 		private readonly outboundHttp: OutboundHttp,
 	) {}
 
@@ -236,14 +235,10 @@ export class OidcService {
 		const prompt = this.oidcConfig.prompt;
 		const authenticationContextClassReference = this.oidcConfig.authenticationContextClassReference;
 
-		const provisioningConfig = await this.provisioningService.getConfig();
-		const provisioningEnabled =
-			provisioningConfig.scopesProvisionInstanceRole ||
-			provisioningConfig.scopesProvisionProjectRoles;
-
 		// Include the custom n8n scope if provisioning is enabled
-		const baseScope = provisioningEnabled
-			? `openid email profile ${provisioningConfig.scopesName}`
+		const provisioningScope = await this.provisioningHooks.getOidcScope();
+		const baseScope = provisioningScope
+			? `openid email profile ${provisioningScope}`
 			: 'openid email profile';
 
 		const additionalScopes = this.oidcConfig.additionalScopes.trim();
@@ -490,13 +485,9 @@ export class OidcService {
 		const state = this.generateState(true);
 		const nonce = this.generateNonce();
 
-		const provisioningConfig = await this.provisioningService.getConfig();
-		const provisioningEnabled =
-			provisioningConfig.scopesProvisionInstanceRole ||
-			provisioningConfig.scopesProvisionProjectRoles;
-
-		const baseScope = provisioningEnabled
-			? `openid email profile ${provisioningConfig.scopesName}`
+		const provisioningScope = await this.provisioningHooks.getOidcScope();
+		const baseScope = provisioningScope
+			? `openid email profile ${provisioningScope}`
 			: 'openid email profile';
 
 		const additionalScopes = config.additionalScopes.trim();
@@ -601,20 +592,7 @@ export class OidcService {
 		claims: Record<string, unknown>,
 		userInfo: Record<string, unknown>,
 	) {
-		if (await this.provisioningService.isExpressionMappingEnabled()) {
-			const context = buildOidcClaimsContext(claims, userInfo);
-			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
-			return;
-		}
-
-		const provisioningConfig = await this.provisioningService.getConfig();
-		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
-		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
-		// Called even when the claim is missing so the configured default condition applies
-		await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
-		if (projectRoleMapping) {
-			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping);
-		}
+		await this.provisioningHooks.provisionRoles(user, { provider: 'oidc', claims, userInfo });
 	}
 
 	/**
@@ -625,11 +603,7 @@ export class OidcService {
 		claims: Record<string, unknown>,
 		userInfo: Record<string, unknown>,
 	) {
-		const provisioningConfig = await this.provisioningService.getConfig();
-		await this.provisioningService.assertSsoLoginAllowed(
-			buildOidcClaimsContext(claims, userInfo),
-			claims[provisioningConfig.scopesInstanceRoleClaimName],
-		);
+		await this.provisioningHooks.assertLoginAllowed({ provider: 'oidc', claims, userInfo });
 	}
 
 	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
