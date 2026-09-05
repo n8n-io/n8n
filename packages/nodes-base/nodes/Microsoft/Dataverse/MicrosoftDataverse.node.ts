@@ -14,7 +14,7 @@ export class MicrosoftDataverse implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Dataverse',
 		name: 'microsoftDataverse',
-		icon: { light: 'file:microsoftDataverse.svg', dark: 'file:microsoftDataverse.dark.svg' },
+		icon: 'file:microsoftDataverse.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
