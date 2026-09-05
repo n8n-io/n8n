@@ -97,6 +97,60 @@ export class TestNode implements INodeType {
 }`;
 }
 
+/** `description = { … } as INodeTypeDescription` — a widely used node layout. */
+function createTypeAssertedNodeCode(icon: string): string {
+	return `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		icon: '${icon}',
+		group: ['input'],
+		version: 1,
+		description: 'A test node',
+		defaults: {
+			name: 'Test Node',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	} as INodeTypeDescription;
+}`;
+}
+
+/**
+ * Versioned node layout from the node-building docs: the version class assigns
+ * `description` in its constructor instead of as a property initializer.
+ */
+function createVersionedNodeCode(icon: string): string {
+	return `
+import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNodeV1 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			displayName: 'Test Node',
+			name: 'testNode',
+			icon: '${icon}',
+			group: ['input'],
+			version: 1,
+			description: 'A test node',
+			defaults: {
+				name: 'Test Node',
+			},
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [],
+		};
+	}
+}`;
+}
+
 function createCredentialCode(icon?: string | { light: string; dark: string }): string {
 	let iconProperty = '';
 	if (icon) {
@@ -161,6 +215,16 @@ ruleTester.run('icon-validation', IconValidationRule, {
 				},
 				true,
 			),
+		},
+		{
+			name: 'node with type-asserted description and a valid icon',
+			filename: nodeFilePath,
+			code: createTypeAssertedNodeCode('file:icons/TestNode.svg'),
+		},
+		{
+			name: 'versioned node assigning description in its constructor with a valid icon',
+			filename: nodeFilePath,
+			code: createVersionedNodeCode('file:icons/TestNode.svg'),
 		},
 		{
 			name: 'credential with valid string icon',

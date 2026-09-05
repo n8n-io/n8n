@@ -44,6 +44,62 @@ export class TestNode implements INodeType {
 }`;
 }
 
+// The autofix inserts a fixed `,\n\t\tusableAsTool: true`, so the expected
+// output below reuses that exact indentation.
+const AUTOFIXED_USABLE_AS_TOOL = ',\n\t\tusableAsTool: true';
+
+/** `description = { … } as INodeTypeDescription` — a widely used node layout. */
+function createTypeAssertedNodeCode(usableAsTool: boolean = false): string {
+	return `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['input'],
+		version: 1,
+		description: 'A test node',
+		defaults: {
+			name: 'Test Node',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: []${usableAsTool ? AUTOFIXED_USABLE_AS_TOOL : ''},
+	} as INodeTypeDescription;
+}`;
+}
+
+/**
+ * Versioned node layout from the node-building docs: the version class assigns
+ * `description` in its constructor instead of as a property initializer.
+ */
+function createVersionedNodeCode(usableAsTool: boolean = false): string {
+	return `
+import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNodeV1 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			displayName: 'Test Node',
+			name: 'testNode',
+			group: ['input'],
+			version: 1,
+			description: 'A test node',
+			defaults: {
+				name: 'Test Node',
+			},
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: []${usableAsTool ? AUTOFIXED_USABLE_AS_TOOL : ''},
+		};
+	}
+}`;
+}
+
 function createNonNodeClass(): string {
 	return `
 export class RegularClass {
@@ -201,6 +257,18 @@ ruleTester.run('node-usable-as-tool', NodeUsableAsToolRule, {
 			code: createNodeCodeWithOutputsInputs("['ai_agent']", "['main']"),
 			errors: [{ messageId: 'missingUsableAsTool' }],
 			output: createNodeCodeWithOutputsInputs("['ai_agent']", "['main']", true),
+		},
+		{
+			name: 'node with type-asserted description missing usableAsTool property',
+			code: createTypeAssertedNodeCode(),
+			errors: [{ messageId: 'missingUsableAsTool' }],
+			output: createTypeAssertedNodeCode(true),
+		},
+		{
+			name: 'versioned node assigning description in its constructor missing usableAsTool property',
+			code: createVersionedNodeCode(),
+			errors: [{ messageId: 'missingUsableAsTool' }],
+			output: createVersionedNodeCode(true),
 		},
 	],
 });

@@ -111,6 +111,54 @@ export class TestNode implements INodeType {
 }`;
 }
 
+/** `description = { … } as INodeTypeDescription` — a widely used node layout. */
+function createTypeAssertedNodeMissingSubtitle(): string {
+	return `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		icon: 'file:testNode.svg',
+		group: ['transform'],
+		version: 1,
+		description: 'Test node description',
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	} as INodeTypeDescription;
+}`;
+}
+
+/**
+ * Versioned node layout from the node-building docs: the version class assigns
+ * `description` in its constructor instead of as a property initializer.
+ */
+function createVersionedNodeMissingSubtitle(): string {
+	return `
+import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNodeV1 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			displayName: 'Test Node',
+			name: 'testNode',
+			icon: 'file:testNode.svg',
+			group: ['transform'],
+			version: 1,
+			description: 'Test node description',
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [],
+		};
+	}
+}`;
+}
+
 function createRegularClass(): string {
 	return `
 export class RegularClass {
@@ -165,6 +213,18 @@ ruleTester.run('require-node-description-fields', RequireNodeDescriptionFieldsRu
 			name: 'class extending Node missing subtitle',
 			filename: nodeFilePath,
 			code: createNodeExtendsBaseMissingSubtitle(),
+			errors: [{ messageId: 'missingField', data: { field: 'subtitle' } }],
+		},
+		{
+			name: 'node with type-asserted description missing subtitle',
+			filename: nodeFilePath,
+			code: createTypeAssertedNodeMissingSubtitle(),
+			errors: [{ messageId: 'missingField', data: { field: 'subtitle' } }],
+		},
+		{
+			name: 'versioned node assigning description in its constructor missing subtitle',
+			filename: nodeFilePath,
+			code: createVersionedNodeMissingSubtitle(),
 			errors: [{ messageId: 'missingField', data: { field: 'subtitle' } }],
 		},
 	],

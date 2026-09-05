@@ -3,7 +3,7 @@ import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
 import {
 	isNodeTypeClass,
-	findClassProperty,
+	findNodeDescriptionObject,
 	findObjectProperty,
 	getStringLiteralValue,
 	isFileType,
@@ -29,11 +29,7 @@ export const ResourceOperationPatternRule = createRule({
 			return {};
 		}
 
-		const analyzeNodeDescription = (descriptionValue: TSESTree.Expression | null): void => {
-			if (!descriptionValue || descriptionValue.type !== AST_NODE_TYPES.ObjectExpression) {
-				return;
-			}
-
+		const analyzeNodeDescription = (descriptionValue: TSESTree.ObjectExpression): void => {
 			const propertiesProperty = findObjectProperty(descriptionValue, 'properties');
 			if (
 				!propertiesProperty?.value ||
@@ -92,12 +88,12 @@ export const ResourceOperationPatternRule = createRule({
 					return;
 				}
 
-				const descriptionProperty = findClassProperty(node, 'description');
-				if (!descriptionProperty) {
+				const descriptionValue = findNodeDescriptionObject(node);
+				if (!descriptionValue) {
 					return;
 				}
 
-				analyzeNodeDescription(descriptionProperty.value);
+				analyzeNodeDescription(descriptionValue);
 			},
 		};
 	},

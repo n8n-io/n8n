@@ -3,6 +3,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import {
 	createRule,
 	findClassProperty,
+	findNodeDescriptionObject,
 	findObjectProperty,
 	isNodeTypeClass,
 	WEBHOOK_LIFECYCLE_METHODS,
@@ -68,11 +69,8 @@ export const WebhookLifecycleCompleteRule = createRule({
 			ClassDeclaration(node) {
 				if (!isNodeTypeClass(node)) return;
 
-				const descriptionProperty = findClassProperty(node, 'description');
-				if (!descriptionProperty) return;
-
-				const descriptionValue = descriptionProperty.value;
-				if (descriptionValue?.type !== AST_NODE_TYPES.ObjectExpression) return;
+				const descriptionValue = findNodeDescriptionObject(node);
+				if (!descriptionValue) return;
 
 				const webhookMethodsProperty = findClassProperty(node, 'webhookMethods');
 
