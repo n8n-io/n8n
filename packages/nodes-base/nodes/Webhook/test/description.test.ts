@@ -1,5 +1,10 @@
 import type { IDataObject, INodeParameters, INodeType, INodeTypes } from 'n8n-workflow';
-import { Workflow, WEBHOOK_RESOLVERS, webhookDescriptionIsNativelyResolvable } from 'n8n-workflow';
+import {
+	Workflow,
+	WEBHOOK_RESOLVERS,
+	isSimpleExpression,
+	webhookDescriptionIsNativelyResolvable,
+} from 'n8n-workflow';
 
 import { defaultWebhookDescription } from '../description';
 import { Webhook } from '../Webhook.node';
@@ -54,9 +59,11 @@ describe('defaultWebhookDescription', () => {
 			responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
 			path: '={{$parameter["path"]}}',
 		});
-		// The function-body templates inline the functions' source, as before.
-		expect(defaultWebhookDescription.responseCode).toMatch(/^=\{\{\(.+\)\(\$parameter\)\}\}$/s);
-		expect(defaultWebhookDescription.responseData).toMatch(/^=\{\{\(.+\)\(\$parameter\)\}\}$/s);
+		// responseCode/responseData are hand-written in the simple-expression
+		// grammar (fromExpression) so the host-side fast path can evaluate
+		// them; the parity suite below pins them to their resolvers.
+		expect(isSimpleExpression(String(defaultWebhookDescription.responseCode).slice(1))).toBe(true);
+		expect(isSimpleExpression(String(defaultWebhookDescription.responseData).slice(1))).toBe(true);
 	});
 
 	describe('resolvers match their templates', () => {

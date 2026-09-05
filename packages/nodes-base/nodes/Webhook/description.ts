@@ -4,7 +4,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookDescription,
 } from 'n8n-workflow';
-import { fromFunction, fromParameter, webhookDescriptionFields } from 'n8n-workflow';
+import { fromExpression, fromParameter, webhookDescriptionFields } from 'n8n-workflow';
 
 import { getResponseCode, getResponseData } from './utils';
 
@@ -22,14 +22,31 @@ const n8nOAuth2AuthOption: INodePropertyOptions = {
 // Each field declares its expression template and native resolver in one place:
 // the editor evaluates the generated template strings, while the backend reads
 // parameters directly (no expression engine) whenever they are static.
+//
+// TODO(simple-path rollout): once lazy isolate acquisition and the
+// simple-expression fast path are the defaults, replace every fromParameter/
+// fromExpression declaration below with its plain inline template string and
+// drop the webhookDescriptionFields wrapper — the resolvers only exist to
+// predict engine use, which the fast path makes unnecessary.
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
 	isFullPath: true,
 	...webhookDescriptionFields({
 		httpMethod: fromParameter('httpMethod', 'GET'),
-		responseCode: fromFunction(getResponseCode),
+		// The templates for responseCode/responseData are hand-written in the
+		// simple-expression grammar so the host-side fast path can evaluate
+		// them without an engine. They mirror getResponseCode/getResponseData
+		// branch for branch; description.test.ts executes both across every
+		// branch to pin the parity.
+		responseCode: fromExpression(
+			'={{ $parameter.responseCode || ($parameter.options?.responseCode?.values ? ($parameter.options.responseCode.values.customCode || $parameter.options.responseCode.values.responseCode) : 200) }}',
+			getResponseCode,
+		),
 		responseMode: fromParameter('responseMode'),
-		responseData: fromFunction(getResponseData),
+		responseData: fromExpression(
+			"={{ $parameter.responseData || ($parameter.responseMode === 'onReceived' && $parameter.options?.responseData ? $parameter.options.responseData : ($parameter.options?.noResponseBody ? 'noData' : undefined)) }}",
+			getResponseData,
+		),
 		responseBinaryPropertyName: fromParameter('responseBinaryPropertyName'),
 		responseContentType: fromParameter(['options', 'responseContentType']),
 		responsePropertyName: fromParameter(['options', 'responsePropertyName']),
