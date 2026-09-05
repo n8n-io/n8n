@@ -9,6 +9,28 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+// A multiOptions parameter normally resolves to an array. When its value comes
+// from an expression that is wrapped in surrounding text/whitespace, n8n
+// switches to string interpolation and the array is coerced to a comma-joined
+// string. Accept both shapes so the node degrades gracefully instead of
+// throwing a low-level "join is not a function" TypeError.
+export function toMultiOptionsCsv(value: unknown): string {
+	if (Array.isArray(value)) {
+		return value
+			.map((entry) => String(entry).trim())
+			.filter((entry) => entry.length > 0)
+			.join(',');
+	}
+	if (typeof value === 'string') {
+		return value
+			.split(',')
+			.map((entry) => entry.trim())
+			.filter((entry) => entry.length > 0)
+			.join(',');
+	}
+	return '';
+}
+
 export async function hunterApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
