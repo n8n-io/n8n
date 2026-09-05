@@ -215,6 +215,9 @@ jobs:
       collectCoverage: ${{ github.event_name != 'merge_group' }}
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
+      # The DB matrix's "SQLite Pooled" leg runs the full cli integration
+      # suite with the same command and environment as the scoped step.
+      skipCliIntegration: ${{ needs.install-and-build.outputs.db == 'true' }}
     secrets: inherit
 
   typecheck:
