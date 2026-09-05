@@ -791,7 +791,14 @@ describe('CommunityPackagesService', () => {
 			expect(execFile).toHaveBeenCalledTimes(1);
 			expect(execFile).toHaveBeenCalledWith(
 				'tar',
-				['-xzf', testBlockTarballName, '-C', testBlockPackageDir, '--strip-components=1'],
+				[
+					'-xzf',
+					testBlockTarballName,
+					'-C',
+					testBlockPackageDir,
+					'--strip-components=1',
+					'--no-same-owner',
+				],
 				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
 			);
@@ -888,12 +895,71 @@ describe('CommunityPackagesService', () => {
 	});
 
 	describe('installPackage', () => {
+		const PACKAGE_NAME = 'n8n-nodes-test';
+		const packageDirectory = `${nodesDownloadDir}/node_modules/${PACKAGE_NAME}`;
+		const tarballName = `${PACKAGE_NAME}-1.0.0.tgz`;
+
+		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
+			loadedNodes: [{ name: 'a-node-from-the-loader', version: 1 }],
+		});
+		const installedPackage = mock<InstalledPackages>({ packageName: PACKAGE_NAME });
+
+		beforeEach(() => {
+			config.unverifiedEnabled = true;
+			config.registry = 'some.random.host';
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+			mocked(execFile).mockImplementation(execMock);
+			mocked(executeNpmCommand).mockImplementation(async (args: string[]) =>
+				args[0] === 'pack' ? tarballName : 'Done',
+			);
+			mocked(readFile).mockResolvedValue(
+				JSON.stringify({
+					name: PACKAGE_NAME,
+					version: '1.0.0',
+					dependencies: { 'some-actual-dep': '1.2.3' },
+				}),
+			);
+
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(packageDirectoryLoader);
+			installedPackageRepository.saveInstalledPackageWithNodes.mockResolvedValue(installedPackage);
+		});
+
 		test('should throw when installation of not vetted packages is forbidden', async () => {
 			config.unverifiedEnabled = false;
 			config.registry = 'https://registry.npmjs.org';
 			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
 				'Installation of unverified community packages is forbidden!',
 			);
+		});
+
+		test('should extract the tarball without applying file ownership stored in the archive', async () => {
+			await communityPackagesService.installPackage(PACKAGE_NAME, '1.0.0');
+
+			// npm tarballs store uid=0/gid=0 in their entry headers; busybox tar (Alpine
+			// docker image) applies that ownership even as non-root unless --no-same-owner
+			// is passed, leaving the extracted files unreadable for the runtime user
+			expect(execFile).toHaveBeenCalledTimes(1);
+			expect(execFile).toHaveBeenCalledWith(
+				'tar',
+				['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1', '--no-same-owner'],
+				{ cwd: nodesDownloadDir },
+				expect.any(Function),
+			);
+		});
+
+		test('should propagate the error and still delete the tarball when extraction fails', async () => {
+			mocked(execFile).mockImplementation(((...args) => {
+				const callback = args[args.length - 1] as ExecFileCallback;
+				callback(new Error('tar: invalid option'), '', '');
+			}) as typeof execFile);
+
+			await expect(communityPackagesService.installPackage(PACKAGE_NAME, '1.0.0')).rejects.toThrow(
+				'tar: invalid option',
+			);
+
+			expect(rm).toHaveBeenCalledWith(path.join(nodesDownloadDir, tarballName));
+			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
 		});
 	});
 
