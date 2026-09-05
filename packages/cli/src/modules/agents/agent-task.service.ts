@@ -21,6 +21,7 @@ import {
 	diffAgentConfigParts,
 } from './agent-modification-telemetry.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentTaskJobRegistrar } from './scheduling/agent-task-job-registrar';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
@@ -72,6 +73,7 @@ export class AgentTaskService {
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly publisher: Publisher,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly durableJobRegistrar: AgentTaskJobRegistrar,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -327,6 +329,13 @@ export class AgentTaskService {
 	 * harmless.
 	 */
 	async requestReconcile(agentId: string): Promise<void> {
+		// Durable scheduling is database state. The main that handles the request
+		// writes it directly. There is no cron to register and no peer to broadcast to.
+		if (this.durableJobRegistrar.isEnabled()) {
+			await this.durableJobRegistrar.reconcile(agentId);
+			return;
+		}
+
 		await this.registerEnabledForAgent(agentId);
 		this.broadcastTasksChanged(agentId);
 	}
@@ -338,6 +347,12 @@ export class AgentTaskService {
 	 * Used by the local lifecycle path and the pubsub reconcile handler.
 	 */
 	async registerEnabledForAgent(agentId: string): Promise<void> {
+		// With durable scheduling on, no main can hold in-memory crons. If the
+		// leader registers them next to the durable jobs, every task runs twice
+		// per tick. The guard is here so that it also covers the pubsub reconcile
+		// path, for example a broadcast from a peer on the legacy path.
+		if (this.durableJobRegistrar.isEnabled()) return;
+
 		const agent = await this.agentRepository.findOne({
 			where: { id: agentId },
 			relations: { activeVersion: true },
@@ -384,6 +399,10 @@ export class AgentTaskService {
 
 	@OnLeaderTakeover()
 	async reconnectAll(): Promise<void> {
+		// Durable jobs live in the database and survive leader changes. There is
+		// nothing to rebuild on takeover.
+		if (this.durableJobRegistrar.isEnabled()) return;
+
 		const agents = await this.agentRepository.find({
 			where: { activeVersionId: Not(IsNull()) },
 			relations: { activeVersion: true },
@@ -481,33 +500,54 @@ export class AgentTaskService {
 	// ── Run ───────────────────────────────────────────────────────────────
 
 	private async runScheduledTask(agentId: string, taskId: string): Promise<void> {
-		const holderId = randomUUID();
-		let lock: AgentTaskRunLockHandle | null = null;
-		let renewInterval: ReturnType<typeof setInterval> | undefined;
 		try {
-			lock = await this.taskRunLockRepository.acquire(agentId, taskId, {
-				holderId,
-				ttlMs: TASK_RUN_LOCK_TTL_MS,
-			});
-			if (!lock) {
-				this.logger.info('[AgentTaskService] Skipping task because previous run is still active', {
-					taskId,
-					agentId,
-				});
-				return;
-			}
-
-			renewInterval = this.startTaskRunLockRenewal(lock);
-			await this.runTask(agentId, taskId);
+			await this.startScheduledRun(agentId, taskId);
 		} catch (error) {
 			this.logger.error('[AgentTaskService] Scheduled task lock failed', {
 				taskId,
 				agentId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-		} finally {
-			if (renewInterval) clearInterval(renewInterval);
-			if (lock) {
+		}
+	}
+
+	/**
+	 * Takes the run lock and starts the task run in the background. Resolves as
+	 * soon as the lock decision is made. Both schedulers enter here: the
+	 * in-memory cron through `runScheduledTask`, and the durable handler
+	 * directly. The handler must report its dispatch decision within the lease
+	 * of the occurrence, so it cannot wait for a run that takes minutes.
+	 *
+	 * A lock-acquisition error propagates to the caller. The background
+	 * continuation logs run errors. It also renews the lock while the run lasts,
+	 * and releases the lock after the run.
+	 */
+	async startScheduledRun(agentId: string, taskId: string): Promise<'started' | 'skipped-active'> {
+		const holderId = randomUUID();
+		const lock = await this.taskRunLockRepository.acquire(agentId, taskId, {
+			holderId,
+			ttlMs: TASK_RUN_LOCK_TTL_MS,
+		});
+		if (!lock) {
+			this.logger.info('[AgentTaskService] Skipping task because previous run is still active', {
+				taskId,
+				agentId,
+			});
+			return 'skipped-active';
+		}
+
+		const renewInterval = this.startTaskRunLockRenewal(lock);
+		void (async () => {
+			try {
+				await this.runTask(agentId, taskId);
+			} catch (error) {
+				this.logger.error('[AgentTaskService] Scheduled task run failed', {
+					taskId,
+					agentId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			} finally {
+				clearInterval(renewInterval);
 				await this.taskRunLockRepository.release(lock).catch((error) => {
 					this.logger.warn('[AgentTaskService] Failed to release task run lock', {
 						taskId,
@@ -516,7 +556,8 @@ export class AgentTaskService {
 					});
 				});
 			}
-		}
+		})();
+		return 'started';
 	}
 
 	private startTaskRunLockRenewal(lock: AgentTaskRunLockHandle): ReturnType<typeof setInterval> {
