@@ -11,8 +11,10 @@ describe('formatWorkflowLoopGuidance', () => {
 				summary: 'All good',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('Workflow verified successfully');
-			expect(result).toContain('Report completion');
+			expect(result).toContain('Inspect the latest structured evidence');
+			expect(result).toContain('simulated steps and untested required paths');
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('Report the supported result and any remaining limits');
 			expect(result).not.toContain('Workflow ID:');
 		});
 
@@ -44,7 +46,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).not.toContain('credentials(action="setup")');
-			expect(result).toContain('Report completion');
+			expect(result).toContain('Report the supported result and any remaining limits');
 		});
 
 		it('should include credential instructions when mockedCredentialTypes has entries', () => {
@@ -175,7 +177,9 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('workflows(action="get-as-code", workflowId)');
 			expect(result).toContain('Build/save success only means a workflow was saved');
 			expect(result).toContain('verify-built-workflow');
-			expect(result).toContain('safe to call multiple times');
+			expect(result).toContain(
+				'Repeat only for a distinct required scenario or after a justified repair',
+			);
 			expect(result).toContain('fixtureOverrides');
 		});
 

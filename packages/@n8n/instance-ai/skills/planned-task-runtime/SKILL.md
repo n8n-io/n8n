@@ -60,17 +60,14 @@ if a workflow still has `verificationReadiness.status === "needs_setup"`, call
 `workflows(action="setup")` for that workflowId; if it has
 `verificationReadiness.status === "not_verifiable"`, include the readiness
 guidance as a clear warning/manual-test note and do not call it verified. Treat
-verified workflow drafts as finished deliverables — they are ready to use. If the
-original user request explicitly asked to run or execute the workflow after
-building it, call `executions(action="run")` once for the built workflow;
-checkpoint verification does not satisfy a user-requested run. Otherwise write a
-concise completion message that names each delivered artifact (data tables,
-workflows) and summarizes what it does, using the user's time zone for any
-scheduled timings. Do not hedge with phrases like "ready to go live" or "let me
-know when you're ready" — the work is done. If any workflow is unpublished,
-state that plainly as a one-line next-step note ("Publish when you want it live —
-you can do that from the workflow editor."), not as a gating condition. Do not
-create another plan.
+the synthesis tag as task completion, not proof that every integration works.
+Apply the shared evidence contract to each workflow's current outcome. Name
+simulated steps, untested required paths, missing setup, and unpublished state.
+If the original user request explicitly asked to run the workflow, use the
+supported live-run route and its approval flow. Otherwise report the delivered
+artifacts and the scope checked. Use the user's time zone for schedules. Do not
+create another plan or offer publication before the post-build publication
+condition is met.
 
 ## Replan follow-up
 
@@ -124,7 +121,8 @@ workflow in this checkpoint turn and re-read/re-verify it. If a dependency outco
 contains successful `outcome.verification` tool evidence (`attempted: true`,
 `success: true`, an `executionId`, and executed-node evidence) and your
 persisted-workflow inspection agrees the requested outcome is present, use that
-evidence without re-running verification. Otherwise execute
+evidence without re-running verification only when it covers the current
+material changes and the claimed paths. Otherwise execute
 `checkpoint.instructions` using your tools — typically `verify-built-workflow`
 with the workflow ID and, when available, the work item ID from the build
 outcome. Use `fixtureOverrides` for alternate deterministic scenarios. Use
@@ -157,9 +155,11 @@ and let replan take over.
 
 When `<background-task-completed>` is present, a detached background task
 finished (for example eval setup). The `result` field holds the task's
-authoritative summary of what was actually done. **When you write the user-facing recap, take factual details —
+report of the task outcome. Check its claims against available structured
+results. **When you write the user-facing recap, take reported details —
 model IDs, node names, resource IDs, parameter values — directly from this
 `result` text.** Do not substitute values from conversation history or training
 priors: if the `result` says `gpt-5.4-mini`, write `gpt-5.4-mini`, not "GPT-4o
 mini" or any other name you associate with the provider. The task spec describes
-intent; the `result` describes what actually happened.
+intent; the `result` reports what happened. Do not promote unsupported prose
+to verified completion.

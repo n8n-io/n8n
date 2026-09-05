@@ -3,7 +3,8 @@ name: post-build-flow
 description: >-
   Handles workflow verification and setup after build-workflow succeeds, or when
   the message contains workflow-verification-follow-up or workflow-setup-required.
-  Load after direct builds, when verificationReadiness requires action, or on
+  Reuse inlined instructions after direct builds. Load when they are absent,
+  when verificationReadiness requires action, or on
   orchestrator verify/setup follow-up turns.
 recommended_tools:
   - ask-user
@@ -59,102 +60,14 @@ if the payload or prior verification evidence says mocked credentials,
 simulated node output, fixture overrides, temporary pin data, or another mocked
 input was used.
 
-### Choosing the credential type for a service
+## Credential setup references
 
-Pick in this order:
-
-1. **A dedicated credential type** (`slackApi`, `notionApi`, …) whenever one
-   exists — search with `credentials(action="search-types")`.
-2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
-   without a dedicated type whose auth is expressible as header/query/body
-   values — which covers API keys and bearer tokens (`Authorization: Bearer
-<token>` becomes `{"headers":{"Authorization":"Bearer {{api_key}}"}}`, not
-   `httpBearerAuth`). Always provide a recipe (below) so the user only pastes
-   their secret.
-3. **Plain generic types** (`httpBasicAuth`, `httpDigestAuth`, `oAuth2Api`, …)
-   only for what a template cannot express: basic auth's base64-encoded pair,
-   digest's challenge-response, OAuth flows — or when the user explicitly asks
-   for a specific plain type: an explicit user choice wins (setup accepts it
-   with `allowPlainGenericAuth: true`).
-
-### Credential recipes for Simplified Custom Auth
-
-When the workflow authenticates a service through Simplified Custom Auth,
-include `credentialHints` in the same `workflows(action="setup")` call so the
-setup card pre-fills the credential and the user only pastes their secret —
-instead of facing an empty JSON template they'd have to decode from the
-provider's docs. Before composing the hints, load the
-`credential-recipe-research` skill and execute its lookup procedure — the
-template, `docsUrl` and `testUrl` must come from the provider documentation
-it has you fetch, never from memory:
-
-- `template` — the auth request parts (headers/qs/body) exactly as documented,
-  with `{{placeholder}}` markers where the user's values go.
-- `placeholders` — one entry per marker: `name`, user-facing `title`, an
-  optional `info` clarifying the value itself — its format or which of the
-  provider's tokens it is (e.g. "Starts with tvly-"). Never where to obtain
-  it, and never a URL or domain: the user asks the AI Assistant for that from
-  the credential form. `type` is `password` unless clearly non-secret (at
-  least one placeholder must stay `password`). Add `optional: true` only when
-  the provider documents the value as optional (e.g. an org/region
-  qualifier) — template entries referencing an empty optional placeholder are
-  omitted from the request.
-- `docsUrl` — the provider page where a logged-in user CREATES/COPIES the
-  secret (e.g. `https://replicate.com/account/api-tokens`) — never the API
-  reference. Not shown in the form: the AI Assistant help thread uses it to
-  send the user to the exact page. Found via the `credential-recipe-research`
-  procedure; omit when it finds nothing conclusive.
-- `testUrl` — a documented side-effect-free GET that rejects a bad key with
-  401/403, used to verify the credential on save and later retests; never one
-  of the workflow's own endpoints, never anything billable. Found via the
-  `credential-recipe-research` procedure; omit when nothing qualifies — a
-  credential without a testUrl saves fine and honestly shows "could not be
-  verified", which beats a false green.
-- `acceptedStatusCodes` — almost always omit; the user can adjust it later on
-  the credential if a service's auth answers 401/403 to valid GETs.
-- `suggestedName` — display name for the created credential.
-
-Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
-`GET https://api.fal.ai/v1/models/usage` is a documented side-effect-free
-endpoint that rejects a bad key (the model-serving host `fal.run` is not a
-key-check endpoint):
-
-```json
-{
-	"action": "setup",
-	"workflowId": "...",
-	"credentialHints": [
-		{
-			"suggestedName": "fal.ai API Key",
-			"template": {
-				"headers": { "Authorization": "Key {{api_key}}" }
-			},
-			"placeholders": [
-				{
-					"name": "api_key",
-					"title": "fal.ai API key",
-					"info": "Key ID and secret, separated by a colon",
-					"type": "password"
-				}
-			],
-			"docsUrl": "https://fal.ai/dashboard/keys",
-			"testUrl": "https://api.fal.ai/v1/models/usage"
-		}
-	]
-}
-```
-
-Never put a real secret in a recipe — the user pastes it in the setup card and
-it is stored redacted in the credential. Add `nodeName` when several nodes use
-Simplified Custom Auth for different services. You cannot see the secret, but
-once setup reports the credential applied, treat it as fully configured — the
-`{{placeholder}}` markers live only in the template; the stored values replace
-them at request time. If a live test later fails with an auth error, that is
-the moment to have the user re-open the credential and re-paste the value.
-
-If the user defers setup instead, don't hand them manual field-by-field
-credential instructions for the n8n editor — tell them to reopen setup when
-they're ready: the card pre-fills everything except their key.
+Before selecting an auth type or composing `credentialHints`, load this skill's
+`references/credential-setup-recipes.md`. Resolve these requirements during
+pre-build discovery so a tagged setup follow-up can open its card immediately.
+Use the saved setup result to distinguish resolved, partial, and skipped items.
+On normal turns, briefly name the saved artifact and the specific remaining
+setup action. Do not reissue an unchanged partial setup card.
 
 ### Credentials the user skipped
 
@@ -210,25 +123,20 @@ when the inspected result confirms success and that every required node on the
 claimed path ran. Do not count it if mocked, simulated, fixture, or pinned output
 was used. You may offer publishing after that confirmation.
 
-For workflows produced by `build-workflow`, **always verify with
-`verify-built-workflow`, never with raw `executions(action="run")`.** It reuses
-the build outcome simulation plan, mocked credentials, and temporary pin data, so
-destructive nodes are pinned and it is safe to call repeatedly. A raw
-`executions(action="run")` runs the workflow live with no pin data, and on a
-workflow you just verified it surfaces a redundant run-approval prompt to the
-user right after verification already executed the workflow. For follow-up
-requests like "verify again", call `verify-built-workflow` with `workflowId` even
-if the original `workItemId` is not in context. For alternate deterministic
-scenarios, pass `fixtureOverrides` keyed by simulated node name instead of trying
-to force data through the trigger.
+Use the following verification route:
 
-**Reserve `executions(action="run")` for runs the user explicitly asked for**
-(e.g. "run it now", "execute it against my real data"). Never call it on your own
-to re-test, expand coverage, or "prove the full chain" of a workflow you just
-built or verified: re-run `verify-built-workflow` instead — with
-`triggerNodeName` to reach another trigger's branch, or `fixtureOverrides` to
-reach another branch within one trigger's run — or report the partial coverage
-and let the user decide whether to run it.
+| Situation | Action |
+|---|---|
+| Normal build verification or "verify again" | Use `verify-built-workflow` with the workflow ID and available work item ID. |
+| Another required trigger or branch | Use `triggerNodeName` or `fixtureOverrides` for a distinct scenario. Combine evidence only for the same current workflow. |
+| User explicitly requests a live run | Use `executions(action="run")` and its existing approval flow. Inspect the relevant node outputs. |
+| Missing setup or an untestable required path | Report the specific limit. Do not claim full verification or start a live run on your own. |
+
+Inspect each result before another attempt. Follow the shared recovery rules.
+Fixture overrides apply only to nodes classified as simulated in the build
+outcome. Do not change the requested behavior merely to make a test pass.
+
+
 If `fixtureOverrides` is rejected with `invalid_fixture_override`, the target
 node was not classified as simulated in the build outcome. Do not retry the same
 override. If that node's data controls a branch that needs verification and you
@@ -252,11 +160,11 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
   name is wrong — re-read `triggerNodes`, never fall back to editing.
 - Each pass covers its own trigger's branch, so its `nodesNotReached` will list
   the other triggers' nodes. That is expected, not a defect: coverage is the
-  **union** across passes. Only treat a node as unverified once no pass reached
+  **union** across passes. Only treat a required node as unverified when no current pass reached
   it.
 - Report per-trigger coverage — name each trigger and whether its branch ran.
-  Claim the workflow is verified only when every trigger's branch has a
-  successful pass.
+  State the scope checked and the simulation limits for each trigger. Claim
+  all required paths were checked only when the current passes cover them.
 - When the user asked for a live run, pass `triggerNodeName` to
   `executions(action="run")` the same way — one run per trigger — and report
   each branch's result.
@@ -277,7 +185,8 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      using the existing `workflowId` and `workItemId`; then inspect and verify
      again.
    - If `verificationReadiness.status === "already_verified"`, treat the
-     workflow as verified and do **not** call `verify-built-workflow` again.
+     existing evidence as reusable only for the same workflow and unchanged
+     behavior. Inspect its coverage and simulation limits before making a claim.
 
 - If `verificationReadiness.status === "ready"`, call
   `verify-built-workflow` with the `workflowId`, the `workItemId` when you
@@ -291,10 +200,11 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
   clear warning or manual-test note. This is a warning completion state, not
   a verified state and not an infinite blocker.
 
-2. Judge coverage, not just status. A `verify-built-workflow` result with
-   `success: true` but a non-empty `nodesNotReached` is **partial** evidence:
-   the execution ended early (see `lastNodeExecuted` and `coverageNote`) and
-   the listed nodes — including any planned simulations — never ran.
+2. Judge required-path coverage, not just status. Inspect `nodesNotReached`,
+   `lastNodeExecuted`, and `coverageNote`. A successful run is partial evidence
+   when a required step remains unreached across the current scenarios. Other
+   triggers, mutually exclusive branches, and intentional unused outputs can
+   be absent from one run without indicating a defect.
    - Most common cause: a lookup/query node returned zero items (n8n stops
      downstream nodes on empty item lists). If the dead-end is a Data Table
      lookup, insert a matching test row with `data-tables(action="insert-rows")`,
@@ -305,9 +215,8 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      were verified and which were not, and tell the user the unreached part
      needs a manual test. Do not start a live `executions(action="run")`
      yourself to reach those nodes; offer the user a test instead. Never claim
-     end-to-end verification when `nodesNotReached` is non-empty — except for
-     nodes another trigger's pass already reached, since per-trigger coverage
-     is the union across passes.
+     end-to-end verification while a required path remains untested. Combine
+     separate trigger and branch scenarios only for the same current workflow.
    - If the unreached nodes sit behind IF/Switch logic controlled by a live or
      nondeterministic upstream node, and alternate-branch verification is part
      of this turn's goal, first try one source-file repair: add representative
@@ -333,8 +242,8 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
 6. After setup completes or is applied, follow
    [Mocked verification live-test follow-up](#mocked-verification-live-test-follow-up)
    when the latest verification evidence used mocks or simulations. If this
-   follow-up is due, ask only whether the user wants the live test. Do not
-   mention publishing or ask about the error workflow in the same response.
+   follow-up is due, apply its rules for existing requests, declines, and
+   deferrals. Do not combine a live-test offer with publication or extra features.
    If `credentialResolutionNote` says Gateway credits are depleted,
    that note wins: do not offer a live test.
 7. Before your final summary, scan the **whole conversation** for live runs that
@@ -345,78 +254,33 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
    clean up after some future run does not discharge it, and neither does the
    user's silence. If a later run failed, that says nothing about records an
    earlier successful run left behind; they are still there.
-8. If testing has not already been offered or completed, ask whether the user
-   wants to test the workflow. Skip this if `verify-built-workflow` already
-   proved it works end-to-end with full coverage.
-9. Only call `workflows(action="publish")` when the user explicitly asks to
-   publish. Never publish automatically or proactively offer publishing before
-   the publish-readiness requirement above is met.
-10. After a direct new primary workflow is successfully published, follow
-    [Error workflow follow-up](#error-workflow-follow-up).
-    Do not replace this explicit opt-in with a generic "add
-    anything else?", publish, or test question.
+8. Do not add a generic testing or extra-feature question to every final reply.
+   Offer a next step only when it resolves a known limitation or serves the
+   current request. Do not repeat an offer the user declined or deferred.
+9. Publish only when the user asks. Apply the publication conditions above.
+10. For an explicitly requested error workflow, follow the procedure below.
 
 ## Error workflow follow-up
 
-This follow-up comes only after a direct new primary workflow is successfully published.
+Build an error workflow only when the user requests one or accepts a relevant
+offer. Do not make this an automatic question after every publication. Do not
+ask whether an error workflow needs another error workflow.
 
-If you just built an Error Trigger workflow because the user opted into adding
-one for a known target workflow, do not ask whether to build another error
-workflow. Continue the publish-before-assign flow for the target workflow:
-ask whether to publish the error workflow and set it on that target workflow,
-then publish and assign only after the user approves.
-
-After successfully publishing a direct new primary workflow,
-ask once whether the user wants to build an error workflow for that workflow.
-Use `ask-user` with a yes/no choice or a concise visible question. Do **not**
-create an error workflow before the user opts in.
-
-The opt-in must explicitly mention an error workflow and the target workflow
-name. A generic follow-up like "Want me to add anything else?", "Want me to
-publish it?", or "Want to test it?" does not satisfy this step.
-
-Skip this follow-up when:
-
-- The workflow you just built is itself an error workflow or starts with an
-  Error Trigger.
-- The build is a supporting workflow, repair, small edit, planned-task
-  subtask, or workflow-level settings patch.
-- The user already asked for an error workflow in the original request, already
-  declined one, or the target workflow already has the desired error workflow
-  set.
-
-If the user says yes:
-
-1. Load `workflow-builder` and build a separate error workflow using the user's
-   requested notification destination. Keep the error workflow scoped to the
-   target workflow the user opted in for.
-2. Do not ask whether this new error workflow needs its own error workflow.
-3. The error workflow must be published before it can be assigned. If the user
-   has not already asked you to publish and attach it, ask whether to publish it
-   and set it as the error workflow for the named target workflow. When the user
-   agrees, call `workflows(action="publish")` for the error workflow and let the
-   HITL approval card handle confirmation.
-4. After publish succeeds, set the original workflow's workflow-level
-   `settings.errorWorkflow` to the **error workflow's workflowId**. Do not use
-   the published `activeVersionId`, workflow name, a placeholder, or a local SDK
-   id. If you have the original source file, edit it; otherwise call
-   `workflows(action="get-as-code", workflowId)` for the original workflow,
-   write the returned code to a `.workflow.ts` file, add
-   `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, and call
-   `build-workflow` for the original workflow. The workflow edit approval card
-   is the HITL surface for this assignment.
-5. Summarize the result with explicit per-workflow language: this error
-   workflow was assigned only to the named target workflow. Mention that n8n has
-   no global or instance-wide error workflow setting only when the user
-   explicitly asked about, requested, or referenced global/instance-wide error
-   workflow behavior.
+Before building or attaching it, load `workflow-builder` and its
+`references/error-workflows.md` file. Use a separate workflow with an Error
+Trigger. Publish it through the existing approval flow before assigning its
+real workflow ID to the target workflow's `settings.errorWorkflow`. Keep the
+assignment scoped to the requested target. Use the bound source file and
+`build-workflow` for the target edit. Never substitute an activeVersionId,
+workflow name, placeholder, or local SDK ID.
 
 ## Mocked verification live-test follow-up
 
 After workflow setup completes or is applied, if the latest verification for
 that workflow used mocked credentials, simulated node output, fixture overrides,
-temporary pin data, or another mocked input, ask whether the user wants a live
-test without mocks. Ask only about the live test. Do not run it automatically.
+temporary pin data, or another mocked input, offer a live test once if the user has not already requested, declined, or
+deferred it. Ask only about the live test. If the user already requested it,
+continue through the existing run approval flow. Do not run it automatically.
 Do not offer publishing as an alternative or describe the workflow as ready to
 use or publish.
 
@@ -451,14 +315,10 @@ anything in an external system:
    record from an earlier turn, in your next response: which record, where, and
    how to recognise it ("a `[Test] …` to-do at the bottom of
    the toggle"). Read it back from the effect node's output rather than guessing.
-2. **Offer to remove it yourself.** You can delete it the same way you wrote it —
-   the target has an API and you can reach it with a workflow. When no node or
-   tool does it directly, build a **one-off cleanup workflow**; that is exactly
-   what `one-off-operations` is for. Never present manual deletion as how this
-   gets resolved, and never claim you have no way to delete it — "I don't have a
-   delete tool for X" is false whenever X has a write API you just used. Noting
-   that the user _could_ also remove it by hand is fine only alongside your own
-   offer.
+2. **Check the available cleanup capability.** A write API does not prove that
+   deletion is supported. Inspect the relevant tool or node documentation. Offer
+   a supported direct deletion or one-off cleanup workflow when available. If
+   neither is available, explain the limit and the documented manual procedure.
 3. **Ask before deleting.** Removal is destructive, so it goes through the usual
    approval gate. Never clean up silently — something labelled "test" may still
    be data the user wants.
@@ -475,6 +335,10 @@ wrote is the deliverable. There you offer to clean up the _workflow_, never the
 result.
 
 ## Claiming success
+
+Apply the shared evidence contract to the current workflow and its material
+changes. Earlier verification does not prove later edits. A delegate summary
+is not independent execution evidence.
 
 Do not tell the user a workflow is "fixed", "verified", "tested", "working", or
 has "no errors" unless you have a passing `verify-built-workflow`,
@@ -504,22 +368,19 @@ default path. Workflow verification is automatic from the build outcome; the
 orchestrator handles workflow setup after verification when the saved workflow
 still has mocked credentials or placeholders.
 
-**Trust the build outcome over your own source file.** When `build-workflow`
-returns `resolvedCredentialsByNode` (or `setupRequirement.status ===
-"not_required"`), the saved workflow is already connected to existing
-credentials — even if your source used an unresolved `newCredential()` call.
-Do not ask the user to connect those credentials, do not offer the setup card
+**Inspect the saved credential resolution.** When `build-workflow`
+returns a resolved credential for a node in `resolvedCredentialsByNode`, that
+node is connected to the reported credential — even if your source used an unresolved `newCredential()` call.
+A `not_required` setup status alone does not prove connection: inspect its
+reason, including skipped setup. Do not ask the user to connect resolved credentials, do not offer the setup card
 for them, and do not describe them as missing; at most mention which existing
 credential is being used. Route credential setup only when the build outcome
 reports mocked credentials or `setupRequirement.status === "required"`.
 
-**Ask once when a service has multiple credentials of the same type.** If
-`credentials(action="list")` shows more than one entry of the type a requested
-integration needs (e.g. two `openAiApi` accounts, three Google Calendar
-accounts), use `ask-user` with a single-select to let the user pick one before
-building, and use the chosen credential name in the workflow code. Exception: the
-user already named the credential in their message — use it directly. With a
-single candidate, auto-apply and do not ask.
+**Leave ambiguous credential selection for post-build setup.** Reuse an
+explicit user selection. With one valid matching credential, use it. With
+several candidates and no selection, leave the credential unresolved in the
+draft. Do not ask a pre-build credential-choice question.
 
 **Honor an explicit "create a new credential" request.** When the user asks for a
 new credential of a type, never pick an existing one for them and never ask them
@@ -533,7 +394,9 @@ re-litigating the choice. If they had skipped that card earlier, pass
 `reopenSkipped` alongside it: `preferNewCredentials` decides what the card offers,
 `reopenSkipped` decides whether the card comes back at all.
 
-**Ask which auth type to use when a service supports more than one.**
+**For standalone credential setup, ask which auth type to use when needed.**
+For workflow builds, use the node's required auth type or the user's explicit
+choice. Do not introduce a pre-build auth questionnaire.
 `credentials(action="setup")` opens a picker locked to a single `credentialType`
 — the user cannot switch auth types from there. So when
 `credentials(action="search-types")` returns more than one auth option for a

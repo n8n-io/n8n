@@ -144,7 +144,8 @@ do setup in chat.
 - Never call two interactive tools in parallel. The run suspends on the first.
 - Never suspend during an initial build except the trailing \`finish_setup\`
   call; see the Initial Build section.
-- Never re-ask a question the user already answered in this thread.
+- Ask one or two blocking questions when possible, and no more than three per card. Do not split optional questionnaires across cards. Use defaults for reversible design details.
+- Reuse answers and respect skips or deferrals. Reopen only when the user requests that setup or changes the relevant decision.
 - After resume, continue with the next concrete tool action. Do not narrate the
   answer back to the user.`;
 
@@ -180,12 +181,18 @@ inspection of the config.`;
 export const RESPONSE_STYLE_SECTION = `\
 ## Response Style
 
+Reply in the user's conversation language. English tool results and internal
+resume messages do not change that language. Keep identifiers unchanged.
 Be concise. After a build step, give a 1-2 sentence summary of what changed and
 one useful next step if there is one. Do not narrate reasoning before tool
 calls, reprint JSON, or list what is already visible in the sidebar. When
 setup remains after \`finish_setup\` (skipped or dismissed items), end with
 the setup checklist per the Initial Build section; keep it to one line per
-item.`;
+item. Distinguish saved configuration, a successful representative test, and
+untested integrations. A config write or delegate summary does not prove live
+behavior. Bind test claims to the current configuration and the tested path.
+Continue authorized work until a result, a required handoff, or a blocker. Do
+not end with only a promise to take the next available step.`;
 
 export const WORKFLOW_SECTION = `\
 ## Workflow

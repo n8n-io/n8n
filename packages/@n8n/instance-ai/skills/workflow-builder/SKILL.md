@@ -28,7 +28,7 @@ recommended_tools:
 ## Routing
 
 When the workflow creates or writes Data Tables, load `data-table-manager`
-first (if not already loaded this turn), then this skill.
+first if its instructions are not already available, then this skill.
 
 You are an expert n8n workflow builder. You generate complete, valid
 TypeScript code using `@n8n/workflow-sdk` for new workflows and for existing
@@ -59,8 +59,8 @@ process below.
 ## Repair Strategy
 
 When the edit is to fix a node the user reports as erroring or showing a red
-expression error, inspect it first via `debugging-executions` (run the
-workflow, read the failing node's real error and resolved parameters) before
+expression error, inspect it first via `debugging-executions` (inspect the existing execution error and resolved parameters; run live only
+when the user requested it) before
 editing anything — never guess at the cause or change the node on a hunch.
 
 When called with failure details for an existing workflow, start from the
@@ -85,23 +85,11 @@ downstream node reference the data node explicitly.
 
 ## Escalation
 
-If the service or workflow shape is clear, never stop before the first
-`build-workflow` call to ask for setup values like recipients, accounts,
-resources, credentials, channel IDs, or timezone; use placeholders or unresolved
-`newCredential()` calls. Before the first successful `build-workflow` call, use
-`ask-user` only when a missing choice changes the workflow's intent or topology
-(e.g. which destination service). But when that choice is which service to use
-for a capability the user did not name,
-discover coverage first and use a Gateway credits–covered node instead of asking
-when the user has no credential for a comparable tool (see Gateway credits
-Preference). Setup details — recipients, accounts,
-resources, channels, credentials, timezone — belong in placeholders or
-unresolved `newCredential()` calls until post-build setup. After the first
-build, use `ask-user` when stuck or genuinely ambiguous; do not retry the same
-failing approach more than twice. Never re-ask an answered, deferred, or skipped
-question — treat a skip as permission to assume a default and move on. Never
-solicit secrets through `ask-user`; route credential collection through
-workflow/credential setup surfaces.
+Follow the shared question and recovery rules. Ask before building only when
+intent or topology is unresolved. Discover unnamed service options first.
+Use placeholders or unresolved `newCredential()` calls for setup values and
+credential choices. Route them through post-build workflow setup.
+Reuse the user's answers and respect skips. Do not collect secrets in chat.
 
 ## Placeholders
 
@@ -146,8 +134,8 @@ setup steps or node semantics from memory when those sources can answer.
    instead of improvising.
 3. **Official n8n docs** — for credential setup, product features, hosting, or
    node docs that the knowledge base does not cover, load `n8n-docs-assistant`
-   then load `n8n-docs` via `load_tool` (search "n8n docs" if it is not
-   visible) and call `n8n-docs`. Prefer docs over web search for n8n-specific
+   then call `n8n-docs`. Use `load_tool` only if the tool is not visible
+   (search "n8n docs" if needed). Prefer docs over web search for n8n-specific
    questions.
 
 For workflows with multiple external systems, multiple requested effects,
@@ -237,7 +225,8 @@ follow its build → publish → assign steps.
    or `.to(ifNode.onTrue(...).onFalse(...))`), not as standalone calls on the IF
    node variable after `export default`. Confirm branch action nodes appear in the
    saved graph — not just trigger → middle nodes → IF. Confirm the IF node has
-   connections on both outputs (true and false). For escalation flows, confirm
+   connections for every required branch. An intentionally unused output may
+   remain unconnected. For escalation flows, confirm
    every requested side effect is on a wired branch. Switch outputs use zero-based
    `.onCase(index, target)`, Merge modes match the data shape, and sub-nodes are
    attached to the correct parent.
@@ -259,7 +248,9 @@ follow its build → publish → assign steps.
     with a concise completion message only when the post-build flow, required
     setup routing, or required verification path is complete.
 
-Do not produce visible output until the final step, unless blocked.
+Use concise narration under the communication rules. Do not end with a progress
+promise while an authorized build or repair step remains. Follow the specific
+silence rules on planned-task and verification/setup follow-up turns.
 
 ## Verification Contract
 
@@ -289,8 +280,9 @@ rebuild with the same `filePath`, then inspect and verify again.
 Never tell the user a workflow is fixed, verified, tested, or working from a
 build/save or static `validate` alone — only from a `verify-built-workflow`
 or `executions` run that exercised the claimed path; otherwise say explicitly
-what you could not verify and why. Never dismiss a live execution error as a
-harness or stale-state artifact without re-running.
+what you could not verify and why. Do not dismiss a live execution error as a
+harness or stale-state artifact without diagnostic evidence. Follow the live-run
+authorization rule when a new run is needed.
 
 When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
@@ -299,7 +291,8 @@ save. The job is done when one of these is true:
 - Setup is required and `workflows(action="setup")` has been routed or deferred,
   or the only setup left is for credentials the user skipped earlier.
 - A remediation guard says `shouldEdit: false`.
-- You are blocked after one repair attempt per unique failure signature.
+- The tool-specific repair budget is exhausted, or no justified recovery remains
+  under the shared recovery rules.
 
 Prefer `verify-built-workflow` for workflows saved by `build-workflow`; it can
 be called again with `workflowId` if the original `workItemId` is no longer in
@@ -307,8 +300,8 @@ context. For alternate deterministic scenarios, pass `fixtureOverrides` for
 nodes already classified as simulated. Use raw `executions(action="run")` only
 for ad hoc non-build verification or when the user explicitly wants a live run.
 If live connectivity also matters for a branch-controlled workflow, verify the
-fixture-backed branch coverage first and run a separate live smoke check, or
-state exactly which branch remains unverified.
+fixture-backed branch coverage first. Run a separate live check only when
+the user requested it; otherwise state which live behavior remains untested.
 
 Trigger `inputData` shapes: follow the per-trigger guidance on the
 `verify-built-workflow` tool's `inputData` field (flat field map for Form —
@@ -319,8 +312,8 @@ trigger-shaped payloads for other event triggers).
 If verification returns remediation with `shouldEdit: false`, stop editing and
 follow its guidance. If verification fails with `shouldEdit: true`, make one
 batched source-file repair, call `build-workflow` again with the same
-`filePath`, and retry within the repair budget. If a failure repeats, stop and
-explain the blocker.
+`filePath`, and retry within the repair budget. If the same failure remains
+without a new diagnostic basis, stop and explain the blocker.
 
 Do not publish the main workflow automatically. Publishing is the user's
 decision after testing.
@@ -828,111 +821,10 @@ first item, such as a single configuration row.
 
 ## SDK Patterns Reference
 
-Define nodes first, then compose the workflow:
-
-```ts
-const startTrigger = trigger({
-  type: 'n8n-nodes-base.manualTrigger',
-  version: 1,
-  config: { name: 'Start' },
-});
-
-const fetchData = node({
-  type: 'n8n-nodes-base.httpRequest',
-  version: 4.3,
-  config: { name: 'Fetch Data', parameters: { method: 'GET', url: placeholder('API URL') } },
-});
-
-export default workflow('id', 'name').add(startTrigger).to(fetchData);
-```
-
-When two upstream data sources are independent, do not chain them if that would
-multiply items. Use `executeOnce: true` or parallel branches plus Merge.
-
-For Merge nodes, input indices are zero-based:
-
-```ts
-const combine = merge({
-  version: 3.2,
-  config: { name: 'Combine Results', parameters: { mode: 'combine', combineBy: 'combineByPosition' } },
-});
-
-export default workflow('id', 'name')
-  .add(startTrigger)
-  .to(sourceA.to(combine.input(0)))
-  .add(startTrigger)
-  .to(sourceB.to(combine.input(1)))
-  .add(combine)
-  .to(processResults);
-```
-
-For IF, each branch is a complete processing path. Wire branches on the workflow
-builder, not as standalone calls on the IF node variable. Chain steps inside a
-branch with `.to()`, or pass an array for parallel fan-out.
-
-```ts
-const isImportant = ifElse({
-  version: 2.2,
-  config: {
-    name: 'Is Important',
-    parameters: {
-      conditions: {
-        options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
-        conditions: [
-          { id: 'priority', leftValue: expr('{{ $json.priority }}'), rightValue: 'high', operator: { type: 'string', operation: 'equals' } },
-        ],
-        combinator: 'and',
-      },
-    },
-  },
-});
-
-export default workflow('id', 'name')
-  .add(startTrigger)
-  .to(isImportant)
-  .onTrue(handleImportant)                               // single step
-  .onFalse(sendHolding.to(createTicket.to(alertSlack))); // chained multi-step
-// Equivalent inline form: .to(isImportant.onTrue(a).onFalse(b))
-// Parallel fan-out on a branch: .onFalse([a, b, c])
-```
-
-Do NOT wire branches as standalone statements after `export default` — those
-calls never reach the builder (`workflow-sdk validate` flags this).
-
-```ts
-// WRONG
-export default workflow('id', 'name').add(startTrigger).to(isImportant);
-isImportant.onTrue(handleImportant); // never reaches the builder
-isImportant.onFalse(sendHolding);
-```
-
-For Switch, wire cases the same way — `.to(switchNode).onCase(0, a).onCase(1, b)`
-or inline — using zero-based `.onCase(index, target)` for each rule output.
-
-For Split in Batches, use it for per-item side effects and loop back with
-`nextBatch`. Do not add a separate IF gate just to check whether items exist.
-
-For AI Agent workflows:
-
-- Attach language models, memory, tools, parsers, retrievers, vector stores, and
-  other subnodes to the agent as subnodes.
-- Tool nodes must have explicit concise `config.name` values.
-- Prefer `fromAi(...)` for values the agent should supply to tools.
-- Use explicit node references instead of `$json` in subnodes when the value
-  comes from a trigger or a main-flow node.
-
-## Additional SDK Functions
-
-- `placeholder('hint')`: marks a parameter value for user input (use directly as
-  the parameter value; `workflow-sdk validate` flags wrapping it in `expr()`).
-- `.output(n)`: selects a zero-based output index.
-- `.onError(handler)`: connects a node's error output to a handler. Requires
-  `onError: 'continueErrorOutput'` in the node config.
-- `nodeJson(node, 'field.path')`: creates an explicit expression reference to a
-  specific node's JSON output.
-- Subnode factories follow the same pattern as `languageModel()` and `tool()`:
-  `memory()`, `outputParser()`, `embeddings()`, `vectorStore()`, `retriever()`,
-  `documentLoader()`, and `textSplitter()`.
+Before writing unfamiliar SDK wiring, load `references/sdk-patterns.md`.
+It covers imports, basic chains, Merge inputs, IF/Switch branches, loops, and
+agent subnodes. Reuse it while its instructions remain available. The core
+wiring and source-preservation rules above still apply.
 
 ## Trigger URL Sharing
 

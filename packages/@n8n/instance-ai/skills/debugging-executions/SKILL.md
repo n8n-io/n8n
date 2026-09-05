@@ -17,23 +17,25 @@ with wrong or empty values.
 
 ## When the user reports it still fails
 
-Re-run the failing path with `executions(action="run")` (or
-`verify-built-workflow`) and inspect the real result before responding. Do not
-restate that the workflow is "fixed", "verified", or "working", and do not
-attribute the reported failure to a test-harness artifact, stale state, or "it
-works in production" without a re-run against the failing path. Treat live
-signals as real: an execution error, partial coverage (`nodesNotReached`), an
-empty node, or a missing node is a real defect to investigate, not something to
-explain away. If you genuinely cannot re-run the failing path, say so plainly and
-name what is unconfirmed instead of repeating a success claim.
+Inspect the existing execution with `executions(action="debug")` or the
+relevant node-output tools first. Use the shared evidence and recovery rules.
+Do not repeat a claim that the workflow works when the user reports a failure.
+Investigate errors, empty outputs, and unreached required paths. Distinguish an
+expected unused branch from a missing required result.
+
+For a workflow built through the workflow loop, use `verify-built-workflow`
+for a new verification scenario. Use `executions(action="run")` only for a
+user-requested live test or another authorized ad hoc run. If the failing path
+cannot be checked, state what remains unconfirmed. Do not blame a harness or
+stale state without diagnostic evidence.
 
 ## Testing event-triggered workflows
 
-Use `executions(action="run")` with `inputData` matching the trigger's output
-shape — do not rebuild the workflow with a Manual Trigger. For trigger
-`inputData` shapes, read
+Keep the original trigger. For an authorized live run, pass `inputData` that
+matches its output shape. For build verification, use `verify-built-workflow`
+with the same trigger. Read
 `${N8N_WORKSPACE_DIR}/knowledge-base/reference/trigger-input-data-shapes.md`
-when a sandbox workspace is available.
+when the input shape is unclear and the sandbox workspace is available.
 
 ## Failed execution
 

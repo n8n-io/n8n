@@ -24,7 +24,7 @@ export function formatWorkflowLoopGuidance(
 		case 'done': {
 			if (action.setupSkippedByUser) {
 				return (
-					'Workflow verified successfully. The credentials it still needs are ones the user ' +
+					'Inspect the latest structured evidence before reporting the scope checked. State simulated steps and untested required paths. The credentials it still needs are ones the user ' +
 					'skipped earlier in this conversation, so do NOT open the setup card again. Tell them ' +
 					'which parts stay unconfigured and what that means when the workflow runs, and offer ' +
 					'to set them up whenever they want.'
@@ -32,14 +32,14 @@ export function formatWorkflowLoopGuidance(
 			}
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
-					'Workflow verified successfully with temporary mock data. ' +
+					'The workflow still needs setup. Inspect the verification result and state any simulation limits. A simulation does not prove live integration behavior. ' +
 					`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
 					'to open the inline setup card in the AI Assistant panel for credentials, parameters, and triggers. ' +
 					'Do not tell the user to open the editor, use the canvas, or click a Setup button. ' +
 					'Do not call `credentials(action="setup")` or `apply-workflow-credentials` — `workflows(action="setup")` handles everything.'
 				);
 			}
-			return `Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
+			return `Inspect the latest structured evidence before reporting the scope checked. State simulated steps and untested required paths. Report the supported result and any remaining limits to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
 		}
 		case 'verify':
 			return (
@@ -47,7 +47,7 @@ export function formatWorkflowLoopGuidance(
 				'Build/save success only means a workflow was saved. ' +
 				`Use \`verify-built-workflow\` with workflowId "${action.workflowId ?? 'unknown'}"` +
 				(options.workItemId ? ` and workItemId "${options.workItemId}"` : '') +
-				'; it reuses the build outcome simulation plan and is safe to call multiple times. ' +
+				'; it reuses the build outcome simulation plan. Repeat only for a distinct required scenario or after a justified repair. Inspect the prior result first. ' +
 				'For alternate deterministic scenarios, pass `fixtureOverrides` for nodes already classified as simulated. ' +
 				'If it fails, use `executions(action="debug")` to diagnose. ' +
 				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep repairing the same workflow source file. ' +

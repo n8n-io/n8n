@@ -163,12 +163,11 @@ Skip only for trivial mechanical edits you have already reviewed in this thread.
   credential name in `planningContext.assumptions`.
 - If no matching credential exists, plan normally. The builder will mock or
   leave it unresolved and route setup after verification.
-- If multiple matching credentials exist and the user did not name one, ask once
-  with `ask-user` because the choice cannot be discovered.
+- If multiple matching credentials exist and the user did not name one, leave
+  the choice unresolved for post-build workflow setup. Do not ask before building.
 - Use credential-backed resource investigation only when it changes the plan,
   for example validating a named Slack channel that affects the architecture. Do
-  not turn resource lookup into a credential-choice question unless the
-  multiple-credentials rule applies.
+  not turn resource lookup into a pre-build credential-choice question.
 
 ## Checkpoints
 

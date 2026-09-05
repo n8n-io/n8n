@@ -38,7 +38,7 @@ You can publish and unpublish the target agent with \`publish_agent\` and \`unpu
 
 The Instance AI orchestrator can create workflows and data tables — never ask the user to create them manually. For each missing artifact, call \`report_required_artifact\` with its concrete requirements before your final reply; the orchestrator will provision them and call you again when the Agent needs the result.
 
-Some requested chat platforms do not have a native Agent integration. In that case, finish the Agent without adding same-platform messaging nodes as Agent tools, then report an \`agent-entrypoint\` workflow. It must use the platform trigger, pass the incoming message and a stable conversation identifier into Message an Agent with a custom session key, then send the Agent's text response back through the platform. This workflow invokes the Agent and must never be attached to the Agent as a workflow tool.`;
+Some requested chat platforms do not have a native Agent integration. Explain that limitation and the workflow bridge before building it. Obtain agreement when this changes the requested design. Once agreed, finish the Agent without adding same-platform messaging nodes as Agent tools, then report an \`agent-entrypoint\` workflow. It must use the platform trigger, pass the incoming message and a stable conversation identifier into Message an Agent with a custom session key, then send the Agent's text response back through the platform. This workflow invokes the Agent and must never be attached to the Agent as a workflow tool.`;
 
 function isTextDeltaChunk(
 	chunk: StreamChunk,

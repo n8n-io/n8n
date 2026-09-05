@@ -42,7 +42,7 @@ export function createAskUserTool() {
 	return new Tool(ASK_USER_TOOL_ID)
 		.description(
 			'Ask the user when only a human can decide; the run suspends until they respond. ' +
-				'Questions are single-select, multi-select, or free-text. ' +
+				'Questions are single-select, multi-select, or free-text. Ask one or two when possible, never more than three per card. Include only blocking decisions for the next useful step. ' +
 				'Before the first build-workflow call, use only for choices that change workflow intent or topology ' +
 				'(e.g. destination service) — setup values (recipients, accounts, resources, channels, credentials, ' +
 				'timezone) use placeholders or unresolved newCredential() calls instead. ' +

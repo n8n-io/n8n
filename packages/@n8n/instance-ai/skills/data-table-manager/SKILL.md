@@ -130,21 +130,16 @@ rows), keep every query targeted:
   rows can carry very large values (inline base64 images, raw payloads), and
   one broad result can crowd out everything else. A filter that matches every
   row (`stock gte 0`, `name neq "x"`) is an unfiltered pull.
-- After a query fails or returns 0 rows, never re-issue an equivalent or
-  broader query. Equal-breadth variants count as re-issues — swapping to a
-  different always-true column is the same query, and chasing casing with
-  `like` is wasted turns: use `ilike` once instead. Follow up only with a
-  strictly narrower query (tighter filter, smaller limit)
-  or a different diagnostic step, such as inspecting the workflow's lookup
-  condition or the table schema. Two targeted 0-row probes are enough evidence;
-  stop querying.
-- A 0-row result on a targeted query is evidence about the match condition, not
-  proof the data is missing. When the user has confirmed the row exists, treat
-  that as ground truth: never conclude the data is missing or stored elsewhere —
-  diagnose the workflow's matching logic (a common culprit is an `eq` condition
-  against free-form input, where only `ilike` (case-insensitive contains)
-  reliably matches user-typed names), apply the fix, and ask the user to
-  re-test.
+- After a failed or empty query, inspect the schema and matching condition.
+  Retry only when that evidence justifies a corrected filter. Keep reads bounded
+  to five rows. Do not repeat unchanged probes or use an always-true filter.
+  Follow the shared repair budget. A corrected read filter does not authorize
+  a broader update or delete.
+- A zero-row result describes the match, not whether the record exists. Preserve
+  the user's report that it exists as evidence to investigate. Check the named
+  table and matching logic before drawing a conclusion. Do not assume that a
+  contains match is the correct replacement for an exact identifier.
+
 
 ## Fixing A Wrong Schema
 

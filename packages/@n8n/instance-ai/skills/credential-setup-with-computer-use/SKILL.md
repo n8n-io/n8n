@@ -24,6 +24,10 @@ Use this skill only when Computer Use browser tools are available. Handle
 credential setup directly with the browser tools — do not use any other browser
 bridge.
 
+A secure browser or credential-form handoff is permitted. The question policy
+prohibits collecting secrets in chat, not entering them in the supported secure
+flow. Reuse the user's selected service and account; do not ask again.
+
 ## Default Procedure
 
 1. Read n8n credential docs with `research(action="fetch-url")` when a docs URL

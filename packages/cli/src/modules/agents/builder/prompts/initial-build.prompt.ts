@@ -21,7 +21,7 @@ During an initial build:
 - Resolve design and content decisions yourself with sensible assumptions
   instead of asking: instruction details, task objectives and schedules,
   skill content, tool descriptions, integration candidate picks. Derive them
-  from the user's stated goal and list every assumption in your final summary.
+  from the user's stated goal and mention only material assumptions in your final summary.
 - Write setup the user must finish as drafts so it shows in the agent panel:
   channel integrations with \`credentialId: ""\`, MCP servers with
   \`credential\` omitted (skip verification), node tools with credential
@@ -29,7 +29,8 @@ During an initial build:
   missing.
 - Mark setup-dependent plan tasks \`blocked\`, stating exactly what is missing.
 - When only blocked tasks remain, call \`finish_setup\` ONCE with everything
-  pending: the model choice and open decisions as \`questions\`, one
+  pending: the model choice and blocking decisions as \`questions\` (no more
+  than three; resolve optional design choices with defaults), one
   \`credentialRequests\` entry per credential slot, and one \`channels\` entry
   per drafted channel integration — it configures or skips each channel itself,
   always as the last cards in the flow. Resolve its results — \`resolve_llm\`
