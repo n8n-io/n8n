@@ -11,7 +11,13 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialTypes } from '@/credential-types';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
+import type { UrlService } from '@/services/url.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+
+const INSTANCE_URL = 'https://n8n.example.com';
+
+const urlServiceMock = () =>
+	mock<UrlService>({ getInstanceBaseUrl: () => INSTANCE_URL } as unknown as UrlService);
 
 describe('WorkflowValidationService', () => {
 	let service: WorkflowValidationService;
@@ -33,6 +39,7 @@ describe('WorkflowValidationService', () => {
 			mockCredentialsRepository,
 			mockDynamicCredentialsProxy,
 			mock<CredentialTypes>(),
+			urlServiceMock(),
 		);
 	});
 
@@ -107,6 +114,11 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('Node "Sub-workflow 1" references workflow workflow-1');
 			expect(result.error).toContain('("Draft Workflow")');
 			expect(result.error).toContain('which is not published');
+			// `error` feeds the Public API, the MCP tools and Instance AI as text.
+			expect(result.error).not.toContain('<a href');
+			expect(result.errorHtml).toContain(
+				`references workflow <a href="${INSTANCE_URL}/workflow/workflow-1" target="_blank">workflow-1</a> ("Draft Workflow")`,
+			);
 			expect(result.invalidReferences).toHaveLength(1);
 			expect(result.invalidReferences?.[0]).toEqual({
 				nodeName: 'Sub-workflow 1',
@@ -125,6 +137,9 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
 
 			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('references workflow non-existent which is not published');
+			// The workflow is gone, so even the HTML rendering must not link it.
+			expect(result.errorHtml).not.toContain('<a href');
 			expect(result.invalidReferences?.[0]).toEqual({
 				nodeName: 'Sub-workflow 1',
 				workflowId: 'non-existent',
@@ -1433,6 +1448,7 @@ describe('WorkflowValidationService', () => {
 				mock<CredentialsRepository>(),
 				mock<DynamicCredentialsProxy>(),
 				credentialTypes,
+				urlServiceMock(),
 			);
 
 		// The loader sets `supportedNodes` on the credential class to *short* names

@@ -27,6 +27,7 @@ import { isChatOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
+import { UrlService } from '@/services/url.service';
 
 export interface WorkflowValidationResult {
 	isValid: boolean;
@@ -34,11 +35,18 @@ export interface WorkflowValidationResult {
 }
 
 export interface SubWorkflowValidationResult extends WorkflowValidationResult {
-	invalidReferences?: Array<{
-		nodeName: string;
-		workflowId: string;
-		workflowName?: string;
-	}>;
+	/**
+	 * `error` with each sub-workflow ID linked. Only for consumers that render
+	 * HTML — the Public API, the MCP tools and Instance AI all read `error`.
+	 */
+	errorHtml?: string;
+	invalidReferences?: SubWorkflowReference[];
+}
+
+interface SubWorkflowReference {
+	nodeName: string;
+	workflowId: string;
+	workflowName?: string;
 }
 
 export interface WorkflowStatus {
@@ -59,6 +67,7 @@ export class WorkflowValidationService {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly urlService: UrlService,
 	) {}
 
 	/**
@@ -514,11 +523,7 @@ export class WorkflowValidationService {
 			return { isValid: true };
 		}
 
-		const invalidReferences: Array<{
-			nodeName: string;
-			workflowId: string;
-			workflowName?: string;
-		}> = [];
+		const invalidReferences: SubWorkflowReference[] = [];
 
 		for (const node of executeWorkflowNodes) {
 			const subWorkflowId = this.extractWorkflowId(node);
@@ -541,19 +546,37 @@ export class WorkflowValidationService {
 		}
 
 		if (invalidReferences.length > 0) {
-			const errorMessages = invalidReferences.map((ref) => {
-				const workflowName = ref.workflowName ? ` ("${ref.workflowName}")` : '';
-				return `Node "${ref.nodeName}" references workflow ${ref.workflowId}${workflowName} which is not published`;
-			});
+			const compose = (renderId: (ref: SubWorkflowReference) => string) => {
+				const clauses = invalidReferences.map((ref) => {
+					const workflowName = ref.workflowName ? ` ("${ref.workflowName}")` : '';
+					return `Node "${ref.nodeName}" references workflow ${renderId(ref)}${workflowName} which is not published`;
+				});
+
+				return `Cannot publish workflow: ${clauses.join('; ')}. Please publish all referenced sub-workflows first.`;
+			};
 
 			return {
 				isValid: false,
-				error: `Cannot publish workflow: ${errorMessages.join('; ')}. Please publish all referenced sub-workflows first.`,
+				error: compose((ref) => ref.workflowId),
+				errorHtml: compose((ref) => this.linkToWorkflow(ref)),
 				invalidReferences,
 			};
 		}
 
 		return { isValid: true };
+	}
+
+	/**
+	 * Renders a sub-workflow ID as a link the editor can open, so the user can
+	 * reach the draft without searching for the ID by hand. A reference with no
+	 * name is a workflow that no longer exists, so it stays plain text.
+	 */
+	private linkToWorkflow(ref: SubWorkflowReference): string {
+		if (!ref.workflowName) return ref.workflowId;
+
+		const url = `${this.urlService.getInstanceBaseUrl()}/workflow/${ref.workflowId}`;
+
+		return `<a href="${url}" target="_blank">${ref.workflowId}</a>`;
 	}
 
 	/**

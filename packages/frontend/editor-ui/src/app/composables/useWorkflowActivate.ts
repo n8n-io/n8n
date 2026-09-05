@@ -162,7 +162,11 @@ export function useWorkflowActivate() {
 				const title = i18n.baseText('workflowActivator.showError.title', {
 					interpolate: { newStateName: 'published' },
 				});
-				toast.showError(error, title, {
+				// `messageHtml` is the same message with links; `message` stays plain
+				// for the non-HTML consumers of this error.
+				const messageHtml = error.meta?.messageHtml as string | undefined;
+
+				toast.showError(messageHtml ? { ...error, message: messageHtml } : error, title, {
 					message: activationErrorMessage.value,
 					description: error.meta?.description as string | undefined,
 				});
