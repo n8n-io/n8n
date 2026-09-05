@@ -2443,7 +2443,7 @@ export class GoogleDriveV1 implements INodeType {
 								const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
 								contentLength = metadata.fileSize;
 								originalFilename = metadata.fileName;
-								if (metadata.mimeType) mimeType = binaryData.mimeType;
+								mimeType = binaryData.mimeType;
 							} else {
 								fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
 								contentLength = fileContent.length;
