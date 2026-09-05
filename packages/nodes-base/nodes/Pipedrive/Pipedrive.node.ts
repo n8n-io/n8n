@@ -11,7 +11,7 @@ export class Pipedrive extends VersionedNodeType {
 			name: 'pipedrive',
 			icon: 'file:pipedrive.svg',
 			group: ['transform'],
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Create and edit data in Pipedrive',
 		};
@@ -19,6 +19,7 @@ export class Pipedrive extends VersionedNodeType {
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new PipedriveV1(baseDescription),
 			2: new PipedriveV2(baseDescription),
+			2.1: new PipedriveV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
