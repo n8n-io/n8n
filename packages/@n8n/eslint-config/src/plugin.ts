@@ -31,6 +31,8 @@ export const localRulesPlugin = {
 				'n8n-local-rules/no-dynamic-regexp': 'warn',
 				'n8n-local-rules/no-restricted-sleep-definition': 'error',
 				'n8n-local-rules/no-restricted-sleep-import': 'error',
+				// Seals WorkflowEntity node writes to the token-gated repository methods, in every package.
+				'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
 			},
 		},
 	},
