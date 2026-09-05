@@ -8,7 +8,9 @@ export { ModuleRegistry } from './modules/module-registry';
 export type { ModuleName } from './modules/modules.config';
 export { ModulesConfig } from './modules/modules.config';
 export {
+	assertPathAndBasePathAreNotBothSet,
 	isContainedWithin,
+	normalizeBasePath,
 	safeJoinPath,
 	pathComponents,
 	pathSegmentsBetween,

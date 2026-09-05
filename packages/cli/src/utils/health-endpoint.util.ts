@@ -1,3 +1,4 @@
+import { normalizeBasePath } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import path from 'node:path';
 
@@ -16,12 +17,18 @@ export function resolveBackendHealthEndpointPath(globalConfig: GlobalConfig): st
  * fetches the correct URL through a reverse proxy.
  *
  * Priority order:
- * 1. N8N_ENDPOINT_HEALTH (if explicitly set) - absolute override
- * 2. N8N_PATH + default health endpoint (if N8N_PATH is set)
- * 3. Default health endpoint (/healthz)
+ * 1. N8N_BASE_PATH + configured health endpoint (if N8N_BASE_PATH is set)
+ * 2. N8N_ENDPOINT_HEALTH (if explicitly set)
+ * 3. N8N_PATH + default health endpoint (if N8N_PATH is set)
+ * 4. Default health endpoint (/healthz)
  */
 export function resolveFrontendHealthEndpointPath(globalConfig: GlobalConfig): string {
 	const isHealthEndpointCustomized = process.env.N8N_ENDPOINT_HEALTH !== undefined;
+	const basePath = normalizeBasePath(globalConfig.basePath);
+
+	if (basePath !== '/') {
+		return path.posix.join(basePath, globalConfig.endpoints.health);
+	}
 
 	if (!isHealthEndpointCustomized && globalConfig.path !== '/') {
 		return path.posix.join(globalConfig.path, globalConfig.endpoints.health);
