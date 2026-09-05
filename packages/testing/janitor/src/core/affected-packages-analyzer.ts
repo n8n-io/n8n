@@ -103,6 +103,8 @@ export interface AnalyzeOptions {
 	rootDir?: string;
 	/** Repo-root-relative, forward slashes. `null` = no signal → all packages. */
 	changedFiles: string[] | null;
+	/** Return repo-root-relative package dirs instead of package names. */
+	paths?: boolean;
 }
 
 function loadWorkspacePackages(rootDir: string): WorkspacePackage[] {
@@ -185,12 +187,15 @@ function loadTurboExtraInputs(rootDir: string, packages: WorkspacePackage[]): Tu
 export function affectedPackages(options: AnalyzeOptions): string[] {
 	const rootDir = options.rootDir ?? findWorkspaceRoot(process.cwd());
 	const packages = loadWorkspacePackages(rootDir);
+	const dirByName = new Map(packages.map((p) => [p.name, p.dir]));
+	const toOutput = (names: string[]): string[] =>
+		options.paths ? names.map((name) => dirByName.get(name) ?? name).sort() : names;
 	const allNames = packages.map((p) => p.name).sort();
 
 	// No signal (local dev, missing env) → safest default: everything.
-	if (options.changedFiles === null) return allNames;
+	if (options.changedFiles === null) return toOutput(allNames);
 
-	if (options.changedFiles.some(matchesGlobalTrigger)) return allNames;
+	if (options.changedFiles.some(matchesGlobalTrigger)) return toOutput(allNames);
 
 	const direct = new Set<string>();
 	for (const file of options.changedFiles) {
@@ -221,5 +226,5 @@ export function affectedPackages(options: AnalyzeOptions): string[] {
 		affected.add(name);
 		queue.push(...(dependents.get(name) ?? []));
 	}
-	return [...affected].sort();
+	return toOutput([...affected].sort());
 }

@@ -34,7 +34,9 @@ jobs:
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
       skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
-      affected_packages: ${{ steps.affected-packages.outputs.list }}
+      unit_backend: ${{ steps.affected-test-groups.outputs.backend }}
+      unit_nodes: ${{ steps.affected-test-groups.outputs.nodes }}
+      unit_frontend: ${{ steps.affected-test-groups.outputs.frontend }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
     steps:
       - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
@@ -195,15 +197,42 @@ jobs:
         if: fromJSON(steps.ci-filter.outputs.results).db
         run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs)" >> "$GITHUB_OUTPUT"
 
-      - name: Compute affected packages
-        id: affected-packages
+      # Maps the affected-package set onto the unit workflow's job groups so
+      # whole jobs skip when their group has no affected package. Runner
+      # boot-up (checkout + install + cached build) costs ~2 minutes per job
+      # even when janitor then skips every package inside it.
+      - name: Compute affected test groups
+        id: affected-test-groups
         if: fromJSON(steps.ci-filter.outputs.results).unit
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
         run: |
-          PACKAGES=$(node packages/testing/janitor/dist/cli.js affected-packages | tr '\n' ' ' | sed 's/ *$//')
-          echo "Affected packages: $PACKAGES"
-          echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
+          DIRS=$(node packages/testing/janitor/dist/cli.js affected-packages --paths)
+          printf 'Affected package dirs:\n%s\n' "$DIRS"
+          FRONTEND=false; NODES=false; BACKEND=false
+          # Files outside packages/ (turbo.json, patches, root scripts) can
+          # change test behavior in ways the package graph cannot see, and an
+          # empty dir list means the graph recognized nothing. Both fail open
+          # to running every group.
+          NON_PKG=$(printf '%s\n' "$CHANGED_FILES" | sed '/^[[:space:]]*$/d' | { grep -cv '^packages/' || true; })
+          if [ -z "$CHANGED_FILES" ] || [ -z "$DIRS" ] || [ "$NON_PKG" -gt 0 ]; then
+            FRONTEND=true; NODES=true; BACKEND=true
+            echo 'Fail-open: running every group'
+          else
+            while IFS= read -r dir; do
+              case "$dir" in
+                packages/frontend/*|packages/modules/*) FRONTEND=true ;;
+                packages/nodes-base) NODES=true ;;
+                *) BACKEND=true ;;
+              esac
+            done <<< "$DIRS"
+          fi
+          {
+            echo "frontend=$FRONTEND"
+            echo "nodes=$NODES"
+            echo "backend=$BACKEND"
+          } >> "$GITHUB_OUTPUT"
+          echo "Groups: backend=$BACKEND nodes=$NODES frontend=$FRONTEND"
 
   unit-test:
     name: Unit tests
@@ -213,8 +242,11 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: ${{ github.event_name != 'merge_group' }}
-      affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
+      # `!= 'false'` fails open when the groups step did not run.
+      runBackendTests: ${{ needs.install-and-build.outputs.unit_backend != 'false' }}
+      runNodesTests: ${{ needs.install-and-build.outputs.unit_nodes != 'false' }}
+      runFrontendTests: ${{ needs.install-and-build.outputs.unit_frontend != 'false' }}
     secrets: inherit
 
   typecheck:

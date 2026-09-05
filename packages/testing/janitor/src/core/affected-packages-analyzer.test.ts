@@ -84,6 +84,31 @@ describe('affectedPackages', () => {
 		expect(affectedPackages({ rootDir, changedFiles: ['packages/a/src/index.ts'] })).toEqual(['a']);
 	});
 
+	it('returns package dirs instead of names with paths', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/lib': { name: 'lib' },
+				'packages/app': { name: 'app', deps: ['lib'] },
+				'packages/unrelated': { name: 'unrelated' },
+			},
+		});
+		expect(
+			affectedPackages({ rootDir, changedFiles: ['packages/lib/src/index.ts'], paths: true }),
+		).toEqual(['packages/app', 'packages/lib']);
+	});
+
+	it('returns all package dirs with paths when the signal is missing', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: { 'packages/a': { name: 'a' }, 'packages/b': { name: 'b' } },
+		});
+		expect(affectedPackages({ rootDir, changedFiles: null, paths: true })).toEqual([
+			'packages/a',
+			'packages/b',
+		]);
+	});
+
 	it('includes transitive downstream packages', () => {
 		// Uses non-global-trigger package names so this exercises the dep-graph
 		// walk, not the workspace-wide bailout (workflow/core ARE global triggers).
