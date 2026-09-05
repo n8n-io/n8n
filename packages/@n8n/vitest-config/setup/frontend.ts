@@ -243,8 +243,13 @@ class Worker {
 		this.url = url;
 	}
 
-	postMessage = vi.fn((message: string) => {
-		this.onmessage(message);
+	// Echo the payload back in the shape the Worker contract promises: consumers
+	// destructure `{ data }` off a MessageEvent (see editor-ui's safeRegex.ts), so
+	// handing them the bare payload leaves `data` undefined and their promise never
+	// settles. Stays synchronous — the handler runs before postMessage returns, so
+	// tests need no timer flush.
+	postMessage = vi.fn((message: unknown) => {
+		this.onmessage(new MessageEvent('message', { data: message }));
 	});
 
 	addEventListener = vi.fn();
@@ -286,17 +291,31 @@ class SharedWorker {
 	dispatchEvent = vi.fn(() => true);
 }
 
+/**
+ * The DnD spec canonicalizes the two legacy shorthands on both `setData` and
+ * `getData` — `text` → `text/plain`, `url` → `text/uri-list` — and lowercases
+ * everything else. Normalizing on only one side loses the value: writing
+ * `setData('text/plain', …)` stored `text/plain` while `getData('text/plain')`
+ * looked under `text`. Collapsing every `text*` format to one key also merged
+ * `text/html` and `text/plain` into a single slot, which paste handlers read
+ * separately.
+ * https://html.spec.whatwg.org/multipage/dnd.html#dom-datatransfer-setdata
+ */
+const canonicalizeDataTransferFormat = (format: string) => {
+	const normalized = String(format).toLowerCase();
+	if (normalized === 'text') return 'text/plain';
+	if (normalized === 'url') return 'text/uri-list';
+	return normalized;
+};
+
 class DataTransfer {
 	private data: Record<string, unknown> = {};
 
-	setData = vi.fn((type: string, data) => {
-		this.data[type] = data;
+	setData = vi.fn((type: string, data: unknown) => {
+		this.data[canonicalizeDataTransferFormat(type)] = data;
 	});
 
-	getData = vi.fn((type) => {
-		if (type.startsWith('text')) type = 'text';
-		return this.data[type] ?? null;
-	});
+	getData = vi.fn((type: string) => this.data[canonicalizeDataTransferFormat(type)] ?? null);
 }
 
 Object.defineProperty(window, 'Worker', {
