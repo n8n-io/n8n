@@ -397,9 +397,7 @@ export default defineConfig(
 		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 		files: [
 			'./src/license.ts',
-			'./src/modules/agents/integrations/n8n-checkpoint-storage.ts',
 			'./src/modules/insights/insights.service.ts',
-			'./src/modules/instance-ai/instance-ai.service.ts',
 			'./src/modules/instance-registry/checks/check.service.ts',
 			'./src/modules/instance-registry/stale-member-cleanup.service.ts',
 			'./src/modules/token-exchange/services/jti-cleanup.service.ts',
