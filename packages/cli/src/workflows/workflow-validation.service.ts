@@ -6,8 +6,10 @@ import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import {
 	validateWorkflowHasTriggerLikeNode,
 	NodeHelpers,
+	Workflow,
 	mapConnectionsByDestination,
 	validateNodeCredentials,
+	getUnconnectedRequiredInputs,
 	isNodeConnected,
 	isTriggerLikeNode,
 	isTriggerNode,
@@ -27,6 +29,7 @@ import { isChatOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 
 export interface WorkflowValidationResult {
 	isValid: boolean;
@@ -312,11 +315,11 @@ export class WorkflowValidationService {
 		return [];
 	}
 
-	validateForActivation(
+	async validateForActivation(
 		nodes: INodes,
 		connections: IConnections,
 		nodeTypes: NodeTypes,
-	): WorkflowValidationResult {
+	): Promise<WorkflowValidationResult> {
 		// Validate workflow entry points: active, poll, webhook, or schedule triggers.
 		const triggerValidation = validateWorkflowHasTriggerLikeNode(nodes, nodeTypes, STARTING_NODES);
 
@@ -335,6 +338,61 @@ export class WorkflowValidationService {
 
 		if (!configValidation.isValid) {
 			return configValidation;
+		}
+
+		return await this.validateRequiredInputsConnected(nodesArray, connections, nodeTypes);
+	}
+
+	/**
+	 * Refuses activation when a required input has nothing connected. The editor
+	 * draws this warning already but nothing enforced it, so such a workflow could
+	 * publish and then throw on every execution.
+	 *
+	 * Called by `validateForActivation`; public so it can be exercised directly.
+	 */
+	async validateRequiredInputsConnected(
+		nodes: INode[],
+		connections: IConnections,
+		nodeTypes: NodeTypes,
+	): Promise<WorkflowValidationResult> {
+		// Transient, so dynamic `inputs` expressions can be evaluated.
+		const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
+		const issues: string[] = [];
+
+		// Those expressions need an isolate under the VM engine, or they throw.
+		await withExpressionIsolate(workflow, async () => {
+			for (const node of nodes) {
+				if (node.disabled) continue;
+
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				if (!nodeType?.description) continue;
+
+				// Strictly: a swallowed expression error would read as "requires nothing".
+				let required: ReturnType<typeof getUnconnectedRequiredInputs>;
+				try {
+					required = getUnconnectedRequiredInputs(workflow, node, nodeType.description, {
+						throwOnExpressionError: true,
+					});
+				} catch (error) {
+					issues.push(
+						`the inputs of '${node.name}' could not be determined (${ensureError(error).message})`,
+					);
+					continue;
+				}
+
+				for (const input of required) {
+					issues.push(
+						`'${node.name}' has no node connected to its required '${input.displayName ?? input.type}' input`,
+					);
+				}
+			}
+		});
+
+		if (issues.length > 0) {
+			return {
+				isValid: false,
+				error: `Workflow cannot be activated because required inputs are not connected: ${issues.join('; ')}.`,
+			};
 		}
 
 		return { isValid: true };

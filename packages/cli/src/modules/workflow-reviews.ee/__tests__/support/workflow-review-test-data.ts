@@ -54,7 +54,7 @@ export const REVIEW_TABLES = [
 export function stubWorkflowValidation(
 	workflowValidationService: MockProxy<WorkflowValidationService>,
 ): void {
-	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateTriggerNodeIds.mockReturnValue({ isValid: true });

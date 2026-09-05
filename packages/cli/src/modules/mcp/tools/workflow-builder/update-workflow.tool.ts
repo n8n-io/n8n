@@ -2,8 +2,13 @@ import type { ValidationWarning } from '@n8n/ai-workflow-builder';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
+import {
+	connectRequiredSubnodeInputs,
+	describeAddedSubnodeConnection,
+	type ClearedSubnodeInput,
+	type WorkflowJSON,
+} from '@n8n/workflow-sdk';
+import { NodeConnectionTypes, Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -1198,6 +1203,27 @@ export const createUpdateWorkflowTool = (
 					throw new Error(result.error);
 				}
 
+				// Setting a parameter can make a subnode input required without wiring it.
+				// Skip inputs this batch disconnected, or removeConnection is a no-op.
+				// Names are carried through later renames, since the pass runs against
+				// the final graph.
+				const clearedInputs: ClearedSubnodeInput[] = [];
+				for (const op of strictOperations) {
+					if (op.type === 'removeConnection') {
+						clearedInputs.push({
+							nodeName: op.target,
+							connectionType: op.connectionType ?? NodeConnectionTypes.Main,
+						});
+					} else if (op.type === 'renameNode') {
+						for (const cleared of clearedInputs) {
+							if (cleared.nodeName === op.oldName) cleared.nodeName = op.newName;
+						}
+					}
+				}
+				const addedSubnodeLinks = connectRequiredSubnodeInputs(result.workflow, nodeTypes, {
+					clearedInputs,
+				});
+
 				const { skippedOperations, removedGroups, nodeGroupsNeedPersisting } =
 					resolveNodeGroupViolations(result, canvasGroupsEnabled, nodeTypes);
 
@@ -1285,6 +1311,10 @@ export const createUpdateWorkflowTool = (
 					existingWorkflow,
 					nodeTypes,
 				);
+
+				for (const link of addedSubnodeLinks) {
+					validationWarnings.push(describeAddedSubnodeConnection(link));
+				}
 
 				const tagIds = await resolveTagIds(result.tagNames, user, tagService);
 

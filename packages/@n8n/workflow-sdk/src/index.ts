@@ -171,6 +171,11 @@ export {
 	type ValidateWorkflowBuilderOptions,
 	type ValidateWorkflowBuilderResult,
 	type CollectedValidationIssue,
+	connectRequiredSubnodeInputs,
+	describeAddedSubnodeConnection,
+	type AddedSubnodeConnection,
+	type ClearedSubnodeInput,
+	type WorkflowForSubnodeWiring,
 } from './validation';
 
 // Code-node source lint — the host re-runs the Python rules with the executing

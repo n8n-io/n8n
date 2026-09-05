@@ -130,7 +130,7 @@ beforeEach(() => {
 	nodeTypes.getByNameAndVersion.mockReset();
 	workflowValidationService.validateTriggerNodeIds.mockReset();
 	workflowValidationService.validateTriggerNodeIds.mockReturnValue({ isValid: true });
-	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
@@ -598,7 +598,7 @@ describe('activateWorkflow()', () => {
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
 		// Mock validation to fail
-		workflowValidationService.validateForActivation.mockReturnValue({
+		workflowValidationService.validateForActivation.mockResolvedValue({
 			isValid: false,
 			error: 'Workflow cannot be activated because it has no trigger node.',
 		});
