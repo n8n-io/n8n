@@ -160,9 +160,14 @@ export function getStringLiteralValue(node: TSESTree.Node | null): string | null
 	return typeof value === 'string' ? value : null;
 }
 
-export function getModulePath(node: TSESTree.Node | null): string | null {
+/**
+ * Returns the statically-known string a node evaluates to — a string literal or
+ * a template literal with no substitutions — or null when it cannot be known
+ * without evaluating the code.
+ */
+export function getStaticStringValue(node: TSESTree.Node | null): string | null {
 	const stringValue = getStringLiteralValue(node);
-	if (stringValue) {
+	if (stringValue !== null) {
 		return stringValue;
 	}
 
