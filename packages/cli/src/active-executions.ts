@@ -6,6 +6,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { randomUUID } from 'crypto';
 import type {
 	IExecuteResponsePromiseData,
 	IRun,
@@ -48,6 +49,15 @@ export class ActiveExecutions {
 	private activeExecutions: {
 		[executionId: string]: IExecutingWorkflowData;
 	} = {};
+
+	/**
+	 * postExecutePromises of runs whose entry was overwritten by a resume, keyed by
+	 * their `runId`. A run must only ever resolve its OWN promise: when `add` replaces
+	 * an entry, the previous run's promise is parked here so its later
+	 * `finalizeExecution` resolves the right promise instead of the resumed run's.
+	 * Cleared as each orphaned promise is resolved.
+	 */
+	private readonly orphanedPromises = new Map<string, IDeferredPromise<IRun | undefined>>();
 
 	/** Response mode by execution ID, if webhook-initiated. */
 	private responseModes = new Map<string, WebhookResponseMode>();
@@ -158,6 +168,16 @@ export class ActiveExecutions {
 
 		const resumingExecution = this.activeExecutions[executionId];
 		const postExecutePromise = createDeferredPromise<IRun | undefined>();
+		const runId = randomUUID();
+
+		// A previous entry for this id is about to be replaced. Park its postExecutePromise
+		// so the previous run's OWN later finalize resolves the right promise instead of
+		// this resumed run's — a run must never finalize an entry that isn't its own. Park
+		// unconditionally: `workflowExecution` is also absent between `add` and
+		// `attachWorkflowExecution`, and resolving an already-settled promise is a no-op.
+		if (resumingExecution) {
+			this.orphanedPromises.set(resumingExecution.runId, resumingExecution.postExecutePromise);
+		}
 
 		const execution: IExecutingWorkflowData = {
 			executionData,
@@ -166,6 +186,7 @@ export class ActiveExecutions {
 			status: executionStatus,
 			responsePromise: resumingExecution?.responsePromise,
 			httpResponse: executionData.httpResponse ?? undefined,
+			runId,
 		};
 		this.activeExecutions[executionId] = execution;
 
@@ -177,6 +198,11 @@ export class ActiveExecutions {
 			})
 			.finally(() => {
 				capacityReservation.release();
+				// A resume may have replaced this entry before this run settled (its promise was
+				// parked in `orphanedPromises`). Only touch the map if it still points at THIS
+				// entry — otherwise a stale `running` status (queue mode never flips the main's
+				// placeholder to `waiting`) would delete the resumed run's entry.
+				if (this.activeExecutions[executionId] !== execution) return;
 				if (execution.status === 'waiting') {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
@@ -198,6 +224,11 @@ export class ActiveExecutions {
 
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
 		this.getExecutionOrFail(executionId).workflowExecution = workflowExecution;
+	}
+
+	/** Identity of the run currently owning the entry for `executionId`, stamped by `add`. */
+	getRunId(executionId: string): string {
+		return this.getExecutionOrFail(executionId).runId;
 	}
 
 	attachResponsePromise(
@@ -251,10 +282,35 @@ export class ActiveExecutions {
 		this.logger.debug('Execution cancelled', { executionId });
 	}
 
-	/** Resolve the post-execution promise in an execution. */
-	finalizeExecution(executionId: string, fullRunData?: IRun) {
+	/** Resolve the post-execution promise in an execution.
+	 *
+	 * @param runId Identity of the run that is finalizing, as returned by `getRunId`
+	 * right after `attachWorkflowExecution`. When the entry for this id was replaced by
+	 * a resume before this run finalized, `runId` no longer matches the current entry;
+	 * the run must then resolve its OWN (parked) promise instead of the resumed run's,
+	 * so the resumed run stays tracked and its later finalize is not lost. Omitting
+	 * `runId` preserves the legacy "resolve whatever is at this id" behavior.
+	 */
+	finalizeExecution(executionId: string, fullRunData?: IRun, runId?: string) {
+		// Identity check first, independent of whether an entry still exists: a stale
+		// finalize from a run whose entry was replaced by a resume must resolve that run's
+		// own parked promise (releasing its capacity) even if the resumed run has already
+		// finished and been removed.
+		if (runId !== undefined) {
+			const orphaned = this.orphanedPromises.get(runId);
+			if (orphaned) {
+				this.orphanedPromises.delete(runId);
+				orphaned.resolve(fullRunData);
+				return;
+			}
+		}
+
 		if (!this.has(executionId)) return;
 		const execution = this.getExecutionOrFail(executionId);
+
+		// A run must never finalize an entry that is not its own. Reaching here with a
+		// mismatched `runId` and no parked promise means the run was already finalized.
+		if (runId !== undefined && execution.runId !== runId) return;
 
 		// Close response if it exists (for streaming responses)
 		if (execution.executionData.httpResponse) {

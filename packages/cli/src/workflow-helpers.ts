@@ -482,16 +482,19 @@ export function shouldRestartParentExecution(
  *
  * @param parentExecutionId - The execution ID of the waiting parent workflow
  * @param subworkflowResults - The final execution results from the child workflow
- * @returns Promise that resolves when the parent execution has been updated
+ * @returns `true` if the caller may proceed to claim the parent, `false` if this child does
+ * not own the parent's current wait and the caller must stop without claiming. A child owns a
+ * wait only when its execution id is in that wait's `waitingChildExecutionIds` tag; a wait
+ * with no tag (a plain Wait node, or a park from before tagging) is never a child's wait.
  */
 export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 	childExecution?: RelatedExecution,
-): Promise<void> {
+): Promise<boolean> {
 	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
-	if (!subworkflowError && !lastExecutedNodeData?.data) return;
+	if (!subworkflowError && !lastExecutedNodeData?.data) return true;
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
@@ -499,14 +502,27 @@ export async function updateParentExecutionWithChildResults(
 	});
 
 	if (parent?.status !== 'waiting') {
-		return;
+		return true;
 	}
 
 	const parentWithSubWorkflowResults = { data: { ...parent.data } };
 
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
-		return;
+		return true;
+	}
+
+	// A child resume may find the parent parked at a LATER wait: a sibling already resumed
+	// the wait this child belongs to, and the parent moved on to another Execute Workflow /
+	// Agent node or to a plain Wait node. Each child-caused park tags the ids that caused it
+	// (see `BaseExecuteContext.executeWorkflow`); a plain Wait node has no tag. A child must
+	// only patch and claim a wait that names it — never an untagged one, or a sibling's
+	// output would land on the wrong node and resume a wait it never satisfied.
+	if (childExecution?.executionId) {
+		const waitingChildExecutionIds = nodeExecutionStack[0].metadata?.waitingChildExecutionIds;
+		if (!waitingChildExecutionIds?.includes(childExecution.executionId)) {
+			return false;
+		}
 	}
 
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
@@ -569,6 +585,7 @@ export async function updateParentExecutionWithChildResults(
 		parentExecutionId,
 		parentWithSubWorkflowResults,
 	);
+	return true;
 }
 
 /**
