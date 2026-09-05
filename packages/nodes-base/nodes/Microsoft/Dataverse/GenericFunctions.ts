@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,7 +7,7 @@ import type {
 	ILoadOptionsFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, sleep } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { DATAVERSE_API_PATH, buildUserAgent } from './constants';
 
 /** Headers we send to Dataverse must be string-valued. */

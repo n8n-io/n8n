@@ -1,15 +1,12 @@
-import type * as n8nWorkflow from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeApiError, sleep } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { dataverseApiRequest, dataverseApiRequestAllItems } from '../GenericFunctions';
 
 // Neutralize the retry back-off so tests don't actually wait.
-vi.mock('n8n-workflow', async (importActual) => {
-	const actual = await importActual<typeof n8nWorkflow>();
-	return { ...actual, sleep: vi.fn().mockResolvedValue(undefined) };
-});
+vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
 
 const CREDENTIAL_TYPE = 'microsoftDataverseOAuth2Api';
 const BASE_URL = 'https://org.crm.dynamics.com';
