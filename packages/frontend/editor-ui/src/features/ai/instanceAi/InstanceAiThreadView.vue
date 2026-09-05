@@ -21,7 +21,13 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
+import {
+	onClickOutside,
+	useDebounceFn,
+	useElementSize,
+	useScroll,
+	useWindowSize,
+} from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
@@ -29,11 +35,14 @@ import type {
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { DEBOUNCE_TIME, LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { countAttachedNodes } from './utils/buildNodesAttachment';
@@ -116,6 +125,7 @@ const settingsStore = useInstanceAiSettingsStore();
 const thread = provideThread(props.threadId);
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
+const usersStore = useUsersStore();
 const i18n = useI18n();
 const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
@@ -284,11 +294,36 @@ watch(
 );
 
 // --- Canvas / data table preview ---
+const artifactPreviewOpenStorageKey = computed(() =>
+	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN(
+		usersStore.currentUserId ?? 'anonymous',
+		props.threadId,
+	),
+);
+function readPersistedArtifactPreviewOpen(): boolean | undefined {
+	const value = localStorage.getItem(artifactPreviewOpenStorageKey.value);
+	if (value === 'true') return true;
+	if (value === 'false') return false;
+	return undefined;
+}
+const persistedArtifactPreviewOpen = ref(readPersistedArtifactPreviewOpen());
+watch(
+	artifactPreviewOpenStorageKey,
+	() => {
+		persistedArtifactPreviewOpen.value = readPersistedArtifactPreviewOpen();
+	},
+	{ flush: 'sync' },
+);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
+	previewOpenState: () => persistedArtifactPreviewOpen.value,
+	onPreviewOpenChange: (open) => {
+		persistedArtifactPreviewOpen.value = open;
+		localStorage.setItem(artifactPreviewOpenStorageKey.value, String(open));
+	},
 });
 const activeAgentPreviewSessionId = computed(() => {
 	const context = pendingComposerContext.value;
@@ -445,10 +480,15 @@ const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
 const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
-const preferredPreviewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
 const isResizingPreview = ref(false);
+const isThreadAreaResizing = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentPreviewDockOpen = ref(false);
+const MIN_SPLIT_PANEL_WIDTH = 400;
+const MIN_SPLIT_CONTAINER_WIDTH = MIN_SPLIT_PANEL_WIDTH * 2;
+const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
+const preferredChatPanelWidthRatio = ref<number | null>(null);
+const previewPanelWidthBeforeResize = ref<number | null>(null);
 
 watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 	if (activeTabId !== previousActiveTabId) {
@@ -456,11 +496,49 @@ watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 	}
 });
 
-const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value * 0.7));
-// Preserve the default or manually selected width while temporarily
-// constraining it to the available space.
-const previewPanelWidth = computed(() =>
-	Math.min(preferredPreviewPanelWidth.value, previewMaxWidth.value),
+function isValidPanelWidthRatio(value: unknown): value is number {
+	return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+const persistedChatPanelWidthRatio = computed(() => {
+	const ratio = settingsStore.preferences?.chatPanelWidthRatio;
+	return isValidPanelWidthRatio(ratio) ? ratio : null;
+});
+const chatPanelWidthRatio = computed(
+	() => preferredChatPanelWidthRatio.value ?? persistedChatPanelWidthRatio.value,
+);
+const previewMinWidth = computed(() =>
+	threadAreaWidth.value <= MIN_SPLIT_CONTAINER_WIDTH
+		? Math.round(threadAreaWidth.value / 2)
+		: MIN_SPLIT_PANEL_WIDTH,
+);
+const previewMaxWidth = computed(() =>
+	threadAreaWidth.value <= MIN_SPLIT_CONTAINER_WIDTH
+		? Math.round(threadAreaWidth.value / 2)
+		: threadAreaWidth.value - MIN_SPLIT_PANEL_WIDTH,
+);
+const previewPanelWidth = computed(() => {
+	if (threadAreaWidth.value <= MIN_SPLIT_CONTAINER_WIDTH) {
+		return Math.round(threadAreaWidth.value / 2);
+	}
+
+	const preferredChatPanelWidth =
+		chatPanelWidthRatio.value === null
+			? DEFAULT_CHAT_PANEL_CONTENT_WIDTH
+			: threadAreaWidth.value * chatPanelWidthRatio.value;
+	const preferredWidth = threadAreaWidth.value - preferredChatPanelWidth;
+	return Math.round(
+		Math.max(previewMinWidth.value, Math.min(preferredWidth, previewMaxWidth.value)),
+	);
+});
+const isPreviewResizeEnabled = computed(
+	() => !isPreviewExpanded.value && threadAreaWidth.value > MIN_SPLIT_CONTAINER_WIDTH,
+);
+const shouldAnimatePreviewLayout = computed(
+	() =>
+		isPreviewPanelTransitionEnabled.value &&
+		!isResizingPreview.value &&
+		!isThreadAreaResizing.value,
 );
 const AGENT_PREVIEW_CHAT_MIN_WIDTH = 320;
 const AGENT_PREVIEW_CHAT_PREFERRED_WIDTH = 480;
@@ -497,7 +575,27 @@ function handleAgentPreviewDockOpenChange(open: boolean) {
 }
 
 function handlePreviewResize({ width }: { width: number }) {
-	preferredPreviewPanelWidth.value = width;
+	if (threadAreaWidth.value <= 0 || Math.round(width) === previewPanelWidth.value) return;
+	const ratio = (threadAreaWidth.value - width) / threadAreaWidth.value;
+	preferredChatPanelWidthRatio.value = ratio;
+}
+
+function handlePreviewResizeStart() {
+	isResizingPreview.value = true;
+	previewPanelWidthBeforeResize.value = previewPanelWidth.value;
+}
+
+function handlePreviewResizeEnd() {
+	isResizingPreview.value = false;
+	const ratio = preferredChatPanelWidthRatio.value;
+	if (
+		ratio !== null &&
+		previewPanelWidthBeforeResize.value !== null &&
+		previewPanelWidth.value !== previewPanelWidthBeforeResize.value
+	) {
+		void settingsStore.persistChatPanelWidthRatio(ratio);
+	}
+	previewPanelWidthBeforeResize.value = null;
 }
 
 function handlePreviewPanelAfterEnter() {
@@ -520,21 +618,38 @@ watch(
 			isPreviewPanelTransitioning.value = isPreviewPanelTransitionEnabled.value;
 		}
 
-		if (visible) {
-			isArtifactsPanelRevealed.value = false;
-			preferredPreviewPanelWidth.value = previewMaxWidth.value;
-		} else {
+		if (!visible) {
 			isAgentPreviewDockOpen.value = false;
+		} else {
+			isArtifactsPanelRevealed.value = false;
 		}
 	},
 	{ flush: 'sync' },
 );
 
-// Late-initialize if the panel became visible before the ResizeObserver
-// reported the container size (otherwise the panel would render at 0px).
-watch(threadAreaWidth, (width) => {
-	if (width > 0 && preferredPreviewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
-		preferredPreviewPanelWidth.value = previewMaxWidth.value;
+const finishThreadAreaResize = useDebounceFn(() => {
+	isThreadAreaResizing.value = false;
+}, getDebounceTime(DEBOUNCE_TIME.UI.RESIZE));
+
+watch(
+	threadAreaWidth,
+	(width, previousWidth) => {
+		if (
+			typeof previousWidth === 'number' &&
+			previousWidth > 0 &&
+			width !== previousWidth &&
+			preview.isPreviewVisible.value
+		) {
+			isThreadAreaResizing.value = true;
+			void finishThreadAreaResize();
+		}
+	},
+	{ immediate: true },
+);
+
+watch(persistedChatPanelWidthRatio, (ratio, previousRatio) => {
+	if (ratio !== previousRatio && ratio !== null && preview.isPreviewVisible.value) {
+		previewPanelTransitionGate.suppressUntilStableRender();
 	}
 });
 
@@ -1100,10 +1215,10 @@ async function dismissComposerContextChip() {
 			:class="[
 				$style.chatArea,
 				{
-					[$style.agentPreviewLayoutTransition]: isPreviewPanelTransitionEnabled,
+					[$style.agentPreviewLayoutTransition]: shouldAnimatePreviewLayout,
 				},
 			]"
-			:data-layout-animated="isPreviewPanelTransitionEnabled"
+			:data-layout-animated="shouldAnimatePreviewLayout"
 			data-test-id="instance-ai-builder-chat"
 		>
 			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
@@ -1363,8 +1478,7 @@ async function dismissComposerContextChip() {
 					$style.canvasArea,
 					{
 						[$style.canvasAreaExpanded]: isPreviewExpanded,
-						[$style.agentPreviewLayoutTransition]:
-							isPreviewPanelTransitionEnabled && !isResizingPreview,
+						[$style.agentPreviewLayoutTransition]: shouldAnimatePreviewLayout,
 					},
 				]"
 				:style="agentPreviewPanelStyle"
@@ -1373,14 +1487,14 @@ async function dismissComposerContextChip() {
 			>
 				<N8nResizeWrapper
 					:width="previewPanelWidth"
-					:min-width="400"
+					:min-width="previewMinWidth"
 					:max-width="previewMaxWidth"
 					:supported-directions="['left']"
-					:is-resizing-enabled="!isPreviewExpanded"
+					:is-resizing-enabled="isPreviewResizeEnabled"
 					:grid-size="8"
 					@resize="handlePreviewResize"
-					@resizestart="isResizingPreview = true"
-					@resizeend="isResizingPreview = false"
+					@resizestart="handlePreviewResizeStart"
+					@resizeend="handlePreviewResizeEnd"
 				>
 					<TabsRoot
 						v-model="preview.activeTabId.value"

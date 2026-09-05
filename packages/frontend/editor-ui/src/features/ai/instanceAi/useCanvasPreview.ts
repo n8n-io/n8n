@@ -38,12 +38,33 @@ interface UseCanvasPreviewOptions {
 	thread: ThreadRuntime;
 	threadId: () => string;
 	initialAgentId?: () => string | undefined;
+	previewOpenState?: () => boolean | undefined;
+	onPreviewOpenChange?: (open: boolean) => void;
 }
 
-export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({
+	thread,
+	initialAgentId,
+	previewOpenState,
+	onPreviewOpenChange,
+}: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
-	const isPreviewOpen = ref(false);
+	const isPreviewOpen = ref(previewOpenState?.() ?? false);
+
+	function setPreviewOpen(open: boolean, persist = true) {
+		if (isPreviewOpen.value === open) return;
+		isPreviewOpen.value = open;
+		if (persist) onPreviewOpenChange?.(open);
+	}
+
+	watch(
+		() => previewOpenState?.(),
+		(open) => {
+			if (typeof open === 'boolean') setPreviewOpen(open, false);
+		},
+		{ immediate: true },
+	);
 
 	const buildingArtifactIds = useBuildingArtifactIds(thread);
 
@@ -152,7 +173,23 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		(id) => {
 			if (!id || activeTabId.value !== undefined) return;
 			activeTabId.value = id;
-			isPreviewOpen.value = true;
+			if (previewOpenState?.() !== false) setPreviewOpen(true, false);
+		},
+		{ immediate: true },
+	);
+
+	watch(
+		[
+			() => previewOpenState?.(),
+			allArtifactTabs,
+			() => thread.isHydratingThread,
+			initialArtifactId,
+		],
+		([open, tabs, isHydrating, initialId]) => {
+			if (isHydrating) return;
+			if (open === true && activeTabId.value === undefined && tabs[0]) {
+				activeTabId.value = tabs.some((tab) => tab.id === initialId) ? initialId : tabs[0].id;
+			}
 		},
 		{ immediate: true },
 	);
@@ -161,11 +198,11 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 
 	function selectTab(tabId: string) {
 		activeTabId.value = tabId;
-		isPreviewOpen.value = true;
+		setPreviewOpen(true);
 	}
 
 	function closePreview() {
-		isPreviewOpen.value = false;
+		setPreviewOpen(false);
 	}
 
 	/**
@@ -176,7 +213,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 	function openWorkflowPreview(workflowId: string): boolean {
 		if (activeTabId.value === workflowId && isPreviewOpen.value) return false;
 		activeTabId.value = workflowId;
-		isPreviewOpen.value = true;
+		setPreviewOpen(true);
 		return true;
 	}
 
@@ -188,7 +225,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 	function openDataTablePreview(dataTableId: string, _projectId: string): boolean {
 		if (activeTabId.value === dataTableId && isPreviewOpen.value) return false;
 		activeTabId.value = dataTableId;
-		isPreviewOpen.value = true;
+		setPreviewOpen(true);
 		return true;
 	}
 
@@ -200,7 +237,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 	function openAgentPreview(agentId: string, _projectId: string): boolean {
 		if (activeTabId.value === agentId && isPreviewOpen.value) return false;
 		activeTabId.value = agentId;
-		isPreviewOpen.value = true;
+		setPreviewOpen(true);
 		return true;
 	}
 
@@ -247,7 +284,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestBuildResult.value.workflowId;
-			isPreviewOpen.value = true;
+			setPreviewOpen(true);
 			workflowRefreshKey.value++;
 		},
 		{ flush: 'sync' },
@@ -278,7 +315,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestBuilderTarget.value.workflowId;
-			isPreviewOpen.value = true;
+			setPreviewOpen(true);
 		},
 		{ flush: 'sync' },
 	);
@@ -307,7 +344,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestAgentBuilderTarget.value.targetAgentId;
-			isPreviewOpen.value = true;
+			setPreviewOpen(true);
 		},
 		{ flush: 'sync' },
 	);
@@ -367,7 +404,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			const targetId = latestUpdateResult.value.workflowId;
 
 			activeTabId.value = targetId;
-			isPreviewOpen.value = true;
+			setPreviewOpen(true);
 			workflowRefreshKey.value++;
 		},
 		{ flush: 'sync' },
@@ -393,7 +430,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestDataTableResult.value.dataTableId;
-			isPreviewOpen.value = true;
+			setPreviewOpen(true);
 			dataTableRefreshKey.value++;
 		},
 		{ flush: 'sync' },
@@ -417,7 +454,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			const remaining = allArtifactTabs.value.filter((t) => t.id !== deletedId);
 			activeTabId.value = remaining.length > 0 ? remaining[0].id : undefined;
 			if (!activeTabId.value) {
-				isPreviewOpen.value = false;
+				setPreviewOpen(false);
 			}
 		}
 	});

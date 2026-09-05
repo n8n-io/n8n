@@ -2096,12 +2096,14 @@ export interface InstanceAiUserPreferencesResponse {
 	credentialName: string | null;
 	modelName: string;
 	localGatewayDisabled: boolean;
+	chatPanelWidthRatio?: number;
 }
 
 export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
 	credentialId: z.string().nullable().optional(),
 	modelName: z.string().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	chatPanelWidthRatio: z.number().min(0).max(1).optional(),
 }) {}
 
 export interface InstanceAiProviderConnection {

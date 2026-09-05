@@ -474,6 +474,91 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	describe('chat panel width preference', () => {
+		const preferencesResponse = (chatPanelWidthRatio: number) => ({
+			credentialId: null,
+			credentialType: null,
+			credentialName: null,
+			modelName: 'gpt-5',
+			localGatewayDisabled: false,
+			chatPanelWidthRatio,
+		});
+
+		it('serializes updates and keeps the newest ratio', async () => {
+			let resolveFirstRequest: (value: InstanceAiUserPreferencesResponse) => void = () => {};
+			mockUpdatePreferences
+				.mockImplementationOnce(
+					async () =>
+						await new Promise<InstanceAiUserPreferencesResponse>((resolve) => {
+							resolveFirstRequest = resolve;
+						}),
+				)
+				.mockResolvedValueOnce(preferencesResponse(0.7));
+			setUserPreference(store, preferencesResponse(0.5));
+
+			const firstUpdate = store.persistChatPanelWidthRatio(0.6);
+			await vi.waitFor(() => expect(mockUpdatePreferences).toHaveBeenCalledOnce());
+			const secondUpdate = store.persistChatPanelWidthRatio(0.7);
+
+			expect(store.preferences?.chatPanelWidthRatio).toBe(0.7);
+			expect(mockUpdatePreferences).toHaveBeenCalledOnce();
+
+			resolveFirstRequest(preferencesResponse(0.6));
+			await Promise.all([firstUpdate, secondUpdate]);
+
+			expect(mockUpdatePreferences).toHaveBeenCalledTimes(2);
+			expect(mockUpdatePreferences).toHaveBeenNthCalledWith(
+				2,
+				{ baseUrl: 'http://localhost:5678/rest' },
+				{ chatPanelWidthRatio: 0.7 },
+			);
+			expect(store.preferences?.chatPanelWidthRatio).toBe(0.7);
+		});
+
+		it('does not persist an unchanged ratio', async () => {
+			setUserPreference(store, preferencesResponse(0.6));
+
+			await store.persistChatPanelWidthRatio(0.6);
+
+			expect(mockUpdatePreferences).not.toHaveBeenCalled();
+		});
+
+		it('keeps a saved ratio when an older preference request finishes later', async () => {
+			let resolveFetch: (value: InstanceAiUserPreferencesResponse) => void = () => {};
+			mockFetchPreferences.mockImplementationOnce(
+				async () =>
+					await new Promise<InstanceAiUserPreferencesResponse>((resolve) => {
+						resolveFetch = resolve;
+					}),
+			);
+			mockUpdatePreferences.mockResolvedValueOnce(preferencesResponse(0.6));
+
+			const loading = store.fetch();
+			await vi.waitFor(() => expect(mockFetchPreferences).toHaveBeenCalledOnce());
+			await store.persistChatPanelWidthRatio(0.6);
+			resolveFetch(preferencesResponse(0.5));
+			await loading;
+
+			expect(store.preferences?.chatPanelWidthRatio).toBe(0.6);
+		});
+
+		it('restores the confirmed ratio after a failed update and allows a retry', async () => {
+			setUserPreference(store, preferencesResponse(0.5));
+			mockUpdatePreferences
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValueOnce(preferencesResponse(0.6));
+
+			await store.persistChatPanelWidthRatio(0.6);
+
+			expect(store.preferences?.chatPanelWidthRatio).toBe(0.5);
+
+			await store.persistChatPanelWidthRatio(0.6);
+
+			expect(mockUpdatePreferences).toHaveBeenCalledTimes(2);
+			expect(store.preferences?.chatPanelWidthRatio).toBe(0.6);
+		});
+	});
+
 	describe('provider credentials', () => {
 		it('refreshes n8n Sandbox credentials when the assistant proxy is enabled', async () => {
 			setModuleSettings(settingsStore, { proxyEnabled: true, cloudManaged: false });

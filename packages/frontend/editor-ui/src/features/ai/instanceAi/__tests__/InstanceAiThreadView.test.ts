@@ -9,11 +9,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import { NEW_CONVERSATION_TITLE } from '../constants';
+import { LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN } from '@/app/constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 import type {
 	FrontendModuleSettings,
@@ -487,6 +490,7 @@ describe('InstanceAiThreadView', () => {
 		useSettingsStore().moduleSettings = {
 			'instance-ai': { ...defaultModuleSettings },
 		};
+		useUsersStore().currentUserId = 'user-1';
 		workflowPreviewEmit = null;
 
 		thread = reactive({
@@ -1520,7 +1524,7 @@ describe('InstanceAiThreadView', () => {
 		expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
 	});
 
-	it('opens the artifacts panel from the header toggle when too narrow for pinned artifacts', async () => {
+	it('opens artifacts when narrow and restores them in the pinned layout', async () => {
 		mockWindowSizeState.width.value = 900;
 		thread.messages = [
 			{
@@ -1549,6 +1553,12 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByTestId('instance-ai-content-area'));
 
 		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+
+		mockWindowSizeState.width.value = 1700;
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+		});
+		expect(store.updateThreadMetadata).not.toHaveBeenCalled();
 	});
 
 	it('keeps the artifacts panel toggle available when the panel is in the layout', async () => {
@@ -1579,6 +1589,21 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
 
 		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+	});
+
+	it('restores an open preview when the artifact has no message attachment', async () => {
+		thread.producedArtifacts = new Map([
+			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'Lead enrichment workflow' }],
+		]) as typeof thread.producedArtifacts;
+		localStorage.setItem(
+			LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('user-1', 'thread-1'),
+			'true',
+		);
+
+		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(await findByTestId('instance-ai-workflow-preview-stub')).toBeInTheDocument();
+		expect(await findByTestId('instance-ai-preview-panel')).toBeVisible();
 	});
 
 	it('renders the agent artifact preview when an agent is created', async () => {
@@ -1649,8 +1674,8 @@ describe('InstanceAiThreadView', () => {
 		const threadArea = getByTestId('instance-ai-thread-area');
 		const header = getByTestId('instance-ai-builder-chat-header');
 		const content = getByTestId('instance-ai-content-area');
-		expect(previewPanel.style.width).toBe('600px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('300px');
+		expect(previewPanel.style.width).toBe('400px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('200px');
 		await vi.waitFor(() => {
 			expect(previewPanel).toHaveClass('agentPreviewLayoutTransition');
 		});
@@ -1658,20 +1683,20 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 
 		expect(threadArea).toHaveClass('agentPreviewDockOpen');
-		expect(previewPanel.style.width).toBe('600px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('300px');
+		expect(previewPanel.style.width).toBe('400px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('200px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 
 		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
 
 		expect(threadArea).not.toHaveClass('agentPreviewDockOpen');
-		expect(previewPanel.style.width).toBe('600px');
+		expect(previewPanel.style.width).toBe('400px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 
 		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
 
 		expect(previewPanel).not.toHaveClass('agentPreviewLayoutTransition');
-		await fireEvent.mouseMove(window, { clientX: 120 });
+		await fireEvent.mouseMove(window, { clientX: -80 });
 		expect(previewPanel.style.width).toBe('480px');
 		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 
@@ -1680,6 +1705,14 @@ describe('InstanceAiThreadView', () => {
 		await vi.waitFor(() => {
 			expect(previewPanel).toHaveClass('agentPreviewLayoutTransition');
 		});
+		const instanceAiSettingsStore = mockedStore(useInstanceAiSettingsStore);
+		expect(instanceAiSettingsStore.persistChatPanelWidthRatio).toHaveBeenCalledWith(0.6);
+		instanceAiSettingsStore.persistChatPanelWidthRatio.mockClear();
+
+		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: -80 });
+		await fireEvent.mouseUp(window);
+
+		expect(instanceAiSettingsStore.persistChatPanelWidthRatio).not.toHaveBeenCalled();
 
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 
@@ -1701,24 +1734,38 @@ describe('InstanceAiThreadView', () => {
 		const { getByTestId } = await renderAgentArtifact({ threadAreaWidth: 1200 });
 		const previewPanel = getByTestId('instance-ai-preview-panel');
 
-		expect(previewPanel.style.width).toBe('600px');
+		expect(previewPanel.style.width).toBe('400px');
 
 		mockThreadAreaSizeState.width.value = 800;
-		await vi.waitFor(() => expect(previewPanel.style.width).toBe('560px'));
+		await vi.waitFor(() => expect(previewPanel.style.width).toBe('400px'));
 
 		mockThreadAreaSizeState.width.value = 1200;
-		await vi.waitFor(() => expect(previewPanel.style.width).toBe('600px'));
+		await vi.waitFor(() => expect(previewPanel.style.width).toBe('400px'));
 
 		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
-		await fireEvent.mouseMove(window, { clientX: 120 });
+		await fireEvent.mouseMove(window, { clientX: -80 });
 		await fireEvent.mouseUp(window);
 		expect(previewPanel.style.width).toBe('480px');
 
 		mockThreadAreaSizeState.width.value = 600;
-		await vi.waitFor(() => expect(previewPanel.style.width).toBe('420px'));
+		await vi.waitFor(() => expect(previewPanel.style.width).toBe('300px'));
 
 		mockThreadAreaSizeState.width.value = 1200;
 		await vi.waitFor(() => expect(previewPanel.style.width).toBe('480px'));
+	});
+
+	it('keeps the default ratio when dragging against the minimum width', async () => {
+		const { getByTestId } = await renderAgentArtifact({ threadAreaWidth: 1200 });
+		const previewPanel = getByTestId('instance-ai-preview-panel');
+
+		expect(previewPanel.style.width).toBe('400px');
+
+		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
+		await fireEvent.mouseMove(window, { clientX: 120 });
+		await fireEvent.mouseUp(window);
+
+		mockThreadAreaSizeState.width.value = 1600;
+		await vi.waitFor(() => expect(previewPanel.style.width).toBe('800px'));
 	});
 
 	it('keeps expanded preview state independent from the agent dock', async () => {
@@ -1859,7 +1906,7 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-thread-area')).not.toHaveClass('agentPreviewDockOpen');
 	});
 
-	it('keeps the new-agent artifact accessible when closed and restores it after refresh', async () => {
+	it('keeps the new-agent artifact accessible and restores the closed preview after refresh', async () => {
 		mockWindowSizeState.width.value = 1700;
 		thread.producedArtifacts = new Map([
 			[
@@ -1889,6 +1936,9 @@ describe('InstanceAiThreadView', () => {
 		expect(firstRender.queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
 		expect(firstRender.getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
 		expect(firstRender.getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
+		expect(
+			localStorage.getItem(LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('user-1', 'thread-1')),
+		).toBe('false');
 
 		store.threads = [
 			{
@@ -1916,10 +1966,10 @@ describe('InstanceAiThreadView', () => {
 
 		firstRender.unmount();
 		const refreshedRender = renderView({ props: { threadId: 'thread-1' } });
-		const restoredPreview = await refreshedRender.findByTestId('instance-ai-agent-preview-stub');
 
-		expect(restoredPreview).toHaveAttribute('data-agent-id', 'agent-1');
-		expect(await refreshedRender.findByTestId('instance-ai-preview-panel')).toBeVisible();
+		expect(refreshedRender.queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
+		expect(await refreshedRender.findByTestId('instance-ai-preview-panel')).not.toBeVisible();
+		expect(refreshedRender.getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
 	});
 
 	describe('Fix with AI card', () => {
