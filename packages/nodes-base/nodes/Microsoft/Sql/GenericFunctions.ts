@@ -95,6 +95,7 @@ export function formatColumns(columns: string) {
 }
 
 export function configurePool(credentials: IDataObject) {
+	const serverName = (credentials.serverName as string)?.trim();
 	const config = {
 		server: credentials.server as string,
 		port: credentials.port as number,
@@ -109,6 +110,7 @@ export function configurePool(credentials: IDataObject) {
 			enableArithAbort: false,
 			tdsVersion: credentials.tdsVersion as string,
 			trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
+			...(serverName ? { serverName } : {}),
 		},
 	};
 
