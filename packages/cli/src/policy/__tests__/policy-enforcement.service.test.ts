@@ -41,7 +41,11 @@ const enforceCalls = (service: PolicyEnforcementService) => ({
 			projectId: 'proj-1',
 		}),
 	contentImport: async () =>
-		await service.enforceContentImport({ workflow: savedWorkflow, projectId: 'proj-1' }),
+		await service.enforceContentImport({
+			workflow: savedWorkflow,
+			projectId: 'proj-1',
+			transport: 'cli',
+		}),
 });
 
 const evaluateCalls = (service: PolicyEnforcementService) => ({
@@ -68,7 +72,11 @@ const evaluateCalls = (service: PolicyEnforcementService) => ({
 			projectId: 'proj-1',
 		}),
 	contentImport: async () =>
-		await service.evaluateContentImport({ workflow: savedWorkflow, projectId: 'proj-1' }),
+		await service.evaluateContentImport({
+			workflow: savedWorkflow,
+			projectId: 'proj-1',
+			transport: 'cli',
+		}),
 });
 
 describe('PolicyEnforcementService', () => {
@@ -174,7 +182,7 @@ describe('PolicyEnforcementService', () => {
 				checkErrors: [{ checkId: 'flaky', correlationId: 'abc' }],
 			};
 			backend.evaluate.mockResolvedValue(decision);
-			const context = { workflow: savedWorkflow, projectId: null };
+			const context = { workflow: savedWorkflow, projectId: null, transport: 'cli' } as const;
 
 			expect(await service.evaluateContentImport(context)).toBe(decision);
 			expect(backend.evaluate).toHaveBeenCalledWith('contentImport', context);

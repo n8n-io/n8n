@@ -20,7 +20,7 @@ const user = mock<User>({ id: 'user-1' });
 
 function makeProject(overrides: Partial<Project> = {}): Project {
 	return {
-		id: '550e8400-e29b-41d4-a716-446655440000',
+		id: 'projectbilling01',
 		name: 'billing',
 		type: 'team',
 		description: null,
@@ -94,7 +94,7 @@ function makeExporter({
 describe('ProjectExporter', () => {
 	it('checks project:export scope for the requested projects', async () => {
 		const project = makeProject();
-		const { exporter, projectService } = makeExporter({ projects: [project] });
+		const { exporter, projectService, workflowFinder } = makeExporter({ projects: [project] });
 		const writer = new CapturingWriter();
 
 		await exporter.export({
@@ -103,6 +103,7 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
 		});
 
 		expect(projectService.findProjectsByIdsForUser).toHaveBeenCalledWith(
@@ -110,6 +111,27 @@ describe('ProjectExporter', () => {
 			[project.id],
 			['project:export'],
 		);
+		expect(workflowFinder.findRootWorkflowIdsInProject).toHaveBeenCalledWith(project.id, {
+			includeArchived: false,
+		});
+	});
+
+	it('includes archived workflows when requested', async () => {
+		const project = makeProject();
+		const { exporter, workflowFinder } = makeExporter({ projects: [project] });
+
+		await exporter.export({
+			user,
+			projectIds: [project.id],
+			writer: new CapturingWriter(),
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: true,
+		});
+
+		expect(workflowFinder.findRootWorkflowIdsInProject).toHaveBeenCalledWith(project.id, {
+			includeArchived: true,
+		});
 	});
 
 	it('throws when the user lacks access to a requested project', async () => {
@@ -124,6 +146,7 @@ describe('ProjectExporter', () => {
 				writer,
 				includeTags: true,
 				workflowVersionPolicy: 'latest',
+				includeArchivedWorkflows: false,
 			}),
 		).rejects.toThrow('1 project(s) not found or not accessible. Export aborted.');
 	});
@@ -140,6 +163,7 @@ describe('ProjectExporter', () => {
 				writer,
 				includeTags: true,
 				workflowVersionPolicy: 'latest',
+				includeArchivedWorkflows: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
@@ -156,6 +180,7 @@ describe('ProjectExporter', () => {
 				writer,
 				includeTags: true,
 				workflowVersionPolicy: 'latest',
+				includeArchivedWorkflows: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
@@ -171,19 +196,20 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
 		});
 
 		expect(entries).toEqual([
 			{
 				id: project.id,
 				name: project.name,
-				target: 'projects/billing',
+				target: 'projects/billing-projectbilling01',
 			},
 		]);
-		expect(writer.directories).toEqual(['projects/billing']);
+		expect(writer.directories).toEqual(['projects/billing-projectbilling01']);
 		expect(writer.files).toEqual([
 			{
-				path: 'projects/billing/project.json',
+				path: 'projects/billing-projectbilling01/project.json',
 				content: expect.stringContaining('"name": "billing"'),
 			},
 		]);
@@ -211,18 +237,19 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
 		});
 
 		expect(entries).toEqual([
 			{
 				id: olderProject.id,
 				name: olderProject.name,
-				target: 'projects/billing',
+				target: 'projects/billing-project-older',
 			},
 			{
 				id: newerProject.id,
 				name: newerProject.name,
-				target: 'projects/billing-2',
+				target: 'projects/billing-project-newer',
 			},
 		]);
 	});
@@ -238,13 +265,14 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
 		});
 
 		expect(entries).toEqual([
 			{
 				id: project.id,
 				name: project.name,
-				target: 'projects/personal',
+				target: 'projects/personal-personal-1',
 			},
 		]);
 	});

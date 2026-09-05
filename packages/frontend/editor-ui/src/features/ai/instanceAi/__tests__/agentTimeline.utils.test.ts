@@ -319,7 +319,17 @@ describe('buildTimelineBlocks', () => {
 						message: 'To search the web',
 						mcpConnectRequest: {
 							servers: [
-								{ serverSlug: 'brave', title: 'Brave', credentialType: 'braveMcpOAuth2Api' },
+								{
+									serverSlug: 'brave',
+									title: 'Brave',
+									usesCredentials: [
+										{
+											credentialType: 'braveMcpOAuth2Api',
+											name: 'OAuth2',
+											value: 'oAuth2',
+										},
+									],
+								},
 							],
 						},
 					},
