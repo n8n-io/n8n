@@ -1,0 +1,94 @@
+{
+	"name": "CustomerIo Campaign Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "b1c2d3e4-0002-0002-0002-000000000001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "get",
+				"campaignId": 1
+			},
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "b1c2d3e4-0002-0002-0002-000000000002",
+			"name": "CustomerIo - Campaign - Get",
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "CustomerIo account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "getAll"
+			},
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "b1c2d3e4-0002-0002-0002-000000000003",
+			"name": "CustomerIo - Campaign - GetAll",
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "CustomerIo account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "getMetrics",
+				"campaignId": 1,
+				"period": "days",
+				"jsonParameters": false,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "b1c2d3e4-0002-0002-0002-000000000004",
+			"name": "CustomerIo - Campaign - GetMetrics",
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "CustomerIo account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"CustomerIo - Campaign - Get": [
+			{ "json": { "id": 1, "name": "Test Campaign", "active": true } }
+		],
+		"CustomerIo - Campaign - GetAll": [
+			{ "json": { "id": 1, "name": "Campaign 1" } },
+			{ "json": { "id": 2, "name": "Campaign 2" } }
+		],
+		"CustomerIo - Campaign - GetMetrics": [{ "json": { "period": "days", "steps": 5, "data": [] } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "CustomerIo - Campaign - Get", "type": "main", "index": 0 },
+					{ "node": "CustomerIo - Campaign - GetAll", "type": "main", "index": 0 },
+					{ "node": "CustomerIo - Campaign - GetMetrics", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
