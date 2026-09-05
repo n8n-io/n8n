@@ -314,6 +314,10 @@ const InstanceAiInputStub = defineComponent({
 	setup(props, { emit, expose, slots }) {
 		const i18n = useI18n();
 		const currentText = ref('');
+		const submit = (message: string) => {
+			emit('submit', message);
+			currentText.value = '';
+		};
 		expose({
 			focus: vi.fn(),
 			isDirty: () => currentText.value.length > 0,
@@ -322,7 +326,7 @@ const InstanceAiInputStub = defineComponent({
 			},
 			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
 			submitSuggestion: (payload: { promptKey: BaseTextKey }) =>
-				emit('submit', i18n.baseText(payload.promptKey)),
+				submit(i18n.baseText(payload.promptKey)),
 		});
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
@@ -375,7 +379,7 @@ const InstanceAiInputStub = defineComponent({
 					'button',
 					{
 						'data-test-id': 'instance-ai-input-stub-submit',
-						onClick: () => emit('submit', currentText.value || 'hello'),
+						onClick: () => submit(currentText.value || 'hello'),
 					},
 					'submit',
 				),
@@ -1017,13 +1021,24 @@ describe('InstanceAiEmptyView', () => {
 		});
 	});
 
-	it('shows a toast and stays on the empty view when syncThread rejects', async () => {
+	it('restores the submitted draft when syncThread rejects', async () => {
+		templateExamplesEnabled.value = true;
 		store.syncThread.mockRejectedValue(new Error('persist failed'));
 		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('template-example-card'));
+		await flushPromises();
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
+			'Build me an invoice automation',
+		);
 
 		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 		await flushPromises();
 
+		// INS-579: Keep the submitted text when thread creation fails.
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
+			'Build me an invoice automation',
+		);
 		expect(showErrorMock).toHaveBeenCalled();
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
