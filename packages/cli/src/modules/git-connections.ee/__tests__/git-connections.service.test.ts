@@ -320,6 +320,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 					includeVariableValues: true,
 					canExportVariableValues: true,
 					includeTags: true,
+					includeArchivedWorkflows: true,
 					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
 					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
 				},

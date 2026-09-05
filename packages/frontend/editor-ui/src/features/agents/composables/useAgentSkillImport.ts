@@ -1,8 +1,8 @@
 import { parse as parseYaml } from 'yaml';
 import {
-	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
-	AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 
@@ -10,6 +10,8 @@ import type { AgentSkill, AgentSkillReference } from '../types';
 
 const SKILL_FILE_NAME = 'SKILL.md';
 const FRONTMATTER_DELIMITER = '---';
+/** Largest UTF-8 encoding of a reference at the character limit: 4 bytes per character. */
+const MAX_REFERENCE_FILE_BYTES = AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH * 4;
 
 export class AgentSkillImportError extends Error {
 	constructor(readonly i18nKey: BaseTextKey) {
@@ -43,7 +45,7 @@ export function useAgentSkillImport() {
 		const parsed = parseSkillMarkdown(skillContent);
 		const references: AgentSkillReference[] = [];
 		const seenPaths = new Set<string>();
-		let totalReferenceBytes = 0;
+		let totalReferenceLength = 0;
 
 		for (const entry of fileEntries) {
 			if (entry === skillFile) continue;
@@ -63,18 +65,19 @@ export function useAgentSkillImport() {
 			if (references.length >= AGENT_SKILL_REFERENCE_MAX_COUNT) {
 				throw new AgentSkillImportError('agents.builder.skills.import.tooManyReferences');
 			}
-			if (entry.file.size > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
+			// Pre-read guard so an oversized file never enters memory. Anything
+			// bigger than this cannot pass the character check below.
+			if (entry.file.size > MAX_REFERENCE_FILE_BYTES) {
 				throw new AgentSkillImportError('agents.builder.skills.import.referenceTooLarge');
 			}
 			seenPaths.add(relativePath);
 
 			const content = await readFileText(entry.file);
-			const bytes = new TextEncoder().encode(content).byteLength;
-			if (bytes > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
+			if (content.length > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH) {
 				throw new AgentSkillImportError('agents.builder.skills.import.referenceTooLarge');
 			}
-			totalReferenceBytes += bytes;
-			if (totalReferenceBytes > AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES) {
+			totalReferenceLength += content.length;
+			if (totalReferenceLength > AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH) {
 				throw new AgentSkillImportError('agents.builder.skills.import.referencesTooLarge');
 			}
 			references.push({

@@ -675,7 +675,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			expect(noTriggerDisabled).toBeTruthy();
 			expect(noTriggerDisabled?.disabled).toBe(true);
-			expect(noTriggerDisabled?.disabledReason).toContain('No supported trigger node');
+			expect(noTriggerDisabled?.disabledReason).toContain(
+				"Needs a 'When Executed by Another Workflow' trigger",
+			);
 
 			// Disabled items appear after compatible ones within the category.
 			const workflowItems = items.filter((i) => i.kind === 'workflow');

@@ -36,6 +36,7 @@
     "vitest-mock-extended": "catalog:"
   },
   "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "typescript": "catalog:typescript"
   },
