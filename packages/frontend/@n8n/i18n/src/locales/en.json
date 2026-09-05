@@ -7219,6 +7219,8 @@
 	"instanceAi.input.planEditPlaceholder": "What should we change?",
 	"instanceAi.input.planEditContext": "Plan edits",
 	"instanceAi.feedback.success": "Thanks for your feedback!",
+	"instanceAi.message.actions.showDebugInfo": "Show debug information",
+	"instanceAi.message.actions.hideDebugInfo": "Hide debug information",
 	"instanceAi.emptyState.title": "AI Assistant",
 	"experiments.instanceAiTemplateExamples.empty": "No examples found",
 	"experiments.instanceAiTemplateExamples.emptyState.title": "What can I help you automate?",

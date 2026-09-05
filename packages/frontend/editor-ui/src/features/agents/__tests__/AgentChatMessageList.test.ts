@@ -5,7 +5,27 @@ import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 const copySpy = vi.fn();
 
+vi.mock('@n8n/composables/useClipboard', () => ({
+	useClipboard: function useClipboard() {
+		return { copy: copySpy };
+	},
+}));
+
 vi.mock('@n8n/design-system', () => ({
+	N8nChatActions: {
+		props: ['content'],
+		setup: function setup(props: { content: string }) {
+			function copyContent() {
+				return copySpy(props.content);
+			}
+			return { copyContent };
+		},
+		template: `<div v-bind="$attrs">
+			<button data-test-id="agent-chat-message-copy" @click="copyContent" />
+			<button data-test-id="agent-chat-message-read-aloud" />
+			<slot />
+		</div>`,
+	},
 	N8nIcon: { template: '<i />' },
 	N8nIconButton: {
 		template:
@@ -72,17 +92,6 @@ vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 		template:
 			'<div data-testid="interactive-card-stub" :data-tool-call-id="payload.toolCallId" :data-run-id="payload.runId || \'\'" />',
 		props: ['payload'],
-	},
-}));
-
-vi.mock('@/features/ai/chatHub/components/CopyButton.vue', () => ({
-	default: {
-		template:
-			'<button data-test-id="agent-chat-message-copy" @click="copySpy(content)">copy</button>',
-		props: ['content'],
-		setup() {
-			return { copySpy };
-		},
 	},
 }));
 
@@ -259,10 +268,7 @@ describe('AgentChatMessageList', () => {
 		);
 	});
 
-	it('shows copy and read-aloud actions for assistant text messages', async () => {
-		const speakSpy = vi.spyOn(window.speechSynthesis, 'speak');
-		const cancelSpy = vi.spyOn(window.speechSynthesis, 'cancel');
-
+	it('shows copy and read-aloud actions for assistant text messages', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
 				messages: [
@@ -280,10 +286,6 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-test-id="agent-chat-message-actions"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="agent-chat-message-copy"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="agent-chat-message-read-aloud"]').exists()).toBe(true);
-
-		await wrapper.find('[data-test-id="agent-chat-message-read-aloud"]').trigger('click');
-		expect(cancelSpy).toHaveBeenCalled();
-		expect(speakSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('shows send-to-assistant for preview assistant messages and re-emits clicks', async () => {

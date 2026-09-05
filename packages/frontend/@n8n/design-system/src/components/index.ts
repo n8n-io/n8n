@@ -108,6 +108,14 @@ export {
 	type ChatInputAutoFocusTarget,
 } from './N8nChatInput';
 export { default as N8nChatMessage } from './N8nChatMessage';
+export { default as N8nChatActions } from './N8nChatActions/ChatActions.vue';
+export type {
+	ChatActionCopyResult,
+	ChatActionCopyStatus,
+	ChatActionReadAloudResult,
+	ChatActionReadAloudStatus,
+	ChatActionsProps,
+} from './N8nChatActions/ChatActions.types';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nSegmentControl } from './N8nSegmentControl';
