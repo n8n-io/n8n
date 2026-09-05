@@ -13,6 +13,7 @@ import type { Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
+import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
 const CLOCK = new Date('2026-01-05T09:00:00.000Z');
@@ -57,6 +58,7 @@ describe('DurableJobProvisioner', () => {
 	const tasks = mock<ScheduledTaskRepository>();
 	const tracing = mock<Tracing>();
 	const workflowOwner = mock<WorkflowScheduledJobOwner>();
+	const agentOwner = mock<AgentScheduledJobOwner>();
 
 	let provisioner: DurableJobProvisioner;
 	let logger: Logger;
@@ -82,6 +84,7 @@ describe('DurableJobProvisioner', () => {
 			tasks,
 			globalConfig,
 			workflowOwner,
+			agentOwner,
 			tracing,
 		);
 	};
@@ -967,7 +970,7 @@ describe('DurableJobProvisioner', () => {
 			jobs.deleteByOwnerRef.mockResolvedValue(1);
 
 			await expect(
-				provisioner.deprovisionOwner({ ownerType: 'agent', ownerId: 'agent-1' }),
+				provisioner.deprovisionOwner({ ownerType: 'unknown-thing', ownerId: 'thing-1' }),
 			).resolves.toEqual({ removed: 1 });
 		});
 	});
@@ -1004,10 +1007,10 @@ describe('DurableJobProvisioner', () => {
 		it('refuses an owner type the manifest registry does not declare', async () => {
 			await expect(
 				provisioner.provision({
-					owner: { ownerType: 'agent', ownerId: 'agent-1', ownerMemberId: null },
-					taskType: 'agent:task',
+					owner: { ownerType: 'unknown-thing', ownerId: 'thing-1', ownerMemberId: null },
+					taskType: 'unknown-thing:task',
 					payload: {},
-					desired: [desiredJob('agent-1:0')],
+					desired: [desiredJob('thing-1:0')],
 					misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 				}),
 			).rejects.toThrow('no registered liveness resolver');
