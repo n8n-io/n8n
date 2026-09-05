@@ -35,8 +35,8 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsService } = await import('./agents.service.js');
 		Container.get(AgentsService);
 
-		const { AgentCredentialIndexListener } = await import('./agent-credential-index.listener.js');
-		Container.get(AgentCredentialIndexListener).init();
+		const { AgentDependencyIndexListener } = await import('./agent-dependency-index.listener.js');
+		Container.get(AgentDependencyIndexListener).init();
 
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
@@ -195,6 +195,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
 		);
+		const { AgentWorkflowDependency } = await import(
+			'./entities/agent-workflow-dependency.entity.js'
+		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
@@ -231,6 +234,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentBackgroundJob,
 			AgentHistory,
 			AgentCredentialDependency,
+			AgentWorkflowDependency,
 			AgentTask,
 			AgentTaskRunLock,
 			AgentTaskSnapshot,

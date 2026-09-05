@@ -911,13 +911,6 @@ export async function resolveWorkflowTool(
  * shares the real tool's handler, which reloads and re-validates the workflow on
  * every call: the model gets the current reason instead of a bare "tool not found",
  * and a workflow the user has fixed since works on the next call.
- *
- * Interim until AGENT-790: the runtime cache keeps this stub alive for up to 30 idle
- * minutes because nothing invalidates an agent runtime when one of its workflows
- * changes. Until the runtime is rebuilt the model only sees a free-form input
- * schema, not the workflow's declared inputs. Once AGENT-790 invalidates the
- * runtimes of dependent agents on workflow changes, a rebuilt runtime carries the
- * real tool and this stub lives only while the workflow is actually broken.
  */
 export function buildUnavailableWorkflowTool(
 	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,

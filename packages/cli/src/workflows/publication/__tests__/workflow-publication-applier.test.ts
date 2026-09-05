@@ -14,6 +14,7 @@ import { WebhookPathTakenError } from 'n8n-workflow';
 
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
+import type { EventService } from '@/events/event.service';
 import type { NodeTypes } from '@/node-types';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -46,6 +47,7 @@ describe('WorkflowPublicationApplier', () => {
 		ownerId: workflowId,
 	}));
 	const durableJobProvisioner = mock<DurableJobProvisioner>();
+	const eventService = mock<EventService>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -61,6 +63,7 @@ describe('WorkflowPublicationApplier', () => {
 		ownershipService,
 		workflowScheduledJobOwner,
 		durableJobProvisioner,
+		eventService,
 	);
 
 	function makeRecord(
@@ -200,6 +203,10 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowPublishedDataService.invalidateCache).toHaveBeenCalledWith('wf-1');
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('workflow-published-version-changed', {
+				workflowId: 'wf-1',
+				publishedVersionId: null,
+			});
 		});
 
 		test('removes the mapping without deactivating when there are no triggers', async () => {
@@ -232,6 +239,7 @@ describe('WorkflowPublicationApplier', () => {
 				'wf-1',
 			);
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		test('completes as unpublished carrying external teardown failures, still removing the mapping', async () => {
@@ -435,6 +443,32 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedDataService.refreshCache).toHaveBeenCalledWith('wf-1');
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+	});
+
+	test('emits workflow-published-version-changed once the mapping is written, even if the cache refresh then fails', async () => {
+		workflowPublishedDataService.refreshCache.mockRejectedValueOnce(new Error('cache down'));
+
+		await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('cache down');
+
+		// The retry finds the mapping already advanced and stays silent, so this
+		// emission is the only one consumers get for the moved version.
+		expect(eventService.emit).toHaveBeenCalledWith('workflow-published-version-changed', {
+			workflowId: 'wf-1',
+			publishedVersionId: 'v-2',
+		});
+	});
+
+	test('does not emit when a reconcile re-applies the current published version', async () => {
+		workflowRepository.findOneBy.mockResolvedValue(makeWorkflow({ activeVersionId: 'v-1' }));
+		workflowHistoryRepository.findOneBy.mockResolvedValue(oldVersion);
+
+		await applier.apply(makeRecord({ publishedVersionId: 'v-1', reason: 'reconcile' }), abort);
+
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-1',
+		);
+		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 
 	test('stamps each trigger status with its execution kind', async () => {

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { AgentJsonConfig } from '@n8n/api-types';
 import {
 	createWorkflow,
 	randomCredentialPayload,
@@ -11,9 +12,11 @@ import { Container } from '@n8n/di';
 
 import { AgentCredentialDependency } from '@/modules/agents/entities/agent-credential-dependency.entity';
 import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
+import { AgentWorkflowDependency } from '@/modules/agents/entities/agent-workflow-dependency.entity';
 import { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentCredentialDependencyRepository } from '@/modules/agents/repositories/agent-credential-dependency.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentWorkflowDependencyRepository } from '@/modules/agents/repositories/agent-workflow-dependency.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { saveCredential } from '../shared/db/credentials';
@@ -23,13 +26,19 @@ import * as utils from '../shared/utils';
 let testServer: ReturnType<typeof utils.setupTestServer>;
 let depRepo: WorkflowDependencyRepository;
 let agentDepRepo: AgentCredentialDependencyRepository;
+let agentWorkflowDepRepo: AgentWorkflowDependencyRepository;
 let agentHistoryRepo: AgentHistoryRepository;
 let agentRepo: AgentRepository;
 let projectRepo: ProjectRepository;
 
 beforeAll(() => {
 	const moduleRegistry = Container.get(ModuleRegistry);
-	moduleRegistry.entities.push(Agent, AgentHistory, AgentCredentialDependency);
+	moduleRegistry.entities.push(
+		Agent,
+		AgentHistory,
+		AgentCredentialDependency,
+		AgentWorkflowDependency,
+	);
 	moduleRegistry.getActiveModules().push('agents');
 });
 
@@ -41,6 +50,7 @@ testServer = utils.setupTestServer({
 beforeAll(() => {
 	depRepo = Container.get(WorkflowDependencyRepository);
 	agentDepRepo = Container.get(AgentCredentialDependencyRepository);
+	agentWorkflowDepRepo = Container.get(AgentWorkflowDependencyRepository);
 	agentHistoryRepo = Container.get(AgentHistoryRepository);
 	agentRepo = Container.get(AgentRepository);
 	projectRepo = Container.get(ProjectRepository);
@@ -61,10 +71,11 @@ async function seedDep(workflowId: string, dependencyType: string, dependencyKey
 	);
 }
 
-async function seedAgentCredentialDependencies(
+/** Seed a published agent whose draft and published config share `schema`, then index it. */
+async function seedIndexedAgent(
 	user: User,
-	credentialId: string,
-	name = 'Support Agent',
+	name: string,
+	schema: Pick<AgentJsonConfig, 'credential' | 'tools'>,
 ) {
 	const project = await projectRepo.getPersonalProjectForUserOrFail(user.id);
 	const agent = agentRepo.create({
@@ -74,9 +85,8 @@ async function seedAgentCredentialDependencies(
 			name,
 			model: 'openai/gpt-4.1-mini',
 			instructions: 'Help the user',
-			credential: credentialId,
-			tools: [],
 			skills: [],
+			...schema,
 		},
 		integrations: [],
 		tools: {},
@@ -97,6 +107,7 @@ async function seedAgentCredentialDependencies(
 	agent.activeVersionId = publishedVersionId;
 	await agentRepo.save(agent);
 	await agentDepRepo.refreshForAgent(agent.id);
+	await agentWorkflowDepRepo.refreshForAgent(agent.id);
 
 	return agent;
 }
@@ -167,7 +178,7 @@ describe('POST /workflow-dependencies/counts', () => {
 			user: owner,
 			role: 'credential:owner',
 		});
-		await seedAgentCredentialDependencies(owner, credential.id);
+		await seedIndexedAgent(owner, 'Support Agent', { credential: credential.id, tools: [] });
 
 		const resp = await testServer
 			.authAgentFor(owner)
@@ -388,7 +399,10 @@ describe('POST /workflow-dependencies/details', () => {
 			user: owner,
 			role: 'credential:owner',
 		});
-		const agent = await seedAgentCredentialDependencies(owner, credential.id, 'Support Agent');
+		const agent = await seedIndexedAgent(owner, 'Support Agent', {
+			credential: credential.id,
+			tools: [],
+		});
 
 		const resp = await testServer
 			.authAgentFor(owner)
@@ -409,6 +423,42 @@ describe('POST /workflow-dependencies/details', () => {
 		});
 	});
 
+	it('should resolve an accessible agent using a workflow by id and by legacy name', async () => {
+		const owner = await createOwner();
+		const wfA = await createWorkflow({ name: 'Tool A' }, owner);
+		const wfB = await createWorkflow({ name: 'Tool B' }, owner);
+		const agent = await seedIndexedAgent(owner, 'Tool Agent', {
+			tools: [
+				{ type: 'workflow', workflow: 'Tool A', workflowId: wfA.id },
+				{ type: 'workflow', workflow: 'Tool B' },
+			],
+		});
+
+		const counts = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/counts')
+			.send({ resourceIds: [wfA.id, wfB.id], resourceType: 'workflow' });
+
+		expect(counts.statusCode).toBe(200);
+		expect(counts.body.data[wfA.id].agentUsage).toBe(1);
+		expect(counts.body.data[wfB.id].agentUsage).toBe(1);
+
+		const details = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/details')
+			.send({ resourceIds: [wfA.id, wfB.id], resourceType: 'workflow' });
+
+		expect(details.statusCode).toBe(200);
+		const expected = {
+			dependencies: [
+				{ id: agent.id, name: 'Tool Agent', type: 'agentUsage', projectId: agent.projectId },
+			],
+			inaccessibleCount: 0,
+		};
+		expect(details.body.data[wfA.id]).toEqual(expected);
+		expect(details.body.data[wfB.id]).toEqual(expected);
+	});
+
 	it('should report an inaccessible agent without exposing its details', async () => {
 		const owner = await createOwner();
 		const member = await createMember();
@@ -416,7 +466,7 @@ describe('POST /workflow-dependencies/details', () => {
 			user: member,
 			role: 'credential:owner',
 		});
-		await seedAgentCredentialDependencies(owner, credential.id, 'Private Agent');
+		await seedIndexedAgent(owner, 'Private Agent', { credential: credential.id, tools: [] });
 
 		const resp = await testServer
 			.authAgentFor(member)
