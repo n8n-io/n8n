@@ -1,5 +1,5 @@
 import { HumanMessage, type BaseMessage } from '@langchain/core/messages';
-// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- axios is the only client exposing manual per-hop redirect control + streaming the cross-host SSRF approval guard needs. To migrate: move this package off undici v6, then route via the factory's getDispatcher() + undici.request({ maxRedirections: 0 }) (see fetchUrl doc)
+// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- axios is the only client exposing manual per-hop redirect control + streaming the cross-host SSRF approval guard needs. To migrate: route via the factory's getDispatcher() + undici.request({ maxRedirections: 0 }) (see fetchUrl doc)
 import axios, { type AxiosRequestConfig } from 'axios';
 import type { Readable } from 'node:stream';
 
@@ -138,11 +138,7 @@ async function readStreamWithCap(stream: Readable, maxBytes: number): Promise<st
  * is the only client that exposes both today.
  *
  * Prerequisites to migrate this onto the factory:
- *   1. Move this package off undici v6 (it pins `catalog:undici-v6`). The factory's
- *      `getDispatcher()` returns a v7 `Dispatcher`, and the v6/v7 dispatch-handler
- *      protocols are not interoperable. This is gated on the langchain providers
- *      dropping their undici v6 pin (CAT-3377 Phase 5).
- *   2. Then route via `getDispatcher()` + `undici.request(url, { dispatcher,
+ *   1. Route via `getDispatcher()` + `undici.request(url, { dispatcher,
  *      maxRedirections: 0 })` for the manual redirect loop. `asCustomFetch()` is not
  *      usable: WHATWG `fetch` with `redirect: 'manual'` returns an opaque-redirect
  *      response with no readable `Location`, which breaks the cross-host approval.
@@ -160,6 +156,10 @@ export async function fetchUrl(
 	const originalHost = normalizeHost(url);
 
 	const config: AxiosRequestConfig = {
+		// Disable axios's own env-proxy handling: it mishandles https targets behind an
+		// http proxy (axios#4531). With no explicit agent, requests go through the
+		// process-wide env-proxy global agents, which route per HTTP(S)_PROXY/NO_PROXY.
+		proxy: false,
 		// Honored by Node's http(s) agent on every hop; validates the resolved IP at
 		// connect time, preventing DNS-rebinding TOCTOU.
 		lookup: ssrf.createSecureLookup() as AxiosRequestConfig['lookup'],

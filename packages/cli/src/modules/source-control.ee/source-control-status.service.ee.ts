@@ -197,16 +197,26 @@ export class SourceControlStatusService {
 			...projectsResult.files,
 		];
 
+		const publicApi = options.origin === 'publicApi';
+
 		if (options.direction === 'push') {
-			this.eventService.emit(
-				'source-control-user-started-push-ui',
-				getTrackingInformationFromPrePushResult(user.id, sourceControlledFiles),
+			const trackingInformation = getTrackingInformationFromPrePushResult(
+				user.id,
+				sourceControlledFiles,
 			);
+			this.eventService.emit('source-control-user-started-push-ui', {
+				...trackingInformation,
+				publicApi,
+			});
 		} else if (options.direction === 'pull') {
-			this.eventService.emit(
-				'source-control-user-started-pull-ui',
-				getTrackingInformationFromPullResult(user.id, sourceControlledFiles),
+			const trackingInformation = getTrackingInformationFromPullResult(
+				user.id,
+				sourceControlledFiles,
 			);
+			this.eventService.emit('source-control-user-started-pull-ui', {
+				...trackingInformation,
+				publicApi,
+			});
 		}
 
 		if (collectVerbose) {
@@ -408,7 +418,7 @@ export class SourceControlStatusService {
 				continue;
 			}
 
-			if (!isWorkflowModified(localWorkflow, remoteWorkflowWithSameId)) {
+			if (!isWorkflowModified(localWorkflow, remoteWorkflowWithSameId, options.direction)) {
 				continue;
 			}
 
@@ -432,6 +442,12 @@ export class SourceControlStatusService {
 			const preferredFolderPath = this.buildFolderPath(
 				preferredParentFolderId,
 				options.preferLocalVersion ? localFoldersById : remoteFoldersById,
+			);
+			// A move keeps only its new folderPath; expose the prior/remote path too so a
+			// filter on the source folder doesn't hide the pending move.
+			const remoteFolderPath = this.buildFolderPath(
+				remoteWorkflowWithSameId.parentFolderId,
+				remoteFoldersById,
 			);
 
 			const wfModified: SourceControlWorkflowVersionId = {
@@ -462,6 +478,7 @@ export class SourceControlStatusService {
 				isRemoteArchived: archivedWorkflowIds.get(wfModified.id) ?? false,
 				parentFolderId: preferredParentFolderId,
 				folderPath: preferredFolderPath,
+				remoteFolderPath,
 				owner: wfModified.owner,
 			});
 		}

@@ -11,6 +11,7 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, UserError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 
 export function getSchemaHeader(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
@@ -83,6 +84,44 @@ export async function supabaseApiRequest(
 			error.message = `${error.message}: ${error.description}`;
 		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+type SupabaseApiDefinition = {
+	paths?: IDataObject;
+	definitions?: {
+		[table: string]: { properties?: { [column: string]: { type: string } } } | undefined;
+	};
+};
+
+const apiDefinitionsInFlight = new Map<string, Promise<SupabaseApiDefinition>>();
+
+/**
+ * Reads the PostgREST root document, which lists every table and column and so can run to
+ * several megabytes. The editor opens one column dropdown per field and they all ask at
+ * once, so overlapping callers share one request instead of a parsed copy each.
+ */
+export async function getApiDefinition(
+	this: ILoadOptionsFunctions,
+): Promise<SupabaseApiDefinition> {
+	const { host, serviceRole } = await this.getCredentials<{
+		host: string;
+		serviceRole: string;
+	}>('supabaseApi');
+	const header = getSchemaHeader(this, 'GET', 'loadOptions');
+	const key = createHash('sha256')
+		.update(JSON.stringify([host, serviceRole, header]))
+		.digest('hex');
+
+	const inFlight = apiDefinitionsInFlight.get(key);
+	if (inFlight) return await inFlight;
+
+	const request = supabaseApiRequest.call(this, 'GET', '/', {}, {}, undefined, header);
+	apiDefinitionsInFlight.set(key, request);
+	try {
+		return await request;
+	} finally {
+		apiDefinitionsInFlight.delete(key);
 	}
 }
 

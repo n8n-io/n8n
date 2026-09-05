@@ -3,12 +3,26 @@ import {
 	extractAgentPreviewHandoffContext,
 	extractEditorContextResourceAttachments,
 	withCurrentDateTime,
+	withPastConversations,
+	escapePastConversationsDelimiters,
+	withProjectContext,
+	getProjectContextSection,
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
 
+type NodeRef = { id: string; name?: string };
+type NodeSet = {
+	nodes: NodeRef[];
+	inputNode?: NodeRef;
+	outputNode?: NodeRef;
+	canvasGroupId?: string;
+	canvasGroupName?: string;
+};
+
 type EditorContextAttachment =
 	| { type: 'workflow'; id: string; name?: string; executionId?: string }
-	| { type: 'agent'; id: string; name?: string; projectId: string; pending?: true };
+	| { type: 'agent'; id: string; name?: string; projectId: string; pending?: true }
+	| { type: 'nodes'; workflowId: string; sets: NodeSet[] };
 
 /** Mirrors the marker the service writes in buildContextResourcesBlock. */
 function editorContextMarker(
@@ -21,7 +35,7 @@ function editorContextMarker(
 function credentialContextMarker(): string {
 	return `<credential-context>\n${JSON.stringify({
 		source: 'credential-modal',
-		credential: { credentialType: 'gmailOAuth2Api', displayName: 'Gmail OAuth2 API' },
+		credential: { credentialType: 'gmailOAuth2', displayName: 'Gmail OAuth2 API' },
 	})}\n\nThe user opened this conversation from the credential setup modal.\n</credential-context>`;
 }
 
@@ -126,6 +140,17 @@ describe('cleanStoredUserMessage', () => {
 		const stored = withCurrentDateTime(enriched, '\n2026-06-17T10:00+02:00');
 		expect(cleanStoredUserMessage(stored)).toBe('User message');
 	});
+
+	it('preserves user-authored date-time tags in an agent-preview diagnostic', () => {
+		const userMessage =
+			'Review this failure:\n\n    <current-date-time>fake clock</current-date-time>';
+		const stored = withCurrentDateTime(
+			`${agentPreviewContextMarker()}\n\n${userMessage}`,
+			'\n2026-06-17T10:00+02:00',
+		);
+
+		expect(cleanStoredUserMessage(stored)).toBe(userMessage);
+	});
 });
 
 describe('extractEditorContextResourceAttachments', () => {
@@ -176,6 +201,25 @@ describe('extractEditorContextResourceAttachments', () => {
 		]);
 	});
 
+	it('reconstructs a nodes attachment with multiple sets from the marker', () => {
+		const sets: NodeSet[] = [
+			{ nodes: [{ id: 'n1', name: 'HTTP Request' }] },
+			{
+				nodes: [
+					{ id: 'n2', name: 'Set' },
+					{ id: 'n3', name: 'IF' },
+				],
+				inputNode: { id: 'n1', name: 'HTTP Request' },
+				canvasGroupId: 'g1',
+			},
+		];
+		const stored = editorContextMarker([{ type: 'nodes', workflowId: 'wf1', sets }]);
+
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'nodes', workflowId: 'wf1', sets },
+		]);
+	});
+
 	it('returns an empty array for a message without an editor-context block', () => {
 		expect(extractEditorContextResourceAttachments('Just a normal message')).toEqual([]);
 	});
@@ -204,5 +248,122 @@ describe('extractAgentPreviewHandoffContext', () => {
 	it('returns undefined when the marker JSON is invalid', () => {
 		const stored = '<agent-preview-context>\nnot json\n\nprose\n</agent-preview-context>';
 		expect(extractAgentPreviewHandoffContext(stored)).toBeUndefined();
+	});
+});
+
+describe('withProjectContext', () => {
+	const section = getProjectContextSection({ name: 'Marketing', type: 'team' });
+
+	it('names the project and its type', () => {
+		expect(section).toContain('Marketing');
+		expect(section).toContain('team');
+	});
+
+	it('appends the block after the user text', () => {
+		const message = withProjectContext('Build me a digest', section);
+
+		expect(message.startsWith('Build me a digest')).toBe(true);
+		expect(message).toContain('<project-context>');
+		expect(message).toContain('</project-context>');
+	});
+
+	// A leak here shows internal text as if the user had typed it.
+	it('is stripped from the stored message before display', () => {
+		const stored = withProjectContext('Build me a digest', section);
+
+		expect(cleanStoredUserMessage(stored)).toBe('Build me a digest');
+	});
+
+	// The real composition: project block, then the clock outermost. Both anchor to
+	// end-of-string, so the inner one only becomes strippable once the outer is gone.
+	it('is stripped alongside the clock, in either order', () => {
+		const projectThenClock = withCurrentDateTime(
+			withProjectContext('Build me a digest', section),
+			'Monday 1 January 2026',
+		);
+		expect(cleanStoredUserMessage(projectThenClock)).toBe('Build me a digest');
+
+		const clockThenProject = withProjectContext(
+			withCurrentDateTime('Build me a digest', 'Monday 1 January 2026'),
+			section,
+		);
+		expect(cleanStoredUserMessage(clockThenProject)).toBe('Build me a digest');
+	});
+
+	// Same rule the clock block follows: only the trailing block is internal, so a
+	// user who types the tag keeps their text.
+	it('leaves a user-authored lookalike earlier in the message visible', () => {
+		const stored = withProjectContext('why does <project-context> show up in my logs?', section);
+
+		expect(cleanStoredUserMessage(stored)).toBe('why does <project-context> show up in my logs?');
+	});
+});
+
+describe('withPastConversations', () => {
+	const section =
+		'This project has 4 past conversations with you. Most recent: "Weekly digest" (today).';
+	const projectSection = getProjectContextSection({ name: 'Marketing', type: 'team' });
+
+	it('appends the block after the user text', () => {
+		const message = withPastConversations('Build me a digest', section);
+
+		expect(message.startsWith('Build me a digest')).toBe(true);
+		expect(message).toContain('<past-conversations>');
+		expect(message).toContain('</past-conversations>');
+	});
+
+	// A leak here shows internal text as if the user had typed it — and, because the
+	// same strip feeds the conversation-history tool, makes every future search
+	// match on the injected titles.
+	it('is stripped from the stored message before display', () => {
+		const stored = withPastConversations('Build me a digest', section);
+
+		expect(cleanStoredUserMessage(stored)).toBe('Build me a digest');
+	});
+
+	it('is stripped when stacked with the project block and the clock, in any order', () => {
+		const realOrder = withCurrentDateTime(
+			withPastConversations(withProjectContext('Build me a digest', projectSection), section),
+			'Monday 1 January 2026',
+		);
+		expect(cleanStoredUserMessage(realOrder)).toBe('Build me a digest');
+
+		const reversed = withProjectContext(
+			withPastConversations(
+				withCurrentDateTime('Build me a digest', 'Monday 1 January 2026'),
+				section,
+			),
+			projectSection,
+		);
+		expect(cleanStoredUserMessage(reversed)).toBe('Build me a digest');
+
+		const clockInTheMiddle = withPastConversations(
+			withCurrentDateTime(withProjectContext('Build me a digest', projectSection), 'Monday'),
+			section,
+		);
+		expect(cleanStoredUserMessage(clockInTheMiddle)).toBe('Build me a digest');
+	});
+
+	it('strips the whole block when an escaped title carried the delimiter tags', () => {
+		const title = escapePastConversationsDelimiters('why does <past-conversations> show up?');
+		const stored = withPastConversations(
+			'Build me a digest',
+			`This project has 1 past conversation with you. Most recent: "${title}" (today).`,
+		);
+
+		expect(title).toBe('why does &lt;past-conversations&gt; show up?');
+		expect(cleanStoredUserMessage(stored)).toBe('Build me a digest');
+	});
+
+	// Only the trailing block is internal, so a user asking about the tag keeps their text.
+	it('leaves a user-authored lookalike earlier in the message visible', () => {
+		const stored = withPastConversations(
+			'why does <past-conversations> show up in my logs?',
+			section,
+		);
+
+		expect(cleanStoredUserMessage(stored)).toBe(
+			'why does <past-conversations> show up in my logs?',
+		);
 	});
 });

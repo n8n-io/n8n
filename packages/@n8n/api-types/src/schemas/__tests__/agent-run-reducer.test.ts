@@ -164,6 +164,29 @@ function makeTasksUpdate(
 	};
 }
 
+function makeSetupItems(
+	runId: string,
+	agentId: string,
+	workflowId: string,
+	credentialType: string,
+): Extract<InstanceAiEvent, { type: 'setup-items' }> {
+	return {
+		type: 'setup-items',
+		runId,
+		agentId,
+		payload: {
+			workflowId,
+			items: [
+				{
+					id: `${workflowId}:credential:${credentialType}`,
+					kind: 'credential',
+					credentialType,
+				},
+			],
+		},
+	};
+}
+
 /** Create a state with an active run. */
 function stateWithRun(runId: string, agentId: string): AgentRunState {
 	const state = createInitialState(agentId);
@@ -755,6 +778,39 @@ describe('agent-run-reducer', () => {
 			});
 		});
 
+		it('confirmation-request passes through credential destination metadata when present', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'workflows'));
+			reduceEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					requestId: 'req-destination',
+					toolCallId: 'tc-1',
+					toolName: 'workflows',
+					args: { action: 'setup' },
+					severity: 'warning',
+					message: 'Review where this credential will be used',
+					credentialDestination: {
+						origin: 'https://api.example.com',
+						nodeNames: ['Fetch data'],
+					},
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.confirmation).toEqual({
+				requestId: 'req-destination',
+				severity: 'warning',
+				message: 'Review where this credential will be used',
+				credentialDestination: {
+					origin: 'https://api.example.com',
+					nodeNames: ['Fetch data'],
+				},
+			});
+		});
+
 		it('confirmation-request passes through projectId when present', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'setup-credentials'));
@@ -781,6 +837,33 @@ describe('agent-run-reducer', () => {
 				projectId: 'proj-456',
 			});
 		});
+
+		it('confirmation-request preserves explicit credential selection on replay', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'setup-credentials'));
+			reduceEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					requestId: 'req-2',
+					toolCallId: 'tc-1',
+					toolName: 'setup-credentials',
+					args: {},
+					severity: 'info',
+					message: 'Select credentials',
+					requireUserSelection: true,
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.confirmation).toEqual({
+				requestId: 'req-2',
+				severity: 'info',
+				message: 'Select credentials',
+				requireUserSelection: true,
+			});
+		});
 	});
 
 	describe('tasks-update', () => {
@@ -790,6 +873,60 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['root'].tasks).toBeDefined();
 			expect(state.agentsById['root'].tasks!.tasks).toHaveLength(1);
+		});
+	});
+
+	describe('setup-items', () => {
+		it('folds the latest snapshot per workflowId onto the root node', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'notionApi'));
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-2', 'gmailOAuth2'));
+
+			const byWorkflowId = state.agentsById['root'].setupItemsByWorkflowId!;
+			expect(byWorkflowId['wf-1']).toHaveLength(1);
+			expect(byWorkflowId['wf-1'][0]).toMatchObject({ credentialType: 'notionApi' });
+			expect(byWorkflowId['wf-2'][0]).toMatchObject({ credentialType: 'gmailOAuth2' });
+		});
+
+		it('folds onto the root node even when a sub-agent emits', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeSetupItems('run-1', 'sub-1', 'wf-1', 'slackApi'));
+
+			expect(state.agentsById['root'].setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
+			expect(state.agentsById['sub-1'].setupItemsByWorkflowId).toBeUndefined();
+		});
+
+		it('survives a tree snapshot round trip (history restore)', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
+
+			// Serialize in between: toAgentTree returns the live root and adoption
+			// is by reference, so without it this would compare a node to itself.
+			const snapshot = deepCopy(toAgentTree(state));
+			const restored = stateFromAgentTree(snapshot);
+
+			expect(restored?.agentsById['root'].setupItemsByWorkflowId?.['wf-1'][0]).toMatchObject({
+				credentialType: 'slackApi',
+			});
+		});
+
+		it('is preserved across a follow-up run-start when it is the only content', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
+
+			reduceEvent(state, makeRunStart('run-2', 'root'));
+
+			expect(state.agentsById['root'].setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
+		});
+
+		it('ignores an unsafe workflowId key', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', '__proto__', 'slackApi'));
+
+			expect(state.agentsById['root'].setupItemsByWorkflowId).toBeUndefined();
+			expectStateMapsNotPolluted(state);
 		});
 	});
 

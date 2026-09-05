@@ -10,6 +10,9 @@ import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { countAttachedNodes } from './utils/buildNodesAttachment';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
@@ -73,6 +76,7 @@ import {
 	TemplateExamplesCatalog,
 	TEMPLATE_PROMPT_SUFFIX,
 } from '@/experiments/instanceAiTemplateExamples';
+import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -117,13 +121,16 @@ function resolveLaunchSource(): InstanceAiThreadSource {
 
 const selectedProject = ref(resolveInitialProjectId());
 const settingsStore = useInstanceAiSettingsStore();
-const { isLowCredits } = storeToRefs(store);
+const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+// Opening a new conversation drops the tab title of the thread we came from —
+// this view mounts on every entry to the empty route, the parent layout doesn't.
+useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(isLowCredits);
+const creditBanner = useCreditWarningBanner(showCreditWarning);
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
@@ -454,7 +461,11 @@ onMounted(() => {
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
-async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+async function handleSubmit(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	restoreDraft?: () => boolean,
+) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
@@ -489,7 +500,52 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	}
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
-	void thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	// Await admission before navigating. A refused send (e.g. a concurrency cap) must not
+	// drop the user into a blank thread, and handing the draft to the destination view is
+	// not an option: it reads its composer draft from localStorage once, synchronously, on
+	// mount, which always precedes this response. `sendMessage` has already surfaced the
+	// reason, so restore what was typed and stay put.
+	const sent = await thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	if (!sent) {
+		isStartingThread.value = false;
+		void nextTick(() => {
+			// `restoreDraft` puts back text *and* attachments, but the input only supplies it
+			// when files were attached; fall back to the text alone otherwise. Mirrors the
+			// thread-view composer.
+			if (!restoreDraft?.()) {
+				const input = chatInputRef.value;
+				if (input && !input.isDirty()) input.setText(message);
+			}
+			chatInputRef.value?.focus();
+		});
+		// `syncThread` already persisted the thread and `sendMessage` already opened its SSE,
+		// so without this every refusal would strand a blank thread in the sidebar and leave
+		// an EventSource open behind it (deleting disposes the runtime, which closes it).
+		// Discarding it also keeps the server's view matching what the user was just told: if
+		// a run did start but its response never arrived, this tears it down rather than
+		// leaving it burning credits on a conversation they believe never began. Runs after
+		// the restore is queued so cleanup can never delay giving the draft back.
+		//
+		// Silent because the refusal was already reported; a second "delete failed" for
+		// cleanup the user never asked for would only confuse. A refused delete returns
+		// early, before the store's own teardown, so dispose the runtime here -- the thread
+		// itself does still exist and rightly stays listed, but its EventSource was opened
+		// for a turn that never started and nothing else would ever close it.
+		if (!(await store.deleteThread(threadId, { silent: true }))) {
+			store.disposeRuntime(threadId);
+		}
+		return;
+	}
+
+	// Track message-with-nodes only after a successful send, so refused sends and
+	// retries don't inflate the node-count metric.
+	const nodeCount = countAttachedNodes(attachments);
+	if (nodeCount > 0) {
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
+			node_count: nodeCount,
+		});
+	}
+
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId },
@@ -528,9 +584,9 @@ function handleShelfSuggestionInsert(payload: {
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
-						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
+						:amounts-hidden="quotaLocked"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
@@ -567,6 +623,7 @@ function handleShelfSuggestionInsert(payload: {
 							v-if="creditBanner.visible.value"
 							:credits-remaining="store.creditsRemaining"
 							:credits-quota="store.creditsQuota"
+							:amounts-hidden="quotaLocked"
 							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 							@dismiss="creditBanner.dismiss()"
 						/>
@@ -595,18 +652,26 @@ function handleShelfSuggestionInsert(payload: {
 			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
 				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
-				<div ref="centeredInput" :class="[$style.centeredInput, inputPulsing && $style.inputPulse]">
+				<div ref="centeredInput" :class="$style.centeredInput">
+					<InstanceAiFreeNudge
+						:eligible="
+							store.creditsQuota !== undefined &&
+							!creditBanner.visible.value &&
+							settingsStore.isWorkflowBuilderAvailable
+						"
+					/>
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
-						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
+						:amounts-hidden="quotaLocked"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
+						:class="inputPulsing && $style.inputPulse"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:contextual-suggestion="templatePreviewPrompt"

@@ -8,6 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiConfirmRequest, InstanceAiWorkflowAttachment } from '@n8n/api-types';
+import { truncate } from '@n8n/utils/string/truncate';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -28,8 +29,23 @@ import {
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from './conversation-seed';
+import {
+	credentialsCreatedByThisBuild,
+	probeCredentialValue,
+	redactTranscriptSecrets,
+	type CredentialValueProbe,
+} from './credential-setup-checks';
+import {
+	resolveFixtureForCredentialType,
+	startCredentialSetupLane,
+	type CredentialSetupLane,
+	type LaneSelection,
+} from './credential-setup-lane';
+import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
+import { executePriorRuns } from './prior-runs';
+import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
 	buildSeededTablesNote,
@@ -123,6 +139,14 @@ interface MultiTurnDriverConfig {
 	openingAttachments?: InstanceAiWorkflowAttachment[];
 }
 
+/** A conversation is multi-turn if it has more than one turn, or if the only
+ *  turn is from the assistant. Empty conversations are treated as single-turn. */
+function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
+	if (conversation.length === 0) return false;
+	if (conversation.length > 1) return true;
+	return conversation[0].role !== 'user';
+}
+
 async function driveMultiTurnConversation(
 	config: MultiTurnDriverConfig,
 ): Promise<ProxyDecisionStats> {
@@ -203,6 +227,11 @@ export interface BuildResult {
 	/** Agents restored by a seed — tracked here, not just in `artifactRefs`, so one
 	 *  the live turn never touched still gets cleaned up. */
 	createdAgentIds?: string[];
+	/** Projects a seed created. Torn down in `cleanupBuild` rather than at the
+	 *  end of the build turn: deleting a project cascades to what lives in it, and if
+	 *  a regression ever did let the agent write into one, an early delete would
+	 *  destroy the workflow under grading and read as a build failure. */
+	createdProjectIds?: string[];
 	/** Maps each scenario seed table's declared NAME to the real id it was created
 	 *  under (empty) before the build turn, so each scenario can reset+seed its
 	 *  rows into the table the built workflow actually bound (TRUST-311 follow-up).
@@ -228,14 +257,27 @@ export interface BuildResult {
 	 *  gone, reconstruction drift, restore failed) — a harness/framework problem,
 	 *  not an agent build failure. Routed to `framework_issue`. */
 	seedingFailed?: boolean;
+	/** True when the credential-setup lane never came up (no extension build, no
+	 *  extension-capable Chromium, no openssl, relay disabled). The agent never
+	 *  got a browser, so the red belongs to the runner, not to the model. */
+	laneBootFailed?: boolean;
 	/** Transport-level failure (network error, or the lane unreachable right
 	 *  after failing — e.g. timed out against a dead lane). Routed to `framework_issue`. */
 	transportFailure?: boolean;
+	/** Set when a `seed.priorRuns` staging run produced no execution record, so the
+	 *  history the case grades against does not exist. Unlike the other infra flags this
+	 *  one applies even when the BUILD SUCCEEDED, which is exactly the case that would
+	 *  otherwise be scored as an agent failure. */
+	priorRunFailed?: string;
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
 	 *  outage never lands in the builder's baseline (TRUST-374). */
 	providerOutage?: string;
+	/** Ledger from the credential-setup lane, when one ran. Absent for every
+	 *  ordinary case; present even on a failed build, so the deterministic checks
+	 *  can report WHY nothing was created. */
+	credentialSetup?: CredentialSetupRunFacts;
 }
 
 /**
@@ -248,9 +290,139 @@ export function buildFailedOnInfra(build: BuildResult): boolean {
 	if (build.success) return false;
 	return (
 		build.seedingFailed === true ||
+		build.laneBootFailed === true ||
 		build.transportFailure === true ||
 		build.providerOutage !== undefined
 	);
+}
+
+/** Pre-scrub text for the leak scan, held OUTSIDE the BuildResult: `traceable`
+ *  serialises the returned build, so a raw-text field there would ship the very
+ *  key the scrub removes. */
+const leakHaystacks = new WeakMap<CredentialSetupRunFacts, string>();
+
+/** The raw (pre-redaction) run text for these facts, if this was a scrubbed
+ *  local run. The leak scan needs it; nothing else should. */
+export function leakHaystackFor(facts: CredentialSetupRunFacts): string | undefined {
+	return leakHaystacks.get(facts);
+}
+
+/**
+ * Strip a LOCAL run's real provider key from everything the build carries out.
+ *
+ * Must run INSIDE the traced call: LangSmith's `traceable` records the returned
+ * BuildResult as the run output, so scrubbing after the call returns still ships
+ * the key upstream. The orchestrator calls it again before stashing — idempotent
+ * via the haystack entry, so whichever runs first wins and the other is a no-op.
+ *
+ * The leak CHECK needs the raw text, so it is snapshotted here, before the
+ * scrub, into `leakHaystacks`.
+ */
+export function scrubLocalSecretsFromBuild(build: BuildResult): BuildResult {
+	const facts = build.credentialSetup;
+	if (!facts?.local || leakHaystacks.has(facts)) return build;
+	const prefixes = localScrubPrefixes(facts);
+	leakHaystacks.set(facts, searchableBuildText(build));
+
+	// Everything the build carries out, minus the facts — a DENYLIST, because
+	// `traceable` serialises the whole object and an allowlist made each new
+	// field opt-in-secure. Five were added one at a time before this.
+	const { credentialSetup, ...rest } = build;
+	let redacted: Omit<BuildResult, 'credentialSetup'> = rest;
+	for (const prefix of prefixes) {
+		redacted = redactTranscriptSecrets(redacted, prefix);
+	}
+	// Fixture-independent floor. `prefixes` only knows the providers with a
+	// fixture on disk, and a local case usually declares no credential type at
+	// all, so a key from any other provider would otherwise pass through.
+	redacted = redactSecretsInTextDeep(redacted) as Omit<BuildResult, 'credentialSetup'>;
+	Object.assign(build, redacted);
+
+	// The facts ride separately only because `leakHaystacks` is keyed on their
+	// identity. `valueProbe.detail` is n8n's message from a credential test fired
+	// at the REAL provider, so it can quote the key back.
+	if (facts.valueProbe) {
+		let probe = facts.valueProbe;
+		for (const prefix of prefixes) probe = redactTranscriptSecrets(probe, prefix);
+		facts.valueProbe = redactSecretsInTextDeep(probe) as CredentialValueProbe;
+	}
+	return build;
+}
+
+/** Every surface of a build the artifacts can carry, as one string. The leak
+ *  scan's haystack in local mode and its hermetic-mode equivalent are the same
+ *  question, so they read the same function rather than two field lists kept in
+ *  step by a comment. */
+export function searchableBuildText(build: BuildResult): string {
+	const { credentialSetup: _facts, ...rest } = build;
+	return JSON.stringify(rest);
+}
+
+/** Key shapes to strip from a local run, or THROW. Shared so the two scrub entry
+ *  points cannot drift into one failing open — an empty list reads downstream as
+ *  "nothing to scrub", which is how a real key gets persisted. */
+function localScrubPrefixes(facts: CredentialSetupRunFacts): string[] {
+	const prefixes = facts.scrubPrefixes?.length
+		? facts.scrubPrefixes
+		: facts.secretPrefix
+			? [facts.secretPrefix]
+			: [];
+	if (prefixes.length === 0) {
+		throw new Error(
+			'Local run has no key shapes to scrub with (no scrubPrefixes and no secretPrefix). ' +
+				'Refusing to persist rather than risk shipping a real key.',
+		);
+	}
+	return prefixes;
+}
+
+/** Apply a local run's scrub to anything fetched AFTER the build was scrubbed —
+ *  run debug is re-read from n8n and would otherwise reach the report raw.
+ *  Throws on an unscrubale local run, exactly like the build scrub. */
+export function redactLocalRunSecrets<T>(value: T, facts?: CredentialSetupRunFacts): T {
+	if (!facts?.local) return value;
+	let out = value;
+	for (const prefix of localScrubPrefixes(facts)) {
+		out = redactTranscriptSecrets(out, prefix);
+	}
+	return out;
+}
+
+/** What the credential-setup lane knows once a build is over — the input to the
+ *  deterministic checks. Data only: judging lives in `credential-setup-checks.ts`. */
+export interface CredentialSetupRunFacts {
+	/** Credential type the case targets. Undefined in local mode = "any type". */
+	credentialType?: string;
+	/** The exact secret the fixture minted for this run. Absent in local mode —
+	 *  the key is real and its value is never revealed to the harness. */
+	mintedSecret?: string;
+	/** True when this ran against the REAL provider site. */
+	local?: boolean;
+	/** Provider key prefix for the shape-based leak scan in local mode. Resolved
+	 *  from the credential the agent saved, so it can be absent on a failed run —
+	 *  which is why the SCRUB keys on `scrubPrefixes`, not on this. */
+	secretPrefix?: string;
+	/** Every key shape to strip from a local run's artifacts, known before the
+	 *  build. Empty for hermetic runs, whose minted secret is not real. */
+	scrubPrefixes?: string[];
+	/** Whether the fixture's create-key action was actually invoked. */
+	secretWasIssued: boolean;
+	/** Credential ids that existed BEFORE the build — the diff base, so a
+	 *  credential an earlier run left behind can't satisfy the "created" check. */
+	credentialIdsBefore: string[];
+	/** Ids a CONCURRENT build created during this one. Excluded from the diff:
+	 *  lanes share a login, so another build's seed would otherwise read as this
+	 *  agent's work. */
+	foreignCredentialIds?: string[];
+	/** Provider-API stand-in for the credential test, when the fixture ships one
+	 *  AND n8n can reach it. Undefined => the value check is DISCARDED (reported
+	 *  unverifiable) rather than failed. */
+	verifyBaseUrl?: string;
+	/** Result of running the credential's own test against that stand-in.
+	 *  Gathered HERE, not in the checks, because the fixture server dies with the
+	 *  lane in the `finally` below — by the time the orchestrator judges, the
+	 *  stand-in is gone and every probe would look like a rejection. */
+	valueProbe?: CredentialValueProbe;
 }
 
 export interface BuildWorkflowConfig {
@@ -291,6 +463,18 @@ export interface BuildWorkflowConfig {
 	/** False for answer-only cases: ending the conversation without a saved
 	 *  workflow is then a valid outcome, not a failed build. Defaults to true. */
 	workflowExpected?: boolean;
+	/** What the credential-setup lane should do for this case, already resolved
+	 *  by the session. `{kind:'none'}` (or absent) for every ordinary case — and
+	 *  then no browser launches and no port opens. */
+	credentialSetupSelection?: LaneSelection;
+	/** Credential type for a `local` run, where there is no fixture manifest to
+	 *  read it from. */
+	credentialSetupType?: string;
+	/** Which case this build is, and which repeat of it. Recorded on the thread
+	 *  as sourceContext, which n8n surfaces on the LangSmith trace — the only
+	 *  thing that distinguishes one build from the hundreds of near-identical
+	 *  ones a suite produces. */
+	caseIdentity?: { fileSlug: string; iteration: number };
 }
 
 /** A case needs a workflow iff something judges one: execution scenarios or
@@ -302,14 +486,6 @@ export function workflowExpectedForCase(
 		(testCase.executionScenarios?.length ?? 0) > 0 ||
 		(testCase.outcomeExpectations?.length ?? 0) > 0
 	);
-}
-
-/** A conversation is multi-turn if it has more than one turn, or if the only
- *  turn is from the assistant. Empty conversations are treated as single-turn. */
-function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
-	if (conversation.length === 0) return false;
-	if (conversation.length > 1) return true;
-	return conversation[0].role !== 'user';
 }
 
 /**
@@ -331,6 +507,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
 	let restoredAgentIds: string[] = [];
+	/** Projects this run created, torn down after it — instance-level, so they
+	 *  outlive the thread and would otherwise pile up across runs. */
+	const seededProjectIds: string[] = [];
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
 	// TRUST-311 follow-up: scenario seed tables are created empty before the build
@@ -346,9 +525,79 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let builtDataTableIds: string[] = [];
 	let seededTranscript: TranscriptTurn[] = [];
 	let seedingFailed = false;
+	let priorRunFailed: string | undefined;
 	// Seed-declared workflow id -> the workflow as actually restored (fresh id and
 	// name). Lets an authored `attach` reference survive the per-run remap.
 	let seedWorkflowsBySeedId = new Map<string, { id: string; name: string }>();
+	// Credential-setup lane (fixture server + extension-loaded browser). Stays
+	// undefined unless the session resolved a fixture for this case.
+	let credentialSetupLane: CredentialSetupLane | undefined;
+	let credentialIdsBefore: string[] = [];
+	/** Lane-registry ids present when this build started. Anything added AFTER
+	 *  is another build's seeder or user-proxy creating a credential during our
+	 *  window — the browser agent's own credential never lands here, because it
+	 *  is made through the console, not through either of those. */
+	let laneCredentialIdsAtStart: Set<string> = new Set();
+	let laneBootFailed = false;
+	/** Snapshot the lane's ledger for the BuildResult. Called on every return
+	 *  path, and always BEFORE teardown, so `secretWasIssued` is still readable
+	 *  and the provider stand-in is still listening. */
+	const credentialSetupFacts = async (): Promise<CredentialSetupRunFacts | undefined> => {
+		if (!credentialSetupLane) return undefined;
+		const lane = credentialSetupLane;
+		// Hand anything the AGENT created to the lane's cleanup registry — the
+		// same one seeded credentials use. Nothing else knows about these: they
+		// are created through the browser, not by the seeder, so without this
+		// every credential-setup run leaves one behind in the eval account.
+		// (The provider-side key of a `local` run is a separate matter, and
+		// deliberately not ours to revoke — see docs/browser-eval-lane.md.)
+		// Ids other builds registered while ours ran. Excluded from the "created"
+		// diff below: builds on a lane share one login, so a concurrent seed would
+		// otherwise satisfy this case's created-check and could be probed in place
+		// of the agent's own credential.
+		const foreignCredentialIds = [...(config.createdCredentialIds ?? [])].filter(
+			(id) => !laneCredentialIdsAtStart.has(id),
+		);
+		if (config.createdCredentialIds) {
+			// No `foreign` filter here on purpose: those ids are already in this set
+			// (that is where the list comes from), so excluding them would be a no-op
+			// that reads as though cleanup skips them.
+			const before = new Set(credentialIdsBefore);
+			for (const id of await client.listCredentialIds().catch(() => [] as string[])) {
+				if (!before.has(id)) config.createdCredentialIds.add(id);
+			}
+		}
+		return {
+			foreignCredentialIds,
+			credentialType: lane.credentialType,
+			// Local runs mint nothing: the key is real and we never learn its value.
+			mintedSecret: lane.fixture?.mintedSecret,
+			secretWasIssued: lane.fixture?.secretWasIssued ?? false,
+			local: lane.local,
+			// Local runs have no fixture, but the registry still knows this
+			// provider's key shape — enough for a shape-based leak scan.
+			secretPrefix: await resolveSecretPrefix(
+				client,
+				lane,
+				credentialIdsBefore,
+				foreignCredentialIds,
+			),
+			scrubPrefixes: await resolveScrubPrefixes(lane),
+			credentialIdsBefore,
+			verifyBaseUrl: lane.verifyBaseUrl,
+			valueProbe: await probeCredentialValue({
+				client,
+				credentialType: lane.credentialType,
+				credentialIdsBefore,
+				foreignCredentialIds,
+				fixture: lane.fixture,
+				verifyBaseUrl: lane.verifyBaseUrl,
+				urlField: lane.credentialUrlField,
+				local: lane.local,
+				logger,
+			}),
+		};
+	};
 
 	try {
 		const buildStart = Date.now();
@@ -409,7 +658,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		);
 
 		const projectId = await client.getPersonalProjectId();
-		await client.ensureThread(threadId, projectId);
+		await client.ensureThread(
+			threadId,
+			projectId,
+			config.caseIdentity
+				? {
+						evalCase: config.caseIdentity.fileSlug,
+						evalIteration: config.caseIdentity.iteration,
+					}
+				: undefined,
+		);
 
 		// Pin the thread's credential view to the case's declared set (empty by
 		// default) before the first message, so every build-workflow call inside
@@ -425,11 +683,22 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			nameCounts: credentialNameCounts,
 		});
 		const seededCredentialIds = createdCredentials.map((c) => c.id);
+		// `createDeclaredCredentials` returns one entry per `declaredCredentials`, in
+		// the same order — index-zip to find which seeded ids the case marked
+		// already-broken (`valid: false`) or empty (`blank: true`) and must NOT
+		// bypass, so their real connection test runs and fails.
+		const bypassCredentialTestIds = createdCredentials
+			.filter((_, i) => declaredCredentials[i]?.valid !== false && !declaredCredentials[i]?.blank)
+			.map((c) => c.id);
 		try {
 			// A seeded credential models one the user already has connected, so its
 			// connection test resolves as passing — same as one set up on a card
 			// during the run. Both carry a placeholder token that would really fail.
-			await client.setThreadCredentialAllowlist(threadId, seededCredentialIds, seededCredentialIds);
+			await client.setThreadCredentialAllowlist(
+				threadId,
+				seededCredentialIds,
+				bypassCredentialTestIds,
+			);
 		} catch (error: unknown) {
 			// Only a missing endpoint (older backend) may degrade to the legacy
 			// unpinned view, and only for cases that declared nothing — any other
@@ -441,6 +710,38 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			logger.info(
 				`  Credential-pin endpoint unavailable, building unpinned${config.laneTag ?? ''}`,
 			);
+		}
+
+		// Credential-setup lane, after the pin so the "created" diff base is the
+		// same credential set the build starts from.
+		if (config.credentialSetupSelection && config.credentialSetupSelection.kind !== 'none') {
+			// Opened before the listing too: a failure there is the same class of
+			// infrastructure problem, and an unmarked throw reads downstream as an
+			// agent regression.
+			laneBootFailed = true;
+			credentialIdsBefore = await client.listCredentialIds();
+			laneCredentialIdsAtStart = new Set(config.createdCredentialIds ?? []);
+			// Coverage is asserted HERE, not on the return path: by then the browser
+			// has already driven the real console and the key exists. Only checkable
+			// when the case declares a type — local cases usually do not, which is
+			// why the scrub also carries a fixture-independent floor.
+			if (
+				config.credentialSetupSelection.kind === 'local' &&
+				config.credentialSetupType &&
+				!(await resolveFixtureForCredentialType(config.credentialSetupType))
+			) {
+				throw new Error(
+					`Local run targets \`${config.credentialSetupType}\`, which no provider fixture covers, so its key shape is unknown. ` +
+						'Add a fixture for it (evaluations/fixtures/providers/) before running this case locally.',
+				);
+			}
+			credentialSetupLane = await startCredentialSetupLane({
+				client,
+				selection: config.credentialSetupSelection,
+				logger,
+				localCredentialType: config.credentialSetupType,
+			});
+			laneBootFailed = false;
 		}
 
 		// Restore the seed before the first live message. No degraded mode: a
@@ -461,13 +762,39 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					logger,
 					config.laneTag,
 				);
-				const restoreResult = await client.restoreThread(
-					threadId,
-					remapped.messages,
-					remapped.workflows,
-					remapped.dataTables,
-					remapped.agents,
-				);
+				// Seeded projects are instance-level, so they go through the project API
+				// rather than `restore-thread` (which seeds into the thread's project).
+				// Created BEFORE the live turn so the agent's first `list-projects` already
+				// sees them.
+				//
+				// Deliberately NOT uniquified, unlike seed workflow names: the case names
+				// this project in its LIVE turn, and the harness only rewrites mentions
+				// inside seeded history — a suffixed name would leave the prompt asking for
+				// a project that doesn't exist. Leftovers from a crashed run are evicted by
+				// name first so repeated runs don't accumulate duplicates the agent would
+				// have to disambiguate.
+				for (const project of remapped.projects) {
+					await evictLeftoverSeedProjects(client, project.name, logger, config.laneTag);
+					const created = await client.createTeamProject(project.name);
+					seededProjectIds.push(created.id);
+				}
+				// A fixture-only seed (projects, no history) has nothing thread-scoped to
+				// restore, and `restore-thread` with an empty message list would be a
+				// pointless round-trip that logs "Seeded 0 prior message(s)".
+				const hasThreadScopedSeed =
+					remapped.messages.length > 0 ||
+					remapped.workflows.length > 0 ||
+					remapped.dataTables.length > 0 ||
+					remapped.agents.length > 0;
+				const restoreResult = hasThreadScopedSeed
+					? await client.restoreThread(
+							threadId,
+							remapped.messages,
+							remapped.workflows,
+							remapped.dataTables,
+							remapped.agents,
+						)
+					: { restored: 0, workflowIds: [], dataTableIds: [], agentIds: [] };
 				restoredWorkflowIds = restoreResult.workflowIds;
 				restoredDataTableIds = restoreResult.dataTableIds;
 				restoredAgentIds = restoreResult.agentIds;
@@ -482,14 +809,52 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						: '';
 				const agentSuffix =
 					restoredAgentIds.length > 0 ? `, ${String(restoredAgentIds.length)} agent(s)` : '';
+				// Logged explicitly, not folded into the counts above: a project-scope case
+				// is graded on the agent SEEING this project, so a run where the fixture
+				// silently didn't land has to be readable from the log alone.
+				const projectSuffix =
+					seededProjectIds.length > 0 ? `, ${String(seededProjectIds.length)} project(s)` : '';
 				logger.info(
-					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${config.laneTag ?? ''}`,
+					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${projectSuffix}${config.laneTag ?? ''}`,
 				);
 			} catch (error: unknown) {
 				seedingFailed = true;
 				throw new Error(
 					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
 				);
+			}
+			// Run AFTER the seeding try/catch, so a prior-run problem is not reported as
+			// "Seeding failed" — the artifacts did land, it is the pre-turn history that did
+			// not. Before the live turn, so the agent's first look already sees it.
+			if (config.seed?.mode === 'inline' && config.seed.priorRuns?.length) {
+				// A throw here (an id the seed never created) is an authoring/harness fault.
+				// Without the flag the outer catch returns a plain failed build and the case
+				// is recorded as `build_failure` / `builder_issue` — a builder red for
+				// something the builder had no part in.
+				try {
+					const outcomes = await executePriorRuns({
+						client,
+						priorRuns: config.seed.priorRuns,
+						// Already maps authored seed id → the restored workflow, and it is built
+						// from `remapped`, which the server pins its ids to.
+						seedWorkflows: seedWorkflowsBySeedId,
+						logger,
+						laneTag: config.laneTag,
+					});
+					// A staged run that never produced an execution record leaves the case's
+					// premise missing, so the graded turn answers a question the instance cannot
+					// support. Recorded rather than thrown: the build itself is fine, and the
+					// case is routed to infra instead of scored.
+					const missing = outcomes.filter((outcome) => !outcome.ran);
+					if (missing.length > 0) {
+						priorRunFailed = missing
+							.map((outcome) => `${outcome.workflow}: ${outcome.errors.join('; ') || 'unknown'}`)
+							.join(' | ');
+					}
+				} catch (error: unknown) {
+					seedingFailed = true;
+					throw error;
+				}
 			}
 		}
 
@@ -598,7 +963,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				...(credentialViewPinned
 					? {
 							allowlistedCredentialIds: seededCredentialIds,
-							bypassCredentialTestIds: seededCredentialIds,
+							bypassCredentialTestIds,
 							createdCredentialIds: config.createdCredentialIds,
 							credentialNameCounts,
 						}
@@ -709,6 +1074,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					createdWorkflowIds: restoredWorkflowIds,
 					createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 					createdAgentIds: restoredAgentIds,
+					createdProjectIds: seededProjectIds,
 					conversationMetrics,
 					events,
 					threadId,
@@ -716,6 +1082,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					transcript,
 					credentialViewPinned,
 					seedingFailed,
+					...(priorRunFailed ? { priorRunFailed } : {}),
+					credentialSetup: await credentialSetupFacts(),
 				};
 			}
 			return {
@@ -726,6 +1094,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdWorkflowIds: restoredWorkflowIds,
 				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 				createdAgentIds: restoredAgentIds,
+				createdProjectIds: seededProjectIds,
 				artifactRefs,
 				conversationMetrics,
 				events,
@@ -734,6 +1103,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				transcript,
 				credentialViewPinned,
 				seedingFailed,
+				...(priorRunFailed ? { priorRunFailed } : {}),
+				credentialSetup: await credentialSetupFacts(),
 			};
 		}
 
@@ -758,12 +1129,18 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// per-scenario rows are seeded in runScenario via seededScenarioTableIdsByName.
 		return {
 			success: true,
+			// Carried on the SUCCESS path too. A staged run that never landed is the one
+			// infra signal that outlives a healthy build, and that is exactly the case
+			// `case-pipeline` has to catch — the graded turn answered a question the
+			// instance cannot support.
+			...(priorRunFailed ? { priorRunFailed } : {}),
 			workflowId: outcome.workflowsCreated[0].id,
 			workflowJsons: outcome.workflowJsons,
 			buildTrace,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
 			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 			createdAgentIds: restoredAgentIds,
+			createdProjectIds: seededProjectIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
 			artifactRefs,
 			conversationMetrics,
@@ -773,6 +1150,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			transcript,
 			workflowChecks,
 			credentialViewPinned,
+			credentialSetup: await credentialSetupFacts(),
 		};
 	} catch (error: unknown) {
 		abortController.abort();
@@ -785,12 +1163,28 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdWorkflowIds: [...restoredWorkflowIds, ...builtWorkflowIds],
 			createdDataTableIds: [...restoredDataTableIds, ...builtDataTableIds],
 			createdAgentIds: restoredAgentIds,
+			createdProjectIds: seededProjectIds,
 			conversationMetrics,
 			events,
 			threadId,
 			credentialViewPinned,
 			seedingFailed,
+			...(priorRunFailed ? { priorRunFailed } : {}),
+			laneBootFailed,
+			credentialSetup: await credentialSetupFacts(),
 		};
+	} finally {
+		// Covers every return path above: a leaked browser or an open fixture port
+		// would outlive the case and poison the next one.
+		if (credentialSetupLane) {
+			await credentialSetupLane.close().catch((error: unknown) => {
+				logger.warn(
+					`  Credential-setup lane teardown failed: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				);
+			});
+		}
 	}
 }
 
@@ -877,6 +1271,43 @@ async function evictLeftoverSeedWorkflows(
 	}
 }
 
+/**
+ * Delete any team project already sitting on the instance under a seed project's
+ * name, so a crashed run's leftover doesn't turn into a second "Foobar" the agent
+ * has to disambiguate. Exact-name match: seed project names are NOT suffixed (the
+ * live turn names them), so there is no pattern to key off — which also means this
+ * would delete a same-named project a human created. Seed names should therefore be
+ * distinctive enough not to collide with real ones.
+ *
+ * Best-effort: a failure here is logged and the run continues, since a duplicate
+ * duplicate still leaves the case's premise (a visible project that isn't the bound
+ * one) intact.
+ */
+async function evictLeftoverSeedProjects(
+	client: N8nClient,
+	name: string,
+	logger: EvalLogger,
+	laneTag?: string,
+): Promise<void> {
+	try {
+		const stale = (await client.listTeamProjects()).filter((project) => project.name === name);
+		for (const project of stale) {
+			try {
+				await client.deleteProject(project.id);
+				logger.info(`  Evicted leftover seed project "${name}" before restore${laneTag ?? ''}`);
+			} catch (error: unknown) {
+				logger.info(
+					`  Could not evict leftover seed project "${name}" (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
+				);
+			}
+		}
+	} catch (error: unknown) {
+		logger.info(
+			`  Could not list projects to evict leftovers (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
+		);
+	}
+}
+
 function formatProxyStatsSuffix(stats: ProxyDecisionStats | undefined): string {
 	if (!stats) return '';
 	const entries = Object.entries(stats).sort(([, a], [, b]) => b - a);
@@ -888,7 +1319,74 @@ function formatProxyStatsSuffix(stats: ProxyDecisionStats | undefined): string {
 // Utility helpers
 // ---------------------------------------------------------------------------
 
-function truncate(text: string, maxLength: number): string {
-	if (text.length <= maxLength) return text;
-	return text.slice(0, maxLength) + '...';
+/**
+ * The provider key shape for the leak scan.
+ *
+ * A fixture run knows it from the manifest. A LOCAL run does not know the
+ * credential type up front (the case declares none), so infer it from what the
+ * agent actually created and look the fixture up by that — which is exactly
+ * what `findFixtureForCredentialType` is for. Undefined => the leak check
+ * reports itself unverifiable rather than guessing.
+ */
+/** Every key shape to strip from a local run's artifacts. NOT `[secretPrefix]`:
+ *  that is resolved from the credential the agent saved, so a run that leaked
+ *  and then failed before saving would have been skipped. */
+async function resolveScrubPrefixes(lane: CredentialSetupLane): Promise<string[]> {
+	if (!lane.local) return [];
+	// Deliberately NOT caught — an empty list is indistinguishable from "nothing
+	// to scrub", so a broken fixtures dir would silently ship a real key.
+	const fixtures = await loadProviderFixtures();
+	const prefixes = [...new Set(fixtures.map((f) => f.manifest.secretPrefix))];
+	if (prefixes.length === 0) {
+		throw new Error(
+			'No provider fixtures found, so a local run has no key shapes to scrub. Refusing to run rather than persist a real key.',
+		);
+	}
+	// A non-empty list is not the same as the RIGHT list. The prefixes come from
+	// the fixtures on disk, so a `local` case targeting a provider none of them
+	// covers scrubs with shapes that cannot match — the real key persists into
+	// eval-results.json while the leak check merely reports itself unverifiable.
+	if (
+		lane.credentialType &&
+		!fixtures.some((f) => f.manifest.credentialType === lane.credentialType)
+	) {
+		throw new Error(
+			`Local run targets \`${lane.credentialType}\`, which no provider fixture covers, so its key shape is unknown and cannot be scrubbed. ` +
+				'Add a fixture for it (evaluations/fixtures/providers/) before running this case locally.',
+		);
+	}
+	return prefixes;
+}
+
+async function resolveSecretPrefix(
+	client: N8nClient,
+	lane: CredentialSetupLane,
+	credentialIdsBefore: string[],
+	foreignCredentialIds: string[],
+): Promise<string | undefined> {
+	if (lane.fixture) return lane.fixture.manifestSecretPrefix;
+	try {
+		const type =
+			lane.credentialType ??
+			(await inferCreatedType(client, credentialIdsBefore, foreignCredentialIds));
+		if (!type) return undefined;
+		return (await resolveFixtureForCredentialType(type))?.manifest.secretPrefix;
+	} catch {
+		return undefined;
+	}
+}
+
+async function inferCreatedType(
+	client: N8nClient,
+	credentialIdsBefore: string[],
+	foreignCredentialIds: string[],
+): Promise<string | undefined> {
+	// Shares the predicate with the checks and the probe: this one picks the leak
+	// scan's key prefix, so a concurrent build's credential here would set local
+	// mode's scrub shape to the wrong provider.
+	const all = await client.listCredentials();
+	return credentialsCreatedByThisBuild(all, {
+		before: credentialIdsBefore,
+		foreign: foreignCredentialIds,
+	})[0]?.type;
 }

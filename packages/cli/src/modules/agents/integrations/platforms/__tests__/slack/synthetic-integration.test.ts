@@ -1,14 +1,17 @@
+import { mock } from 'vitest-mock-extended';
+
+import type { AgentRepository } from '../../../../repositories/agent.repository';
 import { createSlackReplayContext } from '../../../__tests__/helpers/slack/replay-test-context';
 import {
 	slackEventCallback,
 	slackReplayFixtures,
 	slackUser,
 } from '../../../__tests__/helpers/slack/synthetic-fixtures';
-import { SlackIntegration } from '../../slack-integration';
+import { SlackIntegration } from '../../slack/slack-integration';
 
 describe('Slack channel integration scenarios', () => {
 	it('handles Slack URL verification without an active connection', () => {
-		const integration = new SlackIntegration();
+		const integration = new SlackIntegration(mock<AgentRepository>());
 
 		expect(
 			integration.handleUnauthenticatedWebhook({

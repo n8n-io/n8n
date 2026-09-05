@@ -9,8 +9,6 @@ type McpRegistryServerUpsertRow = Pick<
 
 const serverStatuses = ['active', 'deprecated'] as const;
 
-type McpRegistryServerStatus = (typeof serverStatuses)[number];
-
 /**
  * Override values for the credential identified by `extends`. Only properties
  * defined on `oAuth2Api`/`mcpOAuth2Api` are accepted; `null`/missing values are
@@ -26,56 +24,120 @@ export const mcpRegistryExtendsCredentialSchema = z.object({
 	authentication: z.enum(['body', 'header']).nullish(),
 	useDynamicClientRegistration: z.boolean().nullish(),
 	serverUrl: z.string().nullish(),
+	// Lets a row that fixes `scope` also hide the parent's "Custom Scopes"
+	// toggle (and its dependent notice/enabledScopes fields), which would
+	// otherwise render with no effect once `scope` is overridden.
+	customScopes: z.boolean().nullish(),
 });
 
 export type McpRegistryExtendsCredential = z.infer<typeof mcpRegistryExtendsCredentialSchema>;
 
-/**
- * The shape of an entry returned by the MCP server registry.
- */
-export type McpRegistryServer = {
-	name: string;
-	slug: string;
-	title: string;
-	description: string;
-	tagline: string;
-	version: string;
-	updatedAt: string;
-	icons: McpRegistryIcon[];
-	websiteUrl?: string;
-	authType: 'oauth2' | 'extendsCredential';
-	remotes: McpRegistryRemote[];
-	tools: McpRegistryTool[];
-	isOfficial: boolean;
-	origin: 'registry';
-	status: McpRegistryServerStatus;
-	// FIXME: api returns {data?: string[]} not string[]
-	tags?: string[];
-	extendsCredential?: McpRegistryExtendsCredential;
-};
+export const mcpRegistryUsesCredentialSchema = z.object({
+	credentialType: z.string().min(1),
+	name: z.string().min(1),
+	value: z.string().min(1),
+});
 
-export type McpRegistryIcon = {
-	src: string;
-	mimeType?: 'image/png' | 'image/jpeg' | 'image/jpg' | 'image/svg+xml' | 'image/webp';
-	theme?: 'light' | 'dark';
-};
+export const mcpRegistryUsesCredentialsSchema = z
+	.array(mcpRegistryUsesCredentialSchema)
+	.min(1)
+	.superRefine((credentials, ctx) => {
+		const credentialTypes = new Set<string>();
+		const values = new Set<string>();
 
-export type McpRegistryRemoteType = 'streamable-http' | 'sse';
+		for (const [index, credential] of credentials.entries()) {
+			if (credentialTypes.has(credential.credentialType)) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Credential types must be unique',
+					path: [index, 'credentialType'],
+				});
+			}
+			if (values.has(credential.value)) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Credential selector values must be unique',
+					path: [index, 'value'],
+				});
+			}
+			credentialTypes.add(credential.credentialType);
+			values.add(credential.value);
+		}
+	});
 
-export type McpRegistryRemote = {
-	type: McpRegistryRemoteType;
-	url: string;
-};
+export type McpRegistryUsesCredential = z.infer<typeof mcpRegistryUsesCredentialSchema>;
 
-export type McpRegistryToolAnnotations = {
-	readOnlyHint?: boolean;
-};
+const mcpRegistryServerBaseSchema = z.object({
+	name: z.string(),
+	slug: z.string(),
+	title: z.string(),
+	description: z.string(),
+	tagline: z.string(),
+	version: z.string(),
+	updatedAt: z.string(),
+	icons: z.array(
+		z.object({
+			src: z.string(),
+			mimeType: z
+				.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'])
+				.optional(),
+			theme: z.enum(['light', 'dark']).optional(),
+		}),
+	),
+	websiteUrl: z
+		.string()
+		.nullish()
+		.transform((value) => value ?? undefined),
+	remotes: z.array(
+		z.object({
+			type: z.enum(['streamable-http', 'sse', 'streamable-http-templated']),
+			url: z.string(),
+		}),
+	),
+	tools: z.array(
+		z.object({
+			name: z.string(),
+			title: z.string().optional(),
+			annotations: z.object({ readOnlyHint: z.boolean().optional() }).optional(),
+		}),
+	),
+	isOfficial: z.boolean(),
+	origin: z.literal('registry'),
+	status: z.enum(serverStatuses),
+	// The API returns either a bare array or a `{ data }` envelope, and omits
+	// `data` entirely when there are no tags. Anything stricter drops the whole
+	// server over optional metadata.
+	tags: z
+		.union([z.array(z.string()), z.object({ data: z.array(z.string()).nullish() })])
+		.nullish()
+		.transform((value) => (Array.isArray(value) ? value : (value?.data ?? undefined))),
+});
 
-export type McpRegistryTool = {
-	name: string;
-	title?: string;
-	annotations?: McpRegistryToolAnnotations;
-};
+const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [
+	z.object({ authType: z.literal('oauth2') }),
+	z.object({
+		authType: z.literal('extendsCredential'),
+		extendsCredential: mcpRegistryExtendsCredentialSchema,
+	}),
+	z.object({
+		authType: z.literal('usesCredentials'),
+		usesCredentials: mcpRegistryUsesCredentialsSchema,
+	}),
+]);
+
+export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegistryServerAuthSchema);
+
+export type McpRegistryServer = z.output<typeof mcpRegistryServerSchema>;
+export type McpRegistryIcon = McpRegistryServer['icons'][number];
+export type McpRegistryRemote = McpRegistryServer['remotes'][number];
+export type McpRegistryRemoteType = McpRegistryRemote['type'];
+export type McpRegistryTool = McpRegistryServer['tools'][number];
+export type McpRegistryToolAnnotations = NonNullable<McpRegistryTool['annotations']>;
+
+export function parseMcpRegistryServer(value: unknown): McpRegistryServer | null {
+	const result = mcpRegistryServerSchema.safeParse(value);
+	return result.success ? result.data : null;
+}
 
 export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow {
 	const { slug, status, version, updatedAt, ...rest } = server;

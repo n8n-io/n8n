@@ -136,7 +136,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 			returnData.push(itemResult);
 		} catch (error) {
-			const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex);
+			const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex, {
+				enrichNonParserErrors: true,
+			});
 			if (this.continueOnFail()) {
 				returnData.push({
 					json: { error: executionError.message },

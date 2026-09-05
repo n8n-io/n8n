@@ -296,6 +296,8 @@ Not yet covered: an automatic "unexpected artifact" fail (a build producing an a
 |----------|----------|-------------|
 | `N8N_INSTANCE_AI_MODEL` | Yes | Model used by Instance AI and, by default, the eval helper calls for mock generation and verification |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | No | Generic eval-model API key override |
+| `N8N_INSTANCE_AI_MODEL_URL` | No | OpenAI-compatible base URL for custom eval models (used with `custom/...` model ids) |
+| `EVAL_MODAL_LLM_HEADERS` | No | Eval-only JSON object of extra HTTP headers for Modal (or other custom) LLM endpoints |
 | `OPENAI_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `openai/` |
 | `ANTHROPIC_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `anthropic/` |
 | `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
@@ -436,8 +438,19 @@ How it differs from the manifest flow:
   place, so every iteration gets a genuinely fresh build (clean `pass@k`/`pass^k`
   variance) instead of rotating a fixed list of prebuilt IDs.
 - **Multi-lane.** Unlike `--prebuilt-workflows` (single instance), `--build-via-mcp`
-  accepts a comma-separated `--base-url`. Each lane enables MCP, mints its own API
-  key, and stages its own `claude` MCP config — the CLI does this setup for you.
+  accepts a comma-separated `--base-url`. Each lane enables MCP; the CLI does this
+  setup for you.
+- **Per-case build users + credential seeding.** Every build runs `claude` as its
+  own freshly-invited member user (invited in batches through the lane owner,
+  accepted lazily per build), with that user's MCP API key staged into a per-build
+  `claude` MCP config. MCP credential/workflow visibility is user-scoped, so each
+  build sees an isolated view: exactly the case's declared `credentials` (created
+  in the member's personal project — the MCP analog of the orchestrator's
+  per-thread credential pinning), and nothing from concurrent builds. Requires the
+  lanes to have no SMTP configured (otherwise invites are emailed and the CLI
+  can't obtain the accept token — eval instances never have SMTP). Build users are
+  deleted with the built workflows after the run; under `--keep-workflows` they
+  stay, since deleting a user deletes their remaining data.
 - **Throwaway cleanup.** Built workflows are deleted after the run unless you pass
   `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
   `claude` prints, so a build that times out or never emits the trailer can leave
@@ -770,6 +783,37 @@ between the two repos. They read asymmetrically — `inline` names where the see
 lives, `replay` names what the harness does with it — which is a cost we took
 knowingly: renaming `replay` would break a lang-tracer API contract.
 
+#### `seed.priorRuns` — execution history the agent must look up
+
+An `inline` seed can also **run** its workflows before the graded turn. Each run creates a
+real execution record, so the case can ask about "the last run" and the honest answer
+requires the agent to read it.
+
+```jsonc
+"seed": {
+  "mode": "inline",
+  "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [], "connections": {} }],
+  "priorRuns": [
+    { "workflow": "dS8xQ2mV6bTn4Kp1", "hints": "the HTTP Request node returns 500" }
+  ]
+}
+```
+
+- **A failing run is the point.** `hints` steers the mock layer exactly as
+  `executionScenarios[].dataSetup` does, so a case can stage one specific failure and then
+  say only "it broke again". Grade the behaviour that follows: did the agent check the
+  record, or did it ask the user?
+- **A prior run that fails does not fail the build.** Outcomes go to the log, named by the
+  workflow the case declared.
+- **`workflow` is the seed workflow's `id`**, the same key `conversation[0].attach.workflow`
+  uses. The schema rejects an id the seed does not declare, so a typo fails at load rather
+  than mid-build.
+- **A run that never happens is not a staged failure.** If no execution record lands, the
+  case is reported as a framework issue rather than scored — it would otherwise be graded
+  against history the instance does not have.
+- Runs execute sequentially in declared order, before the live turn, on a 120s budget —
+  tighter than a scenario execution, which gets the case's build budget (900s by default).
+
 #### `mode: "replay"` — reproduce a real conversation (no repo content)
 
 The case carries only a **thread id**. At run time the harness pulls that thread's runs from LangSmith, reconstructs the message log (user/assistant text + resolved tool-call blocks, deduped across suspend/resume), and splits at the **last user message**: everything before it is restored as the seed, that last message is sent live. The seed workflow is compiled from the build/patch tool's captured SDK code **as of the seed boundary**, so it matches what the live turn first saw.
@@ -988,6 +1032,32 @@ status.
 Evals run automatically on PRs that change Instance AI code (path-filtered). The workflow boots a set of n8n lane containers, pulls the test-case suite from LangTracer (`--source langtracer --suite baseline`), and runs the CLI against the lanes. See `.github/workflows/test-evals-instance-ai.yml`.
 
 The job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts. When `LANGSMITH_API_KEY` is set via the `EVALS_LANGSMITH_API_KEY` secret, runs also land as LangSmith experiments tagged with commit SHA + branch, so you can compare against master side-by-side.
+
+For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`). Native providers use `model` alone (`anthropic/*`, `openai/*`, `openrouter/*`, `xai/*`, `google-vertex-anthropic/*`). OpenAI-compatible vendors use **`custom/<model>` + `model-url` + `model-key`** — no first-class provider prefixes.
+
+| Experiment | `model` | `model-url` | `model-key` → secret |
+|------------|---------|-------------|----------------------|
+| Anthropic / OpenAI / OpenRouter / xAI | `anthropic/…`, `openai/…`, etc. | empty | (prefix → `EVALS_*`) |
+| Google Vertex Claude | `google-vertex-anthropic/claude-opus-4-8` | empty | (prefix → `EVALS_VERTEX_KEY` + `EVALS_VERTEX_PROJECT_ID`; optional `EVALS_VERTEX_LOCATION`, default `global`) |
+| Baseten | `custom/<model>` | `https://inference.baseten.co/v1` | `baseten` → `EVALS_BASETEN_KEY` |
+| Fireworks | `custom/accounts/fireworks/models/…` | `https://api.fireworks.ai/inference/v1` | `fireworks` → `EVALS_FIREWORKS_KEY` |
+| Together | `custom/moonshotai/Kimi-K3` | `https://api.together.ai/v1` | `together` → `EVALS_TOGETHER_KEY` |
+| Modal | `custom/…` | `https://….modal.direct…/v1` | `modal` → `EVALS_MODAL_KEY` |
+| Databricks | `custom/workspace.default.kimi-k3` | `https://….databricks.com/ai-gateway/mlflow/v1` | `databricks` → `EVALS_DATABRICKS_KEY` |
+| Lyceum | `custom/moonshotai/Kimi-K3` | OpenAI-compatible `/v1` base URL | `lyceum` → `EVALS_LYCEUM_KEY` |
+| Azure OpenAI | `custom/<deployment>` | `https://….openai.azure.com/openai/v1` | `azure` → `EVALS_AZURE_FOUNDRY_KEY` |
+| Keyless custom router | `custom/<model>` | `https://host/v1` | empty (no API key) |
+| Azure Foundry Claude | `anthropic/<deployment>` | Foundry Anthropic base | `azure` (or omit — defaults to Foundry key) |
+
+`lanes` / `eval-concurrency` default to **10 / 32**. For `model-key=baseten` they auto-throttle to **1 / 2** (~0.5M TPM — fits [Baseten Basic verified](https://docs.baseten.co/inference/model-apis/rate-limits-and-budgets)); override the inputs if you have more headroom.
+
+Verifier/mocks always use `EVALS_ANTHROPIC_KEY`.
+
+For `custom/*`, optional dispatch inputs `reasoning-effort` and `supports-structured-outputs`
+override `N8N_INSTANCE_AI_REASONING_EFFORT` / `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS`.
+When unset, the runtime looks up
+`packages/@n8n/instance-ai/src/utils/custom-model-defaults.ts` (substring match on the model id).
+If still unresolved, the field is omitted from the request (no blanket custom default).
 
 ## Architecture
 

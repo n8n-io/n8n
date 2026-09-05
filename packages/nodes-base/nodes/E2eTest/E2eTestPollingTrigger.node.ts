@@ -12,6 +12,12 @@ interface PollResponseBody {
 	items?: IDataObject[];
 }
 
+const highestItemId = (items: IDataObject[], startingFrom: number) =>
+	items.reduce((highest, item) => {
+		const id = Number(item.id);
+		return Number.isFinite(id) && id > highest ? id : highest;
+	}, startingFrom);
+
 export class E2eTestPollingTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'E2E Test Polling Trigger',
@@ -53,8 +59,23 @@ export class E2eTestPollingTrigger implements INodeType {
 			throw new NodeOperationError(this.getNode(), error as Error);
 		}
 
-		if (!body.items?.length) return null;
+		const items = body.items ?? [];
+		if (items.length === 0) return null;
 
-		return [this.helpers.returnJsonArray(body.items)];
+		const nodeStaticData = this.getWorkflowStaticData('node');
+		const lastItemId =
+			typeof nodeStaticData.lastItemId === 'number' ? nodeStaticData.lastItemId : null;
+
+		const newItems = items.filter((item) => {
+			const id = Number(item.id);
+			return Number.isFinite(id) && (lastItemId === null || id > lastItemId);
+		});
+
+		// Set even when nothing new is emitted below, so the advance still persists.
+		nodeStaticData.lastItemId = highestItemId(items, lastItemId ?? 0);
+
+		if (newItems.length === 0) return null;
+
+		return [this.helpers.returnJsonArray(newItems)];
 	}
 }

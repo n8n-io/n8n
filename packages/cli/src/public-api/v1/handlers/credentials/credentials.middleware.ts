@@ -6,9 +6,10 @@ import { validate } from 'jsonschema';
 import type { IDataObject } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 
-import { getCredential, toJsonSchema } from './credentials.service';
+import { toJsonSchema } from './credentials.utils';
 import type { CredentialRequest } from '../../../types';
 
 /**
@@ -22,12 +23,22 @@ function validateCredentialData(
 	credentialType: string,
 	data: IDataObject,
 	res: express.Response,
+	options?: { partialData?: boolean },
 ): express.Response | void {
 	const properties = Container.get(CredentialsHelper)
 		.getCredentialsProperties(credentialType)
 		.filter((property) => property.type !== 'hidden');
 
 	const schema = toJsonSchema(properties);
+
+	// A partial payload is merged into the stored data after validation, so
+	// key-presence requirements (top-level `required` and conditional `allOf`
+	// blocks) cannot be checked against the payload alone; per-key type checks
+	// still apply.
+	if (options?.partialData) {
+		delete schema.required;
+		delete schema.allOf;
+	}
 
 	const { valid, errors } = validate(data, schema, { nestedErrors: true });
 
@@ -99,7 +110,8 @@ export const validCredentialsPropertiesForUpdate = async (
 	if (data !== undefined) {
 		// Fetch existing credential to get type if not provided
 		if (type === undefined) {
-			const existingCredential = await getCredential(credentialId);
+			const existingCredential =
+				await Container.get(CredentialsFinderService).findById(credentialId);
 			if (!existingCredential) {
 				return res.status(404).json({ message: 'Credential not found' });
 			}
@@ -107,7 +119,9 @@ export const validCredentialsPropertiesForUpdate = async (
 		}
 
 		// Validate data against type
-		const validationResult = validateCredentialData(type, data, res);
+		const validationResult = validateCredentialData(type, data, res, {
+			partialData: req.body.isPartialData === true,
+		});
 		if (validationResult) {
 			return validationResult;
 		}
@@ -115,7 +129,7 @@ export const validCredentialsPropertiesForUpdate = async (
 
 	// If type is provided but data is not, check if type is changing
 	if (type !== undefined && data === undefined) {
-		const existingCredential = await getCredential(credentialId);
+		const existingCredential = await Container.get(CredentialsFinderService).findById(credentialId);
 		if (!existingCredential) {
 			return res.status(404).json({ message: 'Credential not found' });
 		}

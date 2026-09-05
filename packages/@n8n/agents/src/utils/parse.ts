@@ -1,4 +1,5 @@
 import type AjvType from 'ajv';
+import type { ValidateFunction } from 'ajv';
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
@@ -6,40 +7,95 @@ import { isZodSchema } from './zod';
 
 export type ParseResult<T = unknown> =
 	| { success: true; data: T }
-	| { success: false; error: string };
+	| { success: false; error: string; schemaInvalid?: true };
 
 export interface ParseOptions {
 	/** For schemas converted from Zod, whose `.strip()` `zodToJsonSchema` renders as the stricter `additionalProperties: false`. */
 	stripUnknown?: boolean;
 }
 
-const ajvInstances = new Map<string, InstanceType<typeof AjvType>>();
+type Dialect = '2020-12' | '2019-09' | 'draft-07';
 
-function getAjv(unicodeRegExp = true, stripUnknown = false): InstanceType<typeof AjvType> {
-	const key = `${String(unicodeRegExp)}:${String(stripUnknown)}`;
-	const cached = ajvInstances.get(key);
-	if (cached) return cached;
+const DIALECT_MARKERS: Array<[RegExp, Dialect]> = [
+	[/draft\/2020-12/, '2020-12'],
+	[/draft\/2019-09/, '2019-09'],
+	[/draft-0[4-7]/, 'draft-07'],
+];
 
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const { default: Ajv } = require('ajv') as { default: typeof AjvType };
-	const instance = new Ajv({
-		strict: false,
-		...(unicodeRegExp ? {} : { unicodeRegExp: false }),
-		...(stripUnknown ? { removeAdditional: true } : {}),
-	});
-	ajvInstances.set(key, instance);
-	return instance;
+const ajvConstructors = new Map<Dialect, Promise<typeof AjvType>>();
+
+async function loadAjv(dialect: Dialect): Promise<typeof AjvType> {
+	const cached = ajvConstructors.get(dialect);
+	if (cached) return await cached;
+
+	const loading = (async () => {
+		const bundle =
+			dialect === '2020-12'
+				? await import('ajv/dist/2020.js')
+				: dialect === '2019-09'
+					? await import('ajv/dist/2019.js')
+					: await import('ajv');
+		return bundle.default.default;
+	})();
+	loading.catch(() => ajvConstructors.delete(dialect));
+	ajvConstructors.set(dialect, loading);
+	return await loading;
 }
 
-function compile(schema: JSONSchema7, stripUnknown: boolean) {
-	let ajv = getAjv(true, stripUnknown);
-	try {
-		return { ajv, validate: ajv.compile(schema) };
-	} catch (error) {
-		if (!(error instanceof SyntaxError)) throw error;
-		ajv = getAjv(false, stripUnknown);
-		return { ajv, validate: ajv.compile(schema) };
+/** Only the declared dialect is tried: falling back to another one would turn a clear
+ *  compile error into silently weaker validation. Undeclared schemas start at 2020-12,
+ *  MCP's default dialect. */
+function candidateDialects(schema: JSONSchema7): Dialect[] {
+	const declaredMarker = schema.$schema;
+	const declared = declaredMarker
+		? DIALECT_MARKERS.find(([marker]) => marker.test(declaredMarker))?.[1]
+		: undefined;
+	return declared ? [declared] : ['2020-12', '2019-09', 'draft-07'];
+}
+
+type CompileResult =
+	| { success: true; ajv: InstanceType<typeof AjvType>; validate: ValidateFunction }
+	| { success: false; error: string };
+
+async function compileJsonSchema(
+	schema: JSONSchema7,
+	stripUnknown: boolean,
+): Promise<CompileResult> {
+	let firstError: unknown;
+	for (const dialect of candidateDialects(schema)) {
+		let Ajv: typeof AjvType;
+		try {
+			Ajv = await loadAjv(dialect);
+		} catch (error) {
+			firstError ??= error;
+			continue;
+		}
+		for (const unicodeRegExp of [true, false]) {
+			try {
+				// Ajv retains every schema it compiles for the life of the instance, so this
+				// one is scoped to a single validation and collected along with it.
+				const ajv = new Ajv({
+					strict: false,
+					allErrors: true,
+					// Ajv otherwise checks its version against the `$schema`
+					validateSchema: false,
+					unicodeRegExp,
+					removeAdditional: stripUnknown,
+				});
+				return { success: true, ajv, validate: ajv.compile(schema) };
+			} catch (error) {
+				firstError ??= error;
+			}
+		}
 	}
+	return {
+		success: false,
+		error: firstError instanceof Error ? firstError.message : String(firstError),
+	};
+}
+
+function schemaCompileError(error: string): ParseResult {
+	return { success: false, error: `Schema could not be compiled: ${error}`, schemaInvalid: true };
 }
 
 /**
@@ -59,15 +115,17 @@ export async function parseWithSchema(
 
 	// Strict first: Ajv's `removeAdditional` drops properties while trying a failing
 	// `anyOf`/`oneOf` branch, so a payload that already matches a branch must never reach it.
-	const strict = compile(schema, false);
+	const strict = await compileJsonSchema(schema, false);
+	if (!strict.success) return schemaCompileError(strict.error);
 	if (strict.validate(data)) return { success: true, data };
 	if (!options.stripUnknown) {
 		return { success: false, error: strict.ajv.errorsText(strict.validate.errors) };
 	}
 
+	const stripping = await compileJsonSchema(schema, true);
+	if (!stripping.success) return schemaCompileError(stripping.error);
 	// Ajv strips in place, so clone to leave the caller's object intact as Zod does.
 	const target = structuredClone(data);
-	const stripping = compile(schema, true);
 	if (stripping.validate(target)) return { success: true, data: target };
 	return { success: false, error: stripping.ajv.errorsText(stripping.validate.errors) };
 }

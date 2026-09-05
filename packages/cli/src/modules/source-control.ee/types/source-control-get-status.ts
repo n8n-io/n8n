@@ -60,6 +60,8 @@ export class SourceControlGetStatus {
 	@IsOptional()
 	verbose: boolean;
 
+	origin?: 'ui' | 'publicApi';
+
 	constructor(values: {
 		direction: 'push' | 'pull';
 		preferLocalVersion: string | boolean;
@@ -68,5 +70,7 @@ export class SourceControlGetStatus {
 		this.direction = values.direction || 'push';
 		this.preferLocalVersion = booleanFromString(values.preferLocalVersion) || true;
 		this.verbose = booleanFromString(values.verbose) || false;
+		// Never read from `values`, an untrusted `origin` query parameter must not be propagated through.
+		this.origin = 'ui';
 	}
 }

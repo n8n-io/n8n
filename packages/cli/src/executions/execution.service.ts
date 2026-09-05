@@ -1,3 +1,4 @@
+import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -63,7 +64,9 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
+import { isExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
 import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service';
 import type { ExecutionRequest, StopResult } from './execution.types';
@@ -136,6 +139,7 @@ export class ExecutionService {
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly executionStopService: ExecutionStopService,
 		private readonly ownershipService: OwnershipService,
+		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
 	) {}
 
 	/**
@@ -166,19 +170,24 @@ export class ExecutionService {
 
 		const { id: executionId } = req.params;
 		let execution: IExecutionResponse | IExecutionBase | undefined;
-		try {
-			execution = await this.executionPersistence.findOneInWorkflows(
-				executionId,
-				sharedWorkflowIds,
-				{ maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize },
-			);
-		} catch (error) {
-			if (error instanceof MissingExecutionDataError) {
-				throw new NotFoundError(
-					'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
+		// A v2 execution has no control-plane row.
+		if (isExecutionIdV2(executionId)) {
+			execution = await this.engineV2ExecutionReader.findOne(executionId, sharedWorkflowIds);
+		} else {
+			try {
+				execution = await this.executionPersistence.findOneInWorkflows(
+					executionId,
+					sharedWorkflowIds,
+					{ maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize },
 				);
+			} catch (error) {
+				if (error instanceof MissingExecutionDataError) {
+					throw new NotFoundError(
+						'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
+					);
+				}
+				throw error;
 			}
-			throw error;
 		}
 
 		if (!execution) {
@@ -248,11 +257,17 @@ export class ExecutionService {
 		return execution;
 	}
 
-	async retry(
-		req: ExecutionRequest.Retry,
-		sharedWorkflowIds: string[],
-	): Promise<Omit<IExecutionResponse, 'createdAt'>> {
-		const { id: executionId } = req.params;
+	async retry({
+		executionId,
+		options = {},
+		sharedWorkflowIds,
+		user,
+	}: {
+		executionId: string;
+		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
+		sharedWorkflowIds: string[];
+		user: User;
+	}): Promise<Omit<IExecutionResponse, 'createdAt'>> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -262,7 +277,7 @@ export class ExecutionService {
 			this.logger.info(
 				'Attempt to retry an execution was blocked due to insufficient permissions',
 				{
-					userId: req.user.id,
+					userId: user.id,
 					executionId,
 				},
 			);
@@ -286,9 +301,9 @@ export class ExecutionService {
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode,
 			executionData: execution.data,
-			retryOf: req.params.id,
+			retryOf: executionId,
 			workflowData: execution.workflowData,
-			userId: req.user.id,
+			userId: user.id,
 		};
 
 		const { lastNodeExecuted } = data.executionData!.resultData;
@@ -309,7 +324,7 @@ export class ExecutionService {
 			}
 		}
 
-		if (req.body.loadWorkflow) {
+		if (options.loadWorkflow) {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
 			const workflowId = execution.workflowData.id;
@@ -343,7 +358,7 @@ export class ExecutionService {
 				const node = workflowInstance.getNode(stack.node.name);
 				if (node === null) {
 					this.logger.error('Failed to retry an execution because a node could not be found', {
-						userId: req.user.id,
+						userId: user.id,
 						executionId,
 						nodeName: stack.node.name,
 					});
@@ -372,11 +387,11 @@ export class ExecutionService {
 
 		this.eventService.emit('workflow-executed', {
 			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
 			},
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
@@ -402,20 +417,17 @@ export class ExecutionService {
 			storedAt: execution.storedAt,
 		};
 
-		const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
-		const redactExecutionData = redactQuery.success
-			? redactQuery.data.redactExecutionData
-			: undefined;
 		await this.executionRedactionServiceProxy.processExecution(response, {
-			user: req.user,
-			redactExecutionData,
+			user,
+			redactExecutionData: options.redactExecutionData,
 		});
 
 		return response;
 	}
 
-	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
-		const { deleteBefore, ids, filters: requestFiltersRaw } = req.body;
+	async delete(user: User, payload: DeleteExecutionsDto, sharedWorkflowIds: string[]) {
+		const { deleteBefore, ids, filters: requestFiltersRaw } = payload;
+
 		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {
 			try {
@@ -442,11 +454,11 @@ export class ExecutionService {
 
 		this.eventService.emit('execution-deleted', {
 			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
 			},
 			executionIds: ids ?? [],
 			deleteBefore,
@@ -591,15 +603,16 @@ export class ExecutionService {
 		return { count, estimated: false };
 	}
 
+	/**
+	 * All executions still enqueued (`new`), plus the ids of those whose data could not be
+	 * read - those can never run, so the caller has to take them out of `new` itself.
+	 */
 	async findAllEnqueuedExecutions() {
-		return await this.executionPersistence.findMultipleExecutions(
-			{
-				select: ['id', 'mode'],
-				where: { status: 'new' },
-				order: { id: 'ASC' },
-			},
-			{ includeData: true, unflattenData: true },
-		);
+		return await this.executionPersistence.findMultipleExecutionsWithUnreadable({
+			select: ['id', 'mode'],
+			where: { status: 'new' },
+			order: { id: 'ASC' },
+		});
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
@@ -804,6 +817,8 @@ export class ExecutionService {
 			status?: ExecutionStatus;
 			excludeRunning?: boolean;
 			maxDataSizeBytes?: number;
+			startedAfter?: string;
+			startedBefore?: string;
 		},
 	): Promise<{ executions: IExecutionBase[]; count: number }> {
 		const excludedExecutionsIds = options.excludeRunning
@@ -819,6 +834,8 @@ export class ExecutionService {
 			lastId: options.lastId,
 			status: options.status,
 			excludedExecutionsIds,
+			startedAfter: options.startedAfter,
+			startedBefore: options.startedBefore,
 		};
 
 		const executions = await this.executionPersistence.findManyInWorkflows(

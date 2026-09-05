@@ -1,7 +1,7 @@
 // Decision schema (structured-output target) + encoders to InstanceAiConfirmRequest.
 
 import { domainAccessActionSchema, instanceGatewayResourceDecisionSchema } from '@n8n/api-types';
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest, InstanceAiCredentialSetupHint } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
@@ -129,6 +129,24 @@ const chooseCredentialSetupOptionDecisionSchema = z.object({
 const sendFollowUpMessageDecisionSchema = z.object({
 	action: z.literal('send_follow_up_message'),
 	message: z.string(),
+	/**
+	 * Rename the workflow this run last saved, from outside the conversation, at
+	 * this turn boundary — the agent is idle and is never told. `name` is one of
+	 * WORKFLOW_CHECKSUM_FIELDS, so the rename conflicts the agent's next save
+	 * without touching any node, which is how a case reaches the "modified
+	 * outside this conversation" path on purpose instead of by accident.
+	 *
+	 * Set it ONLY when a stage direction says something changed the workflow
+	 * behind the user's back. The harness performs the rename; the agent sees
+	 * nothing but `message`. A specific field rather than a general patch because
+	 * anything richer would have the model authoring workflow JSON — and
+	 * structured output cannot take a nested object here anyway (see
+	 * `nodeParametersJson` above).
+	 *
+	 * The harness ignores it when the run has saved no workflow yet, and when
+	 * that workflow already carries this name.
+	 */
+	renameWorkflowTo: z.string().min(1).optional(),
 });
 
 const declareDoneDecisionSchema = z.object({
@@ -189,6 +207,9 @@ export interface SetupWizardParseContext {
 		credentialRequests: Array<{
 			credentialType: string;
 			existingCredentials: Array<{ id: string; name: string }>;
+			/** Simplified Custom Auth's recipe (template + placeholders) for minting
+			 *  the credential — only present for `httpTemplatedCustomAuth` requests. */
+			setupHint?: InstanceAiCredentialSetupHint;
 		}>;
 	}>;
 }
@@ -227,7 +248,7 @@ export const CONFIRMATION_TOOL_DESCRIPTIONS = `Available actions — confirmatio
 
 export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user's turn. The agent finished its run, no widget is on screen, and the chat input is waiting. The user either types a message or ends the conversation:
 
-- send_follow_up_message(message): Send the user's next chat message. Everything the user wants to say right now goes here — including answering a question the agent asked in plain text, and approving or rejecting a plan the agent presented in plain text ("No — two changes first: …" or "Yes, go ahead." ARE follow-up messages).
+- send_follow_up_message(message, renameWorkflowTo?): Send the user's next chat message. Everything the user wants to say right now goes here — including answering a question the agent asked in plain text, and approving or rejecting a plan the agent presented in plain text ("No — two changes first: …" or "Yes, go ahead." ARE follow-up messages). Set \`renameWorkflowTo\` ONLY when a [stage direction] says the workflow was changed outside this conversation — e.g. renamed in another tab, or edited by a colleague. The harness renames the last saved workflow for real at this exact moment, and the agent is told nothing about it; \`message\` must NOT mention the rename, because the whole point is that the agent discovers the conflict on its next save. Leave it unset on every other turn.
 
 - declare_done(): The user got what they wanted (or has nothing left to say) and walks away; the conversation ends. Never pick this while the agent is waiting for an answer.`;
 
@@ -239,7 +260,7 @@ export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user
  *  case — see `UserProxyConfig.credentialCreation` in `user-proxy/index.ts`. */
 export type CreateCredentialFn = (
 	credentialType: string,
-	options?: { works?: boolean },
+	options?: { works?: boolean; setupHint?: InstanceAiCredentialSetupHint },
 ) => Promise<{ id: string; name: string }>;
 
 /**
@@ -253,7 +274,7 @@ async function tryCreateCredential(
 	credentialType: string,
 	actionLabel: string,
 	onFailure?: (raw: string, error: unknown) => void,
-	options?: { works?: boolean },
+	options?: { works?: boolean; setupHint?: InstanceAiCredentialSetupHint },
 ): Promise<{ id: string; name: string } | undefined> {
 	if (!createCredential) {
 		onFailure?.(
@@ -522,7 +543,10 @@ async function parseNodeCredentialsJson(
 					credentialType,
 					'apply_setup_wizard',
 					onFailure,
-					{ works: workingCredentialTypes?.has(credentialType) === true },
+					{
+						works: workingCredentialTypes?.has(credentialType) === true,
+						setupHint: request.setupHint,
+					},
 				);
 				if (created) (result[node.nodeName] ??= {})[credentialType] = created.id;
 				continue;

@@ -40,8 +40,15 @@ vi.mock('@n8n/design-system', () => ({
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
 		template:
-			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot /></component>',
+			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :data-icon="icon" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot /></component>',
 		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href'],
+		emits: ['click'],
+	},
+	N8nToggle: {
+		name: 'N8nToggle',
+		template:
+			'<button v-bind="$attrs" :data-variant="variant" :data-icon="icon" :disabled="disabled" :aria-label="label" :aria-pressed="modelValue" @click="$emit(\'click\', $event)" />',
+		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
 		emits: ['click'],
 	},
 	N8nDropdownMenuItem: {
@@ -65,13 +72,13 @@ vi.mock('@n8n/design-system', () => ({
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
 		template: '<div v-bind="$attrs"><slot name="trigger" /><slot name="footer" /></div>',
-		props: ['items'],
+		props: ['items', 'placement', 'extraPopperClass'],
 		emits: ['select'],
 	},
 	'n8n-dropdown-menu': {
 		name: 'N8nDropdownMenu',
 		template: '<div v-bind="$attrs"><slot name="trigger" /><slot name="footer" /></div>',
-		props: ['items'],
+		props: ['items', 'placement', 'extraPopperClass'],
 		emits: ['select'],
 	},
 	N8nActionDropdown: {
@@ -86,15 +93,17 @@ import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 
 type DropdownStubWrapper = VueWrapper<{
 	items: Array<{ id: string; label?: string; disabled?: boolean }>;
+	extraPopperClass?: string;
 	$options: unknown;
 	$emit: (event: 'select', value: string) => void;
 }>;
 
+function getDropdown(wrapper: ReturnType<typeof mountHeader>, testId: string) {
+	return wrapper.getComponent(`[data-testid="${testId}"]`) as DropdownStubWrapper;
+}
+
 function getSwitcherOptions(wrapper: ReturnType<typeof mountHeader>) {
-	const switcher = wrapper.findComponent(
-		'[data-testid="agent-header-switcher"]',
-	) as DropdownStubWrapper;
-	return switcher.vm.items;
+	return getDropdown(wrapper, 'agent-header-switcher').vm.items;
 }
 
 const baseAgent = {
@@ -128,6 +137,7 @@ function mountHeader(
 		headerActions: unknown[];
 		mode: 'edit' | 'preview';
 		artifactMode: boolean;
+		isPreviewOpen: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
@@ -143,6 +153,7 @@ function mountHeader(
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
 			mode: overrides.mode,
 			artifactMode: overrides.artifactMode,
+			isPreviewOpen: overrides.isPreviewOpen,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
@@ -188,14 +199,14 @@ describe('AgentBuilderHeader', () => {
 
 	it('uses the horizontal dots action menu icon', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
-		const action = wrapper.findComponent({ name: 'ActionDropdown' });
-		expect(action.props('activatorIcon')).toBe('ellipsis');
+		const action = wrapper.get('[data-testid="agent-header-actions"]');
+		expect(action.get('button').attributes('data-icon')).toBe('ellipsis');
 	});
 
 	it('widens the header action menu so labels are readable from the icon trigger', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete agent' }] });
-		const action = wrapper.findComponent({ name: 'ActionDropdown' });
-		expect(action.props('extraPopperClass')).toBeTruthy();
+		const action = getDropdown(wrapper, 'agent-header-actions');
+		expect(action.vm.extraPopperClass).toBeTruthy();
 	});
 
 	it('hides the action dropdown when no header actions are available', () => {
@@ -278,32 +289,40 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('reverted')).toBeTruthy();
 	});
 
-	it('forwards header-action from the action dropdown', async () => {
+	it('forwards header-action from the action menu', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
-		const action = wrapper.findComponent({ name: 'ActionDropdown' });
+		const action = getDropdown(wrapper, 'agent-header-actions');
 		action.vm.$emit('select', 'delete');
 		expect(wrapper.emitted('header-action')).toEqual([['delete']]);
 	});
 
-	it('emits open-preview from the preview button', async () => {
-		const wrapper = mountHeader();
-		await wrapper.find('[data-testid="agent-header-preview-btn"]').trigger('click');
-		expect(wrapper.emitted('open-preview')).toEqual([[]]);
-	});
+	it.each([
+		{
+			label: 'opens',
+			isPreviewOpen: false,
+			event: 'open-preview',
+			accessibleLabel: 'agents.builder.preview.button',
+		},
+		{
+			label: 'closes',
+			isPreviewOpen: true,
+			event: 'close-preview',
+			accessibleLabel: 'agents.builder.preview.close.ariaLabel',
+		},
+	])(
+		'$label Preview from the preview action',
+		async ({ isPreviewOpen, event, accessibleLabel }) => {
+			const wrapper = mountHeader({ isPreviewOpen });
+			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+			expect(previewButton.attributes('data-icon')).toBe('play');
+			expect(previewButton.attributes('aria-label')).toBe(accessibleLabel);
+			expect(previewButton.attributes('aria-pressed')).toBe(String(isPreviewOpen));
 
-	it('exposes the preview route href for browser new-tab actions', () => {
-		const wrapper = mountHeader();
-		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-
-		expect(previewButton.attributes('href')).toBe('/projects/p1/agents/a1/preview');
-	});
-
-	it('does not expose a preview href in artifact mode', () => {
-		const wrapper = mountHeader({ artifactMode: true });
-		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-
-		expect(previewButton.attributes('href')).toBeUndefined();
-	});
+			await previewButton.trigger('click');
+			expect(wrapper.emitted(event)).toEqual([[]]);
+			expect(wrapper.emitted(isPreviewOpen ? 'open-preview' : 'close-preview')).toBeUndefined();
+		},
+	);
 
 	it('disables preview with a tooltip when the agent is not runnable', async () => {
 		const wrapper = mountHeader({
@@ -312,7 +331,6 @@ describe('AgentBuilderHeader', () => {
 		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
 
 		expect(previewButton.attributes('disabled')).toBeDefined();
-		expect(previewButton.attributes('href')).toBeUndefined();
 		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled')).toBe('false');
 		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-content')).toBe(
 			'agents.builder.preview.disabledTooltip',
@@ -320,6 +338,21 @@ describe('AgentBuilderHeader', () => {
 
 		await previewButton.trigger('click');
 
+		expect(wrapper.emitted('open-preview')).toBeUndefined();
+	});
+
+	it('keeps the close action enabled when the open preview agent is not runnable', async () => {
+		const wrapper = mountHeader({
+			isPreviewOpen: true,
+			agent: { ...baseAgent, isRunnable: false } as AgentResource,
+		});
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('disabled')).toBeUndefined();
+
+		await previewButton.trigger('click');
+
+		expect(wrapper.emitted('close-preview')).toEqual([[]]);
 		expect(wrapper.emitted('open-preview')).toBeUndefined();
 	});
 

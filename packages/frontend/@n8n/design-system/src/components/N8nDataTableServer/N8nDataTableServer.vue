@@ -327,7 +327,7 @@ const emitUpdateOptions = useThrottleFn(
 );
 
 function handlePageSizeChange(newPageSize: number) {
-	// Calculate the maximum available page (0-based indexing)
+	// Calculate the maximum available page (0-indexed)
 	const maxPage = Math.max(0, Math.ceil(props.itemsLength / newPageSize) - 1);
 	const newPage = Math.min(page.value, maxPage);
 
@@ -497,16 +497,15 @@ const table = useVueTable({
 				</table>
 			</div>
 		</div>
-		<div v-if="showPagination" class="table-pagination" data-test-id="pagination">
+		<div v-if="showPagination" class="table-pagination">
 			<N8nPagination
-				:current-page="page + 1"
-				:page-size="itemsPerPage"
-				:page-sizes="pageSizes"
-				layout="prev, pager, next"
+				:page="page + 1"
+				:items-per-page="itemsPerPage"
 				:total="itemsLength"
-				@update:current-page="page = $event - 1"
-			>
-			</N8nPagination>
+				:show-total="false"
+				:show-sizes="false"
+				@update:page="page = $event - 1"
+			/>
 			<div class="table-pagination__sizes">
 				<div class="table-pagination__sizes__label">Page size</div>
 				<ElSelect

@@ -2,8 +2,6 @@ Error:
   $ref: './error.yml'
 Role:
   $ref: './../../../handlers/users/spec/schemas/role.yml'
-Execution:
-  $ref: './../../../handlers/executions/spec/schemas/execution.yml'
 Node:
   $ref: './../../../handlers/workflows/spec/schemas/node.yml'
 WorkflowNodeGroup:
@@ -14,8 +12,6 @@ Workflow:
   $ref: './../../../handlers/workflows/spec/schemas/workflow.yml'
 WorkflowSettings:
   $ref: './../../../handlers/workflows/spec/schemas/workflowSettings.yml'
-ExecutionList:
-  $ref: './../../../handlers/executions/spec/schemas/executionList.yml'
 WorkflowList:
   $ref: './../../../handlers/workflows/spec/schemas/workflowList.yml'
 Credential:

@@ -21,6 +21,13 @@ export type ModulePushHandler<Ctx extends ModulePushHandlerContext = ModulePushH
 /**
  * A module's push-message contributions, keyed by message type. Each handler
  * receives the event already narrowed to its type.
+ *
+ * The shell dispatches these at app scope, on a listener of its own. The order
+ * against the built-in handling of the same type is not defined.
+ *
+ * **Contract:** a handler must not depend on the built-in handling of the same
+ * event. Registration makes the module the owner of a type, and the shell then
+ * skips its own handler for it.
  */
 export type ModulePushHandlers = {
 	[T in PushType]?: (

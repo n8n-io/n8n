@@ -40,7 +40,13 @@ export interface DataEmitterOptions {
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_EXECUTION_TIMEOUT_SECONDS = 3600;
+/**
+ * The wait an absent workflow execution timeout falls back to. Exported because
+ * the consumer's processing deadline has to agree with it: if the emitter waits
+ * an hour for an execution the broker fenced ten minutes in, the message is
+ * redelivered while n8n still thinks the run owns it.
+ */
+export const DEFAULT_EXECUTION_TIMEOUT_SECONDS = 3600;
 
 // Every hand-off returns one of these two, so they are shared rather than
 // rebuilt. Frozen because a caller mutating the one it was handed would change

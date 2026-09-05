@@ -10,6 +10,7 @@ import {
 	guardToolErrorForModel,
 	guardToolMessageForModel,
 	guardToolResultForModel,
+	type ToolResultGuardStorage,
 } from './tool-result-guard';
 import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import { isCancellation } from '../../sdk/cancellation';
@@ -27,6 +28,7 @@ import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/mes
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
+import type { WorkspaceFilesystem } from '../../workspace/types';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import { stringifyError } from '../loop/runtime-helpers';
 import type { AgentMessageList } from '../model/message-list';
@@ -183,6 +185,7 @@ export interface ToolCallExecutorDeps {
 	/** Invoked when a run is aborted mid-batch so the runtime can set cancelled state. */
 	onCancelled: () => void;
 	tokenCounter: TokenCounter;
+	workspaceFilesystem?: WorkspaceFilesystem;
 }
 
 /**
@@ -193,7 +196,14 @@ export interface ToolCallExecutorDeps {
  * emission are owned by the caller.
  */
 export class ToolCallExecutor {
+	private offloadedToolResults = false;
+
 	constructor(private readonly deps: ToolCallExecutorDeps) {}
+
+	/** Whether any tool result was offloaded to the workspace filesystem during this runtime's lifetime. */
+	get hasOffloadedToolResults(): boolean {
+		return this.offloadedToolResults;
+	}
 
 	private get telemetry(): RuntimeTelemetry {
 		return this.deps.telemetry;
@@ -859,7 +869,11 @@ export class ToolCallExecutor {
 		});
 		params.list.setToolCallError(
 			params.toolCallId,
-			await guardToolErrorForModel(stringifyError(error), this.deps.tokenCounter),
+			await guardToolErrorForModel(
+				stringifyError(error),
+				this.deps.tokenCounter,
+				this.getResultStorage(params),
+			),
 		);
 		return { outcome: 'error', error };
 	}
@@ -927,10 +941,10 @@ export class ToolCallExecutor {
 		if (!builtTool.inputSchema) return { ok: true, input: params.input };
 		const result = await parseWithSchema(builtTool.inputSchema, params.input);
 		if (!result.success) {
-			return {
-				ok: false,
-				outcome: await this.toolError(params, new Error(`Invalid tool input: ${result.error}`)),
-			};
+			const reason = result.schemaInvalid
+				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
+				: `Invalid tool input: ${result.error}`;
+			return { ok: false, outcome: await this.toolError(params, new Error(reason)) };
 		}
 		return { ok: true, input: result.data as JSONValue };
 	}
@@ -1028,7 +1042,12 @@ export class ToolCallExecutor {
 		} catch (error) {
 			return await this.toolError(params, error);
 		}
-		const guardedResult = await guardToolResultForModel(modelResult, this.deps.tokenCounter);
+		const storage = this.getResultStorage(params);
+		const guardedResult = await guardToolResultForModel(
+			modelResult,
+			this.deps.tokenCounter,
+			storage,
+		);
 
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
@@ -1040,10 +1059,18 @@ export class ToolCallExecutor {
 
 		list.setToolCallResult(toolCallId, guardedResult.historyOutput);
 
-		const customMessage = builtTool.toMessage?.(toolResult);
-		const guardedCustomMessage = customMessage
-			? await guardToolMessageForModel(customMessage, this.deps.tokenCounter)
+		const customMessage = await builtTool.toMessage?.(toolResult);
+		let guardedCustomMessage = customMessage
+			? await guardToolMessageForModel(customMessage, this.deps.tokenCounter, storage)
 			: undefined;
+		// Stamp tool provenance so derived transcripts (e.g. the observation
+		// log observer) can keep this content inside untrusted-data boundaries.
+		if (guardedCustomMessage && 'role' in guardedCustomMessage) {
+			guardedCustomMessage = {
+				...guardedCustomMessage,
+				origin: { kind: 'tool', toolName },
+			};
+		}
 		if (guardedCustomMessage) {
 			list.addResponse([guardedCustomMessage]);
 		}
@@ -1058,6 +1085,21 @@ export class ToolCallExecutor {
 			},
 			modelOutput: guardedResult.wireOutput,
 			customMessage: guardedCustomMessage,
+		};
+	}
+
+	private getResultStorage(params: ProcessToolCallParams): ToolResultGuardStorage | undefined {
+		const filesystem = this.deps.workspaceFilesystem;
+		if (!filesystem) return undefined;
+
+		return {
+			filesystem,
+			runId: params.runId,
+			toolCallId: params.toolCallId,
+			onOffloaded: () => {
+				this.offloadedToolResults = true;
+			},
+			...(params.abortSignal ? { abortSignal: params.abortSignal } : {}),
 		};
 	}
 }

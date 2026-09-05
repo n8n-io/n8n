@@ -5,10 +5,14 @@ export interface VerifyToolInput {
 	workItemId?: string;
 	workflowId: string;
 	inputData?: Record<string, unknown>;
+	/** Trigger to start from; omitted means the adapter auto-detects one. */
+	triggerNodeName?: string;
 	timeout?: number;
 	includeData?: boolean;
 	maxDataChars?: number;
 	fixtureOverrides?: Record<string, Array<Record<string, unknown>>>;
+	/** Nodes whose override may pin zero items — the explicit opt-in for an empty-branch test. */
+	allowZeroItemFixtures?: string[];
 }
 
 export interface ResolvedVerifyInput extends VerifyToolInput {

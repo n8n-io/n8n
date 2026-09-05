@@ -1,8 +1,21 @@
+import { randomBytes } from 'node:crypto';
 import * as fflate from 'fflate';
 
 import { boundedUnzip } from '../../decompress/BoundedUnzip';
 
 type CompressionLevel = NonNullable<fflate.ZipOptions['level']>;
+
+const EOCD_SIZE = 22;
+
+/**
+ * Locates the zip records by reading the end-of-central-directory, which fflate
+ * writes last and without a comment. Scanning for the signature instead would be
+ * unreliable: the same four bytes can occur inside compressed data.
+ */
+function zipRecordOffsets(archive: Buffer): { centralDirectory: number; eocd: number } {
+	const eocd = archive.length - EOCD_SIZE;
+	return { centralDirectory: archive.readUInt32LE(eocd + 16), eocd };
+}
 
 function createZipData(
 	files: Record<string, number>,
@@ -57,14 +70,15 @@ function createZipOfNestedArchivesWithDataDescriptors(memberNames: string[]): {
  * reader ignores the per-entry extra field. Several real-world writers always
  * emit ZIP64-format archives, so this mirrors the archive reported in NODE-5325.
  */
-function createZip64Archive(realSize: number, options?: { leadingExtraField?: boolean }): Buffer {
+function createZip64Archive(
+	realSize: number,
+	options?: { leadingExtraField?: boolean; omitZip64Eocd?: boolean },
+): Buffer {
 	const base = Buffer.from(
 		fflate.zipSync({ 'file.txt': [new Uint8Array(realSize), { level: 6 }] }),
 	);
 
-	const cdOffset = base.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
-	const eocdOffset = base.indexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
-	if (cdOffset === -1 || eocdOffset === -1) throw new Error('Could not locate zip records');
+	const { centralDirectory: cdOffset, eocd: eocdOffset } = zipRecordOffsets(base);
 
 	// Optionally precede the ZIP64 block with an unrelated extra field, as real
 	// writers do (e.g. an NTFS timestamp block), so the reader must skip it.
@@ -90,6 +104,17 @@ function createZip64Archive(realSize: number, options?: { leadingExtraField?: bo
 	const centralDir = Buffer.concat([cdHeader, extra]);
 	const cdSize = centralDir.length;
 
+	const eocd = Buffer.from(base.subarray(eocdOffset));
+	eocd.writeUInt32LE(cdSize, 12); // central directory size
+	eocd.writeUInt32LE(cdOffset, 16); // central directory offset
+
+	// Writers commonly emit the per-entry ZIP64 extra field with a plain EOCD,
+	// omitting the ZIP64 EOCD record and its locator, when the archive-level
+	// values still fit in 32 bits.
+	if (options?.omitZip64Eocd) {
+		return Buffer.concat([base.subarray(0, cdOffset), centralDir, eocd]);
+	}
+
 	// ZIP64 end-of-central-directory record (56 bytes).
 	const zip64Eocd = Buffer.alloc(56);
 	zip64Eocd.writeUInt32LE(0x06064b50, 0); // signature
@@ -108,11 +133,15 @@ function createZip64Archive(realSize: number, options?: { leadingExtraField?: bo
 	zip64Locator.writeBigUInt64LE(BigInt(zip64EocdOffset), 8); // offset of the ZIP64 EOCD record
 	zip64Locator.writeUInt32LE(1, 16); // total number of disks
 
-	const eocd = Buffer.from(base.subarray(eocdOffset));
-	eocd.writeUInt32LE(cdSize, 12); // central directory size
-	eocd.writeUInt32LE(cdOffset, 16); // central directory offset
-
 	return Buffer.concat([base.subarray(0, cdOffset), centralDir, zip64Eocd, zip64Locator, eocd]);
+}
+
+/** Builds an archive whose central directory understates an entry's real size. */
+function createZipWithUnderstatedSize(realSize: number, declaredSize: number): Buffer {
+	const archive = createZipData({ 'file.txt': realSize });
+	const { centralDirectory: cdOffset } = zipRecordOffsets(archive);
+	archive.writeUInt32LE(declaredSize, cdOffset + 24);
+	return archive;
 }
 
 function createZipWithUnsupportedCompression(): Buffer {
@@ -121,9 +150,7 @@ function createZipWithUnsupportedCompression(): Buffer {
 	compressed[8] = 99;
 	compressed[9] = 0;
 
-	const centralDirectoryOffset = compressed.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
-	if (centralDirectoryOffset === -1) throw new Error('Central directory header not found');
-
+	const { centralDirectory: centralDirectoryOffset } = zipRecordOffsets(compressed);
 	compressed[centralDirectoryOffset + 10] = 99;
 	compressed[centralDirectoryOffset + 11] = 0;
 
@@ -249,6 +276,116 @@ describe('boundedUnzip', () => {
 		await expect(boundedUnzip(compressed, realSize - 1, 100)).rejects.toThrow(
 			'The decompressed output exceeds the maximum allowed size of 0 MB',
 		);
+	});
+
+	it('should decompress a small ZIP64 archive that has no ZIP64 end-of-central-directory', async () => {
+		const realSize = 25 * 1024;
+		const compressed = createZip64Archive(realSize, { omitZip64Eocd: true });
+
+		const result = await boundedUnzip(compressed, 400 * 1024 * 1024, 100);
+
+		expect(result['file.txt'].length).toBe(realSize);
+	});
+
+	it('should bound a ZIP64 entry on its real size when no ZIP64 end-of-central-directory exists', async () => {
+		const realSize = 25 * 1024;
+		const compressed = createZip64Archive(realSize, { omitZip64Eocd: true });
+
+		await expect(boundedUnzip(compressed, realSize - 1, 100)).rejects.toThrow(
+			'The decompressed output exceeds the maximum allowed size of 0 MB',
+		);
+	});
+
+	it('should extract an entry in full when the central directory understates its size', async () => {
+		const realSize = 64 * 1024;
+		const compressed = createZipWithUnderstatedSize(realSize, 100);
+
+		const result = await boundedUnzip(compressed, 1024 * 1024, 100);
+
+		expect(result['file.txt'].length).toBe(realSize);
+	});
+
+	it('should reject an understated entry that really exceeds the size limit', async () => {
+		const realSize = 64 * 1024;
+		const compressed = createZipWithUnderstatedSize(realSize, 100);
+
+		await expect(boundedUnzip(compressed, 1024, 100)).rejects.toThrow(
+			'The decompressed output exceeds the maximum allowed size of 0 MB',
+		);
+	});
+
+	it('should handle zero-length entries', async () => {
+		const compressed = createZipData({ 'empty.txt': 0, 'file.txt': 32 });
+
+		const result = await boundedUnzip(compressed, 1024, 100);
+
+		expect(result['empty.txt'].length).toBe(0);
+		expect(result['file.txt'].length).toBe(32);
+	});
+
+	it('should decompress a large entry', async () => {
+		const payload = randomBytes(1024 * 1024);
+		const compressed = Buffer.from(fflate.zipSync({ 'large.bin': [payload, { level: 6 }] }));
+
+		const result = await boundedUnzip(compressed, 4 * 1024 * 1024, 100);
+
+		expect(result['large.bin'].equals(Buffer.from(payload))).toBe(true);
+	});
+
+	it('should stop a large understated entry once its real output passes the limit', async () => {
+		const payload = randomBytes(1024 * 1024);
+		const compressed = Buffer.from(fflate.zipSync({ 'large.bin': [payload, { level: 6 }] }));
+		const { centralDirectory: cdOffset } = zipRecordOffsets(compressed);
+		compressed.writeUInt32LE(100, cdOffset + 24);
+
+		await expect(boundedUnzip(compressed, 64 * 1024, 100)).rejects.toThrow(
+			'The decompressed output exceeds the maximum allowed size of 0 MB',
+		);
+	});
+
+	it('should keep an entry named __proto__ as a plain key on the result', async () => {
+		// fflate's writer cannot emit this name, so patch it into a valid archive:
+		// the placeholder is the same length, and occurs in the local header and
+		// the central directory
+		const placeholder = 'xxxxxxxxx';
+		const compressed = Buffer.from(
+			createZipData({ [placeholder]: 8 })
+				.toString('latin1')
+				.replaceAll(placeholder, '__proto__'),
+			'latin1',
+		);
+
+		const result = await boundedUnzip(compressed, 1024, 100);
+
+		expect(Object.keys(result)).toEqual(['__proto__']);
+		expect(result['__proto__']).toBeInstanceOf(Buffer);
+	});
+
+	it('should stop reading the central directory once the entry limit is passed', async () => {
+		const names = ['file0.txt', 'file1.txt', 'file2.txt', 'file3.txt', 'file4.txt'];
+		const compressed = createZipData(Object.fromEntries(names.map((name) => [name, 10])));
+		const { centralDirectory } = zipRecordOffsets(compressed);
+
+		// equal-length names and no extra/comment fields make every header 55 bytes
+		const lastHeader = centralDirectory + 4 * (46 + 'file0.txt'.length);
+		expect(compressed.readUInt32LE(lastHeader)).toBe(0x02014b50);
+		compressed.writeUInt32LE(0, lastHeader); // reading this far would be a failure
+
+		await expect(boundedUnzip(compressed, 1024 * 1024, 2)).rejects.toThrow(
+			'The archive contains more than 2 entries',
+		);
+	});
+
+	it('should find the real end-of-central-directory when the comment holds its signature', async () => {
+		const base = createZipData({ 'file.txt': 64 });
+		// a comment long enough that a scan from the end reaches the bytes below
+		const comment = Buffer.concat([Buffer.from([0x50, 0x4b, 0x05, 0x06]), Buffer.alloc(36)]);
+		const compressed = Buffer.concat([base, comment]);
+		compressed.writeUInt16LE(comment.length, base.length - 2);
+
+		const result = await boundedUnzip(compressed, 1024, 100);
+
+		expect(result['file.txt'].length).toBe(64);
 	});
 
 	it('should reject truncated zip archives', async () => {

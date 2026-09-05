@@ -11,7 +11,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import {
-	assertCredentialAllowsUrl,
 	BaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -23,6 +22,7 @@ import { promptTypeOptionsDeprecated } from '@utils/descriptions';
 import { getConnectedTools, getPromptInputByType, mergeCustomHeaders } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
+import { assertOpenAiCredentialAllowsUrl } from '../../../helpers/credentials';
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 import { getProxyAgent } from '@n8n/ai-utilities';
@@ -182,13 +182,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 
 	if (options.baseURL) {
-		assertCredentialAllowsUrl({
-			node: this.getNode(),
-			credentialData: credentials,
-			url: options.baseURL,
-			pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
-			surface: 'OpenAI',
-		});
+		assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 	}
 
 	const baseURL = (options.baseURL ?? credentials.url) as string;

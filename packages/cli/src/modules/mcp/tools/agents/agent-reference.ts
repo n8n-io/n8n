@@ -1,4 +1,5 @@
-import { AgentJsonConfigBaseSchema } from '@n8n/api-types';
+import { AgentJsonConfigBaseSchema, WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME } from '@n8n/api-types';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export const AGENT_BUILDER_REFERENCE_URI = 'n8n://agents/reference';
@@ -96,6 +97,8 @@ directly on that object — there is no \`value\` wrapper. For example:
 - skill.delete: Set \`skillId\` to the skill to delete; its config reference is removed.
 - task.upsert: Set \`task\` to the complete task body. Omit \`taskId\` to create and attach a new
   scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.
+  On a replace, an omitted \`timezone\` keeps the zone the task already has; send \`null\` to move it
+  back to the instance timezone.
 - task.delete: Set \`taskId\` to the task to delete; its config reference is removed.
 - customTool.upsert: Set \`code\` to the tool source; it is compiled, validated, stored, and attached.
   Only \`@n8n/agents\` and \`zod\` imports are available. The default export must be a Tool builder
@@ -126,6 +129,10 @@ Tool references use these forms:
 
 - Custom tool: { "type": "custom", "id": "tool_name" }
 - Workflow tool: { "type": "workflow", "workflow": "Workflow Name", "name": "tool_name" }
+  A workflow tool must start with a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger
+  (${EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE}) and must be published before the published Agent can
+  call it; validate_agent reports incompatible_reference with reason no_supported_trigger or
+  not_published otherwise.
 - Node tool: { "type": "node", "name": "tool_name", "node": { "nodeType": "...",
   "nodeTypeVersion": 1, "nodeParameters": {}, "credentials": {} } }
 
@@ -141,8 +148,8 @@ options first. Never place credential secret data in Agent configuration or MCP 
 credential IDs returned by list_credentials.
 
 Skills and tasks have separately persisted bodies. Always manage them through mutate_agent instead
-of manually inventing their IDs. Saved sub-agents must be published Agents from the same project.
-Use discover_agent_assets with kind=subagents to obtain valid IDs.
+of manually inventing their IDs. Saved sub-agents must be Agents from the same project. Use
+discover_agent_assets with kind=subagents to obtain valid IDs.
 
 Chat integrations are conversation surfaces, not ordinary node tools. Use an integration when users
 should invoke and converse with the Agent in Slack, Telegram, or Linear. Use a node/workflow tool

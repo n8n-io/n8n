@@ -27,7 +27,7 @@ interface CliArgs {
 	trials: number;
 	passThreshold: number;
 	timeoutMs: number;
-	/** Optional iteration cap; default uncapped — the wall-clock timeout bounds a run. */
+	/** Optional iteration cap; unset uses the SDK default. */
 	maxSteps?: number;
 	modelId: string;
 	concurrency: number;
@@ -273,7 +273,11 @@ async function main(): Promise<void> {
 	await runLocalMode(args);
 }
 
-main().catch((error) => {
-	console.error('Fatal error:', error);
-	process.exit(1);
-});
+main()
+	.then(() => {
+		process.stdout.write('', () => process.exit(process.exitCode ?? 0));
+	})
+	.catch((error) => {
+		console.error('Fatal error:', error);
+		process.exit(1);
+	});

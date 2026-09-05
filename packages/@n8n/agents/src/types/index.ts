@@ -27,7 +27,9 @@ export type { BuiltFileStore } from './sdk/file-store';
 
 export type {
 	Provider,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
@@ -59,6 +61,7 @@ export type {
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
 } from './sdk/agent';
+export { FINISH_REASONS, isFinishReason } from './sdk/agent';
 
 export type { SerializedMessageList } from './runtime/message-list';
 

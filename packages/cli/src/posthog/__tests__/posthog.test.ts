@@ -2,7 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Application, Request, RequestHandler, Response } from 'express';
 import { InstanceSettings } from 'n8n-core';
-import type { FeatureFlags } from 'n8n-workflow';
+import type { FeatureFlagPayloads, FeatureFlags } from 'n8n-workflow';
 import { PostHog } from 'posthog-node';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -12,10 +12,11 @@ import { PostHogClient } from '@/posthog';
 
 vi.mock('posthog-node');
 
-function mockEvaluatedFlags(flags: FeatureFlags) {
+function mockEvaluatedFlags(flags: FeatureFlags, payloads: FeatureFlagPayloads = {}) {
 	return {
 		keys: Object.keys(flags),
 		getFlag: (key: string) => flags[key],
+		getFlagPayload: (key: string) => payloads[key],
 	};
 }
 
@@ -170,6 +171,30 @@ describe('PostHog', () => {
 			});
 		});
 
+		it('returns and caches remote config payloads from the same flag evaluation', async () => {
+			const flags = { 'config-form-url': true };
+			const payloads = { 'config-form-url': 'https://example.com/form' };
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+				mockEvaluatedFlags(flags, payloads),
+			);
+
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			const expected = {
+				featureFlags: flags,
+				featureFlagPayloads: payloads,
+			};
+
+			await expect(ph.getFeatureFlagsAndPayloads({ id: userId, createdAt })).resolves.toEqual(
+				expected,
+			);
+			await expect(ph.getFeatureFlagsAndPayloads({ id: userId, createdAt })).resolves.toEqual(
+				expected,
+			);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+		});
+
 		it('returns cached flags on second call', async () => {
 			const flags = { 'test-flag': true };
 			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags(flags));
@@ -226,6 +251,8 @@ describe('PostHog', () => {
 				globalConfig.evaluation.configEvalsEnabled = false;
 				globalConfig.evaluation.agentEvalsEnabled = false;
 				globalConfig.instanceAi.mcpConnectionsEnabled = false;
+				globalConfig.instanceAi.canvasNodeContextEnabled = false;
+				globalConfig.featureFlags.override = {};
 			});
 
 			it('force-enables the eval-collections flag when N8N_EVAL_COLLECTIONS_ENABLED is set', async () => {
@@ -262,6 +289,113 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '089_instance_ai_mcp_connections': 'variant' });
+			});
+
+			it('applies the generic override map on top of resolved flags', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ 'some-other-flag': true }),
+				);
+				globalConfig.featureFlags.override = {
+					'multivariate-flag': 'variant',
+					'boolean-flag': true,
+				};
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({
+					'some-other-flag': true,
+					'multivariate-flag': 'variant',
+					'boolean-flag': true,
+				});
+			});
+
+			it('overrides a flag PostHog resolved to a different value', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ 'contested-flag': 'control' }),
+				);
+				globalConfig.featureFlags.override = { 'contested-flag': 'variant' };
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({ 'contested-flag': 'variant' });
+			});
+
+			it('applies flag and payload overrides together', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags(
+						{
+							'value-only-flag': 'variant',
+							'payload-flag': 'control',
+							'untouched-flag': true,
+						},
+						{
+							'value-only-flag': { source: 'posthog' },
+							'payload-flag': { source: 'posthog' },
+							'untouched-flag': { source: 'posthog' },
+						},
+					),
+				);
+				globalConfig.featureFlags.override = {
+					'value-only-flag': 'variant',
+					'payload-flag': {
+						value: 'variant',
+						payload: { source: 'environment' },
+					},
+				};
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const data = await ph.getFeatureFlagsAndPayloads({ id: userId, createdAt });
+
+				expect(data).toEqual({
+					featureFlags: {
+						'value-only-flag': 'variant',
+						'payload-flag': 'variant',
+						'untouched-flag': true,
+					},
+					featureFlagPayloads: {
+						'payload-flag': { source: 'environment' },
+						'untouched-flag': { source: 'posthog' },
+					},
+				});
+			});
+
+			// Unlike the per-feature envs (force-enable only), the generic map is
+			// also a kill switch — it must be able to turn an enabled flag off.
+			it('force-disables a flag PostHog resolved to true', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ 'live-flag': true }),
+				);
+				globalConfig.featureFlags.override = { 'live-flag': false };
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({ 'live-flag': false });
+			});
+
+			// A dedicated per-feature env var must have the final say, so the
+			// generic map cannot undo a feature an operator enabled explicitly.
+			it('does not override a per-feature env override for the same flag', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.evaluation.configEvalsEnabled = true;
+				globalConfig.featureFlags.override = { '088_config_evaluations': false };
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '088_config_evaluations': 'variant' });
 			});
 
 			it('leaves flags untouched when no override is configured', async () => {
@@ -311,6 +445,57 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toEqual({ '101_agent_evals': true });
+			});
+
+			it('force-enables the canvas-node-context flag when N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+
+				globalConfig.instanceAi.canvasNodeContextEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '104_canvas_aia_node_context': true });
+			});
+
+			it('leaves the canvas-node-context flag untouched when the override is off', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ '104_canvas_aia_node_context': true }),
+				);
+
+				globalConfig.instanceAi.canvasNodeContextEnabled = false;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({ '104_canvas_aia_node_context': true });
+			});
+
+			it('applies all env overrides independently when several are set at once', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+
+				globalConfig.evaluation.collectionsEnabled = true;
+				globalConfig.evaluation.configEvalsEnabled = true;
+				globalConfig.evaluation.agentEvalsEnabled = true;
+				globalConfig.instanceAi.mcpConnectionsEnabled = true;
+				globalConfig.instanceAi.canvasNodeContextEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({
+					'084_eval_collections': true,
+					'088_config_evaluations': 'variant',
+					'101_agent_evals': true,
+					'089_instance_ai_mcp_connections': 'variant',
+					'104_canvas_aia_node_context': true,
+				});
 			});
 		});
 	});

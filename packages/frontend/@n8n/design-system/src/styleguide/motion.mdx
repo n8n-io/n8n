@@ -1,7 +1,7 @@
 import { Meta } from '@storybook/addon-docs/blocks';
 import MotionExamples from './components/MotionExamples.vue';
 
-<Meta title="Style guide/Motion" />
+<Meta title="Style Guide/Motion" />
 
 # Motion
 
@@ -24,6 +24,7 @@ Motion utilities live in `@n8n/design-system/src/css/mixins/motion.scss`.
 
 | Mixin                           | Use for                             | Notes                                                      |
 | ------------------------------- | ----------------------------------- | ---------------------------------------------------------- |
+| `motion.reduced-motion`         | Existing custom motion              | Disables animation and transitions for reduced motion.     |
 | `motion.spin`                   | Loading indicators                  | Continuous rotation.                                       |
 | `motion.skeleton-pulse`         | Skeleton loading placeholders       | Use for placeholder surfaces, not interactive elements.    |
 | `motion.shimmer`                | Text or inline loading states       | Best for short-lived AI or thinking states.                |
@@ -52,7 +53,7 @@ Motion utilities live in `@n8n/design-system/src/css/mixins/motion.scss`.
 Motion mixins expose CSS variables for local customization. Prefer local overrides over
 creating new keyframes.
 
-```scss
+```css
 .dropdown {
 	--animation--popover-in--duration: var(--duration--snappy);
 	--animation--popover-in--translate-y: var(--spacing--4xs);
@@ -80,7 +81,7 @@ Add a new mixin only when:
 
 New mixins should follow this shape:
 
-```scss
+```css
 @mixin example-motion {
 	animation: exampleMotion var(--animation--example-motion--duration, var(--duration--snappy))
 		var(--animation--example-motion--easing, var(--easing--ease-out));

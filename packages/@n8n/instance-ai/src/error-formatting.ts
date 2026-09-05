@@ -1,4 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { truncate } from '@n8n/utils/string/truncate';
 
 const MAX_LOG_ERROR_LENGTH = 1_000;
 const MAX_LOG_ERROR_INPUT_LENGTH = 8_000;
@@ -41,11 +42,6 @@ function getNumberProperty(value: unknown, keys: string[]): number | undefined {
 	}
 
 	return undefined;
-}
-
-function truncate(value: string, maxLength = MAX_LOG_ERROR_LENGTH): string {
-	if (value.length <= maxLength) return value;
-	return `${value.slice(0, maxLength)}...`;
 }
 
 function sanitizeUrlForLog(value: string): string {
@@ -175,8 +171,8 @@ export function formatErrorForLog(error: unknown): string {
 	const sample = takeSanitizedLogSample(message);
 
 	if (isHtmlResponse(sample)) {
-		return appendHttpContext(truncate(summarizeHtmlResponse(sample)), error);
+		return appendHttpContext(truncate(summarizeHtmlResponse(sample), MAX_LOG_ERROR_LENGTH), error);
 	}
 
-	return appendHttpContext(truncate(sample), error);
+	return appendHttpContext(truncate(sample, MAX_LOG_ERROR_LENGTH), error);
 }
