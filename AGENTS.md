@@ -106,6 +106,26 @@ When changing directories, use `pushd` to navigate into the directory and
 `popd` to return to the previous directory. When in doubt, use `pwd` to check
 your current directory.
 
+### Seeding a local instance
+
+An empty instance is a bad place to test anything that reads a user's work.
+These commands fill one. They are dev tooling on the private root package, so
+they never reach a user.
+
+```bash
+N8N_API_KEY=<jwt> pnpm seed:preference   # 10 workflows in one house style, plus history
+N8N_API_KEY=<jwt> pnpm seed:account      # ~500 varied workflows across 30 projects
+pnpm inspect:activity                    # read-only activity_event viewer on 127.0.0.1
+```
+
+Both seed profiles delete their own prior output, so a re-run replaces it.
+That clear step deletes anything named `[seed]` and any empty team project,
+whoever made them, so do not point either at a shared instance. The viewer is
+unauthenticated and serves the whole table: keep it on loopback.
+
+See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md) for
+profiles, tokens, determinism, and the other commands.
+
 ### Code Quality
 - `pnpm lint` - Lint code
 - `pnpm typecheck` - Run type checks
@@ -236,6 +256,30 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
     dependency rather than removing it).
   - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
     operator import — trades a visible leak for an invisible one.
+
+### Encryption boundary
+
+New code encrypts and decrypts only through `cipher.encryptV2()` /
+`cipher.decryptV2()` — the key-manager module decides which key is used and in
+which output format. Enforced in CI by the rules in
+`packages/@n8n/eslint-config/src/configs/encryption-boundary.ts` (part of
+`nodeConfig`; baseConfig packages that depend on `n8n-core` or `@n8n/db`
+compose it directly):
+
+- The deprecated `Cipher.encrypt` / `Cipher.decrypt` are banned outside tests.
+- The raw AES classes and `encryptWithKey` / `decryptWithKey` stay inside
+  `packages/core/src/encryption/` and database migrations.
+- **Deployment keys are never deleted** — data encrypted with a key becomes
+  unreadable without it. Deactivate keys instead; the repository's delete
+  surface throws at runtime and the lint rule rejects call sites.
+- Inline disables that name these rules, and bare line-form disables, are
+  themselves lint errors. The code-health rule `encryption-boundary` (CI
+  "Static Analysis") is the enforcement layer: it checks that every package
+  that depends on `n8n-core` or `@n8n/db` composes the boundary config at
+  `error` severity, and rejects every directive form that would silence the
+  rules in non-test code (`eslint-disable*` and inline `eslint` configuration
+  comments). Widening the boundary happens in `encryption-boundary.ts` only;
+  that file and the rule files require security (IAM) approval via OWNERS.
 
 ### Frontend Development
 - Refer to `packages/frontend/AGENTS.md`

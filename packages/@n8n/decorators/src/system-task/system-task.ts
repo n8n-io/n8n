@@ -38,8 +38,9 @@ export interface SystemTask {
 	readonly durable: boolean;
 
 	/**
-	 * Runs one occurrence as soon as this instance becomes the leader, on top
-	 * of the scheduled occurrences. In-memory timers only: ignored for a
+	 * Runs one occurrence as soon as this instance becomes the leader,
+	 * including at startup for an instance that is already the leader, on
+	 * top of the scheduled occurrences. In-memory timers only: ignored for a
 	 * durable run.
 	 */
 	readonly runOnTakeover?: boolean;

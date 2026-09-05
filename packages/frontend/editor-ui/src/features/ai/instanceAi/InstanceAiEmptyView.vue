@@ -461,7 +461,11 @@ onMounted(() => {
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
-async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+async function handleSubmit(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	restoreDraft?: () => boolean,
+) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
@@ -496,13 +500,52 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	}
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
+	// Await admission before navigating. A refused send (e.g. a concurrency cap) must not
+	// drop the user into a blank thread, and handing the draft to the destination view is
+	// not an option: it reads its composer draft from localStorage once, synchronously, on
+	// mount, which always precedes this response. `sendMessage` has already surfaced the
+	// reason, so restore what was typed and stay put.
+	const sent = await thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	if (!sent) {
+		isStartingThread.value = false;
+		void nextTick(() => {
+			// `restoreDraft` puts back text *and* attachments, but the input only supplies it
+			// when files were attached; fall back to the text alone otherwise. Mirrors the
+			// thread-view composer.
+			if (!restoreDraft?.()) {
+				const input = chatInputRef.value;
+				if (input && !input.isDirty()) input.setText(message);
+			}
+			chatInputRef.value?.focus();
+		});
+		// `syncThread` already persisted the thread and `sendMessage` already opened its SSE,
+		// so without this every refusal would strand a blank thread in the sidebar and leave
+		// an EventSource open behind it (deleting disposes the runtime, which closes it).
+		// Discarding it also keeps the server's view matching what the user was just told: if
+		// a run did start but its response never arrived, this tears it down rather than
+		// leaving it burning credits on a conversation they believe never began. Runs after
+		// the restore is queued so cleanup can never delay giving the draft back.
+		//
+		// Silent because the refusal was already reported; a second "delete failed" for
+		// cleanup the user never asked for would only confuse. A refused delete returns
+		// early, before the store's own teardown, so dispose the runtime here -- the thread
+		// itself does still exist and rightly stays listed, but its EventSource was opened
+		// for a turn that never started and nothing else would ever close it.
+		if (!(await store.deleteThread(threadId, { silent: true }))) {
+			store.disposeRuntime(threadId);
+		}
+		return;
+	}
+
+	// Track message-with-nodes only after a successful send, so refused sends and
+	// retries don't inflate the node-count metric.
 	const nodeCount = countAttachedNodes(attachments);
 	if (nodeCount > 0) {
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
 			node_count: nodeCount,
 		});
 	}
-	void thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId },

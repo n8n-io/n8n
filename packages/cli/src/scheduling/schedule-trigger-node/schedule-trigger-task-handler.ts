@@ -4,7 +4,6 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
-import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -15,6 +14,7 @@ import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-exe
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
+import { resolveTaskTriggerNode } from '../resolve-task-trigger-node';
 import {
 	buildScheduleTriggerItem,
 	isScheduleTriggerTaskPayload,
@@ -60,7 +60,12 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 			});
 			return report.notDispatched();
 		}
-		const node = this.resolveTriggerNode(workflowData, nodeId, task);
+		const node = resolveTaskTriggerNode(
+			workflowData,
+			nodeId,
+			task,
+			'Schedule-trigger task points to a node that is missing or disabled in the published workflow',
+		);
 
 		const deduplicationKey = scheduleTriggerDeduplicationKey(task);
 		// `''`/`'DEFAULT'` are the instance-default sentinels, not Moment zones:
@@ -131,22 +136,6 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 			});
 		}
 		return task.payload;
-	}
-
-	private resolveTriggerNode(
-		workflowData: IWorkflowBase,
-		nodeId: string,
-		task: ClaimedTask,
-	): INode {
-		const node = workflowData.nodes.find((candidate) => candidate.id === nodeId);
-		if (!node || node.disabled) {
-			// The job outlived its trigger node: deactivation should have removed it.
-			throw new UnexpectedError(
-				'Schedule-trigger task points to a node that is missing or disabled in the published workflow',
-				{ extra: { taskId: task.id, jobId: task.jobId, workflowId: workflowData.id, nodeId } },
-			);
-		}
-		return node;
 	}
 
 	/**

@@ -1320,6 +1320,14 @@
 				"message": "Override \"langsmith\" duplicates a catalog entry for langsmith — set the override to \"catalog:\" or remove it",
 				"hash": "9ac3dbae3d22"
 			}
+		],
+		"packages/nodes-base/nodes/Microsoft/Entra/GenericFunctions.ts": [
+			{
+				"rule": "encryption-boundary",
+				"line": 428,
+				"message": "A bare `eslint-disable` directive silences every lint rule in its range, including the encryption guardrails.",
+				"hash": "7d9779f96d99"
+			}
 		]
 	}
 }

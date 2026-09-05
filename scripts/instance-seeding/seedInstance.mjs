@@ -7,6 +7,13 @@
 // data-tables, whose names disallow brackets) so the script can clear its
 // own output before reseeding without touching pre-existing data.
 
+import {
+	PREFERENCE_CREDENTIALS,
+	PREFERENCE_DATA_TABLES,
+	PREFERENCE_PROJECT,
+	preferenceWorkflows,
+} from './preference-profile.mjs';
+
 const BASE = process.env.N8N_BASE_URL ?? 'http://localhost:5678';
 const KEY = process.env.N8N_API_KEY;
 if (!KEY) {
@@ -19,6 +26,24 @@ const PERSONAL_WORKFLOWS = Number(process.env.WF_MULTIPLIER) || 50;
 const SEED_PREFIX = '[seed] ';
 const SEED_DT_PREFIX = 'seed_';
 
+// Set it and the run is reproducible. `preference` defaults it: a profile meant for
+// A/B evaluation is useless if the estate moves between runs.
+const SEED_ENV = process.env.SEED;
+
+// `estate` (default): ~500 varied workflows, built to stress the dependency graph.
+// `preference`: ten hand-written workflows in one house style, small enough to fit an
+// agent's context. Diversity is the bug in that profile, not the feature.
+const PROFILE = (process.env.PROFILE ?? 'estate').toLowerCase();
+if (!['estate', 'preference'].includes(PROFILE)) {
+	console.error(`PROFILE must be 'estate' or 'preference', got '${PROFILE}'`);
+	process.exit(1);
+}
+const SEED = SEED_ENV !== undefined ? Number(SEED_ENV) : PROFILE === 'preference' ? 1 : undefined;
+if (SEED !== undefined && !Number.isFinite(SEED)) {
+	console.error(`SEED must be a number, got '${SEED_ENV}'`);
+	process.exit(1);
+}
+
 const CREDS_PER_PROJECT_RANGE = [1, 2];
 const DATA_TABLES_PER_PROJECT_PROB = 0.55;
 const SUBWORKFLOW_PROB = 0.7;
@@ -27,7 +52,7 @@ const SUBWORKFLOW_PROB = 0.7;
 // community projects; small/large are minority outliers. Trenchcoats are
 // kept deliberately small — they're legacy noise, not the bulk of the org.
 function sampleWorkflowCount(kind /* 'community' | 'trenchcoat' */) {
-	const r = Math.random();
+	const r = random();
 	if (kind === 'trenchcoat') {
 		if (r < 0.5) return randInt([6, 12]);
 		if (r < 0.9) return randInt([12, 20]);
@@ -340,25 +365,45 @@ const CRED_RECIPES = [
 	},
 ];
 
+// Every random choice goes through `random()`. With SEED set it is a seeded PRNG and
+// two runs are byte-identical; without, it falls back to Math.random.
+function makeRandom(seed) {
+	if (seed === undefined) return Math.random;
+	// mulberry32: small, fast, good enough for fixtures. Not for anything security-facing.
+	let a = seed >>> 0;
+	return function () {
+		a = (a + 0x6d2b79f5) >>> 0;
+		let t = a;
+		t = Math.imul(t ^ (t >>> 15), t | 1);
+		t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+const random = makeRandom(SEED);
+
+// Seeded runs pin the clock too, or timestamps drift and the estate is only half
+// reproducible. The date is arbitrary.
+const NOW = SEED !== undefined ? Date.parse('2026-01-15T09:00:00.000Z') : Date.now();
+
 function rand(len = 16) {
 	const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 	let s = '';
-	for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+	for (let i = 0; i < len; i++) s += chars[Math.floor(random() * chars.length)];
 	return s;
 }
 function pickWord(arr) {
-	return arr[Math.floor(Math.random() * arr.length)];
+	return arr[Math.floor(random() * arr.length)];
 }
 function pick(arr, n) {
 	const c = [...arr];
 	const out = [];
 	for (let i = 0; i < n && c.length; i++) {
-		out.push(c.splice(Math.floor(Math.random() * c.length), 1)[0]);
+		out.push(c.splice(Math.floor(random() * c.length), 1)[0]);
 	}
 	return out;
 }
 function randInt([lo, hi]) {
-	return lo + Math.floor(Math.random() * (hi - lo + 1));
+	return lo + Math.floor(random() * (hi - lo + 1));
 }
 
 const WORKFLOW_THEMES = [
@@ -755,10 +800,149 @@ async function clearSeeded() {
 	log('Clear done.');
 }
 
+// A missing token gives a placeholder that says so, keeping every node wired to
+// something openable but not runnable. Supplying it later upgrades in place by id.
+// Token lengths are logged, never values.
+async function seedPreferenceCredentials(projectId, existingByName) {
+	const out = {};
+	for (const spec of PREFERENCE_CREDENTIALS) {
+		const token = process.env[spec.env];
+		const real = typeof token === 'string' && token.length > 0;
+		const placeholderName = `${SEED_PREFIX}${spec.name} (seed, fake key)`;
+		const realName = `${SEED_PREFIX}${spec.name}`;
+		const name = real ? realName : placeholderName;
+		const data = { [spec.field]: real ? token : `seed-placeholder-${spec.key}` };
+
+		// Upgrade in place so the id survives and the nodes keep resolving. Both names
+		// are tried: supplying a token drops the "(seed, fake key)" suffix, so the new
+		// name alone would miss the placeholder being replaced.
+		const prior = existingByName.get(name) ?? existingByName.get(real ? placeholderName : realName);
+		try {
+			if (prior) {
+				// PATCH, not PUT: there is no PUT route, and its 405 fails quietly enough
+				// to look like a working upgrade.
+				await api('PATCH', `/credentials/${prior.id}`, { name, type: spec.type, data });
+				out[spec.key] = { id: prior.id, name };
+			} else {
+				const created = await api('POST', '/credentials', {
+					name,
+					type: spec.type,
+					data,
+					projectId,
+				});
+				out[spec.key] = { id: created.id, name: created.name };
+			}
+			log(`  ${spec.type}: ${real ? `real token, ${token.length} chars` : 'placeholder'}`);
+		} catch (e) {
+			log(`  credential failed: ${spec.type}`, String(e).slice(0, 200));
+		}
+	}
+	return out;
+}
+
+// Ten workflows in one project, one house style. See `preference-profile.mjs`.
+async function seedPreferenceProfile() {
+	log('Seeding preference profile at', BASE);
+	log(`Seed: ${SEED} (fixed — re-running produces the same estate)`);
+
+	// Not `clearSeeded()`: that deletes credentials, so their ids would change every
+	// run and every node pointing at them would need rewiring. Only the workflows are
+	// removed, since they are the one thing recreated unconditionally below.
+	const priorWorkflows = (await listAll('/workflows')).filter((w) =>
+		w.name.startsWith(SEED_PREFIX),
+	);
+	if (priorWorkflows.length > 0) {
+		log(`Removing ${priorWorkflows.length} prior seeded workflows...`);
+		for (const w of priorWorkflows) {
+			try {
+				await api('DELETE', `/workflows/${w.id}`);
+			} catch (e) {
+				log('  workflow delete failed:', w.name, String(e).slice(0, 200));
+			}
+		}
+	}
+
+	const projects = await listAll('/projects');
+	const projectName = `${SEED_PREFIX}${PREFERENCE_PROJECT}`;
+	let project = projects.find((p) => p.name === projectName);
+	if (!project) {
+		project = await api('POST', '/projects', { name: projectName });
+		log('Created project:', projectName);
+	} else {
+		log('Reusing project:', projectName);
+	}
+
+	log('Credentials...');
+	const existingCreds = new Map((await listAll('/credentials')).map((c) => [c.name, c]));
+	const creds = await seedPreferenceCredentials(project.id, existingCreds);
+
+	log('Data tables...');
+	const tables = {};
+	const existingDts = await listAll('/data-tables');
+	for (const spec of PREFERENCE_DATA_TABLES) {
+		const name = `${SEED_DT_PREFIX}${spec.name}`;
+		const prior = existingDts.find((d) => d.name === name);
+		if (prior) {
+			tables[spec.name] = prior.id;
+			log(`  ${name}: reused`);
+			continue;
+		}
+		const created = await api('POST', '/data-tables', {
+			name,
+			projectId: project.id,
+			columns: spec.columns,
+		});
+		tables[spec.name] = created.id;
+		if (spec.rows.length > 0) {
+			await api('POST', `/data-tables/${created.id}/rows`, { data: spec.rows });
+		}
+		log(`  ${name}: created with ${spec.rows.length} rows`);
+	}
+
+	log('Workflows...');
+	let created = 0;
+	for (const wf of preferenceWorkflows(tables)) {
+		// Recipes name the credential by key; resolve to the ids just created.
+		const nodes = wf.nodes.map((n) => {
+			const node = { ...n, id: rand(36) };
+			if (node.credentials) {
+				const resolved = {};
+				for (const key of Object.keys(node.credentials)) {
+					const spec = PREFERENCE_CREDENTIALS.find((c) => c.key === key);
+					const cred = creds[key];
+					if (spec && cred) resolved[spec.type] = { id: cred.id, name: cred.name };
+				}
+				node.credentials = resolved;
+			}
+			return node;
+		});
+		try {
+			await api('POST', '/workflows', {
+				name: `${SEED_PREFIX}${wf.name}`,
+				nodes,
+				connections: wf.connections,
+				settings: { executionOrder: 'v1' },
+				projectId: project.id,
+			});
+			created++;
+			log(`  ${wf.name}`);
+		} catch (e) {
+			log(`  workflow failed: ${wf.name}`, String(e).slice(0, 300));
+		}
+	}
+
+	log(`Done. ${created}/10 workflows, ${Object.keys(tables).length} data tables.`);
+	log('Total API requests:', totalReq);
+}
+
 async function main() {
 	if (CLEAR) {
 		await clearSeeded();
 		log('Clear finished');
+		return;
+	}
+	if (PROFILE === 'preference') {
+		await seedPreferenceProfile();
 		return;
 	}
 	log('Seeding n8n at', BASE);
@@ -807,7 +991,7 @@ async function main() {
 		const n = randInt(CREDS_PER_PROJECT_RANGE);
 		const recipes = Array.from(
 			{ length: n },
-			() => CRED_RECIPES[Math.floor(Math.random() * CRED_RECIPES.length)],
+			() => CRED_RECIPES[Math.floor(random() * CRED_RECIPES.length)],
 		);
 		for (const recipe of recipes) {
 			try {
@@ -869,7 +1053,7 @@ async function main() {
 			name: `${pickWord(['Acme', 'Globex', 'Initech', 'Umbrella', 'Wonka', 'Stark', 'Wayne'])} ${i + 1}`,
 			plan: pickWord(['free', 'pro', 'enterprise']),
 			region: pickWord(['us-east', 'us-west', 'eu-west', 'ap-south']),
-			created_at: new Date(Date.now() - Math.floor(Math.random() * 365 * 86400e3)).toISOString(),
+			created_at: new Date(NOW - Math.floor(random() * 365 * 86400e3)).toISOString(),
 		}));
 		await api('POST', `/data-tables/${created.id}/rows`, { data: sampleRows });
 		log(`Central data table: ${created.name} → ${centralDtOwner.name} (${sampleRows.length} rows)`);
@@ -950,7 +1134,7 @@ async function main() {
 			const theme = themes[i];
 			const credPick = utilCreds.length ? [utilCreds[i % utilCreds.length]] : [];
 			const directDt =
-				isOrgUtil && centralDataTable && Math.random() < ORG_UTIL_DIRECT_DT_PROB
+				isOrgUtil && centralDataTable && random() < ORG_UTIL_DIRECT_DT_PROB
 					? centralDataTable
 					: null;
 			const wf = await createWf({
@@ -1000,7 +1184,7 @@ async function main() {
 		// Customers-proxy ref → indirect access to central data table.
 		if (
 			customersProxy &&
-			Math.random() < CENTRAL_DT_REF_PROB &&
+			random() < CENTRAL_DT_REF_PROB &&
 			!updatedSubIds.includes(customersProxy.id) &&
 			(refs?.wfs.has(customersProxy.id) || refBudgetAllowsWf(proj.id, customersProxy))
 		) {
@@ -1009,11 +1193,10 @@ async function main() {
 		}
 
 		// Generic utility-workflow ref.
-		if (Math.random() < UTILITY_REF_PROB && lynchpinWorkflows.length > 0) {
+		if (random() < UTILITY_REF_PROB && lynchpinWorkflows.length > 0) {
 			const alreadyOwned = lynchpinWorkflows.filter((w) => refs?.wfs.has(w.id));
-			const pool =
-				alreadyOwned.length > 0 && Math.random() < 0.7 ? alreadyOwned : lynchpinWorkflows;
-			const cand = pool[Math.floor(Math.random() * pool.length)];
+			const pool = alreadyOwned.length > 0 && random() < 0.7 ? alreadyOwned : lynchpinWorkflows;
+			const cand = pool[Math.floor(random() * pool.length)];
 			if (cand && (refs?.wfs.has(cand.id) || refBudgetAllowsWf(proj.id, cand))) {
 				if (!updatedSubIds.includes(cand.id)) {
 					updatedSubIds = [...updatedSubIds, cand.id];
@@ -1039,7 +1222,7 @@ async function main() {
 	// Roughly half the opt-outs go full self-contained.
 	const selfContainedIds = new Set();
 	for (const pid of nonUtilityUsingIds) {
-		if (Math.random() < 0.5) selfContainedIds.add(pid);
+		if (random() < 0.5) selfContainedIds.add(pid);
 	}
 	const projectBudget = new Map();
 	const projectRefs = new Map(); // projectId -> { wfs: Set, creds: Set }
@@ -1123,17 +1306,17 @@ async function main() {
 		const refs = projectRefs.get(projectId);
 		const ids = [];
 		for (let i = 0; i < count; i++) {
-			const r = Math.random();
+			const r = random();
 			let pool;
 			if (r < SUBWF_PROB_OWN) pool = ownPool;
 			else if (r < SUBWF_PROB_OWN + SUBWF_PROB_SIBLING)
 				pool = siblingPool.length ? siblingPool : ownPool;
 			else pool = lynchpinPool.length ? lynchpinPool : ownPool;
 			if (pool.length === 0) continue;
-			let cand = pool[Math.floor(Math.random() * pool.length)];
+			let cand = pool[Math.floor(random() * pool.length)];
 			if (!refBudgetAllowsWf(projectId, cand)) {
 				if (ownPool.length === 0) continue;
-				cand = ownPool[Math.floor(Math.random() * ownPool.length)];
+				cand = ownPool[Math.floor(random() * ownPool.length)];
 			}
 			if (ids.includes(cand.id)) continue;
 			ids.push(cand.id);
@@ -1154,7 +1337,7 @@ async function main() {
 		const refs = projectRefs.get(projectId);
 		const ids = [];
 		for (let i = 0; i < count; i++) {
-			const r = Math.random();
+			const r = random();
 			let pool;
 			if (r < 0.75) pool = sameGroupPool.length ? sameGroupPool : ownPool;
 			else if (r < 0.85)
@@ -1165,7 +1348,7 @@ async function main() {
 						: ownPool;
 			else pool = lynchpinPool.length ? lynchpinPool : ownPool;
 			if (pool.length === 0) continue;
-			const cand = pool[Math.floor(Math.random() * pool.length)];
+			const cand = pool[Math.floor(random() * pool.length)];
 			if (ids.includes(cand.id)) continue;
 			ids.push(cand.id);
 			if (cand.projectId !== projectId) refs.wfs.add(cand.id);
@@ -1198,8 +1381,8 @@ async function main() {
 			const theme = pickWord(themePool);
 			const group = groups.length ? groups[(p.leafCount + i) % groups.length] : undefined;
 			let credPick = p.creds.length ? pick(p.creds, Math.min(p.creds.length, randInt([0, 2]))) : [];
-			if (Math.random() < lynchpinCredProb && lynchpinCreds.length > 0) {
-				const lc = lynchpinCreds[Math.floor(Math.random() * lynchpinCreds.length)];
+			if (random() < lynchpinCredProb && lynchpinCreds.length > 0) {
+				const lc = lynchpinCreds[Math.floor(random() * lynchpinCreds.length)];
 				if (refBudgetAllowsCred(proj.id, lc.id, lc.ownerId)) {
 					credPick = [lc, ...credPick.filter((c) => c.type !== lc.type)];
 					refs.creds.add(lc.id);
@@ -1207,7 +1390,7 @@ async function main() {
 				}
 			}
 			const baseSubIds =
-				Math.random() < SUBWORKFLOW_PROB
+				random() < SUBWORKFLOW_PROB
 					? pickSubWorkflowIds(proj.id, proj.name, group, randInt([1, 3]))
 					: [];
 			const { subWorkflowIds: subIds } = applyOrgUtilityRefs({
@@ -1258,7 +1441,7 @@ async function main() {
 	const dataTablesByProject = new Map();
 	let dtTotal = 0;
 	for (const proj of allTargetProjects) {
-		if (Math.random() > DATA_TABLES_PER_PROJECT_PROB) continue;
+		if (random() > DATA_TABLES_PER_PROJECT_PROB) continue;
 		const dtName = `${SEED_DT_PREFIX}${pickWord(dtNames)}_${rand(4)}`;
 		try {
 			const dt = await api('POST', `/data-tables`, {
@@ -1278,9 +1461,9 @@ async function main() {
 			const rowCount = randInt([5, 20]);
 			const rows = Array.from({ length: rowCount }, () => ({
 				label: pickWord(['alpha', 'beta', 'gamma', 'delta', 'epsilon']),
-				score: Math.floor(Math.random() * 100),
-				is_active: Math.random() < 0.7,
-				recorded_at: new Date(Date.now() - Math.floor(Math.random() * 30 * 86400e3)).toISOString(),
+				score: Math.floor(random() * 100),
+				is_active: random() < 0.7,
+				recorded_at: new Date(NOW - Math.floor(random() * 30 * 86400e3)).toISOString(),
 			}));
 			try {
 				await api('POST', `/data-tables/${dt.id}/rows`, { data: rows });
@@ -1307,8 +1490,8 @@ async function main() {
 			const dt = dts[i % dts.length];
 			const theme = `${pickWord(['Sync to', 'Report from', 'Backfill', 'Reconcile', 'Audit'])} ${dt.name.replace(SEED_DT_PREFIX, '')}`;
 			let credPick = creds.length ? pick(creds, Math.min(creds.length, randInt([0, 1]))) : [];
-			if (Math.random() < LYNCHPIN_CRED_REF_PROB && lynchpinCreds.length > 0) {
-				const lc = lynchpinCreds[Math.floor(Math.random() * lynchpinCreds.length)];
+			if (random() < LYNCHPIN_CRED_REF_PROB && lynchpinCreds.length > 0) {
+				const lc = lynchpinCreds[Math.floor(random() * lynchpinCreds.length)];
 				credPick = [lc, ...credPick.filter((c) => c.type !== lc.type)];
 			}
 			const baseSubIds = pickSubWorkflowIds(proj.id, proj.name, null, 1);

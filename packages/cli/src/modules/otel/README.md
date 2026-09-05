@@ -135,3 +135,53 @@ Start n8n & point it at the jaeger instance
 cd packages/cli
 N8N_OTEL_ENABLED=true N8N_OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 pnpm run dev
 ```
+
+### Wire protocol (OTLP/HTTP vs OTLP/gRPC)
+
+`N8N_OTEL_EXPORTER_OTLP_PROTOCOL` selects how spans are delivered. It mirrors the
+upstream `OTEL_EXPORTER_OTLP_PROTOCOL` spec and accepts:
+
+| Value                     | Exporter                                   | Conventional port |
+| ------------------------- | ------------------------------------------ | ----------------- |
+| `http/protobuf` (default) | `@opentelemetry/exporter-trace-otlp-proto` | 4318              |
+| `grpc`                    | `@opentelemetry/exporter-trace-otlp-grpc`  | 4317              |
+
+```
+cd packages/cli
+N8N_OTEL_ENABLED=true \
+  N8N_OTEL_EXPORTER_OTLP_PROTOCOL=grpc \
+  N8N_OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4317 \
+  pnpm run dev
+```
+
+Notes:
+
+- Pick `grpc` only when the collector requires it (or for high span volume through
+  infrastructure that passes HTTP/2 through cleanly). `http/protobuf` traverses
+  proxies and firewalls more reliably and is easier to debug.
+- The endpoint scheme controls TLS for **both** protocols: `https://` uses TLS,
+  `http://` does not. There is no `grpc://` scheme.
+- Because the scheme is load-bearing, `N8N_OTEL_EXPORTER_OTLP_ENDPOINT` must be an
+  `http://` or `https://` URL. n8n logs a warning and uses the default endpoint if
+  the value has another scheme or no scheme, e.g. `localhost:4318`. The scheme is
+  matched case-insensitively, and n8n lowercases it before it reaches the exporter.
+- gRPC endpoints take **no URL path**, so `N8N_OTEL_EXPORTER_OTLP_TRACING_PATH` is
+  ignored when the protocol is `grpc`.
+- `N8N_OTEL_EXPORTER_OTLP_HEADERS` entries are sent as gRPC metadata. Keys are
+  lowercased (gRPC metadata keys are lowercase ASCII); an entry grpc-js rejects is
+  skipped with a warning instead of failing startup.
+- The startup connectivity check waits for a grpc-js channel to become ready for
+  `grpc` (an HTTP `HEAD` request is meaningless against an HTTP/2-only server).
+  The channel dials the host and port of the endpoint, so readiness proves TCP,
+  the TLS handshake for `https://`, and an HTTP/2 connection. It is not proof that
+  OTLP/gRPC is served there — use "Send test trace" in Settings → OpenTelemetry
+  for the real check.
+- An endpoint without a port dials the grpc-js default port 443, not 4317. Always
+  give the port, e.g. `http://127.0.0.1:4317`.
+- The check uses the default TLS trust store. It does not use the certificate
+  material that the exporter reads from `OTEL_EXPORTER_OTLP_CERTIFICATE`,
+  `OTEL_EXPORTER_OTLP_CLIENT_KEY` and `OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE`, so a
+  collector behind a private CA, or one that needs mTLS, can fail the check and
+  still receive spans.
+- n8n has no setting for a custom CA or mTLS. Use the upstream
+  `OTEL_EXPORTER_OTLP_*` certificate variables above, or `NODE_EXTRA_CA_CERTS`.

@@ -109,6 +109,7 @@ jobs:
     with:
       n8n_version: ${{ needs.determine-version-info.outputs.version }}
       release_type: ${{ needs.determine-version-info.outputs.release_type }}
+      create_attestations: true
     secrets: inherit
 
   build-daytona-snapshot:
