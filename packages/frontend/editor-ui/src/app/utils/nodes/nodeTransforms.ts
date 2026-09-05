@@ -232,7 +232,7 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 			node,
 			nodeType,
 		);
-		nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
+		nodeData.parameters = nodeParameters !== null ? nodeParameters : nodeParametersInput;
 
 		// Add the node credentials if there are some set and if they should be displayed
 		if (
