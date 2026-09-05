@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { AIMessage } from '@langchain/core/messages';
 import { OutputParserException } from '@langchain/core/output_parsers';
 import { normalizeItems } from 'n8n-core';
 import type {
@@ -60,6 +61,7 @@ describe('OutputParserAutofixing', () => {
 		return vi.fn().mockReturnValue({
 			invoke: vi.fn().mockResolvedValue({
 				content: output,
+				text: output,
 			}),
 		});
 	}
@@ -190,6 +192,57 @@ describe('OutputParserAutofixing', () => {
 			await expect(response.parse('Some input')).rejects.toThrow('Database connection error');
 			expect(mockStructuredOutputParser.parse).toHaveBeenCalledTimes(1);
 			expect(retryChainSpy).not.toHaveBeenCalled();
+		});
+		it('should parse retry output when model returns array-form content blocks', async () => {
+			const validOutput = { name: 'Carol', age: 30 };
+			const jsonString = JSON.stringify(validOutput);
+
+			mockStructuredOutputParser.parse
+				.mockRejectedValueOnce(new OutputParserException('Invalid JSON'))
+				.mockResolvedValueOnce(validOutput);
+
+			const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+				response: N8nOutputFixingParser;
+			};
+
+			// Simulate a model that returns content as blocks (e.g. OpenAI Responses API)
+			response.getRetryChain = vi.fn().mockReturnValue({
+				invoke: vi.fn().mockResolvedValue(
+					new AIMessage({
+						content: [{ type: 'text', text: jsonString }],
+					}),
+				),
+			});
+
+			const result = await response.parse('Initial invalid string');
+
+			expect(result).toEqual(validOutput);
+			expect(mockStructuredOutputParser.parse).toHaveBeenCalledTimes(2);
+			// Must receive the concatenated text, NOT "[object Object]"
+			expect(mockStructuredOutputParser.parse.mock.calls[1][0]).toBe(jsonString);
+		});
+
+		it('should pass real text to parser when retry with array content still fails', async () => {
+			mockStructuredOutputParser.parse
+				.mockRejectedValueOnce(new OutputParserException('First fail'))
+				.mockRejectedValueOnce(new OutputParserException('Second fail'));
+
+			const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+				response: N8nOutputFixingParser;
+			};
+
+			response.getRetryChain = vi.fn().mockReturnValue({
+				invoke: vi.fn().mockResolvedValue(
+					new AIMessage({
+						content: [{ type: 'text', text: '{"bad": "json' }],
+					}),
+				),
+			});
+
+			await expect(response.parse('Initial')).rejects.toThrow();
+
+			// Assert the second parse attempt got the real text, not "[object Object]"
+			expect(mockStructuredOutputParser.parse.mock.calls[1][0]).toBe('{"bad": "json');
 		});
 	});
 });
