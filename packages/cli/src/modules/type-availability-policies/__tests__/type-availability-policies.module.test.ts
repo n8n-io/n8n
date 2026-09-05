@@ -1,4 +1,4 @@
-import { ModuleMetadata } from '@n8n/decorators';
+import { ControllerRegistryMetadata, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
@@ -11,10 +11,19 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(entry).toBeDefined();
 	});
 
-	it('initializes with no side effects (empty scaffold)', async () => {
+	it('registers the instance controller on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
-		await expect(module.init()).resolves.toBeUndefined();
+		await module.init();
+
+		const { TypeAvailabilityPolicyInstanceController } = await import(
+			'../type-availability-policy-instance.controller.js'
+		);
+		const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+			TypeAvailabilityPolicyInstanceController as never,
+		);
+
+		expect(metadata.routes.size).toBeGreaterThan(0);
 	});
 
 	it('exposes its entities so the datasource picks them up', async () => {
