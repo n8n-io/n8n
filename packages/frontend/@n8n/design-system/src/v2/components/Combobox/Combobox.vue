@@ -18,7 +18,7 @@ import { useI18n } from '@n8n/design-system/composables/useI18n';
 import { N8nTagsInput2, TagsInputInput, type TagsInputValue } from '../TagsInput';
 import type {
 	ComboboxEmits,
-	ComboboxGroupItem,
+	ComboboxHeaderItem,
 	ComboboxItem,
 	ComboboxOptionBase,
 	ComboboxProps,
@@ -131,12 +131,8 @@ function setSelectedValue(value: ComboboxValue | ComboboxValue[] | undefined) {
 	onModelValueUpdate(value);
 }
 
-function isGroupItem(item: ComboboxItem): item is ComboboxGroupItem {
-	return item.type === 'group';
-}
-
-function isSeparatorItem(item: ComboboxItem): item is { type: 'separator' } {
-	return item.type === 'separator';
+function isHeaderItem(item: ComboboxItem): item is ComboboxHeaderItem {
+	return item.header === true;
 }
 
 function warnInvalidItem(message: string, item: ComboboxItem) {
@@ -172,8 +168,8 @@ function normaliseOption(item: ComboboxOptionBase): ComboboxOptionBase | undefin
 }
 
 type ComboboxSection = {
-	group?: ComboboxGroupItem;
-	label?: string;
+	header?: ComboboxHeaderItem;
+	divided: boolean;
 	items: ComboboxOptionBase[];
 };
 
@@ -181,53 +177,39 @@ const sections = computed<ComboboxSection[]>(() => {
 	if (!props.items?.length) return [];
 
 	const result: ComboboxSection[] = [];
-	let pendingOptions: ComboboxOptionBase[] = [];
+	let currentSection: ComboboxSection = { divided: false, items: [] };
 
-	const flushPendingOptions = () => {
-		if (pendingOptions.length === 0) {
+	const flushSection = () => {
+		if (currentSection.items.length === 0) {
 			return;
 		}
-		result.push({ items: pendingOptions });
-		pendingOptions = [];
+		result.push(currentSection);
+		currentSection = { divided: false, items: [] };
 	};
 
 	for (const item of props.items) {
-		if (isGroupItem(item)) {
-			flushPendingOptions();
-
-			const groupItems: ComboboxOptionBase[] = [];
-			for (const child of item.items) {
-				const normalised = normaliseOption(child);
-				if (normalised) {
-					groupItems.push(normalised);
-				}
+		if (isHeaderItem(item)) {
+			flushSection();
+			if (!item.label) {
+				warnInvalidItem('Skipping header: "label" is missing or empty.', item);
+				continue;
 			}
-
-			const label = item.label || undefined;
-			if (item.label !== undefined && !item.label) {
-				warnInvalidItem('Skipping group label: "label" is empty.', item);
-			}
-
-			result.push({
-				group: item,
-				label,
-				items: groupItems,
-			});
+			currentSection = { header: item, divided: item.divided ?? false, items: [] };
 			continue;
 		}
 
-		if (isSeparatorItem(item)) {
-			flushPendingOptions();
-			continue;
+		if (item.divided) {
+			flushSection();
+			currentSection.divided = true;
 		}
 
 		const normalised = normaliseOption(item);
 		if (normalised) {
-			pendingOptions.push(normalised);
+			currentSection.items.push(normalised);
 		}
 	}
 
-	flushPendingOptions();
+	flushSection();
 	return result;
 });
 
@@ -462,11 +444,11 @@ function onTagsUpdate(value: TagsInputValue[]) {
 					<ComboboxGroup
 						v-for="(section, sectionIndex) in sections"
 						:key="`section-${sectionIndex}`"
-						:class="$style.comboboxGroup"
+						:class="[$style.comboboxGroup, section.divided && $style.divided]"
 					>
-						<ComboboxLabel v-if="section.label && section.group" :class="$style.comboboxLabel">
-							<slot name="label" :item="section.group">
-								{{ section.label }}
+						<ComboboxLabel v-if="section.header" :class="$style.comboboxLabel">
+							<slot name="label" :item="section.header">
+								{{ section.header.label }}
 							</slot>
 						</ComboboxLabel>
 
@@ -742,7 +724,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 .comboboxGroup {
 	--combobox-separator-outline-inset: 1px;
 
-	&:not([hidden]) ~ &:not([hidden]) {
+	&:not([hidden]) ~ &.divided:not([hidden]) {
 		border-top: 1px solid var(--border-color);
 		margin-block-start: var(--combobox-viewport--padding);
 		margin-inline: calc(
