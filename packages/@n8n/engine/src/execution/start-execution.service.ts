@@ -2,11 +2,16 @@ import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
 import { validateExecutableGraph, type WorkflowGraph } from '../graph';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
-import type { ExecutionMode, TriggerOutputs } from './execution.types';
+import type { ExecutionMode, TriggerOutputs, WorkflowDocument } from './execution.types';
 
 export interface StartExecutionRequest {
 	workflowId: string;
 	graph: WorkflowGraph;
+	/**
+	 * The workflow the graph came from, stored beside the execution and reported
+	 * on the read. The engine never reads a field out of it.
+	 */
+	workflow: WorkflowDocument;
 	/** Trigger step's output slots, one entry per output. */
 	triggerOutputs?: TriggerOutputs | null;
 	mode?: ExecutionMode;
@@ -50,6 +55,7 @@ export class StartExecutionService {
 			status: 'queued',
 			mode: request.mode ?? 'production',
 			graph: request.graph,
+			workflow: request.workflow,
 			triggerOutputs: request.triggerOutputs ?? null,
 		});
 

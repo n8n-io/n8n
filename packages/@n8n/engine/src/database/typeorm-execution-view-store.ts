@@ -9,12 +9,17 @@ import type {
 	StepView,
 } from '../execution/execution-view-store';
 
-type StepColumns = { [K in keyof StepView as `step_${K}`]: StepView[K] };
-/** What the left join yields for an execution that has no steps. */
-type NoStepColumns = { [K in keyof StepView as `step_${K}`]: null };
+/**
+ * One step as `json_agg` reports it. Postgres renders a timestamp inside JSON as
+ * a string, so the two date columns arrive unparsed.
+ */
+type StepJson = Omit<StepView, 'createdAt' | 'updatedAt'> & {
+	createdAt: string;
+	updatedAt: string;
+};
 
-/** One joined row: the execution, plus one step of it or nothing. */
-type ExecutionStepRow = ExecutionView & (StepColumns | NoStepColumns);
+/** The execution row, with its steps aggregated into one column. */
+type ExecutionWithStepsRow = ExecutionView & { steps: StepJson[] };
 
 /**
  * TypeORM-backed `ExecutionViewStore` adapter. It spans both tables, since a
@@ -37,28 +42,41 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	}
 
 	/**
-	 * A left join, so an execution with no steps still returns its own row. The
-	 * execution columns repeat for each step, `graph` included; that is the price
-	 * of reading the status and the steps as of one point in time.
+	 * One query, so the status a caller reports cannot predate the steps beside
+	 * it. The steps are aggregated rather than joined row-per-step: a left join
+	 * repeats every execution column once per step, and both `graph` and
+	 * `workflow` are large enough that a long loop would ship them thousands of
+	 * times. Grouping by the primary key is what lets the execution columns
+	 * survive the aggregate.
 	 */
 	async loadExecutionWithStepsView(id: string): Promise<ExecutionWithStepsView> {
-		const rows: ExecutionStepRow[] = await this.selectExecution(id)
-			.addSelect('step.id', 'step_id')
-			.addSelect('step.node_id', 'step_nodeId')
-			.addSelect('step.iteration', 'step_iteration')
-			.addSelect('step.status', 'step_status')
-			.addSelect('step.outputs', 'step_outputs')
-			.addSelect('step.error', 'step_error')
-			.addSelect('step.created_at', 'step_createdAt')
-			.addSelect('step.updated_at', 'step_updatedAt')
+		const row: ExecutionWithStepsRow | undefined = await this.selectExecution(id)
+			.addSelect(
+				`COALESCE(
+					json_agg(
+						json_build_object(
+							'id', step.id,
+							'nodeId', step.node_id,
+							'iteration', step.iteration,
+							'status', step.status,
+							'outputs', step.outputs,
+							'error', step.error,
+							'createdAt', step.created_at,
+							'updatedAt', step.updated_at
+						)
+						ORDER BY step.created_at ASC, step.node_id ASC, step.iteration ASC
+					) FILTER (WHERE step.id IS NOT NULL),
+					'[]'
+				)`,
+				'steps',
+			)
 			.leftJoin(this.steps.metadata.tableName, 'step', 'step.execution_id = execution.id')
-			.orderBy('step.created_at', 'ASC')
-			.addOrderBy('step.node_id', 'ASC')
-			.addOrderBy('step.iteration', 'ASC')
-			.getRawMany();
-		if (rows.length === 0) throw new ExecutionNotFoundError(id);
+			.groupBy('execution.id')
+			.getRawOne();
+		if (!row) throw new ExecutionNotFoundError(id);
 
-		return { ...toExecutionView(rows[0]), steps: rows.filter(hasStep).map(toStepView) };
+		const { steps, ...execution } = row;
+		return { ...execution, steps: steps.map(toStepView) };
 	}
 
 	private selectExecution(id: string): SelectQueryBuilder<WorkflowExecution> {
@@ -69,6 +87,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect('execution.status', 'status')
 			.addSelect('execution.mode', 'mode')
 			.addSelect('execution.graph', 'graph')
+			.addSelect('execution.workflow', 'workflow')
 			.addSelect('execution.created_at', 'createdAt')
 			.addSelect('execution.updated_at', 'updatedAt')
 			.addSelect('execution.finished_at', 'finishedAt')
@@ -76,24 +95,6 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	}
 }
 
-function hasStep(row: ExecutionStepRow): row is ExecutionView & StepColumns {
-	return row.step_id !== null;
-}
-
-function toExecutionView(row: ExecutionStepRow): ExecutionView {
-	const { id, workflowId, status, mode, graph, createdAt, updatedAt, finishedAt } = row;
-	return { id, workflowId, status, mode, graph, createdAt, updatedAt, finishedAt };
-}
-
-function toStepView(row: StepColumns): StepView {
-	return {
-		id: row.step_id,
-		nodeId: row.step_nodeId,
-		iteration: row.step_iteration,
-		status: row.step_status,
-		outputs: row.step_outputs,
-		error: row.step_error,
-		createdAt: row.step_createdAt,
-		updatedAt: row.step_updatedAt,
-	};
+function toStepView(step: StepJson): StepView {
+	return { ...step, createdAt: new Date(step.createdAt), updatedAt: new Date(step.updatedAt) };
 }

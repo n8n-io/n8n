@@ -1,5 +1,4 @@
-import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import type { ExecutionSnapshot, ExecutionStatus, StepDetail } from '@n8n/engine';
+import type { ExecutionSnapshot, ExecutionStatus, StepDetail, WorkflowDocument } from '@n8n/engine';
 import type { ExecutionStatus as ExecutionStatusV1 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -23,12 +22,24 @@ const step = (overrides: Partial<StepDetail> = {}): StepDetail => ({
 	...overrides,
 });
 
+/** The workflow as it was when the run started, as the data plane stored it. */
+const workflowDocument = (overrides: WorkflowDocument = {}): WorkflowDocument => ({
+	id: WORKFLOW_ID,
+	name: 'v2',
+	nodes: [{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }],
+	connections: {},
+	settings: { engineType: 'v2' },
+	nodeGroups: [],
+	...overrides,
+});
+
 const snapshot = (overrides: Partial<ExecutionSnapshot> = {}): ExecutionSnapshot => ({
 	id: EXECUTION_ID,
 	workflowId: WORKFLOW_ID,
 	status: 'completed',
 	mode: 'manual',
 	graph: { nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }], edges: [] },
+	workflow: workflowDocument(),
 	createdAt: '2026-08-25T10:00:00.000Z',
 	updatedAt: '2026-08-25T10:00:05.000Z',
 	finishedAt: '2026-08-25T10:00:05.000Z',
@@ -37,22 +48,11 @@ const snapshot = (overrides: Partial<ExecutionSnapshot> = {}): ExecutionSnapshot
 
 describe('EngineV2ExecutionReader', () => {
 	const dataPlane = mock<EngineDataPlaneProxyService>();
-	const workflowRepository = mock<WorkflowRepository>();
-	const reader = new EngineV2ExecutionReader(dataPlane, workflowRepository);
-
-	const workflow = mock<WorkflowEntity>({
-		id: WORKFLOW_ID,
-		name: 'v2',
-		nodes: [],
-		connections: {},
-		nodeGroups: [],
-		settings: { engineType: 'v2' },
-	});
+	const reader = new EngineV2ExecutionReader(dataPlane);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		dataPlane.getExecution.mockResolvedValue(snapshot());
-		workflowRepository.findById.mockResolvedValue(workflow);
 	});
 
 	describe('findOne', () => {
@@ -84,12 +84,13 @@ describe('EngineV2ExecutionReader', () => {
 		});
 
 		it('should carry the workflow, so the redaction policy is resolvable', async () => {
-			workflowRepository.findById.mockResolvedValue(
-				mock<WorkflowEntity>({ id: WORKFLOW_ID, nodes: [], settings: { redactionPolicy: 'all' } }),
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({ workflow: workflowDocument({ settings: { redactionPolicy: 'all' } }) }),
 			);
 
 			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
 
+			// The policy that was in force when the run started, not the current one.
 			expect(result?.workflowData.settings?.redactionPolicy).toBe('all');
 		});
 
@@ -163,18 +164,65 @@ describe('EngineV2ExecutionReader', () => {
 			dataPlane.getExecution.mockResolvedValue(undefined);
 
 			await expect(reader.findOne(EXECUTION_ID, [WORKFLOW_ID])).resolves.toBeUndefined();
-			expect(workflowRepository.findById).not.toHaveBeenCalled();
 		});
 
 		it('should return undefined when the workflow is not accessible to the caller', async () => {
 			await expect(reader.findOne(EXECUTION_ID, ['other-wf'])).resolves.toBeUndefined();
-			expect(workflowRepository.findById).not.toHaveBeenCalled();
 		});
 
-		it('should return undefined when the workflow is gone', async () => {
-			workflowRepository.findById.mockResolvedValue(null);
+		it.each([
+			['is empty', {}],
+			['has no nodes', { id: WORKFLOW_ID, name: 'v2', connections: {} }],
+			['has a non-array nodes', { nodes: 'Trigger' }],
+		])('should return undefined when the stored workflow %s', async (_case, workflow) => {
+			// Redaction walks `nodes` unguarded, so an unusable document must read
+			// as no execution rather than reach it.
+			dataPlane.getExecution.mockResolvedValue(snapshot({ workflow }));
 
 			await expect(reader.findOne(EXECUTION_ID, [WORKFLOW_ID])).resolves.toBeUndefined();
+		});
+
+		describe('reporting the workflow that ran', () => {
+			it('should report the node name from the run, not a later rename', async () => {
+				dataPlane.getExecution.mockResolvedValue(snapshot({ steps: [step()] }));
+
+				const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+				// The live workflow may now call this node anything; the read does not
+				// consult it. The name matches the run-data key built from the graph.
+				expect(result?.workflowData.nodes).toEqual([
+					{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+				]);
+				expect(Object.keys(result?.data.resultData.runData ?? {})).toEqual(['Trigger']);
+			});
+
+			it('should report a node the live workflow no longer has', async () => {
+				dataPlane.getExecution.mockResolvedValue(
+					snapshot({
+						workflow: workflowDocument({
+							nodes: [
+								{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+								{ name: 'Deleted Later', type: 'n8n-nodes-base.set' },
+							],
+						}),
+					}),
+				);
+
+				const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+				expect(result?.workflowData.nodes.map((node) => node.name)).toEqual([
+					'Trigger',
+					'Deleted Later',
+				]);
+			});
+
+			it('should never read the workflow off the control plane', async () => {
+				await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+				// One round trip, and it is the data plane's. The reader has no
+				// workflow repository to reach for.
+				expect(dataPlane.getExecution).toHaveBeenCalledTimes(1);
+			});
 		});
 	});
 });

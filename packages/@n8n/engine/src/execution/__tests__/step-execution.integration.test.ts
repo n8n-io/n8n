@@ -102,7 +102,13 @@ describe('step execution (integration)', () => {
 		const response = await request(runtime.app)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({ workflowId, graph: workflowGraph, triggerOutputs, executionId: generateId() })
+			.send({
+				workflowId,
+				graph: workflowGraph,
+				workflow: {},
+				triggerOutputs,
+				executionId: generateId(),
+			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
 		await finished;
@@ -389,6 +395,7 @@ describe('step execution (integration)', () => {
 			status: 'running',
 			mode: 'production',
 			graph,
+			workflow: {},
 			triggerOutputs: null,
 		});
 		const created = await stepStore.createSteps(executionId, [

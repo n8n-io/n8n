@@ -14,6 +14,7 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 					{ name: 'status', type: 'varchar', length: '32' },
 					{ name: 'mode', type: 'varchar', length: '32' },
 					{ name: 'graph', type: 'jsonb' },
+					{ name: 'workflow', type: 'jsonb' },
 					{ name: 'trigger_outputs', type: 'jsonb', isNullable: true },
 					{
 						name: 'created_at',

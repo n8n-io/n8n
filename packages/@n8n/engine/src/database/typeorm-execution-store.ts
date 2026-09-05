@@ -27,10 +27,22 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		await this.repo.insert(execution as InsertValues);
 	}
 
+	/**
+	 * Names its columns rather than returning the entity: this runs once per
+	 * orchestration event, and the row also carries the workflow document, which
+	 * the execution path never reads.
+	 */
 	async loadExecution(id: string): Promise<ExecutionRecord> {
-		// NOTE: `findOne({ where })`, not `findOneBy`: the latter's overload exceeds
-		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
-		const row = await this.repo.findOne({ where: { id } });
+		const row: ExecutionRecord | undefined = await this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.addSelect('execution.workflow_id', 'workflowId')
+			.addSelect('execution.status', 'status')
+			.addSelect('execution.mode', 'mode')
+			.addSelect('execution.graph', 'graph')
+			.addSelect('execution.trigger_outputs', 'triggerOutputs')
+			.where('execution.id = :id', { id })
+			.getRawOne();
 		if (!row) throw new ExecutionNotFoundError(id);
 		return row;
 	}
