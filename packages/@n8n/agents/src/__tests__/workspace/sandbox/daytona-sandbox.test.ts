@@ -42,6 +42,8 @@ const {
 	DaytonaNotFoundError,
 	DaytonaTimeoutError,
 	resetDaytonaMockState,
+	snapshotGetMock,
+	snapshotActivateMock,
 } = vi.hoisted(() => {
 	const clientLog: DaytonaClientLog[] = [];
 	let nextClientId = 1;
@@ -49,6 +51,9 @@ const {
 	const queuedGetErrors: Error[] = [];
 	const queuedGetResults: MockSandbox[] = [];
 	const queuedCreateResults: Array<MockSandbox | Error> = [];
+	// Shared across all mock clients: the snapshot service is org-level, not per-client.
+	const snapshotGetMock = vi.fn<(...args: [string]) => Promise<{ name: string; state: string }>>();
+	const snapshotActivateMock = vi.fn<(...args: [unknown]) => Promise<unknown>>();
 
 	function makeMockSandbox(id: string, state = 'started'): MockSandbox {
 		return {
@@ -128,6 +133,9 @@ const {
 		get delete() {
 			return this.log.delete;
 		}
+		get snapshot() {
+			return { get: snapshotGetMock, activate: snapshotActivateMock };
+		}
 	}
 	class DaytonaError extends Error {
 		statusCode?: number;
@@ -151,6 +159,9 @@ const {
 		queuedGetErrors.length = 0;
 		queuedGetResults.length = 0;
 		queuedCreateResults.length = 0;
+		snapshotGetMock.mockReset();
+		snapshotActivateMock.mockReset();
+		snapshotActivateMock.mockResolvedValue(undefined);
 	}
 
 	return {
@@ -158,6 +169,8 @@ const {
 		queuedGetErrors,
 		queuedGetResults,
 		queuedCreateResults,
+		snapshotGetMock,
+		snapshotActivateMock,
 		makeMockSandbox,
 		Daytona,
 		DaytonaConnectionError,
@@ -887,6 +900,116 @@ describe('DaytonaSandbox (destroy ownership)', () => {
 
 		expect(clientLog[0].get).toHaveBeenCalledWith('sandbox-name');
 		expect(foreign.delete).toHaveBeenCalled();
+	});
+});
+
+describe('DaytonaSandbox (inactive snapshot recovery)', () => {
+	const SNAPSHOT = 'n8n/instance-ai:1.123.0';
+	const inactiveError = () =>
+		new DaytonaError(`Snapshot ${SNAPSHOT} is inactive. Please activate it first.`, 400);
+
+	it('reactivates an inactive snapshot and retries the create', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(inactiveError(), makeMockSandbox('remote-after-activation'));
+		snapshotGetMock
+			.mockResolvedValueOnce({ name: SNAPSHOT, state: 'inactive' })
+			.mockResolvedValueOnce({ name: SNAPSHOT, state: 'active' });
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: SNAPSHOT,
+		});
+
+		await sandbox.start();
+
+		expect(snapshotActivateMock).toHaveBeenCalledTimes(1);
+		expect(snapshotActivateMock).toHaveBeenCalledWith(
+			expect.objectContaining({ name: SNAPSHOT, state: 'inactive' }),
+		);
+		expect(clientLog[0].create).toHaveBeenCalledTimes(2);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-after-activation');
+	});
+
+	it('surfaces the original error when the snapshot endpoints are not reachable (proxy mode)', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(inactiveError());
+		snapshotGetMock.mockRejectedValue(new DaytonaError('Endpoint not allowed', 403));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: SNAPSHOT,
+		});
+
+		await expect(sandbox.start()).rejects.toThrow(/is inactive/);
+		expect(snapshotActivateMock).not.toHaveBeenCalled();
+		expect(clientLog[0].create).toHaveBeenCalledTimes(1);
+	});
+
+	it('falls back to image when activation fails and an image candidate exists', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(inactiveError(), makeMockSandbox('remote-from-image'));
+		snapshotGetMock.mockRejectedValue(new DaytonaError('Endpoint not allowed', 403));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: SNAPSHOT,
+			image: 'node:20',
+		});
+
+		await sandbox.start();
+
+		expect(clientLog[0].create).toHaveBeenCalledTimes(2);
+		expect(clientLog[0].create.mock.calls[1][0]).toEqual(
+			expect.objectContaining({ image: 'node:20' }),
+		);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-from-image');
+	});
+
+	it('gives up when the snapshot never becomes active within the budget', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(inactiveError());
+		snapshotGetMock.mockResolvedValue({ name: SNAPSHOT, state: 'inactive' });
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: SNAPSHOT,
+			timeout: 30_000,
+		});
+
+		vi.useFakeTimers();
+		try {
+			const assertion = expect(sandbox.start()).rejects.toThrow(/is inactive/);
+			await vi.runAllTimersAsync();
+			await assertion;
+			expect(snapshotActivateMock).toHaveBeenCalledTimes(1);
+			expect(clientLog[0].create).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('does not attempt activation for unrelated create failures', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(new DaytonaError('invalid image', 400));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: SNAPSHOT,
+		});
+
+		await expect(sandbox.start()).rejects.toThrow('invalid image');
+		expect(snapshotGetMock).not.toHaveBeenCalled();
+		expect(snapshotActivateMock).not.toHaveBeenCalled();
 	});
 });
 
