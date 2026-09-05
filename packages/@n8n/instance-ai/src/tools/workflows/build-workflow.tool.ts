@@ -276,7 +276,7 @@ const ONE_OFF_OPERATIONS_GUIDANCE =
 	'This one-off build is not complete yet. Follow the one-off instructions in `instructions` now (do NOT load the one-off-operations skill — they are the same instructions). Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.';
 
 const POST_BUILD_FLOW_GUIDANCE =
-	'The workflow was saved. Follow the phase instructions in postBuildFlow.instructions for verification and setup. Reuse this inline skill content; load it only if it is no longer available. Apply the shared evidence contract before reporting completion. A saved build is not proof of live behavior.';
+	'The workflow was saved. Follow the phase instructions in postBuildFlow.instructions for verification and setup. Reuse this inline skill content for direct builds. On <workflow-verification-follow-up> or <workflow-setup-required> turns, load the full post-build-flow skill unless its follow-up sections are already available; this inline copy omits them. Load the skill whenever required instructions are missing. Apply the shared evidence contract before reporting completion. A saved build is not proof of live behavior.';
 
 // Inlined into successful build results; the skills stay registered for tag-driven follow-up turns.
 const inlineSkillInstructionsCache = new Map<string, string>();

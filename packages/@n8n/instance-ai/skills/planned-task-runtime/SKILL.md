@@ -63,11 +63,12 @@ guidance as a clear warning/manual-test note and do not call it verified. Treat
 the synthesis tag as task completion, not proof that every integration works.
 Apply the shared evidence contract to each workflow's current outcome. Name
 simulated steps, untested required paths, missing setup, and unpublished state.
-If the original user request explicitly asked to run the workflow, use the
-supported live-run route and its approval flow. Otherwise report the delivered
-artifacts and the scope checked. Use the user's time zone for schedules. Do not
-create another plan or offer publication before the post-build publication
-condition is met.
+If the original user request explicitly asked to run the workflow, call
+`executions(action="run")` with that `workflowId` through its existing approval
+flow. Inspect the returned execution before reporting the result. Otherwise
+report the delivered artifacts and the scope checked. Use the user's time zone
+for schedules. Do not create another plan or offer publication before the
+post-build publication condition is met.
 
 ## Replan follow-up
 

@@ -3,9 +3,9 @@ name: post-build-flow
 description: >-
   Handles workflow verification and setup after build-workflow succeeds, or when
   the message contains workflow-verification-follow-up or workflow-setup-required.
-  Reuse inlined instructions after direct builds. Load when they are absent,
-  when verificationReadiness requires action, or on
-  orchestrator verify/setup follow-up turns.
+  Reuse inlined instructions after direct builds. Load when the required
+  instructions are absent. Tagged verification or setup follow-up turns need
+  the full skill because the inline copy omits their sections.
 recommended_tools:
   - ask-user
   - verify-built-workflow

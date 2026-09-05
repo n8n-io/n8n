@@ -64,8 +64,9 @@
 - "Set up a research helper capable of searching the web, querying our
   internal wiki, pulling numbers from Google Analytics, and drafting a slide
   deck that summarizes the findings." -> one part, **agent-anchored**,
-  `embeds_other: true`: many tools but one lifecycle — do not split on tool
-  count.
+  `embeds_other: false`: use independent direct tools within one agent
+  lifecycle. No single tool call requires an ordered multi-node procedure.
+  Do not split on tool count.
 - "Tell me how the platform team is progressing against their cycle goals —
   current status is in our issue tracker, the goals are on our internal
   wiki." -> **agent-anchored**, `embeds_other: false`: an on-demand judgment

@@ -4,8 +4,9 @@ description: >-
   Builds and maintains configuration-based evaluations on a workflow with the
   eval-config tool. Use when the user asks to set up, add, view, change, or
   remove an evaluation, score, grade, or judge a workflow's output, or measure
-  answer quality against a test dataset. This is the only eval form Instance AI
-  handles — it does not touch on-canvas evaluation nodes.
+  answer quality against a test dataset. Use this flow when eval-config is
+  available. For explicit on-canvas evaluation requests, use the matching
+  evaluation tools and procedure when available. Ask before substituting a config eval.
 recommended_tools:
   - eval-config
   - data-tables

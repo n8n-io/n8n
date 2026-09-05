@@ -131,6 +131,9 @@ describe('Instance AI runtime skills', () => {
 			platforms: ['daytona'],
 			recommendedTools: ['eval-config', 'data-tables'],
 		});
+		expect(configEvals?.description).not.toContain('only eval form');
+		expect(configEvals?.description).toContain('For explicit on-canvas evaluation requests');
+		expect(configEvals?.description).toContain('Ask before substituting a config eval');
 		expect(configEvals?.linkedFiles.references).toEqual([
 			expect.objectContaining({ path: 'references/config-eval-playbook.md' }),
 		]);
@@ -393,6 +396,7 @@ describe('Instance AI runtime skills', () => {
 		const skill = source.registry.skills.find((entry) => entry.name === 'post-build-flow');
 
 		expect(skill?.description).toContain('workflow-verification-follow-up');
+		expect(skill?.description).toContain('inline copy omits their sections');
 		expect(skill?.linkedFiles.references).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ path: 'references/trigger-input-data-shapes.md' }),
@@ -401,6 +405,8 @@ describe('Instance AI runtime skills', () => {
 		);
 
 		const loaded = await source.loadSkill('post-build-flow');
+		expect(loaded?.instructions).toContain('## Verification follow-up');
+		expect(loaded?.instructions).toContain('## Setup follow-up');
 		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "ready"');
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "needs_setup"');
@@ -450,6 +456,10 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.description).toContain('planned-task-follow-up');
 
 		const loaded = await source.loadSkill('planned-task-runtime');
+		const synthesis = loaded?.instructions.split('## Synthesize follow-up')[1]?.split('## ')[0];
+		expect(synthesis).toContain('If the original user request explicitly asked to run');
+		expect(synthesis).toContain('`executions(action="run")` with that `workflowId`');
+		expect(synthesis).toContain('existing approval');
 		expect(loaded?.instructions).toContain(
 			'Before calling `create-tasks`, load it via `load_tool`',
 		);

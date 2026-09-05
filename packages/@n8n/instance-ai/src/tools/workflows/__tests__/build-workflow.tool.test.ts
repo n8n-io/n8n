@@ -285,6 +285,14 @@ describe('createBuildWorkflowTool', () => {
 		);
 		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
 		// Tag-turn-only sections are stripped from the inline copy.
+		expect(result.postBuildFlow?.guidance).toContain(
+			'Reuse this inline skill content for direct builds',
+		);
+		expect(result.postBuildFlow?.guidance).toContain('<workflow-verification-follow-up>');
+		expect(result.postBuildFlow?.guidance).toContain('<workflow-setup-required>');
+		expect(result.postBuildFlow?.guidance).toContain(
+			'load the full post-build-flow skill unless its follow-up sections are already available',
+		);
 		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
 		expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
 		expect(result.postBuildFlow?.instructions).not.toContain('## Credentials before build');
