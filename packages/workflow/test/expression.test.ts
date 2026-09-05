@@ -1556,3 +1556,36 @@ describe('Expression', () => {
 		});
 	});
 });
+
+describe('legacy stack exhaustion (#37786)', () => {
+	const nodeTypes = Helpers.NodeTypes();
+	const workflow = new Workflow({
+		id: '1',
+		nodes: [
+			{
+				name: 'node',
+				typeVersion: 1,
+				type: 'test.set',
+				id: 'uuid-1234',
+				position: [0, 0],
+				parameters: {},
+			},
+		],
+		connections: {},
+		active: false,
+		nodeTypes,
+	});
+	const expression = workflow.expression;
+
+	const evaluate = (value: string) =>
+		expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {});
+
+	it('fails loudly instead of returning null', () => {
+		const bigAdd = '={{ ' + '1+'.repeat(20000) + '1 }}';
+		if (process.env.N8N_EXPRESSION_ENGINE === 'legacy') {
+			expect(() => evaluate(bigAdd)).toThrow('expression is too complex to evaluate');
+		} else {
+			expect(() => evaluate(bigAdd)).toThrow();
+		}
+	});
+});
