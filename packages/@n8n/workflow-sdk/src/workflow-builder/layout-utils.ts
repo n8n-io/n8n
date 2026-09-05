@@ -31,7 +31,15 @@ import {
 	STICKY_HEADER_HEIGHT,
 	MAX_STICKY_SEPARATION_STEPS,
 } from './constants';
+import {
+	createGroupedParentGraph,
+	reExpandLayoutGroups,
+	resolveEligibleLayoutGroups,
+	type LayoutNodeGroup,
+} from './group-layout-utils';
 import { isAnchoredStickyNote, type GraphNode } from '../types/base';
+
+export type { LayoutNodeGroup } from './group-layout-utils';
 
 // ===========================================================================
 // BFS Layout (default)
@@ -173,11 +181,15 @@ function getAllConnectedAiConfigNodes(
 	graph: dagre.graphlib.Graph,
 	rootId: string,
 	aiConfigNames: Set<string>,
+	visited = new Set<string>(),
 ): string[] {
 	const predecessors = (graph.predecessors(rootId) as unknown as string[]) ?? [];
 	return predecessors
-		.filter((id) => aiConfigNames.has(id))
-		.flatMap((id) => [id, ...getAllConnectedAiConfigNodes(graph, id, aiConfigNames)]);
+		.filter((id) => aiConfigNames.has(id) && !visited.has(id))
+		.flatMap((id) => {
+			visited.add(id);
+			return [id, ...getAllConnectedAiConfigNodes(graph, id, aiConfigNames, visited)];
+		});
 }
 
 // ---------------------------------------------------------------------------
@@ -609,6 +621,9 @@ function wrappingBoxFor(anchorBoxes: BoundingBox[]): BoundingBox | undefined {
 	};
 }
 
+/**
+ * Resolves stored node ids from groups and sticky anchors to the map keys used by this layout.
+ */
 function mapNodeIdsToKeys(nodes: ReadonlyMap<string, GraphNode>): Map<string, string> {
 	const nameById = new Map<string, string>();
 	for (const [name, graphNode] of nodes) {
@@ -739,10 +754,14 @@ export function resolveStickyGeometry(
  * Calculate positions for nodes using Dagre hierarchical layout.
  * Mirrors the frontend's useCanvasLayout algorithm.
  *
+ * When groups are passed, eligible groups enter dagre as collapsed chip placeholders,
+ * matching the editor's collapsed-group tidy-up path.
+ *
  * Only sets positions for nodes without explicit config.position.
  */
 export function calculateNodePositionsDagre(
 	nodes: ReadonlyMap<string, GraphNode>,
+	groups: readonly LayoutNodeGroup[] = [],
 ): Map<string, [number, number]> {
 	const positions = new Map<string, [number, number]>();
 
@@ -803,11 +822,35 @@ export function calculateNodePositionsDagre(
 		}
 	}
 
-	// Divide into disconnected subgraphs
-	const components = dagre.graphlib.alg.components(parentGraph);
+	// Groups and sticky anchors refer to persisted node ids; layout maps are keyed by node name.
+	const nameById = mapNodeIdsToKeys(nodes);
+
+	// Select groups that can safely enter dagre as collapsed chips.
+	const eligibleGroups = resolveEligibleLayoutGroups({
+		groups,
+		nodes,
+		nonStickySet,
+		parentGraph,
+		aiParentNames,
+		getAiConfigNodeIds: (aiParentName) =>
+			getAllConnectedAiConfigNodes(parentGraph, aiParentName, aiConfigNames),
+		getGroupInteriorBoxes: (memberKeys) => {
+			const layout = layoutConnectedSubgraph(memberKeys, parentGraph, aiParentNames, aiConfigNames);
+			const boxes = collectSubgraphBoundingBoxes(layout);
+			topAlignAiSubtrees(layout.aiGraphs, boxes);
+			return boxes;
+		},
+		compositeBoundingBox,
+	});
+
+	// Replace eligible group members with collapsed chip placeholders before dagre layout.
+	const layoutGraph = createGroupedParentGraph(parentGraph, eligibleGroups);
+
+	// Divide the chip-aware graph into disconnected subgraphs.
+	const components = dagre.graphlib.alg.components(layoutGraph);
 
 	const subgraphs = components.map((nodeIds) =>
-		layoutConnectedSubgraph(nodeIds, parentGraph, aiParentNames, aiConfigNames),
+		layoutConnectedSubgraph(nodeIds, layoutGraph, aiParentNames, aiConfigNames),
 	);
 
 	// Arrange subgraphs vertically (skip composite layout for single subgraph)
@@ -845,6 +888,16 @@ export function calculateNodePositionsDagre(
 		subgraphs.flatMap(({ aiGraphs }) => aiGraphs),
 		boundingBoxByNodeId,
 	);
+
+	// Convert dagre's chip positions back into real hidden group member positions.
+	reExpandLayoutGroups({
+		eligibleGroups,
+		boundingBoxByNodeId,
+		nodes,
+		nameById,
+		geometry: { compositeBoundingBox, snapToGrid },
+		stickyGeometry: { declaresOwnHeight, declaresOwnWidth, wrappingBoxFor },
+	});
 
 	// Snap to grid and build result (skip nodes with explicit positions)
 	for (const [name, box] of boundingBoxByNodeId) {

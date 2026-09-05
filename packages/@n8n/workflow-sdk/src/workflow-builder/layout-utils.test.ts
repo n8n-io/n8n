@@ -2,15 +2,22 @@
  * Tests for layout utility functions (BFS and Dagre)
  */
 
+import { GROUP_HEADER_WIDTH_COLLAPSED, computeGroupFrameRects } from 'n8n-workflow';
+
 import {
 	GRID_SIZE,
 	STICKY_NODE_TYPE,
 	NODE_SPACING_X,
+	NODE_X_SPACING,
 	START_X,
 	DEFAULT_Y,
 	DEFAULT_NODE_SIZE,
 } from './constants';
-import { calculateNodePositions, calculateNodePositionsDagre } from './layout-utils';
+import {
+	calculateNodePositions,
+	calculateNodePositionsDagre,
+	resolveStickyGeometry,
+} from './layout-utils';
 import type { GraphNode, ConnectionTarget } from '../types/base';
 
 // Helper to create connection targets
@@ -30,6 +37,7 @@ function createGraphNode(
 ): GraphNode {
 	return {
 		instance: {
+			id: name,
 			type,
 			name,
 			version: 1,
@@ -65,6 +73,55 @@ function makeAiConns(
 
 function isGridAligned(pos: [number, number]): boolean {
 	return pos[0] % GRID_SIZE === 0 && pos[1] % GRID_SIZE === 0;
+}
+
+function collapsedGroupRect(
+	positions: ReadonlyMap<string, [number, number]>,
+	memberNames: string[],
+): { x: number; y: number; width: number; height: number } {
+	const memberBoxes = memberNames.map((name) => {
+		const position = positions.get(name);
+		if (!position) throw new Error(`Missing position for ${name}`);
+		return {
+			x: position[0],
+			y: position[1],
+			width: DEFAULT_NODE_SIZE[0],
+			height: DEFAULT_NODE_SIZE[1],
+		};
+	});
+	return collapsedGroupRectFromBoxes(memberBoxes);
+}
+
+function collapsedGroupRectFromBoxes(
+	boxes: Array<{ x: number; y: number; width: number; height: number }>,
+): {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+} {
+	const minX = Math.min(...boxes.map((box) => box.x));
+	const minY = Math.min(...boxes.map((box) => box.y));
+	const maxX = Math.max(...boxes.map((box) => box.x + box.width));
+	const maxY = Math.max(...boxes.map((box) => box.y + box.height));
+
+	return computeGroupFrameRects({
+		x: minX,
+		y: minY,
+		width: maxX - minX,
+		height: maxY - minY,
+	}).collapsed;
+}
+
+function createAnchoredSticky(name: string, anchorIds: string[]): GraphNode {
+	const sticky = createGraphNode(name, STICKY_NODE_TYPE);
+	return {
+		...sticky,
+		instance: {
+			...sticky.instance,
+			stickyAnchorIds: anchorIds,
+		} as GraphNode['instance'],
+	};
 }
 
 // ===========================================================================
@@ -302,6 +359,326 @@ describe('calculateNodePositionsDagre', () => {
 			expect(isGridAligned(agentPos)).toBe(true);
 			expect(isGridAligned(modelPos)).toBe(true);
 			expect(isGridAligned(calcPos)).toBe(true);
+		});
+
+		it('handles cycles in AI config references', () => {
+			const nodes = new Map<string, GraphNode>();
+
+			nodes.set(
+				'Agent',
+				createGraphNode(
+					'Agent',
+					'@n8n/n8n-nodes-langchain.agent',
+					makeAiConns('Calculator', 'ai_tool'),
+				),
+			);
+			nodes.set(
+				'Calculator',
+				createGraphNode(
+					'Calculator',
+					'@n8n/n8n-nodes-langchain.toolCalculator',
+					makeAiConns('Agent', 'ai_tool'),
+				),
+			);
+
+			expect(() => calculateNodePositionsDagre(nodes)).not.toThrow();
+		});
+	});
+
+	describe('node groups', () => {
+		it('lays out chained groups as collapsed chips', () => {
+			const nodes = new Map<string, GraphNode>();
+
+			nodes.set(
+				'Start',
+				createGraphNode(
+					'Start',
+					'n8n-nodes-base.manualTrigger',
+					makeMainConns([[0, [makeTarget('Normalize')]]]),
+				),
+			);
+			nodes.set(
+				'Normalize',
+				createGraphNode(
+					'Normalize',
+					'n8n-nodes-base.set',
+					makeMainConns([[0, [makeTarget('Filter')]]]),
+				),
+			);
+			nodes.set(
+				'Filter',
+				createGraphNode(
+					'Filter',
+					'n8n-nodes-base.if',
+					makeMainConns([[0, [makeTarget('Format')]]]),
+				),
+			);
+			nodes.set(
+				'Format',
+				createGraphNode(
+					'Format',
+					'n8n-nodes-base.set',
+					makeMainConns([
+						[0, [makeTarget('Slack')]],
+						[1, [makeTarget('Gmail')]],
+					]),
+				),
+			);
+			nodes.set('Slack', createGraphNode('Slack', 'n8n-nodes-base.slack'));
+			nodes.set('Gmail', createGraphNode('Gmail', 'n8n-nodes-base.gmail'));
+
+			const positions = calculateNodePositionsDagre(nodes, [
+				{ name: 'Intake', memberKeys: ['Normalize', 'Filter'] },
+				{ name: 'Deliver', memberKeys: ['Format', 'Slack', 'Gmail'] },
+			]);
+
+			const intakeChip = collapsedGroupRect(positions, ['Normalize', 'Filter']);
+			const deliverChip = collapsedGroupRect(positions, ['Format', 'Slack', 'Gmail']);
+
+			expect(deliverChip.y).toBe(intakeChip.y);
+			expect(deliverChip.x - intakeChip.x).toBe(GROUP_HEADER_WIDTH_COLLAPSED + NODE_X_SPACING);
+		});
+
+		it('lays out AI config nodes inside a group interior', () => {
+			const nodes = new Map<string, GraphNode>();
+			nodes.set(
+				'Start',
+				createGraphNode(
+					'Start',
+					'n8n-nodes-base.manualTrigger',
+					makeMainConns([[0, [makeTarget('Agent')]]]),
+				),
+			);
+			nodes.set(
+				'Agent',
+				createGraphNode(
+					'Agent',
+					'@n8n/n8n-nodes-langchain.agent',
+					makeMainConns([[0, [makeTarget('Done')]]]),
+				),
+			);
+			nodes.set('Done', createGraphNode('Done', 'n8n-nodes-base.set'));
+			nodes.set(
+				'OpenAI Model',
+				createGraphNode(
+					'OpenAI Model',
+					'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					makeAiConns('Agent', 'ai_languageModel'),
+				),
+			);
+			nodes.set(
+				'Calculator',
+				createGraphNode(
+					'Calculator',
+					'@n8n/n8n-nodes-langchain.toolCalculator',
+					makeAiConns('Agent', 'ai_tool'),
+				),
+			);
+
+			const positions = calculateNodePositionsDagre(nodes, [
+				{ name: 'AI', memberKeys: ['Agent', 'OpenAI Model', 'Calculator'] },
+			]);
+
+			const agentPos = positions.get('Agent')!;
+			const modelPos = positions.get('OpenAI Model')!;
+			const calculatorPos = positions.get('Calculator')!;
+			const donePos = positions.get('Done')!;
+
+			expect(modelPos[1]).toBeGreaterThanOrEqual(agentPos[1]);
+			expect(calculatorPos[1]).toBeGreaterThanOrEqual(agentPos[1]);
+			expect(donePos[0]).toBeGreaterThan(agentPos[0]);
+		});
+
+		it('aligns grouped chips when a member sticky wraps the group nodes', () => {
+			const nodes = new Map<string, GraphNode>();
+
+			nodes.set(
+				'Start',
+				createGraphNode(
+					'Start',
+					'n8n-nodes-base.manualTrigger',
+					makeMainConns([[0, [makeTarget('A')]]]),
+				),
+			);
+			nodes.set(
+				'A',
+				createGraphNode('A', 'n8n-nodes-base.set', makeMainConns([[0, [makeTarget('B')]]])),
+			);
+			nodes.set(
+				'B',
+				createGraphNode('B', 'n8n-nodes-base.set', makeMainConns([[0, [makeTarget('C')]]])),
+			);
+			nodes.set(
+				'C',
+				createGraphNode('C', 'n8n-nodes-base.set', makeMainConns([[0, [makeTarget('D')]]])),
+			);
+			nodes.set('D', createGraphNode('D', 'n8n-nodes-base.set'));
+			nodes.set('Note', createAnchoredSticky('Note', ['A', 'B']));
+
+			const positions = calculateNodePositionsDagre(nodes, [
+				{ name: 'With note', memberKeys: ['A', 'B', 'Note'] },
+				{ name: 'Plain', memberKeys: ['C', 'D'] },
+			]);
+			const stickyGeometry = resolveStickyGeometry(nodes, positions);
+			const noteGeometry = stickyGeometry.get('Note');
+			expect(noteGeometry?.size).toBeDefined();
+
+			const noteBox = {
+				x: noteGeometry!.position[0],
+				y: noteGeometry!.position[1],
+				width: noteGeometry!.size!.width,
+				height: noteGeometry!.size!.height,
+			};
+			const firstChip = collapsedGroupRectFromBoxes([
+				...['A', 'B'].map((name) => {
+					const position = positions.get(name)!;
+					return {
+						x: position[0],
+						y: position[1],
+						width: DEFAULT_NODE_SIZE[0],
+						height: DEFAULT_NODE_SIZE[1],
+					};
+				}),
+				noteBox,
+			]);
+			const secondChip = collapsedGroupRect(positions, ['C', 'D']);
+
+			expect(secondChip.y).toBe(firstChip.y);
+			expect(secondChip.x - firstChip.x).toBe(GROUP_HEADER_WIDTH_COLLAPSED + NODE_X_SPACING);
+		});
+
+		it('falls back to legacy layout when a group member has an explicit position', () => {
+			const nodes = new Map<string, GraphNode>();
+			nodes.set(
+				'A',
+				createGraphNode(
+					'A',
+					'n8n-nodes-base.set',
+					makeMainConns([[0, [makeTarget('B')]]]),
+					[500, 600],
+				),
+			);
+			nodes.set('B', createGraphNode('B', 'n8n-nodes-base.set'));
+
+			const legacyPositions = calculateNodePositionsDagre(nodes);
+			const groupedPositions = calculateNodePositionsDagre(nodes, [
+				{ name: 'Positioned', memberKeys: ['A', 'B'] },
+			]);
+
+			expect(groupedPositions).toEqual(legacyPositions);
+			expect(groupedPositions.has('A')).toBe(false);
+		});
+
+		it('skips sticky-only groups', () => {
+			const nodes = new Map<string, GraphNode>();
+			nodes.set(
+				'A',
+				createGraphNode('A', 'n8n-nodes-base.set', makeMainConns([[0, [makeTarget('B')]]])),
+			);
+			nodes.set('B', createGraphNode('B', 'n8n-nodes-base.set'));
+			nodes.set('Note', createGraphNode('Note', STICKY_NODE_TYPE, undefined, [5000, 5000]));
+
+			const legacyPositions = calculateNodePositionsDagre(nodes);
+			const groupedPositions = calculateNodePositionsDagre(nodes, [
+				{ name: 'Only note', memberKeys: ['Note'] },
+			]);
+
+			expect(groupedPositions).toEqual(legacyPositions);
+		});
+
+		it('skips groups whose members do not resolve', () => {
+			const nodes = new Map<string, GraphNode>();
+			nodes.set(
+				'A',
+				createGraphNode('A', 'n8n-nodes-base.set', makeMainConns([[0, [makeTarget('B')]]])),
+			);
+			nodes.set('B', createGraphNode('B', 'n8n-nodes-base.set'));
+
+			const legacyPositions = calculateNodePositionsDagre(nodes);
+			const groupedPositions = calculateNodePositionsDagre(nodes, [
+				{ name: 'Ghosts', memberKeys: ['Ghost A', 'Ghost B'] },
+			]);
+
+			expect(groupedPositions).toEqual(legacyPositions);
+		});
+
+		it('falls back for all groups that share a non-sticky member', () => {
+			const nodes = new Map<string, GraphNode>();
+			nodes.set(
+				'A',
+				createGraphNode('A', 'n8n-nodes-base.set', makeMainConns([[0, [makeTarget('B')]]])),
+			);
+			nodes.set(
+				'B',
+				createGraphNode('B', 'n8n-nodes-base.set', makeMainConns([[0, [makeTarget('C')]]])),
+			);
+			nodes.set('C', createGraphNode('C', 'n8n-nodes-base.set'));
+
+			const legacyPositions = calculateNodePositionsDagre(nodes);
+			const groupedPositions = calculateNodePositionsDagre(nodes, [
+				{ name: 'First', memberKeys: ['A', 'B'] },
+				{ name: 'Second', memberKeys: ['B', 'C'] },
+			]);
+
+			expect(groupedPositions).toEqual(legacyPositions);
+		});
+
+		it('lets an invalid group bridge otherwise disconnected components through its chip', () => {
+			const nodes = new Map<string, GraphNode>();
+			nodes.set(
+				'A',
+				createGraphNode('A', 'n8n-nodes-base.set', makeMainConns([[0, [makeTarget('B')]]])),
+			);
+			nodes.set('B', createGraphNode('B', 'n8n-nodes-base.set'));
+			nodes.set(
+				'C',
+				createGraphNode('C', 'n8n-nodes-base.set', makeMainConns([[0, [makeTarget('D')]]])),
+			);
+			nodes.set('D', createGraphNode('D', 'n8n-nodes-base.set'));
+
+			const positions = calculateNodePositionsDagre(nodes, [
+				{ name: 'Bridge', memberKeys: ['B', 'C'] },
+			]);
+
+			const chip = collapsedGroupRect(positions, ['B', 'C']);
+			expect(positions.get('D')![0]).toBeGreaterThan(chip.x);
+			expect(chip.x).toBeGreaterThan(positions.get('A')![0]);
+			expect(positions.get('D')![1]).toBe(positions.get('A')![1]);
+		});
+
+		it('handles multiple crossing edges around a group chip', () => {
+			const nodes = new Map<string, GraphNode>();
+			nodes.set(
+				'A',
+				createGraphNode('A', 'n8n-nodes-base.set', makeMainConns([[0, [makeTarget('B')]]])),
+			);
+			nodes.set(
+				'C',
+				createGraphNode('C', 'n8n-nodes-base.set', makeMainConns([[0, [makeTarget('B')]]])),
+			);
+			nodes.set(
+				'B',
+				createGraphNode(
+					'B',
+					'n8n-nodes-base.set',
+					makeMainConns([
+						[0, [makeTarget('D')]],
+						[1, [makeTarget('E')]],
+					]),
+				),
+			);
+			nodes.set('D', createGraphNode('D', 'n8n-nodes-base.set'));
+			nodes.set('E', createGraphNode('E', 'n8n-nodes-base.set'));
+
+			const positions = calculateNodePositionsDagre(nodes, [
+				{ name: 'Many edges', memberKeys: ['B'] },
+			]);
+
+			const chip = collapsedGroupRect(positions, ['B']);
+			expect(positions.get('B')).toBeDefined();
+			expect(positions.get('D')![0]).toBeGreaterThan(chip.x);
+			expect(positions.get('E')![0]).toBeGreaterThan(chip.x);
+			expect(chip.x).toBeGreaterThan(Math.min(positions.get('A')![0], positions.get('C')![0]));
 		});
 	});
 
