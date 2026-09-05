@@ -169,6 +169,133 @@ describe('MessageEventBusDestinationWebhook', () => {
 			);
 		});
 
+		it('should decrypt Header Auth credentials with expression resolution enabled', async () => {
+			const { outboundHttp, request } = mockOutboundHttp();
+			const credentialDetails = { id: 'header-cred-id', name: 'Header Auth' };
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					url: 'https://example.com/webhook',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+					credentials: { httpHeaderAuth: credentialDetails },
+				},
+				outboundHttp,
+			);
+			const credentialsHelper = mock<CredentialsHelper>();
+			// Resolved External Secrets expression ({{ $secrets... }}) → concrete token
+			credentialsHelper.getDecrypted.mockResolvedValue({
+				name: 'X-Auth-Token',
+				value: 'resolved-secret-token',
+			});
+			destination.credentialsHelper = credentialsHelper;
+
+			await destination.receiveFromEventBus({
+				msg: createMessage(),
+				confirmCallback: vi.fn(),
+			} as any);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.anything(),
+				credentialDetails,
+				'httpHeaderAuth',
+				'internal',
+				undefined,
+				false,
+			);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ 'X-Auth-Token': 'resolved-secret-token' }),
+				}),
+			);
+		});
+
+		it('should decrypt Basic Auth credentials with expression resolution enabled', async () => {
+			const { outboundHttp, request } = mockOutboundHttp();
+			const credentialDetails = { id: 'basic-cred-id', name: 'Basic Auth' };
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					url: 'https://example.com/webhook',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpBasicAuth',
+					credentials: { httpBasicAuth: credentialDetails },
+				},
+				outboundHttp,
+			);
+			const credentialsHelper = mock<CredentialsHelper>();
+			credentialsHelper.getDecrypted.mockResolvedValue({
+				user: 'webhook-user',
+				password: 'resolved-secret-password',
+			});
+			destination.credentialsHelper = credentialsHelper;
+
+			await destination.receiveFromEventBus({
+				msg: createMessage(),
+				confirmCallback: vi.fn(),
+			} as any);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.anything(),
+				credentialDetails,
+				'httpBasicAuth',
+				'internal',
+				undefined,
+				false,
+			);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					auth: {
+						username: 'webhook-user',
+						password: 'resolved-secret-password',
+					},
+				}),
+			);
+		});
+
+		it('should decrypt Query Auth credentials with expression resolution enabled', async () => {
+			const { outboundHttp, request } = mockOutboundHttp();
+			const credentialDetails = { id: 'query-cred-id', name: 'Query Auth' };
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					url: 'https://example.com/webhook',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpQueryAuth',
+					credentials: { httpQueryAuth: credentialDetails },
+				},
+				outboundHttp,
+			);
+			const credentialsHelper = mock<CredentialsHelper>();
+			credentialsHelper.getDecrypted.mockResolvedValue({
+				name: 'api_key',
+				value: 'resolved-query-secret',
+			});
+			destination.credentialsHelper = credentialsHelper;
+
+			await destination.receiveFromEventBus({
+				msg: createMessage(),
+				confirmCallback: vi.fn(),
+			} as any);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.anything(),
+				credentialDetails,
+				'httpQueryAuth',
+				'internal',
+				undefined,
+				false,
+			);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					qs: expect.objectContaining({ api_key: 'resolved-query-secret' }),
+				}),
+			);
+		});
+
 		it('should not send when Simplified Custom Auth credentials cannot be resolved', async () => {
 			const { outboundHttp, request } = mockOutboundHttp();
 			const destination = new MessageEventBusDestinationWebhook(
