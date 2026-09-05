@@ -35,6 +35,12 @@ exhaustive field reference; this skill is the opinionated *how*.
 > reconstructed from a LangSmith trace at run time, so it dies when that trace is
 > pruned and has no durable home. Don't commit a replay case either — derive a
 > synthetic case from it. See [`case-shapes.md`](case-shapes.md).
+>
+> **Authoring from the LangTracer side.** The LangTracer MCP also exposes the
+> write tools — draft from a conversation or cluster, create, file into a
+> suite, tag — for cases born in a review session rather than in the repo.
+> When that path fits, and its rules, are in
+> [`langtracer-mcp-authoring.md`](langtracer-mcp-authoring.md).
 
 ## Set the autonomy level first
 
@@ -742,7 +748,9 @@ Once a case is calibrated, push it (and any others) up into a curated lang-trace
 suite instead of committing the JSON. `eval:langtracer-push` **upserts** over the
 REST API: it creates cases missing from the suite, updates ones whose content
 drifted, leaves the rest unchanged, and never prunes. It's the inverse of
-`--source langtracer` (which pulls a suite down).
+`--source langtracer` (which pulls a suite down). To author on the LangTracer
+side directly — no local JSON, e.g. filing drafts from a cluster — see
+[`langtracer-mcp-authoring.md`](langtracer-mcp-authoring.md).
 
 ```bash
 cd packages/@n8n/instance-ai
