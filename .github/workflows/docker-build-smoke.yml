@@ -31,12 +31,14 @@ on:
       - 'scripts/build-n8n.mjs'
       - 'scripts/dockerize-n8n.mjs'
       - 'scripts/smoke-n8n-image.mjs'
+      - 'package.json'
       - '.github/scripts/docker/kafka-native-smoke-check.mjs'
       - '.github/scripts/docker/should-smoke-build.mjs'
       # These drive the build and the image distribution, so a change here can
       # break the chain without touching a Dockerfile.
       - '.github/actions/build-n8n-docker/action.yml'
       - '.github/actions/load-n8n-docker/action.yml'
+      - '.github/actions/setup-nodejs/action.yml'
       - '.github/workflows/docker-build-push.yml'
       - 'patches/**'
       # Pins the native deps this build compiles, but changes far more often

@@ -95,7 +95,8 @@ startTimer('package_build');
 
 echo(chalk.yellow('INFO: Running pnpm install and build...'));
 try {
-	const installProcess = $`cd ${config.rootDir} && pnpm install --frozen-lockfile`;
+	const installFlags = ['--frozen-lockfile', ...(isCI ? ['--trust-lockfile'] : [])];
+	const installProcess = $`cd ${config.rootDir} && pnpm install ${installFlags}`;
 	installProcess.pipe(process.stdout);
 	await installProcess;
 
@@ -191,7 +192,7 @@ try {
 	// top level, so cdxgen would miss the transitive tree (the manifest would be incomplete).
 	// Re-enable hoisting for the licenses build only — shipped images keep the non-hoisted
 	// layout, since regular builds leave N8N_GENERATE_LICENSES unset.
-	// `PNPM_CONFIG_*` and not `npm_config_*`: pnpm 11 no longer reads npm-style env config,
+	// `PNPM_CONFIG_*` and not `npm_config_*`: pnpm no longer reads npm-style env config,
 	// so an `npm_config_` name here is silently ignored and the SBOM comes out incomplete.
 	const generateLicenses = process.env.N8N_GENERATE_LICENSES === 'true';
 	if (generateLicenses) {
@@ -206,7 +207,13 @@ try {
 	// The closure is lockfile-derived, so a workspace package only stays out of the image by
 	// declaring build-time deps as devDependencies — editing manifests at build time does
 	// nothing here.
-	const deployFlags = ['--prod', '--config.inject-workspace-packages=true'];
+	// pnpm 12's clone path leaves its intermediate links tree in macOS deploy outputs.
+	// Linux already falls back to copying, so make deploy output consistent across platforms.
+	const deployFlags = [
+		'--prod',
+		'--config.inject-workspace-packages=true',
+		'--config.package-import-method=copy',
+	];
 
 	// The dedicated-lockfile deploy leaves pnpm's own files in the closure, which the
 	// legacy deploy did not write. They are not needed to run the closure, they point at
@@ -221,8 +228,15 @@ try {
 	const removePnpmDeployFiles = async (dir) => {
 		for (const file of pnpmDeployFiles) await fs.remove(path.join(dir, file));
 	};
+	const verifyNoPnpmIntermediateLinks = async (dir) => {
+		const linksDir = path.join(dir, 'node_modules/.pnpm/@');
+		if (await fs.pathExists(linksDir)) {
+			throw new Error(`pnpm left its intermediate links tree in ${linksDir}`);
+		}
+	};
 
 	await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n ${deployFlags} deploy --no-optional ./compiled`;
+	await verifyNoPnpmIntermediateLinks(config.compiledAppDir);
 	await removePnpmDeployFiles(config.compiledAppDir);
 
 	// Strip test/example/benchmark dirs shipped inside production deps that lack a
@@ -451,6 +465,7 @@ try {
 	// only, not the shipped total.
 	startTimer('task_runner_deploy');
 	await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner ${deployFlags} deploy --no-optional ${config.compiledTaskRunnerDir}`;
+	await verifyNoPnpmIntermediateLinks(config.compiledTaskRunnerDir);
 	echo(
 		chalk.green(
 			`✅ Task runner deployment completed in ${formatDuration(getElapsedTime('task_runner_deploy'))}`,
@@ -554,7 +569,7 @@ try {
 		echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
 		try {
 			const toolingDir = path.join(config.rootDir, '.github', 'scripts');
-			await $`cd ${config.rootDir} && pnpm install --frozen-lockfile --dir .github/scripts --ignore-workspace`;
+			await $`cd ${config.rootDir} && pnpm install --frozen-lockfile --dir .github/scripts --lockfile-dir . --ignore-workspace`;
 			const generateProcess = $`cd ${toolingDir} && pnpm generate-licenses`;
 			generateProcess.pipe(process.stdout);
 			await generateProcess;

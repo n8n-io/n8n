@@ -47,7 +47,7 @@ runs:
       uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
       with:
         install: false
-        version: 11.25.0
+        version: 12.3.4
         cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     # Cache the Node toolcache so setup-node skips the ~33s nodejs.org download

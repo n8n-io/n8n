@@ -31,7 +31,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir . --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Determine track from package version number
@@ -61,7 +61,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Install script dependencies
-        run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+        run: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir . --ignore-workspace
 
       - name: Check for new unpublished packages
         run: node .github/scripts/detect-new-packages.mjs
