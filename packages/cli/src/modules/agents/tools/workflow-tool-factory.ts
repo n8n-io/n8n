@@ -44,6 +44,7 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
+import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
 import type {
 	WorkflowToolWorkflowLoader,
@@ -690,7 +691,17 @@ async function backgroundWaitingExecution(
 	allOutputs: boolean,
 ): Promise<(WorkflowToolResult & { jobId: string }) | undefined> {
 	const agentRun = context.agentRun ?? agentRunOf(context, ctx);
-	if (!agentRun || !reference.workflowId) return undefined;
+	const parentResourceId = ctx.persistence?.resourceId;
+	const sandboxScope = decodeAgentSandboxHostMetadata(ctx.persistence?.hostMetadata);
+	if (
+		!agentRun ||
+		!reference.workflowId ||
+		!parentResourceId ||
+		!sandboxScope ||
+		sandboxScope.projectId !== context.projectId
+	) {
+		return undefined;
+	}
 
 	try {
 		const jobService = Container.get(AgentBackgroundJobService);
@@ -698,6 +709,8 @@ async function backgroundWaitingExecution(
 			id: uuid(),
 			parentAgentId: agentRun.agentId,
 			parentThreadId: agentRun.threadId,
+			parentResourceId,
+			parentPrincipalHash: sandboxScope.principalHash,
 			title: reference.workflowName,
 			workflowId: reference.workflowId,
 			executionId: result.executionId,

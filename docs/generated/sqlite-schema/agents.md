@@ -108,7 +108,10 @@ erDiagram
   TEXT error
   varchar_36_ id PK
   varchar_16_ kind
+  datetime_3_ notifiedAt
   varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
   varchar_128_ parentThreadId
   TEXT result
   datetime_3_ settledAt

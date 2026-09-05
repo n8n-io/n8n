@@ -104,6 +104,35 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
+			undefined,
+			undefined,
+		);
+	});
+
+	it('keeps task runtimes separate and disables their background tools', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(makeRuntime())
+			.mockResolvedValueOnce(makeRuntime());
+
+		await service.getRuntime({ agentId, projectId });
+		await service.getRuntime({ agentId, projectId, allowBackgroundTasks: false });
+
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
+			agent,
+			expect.anything(),
+			'test',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			undefined,
+			undefined,
+			false,
 		);
 	});
 
@@ -336,6 +365,8 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
+			undefined,
+			undefined,
 		);
 	});
 
@@ -370,6 +401,8 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
+			undefined,
+			undefined,
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
@@ -380,6 +413,8 @@ describe('AgentRuntimeCacheService', () => {
 			userB,
 			undefined,
 			'manual',
+			undefined,
+			undefined,
 			undefined,
 		);
 	});
@@ -552,6 +587,8 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			undefined,
 			'integrated',
+			undefined,
+			undefined,
 			undefined,
 		);
 	});

@@ -33,6 +33,14 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128 })
 	parentThreadId: string;
 
+	/** Memory resource of the parent run. NULL on rows created before wake delivery. */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	parentResourceId: string | null;
+
+	/** Sandbox principal of the parent run. NULL on rows created before wake delivery. */
+	@Column({ type: 'varchar', length: 64, nullable: true })
+	parentPrincipalHash: string | null;
+
 	/** Task name or workflow name, echoed in status-check listings. */
 	@Column({ type: 'varchar', length: 255 })
 	title: string;
@@ -66,4 +74,8 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 
 	@DateTimeColumn({ precision: 3, nullable: true })
 	settledAt: Date | null;
+
+	/** When the parent agent consumed this settled job. */
+	@DateTimeColumn({ precision: 3, nullable: true })
+	notifiedAt: Date | null;
 }

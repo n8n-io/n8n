@@ -32,6 +32,7 @@ const request: BackgroundSpawnRequest = {
 	goal: 'find things',
 	parentThreadId: 'thread-1',
 	parentResourceId: 'resource-1',
+	parentSandboxPrincipalHash: 'principal-hash',
 };
 
 function setup() {

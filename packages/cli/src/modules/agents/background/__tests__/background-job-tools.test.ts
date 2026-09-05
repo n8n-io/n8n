@@ -14,7 +14,12 @@ import {
 } from '../background-job-tools';
 import type { SubAgentBackgroundRunner } from '../sub-agent-background-runner';
 
-const persistence = { threadId: 'thread-1', resourceId: 'resource-1' };
+const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+const persistence = {
+	threadId: 'thread-1',
+	resourceId: 'resource-1',
+	hostMetadata: encodeAgentSandboxHostMetadata({ projectId: 'project-1', principalHash }),
+};
 
 function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView {
 	return {
@@ -113,11 +118,10 @@ describe('spawn_background_subagent', () => {
 		});
 	});
 
-	it('forwards the sandbox principal only when the host scope matches the project', async () => {
+	it('forwards the sandbox principal when the host scope matches the project', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
 		const tool = createSpawnBackgroundSubAgentTool(options);
-		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 		const input = { subAgentId: 'sub-1', taskName: 'research', goal: 'find things' };
 
 		await tool.handler!(input, {
@@ -130,15 +134,14 @@ describe('spawn_background_subagent', () => {
 			parentSandboxPrincipalHash: principalHash,
 		});
 
-		await tool.handler!(input, {
+		const rejected = await tool.handler!(input, {
 			persistence: {
 				...persistence,
 				hostMetadata: encodeAgentSandboxHostMetadata({ projectId: 'project-other', principalHash }),
 			},
 		});
-		expect(backgroundRunner.spawn.mock.calls[1][0]).not.toHaveProperty(
-			'parentSandboxPrincipalHash',
-		);
+		expect(rejected).toMatchObject({ status: 'rejected' });
+		expect(backgroundRunner.spawn).toHaveBeenCalledTimes(1);
 	});
 
 	it('spawns a copy of the parent for inline self-delegation, with its difficulty', async () => {

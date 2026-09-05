@@ -106,7 +106,10 @@ erDiagram
   text error
   varchar_36_ id
   varchar_16_ kind
+  timestamp_3__with_time_zone notifiedAt
   varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
   varchar_128_ parentThreadId
   text result
   timestamp_3__with_time_zone settledAt
