@@ -1482,6 +1482,15 @@ function onOpenContextMenu(
 	});
 }
 
+function onOpenPaneContextMenu(event: MouseEvent) {
+	clearSelectedNodes();
+	contextMenu.open(event, {
+		source: 'canvas',
+		nodeIds: [],
+		readOnly: isContextMenuReadOnly.value,
+	});
+}
+
 function onOpenSelectionContextMenu({ event }: { event: MouseEvent }) {
 	onOpenContextMenu(event);
 }
@@ -1876,7 +1885,7 @@ defineExpose({
 		@connect="onConnect"
 		@connect-end="onConnectEnd"
 		@pane-click="onClickPane"
-		@pane-context-menu="onOpenContextMenu"
+		@pane-context-menu="onOpenPaneContextMenu"
 		@move="onPaneMove"
 		@move-end="onPaneMoveEnd"
 		@node-drag-start="onNodeDragStart"
