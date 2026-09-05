@@ -244,6 +244,53 @@ describe('settleOrphanedToolMessages', () => {
 		expect(settledBlock(result, 1, 0).state).toBe('rejected');
 	});
 
+	it('drops a pending provider-executed tool call without fabricating a result', () => {
+		const messages: AgentMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'srvtoolu-1',
+						toolName: 'anthropic.web_search_20250305',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+						state: 'pending',
+					},
+					{ type: 'text', text: 'I found n8n.' },
+				],
+			},
+		];
+
+		const result = settleOrphanedToolMessages(messages);
+
+		expect(result).toEqual([
+			{ role: 'assistant', content: [{ type: 'text', text: 'I found n8n.' }] },
+		]);
+	});
+
+	it('drops the whole message when its only block is a pending provider-executed call', () => {
+		const user: AgentMessage = { role: 'user', content: [{ type: 'text', text: 'Search' }] };
+		const messages: AgentMessage[] = [
+			user,
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'srvtoolu-1',
+						toolName: 'anthropic.web_search_20250305',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+						state: 'pending',
+					},
+				],
+			},
+		];
+
+		expect(settleOrphanedToolMessages(messages)).toEqual([user]);
+	});
+
 	it('settles only pending blocks in a mixed message', () => {
 		const messages: AgentMessage[] = [
 			{

@@ -135,8 +135,13 @@ export type ContentToolCall = ContentMetadata & {
 	providerExecuted?: boolean;
 } & (
 		| { state: 'pending'; suspension?: ToolCallSuspensionInfo }
-		| { state: 'resolved'; output: JSONValue; canceled?: boolean }
-		| { state: 'rejected'; error: string }
+		| {
+				state: 'resolved';
+				output: JSONValue;
+				canceled?: boolean;
+				resultProviderOptions?: ProviderOptions;
+		  }
+		| { state: 'rejected'; error: string; resultProviderOptions?: ProviderOptions }
 	);
 
 /**

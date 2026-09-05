@@ -2,8 +2,9 @@ import { isLlmMessage } from '../../sdk/message';
 import type { AgentMessage, ContentToolCall, MessageContent } from '../../types/sdk/message';
 
 /**
- * Settle pending tool-call blocks in loaded thread history by rejecting them
- * with an explanation that the call never completed.
+ * Settle pending local tool-call blocks in loaded thread history by rejecting
+ * them with an explanation that the call never completed. Remove pending
+ * provider-executed calls because a local result is invalid for their protocol.
  *
  * A pending block in *history* means a previous turn suspended on the call
  * (usually awaiting a user confirmation) and was never resumed — the user
@@ -19,14 +20,23 @@ import type { AgentMessage, ContentToolCall, MessageContent } from '../../types/
  * live suspension, which receives its real result on resume.
  */
 export function settleOrphanedToolMessages<T extends AgentMessage>(messages: T[]): T[] {
-	return messages.map((msg) => {
-		if (!isLlmMessage(msg)) return msg;
+	const result: T[] = [];
+
+	for (const msg of messages) {
+		if (!isLlmMessage(msg)) {
+			result.push(msg);
+			continue;
+		}
 		if (!msg.content.some((block) => block.type === 'tool-call' && block.state === 'pending')) {
-			return msg;
+			result.push(msg);
+			continue;
 		}
 
-		const content = msg.content.map((block: MessageContent) => {
+		const content = msg.content.flatMap((block: MessageContent) => {
 			if (block.type !== 'tool-call' || block.state !== 'pending') return block;
+			// Provider tools execute inside the model response. A synthetic local
+			// result is not valid for their server tool-call protocol.
+			if (block.providerExecuted) return [];
 			const { suspension, ...rest } = block;
 			return {
 				...rest,
@@ -34,8 +44,10 @@ export function settleOrphanedToolMessages<T extends AgentMessage>(messages: T[]
 				error: buildAbandonedSuspensionError(block),
 			};
 		});
-		return { ...msg, content };
-	});
+		if (content.length > 0) result.push({ ...msg, content });
+	}
+
+	return result;
 }
 
 function buildAbandonedSuspensionError(

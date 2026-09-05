@@ -268,6 +268,12 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 function toolCallToResultPart(
 	block: ContentToolCall & { state: 'resolved' | 'rejected' },
 ): ToolResultPart {
+	// Provider-executed results carry their own replay metadata, separate from
+	// the tool-call part's; local results carry none.
+	const replay = block.resultProviderOptions
+		? { providerOptions: block.resultProviderOptions }
+		: {};
+
 	if (block.state === 'resolved') {
 		return {
 			type: 'tool-result',
@@ -276,6 +282,7 @@ function toolCallToResultPart(
 			output: isContentToolResultOutput(block.output)
 				? block.output
 				: { type: 'json', value: block.output },
+			...replay,
 		};
 	}
 	// rejected
@@ -290,6 +297,7 @@ function toolCallToResultPart(
 			output: block.providerExecuted
 				? { type: 'error-json', value: errorValue }
 				: { type: 'error-text', value: errorValue },
+			...replay,
 		};
 	}
 	return {
@@ -297,6 +305,7 @@ function toolCallToResultPart(
 		toolCallId: block.toolCallId,
 		toolName: block.toolName,
 		output: { type: 'error-json', value: errorValue as JSONValue },
+		...replay,
 	};
 }
 
@@ -538,6 +547,10 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 				const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
 				mutableBlock.state = 'rejected';
 				mutableBlock.error = JSON.stringify(output);
+			}
+			if (block.providerExecuted && part.providerOptions) {
+				const settled = block as Extract<ContentToolCall, { state: 'resolved' | 'rejected' }>;
+				settled.resultProviderOptions = part.providerOptions;
 			}
 		}
 	};
