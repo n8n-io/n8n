@@ -1,29 +1,37 @@
 name: Hide outdated cubic review comments
 
-# Every time cubic re-reviews a PR (e.g. after a new commit) it posts a brand new
-# "left a comment" review summary instead of updating the previous one, which
-# clutters the PR timeline. This workflow minimizes (hides) all but the most
-# recent cubic-dev-ai review comment on a PR, so only the latest summary is
-# visible by default. Hidden comments are collapsed, not deleted -- anyone can
-# still expand them.
+# Every time cubic re-reviews a PR it posts a brand new "left a comment" review
+# summary instead of updating the previous one, which clutters the PR timeline.
+# This workflow minimizes (hides) every cubic-dev-ai review except the one that
+# just arrived. Hidden comments are collapsed, not deleted -- anyone can still
+# expand them. Only review summaries are touched; cubic's issue comments and
+# inline threads are left alone.
 
-# Runs on `pull_request` (not `pull_request_target`) so it never executes with
-# elevated permissions against untrusted fork code. The tradeoff: GitHub only
-# grants a write-capable token to `pull_request` runs when the PR's head repo
-# is this same repo, so the job below is skipped for PRs from forks -- outdated
-# cubic comments on external-contributor PRs won't be minimized.
+# Triggered by the review itself, not by the push. cubic posts its review 2-11
+# minutes after a `synchronize`, so a push-triggered run cannot see the review it
+# is meant to supersede and always leaves the previous one visible.
+# `pull_request_review` runs in the base-repo context, so it also gets a
+# write-capable token on fork PRs. It checks out no code.
 
 on:
-  pull_request:
-    types: [synchronize]
+  pull_request_review:
+    types: [submitted]
 
 permissions:
-  pull-requests: write
+  contents: read
+
+concurrency:
+  group: hide-cubic-reviews-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   hide-old-cubic-reviews:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event.review.user.login == 'cubic-dev-ai[bot]' &&
+      github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - name: Minimize previous cubic-dev-ai review comments
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
@@ -31,6 +39,7 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const pull_number = context.payload.pull_request.number;
+            const keepId = context.payload.review.id;
 
             const reviews = await github.paginate(github.rest.pulls.listReviews, {
               owner,
@@ -39,19 +48,34 @@ jobs:
               per_page: 100,
             });
 
-            // Only touch cubic's own reviews that actually have a comment body.
-            const cubicReviews = reviews
-              .filter(
-                (r) =>
-                  r.user &&
-                  r.user.login === 'cubic-dev-ai[bot]' &&
-                  r.body &&
-                  r.body.trim().length > 0
-              )
-              .sort((a, b) => new Date(a.submitted_at) - new Date(b.submitted_at));
+            // Never touch a review newer than the triggering one. Two reviews
+            // submitted close together start two runs; without this guard the
+            // older run minimizes the newer review, and the newer run keeps that
+            // review but never restores its visibility, hiding every summary.
+            //
+            // A stale read that omits the triggering review means everything
+            // listed predates it, so Infinity is the right cutoff there.
+            const keep = reviews.find((r) => r.id === keepId);
+            const keepAt = keep ? new Date(keep.submitted_at).getTime() : Infinity;
 
-            // Keep the newest review visible, hide everything older.
-            const toHide = cubicReviews.slice(0, -1);
+            // `submitted_at` has second granularity, so two reviews can tie.
+            // Review ids grow with submission order, which breaks the tie and
+            // makes this a total order -- without it a tie hides neither review
+            // and both summaries stay visible.
+            const precedesKeep = (r) => {
+              const at = new Date(r.submitted_at).getTime();
+              return at < keepAt || (at === keepAt && r.id < keepId);
+            };
+
+            const toHide = reviews.filter(
+              (r) =>
+                r.id !== keepId &&
+                r.user &&
+                r.user.login === 'cubic-dev-ai[bot]' &&
+                r.body &&
+                r.body.trim().length > 0 &&
+                precedesKeep(r)
+            );
 
             for (const review of toHide) {
               try {
