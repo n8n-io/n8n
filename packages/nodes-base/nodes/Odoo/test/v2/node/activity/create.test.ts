@@ -53,18 +53,19 @@ describe('OdooV2 — activity:create', () => {
 	it('looks up ir.model ID and creates an activity with res_model_id', async () => {
 		setupParams();
 		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({}) // fields_get schema
 			.mockResolvedValueOnce(MOCK_MODEL_RECORD)
 			.mockResolvedValueOnce([MOCK_ACTIVITY_ID]);
 
 		const result = await node.execute.call(exec);
 
-		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(1, 'ir.model', 'search_read', {
+		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(2, 'ir.model', 'search_read', {
 			domain: [['model', '=', 'res.partner']],
 			fields: ['id'],
 			limit: 1,
 			offset: 0,
 		});
-		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(2, 'mail.activity', 'create', {
+		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(3, 'mail.activity', 'create', {
 			vals_list: [{ res_model_id: 3, res_id: 42, activity_type_id: 1 }],
 		});
 		expect(result[0][0].json).toEqual({ id: MOCK_ACTIVITY_ID });
@@ -75,12 +76,13 @@ describe('OdooV2 — activity:create', () => {
 			'additionalFields.value': { summary: 'Follow up', date_deadline: '2025-06-01' },
 		});
 		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({}) // fields_get schema
 			.mockResolvedValueOnce(MOCK_MODEL_RECORD)
 			.mockResolvedValueOnce([MOCK_ACTIVITY_ID]);
 
 		await node.execute.call(exec);
 
-		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(2, 'mail.activity', 'create', {
+		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(3, 'mail.activity', 'create', {
 			vals_list: [
 				{
 					summary: 'Follow up',
@@ -98,13 +100,14 @@ describe('OdooV2 — activity:create', () => {
 			'additionalFields.value': { activity_type_id: 99 },
 		});
 		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({}) // fields_get schema
 			.mockResolvedValueOnce(MOCK_MODEL_RECORD)
 			.mockResolvedValueOnce([MOCK_ACTIVITY_ID]);
 
 		await node.execute.call(exec);
 
 		// activity_type_id from RLC (1) should win over RMC value (99)
-		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(2, 'mail.activity', 'create', {
+		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(3, 'mail.activity', 'create', {
 			vals_list: [expect.objectContaining({ activity_type_id: 1 })],
 		});
 	});
@@ -113,12 +116,13 @@ describe('OdooV2 — activity:create', () => {
 		setupParams({ 'additionalFields.mappingMode': 'autoMapInputData' });
 		exec.getInputData.mockReturnValue([{ json: { summary: 'Auto', note: 'Test' } }]);
 		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({}) // fields_get schema
 			.mockResolvedValueOnce(MOCK_MODEL_RECORD)
 			.mockResolvedValueOnce([MOCK_ACTIVITY_ID]);
 
 		await node.execute.call(exec);
 
-		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(2, 'mail.activity', 'create', {
+		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(3, 'mail.activity', 'create', {
 			vals_list: [expect.objectContaining({ summary: 'Auto', note: 'Test' })],
 		});
 	});
@@ -126,6 +130,7 @@ describe('OdooV2 — activity:create', () => {
 	it('extracts scalar id when Odoo returns a plain number', async () => {
 		setupParams();
 		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({}) // fields_get schema
 			.mockResolvedValueOnce(MOCK_MODEL_RECORD)
 			.mockResolvedValueOnce(MOCK_ACTIVITY_ID);
 
@@ -137,7 +142,9 @@ describe('OdooV2 — activity:create', () => {
 	it('returns error item and continues when continueOnFail is true', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(true);
-		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Odoo error'));
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({}) // fields_get schema
+			.mockRejectedValue(new Error('Odoo error'));
 
 		const result = await node.execute.call(exec);
 
@@ -147,7 +154,9 @@ describe('OdooV2 — activity:create', () => {
 	it('rethrows the error when continueOnFail is false', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(false);
-		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Odoo error'));
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({}) // fields_get schema
+			.mockRejectedValue(new Error('Odoo error'));
 
 		await expect(node.execute.call(exec)).rejects.toThrow('Odoo error');
 	});

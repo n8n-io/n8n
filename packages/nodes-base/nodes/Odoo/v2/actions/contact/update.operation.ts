@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { recordRLC } from '../../helpers/utils';
+import { formatOdooDateFields, getModelSchema, recordRLC } from '../../helpers/utils';
 import { odooApiRequest } from '../../transport';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -41,6 +41,7 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const schema = await getModelSchema(this, 'res.partner');
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -57,6 +58,8 @@ export async function execute(
 			} else {
 				vals = this.getNodeParameter('fieldsToSend.value', i, {}) as IDataObject;
 			}
+
+			vals = formatOdooDateFields(vals, schema);
 
 			await odooApiRequest.call(this, 'res.partner', 'write', { ids: [contactId], vals });
 
