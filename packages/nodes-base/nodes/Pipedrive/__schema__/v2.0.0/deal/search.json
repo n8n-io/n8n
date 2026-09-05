@@ -1,0 +1,92 @@
+{
+	"properties": {
+		"currency": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"items": {},
+			"type": "array"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_archived": {
+			"type": "boolean"
+		},
+		"notes": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"organization": {
+			"properties": {
+				"address": {},
+				"id": {
+					"type": "number"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"owner": {
+			"properties": {
+				"id": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"person": {
+			"properties": {
+				"id": {
+					"type": "number"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"pipeline": {
+			"properties": {
+				"id": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"result_score": {
+			"type": "number"
+		},
+		"stage": {
+			"properties": {
+				"id": {
+					"type": "number"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"status": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"value": {
+			"type": "number"
+		},
+		"visible_to": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

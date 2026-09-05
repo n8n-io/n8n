@@ -1,0 +1,74 @@
+{
+	"properties": {
+		"auto_provision": {
+			"type": "boolean"
+		},
+		"auto_type": {},
+		"created_by": {
+			"type": "string"
+		},
+		"date_create": {
+			"type": "number"
+		},
+		"date_delete": {
+			"type": "number"
+		},
+		"date_update": {
+			"type": "number"
+		},
+		"deleted_by": {},
+		"description": {
+			"type": "string"
+		},
+		"enterprise_subteam_id": {
+			"type": "string"
+		},
+		"handle": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"is_external": {
+			"type": "boolean"
+		},
+		"is_subteam": {
+			"type": "boolean"
+		},
+		"is_usergroup": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": "string"
+		},
+		"prefs": {
+			"properties": {
+				"channels": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"groups": {
+					"items": {},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"team_id": {
+			"type": "string"
+		},
+		"updated_by": {
+			"type": "string"
+		},
+		"user_count": {
+			"type": "number"
+		},
+		"users": {
+			"items": {},
+			"type": "array"
+		}
+	},
+	"type": "object"
+}
