@@ -46,6 +46,7 @@ export class CatalogViolationsRule extends BaseRule<CodeHealthContext> {
 
 		for (const pkgInfo of packages) {
 			for (const dep of pkgInfo.deps) {
+				if (dep.section === 'peerDependencies') continue;
 				if (dep.usesCatalog || dep.version.startsWith('workspace:')) continue;
 				// Peer dependencies MAY contain a compatibility range for consumers.
 				// Forcing them to `catalog:` freezes them to an exact version on
@@ -83,6 +84,7 @@ export class CatalogViolationsRule extends BaseRule<CodeHealthContext> {
 
 		for (const pkgInfo of packages) {
 			for (const dep of pkgInfo.deps) {
+				if (dep.section === 'peerDependencies') continue;
 				if (dep.usesCatalog || dep.version.startsWith('workspace:')) continue;
 				if (findInCatalog(catalogData, dep.name).found) continue;
 
