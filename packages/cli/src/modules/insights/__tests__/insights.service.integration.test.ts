@@ -222,7 +222,75 @@ describe('InsightsService (Integration)', () => {
 				failureRate: { deviation: 0, unit: 'ratio', value: 0.167 },
 				timeSaved: { deviation: 0, unit: 'minute', value: 0 },
 				total: { deviation: -6, unit: 'count', value: 12 },
+				billable: { deviation: 0, unit: 'count', value: 0 },
 			});
+		});
+
+		test('returns billable independently of total', async () => {
+			const endDate = DateTime.utc();
+			const startDate = endDate.minus({ days: 6 });
+
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 10,
+				periodUnit: 'day',
+				periodStart: endDate.minus({ day: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'failure',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: endDate.minus({ day: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'billable',
+				value: 9,
+				periodUnit: 'day',
+				periodStart: endDate.minus({ day: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'billable',
+				value: 4,
+				periodUnit: 'day',
+				periodStart: startDate.minus({ days: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: startDate.minus({ days: 1 }),
+			});
+
+			const summary = await insightsService.getInsightsSummary({
+				user: globalWorkflowReadUser,
+				startDate: startDate.toJSDate(),
+				endDate: endDate.toJSDate(),
+			});
+
+			expect(summary.total.value).toBe(12);
+			expect(summary.billable.value).toBe(9);
+			expect(summary.billable.deviation).toBe(5);
+			expect(summary.billable.unit).toBe('count');
+		});
+
+		test('does not count billable rows toward total', async () => {
+			const now = DateTime.utc();
+
+			await createCompactedInsightsEvent(workflow, {
+				type: 'billable',
+				value: 7,
+				periodUnit: 'day',
+				periodStart: now.minus({ day: 1 }),
+			});
+
+			const summary = await insightsService.getInsightsSummary({
+				user: globalWorkflowReadUser,
+				startDate: now.minus({ days: 7 }).toJSDate(),
+				endDate: now.toJSDate(),
+			});
+
+			expect(summary.total.value).toBe(0);
+			expect(summary.billable.value).toBe(7);
 		});
 
 		test('no data for previous period should return null deviation', async () => {
@@ -247,6 +315,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ASSERT
 			expect(Object.values(summary).map((v) => v.deviation)).toEqual([
+				null,
 				null,
 				null,
 				null,
@@ -321,6 +390,7 @@ describe('InsightsService (Integration)', () => {
 				failureRate: { value: 0, unit: 'ratio', deviation: 0 },
 				timeSaved: { value: 0, unit: 'minute', deviation: 0 },
 				total: { value: 10, unit: 'count', deviation: -5 },
+				billable: { value: 0, unit: 'count', deviation: 0 },
 			});
 		});
 
@@ -1003,6 +1073,34 @@ describe('InsightsService (Integration)', () => {
 			expect(byTime).toEqual([]);
 		});
 
+		test('does not include billable in by-time values', async () => {
+			const now = DateTime.utc();
+			await createCompactedInsightsEvent(workflow1, {
+				type: 'success',
+				value: 3,
+				periodUnit: 'day',
+				periodStart: now.minus({ days: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow1, {
+				type: 'billable',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: now.minus({ days: 1 }),
+			});
+
+			const byTime = await insightsService.getInsightsByTime({
+				user: globalWorkflowReadUser,
+				startDate: now.minus({ days: 7 }).toJSDate(),
+				endDate: now.toJSDate(),
+			});
+
+			expect(byTime.length).toBeGreaterThan(0);
+			for (const row of byTime) {
+				expect(row.values).not.toHaveProperty('billable');
+				expect(row.values).not.toHaveProperty('undefined');
+			}
+		});
+
 		test('returns empty array when no insights in the time range exists', async () => {
 			const now = DateTime.utc();
 			await createCompactedInsightsEvent(workflow1, {
@@ -1131,7 +1229,7 @@ describe('InsightsService (Integration)', () => {
 			});
 		});
 
-		test('compacted data with limited insight types are grouped by time correctly', async () => {
+		test('compacted data are grouped by time with failed and time saved', async () => {
 			// ARRANGE
 			const now = DateTime.utc();
 			for (const workflow of [workflow1, workflow2]) {
@@ -1162,23 +1260,29 @@ describe('InsightsService (Integration)', () => {
 				user: globalWorkflowReadUser,
 				startDate,
 				endDate: now.toJSDate(),
-				insightTypes: ['time_saved_min', 'failure'],
 			});
 
 			// ASSERT
 			expect(byTime).toHaveLength(2);
 
-			// expect results to contain only failure and time saved insights
 			expect(byTime[0].date).toEqual(now.minus({ days: 10 }).startOf('day').toISO());
 			expect(byTime[0].values).toEqual({
-				timeSaved: 30,
+				total: 0,
+				succeeded: 0,
 				failed: 0,
+				failureRate: 0,
+				averageRunTime: 0,
+				timeSaved: 30,
 			});
 
 			expect(byTime[1].date).toEqual(now.startOf('day').toISO());
 			expect(byTime[1].values).toEqual({
-				timeSaved: 0,
+				total: 7,
+				succeeded: 3,
 				failed: 4,
+				failureRate: 4 / 7,
+				averageRunTime: 0,
+				timeSaved: 0,
 			});
 		});
 
@@ -1429,6 +1533,63 @@ describe('InsightsService (Integration)', () => {
 
 				expect(byTime).toHaveLength(0);
 			});
+		});
+	});
+
+	describe('getTimeSavedInsightsByTime', () => {
+		let insightsService: InsightsService;
+		beforeAll(() => {
+			insightsService = Container.get(InsightsService);
+		});
+
+		const globalWorkflowReadUser = {
+			role: { scopes: [{ slug: 'workflow:read' }] },
+		} as unknown as User;
+
+		let project: Project;
+		let workflow1: IWorkflowDb & WorkflowEntity;
+		let workflow2: IWorkflowDb & WorkflowEntity;
+
+		beforeEach(async () => {
+			project = await createTeamProject();
+			workflow1 = await createWorkflow({}, project);
+			workflow2 = await createWorkflow({}, project);
+		});
+
+		test('returns only time saved', async () => {
+			const now = DateTime.utc();
+			for (const workflow of [workflow1, workflow2]) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: workflow === workflow1 ? 1 : 2,
+					periodUnit: 'day',
+					periodStart: now,
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'failure',
+					value: 2,
+					periodUnit: 'day',
+					periodStart: now,
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'time_saved_min',
+					value: workflow === workflow1 ? 10 : 20,
+					periodUnit: 'day',
+					periodStart: now.minus({ days: 10 }),
+				});
+			}
+
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
+
+			const byTime = await insightsService.getTimeSavedInsightsByTime({
+				user: globalWorkflowReadUser,
+				startDate,
+				endDate: now.toJSDate(),
+			});
+
+			expect(byTime).toHaveLength(2);
+			expect(byTime[0].values).toEqual({ timeSaved: 30 });
+			expect(byTime[1].values).toEqual({ timeSaved: 0 });
 		});
 	});
 

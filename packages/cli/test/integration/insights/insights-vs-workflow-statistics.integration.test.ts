@@ -292,4 +292,45 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		const totalTimeSaved1 = insights1TimeSaved.reduce((sum, insight) => sum + insight.value, 0);
 		expect(totalTimeSaved1).toBe(10 * 5); // 10 executions * 5 minutes saved per execution
 	}, 60000);
+
+	test('should keep billable insights in sync with root production executions', async () => {
+		const executionCount = 10;
+		const executionIds: string[] = [];
+		for (let i = 0; i < executionCount; i++) {
+			executionIds.push(await executeWorkflow(workflow, 'webhook'));
+		}
+
+		await Promise.all(executionIds.map(async (id) => await waitForExecution(id)));
+		await waitForStatistics(workflow.id, executionCount);
+		await waitForCompaction(workflow.id, executionCount);
+
+		const productionSuccess = await workflowStatisticsRepository.findOne({
+			where: {
+				workflowId: workflow.id,
+				name: StatisticsNames.productionSuccess,
+			},
+		});
+		const productionError = await workflowStatisticsRepository.findOne({
+			where: {
+				workflowId: workflow.id,
+				name: StatisticsNames.productionError,
+			},
+		});
+
+		const rootProductionCount =
+			(productionSuccess?.rootCount ?? 0) + (productionError?.rootCount ?? 0);
+
+		const compactedInsights = await insightsByPeriodRepository.find({
+			where: {
+				metadata: { workflowId: workflow.id },
+			},
+			relations: ['metadata'],
+		});
+		const billableCount = compactedInsights
+			.filter((insight) => insight.type === 'billable')
+			.reduce((sum, insight) => sum + insight.value, 0);
+
+		expect(rootProductionCount).toBe(executionCount);
+		expect(billableCount).toBe(rootProductionCount);
+	}, 60000);
 });

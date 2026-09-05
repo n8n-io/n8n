@@ -5,9 +5,11 @@ required:
   - failureRate
   - timeSaved
   - averageRunTime
+  - billable
 properties:
   total:
     type: object
+    description: Count of production executions, including error workflows. Does not include sub-workflows, manual, chat, or agent runs.
     required:
       - value
       - deviation
@@ -81,3 +83,19 @@ properties:
       unit:
         type: string
         enum: ['millisecond']
+  billable:
+    type: object
+    description: Count of billable production root executions. Excludes error workflows, sub-workflows, manual, chat, and agent runs.
+    required:
+      - value
+      - deviation
+      - unit
+    properties:
+      value:
+        type: number
+      deviation:
+        type: number
+        nullable: true
+      unit:
+        type: string
+        enum: ['count']

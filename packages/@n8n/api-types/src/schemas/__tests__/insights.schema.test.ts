@@ -15,6 +15,7 @@ describe('insightsSummarySchema', () => {
 				failureRate: { value: 1.9, deviation: -5, unit: 'ratio' },
 				timeSaved: { value: 54, deviation: -5, unit: 'minute' },
 				averageRunTime: { value: 2.5, deviation: -5, unit: 'millisecond' },
+				billable: { value: 500, deviation: 70, unit: 'count' },
 			},
 			expected: true,
 		},
@@ -26,12 +27,25 @@ describe('insightsSummarySchema', () => {
 				failureRate: { value: 1.9, deviation: -5, unit: 'time' }, // Wrong unit
 				timeSaved: { value: 54, deviation: -5, unit: 'minute' },
 				averageRunTime: { value: 2.5, deviation: -5, unit: 'millisecond' },
+				billable: { value: 500, deviation: 70, unit: 'count' },
 			},
 			expected: false,
 		},
 		{
 			name: 'missing total',
 			value: {
+				failed: { value: 14, deviation: 3, unit: 'count' },
+				failureRate: { value: 1.9, deviation: -5, unit: 'ratio' },
+				timeSaved: { value: 54, deviation: -5, unit: 'minute' },
+				averageRunTime: { value: 2.5, deviation: -5, unit: 'millisecond' },
+				billable: { value: 500, deviation: 70, unit: 'count' },
+			},
+			expected: false,
+		},
+		{
+			name: 'missing billable',
+			value: {
+				total: { value: 525, deviation: 85, unit: 'count' },
 				failed: { value: 14, deviation: 3, unit: 'count' },
 				failureRate: { value: 1.9, deviation: -5, unit: 'ratio' },
 				timeSaved: { value: 54, deviation: -5, unit: 'minute' },
@@ -47,6 +61,7 @@ describe('insightsSummarySchema', () => {
 				failureRate: { value: 1.9, deviation: -5, unit: 'ratio' },
 				timeSaved: { value: 54, deviation: -5, unit: 'minute' },
 				averageRunTime: { value: 2.5, deviation: -5, unit: 'millisecond' },
+				billable: { value: 500, deviation: 70, unit: 'count' },
 			},
 			expected: false,
 		},
@@ -58,6 +73,7 @@ describe('insightsSummarySchema', () => {
 				failureRate: { value: 1.9, deviation: -5, unit: 'ratio' },
 				timeSaved: { value: 54, deviation: -5, unit: 'minute' },
 				averageRunTime: { value: 2.5, deviation: -5, unit: 'millisecond' },
+				billable: { value: 500, deviation: 70, unit: 'count' },
 				extraKey: { value: 100, deviation: 10, unit: 'count' }, // Invalid key
 			},
 			expected: false,

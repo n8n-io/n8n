@@ -133,6 +133,7 @@ describe('insights.api', () => {
 				failureRate: { value: 0.2, deviation: -0.05, unit: 'ratio' },
 				timeSaved: { value: 120, deviation: 30, unit: 'minute' },
 				averageRunTime: { value: 5000, deviation: 200, unit: 'millisecond' },
+				billable: { value: 80, deviation: 4, unit: 'count' },
 			};
 
 			vi.mocked(makeRestApiRequest).mockResolvedValue(mockSummary);
@@ -163,6 +164,7 @@ describe('insights.api', () => {
 				failureRate: { value: 0.2, deviation: -0.03, unit: 'ratio' },
 				timeSaved: { value: 60, deviation: 15, unit: 'minute' },
 				averageRunTime: { value: 3000, deviation: 100, unit: 'millisecond' },
+				billable: { value: 40, deviation: 1, unit: 'count' },
 			};
 
 			vi.mocked(makeRestApiRequest).mockResolvedValue(mockSummary);

@@ -7,7 +7,7 @@ import {
 } from '@/features/execution/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import type { DateValue } from '@internationalized/date';
-import type { InsightsSummary } from '@n8n/api-types';
+import type { InsightsSummaryType } from '@n8n/api-types';
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smart-decimal';
@@ -43,7 +43,7 @@ const displayDateRangeLabel = computed(() => {
 	return formatDateRange({ start: props.startDate, end: props.endDate });
 });
 
-const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
+const summaryTitles = computed<Record<InsightsSummaryType, string>>(() => ({
 	total: i18n.baseText('insights.banner.title.total'),
 	failed: i18n.baseText('insights.banner.title.failed'),
 	failureRate: i18n.baseText('insights.banner.title.failureRate'),
@@ -63,7 +63,7 @@ const summaryWithRouteLocations = computed(() =>
 	})),
 );
 
-const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
+const getImpactStyle = (id: InsightsSummaryType, value: number) => {
 	const impact = INSIGHTS_UNIT_IMPACT_MAPPING[id];
 	if (value === 0 || impact === INSIGHT_IMPACT_TYPES.NEUTRAL) {
 		return $style.neutral;
@@ -77,7 +77,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 	return $style.neutral;
 };
 
-const trackTabClick = (insightType: keyof InsightsSummary) => {
+const trackTabClick = (insightType: InsightsSummaryType) => {
 	telemetry.track(`User clicked ${summaryTitles.value[insightType]}`, {
 		referrer: route.name === VIEWS.INSIGHTS ? 'Dashboard' : 'Overview',
 	});
