@@ -1,11 +1,12 @@
 import { timingSafeEqual } from 'crypto';
 import { parseHitlCallbackReference } from 'n8n-core';
-import type { IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
+import isbot from 'isbot';
+import type { IDataObject, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 
 import type { TelegramChatApprovalOptions } from './descriptions';
 import { deriveHitlSecretToken } from './tokens';
 import type { SendAndWaitResponder } from '../../../utils/sendAndWait/interfaces';
-import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
+import { isMicrosoftPreviewService, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 import { apiRequest } from '../GenericFunctions';
 import type { CallbackQuery } from '../IEvent';
 
@@ -76,6 +77,56 @@ async function applyPostDecisionEdit(
 	}
 }
 
+/** Best-effort cleanup: response delivery must not depend on message deletion succeeding. */
+async function deleteSentMessage(
+	context: IWebhookFunctions,
+	chatId: unknown,
+	messageId: unknown,
+): Promise<void> {
+	if (chatId === undefined || messageId === undefined) return;
+	try {
+		await apiRequest.call(context, 'POST', 'deleteMessage', {
+			chat_id: chatId,
+			message_id: messageId,
+		});
+	} catch {
+		// intentional
+	}
+}
+
+/**
+ * Link-button / form responses carry no message ids, so the target comes from
+ * the `tgDeleteTarget` execution metadata written at send time. Never fires on
+ * the form-render GET, which must not remove the message before it is answered.
+ */
+async function deleteMessageOnResponse(context: IWebhookFunctions): Promise<void> {
+	const options = context.getNodeParameter('options', {}) as IDataObject;
+	if (!options || options.deleteOnResponse !== true) return;
+
+	const req = context.getRequestObject();
+	const method = req.method;
+	const responseType = context.getNodeParameter('responseType', 'approval') as string;
+	if ((responseType === 'freeText' || responseType === 'customForm') && method === 'GET') return;
+
+	// Mirror the shared handler's bot guard: a preview crawler fetching the
+	// approval link must not delete the message while the execution keeps waiting.
+	if (
+		responseType === 'approval' &&
+		(isbot(req.headers['user-agent']) || isMicrosoftPreviewService(req.headers['user-agent']))
+	) {
+		return;
+	}
+
+	let stored: { chatId?: string | number; messageId?: string | number } | undefined;
+	try {
+		stored = JSON.parse(context.customData.get('tgDeleteTarget') ?? '') as typeof stored;
+	} catch {
+		stored = undefined;
+	}
+
+	await deleteSentMessage(context, stored?.chatId, stored?.messageId);
+}
+
 /**
  * Resume handler for the Telegram node's Send and Wait webhook. Detects a
  * one-tap chat-approval callback and handles it end to end (secret-token
@@ -94,6 +145,7 @@ export async function telegramSendAndWaitWebhook(
 	const chatApproval = this.getNodeParameter('chatApproval', false) as boolean;
 
 	if (!bodyData.callback_query || !chatApproval) {
+		await deleteMessageOnResponse(this);
 		return await sendAndWaitWebhook.call(this);
 	}
 
@@ -164,16 +216,22 @@ export async function telegramSendAndWaitWebhook(
 		'postDecisionBehavior',
 		'showOutcome',
 	) as TelegramChatApprovalOptions['postDecisionBehavior'];
+	const deleteOnResponse =
+		(this.getNodeParameter('options', {}) as IDataObject).deleteOnResponse === true;
 
 	if (chatId !== undefined && messageId !== undefined) {
-		await applyPostDecisionEdit(this, {
-			chatId,
-			messageId,
-			approved,
-			from,
-			originalText: callbackQuery.message?.text ?? '',
-			postDecisionBehavior,
-		});
+		if (deleteOnResponse) {
+			await deleteSentMessage(this, chatId, messageId);
+		} else {
+			await applyPostDecisionEdit(this, {
+				chatId,
+				messageId,
+				approved,
+				from,
+				originalText: callbackQuery.message?.text ?? '',
+				postDecisionBehavior,
+			});
+		}
 	}
 
 	// --- response: resume the execution with the decision and responder identity ---
