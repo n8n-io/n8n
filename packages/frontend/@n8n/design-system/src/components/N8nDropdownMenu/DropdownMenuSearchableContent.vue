@@ -266,7 +266,7 @@ defineExpose({ resetNavigation });
 			ref="searchRef"
 			:model-value="searchTerm"
 			:placeholder="searchPlaceholder"
-			:aria-active-descendant="activeDescendantId"
+			:aria-activedescendant="activeDescendantId"
 			@update:model-value="handleSearchUpdate"
 		>
 			<template v-if="slots['search-prefix']" #search-prefix>
