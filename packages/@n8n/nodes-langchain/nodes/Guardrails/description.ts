@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { type INodeProperties } from 'n8n-workflow';
 
 import { JAILBREAK_PROMPT } from './actions/checks/jailbreak';
@@ -13,7 +12,7 @@ const THRESHOLD_OPTION: INodeProperties = {
 	type: 'number',
 	default: '',
 	description: 'Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)',
-	hint: 'Inputs scoring less than this will be treated as violations',
+	hint: 'Flagged inputs with confidence at or above this threshold will be treated as violations',
 };
 
 const getPromptOption: (
