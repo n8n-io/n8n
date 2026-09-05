@@ -278,6 +278,38 @@ describe('ExecutionRepository', () => {
 			expect(waitingExec?.waitTill?.getTime()).toBe(waitTill.getTime());
 			expect(successExec?.status).toBe('success');
 		});
+
+		it('should crash a soft-deleted in-progress execution', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow();
+			const { identifiers } = await Container.get(ExecutionRepository).insert({
+				workflowId: workflow.id,
+				mode: 'manual',
+				startedAt: new Date(),
+				status: 'running',
+				finished: false,
+				createdAt: new Date(),
+			});
+			// Postgres returns the inserted id as a number, SQLite as a string.
+			const runningId = String(identifiers[0].id);
+			await executionRepo.softDelete(runningId);
+
+			const crashed = await executionRepo.markAsCrashed([runningId]);
+
+			const runningExec = await executionRepo.findOne({
+				where: { id: runningId },
+				withDeleted: true,
+			});
+			expect(runningExec?.status).toBe('crashed');
+			expect(crashed).toEqual([
+				{
+					id: runningId,
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					mode: 'manual',
+				},
+			]);
+		});
 	});
 
 	describe('cancelManyRunning', () => {

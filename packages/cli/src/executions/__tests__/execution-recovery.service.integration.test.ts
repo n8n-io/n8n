@@ -28,6 +28,7 @@ import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
 import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -77,6 +78,7 @@ describe('ExecutionRecoveryService', () => {
 			ownershipService,
 			projectRelationRepository,
 			workflowPushNotifier,
+			new ExecutionCrashService(executionRepository, mock()),
 		);
 	});
 

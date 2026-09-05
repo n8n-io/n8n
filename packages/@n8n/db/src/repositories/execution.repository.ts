@@ -22,6 +22,7 @@ import {
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { stringify } from 'flatted';
+import chunk from 'lodash/chunk';
 import pick from 'lodash/pick';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import type {
@@ -30,6 +31,7 @@ import type {
 	ExecutionSummary,
 	IRunExecutionData,
 	IRunExecutionDataAll,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	CRASHABLE_EXECUTION_STATUSES,
@@ -66,6 +68,13 @@ class PostgresLiveRowsRetrievalError extends UnexpectedError {
 		super('Failed to retrieve live execution rows in Postgres', { extra: { rows } });
 	}
 }
+
+export type CrashedExecution = {
+	id: string;
+	workflowId: string;
+	workflowName?: string;
+	mode: WorkflowExecuteMode;
+};
 
 export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
@@ -373,23 +382,89 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 	}
 
-	async markAsCrashed(executionIds: string | string[]) {
-		if (!Array.isArray(executionIds)) executionIds = [executionIds];
+	/**
+	 * Set in-progress executions to `crashed` in batches. Returns the executions this
+	 * call transitioned, and calls `onBatchTransitioned` after each batch commits.
+	 */
+	async markAsCrashed(
+		executionIds: string | string[],
+		onBatchTransitioned?: (batch: CrashedExecution[]) => void,
+	): Promise<CrashedExecution[]> {
+		// Dedupe so a repeated id is reported, and counted, once.
+		const ids = [...new Set(Array.isArray(executionIds) ? executionIds : [executionIds])];
 
-		let processed: number = 0;
-		while (processed < executionIds.length) {
-			// NOTE: if a slice goes past the end of the array, it just returns up til the end.
-			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
-			await this.update(
-				// Guard against overwriting executions that have since moved to a `waiting` or
-				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
-				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
-				{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
-				{ status: 'crashed', stoppedAt: new Date(), waitTill: null },
-			);
-			this.logger.info('Marked executions as `crashed`', { executionIds });
-			processed += batch.length;
+		const crashed: CrashedExecution[] = [];
+
+		for (const batch of chunk(ids, MAX_UPDATE_BATCH_SIZE)) {
+			const transitioned = await this.transitionToCrashed({ id: In(batch) });
+
+			crashed.push(...transitioned);
+			// Report each batch as it commits, so a later batch that throws keeps the earlier reports.
+			onBatchTransitioned?.(transitioned);
+			this.logger.info('Marked executions as `crashed`', { executionIds: batch });
 		}
+
+		return crashed;
+	}
+
+	/**
+	 * Set the workflow's in-progress executions to `crashed`. Returns the executions this
+	 * call transitioned.
+	 */
+	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
+		const transitioned = await this.transitionToCrashed({ workflowId });
+
+		if (transitioned.length > 0) {
+			this.logger.info('Marked executions as `crashed`', {
+				executionIds: transitioned.map(({ id }) => id),
+			});
+		}
+
+		return transitioned;
+	}
+
+	/**
+	 * Set the rows matching `where` to `crashed`, and return the rows this call transitioned.
+	 * The caller's predicate selects the candidates; the status guard and the identity of the
+	 * written rows are added here.
+	 */
+	private async transitionToCrashed(
+		where: FindOptionsWhere<ExecutionEntity>,
+	): Promise<CrashedExecution[]> {
+		// `stoppedAt` doubles as a claim token, so the read below can match the rows this
+		// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
+		// batch that partly overlaps a concurrent sweep still reads the shared rows back.
+		const stoppedAt = new Date();
+
+		return await this.runInTransaction({}, async (tx) => {
+			// Guard against overwriting executions that have since moved to a `waiting` or
+			// terminal status: recovery can race a `running` -> `waiting` transition and flag a
+			// healthy execution as dangling, but only genuinely in-progress rows should be crashed
+			const updateResult = await tx.update(
+				ExecutionEntity,
+				{ ...where, status: In(CRASHABLE_EXECUTION_STATUSES) },
+				{ status: 'crashed', stoppedAt, waitTill: null },
+			);
+
+			// An UPDATE that matched nothing has nothing to report. An unreported `affected`
+			// is unknown rather than zero, so it falls through to the read.
+			if (updateResult?.affected === 0) return [];
+
+			const rows = await tx.find(ExecutionEntity, {
+				select: { id: true, workflowId: true, mode: true, workflow: { id: true, name: true } },
+				relations: { workflow: true },
+				where: { ...where, status: 'crashed', stoppedAt },
+				// The UPDATE above also crashes soft-deleted rows, so keep them in the read.
+				withDeleted: true,
+			});
+
+			return rows.map(({ id, workflowId, mode, workflow }) => ({
+				id,
+				workflowId,
+				workflowName: workflow?.name,
+				mode,
+			}));
+		});
 	}
 
 	async setRunning(executionId: string) {
