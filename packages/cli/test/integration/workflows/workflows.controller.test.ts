@@ -13,6 +13,7 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import { UUID_V7_PATTERN } from '@n8n/constants';
+import { WorkflowsConfig } from '@n8n/config';
 import type {
 	User,
 	ListQueryDb,
@@ -99,8 +100,19 @@ let eventService: EventService;
 let folderListMissingRole: Role;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
+// This suite asserts on the legacy activation path (`ActiveWorkflowManager` calls,
+// synchronous publish history). The publication service has its own suites under
+// `test/integration/workflows/workflow-publication-*` and `*.publication-status*`.
+const workflowsConfig = Container.get(WorkflowsConfig);
+const originalUseWorkflowPublicationService = workflowsConfig.useWorkflowPublicationService;
+
 beforeAll(async () => {
+	workflowsConfig.useWorkflowPublicationService = false;
 	await utils.initNodeTypes();
+});
+
+afterAll(() => {
+	workflowsConfig.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 });
 
 beforeEach(async () => {

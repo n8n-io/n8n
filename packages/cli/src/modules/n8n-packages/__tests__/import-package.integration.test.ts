@@ -8,6 +8,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import type { Folder, Project } from '@n8n/db';
 import {
 	ProjectRepository,
@@ -105,9 +106,13 @@ const saveOwnedCredential = affixRoleToSaveCredential('credential:owner');
 
 // Reactivating an active workflow on new-version import calls into the active
 // workflow manager; mock it so trigger registration succeeds without real infra.
+// The assertions below target that legacy path, so the publication service is off.
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+const workflowsConfig = Container.get(WorkflowsConfig);
+const originalUseWorkflowPublicationService = workflowsConfig.useWorkflowPublicationService;
 
 beforeAll(async () => {
+	workflowsConfig.useWorkflowPublicationService = false;
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
 	// Register node types so the reactivation path's webhook-conflict check can
@@ -122,6 +127,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+	workflowsConfig.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 	await testDb.terminate();
 });
 
