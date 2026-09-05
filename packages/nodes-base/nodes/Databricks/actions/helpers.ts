@@ -39,7 +39,7 @@ export async function databricksApiRequest(
 
 export function getActiveCredentialType(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
-	itemIndex = 0,
+	itemIndex: number,
 ): 'databricksApi' | 'databricksOAuth2Api' {
 	const authentication = context.getNodeParameter(
 		'authentication',

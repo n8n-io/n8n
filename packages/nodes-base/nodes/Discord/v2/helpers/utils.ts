@@ -307,14 +307,14 @@ export async function sendDiscordMessage(
 		isOAuth2,
 		body,
 		files = [],
-		itemIndex = 0,
+		itemIndex,
 	}: {
 		guildId: string;
 		userGuilds: IDataObject[];
 		isOAuth2: boolean;
 		body: IDataObject;
 		files?: IDataObject[];
-		itemIndex?: number;
+		itemIndex: number;
 	},
 ) {
 	const sendTo = this.getNodeParameter('sendTo', itemIndex) as string;

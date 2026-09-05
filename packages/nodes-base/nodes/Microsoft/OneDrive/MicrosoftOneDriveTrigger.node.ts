@@ -111,7 +111,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 
 		// App-only Graph has no `/me`, so the delta feed is rooted at the chosen
 		// user/drive. `undefined` for OAuth2 → fall back to `/me/drive`.
-		const driveScopeRoot = resolveDriveScopeRoot.call(this, true);
+		const driveScopeRoot = resolveDriveScopeRoot.call(this, true, 0);
 		const deltaRoot = `${baseUrl}/v1.0${driveScopeRoot ? driveEndpoint(driveScopeRoot) : '/me/drive'}/root/delta`;
 
 		// Reset a persisted delta link that belongs to a different scope (auth switched,
