@@ -6996,6 +6996,7 @@
 	"instanceAi.artifactsPanel.context.agentPreviewNamed": "{name} session",
 	"instanceAi.artifactsPanel.context.agentPreviewTitled": "{agentName} — {sessionTitle}",
 	"instanceAi.artifactsPanel.context.agentPreviewSessionTitled": "{sessionTitle}",
+	"instanceAi.setupPanel.executeMessage": "Run a test execution of this workflow.",
 	"instanceAi.projectSelect.tooltip": "Where AI assistant creates automations",
 	"instanceAi.projectSelect.placeholder": "Select a project",
 	"instanceAi.projectSelect.search": "Search projects",

@@ -1369,9 +1369,23 @@ export type InstanceAiAgentPreviewHandoffContext = z.infer<
 	typeof instanceAiAgentPreviewHandoffContextSchema
 >;
 
+/**
+ * Sent with the setup panel's synthesized "Execute" user message. Signals the
+ * agent to run a test execution of the workflow instead of treating the
+ * message as a build request.
+ */
+export const instanceAiSetupPanelExecuteHandoffContextSchema = z.object({
+	source: z.literal('setup-panel-execute'),
+	workflowId: z.string().min(1).max(64),
+});
+export type InstanceAiSetupPanelExecuteHandoffContext = z.infer<
+	typeof instanceAiSetupPanelExecuteHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
+	instanceAiSetupPanelExecuteHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
