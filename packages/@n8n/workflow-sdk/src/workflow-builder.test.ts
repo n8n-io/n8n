@@ -1,3 +1,5 @@
+import type { INodeTypes } from 'n8n-workflow';
+
 import type { NodeInstance, WorkflowJSON } from './types/base';
 import { workflow } from './workflow-builder';
 import { splitInBatches } from './workflow-builder/control-flow-builders/split-in-batches';
@@ -1072,6 +1074,40 @@ describe('Workflow Builder', () => {
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Testing toString() output
 			const parsed = JSON.parse(str) as { name: string };
 			expect(parsed.name).toBe('Test Workflow');
+		});
+	});
+
+	describe('validate() with a node-type provider', () => {
+		const json = {
+			id: 'wf',
+			name: 'Workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 99,
+					position: [0, 0] as [number, number],
+					parameters: { value: '{{ $json.name }}' },
+				},
+			],
+			connections: {},
+		};
+
+		it('still validates when the provider cannot resolve a node version', () => {
+			const provider = {
+				getByName: () => {
+					throw new Error('Unrecognized node type');
+				},
+				getKnownTypes: () => ({}),
+				getByNameAndVersion: () => {
+					throw new Error('Node type "set" is not available in version 99');
+				},
+			} as unknown as INodeTypes;
+
+			const result = workflow.fromJSON(json).validate({ nodeTypesProvider: provider });
+
+			expect(result.warnings.map((warning) => warning.code)).toContain('MISSING_EXPRESSION_PREFIX');
 		});
 	});
 

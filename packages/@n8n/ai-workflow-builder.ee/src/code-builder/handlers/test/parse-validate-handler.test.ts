@@ -4,6 +4,7 @@
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
+import type { INodeTypes } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { ParseValidateHandler } from '../parse-validate-handler';
@@ -541,6 +542,19 @@ describe('ParseValidateHandler', () => {
 				expect.anything(),
 				expect.objectContaining({ allowDisconnectedNodes: true, allowNoTrigger: true }),
 			);
+		});
+
+		it('passes the node-type provider to the graph pass, so type-gated validators run', () => {
+			const nodeTypesProvider = { getByNameAndVersion: vi.fn() } as unknown as INodeTypes;
+			const mockBuilder = {
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+			};
+			mockFromJSON.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			new ParseValidateHandler({ nodeTypesProvider }).validateJSON(nonEmptyJson);
+
+			expect(mockBuilder.validate).toHaveBeenCalledWith({ nodeTypesProvider });
 		});
 
 		it('should collect graph errors and warnings', () => {
