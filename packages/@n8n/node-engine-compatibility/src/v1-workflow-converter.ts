@@ -131,6 +131,8 @@ export class V1WorkflowConverter {
 			typeVersion: node.typeVersion,
 			parameters: node.parameters,
 			continueOnFail: node.continueOnFail === true || node.onError === 'continueRegularOutput',
+			// Conditional, so a node without credentials serializes without the key.
+			...(node.credentials !== undefined && { credentials: node.credentials }),
 		};
 
 		return { id: node.id, name: node.name, type: 'v1-node', config };

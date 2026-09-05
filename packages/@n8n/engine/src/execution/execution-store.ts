@@ -1,15 +1,26 @@
 import type { WorkflowGraph } from '../graph';
-import type { ExecutionMode, ExecutionStatus, TriggerOutputs } from './execution.types';
+import type {
+	ExecutionContext,
+	ExecutionMode,
+	ExecutionStatus,
+	TriggerOutputs,
+} from './execution.types';
 
-/** A new execution to persist. Timestamps are assigned by the store. */
-export interface NewExecutionRecord {
-	/** Caller-minted id. The store never mints one. */
+/** The fields the write side supplies and the execution path reads back. */
+interface BaseExecutionRecord {
 	id: string;
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
 	graph: WorkflowGraph;
 	triggerOutputs: TriggerOutputs | null;
+	context: ExecutionContext;
+}
+
+/** A new execution to persist. Timestamps are assigned by the store. */
+export interface NewExecutionRecord extends BaseExecutionRecord {
+	/** Caller-minted id. The store never mints one. */
+	id: string;
 }
 
 /**
@@ -17,14 +28,7 @@ export interface NewExecutionRecord {
  * decides on `status`, never on when anything happened. The read path has its
  * own view (`ExecutionView`).
  */
-export interface ExecutionRecord {
-	id: string;
-	workflowId: string;
-	status: ExecutionStatus;
-	mode: ExecutionMode;
-	graph: WorkflowGraph;
-	triggerOutputs: TriggerOutputs | null;
-}
+export type ExecutionRecord = BaseExecutionRecord;
 
 /** Thrown by `loadExecution` when no execution exists for the given id. */
 export class ExecutionNotFoundError extends Error {

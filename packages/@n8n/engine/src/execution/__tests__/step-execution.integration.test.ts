@@ -390,6 +390,7 @@ describe('step execution (integration)', () => {
 			mode: 'production',
 			graph,
 			triggerOutputs: null,
+			context: {},
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them

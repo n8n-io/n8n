@@ -293,6 +293,31 @@ describe('V1WorkflowConverter', () => {
 			const noOp = graph.nodes.find((n) => n.id === 'noop-uuid');
 			expect(noOp?.config).toMatchObject({ continueOnFail: false });
 		});
+
+		it('keeps the credential references of a node in its config', () => {
+			const credentials = { httpHeaderAuth: { id: 'cred-1', name: 'Header Auth account' } };
+			const graph = converter.convert(
+				workflow({
+					nodes: [manualTrigger, node('http-uuid', 'HTTP Request', { credentials })],
+					connections: { 'When clicking Execute': { main: [[main('HTTP Request')]] } },
+				}),
+			);
+
+			const http = graph.nodes.find((n) => n.id === 'http-uuid');
+			expect(http?.config).toMatchObject({ credentials });
+		});
+
+		it('leaves the credentials key out of the config of a node without credentials', () => {
+			const graph = converter.convert(
+				workflow({
+					nodes: [manualTrigger, node('noop-uuid', 'No Operation')],
+					connections: { 'When clicking Execute': { main: [[main('No Operation')]] } },
+				}),
+			);
+
+			const noOp = graph.nodes.find((n) => n.id === 'noop-uuid');
+			expect(noOp?.config).not.toHaveProperty('credentials');
+		});
 	});
 
 	describe('unsupported constructs', () => {

@@ -7,6 +7,24 @@ export type ExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'c
 export type ExecutionMode = 'production' | 'manual';
 
 /**
+ * Facts about the caller, supplied by the host at start and stored with the
+ * execution. The engine never reads them: it passes them to the step executor,
+ * which needs them to act on the caller's behalf, for example to resolve a
+ * credential.
+ */
+export interface ExecutionContext {
+	/** The user on whose behalf the execution runs. */
+	userId?: string;
+	/** The project that owns the workflow. */
+	projectId?: string;
+	/**
+	 * The host's own execution mode, which is finer than `ExecutionMode`. Opaque
+	 * to the engine; a v1 host stores its `WorkflowExecuteMode` here.
+	 */
+	hostMode?: string;
+}
+
+/**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
  * never runs.

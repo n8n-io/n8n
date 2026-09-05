@@ -4,7 +4,7 @@
  */
 
 import { deriveLoops, isBatchStepConfig } from '@n8n/engine';
-import type { GraphNode, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type { GraphNode, StepExecutionContext, StepSlots, WorkflowGraph } from '@n8n/engine';
 import { ExecuteContext, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	IConnections,
@@ -17,7 +17,7 @@ import type {
 	ITaskDataConnections,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createRunExecutionData, Workflow } from 'n8n-workflow';
+import { createRunExecutionData, Workflow, WorkflowExecuteModeList } from 'n8n-workflow';
 
 import {
 	MAIN_CONNECTION_TYPE,
@@ -27,7 +27,12 @@ import {
 } from './constants';
 import { isTriggerStepConfig, isV1NodeStepConfig } from './guards';
 import { fromStepInputs } from './io';
-import type { CreateExecuteContextParams, V1Execution, V1NodeStepConfig } from './types';
+import type {
+	AdditionalDataContext,
+	CreateExecuteContextParams,
+	V1Execution,
+	V1NodeStepConfig,
+} from './types';
 import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
 
 export function toV1Execution(
@@ -185,6 +190,30 @@ function toV1BatchNode(graphNode: GraphNode): INode {
 	};
 }
 
+/**
+ * The v1 mode the host stored at start, when it is one v1 knows. Otherwise the
+ * engine mode decides: a manual run is `manual`, and a production run is
+ * `trigger`, the v1 mode of an unattended run.
+ */
+export function toV1ExecuteMode(context: StepExecutionContext): WorkflowExecuteMode {
+	const { hostMode } = context;
+	if (hostMode !== undefined && isWorkflowExecuteMode(hostMode)) return hostMode;
+	return context.mode === 'manual' ? 'manual' : 'trigger';
+}
+
+const isWorkflowExecuteMode = (mode: string): mode is WorkflowExecuteMode =>
+	(WorkflowExecuteModeList as readonly string[]).includes(mode);
+
+export function toAdditionalDataContext(context: StepExecutionContext): AdditionalDataContext {
+	return {
+		executionId: context.executionId,
+		workflowId: context.workflowId,
+		mode: toV1ExecuteMode(context),
+		userId: context.userId,
+		projectId: context.projectId,
+	};
+}
+
 export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode {
 	return {
 		id: graphNode.id,
@@ -194,6 +223,7 @@ export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode 
 		position: [0, 0],
 		parameters: config.parameters,
 		continueOnFail: config.continueOnFail,
+		...(config.credentials !== undefined && { credentials: config.credentials }),
 	};
 }
 

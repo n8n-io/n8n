@@ -6,6 +6,7 @@ import type {
 	CloseFunction,
 	IConnections,
 	IDataObject,
+	INodeCredentials,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -17,6 +18,7 @@ import type {
 } from 'n8n-workflow';
 import { Node, NodeConnectionTypes } from 'n8n-workflow';
 
+import type { AdditionalDataContext } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
 
 class EchoParam implements INodeType {
@@ -209,9 +211,9 @@ export const testNodeTypes: INodeTypes = {
 	getKnownTypes: (): IDataObject => ({}),
 };
 
-export const testAdditionalDataFactory = async (
-	executionId: string,
-): Promise<IWorkflowExecuteAdditionalData> =>
+export const testAdditionalDataFactory = async ({
+	executionId,
+}: AdditionalDataContext): Promise<IWorkflowExecuteAdditionalData> =>
 	await Promise.resolve({
 		executionId,
 		restApiUrl: 'http://localhost:5678/rest',
@@ -232,6 +234,7 @@ export const v1Workflow = (
 		type: string;
 		typeVersion?: number;
 		parameters?: IDataObject;
+		credentials?: INodeCredentials;
 	}>,
 	connections: IConnections = {},
 ): IWorkflowBase =>

@@ -50,6 +50,7 @@ describe('StartExecutionService', () => {
 			mode: 'production',
 			graph: sampleGraph,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
+			context: {},
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'execution:enqueued',
@@ -57,7 +58,25 @@ describe('StartExecutionService', () => {
 		});
 	});
 
-	it('defaults mode to production and triggerOutputs to null', async () => {
+	it('stores the caller context as given', async () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const store = makeStore();
+		const service = new StartExecutionService(admittance, store, makeQueue());
+		const context = { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' };
+
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			executionId: 'exec-id-1',
+			context,
+		});
+
+		expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ context }));
+	});
+
+	it('defaults mode to production, triggerOutputs to null and context to empty', async () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
@@ -68,7 +87,7 @@ describe('StartExecutionService', () => {
 		await service.start({ workflowId: 'wf-1', graph: sampleGraph, executionId: 'exec-id-1' });
 
 		expect(store.createExecution).toHaveBeenCalledWith(
-			expect.objectContaining({ mode: 'production', triggerOutputs: null }),
+			expect.objectContaining({ mode: 'production', triggerOutputs: null, context: {} }),
 		);
 	});
 
