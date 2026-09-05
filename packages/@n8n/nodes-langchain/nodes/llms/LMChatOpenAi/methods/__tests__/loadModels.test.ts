@@ -31,6 +31,16 @@ const OFFICIAL_API_RESULTS = [
 	{ name: 'other-model', value: 'other-model' },
 ];
 
+const JWT_ACCOUNT_CLAIM = 'https://api.openai.com/auth';
+
+function makeOpenAiAccountToken(accountId: string) {
+	const payload = Buffer.from(
+		JSON.stringify({ [JWT_ACCOUNT_CLAIM]: { chatgpt_account_id: accountId } }),
+	).toString('base64url');
+
+	return `header.${payload}.signature`;
+}
+
 describe('searchModels', () => {
 	let mockContext: Mocked<ILoadOptionsFunctions>;
 	let fetchSpy: ReturnType<typeof vi.fn>;
@@ -98,6 +108,49 @@ describe('searchModels', () => {
 		expect(fetchSpy).toHaveBeenCalledWith(
 			expect.objectContaining({ input: 'https://test-url.com/models' }),
 		);
+	});
+
+	it('should fetch Codex account models with OAuth token-backed credentials', async () => {
+		const accessToken = makeOpenAiAccountToken('account-id');
+		fetchSpy.mockResolvedValueOnce({
+			ok: true,
+			status: 200,
+			json: async () => ({
+				models: [
+					{ slug: 'hidden-model', visibility: 'hidden', priority: 1 },
+					{ slug: 'gpt-5.4-mini', visibility: 'list', priority: 2 },
+					{ slug: 'gpt-5.4', visibility: 'list', priority: 1 },
+				],
+			}),
+		});
+		mockContext.getCredentials.mockResolvedValueOnce({
+			oauthTokenData: {
+				access_token: accessToken,
+			},
+			url: 'https://test-url.com',
+		});
+		mockContext.getNodeParameter.mockImplementation((parameterName: string) => {
+			if (parameterName === 'authentication') return 'oAuth2';
+			return '';
+		});
+
+		const result = await searchModels.call(mockContext);
+
+		expect(mockContext.getCredentials).toHaveBeenCalledWith('openAiOAuth2Api');
+		expect(fetchSpy).toHaveBeenCalledWith({
+			input: 'https://chatgpt.com/backend-api/codex/models?client_version=1.0.0',
+			init: {
+				headers: expect.objectContaining({
+					Authorization: `Bearer ${accessToken}`,
+					'chatgpt-account-id': 'account-id',
+				}),
+			},
+			lookup: secureLookup,
+		});
+		expect(result.results).toEqual([
+			{ name: 'gpt-5.4', value: 'gpt-5.4' },
+			{ name: 'gpt-5.4-mini', value: 'gpt-5.4-mini' },
+		]);
 	});
 
 	it('should use default OpenAI URL if no custom URL provided', async () => {
