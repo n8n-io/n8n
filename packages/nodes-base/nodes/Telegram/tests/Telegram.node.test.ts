@@ -753,6 +753,63 @@ describe('Telegram node', () => {
 		});
 	});
 
+	describe('message:sendMediaGroup', () => {
+		it('should omit empty parse_mode values from media items', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendMediaGroup';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123456789';
+					case 'additionalFields':
+						return {};
+					case 'media':
+						return {
+							media: [
+								{
+									type: 'photo',
+									media: 'photo-1',
+									additionalFields: { caption: 'Plain text', parse_mode: '' },
+								},
+								{
+									type: 'photo',
+									media: 'photo-2',
+									additionalFields: { caption: '<b>HTML</b>', parse_mode: 'HTML' },
+								},
+							],
+						};
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: true }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendMediaGroup',
+				{
+					chat_id: '123456789',
+					media: [
+						{ type: 'photo', media: 'photo-1', caption: 'Plain text' },
+						{
+							type: 'photo',
+							media: 'photo-2',
+							caption: '<b>HTML</b>',
+							parse_mode: 'HTML',
+						},
+					],
+				},
+				{},
+			);
+		});
+	});
+
 	describe('message:sendMessageDraft', () => {
 		it('should send the draft with chat_id, draft_id, text and additional fields', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
@@ -787,6 +844,44 @@ describe('Telegram node', () => {
 					draft_id: 42,
 					text: 'Generating an answer',
 					parse_mode: 'HTML',
+					message_thread_id: 7,
+				},
+				{},
+			);
+		});
+
+		it('should omit parse_mode when None is selected', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendMessageDraft';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123456789';
+					case 'draftId':
+						return 42;
+					case 'text':
+						return 'Generating an answer';
+					case 'additionalFields':
+						return { parse_mode: '', message_thread_id: 7 };
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: true }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendMessageDraft',
+				{
+					chat_id: '123456789',
+					draft_id: 42,
+					text: 'Generating an answer',
 					message_thread_id: 7,
 				},
 				{},

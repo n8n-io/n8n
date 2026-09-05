@@ -89,7 +89,7 @@ export function addAdditionalFields(
 			additionalFields.appendAttribution = true;
 		}
 
-		if (!additionalFields.parse_mode) {
+		if (additionalFields.parse_mode == null) {
 			additionalFields.parse_mode = 'Markdown';
 		}
 
@@ -105,6 +105,8 @@ export function addAdditionalFields(
 				body.text = `${body.text}\n\n_${attributionText}_[n8n](${link})`;
 			} else if (additionalFields.parse_mode === 'HTML') {
 				body.text = `${body.text}\n\n<em>${attributionText}</em><a href="${link}" target="_blank">n8n</a>`;
+			} else if (additionalFields.parse_mode === '') {
+				body.text = `${body.text}\n\n${attributionText}n8n (${link})`;
 			}
 		}
 
@@ -120,6 +122,10 @@ export function addAdditionalFields(
 	}
 
 	Object.assign(body, additionalFields);
+
+	if (body.parse_mode === '') {
+		delete body.parse_mode;
+	}
 
 	// Add the reply markup
 	addReplyMarkup.call(this, body, index);
