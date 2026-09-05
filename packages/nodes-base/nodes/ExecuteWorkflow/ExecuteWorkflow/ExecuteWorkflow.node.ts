@@ -20,7 +20,7 @@ export class ExecuteWorkflow implements INodeType {
 		icon: 'node:execute-sub-workflow',
 		iconColor: 'orange-red',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
@@ -66,7 +66,6 @@ workflowInputs: {
     },
   ],
   attemptToConvertTypes: false,
-  convertFieldsToString: true,
 }
 </pattern>
 </patterns>`,

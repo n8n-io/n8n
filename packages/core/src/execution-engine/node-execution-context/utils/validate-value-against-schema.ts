@@ -52,6 +52,13 @@ const validateResourceMapperValue = (
 	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
 	const skipRequiredCheck = resourceMapperTypeOptions?.mode !== 'add';
 	const enableTypeValidationOptions = Boolean(resourceMapperTypeOptions?.showTypeConversionOptions);
+	// `showTypeConversionOptions` is only set by Execute Sub-workflow's `workflowInputs`.
+	// From 1.4 on, casting is derived from the node description and the stored
+	// `convertFieldsToString` is ignored, because the UI writes it unconditionally and
+	// offers no way to see or change it. Earlier versions keep reading the stored value:
+	// turning casting on also turns on the `strict` check, so deriving it there would
+	// reject inputs that existing workflows pass through today.
+	const alwaysConvertFieldsToString = node.typeVersion >= 1.4;
 	const paramNameParts = parameterName.split('.');
 	if (paramNameParts.length !== 2) {
 		return result;
@@ -86,7 +93,9 @@ const validateResourceMapperValue = (
 			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
 				valueOptions: schemaEntry.options,
 				strict: enableTypeValidationOptions && !resourceMapperField.attemptToConvertTypes,
-				parseStrings: enableTypeValidationOptions && resourceMapperField.convertFieldsToString,
+				parseStrings:
+					enableTypeValidationOptions &&
+					(alwaysConvertFieldsToString || resourceMapperField.convertFieldsToString),
 			});
 
 			if (!validationResult.valid) {
