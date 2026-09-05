@@ -130,6 +130,7 @@ interface DispatcherView {
 		buildCostUsdPerRun?: Array<number | null>;
 		buildTurnsPerRun?: Array<number | null>;
 		transcriptPerRun: Array<TranscriptTurn[] | null>;
+		workflowJsonPerRun: Array<{ id: string } | null>;
 		buildErrorPerRun: Array<string | null>;
 		threadIds: Array<string | null>;
 		scenarios: Array<{
@@ -179,6 +180,11 @@ describe('eval-results.json — dispatcher contract', () => {
 		// Produced workflow rides along (first iteration's) — the dispatcher's
 		// Dockerfile patch greps for upstream support of this field and no-ops.
 		expect(tc.workflowJson).toMatchObject({ id: 'wf-1' });
+		// Per-iteration produced workflow — one entry per run, null when the
+		// iteration produced none — so the dispatcher can render every build.
+		expect(tc.workflowJsonPerRun).toHaveLength(2);
+		expect(tc.workflowJsonPerRun[0]).toMatchObject({ id: 'wf-1' });
+		expect(tc.workflowJsonPerRun[1]).toBeNull();
 
 		// Per-iteration build signals. Checks serialize as a name→status map (an
 		// iteration without checks serializes as null, not as a hole).
