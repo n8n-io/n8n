@@ -66,6 +66,40 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		});
 	});
 
+	describe('chatMember - hidden under SP via the slash-prefixed field-level key', () => {
+		it('operation selector carries hide["/authentication"] = [SP]', () => {
+			const op = actionProps.find(
+				(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes('chatMember'),
+			);
+			expect(isSpHidden(op)).toBe(true);
+			// distinct from the un-prefixed credential gate
+			expect(op?.displayOptions?.hide?.authentication).toBeUndefined();
+		});
+
+		it('every chatMember field copy is hidden under SP', () => {
+			const memberFields = actionProps.filter((p) =>
+				p.displayOptions?.show?.resource?.includes('chatMember'),
+			);
+			// every chatMember input field, whichever operation declares it
+			const gatedFields = memberFields.filter((p) => p.type !== 'notice' && p.name !== 'operation');
+			expect(gatedFields.length).toBeGreaterThan(0);
+			for (const field of gatedFields) {
+				expect(isSpHidden(field)).toBe(true);
+			}
+		});
+
+		it('shows an SP notice for the chatMember resource', () => {
+			const notice = actionProps.find(
+				(p) =>
+					p.type === 'notice' &&
+					p.displayOptions?.show?.resource?.includes('chatMember') &&
+					p.displayOptions?.show?.authentication?.includes(SERVICE_PRINCIPAL_AUTH),
+			);
+			expect(notice).toBeDefined();
+			expect(notice?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
+		});
+	});
+
 	describe('onlineMeeting — hidden under SP via the slash-prefixed field-level key', () => {
 		it('operation selector carries hide["/authentication"] = [SP]', () => {
 			const op = actionProps.find(
