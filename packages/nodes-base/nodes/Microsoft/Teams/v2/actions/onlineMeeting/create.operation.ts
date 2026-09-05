@@ -2,8 +2,13 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { throwIfOnlineMeetingUnsupported } from './sharedGuard';
-import { microsoftApiRequest, SP_HIDE } from '../../transport';
+import {
+	meetingRequest,
+	requiredText,
+	throwIfOnlineMeetingUnsupported,
+	toGraphUtc,
+} from './shared';
+import { SP_HIDE } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -170,15 +175,11 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	// https://learn.microsoft.com/en-us/graph/api/application-post-onlinemeetings?view=graph-rest-1.0&tabs=http
 	throwIfOnlineMeetingUnsupported.call(this);
 
-	const subject = this.getNodeParameter('subject', i) as string;
-	const startDateTime = this.getNodeParameter('startDateTime', i) as string;
-	const endDateTime = this.getNodeParameter('endDateTime', i) as string;
 	const options = this.getNodeParameter('options', i);
-
 	const body: IDataObject = {
-		subject,
-		startDateTime,
-		endDateTime,
+		subject: requiredText.call(this, 'subject', i, 'Subject'),
+		startDateTime: toGraphUtc.call(this, this.getNodeParameter('startDateTime', i), 'Start Time'),
+		endDateTime: toGraphUtc.call(this, this.getNodeParameter('endDateTime', i), 'End Time'),
 	};
 	if (options.allowAttendeeToEnableCamera !== undefined) {
 		body.allowAttendeeToEnableCamera = options.allowAttendeeToEnableCamera as boolean;
@@ -205,8 +206,8 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		body.recordAutomatically = options.recordAutomatically as boolean;
 	}
 	if (options.passcodeRequired !== undefined) {
-		body.joinMeetingIdSettings = { isPasscodeRequired: options.passcodeRequired as boolean };
+		body.joinMeetingIdSettings = { isPasscodeRequired: options.passcodeRequired };
 	}
 
-	return await microsoftApiRequest.call(this, 'POST', '/v1.0/me/onlineMeetings', body);
+	return await meetingRequest.call(this, 'POST', '/v1.0/me/onlineMeetings', body);
 }

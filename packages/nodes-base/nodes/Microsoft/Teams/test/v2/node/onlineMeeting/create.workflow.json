@@ -25,7 +25,7 @@
 					"isEntryExitAnnounced": true,
 					"lobbyBypassScope": "organizationAndFederated",
 					"recordAutomatically": false,
-					"passcodeRequired": true
+					"passcodeRequired": false
 				}
 			},
 			"id": "6666-5555-77777",
@@ -72,9 +72,9 @@
 						}
 					},
 					"joinMeetingIdSettings": {
-						"isPasscodeRequired": true,
+						"isPasscodeRequired": false,
 						"joinMeetingId": "1234567890",
-						"passcode": "xK7mp2"
+						"passcode": null
 					}
 				}
 			}

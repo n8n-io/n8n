@@ -4,6 +4,7 @@ import {
 	buildMicrosoftGraphPath,
 	createMicrosoftGraphTransport,
 	type MicrosoftGraphCredentialType,
+	rewriteNotFound,
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
 	validateMicrosoftGraphId,
@@ -16,6 +17,7 @@ export {
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
 	buildMicrosoftGraphPath as buildTeamsPath,
+	rewriteNotFound,
 	validateMicrosoftGraphId as validateTeamsId,
 };
 
