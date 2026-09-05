@@ -126,15 +126,18 @@ export function buildGetManyFilter(
 	const filters = fieldEntries.map((x) => {
 		switch (x.condition) {
 			case 'isEmpty':
+				// For string columns "empty" means NULL or '', handled by the dedicated
+				// backend condition. Other types can only be NULL, so map to `eq null`.
 				return {
 					columnName: x.keyName,
-					condition: 'eq' as const,
+					condition: columnTypeMap[x.keyName] === 'string' ? ('isEmpty' as const) : ('eq' as const),
 					value: null,
 				};
 			case 'isNotEmpty':
 				return {
 					columnName: x.keyName,
-					condition: 'neq' as const,
+					condition:
+						columnTypeMap[x.keyName] === 'string' ? ('isNotEmpty' as const) : ('neq' as const),
 					value: null,
 				};
 			case 'isTrue':
