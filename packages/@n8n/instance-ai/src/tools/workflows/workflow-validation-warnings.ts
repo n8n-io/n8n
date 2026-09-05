@@ -1,7 +1,17 @@
-import { partitionValidationIssues, type IssueSeverity } from '@n8n/workflow-sdk';
-import type { WorkflowGroupViolation } from 'n8n-workflow';
+import {
+	partitionValidationIssues,
+	type IssueSeverity,
+	type WorkflowJSON,
+} from '@n8n/workflow-sdk';
+import {
+	isTriggerNodeType,
+	STICKY_NODE_TYPE,
+	TOP_LEVEL_ITEM_CEILING,
+	type WorkflowGroupViolation,
+} from 'n8n-workflow';
 
 export const NODE_GROUP_DROPPED_CODE = 'NODE_GROUP_DROPPED';
+export const TOP_LEVEL_ITEMS_CODE = 'TOP_LEVEL_ITEMS_OVER_CEILING';
 
 export interface ValidationWarning {
 	code: string;
@@ -38,6 +48,47 @@ export function partitionWarnings(warnings: ValidationWarning[]): {
 	// Instance AI host detectors). CLI validate and this save gate share
 	// {@link partitionValidationIssues}.
 	return partitionValidationIssues(warnings);
+}
+
+/**
+ * Counts the boxes on the canvas with every group collapsed, and warns when there are
+ * more than the TOP_LEVEL_ITEM_CEILING ceiling. Sub-nodes and sticky notes don't count:
+ * a sub-node rides with its parent, and a sticky belongs to the user.
+ */
+export function topLevelItemsWarning(json: WorkflowJSON): ValidationWarning | undefined {
+	const groups = json.nodeGroups ?? [];
+	const groupedNodeIds = new Set(groups.flatMap((group) => group.nodeIds));
+	const subNodeNames = new Set(
+		Object.entries(json.connections ?? {}).flatMap(([nodeName, connectionsByType]) => {
+			const types = Object.keys(connectionsByType);
+			return types.length > 0 && types.every((type) => type !== 'main') ? [nodeName] : [];
+		}),
+	);
+
+	const ungrouped = (json.nodes ?? []).filter(
+		(node) =>
+			!groupedNodeIds.has(node.id) &&
+			node.type !== STICKY_NODE_TYPE &&
+			!(node.name !== undefined && subNodeNames.has(node.name)),
+	);
+
+	const total = groups.length + ungrouped.length;
+	if (total <= TOP_LEVEL_ITEM_CEILING) {
+		return;
+	}
+
+	const groupable = ungrouped
+		.filter((node) => !isTriggerNodeType(node.type))
+		.map((node) => node.name ?? node.id);
+
+	return {
+		code: TOP_LEVEL_ITEMS_CODE,
+		severity: 'informational',
+		message:
+			`The canvas top level has ${total} boxes with every group collapsed, over the ${TOP_LEVEL_ITEM_CEILING} you should aim for` +
+			(groupable.length > 0 ? `. Still ungrouped: ${groupable.join(', ')}` : '') +
+			'. Group any stage that can form a valid group and build again, or say why each of them cannot join one.',
+	};
 }
 
 export function nodeGroupDroppedWarnings(

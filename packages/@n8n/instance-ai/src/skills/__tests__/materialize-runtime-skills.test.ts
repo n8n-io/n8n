@@ -6,7 +6,10 @@ import {
 	type Workspace,
 	type WorkspaceSandbox,
 } from '@n8n/agents';
+import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { jsonParse } from 'n8n-workflow';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { Mock } from 'vitest';
 
 import {
@@ -20,7 +23,7 @@ import {
 	createLazyWorkspaceRuntimeSkillSource,
 	materializeRuntimeSkillsIntoWorkspace,
 } from '../materialize-runtime-skills';
-import { loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
+import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 
 /** Extract the text body from the content-block form of a load_skill success result. */
 function skillLoadText(output: unknown): string {
@@ -397,5 +400,71 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(message).toBe('Runtime skill file exceeds load_skill output limit');
 		expect(meta?.skill).toBe('large-skill');
 		expect(meta?.maxBytes).toBe(runtimeSkillMaxOutputBytes);
+	});
+});
+
+describe('grouping guidance injection', () => {
+	const root = '/home/daytona/workspace';
+	const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/workflow-builder/SKILL.md`;
+
+	it('injects the shared grouping guidance into the builder skill', async () => {
+		const bundle = await buildRuntimeSkillWorkspaceBundle({
+			source: loadInstanceAiRuntimeSkillSource(),
+			root,
+			logger: mockLogger,
+		});
+
+		expect(bundle?.files.get(skillPath)).toContain(GROUPING_GUIDANCE);
+	});
+
+	it('leaves no unresolved placeholder in any materialized skill', async () => {
+		const bundle = await buildRuntimeSkillWorkspaceBundle({
+			source: loadInstanceAiRuntimeSkillSource(),
+			root,
+			logger: mockLogger,
+		});
+
+		if (!bundle) {
+			throw new Error('Expected runtime skill bundle');
+		}
+
+		for (const [path, content] of bundle.files) {
+			expect(content, path).not.toMatch(/\{\{[A-Z_]+\}\}/);
+		}
+	});
+
+	it('serves the guidance through load_skill, not just the materialized file', async () => {
+		// The tool returns `instructions` directly, so substituting only at render time
+		// ships the literal placeholder to the agent.
+		const loadTool = createSkillLoadTool(loadInstanceAiRuntimeSkillSource());
+		const result = await loadTool.handler?.({ skillId: 'workflow-builder' }, {});
+
+		const text = skillLoadText(result);
+
+		expect(text).toContain(GROUPING_GUIDANCE);
+		expect(text).not.toContain('{{GROUPING_GUIDANCE_PLACEHOLDER}}');
+	});
+
+	it('resolves placeholders before the skill is hashed', async () => {
+		// The skill hash covers `instructions`, so substituting later leaves caches keyed
+		// on skillsHash unable to notice a guidance change.
+		const skill = await loadInstanceAiRuntimeSkillSource().loadSkill('workflow-builder');
+
+		if (!skill) {
+			throw new Error('Expected the workflow-builder skill to load');
+		}
+
+		expect(skill.instructions).toContain(GROUPING_GUIDANCE);
+		expect(skill.instructions).not.toContain('{{GROUPING_GUIDANCE_PLACEHOLDER}}');
+	});
+
+	it('keeps the builder skill file free of its own grouping criteria', async () => {
+		// Guards the single source of truth: a hand-written copy drifts from the shared
+		// constant, and this skill is what an agent reads first.
+		const skillFile = join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md');
+		const raw = await readFile(skillFile, 'utf-8');
+
+		expect(raw).toContain('{{GROUPING_GUIDANCE_PLACEHOLDER}}');
+		expect(raw).not.toMatch(/3 to 5|at most 7 items|one-sentence/i);
 	});
 });

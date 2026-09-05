@@ -26,6 +26,13 @@ type IODirection = 'inputs' | 'outputs';
 export const GROUP_DESCRIPTION_MAX_LENGTH = 145;
 
 /**
+ * How many boxes a reader should see on the canvas with every group collapsed:
+ * the trigger, each group, and each ungrouped node. Shared by the grouping
+ * guidance and the build-time check so the number cannot drift between them.
+ */
+export const TOP_LEVEL_ITEM_CEILING = 7;
+
+/**
  * Drops non-string values, caps to the max length, and treats empty as "no description".
  */
 export function normalizeGroupDescription(description: unknown): string | undefined {
@@ -85,9 +92,11 @@ export const NODE_GROUPING_RULES = {
 		sdkReference:
 			'**One connected section with a single entry and exit.** The connectable members must ' +
 			'form a single connected section of the graph — reachable from one another, not two ' +
-			'unrelated islands — with at most one incoming and one outgoing main connection crossing ' +
-			'the group boundary. Sticky notes may accompany the selection without participating in ' +
-			'connectivity, and a sticky-only group is valid.',
+			'unrelated islands — where at most one member takes main input from outside the group ' +
+			'and at most one member sends main output outside it. The limit is on members facing ' +
+			'outward, not on connections: several connections may reach that one entry member, and ' +
+			'several may leave that one exit member. Sticky notes may accompany the selection ' +
+			'without participating in connectivity, and a sticky-only group is valid.',
 		violation: 'must form a single connected subgraph with a single entry and exit',
 	},
 	nonMainBoundary: {

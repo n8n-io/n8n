@@ -217,6 +217,10 @@ follow its build → publish → assign steps.
    and later `fixtureOverrides` can exercise those scenarios. Do not simulate
    every external read by default; use this when branch coverage or deterministic
    proof depends on controlling the upstream data.
+   Decide grouping now, while writing the source: `.group(...)` lives in the code, so
+   it cannot be added after the build. See [Node Groups](#node-groups) for the
+   criteria, and reach a decision either way — groups declared, or this workflow does
+   not warrant them.
 7. Before the first `build-workflow` (and again after substantive edits), run
    SDK validation on the workspace source file via
    `workspace_execute_command`:
@@ -684,18 +688,14 @@ import {
 
 ## Node Groups
 
-Organise multi-stage workflows into named node groups — visual frames on the canvas — so the
-result is readable the first time the user sees it. Group each clear stage (ingest → transform
-→ deliver); small workflows don't need groups. Give every group a one-sentence
-`description` — groups are collapsed by default, so name + description is what the user sees
-first.
+{{GROUPING_GUIDANCE_PLACEHOLDER}}
 
-`.group(name, members, { description })` on the workflow builder; members are the node handles.
-Read `knowledge-base/reference/node-groups.md` for the exact rules (trigger nodes excluded,
-one connected section, AI sub-nodes stay with their Agent) before creating groups. Agent save
-tools drop an invalid group from the saved workflow and report a warning, so fix the source
-instead of re-emitting it. When editing an existing workflow, keep existing `.group(...)` calls
-and their descriptions intact unless the change is about grouping.
+Declare a group with `.group(name, members, { description })` on the workflow builder; members
+are the node handles. Before you emit a `.group(...)`, read
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/node-groups.md` — it carries the rules that make
+a group valid and the contract for editing an existing workflow's groups. Do not restate those
+rules from memory: an invalid group is dropped from the saved workflow with a warning, so the
+source has to be fixed rather than re-emitted.
 
 ## Workflow Rules
 
@@ -969,6 +969,13 @@ workflow code or build specs unless the workflow actually needs to send or
 store its own public endpoint.
 
 ## Completion
+
+Do not report a build as done until you have made the grouping decision described in
+[Node Groups](#node-groups) and checked what the build did with it. A dropped-group warning
+names what was invalid — a duplicate name, a member that does not exist, a boundary the rules
+reject: fix what the warning reports and build again. If the top level is still above 7
+items, name each remaining item and why it cannot join a group — if you cannot, group it and
+build again.
 
 For a successful build, finish with one concise sentence naming the workflow and
 what changed. Include the workflow ID when it is available. If setup is
