@@ -10,12 +10,12 @@ import {
 } from 'vue';
 import type { VNode } from 'vue';
 import Modal from '@/app/components/Modal.vue';
-import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
+import { VIEWS, WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nCallout, N8nButton, N8nLink } from '@n8n/design-system';
+import { N8nHeading, N8nCallout, N8nButton, N8nLink, N8nText } from '@n8n/design-system';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@n8n/composables/useToast';
@@ -26,12 +26,20 @@ import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
+import { useUsersStore } from '@n8n/stores/users.store';
+import {
+	formatTimestamp,
+	generateVersionLabelFromId,
+} from '@/features/workflows/workflowHistory/utils';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import type { WorkflowChangelog } from '@n8n/rest-api-client/api/workflowHistory';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
+const workflowHistoryStore = useWorkflowHistoryStore();
+const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const { showMessage } = useToast();
@@ -108,6 +116,45 @@ function onModalOpened() {
 	publishForm.value?.focusInput();
 }
 
+const changelog = ref<WorkflowChangelog>(null);
+const usersLoaded = ref(false);
+
+// The changelog is informational; publishing works when any of this fails
+async function loadChangelog() {
+	if (!workflowDocumentStore.value.activeVersion?.versionId) return;
+
+	// Users are only fetched to detect a single-user instance
+	const loadUsers = usersStore.fetchUsers({ take: 2 }).then(() => {
+		usersLoaded.value = true;
+	});
+	const loadSummary = workflowHistoryStore
+		.getWorkflowChangelog(workflowDocumentStore.value.workflowId)
+		.then((summary) => {
+			changelog.value = summary;
+		});
+
+	await Promise.allSettled([loadUsers, loadSummary]);
+}
+
+const changelogSummary = computed(() => {
+	if (!changelog.value) return null;
+
+	const from = formatTimestamp(changelog.value.from).date;
+	const to = formatTimestamp(changelog.value.to).date;
+
+	// Authors add no information on a single-user instance.
+	// Show them unless a successful lookup confirmed there is only one user.
+	if (usersLoaded.value && usersStore.allUsers.length <= 1) {
+		return i18n.baseText('workflows.publishModal.changelogNoAuthors', {
+			interpolate: { from, to },
+		});
+	}
+
+	return i18n.baseText('workflows.publishModal.changelog', {
+		interpolate: { from, to, authors: changelog.value.authors.join(', ') },
+	});
+});
+
 onMounted(() => {
 	const currentVersionData = workflowDocumentStore.value?.versionData;
 
@@ -124,6 +171,8 @@ onMounted(() => {
 	}
 
 	modalBus.on('opened', onModalOpened);
+
+	void loadChangelog();
 });
 
 onBeforeUnmount(() => {
@@ -318,6 +367,25 @@ async function handlePublish() {
 					description-test-id="workflow-publish-description-input"
 					@submit="handlePublish"
 				/>
+				<N8nText
+					v-if="changelogSummary"
+					size="small"
+					color="text-base"
+					data-test-id="workflow-publish-changelog"
+				>
+					{{ changelogSummary }}
+					<N8nLink
+						size="small"
+						:to="{
+							name: VIEWS.WORKFLOW_HISTORY,
+							params: { workflowId: workflowDocumentStore.workflowId },
+						}"
+						data-test-id="workflow-publish-changelog-history-link"
+						@click="modalBus.emit('close')"
+					>
+						{{ i18n.baseText('workflows.publishModal.goToHistory') }}
+					</N8nLink>
+				</N8nText>
 				<div :class="$style.actions">
 					<N8nButton
 						variant="subtle"
