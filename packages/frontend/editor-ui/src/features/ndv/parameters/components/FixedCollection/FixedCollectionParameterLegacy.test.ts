@@ -80,6 +80,24 @@ describe('FixedCollectionParameterLegacy.vue', () => {
 		expect(getByTestId('parameter-item')).toBeInTheDocument();
 	});
 
+	it('passes credential context to nested parameter inputs', async () => {
+		const { getByTestId } = renderComponent({
+			props: { ...props, isForCredential: true },
+			global: {
+				stubs: {
+					ParameterInputList: {
+						props: ['isForCredential'],
+						template:
+							'<div data-test-id="parameter-input-list" :data-is-for-credential="String(isForCredential)" />',
+					},
+				},
+			},
+		});
+		await flushPromises();
+
+		expect(getByTestId('parameter-input-list')).toHaveAttribute('data-is-for-credential', 'true');
+	});
+
 	it('computes placeholder text correctly', async () => {
 		const { getByTestId } = renderComponent();
 		await flushPromises();

@@ -40,6 +40,7 @@ export type Props = {
 	path: string;
 	values?: Record<string, INodeParameters[] | INodeParameters>;
 	isReadOnly?: boolean;
+	isForCredential?: boolean;
 	isNested?: boolean;
 	isNewlyAdded?: boolean;
 	canDelete?: boolean;
@@ -663,6 +664,7 @@ const onAddButtonClick = () => {
 						:node-values="nodeValues"
 						:path="getPropertyPath(property.name)"
 						:is-read-only="!!isReadOnly"
+						:is-for-credential="isForCredential"
 						:is-nested="false"
 						:remove-first-parameter-margin="true"
 						:remove-last-parameter-margin="true"
@@ -813,6 +815,7 @@ const onAddButtonClick = () => {
 							:node-values="nodeValues"
 							:path="getPropertyPath(property.name)"
 							:is-read-only="!!isReadOnly"
+							:is-for-credential="isForCredential"
 							:is-nested="true"
 							:remove-first-parameter-margin="true"
 							:remove-last-parameter-margin="true"
@@ -870,6 +873,7 @@ const onAddButtonClick = () => {
 						:node-values="nodeValues"
 						:path="getPropertyPath(property.name)"
 						:is-read-only="!!isReadOnly"
+						:is-for-credential="isForCredential"
 						:is-nested="false"
 						:remove-first-parameter-margin="true"
 						:remove-last-parameter-margin="true"
