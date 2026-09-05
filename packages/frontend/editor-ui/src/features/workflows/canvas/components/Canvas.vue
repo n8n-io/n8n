@@ -102,6 +102,7 @@ import { type ContextMenuAction } from '@/features/shared/contextMenu/composable
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
 import {
 	useAddNodesToChat,
@@ -247,6 +248,7 @@ const {
 	addSelectedNodes,
 	removeSelectedNodes,
 	viewportRef,
+	vueFlowRef,
 	fitView,
 	fitBounds,
 	zoomIn,
@@ -515,6 +517,11 @@ const keyMap = computed(() => {
 		i: () => emit('update:logs:input-open'),
 		o: () => emit('update:logs:output-open'),
 		z: onToggleZoomMode,
+		// override browser find; the command bar searches the workflow
+		ctrl_f: {
+			disabled: () => settingsStore.isCanvasOnly,
+			run: () => commandBarEventBus.emit('open:request'),
+		},
 	};
 
 	// Group collapse state is a view preference, so expanding/collapsing
@@ -1750,6 +1757,10 @@ function onRequestSetConnectionsOnInit(connections: IConnections) {
 	pendingConnections = connections;
 }
 
+function onFocusCanvas() {
+	vueFlowRef.value?.focus();
+}
+
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
@@ -1757,6 +1768,7 @@ onMounted(() => {
 	props.eventBus.on('nodes:select', onSelectNodes);
 	props.eventBus.on('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.on('tidyUp', onTidyUp);
+	props.eventBus.on('focus', onFocusCanvas);
 	window.addEventListener('blur', onWindowBlur);
 	document.addEventListener('visibilitychange', onVisibilityChange);
 });
@@ -1768,6 +1780,7 @@ onUnmounted(() => {
 	props.eventBus.off('nodes:select', onSelectNodes);
 	props.eventBus.off('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
+	props.eventBus.off('focus', onFocusCanvas);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);
 });
@@ -1871,6 +1884,7 @@ defineExpose({
 		:pan-activation-key-code="panningKeyCode"
 		:disable-keyboard-a11y="true"
 		:delete-key-code="null"
+		tabindex="-1"
 		data-test-id="canvas"
 		@connect-start="onConnectStart"
 		@connect="onConnect"

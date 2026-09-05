@@ -12,6 +12,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
@@ -22,6 +23,15 @@ const ITEM_ID = {
 	OPEN_NODE: 'open-node',
 	ADD_STICKY: 'add-sticky',
 } as const;
+
+// Leaf string/number parameter values, for matching nodes by their configuration
+function collectParameterValues(value: unknown): string[] {
+	if (typeof value === 'string' || typeof value === 'number') return [String(value)];
+	if (value && typeof value === 'object') {
+		return Object.values(value).flatMap(collectParameterValues);
+	}
+	return [];
+}
 
 export function useNodeCommands(options: {
 	lastQuery: Ref<string>;
@@ -36,6 +46,7 @@ export function useNodeCommands(options: {
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
 	const collaborationStore = useCollaborationStore();
+	const setupPanelStore = useSetupPanelStore();
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -118,7 +129,7 @@ export function useNodeCommands(options: {
 			id,
 			title,
 			section,
-			keywords: [name, type],
+			keywords: [name, type, ...collectParameterValues(node.parameters)],
 			icon: {
 				component: NodeIcon,
 				props: {
@@ -131,6 +142,17 @@ export function useNodeCommands(options: {
 			},
 			placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
 		};
+	};
+
+	const nodeIdsWithParametersMatching = (query: string): string[] => {
+		const lowerQuery = query.toLowerCase();
+		return workflowDocumentStore.value.allNodes
+			.filter((node) =>
+				collectParameterValues(node.parameters).some((value) =>
+					value.toLowerCase().includes(lowerQuery),
+				),
+			)
+			.map((node) => node.id);
 	};
 
 	const openNodeCommands = computed<CommandBarItem[]>(() => {
@@ -220,5 +242,15 @@ export function useNodeCommands(options: {
 
 	return {
 		commands: nodeCommands,
+		handlers: {
+			onCommandBarChange: (query: string) => {
+				const matchingIds = query.length > 2 ? nodeIdsWithParametersMatching(query) : [];
+				if (matchingIds.length > 0) {
+					setupPanelStore.setHighlightedNodes(matchingIds);
+				} else {
+					setupPanelStore.clearHighlightedNodes();
+				}
+			},
+		},
 	};
 }
