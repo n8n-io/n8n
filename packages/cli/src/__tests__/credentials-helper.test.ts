@@ -50,6 +50,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { MissingExecutionContextError } from '@/modules/dynamic-credentials.ee/errors/missing-execution-context.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -1485,6 +1486,30 @@ describe('CredentialsHelper', () => {
 		};
 
 		const credentialType = 'testApi';
+		const triggerExecuteData = {
+			data: {},
+			node: {
+				id: 'gmail-trigger',
+				name: 'Gmail Trigger',
+				type: 'n8n-nodes-base.gmailTrigger',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			},
+			source: null,
+		} satisfies IExecuteData;
+		const actionExecuteData = {
+			data: {},
+			node: {
+				id: 'gmail-node',
+				name: 'Gmail',
+				type: 'n8n-nodes-base.gmail',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			},
+			source: null,
+		} satisfies IExecuteData;
 
 		const mockCredentialEntity = {
 			id: 'cred-456',
@@ -1627,8 +1652,123 @@ describe('CredentialsHelper', () => {
 			expect(result).not.toEqual({ apiKey: 'static-key' });
 		});
 
-		test('should skip resolution when executionContext is missing (manual mode)', async () => {
+		test.each([
+			{
+				name: 'system resolver',
+				credentialResolverId: undefined,
+				expectedMessage:
+					"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, Form, or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+			},
+			{
+				name: 'custom resolver',
+				credentialResolverId: 'custom-resolver',
+				expectedMessage:
+					'End-user credentials with this resolver need a trigger that extracts an identity. Configure an identity extractor on the trigger, or switch this credential to Fixed.',
+			},
+		])(
+			'should explain unsupported manual triggers using the $name',
+			async ({ credentialResolverId, expectedMessage }) => {
+				dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+				mockCredentialResolutionProvider.getSystemResolverId.mockReturnValue('system-n8n');
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue({
+					...mockCredentialEntity,
+					isResolvable: true,
+				} as CredentialsEntity);
+
+				await expect(
+					credentialsHelper.getDecrypted(
+						{
+							...mockAdditionalData,
+							executionContext: undefined,
+							workflowSettings: {
+								...mockAdditionalData.workflowSettings,
+								credentialResolverId,
+							},
+						},
+						nodeCredentials,
+						credentialType,
+						'manual',
+						triggerExecuteData,
+						true,
+						undefined,
+						{ credentialUsage: 'trigger' },
+					),
+				).rejects.toThrow(expectedMessage);
+
+				expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			},
+		);
+
+		test('should surface resolver configuration errors instead of an unsupported-trigger error', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.getSystemResolverId.mockReturnValue(null);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
+				new Error('Credential resolver is not configured'),
+			);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					{
+						...mockAdditionalData,
+						executionContext: undefined,
+						workflowSettings: {
+							...mockAdditionalData.workflowSettings,
+							credentialResolverId: undefined,
+						},
+					},
+					nodeCredentials,
+					credentialType,
+					'manual',
+					triggerExecuteData,
+					true,
+					undefined,
+					{ credentialUsage: 'trigger' },
+				),
+			).rejects.toThrow('Credential resolver is not configured');
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledOnce();
+		});
+
+		test('should defer to the resolver when trigger execution data is unavailable', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
+				new MissingExecutionContextError(),
+			);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					{
+						...mockAdditionalData,
+						executionContext: undefined,
+					},
+					nodeCredentials,
+					credentialType,
+					'manual',
+					undefined,
+					true,
+					undefined,
+					{ credentialUsage: 'trigger' },
+				),
+			).rejects.toThrow(MissingExecutionContextError);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledOnce();
+		});
+
+		test('should preserve static credentials for manual action-node tests without context', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: { apiKey: 'resolved' },
 				isDynamic: false,
@@ -1644,7 +1784,7 @@ describe('CredentialsHelper', () => {
 				nodeCredentials,
 				credentialType,
 				'manual',
-				undefined,
+				actionExecuteData,
 				true,
 			);
 
@@ -1652,22 +1792,27 @@ describe('CredentialsHelper', () => {
 			expect(result).toEqual({ apiKey: 'static-key' });
 		});
 
-		test('should resolve in manual mode when credentials context is present (test webhook with identity extractor)', async () => {
+		test('should resolve manual trigger credentials when execution context is present', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
 			const dynamicData = { apiKey: 'dynamic-key' };
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: dynamicData,
 				isDynamic: true,
 			});
 
-			// mockAdditionalData has credentials context set — simulates a test webhook run
 			const result = await credentialsHelper.getDecrypted(
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
 				'manual',
-				undefined,
+				triggerExecuteData,
 				true,
+				undefined,
+				{ credentialUsage: 'trigger' },
 			);
 
 			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalled();

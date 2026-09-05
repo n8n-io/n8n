@@ -156,6 +156,7 @@ describe('WebhookContext', () => {
 				expect.objectContaining({ node }),
 				false,
 				undefined,
+				undefined,
 			);
 		});
 	});
