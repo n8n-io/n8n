@@ -83,10 +83,11 @@ import {
 	partitionWarnings,
 	type ValidationWarning,
 } from './workflow-validation-warnings';
+import { FolderResolutionError } from '../../errors/folder-resolution.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
-import type { InstanceAiContext } from '../../types';
+import type { InstanceAiContext, WorkflowFolderRef } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
 import {
@@ -204,6 +205,51 @@ export const buildWorkflowInputSchema = z
 			),
 	})
 	.strict();
+
+const FOLDER_PATH_PLACEMENT_DESCRIPTION =
+	'Folder to create the NEW workflow in, named the way the user named it — "Clients/Acme", "Acme". ' +
+	'Pass it whenever the workflow has a clear home: the user named a folder, or the related workflows you read live there. ' +
+	'Resolved strictly (exact path, then folder name, then path suffix), never fuzzy: an unresolved folder fails the build before anything is saved and lists the real folders, so retry with one of those or ask the user. ' +
+	'New workflows only — to move an existing workflow use `workspace(action="move-workflow-to-folder")`.';
+
+/** Same contract plus a folder target; advertised only while folder exploration is on for the run. */
+export const buildWorkflowInputSchemaWithFolderPlacement = buildWorkflowInputSchema
+	.extend({
+		folderPath: z.string().optional().describe(FOLDER_PATH_PLACEMENT_DESCRIPTION),
+	})
+	.strict();
+
+function pickBuildWorkflowInputSchema(context: InstanceAiContext) {
+	return context.folderExplorationEnabled === true
+		? buildWorkflowInputSchemaWithFolderPlacement
+		: buildWorkflowInputSchema;
+}
+
+/**
+ * An unresolved folder must read as "nothing was created", before any other
+ * note: a workflow quietly left at the root when the user named a folder is
+ * the failure `folderPath` exists to remove.
+ */
+function formatFolderPlacementFailure(failure: {
+	requested: string;
+	reason: string;
+	candidates: string[];
+}): string {
+	const candidates =
+		failure.candidates.length > 0
+			? ` Folders in this project: ${failure.candidates.map((path) => `"${path}"`).join(', ')}.`
+			: '';
+	const retry =
+		' Re-run `build-workflow` with one of those paths as `folderPath`, or ask the user which folder they mean. Do NOT guess a folder from workflow names, and do NOT drop `folderPath` to save at the project root unless the user agrees.';
+	switch (failure.reason) {
+		case 'ambiguous':
+			return `Folder "${failure.requested}" matches more than one folder, so the workflow was NOT created.${candidates}${retry}`;
+		case 'unsupported':
+			return `Folders are not available on this instance, so the workflow was NOT created in "${failure.requested}". Tell the user, and re-run without \`folderPath\` only if they agree to a root-level workflow.`;
+		default:
+			return `No folder matches "${failure.requested}", so the workflow was NOT created.${candidates}${retry}`;
+	}
+}
 
 const triggerNodeOutputSchema = z.object({
 	nodeName: z.string(),
@@ -433,6 +479,45 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 	};
 }
 
+const buildWorkflowOutputSchema = z.object({
+	success: z.boolean(),
+	filePath: z.string(),
+	sourceHash: z.string().optional(),
+	workflowId: z.string().optional(),
+	workflowName: z.string().optional(),
+	workItemId: z.string().optional(),
+	triggerNodes: z.array(triggerNodeOutputSchema).optional(),
+	verificationReadiness: verificationReadinessOutputSchema.optional(),
+	/** Effective intent after merging with the prior outcome for this work
+	 *  item — a repair rebuild that omits the input keeps the stored value. */
+	executionIntent: z.enum(['one-off', 'reusable']).optional(),
+	setupRequirement: setupRequirementOutputSchema.optional(),
+	postBuildFlow: postBuildFlowOutputSchema.optional(),
+	isSupportingWorkflow: z.boolean().optional(),
+	mockedNodeNames: z.array(z.string()).optional(),
+	mockedCredentialTypes: z.array(z.string()).optional(),
+	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
+	resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
+	credentialResolutionNote: z.string().optional(),
+	referencedWorkflowIds: z.array(z.string()).optional(),
+	hasUnresolvedPlaceholders: z.boolean().optional(),
+	denied: z.boolean().optional(),
+	reason: z.string().optional(),
+	remediation: remediationMetadataSchema.optional(),
+	errors: z.array(z.string()).optional(),
+	warnings: z.array(z.string()).optional(),
+});
+
+/** The output mirrors the input gate: `folder` is advertised only while folder exploration is on. */
+function pickBuildWorkflowOutputSchema(context: InstanceAiContext) {
+	return context.folderExplorationEnabled === true
+		? buildWorkflowOutputSchema.extend({
+				/** Folder the workflow was created in, when a `folderPath` was given. */
+				folder: z.object({ id: z.string(), name: z.string(), path: z.string() }).optional(),
+			})
+		: buildWorkflowOutputSchema;
+}
+
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
@@ -445,37 +530,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
-		.input(buildWorkflowInputSchema)
-		.output(
-			z.object({
-				success: z.boolean(),
-				filePath: z.string(),
-				sourceHash: z.string().optional(),
-				workflowId: z.string().optional(),
-				workflowName: z.string().optional(),
-				workItemId: z.string().optional(),
-				triggerNodes: z.array(triggerNodeOutputSchema).optional(),
-				verificationReadiness: verificationReadinessOutputSchema.optional(),
-				/** Effective intent after merging with the prior outcome for this work
-				 *  item — a repair rebuild that omits the input keeps the stored value. */
-				executionIntent: z.enum(['one-off', 'reusable']).optional(),
-				setupRequirement: setupRequirementOutputSchema.optional(),
-				postBuildFlow: postBuildFlowOutputSchema.optional(),
-				isSupportingWorkflow: z.boolean().optional(),
-				mockedNodeNames: z.array(z.string()).optional(),
-				mockedCredentialTypes: z.array(z.string()).optional(),
-				mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-				resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
-				credentialResolutionNote: z.string().optional(),
-				referencedWorkflowIds: z.array(z.string()).optional(),
-				hasUnresolvedPlaceholders: z.boolean().optional(),
-				denied: z.boolean().optional(),
-				reason: z.string().optional(),
-				remediation: remediationMetadataSchema.optional(),
-				errors: z.array(z.string()).optional(),
-				warnings: z.array(z.string()).optional(),
-			}),
-		)
+		.input(pickBuildWorkflowInputSchema(context))
+		.output(pickBuildWorkflowOutputSchema(context))
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
@@ -557,6 +613,39 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const targetWorkflowId = binding.workflowId;
+			// Only the folder-enabled schema carries the field; the narrowing keeps the
+			// handler valid for both shapes without a cast.
+			const folderPath =
+				'folderPath' in input && typeof input.folderPath === 'string'
+					? input.folderPath
+					: undefined;
+			if (folderPath !== undefined && targetWorkflowId) {
+				// Placement is a create-time decision. Moving on update would silently
+				// relocate a workflow the user did not ask to move.
+				const remediation = createRemediation({
+					category: 'blocked',
+					shouldEdit: false,
+					reason: 'folder_placement_on_update',
+					guidance:
+						'`folderPath` only applies when creating a new workflow. Nothing was saved. Re-run without `folderPath` to update the workflow, and move it with `workspace(action="move-workflow-to-folder")` if the user asked for that.',
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'blocked',
+					stage: 'folder',
+					binding,
+					targetWorkflowId,
+					isSupportingWorkflow: input.isSupportingWorkflow,
+					remediation,
+					errorCount: 1,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: targetWorkflowId,
+					errors: [remediation.guidance],
+					remediation,
+				};
+			}
 			const permKey = targetWorkflowId ? 'updateWorkflow' : 'createWorkflow';
 			if (context.permissions?.[permKey] === 'blocked') {
 				const remediation = createRemediation({
@@ -1087,7 +1176,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					(n) => isInSetupScope(n.name) && hasPlaceholderDeep(n.parameters),
 				);
 				const createSuccessResponse = async (
-					saved: { id: string; versionId: string; checksum?: string },
+					saved: { id: string; versionId: string; checksum?: string; folder?: WorkflowFolderRef },
 					operation: 'create' | 'update',
 				) => {
 					// The setup panel lists bound slots too (rendered as done), so its
@@ -1256,6 +1345,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workflowId: saved.id,
 						workflowName: json.name || undefined,
 						workItemId: resolvedWorkItemId,
+						...(saved.folder ? { folder: saved.folder } : {}),
 						isSupportingWorkflow: isSupportingWorkflow || undefined,
 						triggerNodes,
 						verificationReadiness: outcome.verificationReadiness,
@@ -1306,11 +1396,43 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 				const created = await context.workflowService.createFromWorkflowJSON(json, {
 					markAsAiTemporary: true,
+					...(folderPath !== undefined ? { folderPath } : {}),
 				});
 				await recordSessionOwnedWorkflow(context, created.id);
 				return await createSuccessResponse(created, 'create');
 			} catch (error) {
 				const message = error instanceof Error ? error.message : 'Unknown error';
+
+				if (error instanceof FolderResolutionError) {
+					// Nothing was written. The source is fine, so the binding is left as is:
+					// the fix is a corrected `folderPath` or a question to the user, not an edit.
+					const failureText = formatFolderPlacementFailure(error.folderResolution);
+					const remediation = createRemediation({
+						category: 'blocked',
+						shouldEdit: false,
+						reason: `folder_${error.folderResolution.reason.replace(/-/g, '_')}`,
+						guidance: failureText,
+					});
+					trackWorkflowSourceBuild(context, {
+						result: 'failure',
+						stage: 'folder',
+						binding,
+						targetWorkflowId,
+						saveOperation: 'create',
+						isSupportingWorkflow,
+						isAuxiliarySupportingWorkflow,
+						remediation,
+						errorCount: 1,
+					});
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						workflowName: json.name || undefined,
+						workItemId: resolvedWorkItemId,
+						errors: [failureText],
+						remediation,
+					};
+				}
 
 				if (error instanceof WorkflowSaveConflictError) {
 					const remediation = createWorkflowModifiedExternallyRemediation();

@@ -336,4 +336,33 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			node_count: z.number().describe('Total nodes attached across the sent message'),
 		}),
 	},
+	BUILDER_LISTED_WORKFLOWS: {
+		name: 'Builder listed workflows',
+		description:
+			'Instance AI called workflows(action="list"). Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string().optional(),
+			folder_exploration_enabled: z
+				.boolean()
+				.describe('Whether the run had the folder-exploration flag on'),
+			folder_scope: z
+				.enum(['none', 'path', 'id'])
+				.describe('How the caller addressed a folder, if at all'),
+			recursive: z.boolean().optional().describe('Only when a folder was addressed'),
+			folder_resolution: z
+				.enum(['resolved', 'not_found', 'ambiguous', 'unsupported', 'scope_too_wide'])
+				.optional()
+				.describe('Only when a folder was addressed'),
+			candidate_count: z
+				.number()
+				.int()
+				.optional()
+				.describe('Folders offered back on an unresolved request'),
+			scope: z.enum(['project', 'instance']),
+			has_query: z.boolean().describe('Whether a name filter was also passed'),
+			result_count: z.number().int().describe('Rows returned on this page'),
+			total: z.number().int().describe('Rows matching every filter, ignoring limit'),
+		}),
+	},
 });

@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.error';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
-import type { InstanceAiContext } from '../types';
+import type { FolderResolutionFailure, InstanceAiContext } from '../types';
 import {
 	findSetupHintProblems,
 	findSetupHintTestUrlOriginProblem,
@@ -93,19 +93,33 @@ const LIMIT_FIELD_DESCRIPTION = 'Max results to return';
 const NODE_TYPES_FIELD_DESCRIPTION =
 	'Full node types, e.g. ["n8n-nodes-base.slack"]. Matched against the nodes a workflow actually contains, from an index — so it finds users of a node however the workflow is named, and costs one call however many workflows exist. Keeps only workflows containing at least one of these.';
 
-const listAction = z.object({
+const QUERY_FIELD_DESCRIPTION =
+	'Substring filter on the workflow NAME only — it does not match node types, descriptions, or what a workflow does. Omit it whenever you need the actual inventory (what exists here, project status, what to do next): a name-filtered list is not the set of workflows in scope. Use it only when the user named a workflow, or to locate one you already know exists.';
+
+// Shared-field descriptions live in constants: `sanitizeInputSchema` flattens the
+// action union into one object and throws when one field name carries two
+// different descriptions. Any other action that adds these fields must import them.
+const FOLDER_PATH_FIELD_DESCRIPTION =
+	'Restrict to one folder, named the way the user named it — "logsearch", "personal/logsearch", "Clients/Acme". This is the ONLY correct way to address a folder: folder membership is stored, not encoded in workflow names, so a `query` prefix both misses members named differently and picks up non-members that share the prefix. Matched case-insensitively on the full path, then on the folder name. If it does not resolve, the result says so and lists the real folders — never assume the returned set is the folder.';
+
+const FOLDER_ID_FIELD_DESCRIPTION =
+	'Folder ID, when a previous listing already gave you one (each workflow row carries its `folder`). Prefer `folderPath` when working from what the user said. When both are given, `folderId` wins.';
+
+const RECURSIVE_FIELD_DESCRIPTION =
+	'Whether a folder is read together with its nested subfolders. Defaults to true, which is what a user naming a folder means. Set false only to inspect one level.';
+
+// Separate objects per capability combination, rather than optional-and-ignored fields, so a
+// flag-off state's schema is byte-identical to the pre-feature tool. An A/B needs a control that
+// cannot see the capability, not one told to avoid it.
+
+/** The pre-feature `list` shape. Advertised while neither node usage nor folder exploration is on. */
+const listActionBase = z.object({
 	action: z
 		.literal('list')
 		.describe(
 			'List workflows accessible to the current user. Use for workflow inspection. Call it without `query` to get the complete inventory in scope — the result reports how many workflows a filter or the limit left out.',
 		),
-	query: z
-		.string()
-		.optional()
-		.describe(
-			'Substring filter on the workflow NAME only — it does not match node types, descriptions, or what a workflow does. Omit it whenever you need the actual inventory (what exists here, project status, what to do next): a name-filtered list is not the set of workflows in scope. Use it only when the user named a workflow, or to locate one you already know exists.',
-		),
-	nodeTypes: z.array(z.string()).optional().describe(NODE_TYPES_FIELD_DESCRIPTION),
+	query: z.string().optional().describe(QUERY_FIELD_DESCRIPTION),
 	limit: z.number().int().positive().max(100).optional().describe(LIMIT_FIELD_DESCRIPTION),
 	status: z
 		.enum(['active', 'archived', 'all'])
@@ -117,11 +131,27 @@ const listAction = z.object({
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
 });
 
+/** `list` with the dependency index behind it. Advertised while folder exploration is off. */
+const listActionWithoutFolderScope = listActionBase.extend({
+	nodeTypes: z.array(z.string()).optional().describe(NODE_TYPES_FIELD_DESCRIPTION),
+});
+
+const folderScopeFields = {
+	query: z
+		.string()
+		.optional()
+		.describe(
+			QUERY_FIELD_DESCRIPTION +
+				' If the user named a FOLDER, use `folderPath` — folder membership is not a name prefix, and guessing it here silently returns the wrong set.',
+		),
+	folderPath: z.string().optional().describe(FOLDER_PATH_FIELD_DESCRIPTION),
+	folderId: z.string().optional().describe(FOLDER_ID_FIELD_DESCRIPTION),
+	recursive: z.boolean().optional().describe(RECURSIVE_FIELD_DESCRIPTION),
+};
+
 /** `list` as it looks without the dependency index behind it — the shape the agent saw before
- *  node usage existed. Registered instead of `listAction` when the capability is off, so the
- *  off arm really lacks the field rather than being told to avoid it. `Input` still derives
- *  from the full `listAction`, so the handler keeps its types either way. */
-const listActionWithoutNodeTypes = listAction.omit({ nodeTypes: true });
+ *  node usage existed. Advertised when node usage is off but folder exploration is on. */
+const listActionWithoutNodeTypes = listActionBase.extend(folderScopeFields);
 
 /**
  * The cheap rung of preference discovery. `list` filters on the workflow name only, so learning
@@ -152,6 +182,16 @@ const nodeUsageAction = z.object({
 	scope: z.enum(['project', 'instance']).optional().describe(SCOPE_FIELD_DESCRIPTION),
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
 });
+
+/** Both node usage and folder exploration on. */
+const listAction = listActionWithoutFolderScope.extend(folderScopeFields);
+
+function pickListAction(context: InstanceAiContext, hasNodeUsage: boolean) {
+	if (hasNodeUsage) {
+		return context.folderExplorationEnabled === true ? listAction : listActionWithoutFolderScope;
+	}
+	return context.folderExplorationEnabled === true ? listActionWithoutNodeTypes : listActionBase;
+}
 
 const getAction = z.object({
 	action: z
@@ -466,7 +506,7 @@ function getSupportedWorkflowActionSchemas(
 	const hasNodeUsage = !!context.workflowService.nodeUsage;
 
 	return {
-		list: hasNodeUsage ? listAction : listActionWithoutNodeTypes,
+		list: pickListAction(context, hasNodeUsage),
 		...(hasNodeUsage ? { 'node-usage': nodeUsageAction } : {}),
 		get: getAction,
 		...(surface !== 'orchestrator' ? { 'get-json': getJsonAction } : {}),
@@ -589,19 +629,53 @@ async function handleNodeUsage(
 	};
 }
 
+/**
+ * An unresolved folder must read as "these rows are NOT the folder", before any
+ * other note. Acting on a wider set as if it were the folder is the failure this
+ * field exists to remove.
+ */
+function formatFolderResolutionNote(failure: FolderResolutionFailure): string {
+	const candidates =
+		failure.candidates.length > 0
+			? ` Folders in scope: ${failure.candidates.map((path) => `"${path}"`).join(', ')}.`
+			: '';
+	const guidance =
+		' Do NOT substitute a `query` name filter — folder membership is not a name prefix. Retry with one of the listed paths or its `folderId`, or ask the user which folder they mean.';
+
+	switch (failure.reason) {
+		case 'ambiguous':
+			return `Folder "${failure.requested}" matches more than one folder, so no rows were returned.${candidates}${guidance} Identical paths mean the same folder path exists in more than one project; pass \`projectId\` to pick one.`;
+		case 'unsupported':
+			return `Folder "${failure.requested}" could not be used: Folders are not available on this instance (unlicensed), so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Tell the user and ask the user how to proceed.`;
+		case 'scope-too-wide':
+			return `Folder "${failure.requested}" could not be resolved: this listing spans too many projects to scan folders across the whole instance, so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Pass \`projectId\` (from \`workspace(action="list-projects")\`) to narrow to one project, then retry.`;
+		default:
+			return `Folder "${failure.requested}" was not found, so no rows were returned.${candidates}${guidance}`;
+	}
+}
+
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
-	const { workflows, total, totalInScope } = await context.workflowService.list({
+	const { workflows, total, totalInScope, folderResolution } = await context.workflowService.list({
 		limit: input.limit,
 		query: input.query,
 		...(input.status ? { status: input.status } : {}),
 		...(input.scope ? { scope: input.scope } : {}),
 		...(input.projectId ? { projectId: input.projectId } : {}),
 		...(input.nodeTypes?.length ? { nodeTypes: input.nodeTypes } : {}),
+		// Forwarded on presence, not on truthiness: an empty folder name is still a
+		// folder request, and the adapter must report the miss instead of returning
+		// the unfiltered inventory.
+		...(input.folderPath !== undefined ? { folderPath: input.folderPath } : {}),
+		...(input.folderId !== undefined ? { folderId: input.folderId } : {}),
+		...(input.recursive !== undefined ? { recursive: input.recursive } : {}),
 	});
 
 	// A partial list must never read as the complete inventory: guessed name
 	// filters used to silently hide the rest of a project's workflows.
 	const notes: string[] = [];
+	if (folderResolution) {
+		notes.push(formatFolderResolutionNote(folderResolution));
+	}
 	if (input.query !== undefined && totalInScope > total) {
 		notes.push(
 			`Name filter "${input.query}" matched ${total} of ${totalInScope} workflows in scope — ${totalInScope - total} are hidden. This is NOT the full set: re-run without \`query\` before answering anything about what exists here.`,
@@ -629,6 +703,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		workflows,
 		total,
 		totalInScope,
+		...(folderResolution ? { folderResolution } : {}),
 		...(notes.length > 0 ? { note: notes.join(' ') } : {}),
 	};
 }

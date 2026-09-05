@@ -71,6 +71,29 @@ import type { BuilderTemplatesService } from './workspace/builder-templates-serv
 
 export type InstanceAiToolRegistry = Map<string, BuiltTool>;
 
+/** A workflow's folder, with its root-relative path. */
+export interface WorkflowFolderRef {
+	id: string;
+	name: string;
+	/** Root-relative folder names joined with "/". Equals `name` for a root folder. */
+	path: string;
+}
+
+/**
+ * Why a requested folder did not resolve to exactly one folder. `candidates`
+ * are root-relative paths in scope, sorted and capped. They are offered so the
+ * caller can ask or retry — never as a substitute result set.
+ */
+export interface FolderResolutionFailure {
+	requested: string;
+	/**
+	 * `scope-too-wide`: the listing spans more projects than the folder scan
+	 * will cover; the caller must pass `projectId`.
+	 */
+	reason: 'not-found' | 'ambiguous' | 'unsupported' | 'scope-too-wide';
+	candidates: string[];
+}
+
 export interface WorkflowSummary {
 	id: string;
 	name: string;
@@ -87,6 +110,12 @@ export interface WorkflowSummary {
 	 * workflow belongs to.
 	 */
 	project?: { id: string; name: string };
+	/**
+	 * The folder the workflow sits in. Absent for root-level workflows. Also
+	 * absent for every row while folder exploration is off for the run, so the
+	 * flag-off rows keep the pre-feature shape.
+	 */
+	folder?: WorkflowFolderRef;
 }
 
 export interface WorkflowDetail extends WorkflowSummary {
@@ -319,6 +348,11 @@ export interface WorkflowListResult {
 	 * from the full inventory.
 	 */
 	totalInScope: number;
+	/**
+	 * Present only when a folder was requested and did not resolve. `workflows`
+	 * is then empty on purpose: a wider set must never stand in for the folder.
+	 */
+	folderResolution?: FolderResolutionFailure;
 }
 
 /**
@@ -357,6 +391,16 @@ export interface InstanceAiWorkflowService {
 		 * instead of a fetch per workflow.
 		 */
 		nodeTypes?: string[];
+		/**
+		 * Restrict to one folder, named the way the user named it ("Clients/Acme",
+		 * "Acme"). Resolved strictly: exact path, exact name, path suffix. Never
+		 * fuzzy. Ignored while folder exploration is off for the run.
+		 */
+		folderPath?: string;
+		/** Restrict to one folder by id, when a prior listing supplied it. */
+		folderId?: string;
+		/** Include nested subfolders. Defaults to true. */
+		recursive?: boolean;
 	}): Promise<WorkflowListResult>;
 	/**
 	 * Node-type usage across the workflows in scope, read from the dependency index rather than by
@@ -395,10 +439,19 @@ export interface InstanceAiWorkflowService {
 	getWorkflowSnapshot(
 		workflowId: string,
 	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number }>;
-	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
+	/**
+	 * Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.).
+	 *
+	 * `folderPath` / `folderId` place the new workflow in a folder of the bound
+	 * project, resolved with the same strict rules as `list`. An unresolved folder
+	 * throws `FolderResolutionError` before anything is written: a workflow left at
+	 * the root when the user named a folder is a silent degradation. Ignored while
+	 * folder exploration is off for the run. The returned detail carries `folder`
+	 * when the workflow was placed.
+	 */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
-		options?: { markAsAiTemporary?: boolean },
+		options?: { markAsAiTemporary?: boolean; folderPath?: string; folderId?: string },
 	): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
 	updateFromWorkflowJSON(
@@ -1207,6 +1260,12 @@ export interface InstanceAiContext {
 	 */
 	tracing?: InstanceAiTraceContext;
 	projectId?: string;
+	/**
+	 * Per-run folder-exploration gate, resolved by the host before the context
+	 * is built. When true, the `workflows` list action advertises folder fields
+	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
+	 */
+	folderExplorationEnabled?: boolean;
 	/**
 	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
 	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,

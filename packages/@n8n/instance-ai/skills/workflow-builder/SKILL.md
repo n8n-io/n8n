@@ -231,6 +231,15 @@ follow its build → publish → assign steps.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
    task's final deliverable.
+   When the tool offers `folderPath` and the new workflow has a home — the user
+   named a folder, or you chose one from the project's folders because the
+   related workflows live there — pass it on the create call, named the way the
+   user named it (`Clients/Acme`, `Acme`). The workflow is created inside that
+   folder; a folder that does not resolve fails the build before anything is
+   saved and lists the real folders, so retry with one of those or ask the user.
+   Never leave a workflow at the project root when its place was already clear.
+   `folderPath` is for new workflows only; move an existing one with
+   `workspace(action="move-workflow-to-folder")`.
 9. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    branches are wired on the workflow builder (`.to(ifNode).onTrue(...).onFalse(...)`

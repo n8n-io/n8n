@@ -2268,6 +2268,14 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
 
 /**
+ * Rollout flag for folder exploration in Instance AI: folder attribution on
+ * `workflows(action="list")` rows plus `folderPath` / `folderId` / `recursive`
+ * on that action. Off by default. PostHog owns cohort rollout;
+ * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
+ */
+export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
+
+/**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
  * server) during evaluation. Populated for every AI root the server intercepts;
  * empty when the kill-switch is off or every root was auto-/explicit-pinned.

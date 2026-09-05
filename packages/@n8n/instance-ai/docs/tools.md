@@ -286,8 +286,11 @@ List workflows accessible to the current user.
 | `status` | `"active" \| "archived" \| "all"` | no | `"active"` | Which workflows to list |
 | `scope` | `"project" \| "instance"` | no | `"project"` | Which project(s) to search |
 | `projectId` | string | no | — | Read one specific project, overriding `scope` |
+| `folderPath` | string | no | — | Restrict to one folder, named as the user named it (`Clients/Acme`, `Acme`). Strict, staged match; never fuzzy. Advertised only while folder exploration is on |
+| `folderId` | string | no | — | Restrict to one folder by id (from a prior row's `folder.id`). Same gate |
+| `recursive` | boolean | no | `true` | Include nested subfolders. Same gate |
 
-**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt, project? }], total, totalInScope, note? }`
+**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt, project?, folder? }], total, totalInScope, note?, folderResolution? }`
 
 `activeVersionId` is `null` when the workflow is unpublished.
 
@@ -300,6 +303,21 @@ project's full inventory.
 can span more than one — i.e. neither `projectId` nor a bound project narrowed it
 to one. It is what makes membership readable in a cross-project listing instead
 of guessable by comparing per-scope counts.
+
+`folder` (`{ id, name, path }`) is the workflow's folder with its root-relative
+path (`Clients/Acme`). Folder names cannot contain `/`, so `path` is
+unambiguous. Absent for root-level workflows, and absent on every row
+while folder exploration is off for the run (PostHog flag
+`110_instance_ai_folder_exploration`, force-on via
+`N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED`).
+
+`folderResolution` (`{ requested, reason, candidates }`) is present only when a
+requested folder did not resolve. `workflows` is then empty on purpose, and
+`note` says so first: the rows must never be read as the folder, and a `query`
+name filter is not a substitute. `reason` is `not-found`, `ambiguous` (more
+than one folder matched; `candidates` lists them), `unsupported` (folders are
+not licensed on the instance) or `scope-too-wide` (the listing spans more
+projects than the folder scan covers, so the caller must pass `projectId`).
 
 `projectId` is a read-only narrowing: the adapter passes it as a filter on a query
 that still resolves readability from the caller's own project and workflow roles,
@@ -351,12 +369,14 @@ this tool with `filePath`.
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
+| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `workspace(action="move-workflow-to-folder")`. Advertised only while folder exploration is on |
 
 There is deliberately **no `projectId`**: a build writes to the project the
 conversation is bound to, and nothing can redirect it. The field used to exist and
 the adapter ignored it, so a build could report a project it had not written to.
 
-**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, remediation?, errors?, warnings? }`
+**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, folder?, remediation?, errors?, warnings? }`
+— `folder` is `{ id, name, path }` when the workflow was created inside a folder.
 
 **Behavior**: Reads the source file from the runtime workspace, compiles
 TypeScript sources through the sandbox `tsx` runner or parses WorkflowJSON
