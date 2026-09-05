@@ -6,7 +6,10 @@
 
 import {
 	collectFromTarget,
+	collectFromBuilderChains,
 	addBranchTargetNodes,
+	addBuilderChainsToGraph,
+	getPrefixChainHead,
 	processBranchForComposite,
 	processBranchForBuilder,
 	fixupBranchConnectionTargets,
@@ -42,34 +45,31 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 	},
 
 	getHeadNodeName(input: IfElseInput): { name: string; id: string } {
-		if (isIfElseBuilder(input)) {
-			return { name: input.ifNode.name, id: input.ifNode.id };
+		// A builder created inline from a chain (a.to(b).to(ifNode).onTrue(...)) enters
+		// at the chain head `a`. Everything else enters at the IF node.
+		const prefixHead = getPrefixChainHead(input);
+		if (prefixHead) {
+			return { name: prefixHead.name, id: prefixHead.id };
 		}
-		const composite = input;
-		return { name: composite.ifNode.name, id: composite.ifNode.id };
+		return { name: input.ifNode.name, id: input.ifNode.id };
 	},
 
 	collectPinData(
 		input: IfElseInput,
 		collector: (node: NodeInstance<string, string, unknown>) => void,
 	): void {
-		// Collect from IF node
-		if (isIfElseBuilder(input)) {
-			collector(input.ifNode);
-			collectFromTarget(input.trueBranch, collector);
-			collectFromTarget(input.falseBranch, collector);
-			if (input.errorBranch) {
-				collectFromTarget(input.errorBranch, collector);
-			}
-		} else {
-			const composite = input;
-			collector(composite.ifNode);
-			collectFromTarget(composite.trueBranch, collector);
-			collectFromTarget(composite.falseBranch, collector);
+		collectFromBuilderChains(input, collector);
+		collector(input.ifNode);
+		collectFromTarget(input.trueBranch, collector);
+		collectFromTarget(input.falseBranch, collector);
+		if (isIfElseBuilder(input) && input.errorBranch) {
+			collectFromTarget(input.errorBranch, collector);
 		}
 	},
 
 	addNodes(input: IfElseInput, ctx: MutablePluginContext): string {
+		addBuilderChainsToGraph(input, ctx);
+
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
 		// Handle IfElseBuilder differently - need to set up connections BEFORE adding branches
@@ -99,8 +99,11 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 
 			// Add the IF node with connections to branches
 			// If the node already exists (e.g., added by merge handler via addBranchToGraph),
-			// merge the connections rather than overwriting
-			const existingIfNode = ctx.nodes.get(builder.ifNode.name);
+			// merge the connections rather than overwriting.
+			// Resolve through nameMapping first: addBranchToGraph may have added the IF node
+			// under a deduped name, and the plain name can belong to a different node.
+			const ifNodeKey = ctx.nameMapping?.get(builder.ifNode.id) ?? builder.ifNode.name;
+			const existingIfNode = ctx.nodes.get(ifNodeKey);
 			if (existingIfNode) {
 				// Merge ifMainConns into existing connections
 				const existingMainConns =
@@ -144,7 +147,7 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 				if (ifErrorConns && ifErrorConns.size > 0) {
 					ifConns.set('error', ifErrorConns);
 				}
-				ctx.nodes.set(builder.ifNode.name, {
+				ctx.nodes.set(ifNodeKey, {
 					instance: builder.ifNode,
 					connections: ifConns,
 				});
@@ -166,7 +169,7 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 				}
 			}
 
-			return builder.ifNode.name;
+			return ifNodeKey;
 		}
 
 		// IfElseComposite: add branches first, then use results for connections
