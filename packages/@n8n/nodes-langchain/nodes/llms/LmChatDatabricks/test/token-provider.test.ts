@@ -1,4 +1,4 @@
-import type { INode, NodeEgressFilter } from 'n8n-workflow';
+import type { INode, ISupplyDataFunctions, NodeEgressFilter } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { DatabricksOAuth2Credential } from '../token-provider';
@@ -36,6 +36,13 @@ const mockNode: INode = {
 	position: [0, 0],
 	parameters: {},
 };
+
+const mockRefreshOAuth2Token = vi.fn();
+
+const mockCtx = {
+	getNode: () => mockNode,
+	helpers: { refreshOAuth2Token: mockRefreshOAuth2Token },
+} as unknown as ISupplyDataFunctions;
 
 const SENTINEL_SECRET = 'sentinel-client-secret-xyz';
 
@@ -75,7 +82,7 @@ describe('getDatabricksTokenProvider', () => {
 
 	it('should mint a token via ClientOAuth2 built from the decrypted credential', async () => {
 		mockGetToken.mockResolvedValue(tokenResponse('token-a', 3600));
-		const getToken = getDatabricksTokenProvider(mockNode, mockCredential);
+		const { getToken } = getDatabricksTokenProvider(mockCtx, mockCredential);
 
 		await expect(getToken()).resolves.toBe('token-a');
 		expect(MockClientOAuth2.init).toHaveBeenCalledWith({
@@ -95,7 +102,7 @@ describe('getDatabricksTokenProvider', () => {
 			host: 'https://my.databricks.com/',
 			accessTokenUrl: 'http://attacker.example/token',
 		} as DatabricksOAuth2Credential;
-		const getToken = getDatabricksTokenProvider(mockNode, poisoned);
+		const { getToken } = getDatabricksTokenProvider(mockCtx, poisoned);
 
 		await expect(getToken()).resolves.toBe('token-a');
 		expect(MockClientOAuth2.init).toHaveBeenCalledWith(
@@ -110,7 +117,7 @@ describe('getDatabricksTokenProvider', () => {
 			validateRedirectSync: vi.fn(),
 			createSecureLookup: vi.fn(),
 		};
-		const getToken = getDatabricksTokenProvider(mockNode, mockCredential, egressFilter);
+		const { getToken } = getDatabricksTokenProvider(mockCtx, mockCredential, egressFilter);
 
 		await expect(getToken()).resolves.toBe('token-a');
 		expect(MockClientOAuth2.init).toHaveBeenCalledWith(
@@ -121,7 +128,7 @@ describe('getDatabricksTokenProvider', () => {
 	it('should reuse the cached token before the 60s early-expiry buffer', async () => {
 		vi.useFakeTimers();
 		mockGetToken.mockResolvedValue(tokenResponse('token-a', 3600));
-		const getToken = getDatabricksTokenProvider(mockNode, mockCredential);
+		const { getToken } = getDatabricksTokenProvider(mockCtx, mockCredential);
 
 		await expect(getToken()).resolves.toBe('token-a');
 		vi.advanceTimersByTime((3600 - 120) * 1000);
@@ -134,7 +141,7 @@ describe('getDatabricksTokenProvider', () => {
 		mockGetToken
 			.mockResolvedValueOnce(tokenResponse('token-a', 3600))
 			.mockResolvedValueOnce(tokenResponse('token-b', 3600));
-		const getToken = getDatabricksTokenProvider(mockNode, mockCredential);
+		const { getToken } = getDatabricksTokenProvider(mockCtx, mockCredential);
 
 		await expect(getToken()).resolves.toBe('token-a');
 		vi.advanceTimersByTime((3600 - 30) * 1000);
@@ -146,7 +153,7 @@ describe('getDatabricksTokenProvider', () => {
 		mockGetToken
 			.mockResolvedValueOnce(tokenResponse('token-a'))
 			.mockResolvedValueOnce(tokenResponse('token-b'));
-		const getToken = getDatabricksTokenProvider(mockNode, mockCredential);
+		const { getToken } = getDatabricksTokenProvider(mockCtx, mockCredential);
 
 		await expect(getToken()).resolves.toBe('token-a');
 		await expect(getToken()).resolves.toBe('token-b');
@@ -155,7 +162,7 @@ describe('getDatabricksTokenProvider', () => {
 
 	it('should cache when expires_in is a numeric string', async () => {
 		mockGetToken.mockResolvedValue(tokenResponse('token-a', '3600'));
-		const getToken = getDatabricksTokenProvider(mockNode, mockCredential);
+		const { getToken } = getDatabricksTokenProvider(mockCtx, mockCredential);
 
 		await expect(getToken()).resolves.toBe('token-a');
 		await expect(getToken()).resolves.toBe('token-a');
@@ -167,7 +174,7 @@ describe('getDatabricksTokenProvider', () => {
 		mockGetToken.mockImplementation(
 			async () => await new Promise((resolve) => (resolveMint = resolve)),
 		);
-		const getToken = getDatabricksTokenProvider(mockNode, mockCredential);
+		const { getToken } = getDatabricksTokenProvider(mockCtx, mockCredential);
 
 		const first = getToken();
 		const second = getToken();
@@ -182,7 +189,7 @@ describe('getDatabricksTokenProvider', () => {
 		mockGetToken
 			.mockRejectedValueOnce(new MockResponseError())
 			.mockResolvedValueOnce(tokenResponse('token-a', 3600));
-		const getToken = getDatabricksTokenProvider(mockNode, mockCredential);
+		const { getToken } = getDatabricksTokenProvider(mockCtx, mockCredential);
 
 		await expect(getToken()).rejects.toThrow(NodeOperationError);
 		await expect(getToken()).resolves.toBe('token-a');
@@ -191,7 +198,7 @@ describe('getDatabricksTokenProvider', () => {
 
 	it('should wrap mint failures in a NodeOperationError that leaks no secret', async () => {
 		mockGetToken.mockRejectedValue(new MockResponseError());
-		const getToken = getDatabricksTokenProvider(mockNode, mockCredential);
+		const { getToken } = getDatabricksTokenProvider(mockCtx, mockCredential);
 
 		const error = await getToken().then(
 			() => {
@@ -215,7 +222,7 @@ describe('getDatabricksTokenProvider', () => {
 		mockGetToken.mockRejectedValue(
 			new Error(`400: invalid request "client_secret=${SENTINEL_SECRET}"`),
 		);
-		const getToken = getDatabricksTokenProvider(mockNode, mockCredential);
+		const { getToken } = getDatabricksTokenProvider(mockCtx, mockCredential);
 
 		const error = await getToken().then(
 			() => {
@@ -226,6 +233,38 @@ describe('getDatabricksTokenProvider', () => {
 
 		expect(error.description).not.toContain(SENTINEL_SECRET);
 		expect(error.description).toContain('***');
+	});
+
+	describe('authorizationCode grant', () => {
+		const userCredential: DatabricksOAuth2Credential = {
+			...mockCredential,
+			grantType: 'authorizationCode',
+			oauthTokenData: { access_token: 'user-token', refresh_token: 'refresh-a' },
+		};
+
+		it('should return the access token stored by the sign-in', async () => {
+			const { getToken } = getDatabricksTokenProvider(mockCtx, userCredential);
+
+			await expect(getToken()).resolves.toBe('user-token');
+		});
+
+		it('should never mint from the client secret', async () => {
+			const { getToken } = getDatabricksTokenProvider(mockCtx, userCredential);
+
+			await getToken();
+
+			expect(MockClientOAuth2.init).not.toHaveBeenCalled();
+			expect(mockGetToken).not.toHaveBeenCalled();
+		});
+
+		it('should tell the user to connect when the credential holds no token', async () => {
+			const { getToken } = getDatabricksTokenProvider(mockCtx, {
+				...userCredential,
+				oauthTokenData: undefined,
+			});
+
+			await expect(getToken()).rejects.toThrow('Databricks credential is not connected');
+		});
 	});
 });
 
@@ -241,7 +280,7 @@ describe('createDatabricksFetch', () => {
 	it('should set the Authorization header, overwriting an existing one', async () => {
 		const mockFetch = vi.fn().mockResolvedValue(new Response('ok'));
 		globalThis.fetch = mockFetch;
-		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
+		const wrappedFetch = createDatabricksFetch({ getToken: async () => 'fresh-token' });
 
 		await wrappedFetch('https://my.databricks.com/serving-endpoints/chat/completions', {
 			method: 'POST',
@@ -256,7 +295,7 @@ describe('createDatabricksFetch', () => {
 	it('should set the partner User-Agent, overwriting the SDK-supplied one', async () => {
 		const mockFetch = vi.fn().mockResolvedValue(new Response('ok'));
 		globalThis.fetch = mockFetch;
-		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
+		const wrappedFetch = createDatabricksFetch({ getToken: async () => 'fresh-token' });
 
 		await wrappedFetch('https://my.databricks.com/serving-endpoints/chat/completions', {
 			method: 'POST',
@@ -270,7 +309,7 @@ describe('createDatabricksFetch', () => {
 	it('should preserve the headers of a Request input when init sets none', async () => {
 		const mockFetch = vi.fn().mockResolvedValue(new Response('ok'));
 		globalThis.fetch = mockFetch;
-		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
+		const wrappedFetch = createDatabricksFetch({ getToken: async () => 'fresh-token' });
 
 		const request = new Request('https://my.databricks.com/serving-endpoints/chat/completions', {
 			method: 'POST',
@@ -287,7 +326,7 @@ describe('createDatabricksFetch', () => {
 	it('should preserve the method and body of a Request input passed without init', async () => {
 		const mockFetch = vi.fn().mockResolvedValue(new Response('ok'));
 		globalThis.fetch = mockFetch;
-		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
+		const wrappedFetch = createDatabricksFetch({ getToken: async () => 'fresh-token' });
 
 		const request = new Request('https://my.databricks.com/serving-endpoints/chat/completions', {
 			method: 'POST',
@@ -303,7 +342,7 @@ describe('createDatabricksFetch', () => {
 	it('should return the exact Response instance with an unread body', async () => {
 		const response = new Response('data: chunk\n\n');
 		globalThis.fetch = vi.fn().mockResolvedValue(response);
-		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
+		const wrappedFetch = createDatabricksFetch({ getToken: async () => 'fresh-token' });
 
 		const result = await wrappedFetch('https://my.databricks.com/serving-endpoints');
 
@@ -314,7 +353,7 @@ describe('createDatabricksFetch', () => {
 	it('should return an error response unmodified without throwing', async () => {
 		const response = new Response('{"error":"denied"}', { status: 401 });
 		globalThis.fetch = vi.fn().mockResolvedValue(response);
-		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
+		const wrappedFetch = createDatabricksFetch({ getToken: async () => 'fresh-token' });
 
 		const result = await wrappedFetch('https://my.databricks.com/serving-endpoints');
 
@@ -323,7 +362,7 @@ describe('createDatabricksFetch', () => {
 
 	it('should propagate network failures without leaking the token', async () => {
 		globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
-		const wrappedFetch = createDatabricksFetch(async () => 'minted-token-abc');
+		const wrappedFetch = createDatabricksFetch({ getToken: async () => 'minted-token-abc' });
 
 		const error = await wrappedFetch('https://my.databricks.com/serving-endpoints').then(
 			() => {
@@ -349,7 +388,7 @@ describe('createDatabricksFetch', () => {
 			.fn()
 			.mockResolvedValueOnce({ ok: true })
 			.mockResolvedValueOnce({ ok: false, error: new Error('egress blocked') });
-		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token', {
+		const wrappedFetch = createDatabricksFetch({ getToken: async () => 'fresh-token' }, {
 			validateUrl,
 		} as unknown as NodeEgressFilter);
 
@@ -374,7 +413,7 @@ describe('createDatabricksFetch', () => {
 			)
 			.mockResolvedValueOnce(finalResponse);
 		globalThis.fetch = mockFetch;
-		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token', {
+		const wrappedFetch = createDatabricksFetch({ getToken: async () => 'fresh-token' }, {
 			validateUrl: vi.fn().mockResolvedValue({ ok: true }),
 		} as unknown as NodeEgressFilter);
 
@@ -395,7 +434,7 @@ describe('createDatabricksFetch', () => {
 			)
 			.mockResolvedValueOnce(new Response('ok'));
 		globalThis.fetch = mockFetch;
-		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token', {
+		const wrappedFetch = createDatabricksFetch({ getToken: async () => 'fresh-token' }, {
 			validateUrl: vi.fn().mockResolvedValue({ ok: true }),
 		} as unknown as NodeEgressFilter);
 
@@ -412,9 +451,7 @@ describe('createDatabricksFetch', () => {
 		mockGetToken
 			.mockResolvedValueOnce(tokenResponse('token-a', 3600))
 			.mockResolvedValueOnce(tokenResponse('token-b', 3600));
-		const wrappedFetch = createDatabricksFetch(
-			getDatabricksTokenProvider(mockNode, mockCredential),
-		);
+		const wrappedFetch = createDatabricksFetch(getDatabricksTokenProvider(mockCtx, mockCredential));
 
 		await wrappedFetch('https://my.databricks.com/serving-endpoints');
 		vi.advanceTimersByTime((3600 - 30) * 1000);
@@ -424,5 +461,111 @@ describe('createDatabricksFetch', () => {
 			new Headers((call[1] as RequestInit).headers).get('authorization'),
 		);
 		expect(sentAuth).toEqual(['Bearer token-a', 'Bearer token-b']);
+	});
+
+	describe('refresh on rejection', () => {
+		const authHeaders = (mockFetch: ReturnType<typeof vi.fn>) =>
+			mockFetch.mock.calls.map((call) =>
+				new Headers((call[1] as RequestInit).headers).get('authorization'),
+			);
+
+		it('should refresh once and retry when the server rejects the token', async () => {
+			const mockFetch = vi
+				.fn()
+				.mockResolvedValueOnce(new Response('nope', { status: 403 }))
+				.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+			globalThis.fetch = mockFetch;
+			const refreshAfterRejection = vi.fn().mockResolvedValue('refreshed-token');
+
+			const wrappedFetch = createDatabricksFetch({
+				getToken: async () => 'stale-token',
+				refreshAfterRejection,
+				expiredStatus: 403,
+			});
+			const response = await wrappedFetch('https://my.databricks.com/serving-endpoints');
+
+			expect(response.status).toBe(200);
+			expect(refreshAfterRejection).toHaveBeenCalledTimes(1);
+			expect(authHeaders(mockFetch)).toEqual(['Bearer stale-token', 'Bearer refreshed-token']);
+		});
+
+		it('should not retry on a status that does not mean expiry', async () => {
+			const mockFetch = vi.fn().mockResolvedValue(new Response('nope', { status: 401 }));
+			globalThis.fetch = mockFetch;
+			const refreshAfterRejection = vi.fn();
+
+			const wrappedFetch = createDatabricksFetch({
+				getToken: async () => 'stale-token',
+				refreshAfterRejection,
+				expiredStatus: 403,
+			});
+			const response = await wrappedFetch('https://my.databricks.com/serving-endpoints');
+
+			expect(response.status).toBe(401);
+			expect(refreshAfterRejection).not.toHaveBeenCalled();
+			expect(mockFetch).toHaveBeenCalledTimes(1);
+		});
+
+		it('should surface the rejection when the session cannot be refreshed', async () => {
+			const mockFetch = vi.fn().mockResolvedValue(new Response('nope', { status: 403 }));
+			globalThis.fetch = mockFetch;
+
+			const wrappedFetch = createDatabricksFetch({
+				getToken: async () => 'stale-token',
+				refreshAfterRejection: async () => null,
+				expiredStatus: 403,
+			});
+			const response = await wrappedFetch('https://my.databricks.com/serving-endpoints');
+
+			expect(response.status).toBe(403);
+			expect(mockFetch).toHaveBeenCalledTimes(1);
+		});
+
+		it('should retry at most once so a rejecting server cannot loop', async () => {
+			const mockFetch = vi.fn().mockResolvedValue(new Response('nope', { status: 403 }));
+			globalThis.fetch = mockFetch;
+
+			const wrappedFetch = createDatabricksFetch({
+				getToken: async () => 'stale-token',
+				refreshAfterRejection: async () => 'refreshed-token',
+				expiredStatus: 403,
+			});
+			const response = await wrappedFetch('https://my.databricks.com/serving-endpoints');
+
+			expect(response.status).toBe(403);
+			expect(mockFetch).toHaveBeenCalledTimes(2);
+		});
+
+		it('should replay the body on the retry', async () => {
+			const mockFetch = vi
+				.fn()
+				.mockResolvedValueOnce(new Response('nope', { status: 403 }))
+				.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+			globalThis.fetch = mockFetch;
+
+			const wrappedFetch = createDatabricksFetch({
+				getToken: async () => 'stale-token',
+				refreshAfterRejection: async () => 'refreshed-token',
+				expiredStatus: 403,
+			});
+			await wrappedFetch('https://my.databricks.com/serving-endpoints', {
+				method: 'POST',
+				body: '{"model":"llama"}',
+			});
+
+			const bodies = mockFetch.mock.calls.map((call) => (call[1] as RequestInit).body);
+			expect(bodies).toEqual(['{"model":"llama"}', '{"model":"llama"}']);
+		});
+
+		it('should not retry for a source that cannot refresh', async () => {
+			const mockFetch = vi.fn().mockResolvedValue(new Response('nope', { status: 403 }));
+			globalThis.fetch = mockFetch;
+
+			const wrappedFetch = createDatabricksFetch({ getToken: async () => 'minted-token' });
+			const response = await wrappedFetch('https://my.databricks.com/serving-endpoints');
+
+			expect(response.status).toBe(403);
+			expect(mockFetch).toHaveBeenCalledTimes(1);
+		});
 	});
 });
