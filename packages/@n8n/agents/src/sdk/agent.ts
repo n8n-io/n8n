@@ -9,7 +9,11 @@ import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './me
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import type { VectorStore } from './vector-store';
-import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
+import {
+	AgentRuntime,
+	type AgentRuntimeConfig,
+	type VolatileInstructionsProvider,
+} from '../runtime/loop/agent-runtime';
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
@@ -222,6 +226,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	private externalMcpConnectionFailures: McpConnectionFailedEvent[] = [];
 
+	private volatileInstructionsProviderValue?: VolatileInstructionsProvider;
+
 	private defaultExecutionOptions?: ExecutionOptions;
 
 	private buildPromise: Promise<AgentRuntimeConfig> | undefined;
@@ -278,6 +284,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	instructions(text: string, options?: { providerOptions?: ProviderOptions }): this {
 		this.instructionsText = text;
 		this.instructionProviderOpts = options?.providerOptions;
+		return this;
+	}
+
+	/** Set host instructions that the runtime resolves before each model call. */
+	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this {
+		this.volatileInstructionsProviderValue = provider;
 		return this;
 	}
 
@@ -1127,6 +1139,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			runState,
 			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
 			...(mcpConnectionFailures.length > 0 ? { mcpConnectionFailures } : {}),
+			...(this.volatileInstructionsProviderValue
+				? { volatileInstructionsProvider: this.volatileInstructionsProviderValue }
+				: {}),
 		};
 	}
 

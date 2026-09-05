@@ -224,6 +224,20 @@ describe('check_background_jobs', () => {
 		});
 	});
 
+	it('consumes only settled rows returned by the check', async () => {
+		const { jobService, options } = setup();
+		jobService.listForThread.mockResolvedValue([
+			jobView(),
+			jobView({ id: 'job-2', status: 'completed', settledAt: new Date() }),
+			jobView({ id: 'job-3', status: 'failed', settledAt: new Date() }),
+		]);
+		const tool = createCheckBackgroundJobsTool(options.jobService);
+
+		await tool.handler!({}, { persistence });
+
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-2', 'job-3']);
+	});
+
 	it('truncates oversized results in the echo', async () => {
 		const { jobService, options } = setup();
 		jobService.listForThread.mockResolvedValue([

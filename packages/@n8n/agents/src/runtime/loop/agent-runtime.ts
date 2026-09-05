@@ -44,6 +44,7 @@ import type {
 } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type {
+	AgentPersistenceOptions,
 	ExecutionOptions,
 	ModelConfig,
 	PersistedExecutionOptions,
@@ -81,6 +82,14 @@ import {
 	type ToolBatchContext,
 	type ToolCallBatchResult,
 } from '../tools/tool-call-executor';
+
+export interface VolatileInstructionsContext {
+	persistence?: AgentPersistenceOptions;
+}
+
+export type VolatileInstructionsProvider = (
+	context: VolatileInstructionsContext,
+) => Promise<string | undefined>;
 
 export interface AgentRuntimeConfig {
 	name: string;
@@ -138,6 +147,8 @@ export interface AgentRuntimeConfig {
 	 * aborting the run.
 	 */
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
+	/** Host instructions resolved before each model call. The runtime never persists them. */
+	volatileInstructionsProvider?: VolatileInstructionsProvider;
 }
 
 const MAX_LOOP_ITERATIONS = 30;
@@ -871,10 +882,15 @@ export class AgentRuntime {
 				options?.persistence,
 				options?.executionCounter,
 			);
+			const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
+			const combinedVolatileInstructions = [volatileInstructions, hostVolatileInstructions]
+				.map((value) => value?.trim())
+				.filter((value): value is string => Boolean(value))
+				.join('\n\n');
 			const { system, messages } = list.forLlm(
 				effectiveInstructions,
 				instructionProviderOptions,
-				volatileInstructions,
+				combinedVolatileInstructions || undefined,
 			);
 			// Runtime breakpoints (conversation history, static tools) are per-call
 			// only — never persisted back to the message list or tool set.
@@ -983,6 +999,17 @@ export class AgentRuntime {
 			usage: totalUsage,
 			structuredOutput,
 		});
+	}
+
+	private async resolveVolatileInstructions(
+		persistence: AgentPersistenceOptions | undefined,
+	): Promise<string | undefined> {
+		try {
+			return await this.config.volatileInstructionsProvider?.({ persistence });
+		} catch (error) {
+			logger.warn('Failed to resolve volatile agent instructions', { runId: this.runId, error });
+			return undefined;
+		}
 	}
 
 	/**

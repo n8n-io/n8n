@@ -116,6 +116,7 @@ export class AgentsModule implements ModuleInterface {
 		if (instanceSettings.instanceType === 'main') {
 			// Loaded for its pubsub decorator
 			await import('./background/agent-background-job.service.js');
+			await import('./background/agent-wake.service.js');
 
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'

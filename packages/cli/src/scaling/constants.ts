@@ -39,6 +39,7 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'relay-agent-execution-update',
 	'resume-agent-workflow-tool',
 	'cancel-agent-background-job',
+	'wake-agent-background-job',
 	'relay-instance-ai-event',
 	'relay-instance-ai-task-control',
 	'agent-chat-subscription-changed',
