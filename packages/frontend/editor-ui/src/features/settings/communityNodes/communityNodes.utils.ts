@@ -7,6 +7,23 @@ export type ExtendedPublicInstalledPackage = PublicInstalledPackage & {
 	unverifiedUpdate: boolean;
 };
 
+interface IncompatibleNodesApiVersionErrorResponse {
+	httpStatusCode: number;
+	meta: {
+		/** API version the package requires, or `null` if the declared value is malformed. */
+		requiredNodesApiVersion: number | null;
+		supportedNodesApiVersion: number;
+	};
+}
+
+/** True when the error rejects a package because of its node API version. */
+export const isNodesApiVersionError = (
+	error: unknown,
+): error is IncompatibleNodesApiVersionErrorResponse => {
+	const e = error as IncompatibleNodesApiVersionErrorResponse | undefined;
+	return e?.httpStatusCode === 400 && 'requiredNodesApiVersion' in (e.meta ?? {});
+};
+
 export async function fetchInstalledPackageInfo(
 	packageName: string,
 ): Promise<ExtendedPublicInstalledPackage | undefined> {
