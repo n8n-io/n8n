@@ -21,12 +21,15 @@ function fail(message) {
 function parseArguments(argv) {
 	const separator = argv.indexOf('--');
 	if (separator === -1 || separator === argv.length - 1) {
-		fail('use --node <id> [--base <ref>] [--output <path>] [--artifact <path>] -- <command>');
+		fail(
+			'use --node <id> [--base <ref>] [--workflow <path>] [--output <path>] [--artifact <path>] -- <command>',
+		);
 	}
 
 	const options = {
 		node: '',
 		base: process.env.TESTBOX_EVIDENCE_BASE_SHA ?? '',
+		workflow: process.env.TESTBOX_EVIDENCE_WORKFLOW ?? '',
 		output: '',
 		artifacts: [],
 	};
@@ -42,6 +45,9 @@ function parseArguments(argv) {
 				break;
 			case '--base':
 				options.base = value;
+				break;
+			case '--workflow':
+				options.workflow = value;
 				break;
 			case '--output':
 				options.output = value;
@@ -154,8 +160,9 @@ const { options, command } = parseArguments(process.argv.slice(2));
 const startedAt = new Date().toISOString();
 const headSha = git('rev-parse', 'HEAD');
 const sourceDigest = await workspaceDigest();
-const workflowPath = '.github/workflows/testbox-evidence-spike.yml';
-const workflowDigest = existsSync(workflowPath) ? sha256(readFileSync(workflowPath)) : null;
+const workflowPath = options.workflow || '.github/workflows/testbox-evidence-spike.yml';
+if (!existsSync(workflowPath)) fail(`workflow does not exist: ${workflowPath}`);
+const workflowDigest = sha256(readFileSync(workflowPath));
 const commandDigest = sha256(JSON.stringify(command));
 
 let result;
@@ -189,7 +196,7 @@ const evidence = {
 	},
 	environment: {
 		testboxId: optionalFile('/tmp/.testbox/testbox_id'),
-		githubRunId: process.env.GITHUB_RUN_ID ?? null,
+		githubRunId: process.env.GITHUB_RUN_ID ?? optionalFile('/tmp/.testbox/adopted_run_id'),
 		githubJob: process.env.GITHUB_JOB ?? null,
 		runnerName: process.env.RUNNER_NAME ?? null,
 		runnerOs: process.env.RUNNER_OS ?? process.platform,
