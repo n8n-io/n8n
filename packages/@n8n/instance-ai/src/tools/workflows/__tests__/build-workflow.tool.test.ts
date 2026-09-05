@@ -276,7 +276,7 @@ describe('createBuildWorkflowTool', () => {
 			},
 		});
 		expect(result.postBuildFlow?.guidance).toContain(
-			'Follow the post-build instructions in `instructions` now',
+			'Follow the phase instructions in postBuildFlow.instructions',
 		);
 		expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
 		// The language reminder in the skill intro must ride along in the inline copy.
@@ -285,21 +285,25 @@ describe('createBuildWorkflowTool', () => {
 		);
 		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
 		// Tag-turn-only sections are stripped from the inline copy.
+		expect(result.postBuildFlow?.guidance).toContain(
+			'Reuse this inline skill content for direct builds',
+		);
+		expect(result.postBuildFlow?.guidance).toContain('<workflow-verification-follow-up>');
+		expect(result.postBuildFlow?.guidance).toContain('<workflow-setup-required>');
+		expect(result.postBuildFlow?.guidance).toContain(
+			'load the full post-build-flow skill unless its follow-up sections are already available',
+		);
 		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
 		expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
 		expect(result.postBuildFlow?.instructions).not.toContain('## Credentials before build');
 		expect(result.postBuildFlow?.instructions).toContain('## After build-workflow succeeds');
-		expect(result.postBuildFlow?.guidance).toContain(
-			'then mocked/no-mock live-test when latest verification used mocks or simulations',
-		);
-		expect(result.postBuildFlow?.guidance).toContain(
-			'never offer publishing as an alternative to the live test',
-		);
-		expect(result.postBuildFlow?.guidance).toContain(
-			'A user-run execution counts only after `executions(action="list")`',
-		);
-		expect(result.postBuildFlow?.guidance).toContain(
-			'Do not replace the error-workflow opt-in with a generic add-anything',
+		expect(result.postBuildFlow?.guidance).toContain('A saved build is not proof of live behavior');
+		expect(result.postBuildFlow?.instructions).toContain('references/credential-setup-recipes.md');
+		expect(result.postBuildFlow?.instructions).not.toContain('GET https://api.fal.ai');
+		expect(result.postBuildFlow?.instructions).toContain('Mocked verification live-test follow-up');
+		expect(result.postBuildFlow?.instructions).toContain('Publish only when the user asks');
+		expect(result.postBuildFlow?.instructions).not.toContain(
+			'ask once whether the user wants to build an error workflow',
 		);
 		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(

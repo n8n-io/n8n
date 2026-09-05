@@ -36,7 +36,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		builderHint: {
 			searchHint:
-				'Webhook verification is automatic — there is NO user-settable "verify token". On activation n8n registers the Facebook Lead Ads webhook subscription and verifies Facebook\'s challenge against this node\'s own auto-generated id. Never tell the user to invent a verify-token string or look for a verify-token credential field; if Facebook\'s "Verify token" box must be filled in manually it has to be this node\'s id, not an arbitrary value.',
+				'Webhook verification is automatic through the supported registration flow on activation. There is no user-settable verify-token field. Do not invent a verify token or ask the user to paste an internal node ID into a provider form. If registration fails, inspect the node documentation and the reported configuration error before suggesting an alternative setup step.',
 		},
 		credentials: [
 			{

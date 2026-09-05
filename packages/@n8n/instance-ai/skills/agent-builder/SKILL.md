@@ -92,8 +92,9 @@ builder discovers something Instance AI must create:
 
 - For a workflow with `relationship: "agent-tool"`, build it, pass it in
   `workflowContext`, and call `build-agent` again so the builder can attach it.
-- For a workflow with `relationship: "agent-entrypoint"`, build it after the
-  Agent exists, using the returned `agentId`. This workflow invokes the Agent;
+- For a workflow with `relationship: "agent-entrypoint"`, confirm that the user
+  accepted the bridge when it changes the requested design. Then build it after
+  the Agent exists, using the returned `agentId`. This workflow invokes the Agent;
   never pass it in `workflowContext`, never attach it to the Agent as a tool,
   and do not call `build-agent` again solely to attach it.
 - For a data table, create it and call `build-agent` again with its name and

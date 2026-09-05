@@ -27,16 +27,16 @@ export function renderSkillCatalogPrompt(
 	if (options.includeProtocol === false) return catalog;
 
 	return `Skill loading protocol:
-Skills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.
+Skills provide task-specific instructions, not execution tools. Follow a relevant skill when the agent instructions or the task require it.
 
 Available skills:
 ${catalog}
 
 When deciding whether to load a skill:
 - Match the user's request against the skill name and description.
-- If one skill clearly matches, call load_skill once with \`{ "skillId": "<id>" }\`, then follow the returned instructions.
+- If a skill clearly matches and its instructions are not already available, call load_skill with \`{ "skillId": "<id>" }\`, then follow the returned instructions.
 - If a loaded skill references a supporting file, call load_skill with \`{ "skillId": "<id>", "filePath": "<relative path>" }\`.
-- If the relevant skill was already loaded for this request, do not call load_skill again.
+- Reuse the same skill version while its instructions remain available in context, including inline tool results. Reload when the instructions are missing or the version changes. Load a supporting file when its specific guidance is needed.
 - If no skill clearly matches, do not call load_skill.
 - Do not load a skill just because it is listed here.`;
 }

@@ -85,7 +85,9 @@ describe('report-verification-verdict tool', () => {
 					'Inspected persisted workflow wf-123; the saved graph matches the requested outcome.',
 			}),
 		);
-		expect((result as { guidance: string }).guidance).toContain('verified successfully');
+		expect((result as { guidance: string }).guidance).toContain('latest structured evidence');
+		expect((result as { guidance: string }).guidance).toContain('untested required paths');
+		expect((result as { guidance: string }).guidance).not.toContain('verified successfully');
 		expect((result as { guidance: string }).guidance).toContain('wf-123');
 	});
 

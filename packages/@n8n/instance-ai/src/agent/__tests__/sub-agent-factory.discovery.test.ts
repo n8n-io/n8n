@@ -14,7 +14,7 @@ describe('SUB_AGENT_PROTOCOL — browser-tool discovery preservation', () => {
 	it('keeps the secret-handling guardrail (route through credential setup, not chat)', () => {
 		expect(SUB_AGENT_PROTOCOL).toContain('Never ask the user to paste passwords');
 		expect(SUB_AGENT_PROTOCOL).toContain(
-			'credential setup or Computer Use browser credential capture',
+			'credential setup, Computer Use browser credential capture, or existing credential selection',
 		);
 	});
 

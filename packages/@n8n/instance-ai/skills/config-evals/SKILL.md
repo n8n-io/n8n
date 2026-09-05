@@ -4,8 +4,9 @@ description: >-
   Builds and maintains configuration-based evaluations on a workflow with the
   eval-config tool. Use when the user asks to set up, add, view, change, or
   remove an evaluation, score, grade, or judge a workflow's output, or measure
-  answer quality against a test dataset. This is the only eval form Instance AI
-  handles — it does not touch on-canvas evaluation nodes.
+  answer quality against a test dataset. Use this flow when eval-config is
+  available. For explicit on-canvas evaluation requests, use the matching
+  evaluation tools and procedure when available. Ask before substituting a config eval.
 recommended_tools:
   - eval-config
   - data-tables
@@ -20,10 +21,12 @@ Use this skill to attach a configuration-based evaluation to a workflow with the
 end node, one or more judged metrics, and a Data Table dataset. Nothing is added
 to the canvas — the config lives off-canvas via the evaluation-config API.
 
-Config evals are the only evaluation form you work with. Do not add, read,
-rewire, or reason about on-canvas evaluation nodes (EvaluationTrigger,
-Evaluation/checkIfEvaluating/setOutputs/setMetrics). If the user asks for those,
-build a config eval instead and briefly say that is how you set up evaluations.
+Use this configuration flow for new evaluations when `eval-config` is available.
+This skill does not cover on-canvas EvaluationTrigger or Evaluation nodes.
+If the user explicitly requests those, use the matching evaluation tools and
+procedure when available. If that route is unavailable, explain the limitation
+and ask before substituting a config eval. Do not claim that visible legacy
+evaluation tools do not exist.
 
 ## What a Config Eval Needs
 

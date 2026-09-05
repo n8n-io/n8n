@@ -48,6 +48,9 @@ const SUB_AGENT_PROTOCOL = `${SUBAGENT_OUTPUT_CONTRACT}
 
 ### Structured Result
 Return a concise result summary: IDs created, statuses, counts, errors encountered.
+Distinguish saved changes from verified behavior. State the target and scope of
+each check. Name simulated, failed, and untested steps. Do not treat earlier
+evidence as proof after material edits.
 
 ### Diagnostic Context (when relevant)
 If you encountered errors, retried operations, or made non-obvious decisions, add a brief
