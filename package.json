@@ -78,6 +78,7 @@
     "test:ci:backend:integration": "turbo run test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/**'",
     "test:ci:backend:integration:changed": "turbo run test:integration:changed --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/**'",
     "test:affected": "turbo run test --affected --concurrency=1",
+    "test:upgrade": "./scripts/upgrade-test/upgrade-cycle.sh",
     "db:schema:docs": "turbo run build --filter=@n8n/db && pnpm --filter=@n8n/db schema:docs",
     "db:schema:check": "turbo run build --filter=@n8n/db && pnpm --filter=@n8n/db schema:check",
     "db:schema:check:sqlite": "turbo run build --filter=@n8n/db && pnpm --filter=@n8n/db schema:check:sqlite",
