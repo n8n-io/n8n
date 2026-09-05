@@ -144,5 +144,27 @@ describe('PublicApiKeyService', () => {
 
 			expect(result).toBe(false);
 		});
+
+		it('should let a member grant folder scopes, which apply to their own projects', async () => {
+			// Arrange
+			const folderScopes: ApiKeyScope[] = [
+				'folder:create',
+				'folder:read',
+				'folder:update',
+				'folder:delete',
+				'folder:list',
+			];
+
+			// Act
+			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
+				{
+					role: GLOBAL_MEMBER_ROLE,
+				},
+				folderScopes,
+			);
+
+			// Assert
+			expect(result).toBe(true);
+		});
 	});
 });
