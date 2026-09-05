@@ -84,12 +84,23 @@ export const formatBuiltInTools = (builtInTools: BuiltInTools) => {
 };
 
 export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
-	const body: Partial<ChatResponseRequest> = {
-		prompt_cache_key: options.promptCacheKey,
-		safety_identifier: options.safetyIdentifier,
-		service_tier: options.serviceTier,
-		top_logprobs: options.topLogprobs,
-	};
+	const body: Partial<ChatResponseRequest> = {};
+
+	if (options.promptCacheKey) {
+		body.prompt_cache_key = options.promptCacheKey;
+	}
+
+	if (options.safetyIdentifier) {
+		body.safety_identifier = options.safetyIdentifier;
+	}
+
+	if (options.serviceTier) {
+		body.service_tier = options.serviceTier;
+	}
+
+	if (options.topLogprobs !== undefined) {
+		body.top_logprobs = options.topLogprobs;
+	}
 
 	if (options.conversationId) {
 		body.conversation = options.conversationId;
@@ -101,43 +112,40 @@ export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 		});
 	}
 
-	if (options.promptConfig) {
-		const prompt = get(options, 'promptConfig.promptOptions', {} as PromptOptions);
+	const promptOptions = options.promptConfig?.promptOptions as PromptOptions | undefined;
+	if (promptOptions?.promptId) {
 		body.prompt = removeEmptyProperties({
-			id: prompt.promptId,
-			version: prompt.version,
-			...(prompt.variables && {
-				variables: jsonParse(prompt.variables, {
-					errorMessage: 'Failed to parse prompt variables',
-				}),
-			}),
+			id: promptOptions.promptId,
+			version: promptOptions.version,
+			variables: promptOptions.variables
+				? jsonParse(promptOptions.variables, {
+						errorMessage: 'Failed to parse prompt variables',
+					})
+				: undefined,
 		});
 	}
 
-	if (options.textFormat) {
-		const textOptions = get(options, 'textFormat.textOptions', {} as TextOptions);
+	const textOptions = options.textFormat?.textOptions as TextOptions | undefined;
+	if (textOptions && !isObjectEmpty(textOptions)) {
 		const textConfig: OpenAIClient.Responses.ResponseTextConfig = {
 			verbosity: textOptions.verbosity as OpenAIClient.Responses.ResponseTextConfig['verbosity'],
 		};
+
 		if (textOptions.type === 'json_schema') {
 			textConfig.format = {
 				type: textOptions.type,
-				name: textOptions.name as string,
-				schema: jsonParse(textOptions.schema as string, {
+				name: textOptions.name ?? 'response',
+				schema: jsonParse(textOptions.schema ?? '{}', {
 					errorMessage: 'Failed to parse schema',
 				}),
 			};
-		} else {
+		} else if (textOptions.type) {
 			textConfig.format = {
 				type: textOptions.type as 'json_object' | 'text',
 			};
 		}
 
-		if (textConfig.format) {
-			textConfig.format = removeEmptyProperties(textConfig.format);
-		}
-
-		body.text = textConfig;
+		body.text = removeEmptyProperties(textConfig);
 	}
 
 	if (options.reasoningEffort) {
@@ -146,5 +154,5 @@ export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 		};
 	}
 
-	return body;
+	return removeEmptyProperties(body);
 };
