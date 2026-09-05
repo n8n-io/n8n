@@ -75,6 +75,11 @@ function makePublishedAgent(
 	} as Partial<Agent>);
 }
 
+/** The common fixture: a published agent whose only task is `task-1`, enabled. */
+function publishedAgentWithTask(): Agent {
+	return makePublishedAgent([{ id: 'task-1', enabled: true }]);
+}
+
 function makeSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTaskSnapshot {
 	return {
 		versionId: 'ver-1',
@@ -631,9 +636,7 @@ describe('AgentTaskService', () => {
 
 	describe('registerEnabledForAgent', () => {
 		it('registers a cron job for each enabled published task snapshot', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 
 			await service.registerEnabledForAgent(AGENT_ID);
@@ -650,9 +653,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it("registers the cron in the snapshot's own timezone", async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([
 				makeSnapshot({ cronExpression: '0 8 * * 5', timezone: 'Europe/London' }),
 			]);
@@ -671,9 +672,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('falls back to the instance timezone when the stored timezone is unknown', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([
 				makeSnapshot({ timezone: 'Mars/Olympus_Mons' }),
 			]);
@@ -711,9 +710,7 @@ describe('AgentTaskService', () => {
 
 		it('does not register cron jobs on a follower (leader owns the cron)', async () => {
 			const follower = buildService(false);
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 
 			await follower.registerEnabledForAgent(AGENT_ID);
@@ -722,9 +719,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('deregisters tasks missing from the enabled published snapshots', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 			agentTaskScheduler.getTargetIds.mockReturnValue(['task-1', 'stale-task']);
 			agentTaskScheduler.hasTarget.mockImplementation((_group, taskId) => taskId === 'stale-task');
@@ -749,9 +744,7 @@ describe('AgentTaskService', () => {
 					finishRun = resolve;
 				});
 			}
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			taskRunLockRepository.acquire
@@ -795,9 +788,7 @@ describe('AgentTaskService', () => {
 			}
 			const previousLeader = service;
 			const nextLeader = buildService(true);
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			taskRunLockRepository.acquire
@@ -864,9 +855,7 @@ describe('AgentTaskService', () => {
 
 	describe('handleTasksChanged', () => {
 		it('reconciles the agent so the leader registers its enabled tasks', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 
 			await service.handleTasksChanged({ agentId: AGENT_ID });
@@ -924,9 +913,7 @@ describe('AgentTaskService', () => {
 
 	describe('runTask', () => {
 		it('runs the published agent with the objective', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
@@ -948,9 +935,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('uses the published snapshot body, not the live draft row', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
 				makeSnapshot({ objective: 'Published objective' }),
 			);
@@ -968,9 +953,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('names the schedule timezone without moving the timestamp off the instance zone', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
 				makeSnapshot({ timezone: 'Asia/Tokyo' }),
 			);
@@ -997,9 +980,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('skips when the published task snapshot is not enabled', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
 				makeSnapshot({ enabled: false }),
 			);
@@ -1010,9 +991,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('logs when execution throws', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				throwingStream(),
@@ -1028,9 +1007,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('allows a later scheduled run after a failed execution completes', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock)
 				.mockReturnValueOnce(throwingStream())
@@ -1055,9 +1032,7 @@ describe('AgentTaskService', () => {
 						finishRun = resolve;
 					});
 				}
-				(agentRepository.findOne as Mock).mockResolvedValue(
-					makePublishedAgent([{ id: 'task-1', enabled: true }]),
-				);
+				(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 				(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 				(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 					blockingStream(),
@@ -1083,6 +1058,26 @@ describe('AgentTaskService', () => {
 	});
 
 	describe('startScheduledRun', () => {
+		it('propagates a lock-acquisition error without starting a run', async () => {
+			taskRunLockRepository.acquire.mockRejectedValue(new Error('db down'));
+
+			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).rejects.toThrow('db down');
+
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
+			expect(taskRunLockRepository.release).not.toHaveBeenCalled();
+		});
+
+		it('logs when the in-memory cron cannot take the lock', async () => {
+			taskRunLockRepository.acquire.mockRejectedValue(new Error('db down'));
+
+			await runScheduledTaskOf(service, AGENT_ID, 'task-1');
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'[AgentTaskService] Scheduled task lock failed',
+				expect.objectContaining({ taskId: 'task-1', agentId: AGENT_ID, error: 'db down' }),
+			);
+		});
+
 		it("returns 'skipped-active' without running when the lock is held", async () => {
 			taskRunLockRepository.acquire.mockResolvedValue(null);
 
@@ -1100,9 +1095,7 @@ describe('AgentTaskService', () => {
 					finishRun = resolve;
 				});
 			}
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				blockingStream(),
@@ -1118,9 +1111,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('releases the lock when the run fails', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				throwingStream(),

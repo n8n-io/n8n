@@ -155,26 +155,31 @@ export class AgentsModule implements ModuleInterface {
 			logger.debug('[Agents] Skipping task reconnect on startup — not leader');
 		}
 
-		// Durable scheduling for agent tasks. The handler is registered before
-		// DurableScheduler starts, because module init precedes its start() in the
-		// start command. The handler registration and the reconcile both gate
-		// themselves on the scheduler flags.
-		const { AgentTaskTaskHandler } = await import('./scheduling/agent-task-task-handler.js');
-		const { AgentTaskJobRegistrar } = await import('./scheduling/agent-task-job-registrar.js');
-		const { DurableScheduler } = await import('@/scheduling/durable-scheduler.js');
-		const agentTaskHandler = Container.get(AgentTaskTaskHandler);
-		Container.get(DurableScheduler).registerTaskHandler(
-			agentTaskHandler.taskType,
-			agentTaskHandler,
-		);
+		// Durable scheduling for agent tasks runs on mains only. The handler is
+		// registered before DurableScheduler starts, because module init precedes
+		// its start() in the start command. A main with the flag off registers no
+		// handler, so the executor never claims a leftover agent-task row. The
+		// reconcile runs with the flag in either state: it backfills jobs when the
+		// flag is on and removes them when it is off.
 		if (instanceSettings.instanceType === 'main') {
-			void Container.get(AgentTaskJobRegistrar)
-				.reconcileAll()
-				.catch((error) => {
-					logger.error('[Agents] Failed to reconcile durable agent-task jobs on startup', {
-						error: error instanceof Error ? error.message : String(error),
-					});
+			const { AgentTaskJobRegistrar } = await import('./scheduling/agent-task-job-registrar.js');
+			const registrar = Container.get(AgentTaskJobRegistrar);
+
+			if (registrar.isEnabled()) {
+				const { AgentTaskTaskHandler } = await import('./scheduling/agent-task-task-handler.js');
+				const { DurableScheduler } = await import('@/scheduling/durable-scheduler.js');
+				const agentTaskHandler = Container.get(AgentTaskTaskHandler);
+				Container.get(DurableScheduler).registerTaskHandler(
+					agentTaskHandler.taskType,
+					agentTaskHandler,
+				);
+			}
+
+			void registrar.reconcileAll().catch((error) => {
+				logger.error('[Agents] Failed to reconcile durable agent-task jobs on startup', {
+					error: error instanceof Error ? error.message : String(error),
 				});
+			});
 		}
 	}
 

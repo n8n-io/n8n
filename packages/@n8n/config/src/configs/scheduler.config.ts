@@ -326,6 +326,14 @@ export class SchedulerConfig {
 	 * version of n8n that supports it. While older and newer versions run side by
 	 * side (for example during a rolling deploy), the older leader still runs
 	 * these tasks on its own timer. Then the same task can run twice.
+	 *
+	 * Give every main the same value. A main that starts with this flag off
+	 * removes the durable agent-task jobs, also the ones that a main with the
+	 * flag on has created.
+	 *
+	 * The two schedulers differ on a DST spring-forward: a time inside the
+	 * skipped hour runs at the moment the clock jumps on the in-process timer,
+	 * and shifts forward by the skipped hour on the durable scheduler.
 	 */
 	@Env('N8N_SCHEDULER_AGENT_TASKS_ENABLED')
 	enabledForAgentTasks: boolean = false;

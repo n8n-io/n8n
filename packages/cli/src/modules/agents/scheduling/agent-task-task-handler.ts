@@ -73,14 +73,11 @@ export class AgentTaskTaskHandler implements TaskHandler {
 
 	/** Whether the task is still part of the published, enabled config of the agent. */
 	private async isRunnable(agentId: string, taskId: string): Promise<boolean> {
-		const agent = await this.agentRepository.findById(agentId);
-		if (!agent?.activeVersionId) return false;
+		const versionId = await this.agentRepository.findActiveVersionId(agentId);
+		if (!versionId) return false;
 
-		const snapshot = await this.taskSnapshotRepository.findByVersionAndTaskId(
-			agent.activeVersionId,
-			taskId,
-		);
-		return snapshot !== null && snapshot.enabled;
+		const snapshot = await this.taskSnapshotRepository.findByVersionAndTaskId(versionId, taskId);
+		return snapshot?.enabled === true;
 	}
 
 	/** Removes the stale job behind this occurrence. Best-effort, off the hot path. */

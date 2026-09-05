@@ -4,9 +4,9 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentTaskService } from '../../agent-task.service';
 import type { AgentTaskSnapshot } from '../../entities/agent-task-snapshot.entity';
-import type { Agent } from '../../entities/agent.entity';
 import type { AgentTaskSnapshotRepository } from '../../repositories/agent-task-snapshot.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
+import { AGENT_TASK_TASK_TYPE } from '../agent-task-job';
 import type { AgentTaskJobRegistrar } from '../agent-task-job-registrar';
 import { AgentTaskTaskHandler } from '../agent-task-task-handler';
 
@@ -38,7 +38,7 @@ describe('AgentTaskTaskHandler', () => {
 	const buildTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 		id: 'occurrence-1',
 		jobId: 7,
-		taskType: 'agent:scheduled-task',
+		taskType: AGENT_TASK_TASK_TYPE,
 		payload: { agentId: AGENT_ID, taskId: TASK_ID },
 		scheduledFor,
 		runAt: scheduledFor,
@@ -48,9 +48,6 @@ describe('AgentTaskTaskHandler', () => {
 		leaseEpoch: 1,
 		...overrides,
 	});
-
-	const publishedAgent = (overrides: Partial<Agent> = {}): Agent =>
-		mock<Agent>({ id: AGENT_ID, activeVersionId: 'version-1', ...overrides });
 
 	const snapshot = (overrides: Partial<AgentTaskSnapshot> = {}): AgentTaskSnapshot =>
 		mock<AgentTaskSnapshot>({
@@ -66,7 +63,7 @@ describe('AgentTaskTaskHandler', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
-		agentRepository.findById.mockResolvedValue(publishedAgent());
+		agentRepository.findActiveVersionId.mockResolvedValue('version-1');
 		taskSnapshotRepository.findByVersionAndTaskId.mockResolvedValue(snapshot());
 		agentTaskService.startScheduledRun.mockResolvedValue('started');
 		registrar.reconcile.mockResolvedValue(undefined);
@@ -84,10 +81,9 @@ describe('AgentTaskTaskHandler', () => {
 
 	describe('stale occurrences', () => {
 		it.each([
-			['the agent is gone', () => agentRepository.findById.mockResolvedValue(null)],
 			[
-				'the agent is unpublished',
-				() => agentRepository.findById.mockResolvedValue(publishedAgent({ activeVersionId: null })),
+				'the agent is gone or unpublished',
+				() => agentRepository.findActiveVersionId.mockResolvedValue(null),
 			],
 			[
 				'the snapshot is missing',
@@ -110,6 +106,21 @@ describe('AgentTaskTaskHandler', () => {
 			expect(onDispatch).not.toHaveBeenCalled();
 			expect(agentTaskService.startScheduledRun).not.toHaveBeenCalled();
 			expect(registrar.reconcile).toHaveBeenCalledWith(AGENT_ID);
+		});
+
+		it('completes the occurrence and logs when the self-heal reconcile fails', async () => {
+			agentRepository.findActiveVersionId.mockResolvedValue(null);
+			registrar.reconcile.mockRejectedValue(new Error('db down'));
+
+			const decision = await handler.execute(buildTask(), report);
+			await flushAsyncWork();
+
+			expect(decision).toBe(report.notDispatched());
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to reconcile an agent after a stale occurrence',
+				expect.objectContaining({ agentId: AGENT_ID, error: 'db down' }),
+			);
 		});
 	});
 

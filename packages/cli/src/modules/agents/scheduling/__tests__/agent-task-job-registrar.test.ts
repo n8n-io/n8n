@@ -8,7 +8,6 @@ import { AgentScheduledJobOwner } from '@/scheduling/agent-scheduled-job-owner';
 import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 
 import type { AgentTaskSnapshot } from '../../entities/agent-task-snapshot.entity';
-import type { Agent } from '../../entities/agent.entity';
 import type { AgentTaskSnapshotRepository } from '../../repositories/agent-task-snapshot.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AGENT_TASK_TASK_TYPE } from '../agent-task-job';
@@ -51,9 +50,6 @@ describe('AgentTaskJobRegistrar', () => {
 			agentOwner,
 		);
 
-	const publishedAgent = (overrides: Partial<Agent> = {}): Agent =>
-		mock<Agent>({ id: AGENT_ID, activeVersionId: 'version-1', ...overrides });
-
 	const snapshot = (overrides: Partial<AgentTaskSnapshot> = {}): AgentTaskSnapshot =>
 		mock<AgentTaskSnapshot>({
 			versionId: 'version-1',
@@ -67,8 +63,8 @@ describe('AgentTaskJobRegistrar', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
-		agentRepository.findById.mockResolvedValue(publishedAgent());
-		agentRepository.findPublished.mockResolvedValue([publishedAgent()]);
+		agentRepository.findActiveVersionId.mockResolvedValue('version-1');
+		agentRepository.findPublishedAgentIds.mockResolvedValue([AGENT_ID]);
 		taskSnapshotRepository.findEnabledByVersionId.mockResolvedValue([snapshot()]);
 		scheduledJobRepository.findOwnerMemberIds.mockResolvedValue([]);
 		scheduledJobRepository.findOwnerIds.mockResolvedValue([]);
@@ -80,6 +76,7 @@ describe('AgentTaskJobRegistrar', () => {
 		});
 		provisioner.deprovisionOwner.mockResolvedValue({ removed: 0 });
 		provisioner.deprovisionOwnerMember.mockResolvedValue({ removed: 0 });
+		provisioner.deprovisionOwnerTaskType.mockResolvedValue({ removed: 0 });
 	});
 
 	describe('reconcile', () => {
@@ -134,6 +131,17 @@ describe('AgentTaskJobRegistrar', () => {
 			expect(provisioner.deprovisionOwnerMember).toHaveBeenCalledWith(owner('task-gone'));
 		});
 
+		it('removes every remaining job when the published version has no enabled task', async () => {
+			taskSnapshotRepository.findEnabledByVersionId.mockResolvedValue([]);
+			scheduledJobRepository.findOwnerMemberIds.mockResolvedValue(['task-1']);
+
+			await makeRegistrar().reconcile(AGENT_ID);
+
+			expect(provisioner.provision).not.toHaveBeenCalled();
+			expect(provisioner.deprovisionOwner).not.toHaveBeenCalled();
+			expect(provisioner.deprovisionOwnerMember).toHaveBeenCalledWith(owner('task-1'));
+		});
+
 		it('provisions no job for a snapshot with an invalid cron, warning instead of failing the reconcile', async () => {
 			taskSnapshotRepository.findEnabledByVersionId.mockResolvedValue([
 				snapshot({ taskId: 'bad-task', cronExpression: 'not a cron' }),
@@ -172,11 +180,8 @@ describe('AgentTaskJobRegistrar', () => {
 			);
 		});
 
-		it.each([
-			['deleted', null],
-			['unpublished', mock<Agent>({ id: AGENT_ID, activeVersionId: null })],
-		])('deprovisions every job the agent holds when the agent is %s', async (_name, agent) => {
-			agentRepository.findById.mockResolvedValue(agent);
+		it('deprovisions every job the agent holds when the agent is deleted or unpublished', async () => {
+			agentRepository.findActiveVersionId.mockResolvedValue(null);
 
 			await makeRegistrar().reconcile(AGENT_ID);
 
@@ -192,14 +197,14 @@ describe('AgentTaskJobRegistrar', () => {
 			expect(scheduledJobRepository.findOwnerIds).not.toHaveBeenCalled();
 			expect(provisioner.deprovisionOwner).not.toHaveBeenCalled();
 			expect(provisioner.provision).not.toHaveBeenCalled();
-			expect(agentRepository.findPublished).not.toHaveBeenCalled();
+			expect(agentRepository.findPublishedAgentIds).not.toHaveBeenCalled();
 		});
 
 		it('deletes every agent’s jobs when the agent-tasks flag is off, so no occurrences pile up', async () => {
 			scheduledJobRepository.findOwnerIds
 				.mockResolvedValueOnce(['agent-a', 'agent-b'])
 				.mockResolvedValueOnce([]);
-			provisioner.deprovisionOwner.mockResolvedValue({ removed: 2 });
+			provisioner.deprovisionOwnerTaskType.mockResolvedValue({ removed: 2 });
 
 			await makeRegistrar({ enabledForAgentTasks: false }).reconcileAll();
 
@@ -217,22 +222,20 @@ describe('AgentTaskJobRegistrar', () => {
 				500,
 				'agent-b',
 			);
-			expect(provisioner.deprovisionOwner).toHaveBeenCalledWith({
-				ownerType: 'agent',
-				ownerId: 'agent-a',
-			});
-			expect(provisioner.deprovisionOwner).toHaveBeenCalledWith({
-				ownerType: 'agent',
-				ownerId: 'agent-b',
-			});
+			expect(provisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
+				{ ownerType: 'agent', ownerId: 'agent-a' },
+				AGENT_TASK_TASK_TYPE,
+			);
+			expect(provisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
+				{ ownerType: 'agent', ownerId: 'agent-b' },
+				AGENT_TASK_TASK_TYPE,
+			);
+			expect(provisioner.deprovisionOwner).not.toHaveBeenCalled();
 			expect(provisioner.provision).not.toHaveBeenCalled();
 		});
 
 		it('reconciles every published agent, continuing past one that fails', async () => {
-			agentRepository.findPublished.mockResolvedValue([
-				publishedAgent({ id: 'agent-broken' }),
-				publishedAgent(),
-			]);
+			agentRepository.findPublishedAgentIds.mockResolvedValue(['agent-broken', AGENT_ID]);
 			const registrar = makeRegistrar();
 			const reconcile = vi
 				.spyOn(registrar, 'reconcile')

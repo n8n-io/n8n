@@ -6,7 +6,6 @@ import { ScheduledJobRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DesiredJob } from '@n8n/scheduler';
 import { computeFirstRunAt } from '@n8n/scheduler';
-import type { CronExpression } from 'n8n-workflow';
 
 import { AgentScheduledJobOwner } from '@/scheduling/agent-scheduled-job-owner';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
@@ -53,8 +52,7 @@ export class AgentTaskJobRegistrar {
 	 * An unpublished or deleted agent keeps no jobs.
 	 */
 	async reconcile(agentId: string): Promise<void> {
-		const agent = await this.agentRepository.findById(agentId);
-		const versionId = agent?.activeVersionId;
+		const versionId = await this.agentRepository.findActiveVersionId(agentId);
 		if (!versionId) {
 			await this.deprovisionAgent(agentId);
 			return;
@@ -115,21 +113,25 @@ export class AgentTaskJobRegistrar {
 			return;
 		}
 
-		const agents = await this.agentRepository.findPublished();
-		this.logger.debug('Reconciling durable jobs of published agents', { count: agents.length });
-		for (const agent of agents) {
+		const agentIds = await this.agentRepository.findPublishedAgentIds();
+		this.logger.debug('Reconciling durable jobs of published agents', { count: agentIds.length });
+		for (const agentId of agentIds) {
 			try {
-				await this.reconcile(agent.id);
+				await this.reconcile(agentId);
 			} catch (error) {
 				this.logger.error('Failed to reconcile an agent’s durable jobs', {
-					agentId: agent.id,
+					agentId,
 					error: error instanceof Error ? error.message : String(error),
 				});
 			}
 		}
 	}
 
-	/** Walks every agent that owns jobs and removes them, one page of owner ids at a time. */
+	/**
+	 * Walks every agent that owns jobs and removes its agent-task jobs, one page
+	 * of owner ids at a time. Jobs of other task types that an agent may own are
+	 * outside this flag and stay.
+	 */
 	private async deprovisionAllAgents(): Promise<void> {
 		const pageSize = this.globalConfig.scheduler.ownerReconciliationBatchSize;
 		let after: string | undefined;
@@ -144,7 +146,10 @@ export class AgentTaskJobRegistrar {
 			if (agentIds.length === 0) break;
 
 			for (const agentId of agentIds) {
-				const result = await this.provisioner.deprovisionOwner(this.owner.ref(agentId));
+				const result = await this.provisioner.deprovisionOwnerTaskType(
+					this.owner.ref(agentId),
+					AGENT_TASK_TASK_TYPE,
+				);
 				removed += result.removed;
 			}
 			after = agentIds[agentIds.length - 1];
@@ -163,7 +168,7 @@ export class AgentTaskJobRegistrar {
 	private desiredJobFor(agentId: string, snapshot: AgentTaskSnapshot): DesiredJob | null {
 		const { taskId, cronExpression } = snapshot;
 
-		if (!isCronExpression(cronExpression)) {
+		if (!isValidCronExpression(cronExpression)) {
 			this.logger.warn('Skipping task with invalid cron', { taskId, agentId });
 			return null;
 		}
@@ -194,9 +199,4 @@ export class AgentTaskJobRegistrar {
 			return null;
 		}
 	}
-}
-
-/** Validates a stored cron string and narrows it to the expression type of the scheduler. */
-function isCronExpression(expression: string): expression is CronExpression {
-	return isValidCronExpression(expression);
 }
