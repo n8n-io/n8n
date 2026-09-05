@@ -113,12 +113,42 @@ async function connectAndGetTools(
 	}
 }
 
+async function connectOrThrowForToolkit(
+	ctx: ISupplyDataFunctions | IExecuteFunctions,
+	config: ResolvedMcpConfig,
+	itemIndex: number,
+): Promise<{ client: Client; mcpTools: McpTool[] }> {
+	const node = ctx.getNode();
+	const { client, mcpTools, error } = await connectAndGetTools(ctx, config);
+
+	if (error) {
+		throw mapToNodeOperationError(node, error);
+	}
+	if (!mcpTools?.length) {
+		await client.close();
+		throw new NodeOperationError(node, 'MCP Server returned no tools', {
+			itemIndex,
+			description:
+				'Connected successfully to your MCP server but it returned an empty list of tools.',
+		});
+	}
+
+	return { client, mcpTools };
+}
+
 /**
  * Build a {@link StructuredToolkit} from a connected MCP server.
  *
  * Used by `supplyData` on every MCP-client-style node. Connects, lists tools,
  * filters them, wraps each in a `DynamicStructuredTool`, and returns the toolkit
- * along with a `closeFunction` that releases the client.
+ * along with a `closeFunction`.
+ *
+ * When the context has an execution id, the connected client and tool list are
+ * kept in {@link McpClientsManager} and reused for later `supplyData` calls in
+ * the same execution (Agent V3 re-resolves tools before every model call).
+ * `closeFunction` then only refreshes the idle timer — the manager closes the
+ * client when the execution finishes or is cancelled. Without an execution id
+ * the previous per-call connect/close behaviour is kept.
  */
 export async function buildMcpToolkit(
 	ctx: ISupplyDataFunctions,
@@ -137,25 +167,45 @@ export async function buildMcpToolkit(
 		return setError(new NodeOperationError(node, 'Execution was cancelled', { itemIndex }));
 	}
 
-	const { client, mcpTools, error } = await connectAndGetTools(ctx, config);
+	const executionId = ctx.getExecutionId();
+	const manager = executionId ? Container.get(McpClientsManager) : undefined;
+	const cacheKey = executionId ? `${executionId}:${node.name}` : undefined;
 
-	if (error) {
-		ctx.logger.error('MCP client: Failed to connect to MCP Server', { error });
-		return setError(mapToNodeOperationError(node, error));
+	let client: Client;
+	let mcpTools: McpTool[];
+
+	try {
+		if (manager && cacheKey) {
+			({ client, mcpTools } = await manager.getOrConnect(
+				cacheKey,
+				async () => await connectOrThrowForToolkit(ctx, config, itemIndex),
+				{
+					logger: ctx.logger,
+					onExecutionCancellation: ctx.onExecutionCancellation?.bind(ctx),
+					onExecutionFinish: ctx.onExecutionFinish?.bind(ctx),
+				},
+			));
+		} else {
+			({ client, mcpTools } = await connectOrThrowForToolkit(ctx, config, itemIndex));
+		}
+	} catch (error) {
+		if (error instanceof NodeOperationError) {
+			if (error.message !== 'MCP Server returned no tools') {
+				ctx.logger.error('MCP client: Failed to connect to MCP Server', { error });
+			}
+			return setError(error);
+		}
+		throw error;
+	}
+
+	// getOrConnect registers abort cleanup only after the factory resolves.
+	// An abort during connect/listTools does not fire that handler, so evict now.
+	if (manager && cacheKey && signal?.aborted) {
+		manager.remove(cacheKey, ctx.logger);
+		return setError(new NodeOperationError(node, 'Execution was cancelled', { itemIndex }));
 	}
 
 	ctx.logger.debug('MCP client: Successfully connected to MCP Server');
-
-	if (!mcpTools?.length) {
-		await client.close();
-		return setError(
-			new NodeOperationError(node, 'MCP Server returned no tools', {
-				itemIndex,
-				description:
-					'Connected successfully to your MCP server but it returned an empty list of tools.',
-			}),
-		);
-	}
 
 	try {
 		const tools = mcpTools.map((tool) => {
@@ -185,9 +235,22 @@ export async function buildMcpToolkit(
 
 		const toolkit = new StructuredToolkit(tools);
 
-		return { response: toolkit, closeFunction: async () => await client.close() };
+		return {
+			response: toolkit,
+			closeFunction: async () => {
+				if (manager && cacheKey) {
+					manager.refresh(cacheKey);
+					return;
+				}
+				await client.close();
+			},
+		};
 	} catch (e) {
-		await client.close();
+		if (manager && cacheKey) {
+			manager.remove(cacheKey, ctx.logger);
+		} else {
+			await client.close();
+		}
 		throw e;
 	}
 }

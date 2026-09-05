@@ -72,6 +72,8 @@ function createSupplyDataCtx(overrides: Record<string, unknown> = {}) {
 		logger: { debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 		addInputData: vi.fn(() => ({ index: 0 })),
 		addOutputData: vi.fn(),
+		// Empty id keeps these helpers on the uncached supplyData path.
+		getExecutionId: vi.fn(() => ''),
 		...egressHelpers<ISupplyDataFunctions>(),
 		...overrides,
 	} as Partial<ISupplyDataFunctions>);
@@ -220,6 +222,234 @@ describe('runtime', () => {
 			const tools = (result.response as StructuredToolkit).getTools();
 			expect(tools).toHaveLength(1);
 			expect(tools[0].name).toBe(buildMcpToolName('MCP', 'search'));
+		});
+	});
+
+	describe('buildMcpToolkit session cache', () => {
+		let manager: McpClientsManager;
+
+		function createCachedSupplyCtx(executionId: string, overrides: Record<string, unknown> = {}) {
+			return createSupplyDataCtx({
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.4, name: 'MCP', type: 'mcp' })),
+				getExecutionId: vi.fn(() => executionId),
+				getExecutionCancelSignal: vi.fn(() => undefined),
+				onExecutionCancellation: vi.fn(),
+				onExecutionFinish: vi.fn(),
+				...overrides,
+			});
+		}
+
+		beforeEach(() => {
+			manager = new McpClientsManager({
+				cacheTtl: 300_000,
+				cacheMaxSize: 500,
+			} as never);
+			vi.mocked(Container.get).mockReturnValue(manager as never);
+		});
+
+		afterEach(() => {
+			manager.shutdown();
+		});
+
+		it('reuses one connection and tools/list within the same execution', async () => {
+			const connect = vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			const listTools = vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [sampleTool],
+			});
+			const close = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createCachedSupplyCtx('exec-1');
+			const first = await buildMcpToolkit(ctx, 0, baseConfig);
+			const second = await buildMcpToolkit(ctx, 0, baseConfig);
+
+			expect(connect).toHaveBeenCalledTimes(1);
+			expect(listTools).toHaveBeenCalledTimes(1);
+			expect(close).not.toHaveBeenCalled();
+			expect(manager.size).toBe(1);
+
+			await first.closeFunction?.();
+			await second.closeFunction?.();
+			expect(close).not.toHaveBeenCalled();
+			expect(manager.size).toBe(1);
+		});
+
+		it('does not share the cache across different executions', async () => {
+			const connect = vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			const listTools = vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [sampleTool],
+			});
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			await buildMcpToolkit(createCachedSupplyCtx('exec-1'), 0, baseConfig);
+			await buildMcpToolkit(createCachedSupplyCtx('exec-2'), 0, baseConfig);
+
+			expect(connect).toHaveBeenCalledTimes(2);
+			expect(listTools).toHaveBeenCalledTimes(2);
+			expect(manager.size).toBe(2);
+		});
+
+		it('does not share the cache across different MCP Client Tool nodes', async () => {
+			const connect = vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			const listTools = vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [sampleTool],
+			});
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			await buildMcpToolkit(
+				createCachedSupplyCtx('exec-1', {
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1.4, name: 'MCP A', type: 'mcp' })),
+				}),
+				0,
+				baseConfig,
+			);
+			await buildMcpToolkit(
+				createCachedSupplyCtx('exec-1', {
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1.4, name: 'MCP B', type: 'mcp' })),
+				}),
+				0,
+				baseConfig,
+			);
+
+			expect(connect).toHaveBeenCalledTimes(2);
+			expect(listTools).toHaveBeenCalledTimes(2);
+			expect(manager.size).toBe(2);
+		});
+
+		it('retries after a failed initialization instead of caching the failure', async () => {
+			const connect = vi
+				.spyOn(Client.prototype, 'connect')
+				.mockRejectedValueOnce(new Error('boom'))
+				.mockResolvedValueOnce();
+			const listTools = vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [sampleTool],
+			});
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createCachedSupplyCtx('exec-1');
+			await expect(buildMcpToolkit(ctx, 0, baseConfig)).rejects.toThrow(NodeOperationError);
+			expect(manager.size).toBe(0);
+
+			const result = await buildMcpToolkit(ctx, 0, baseConfig);
+			expect(result.response).toBeInstanceOf(StructuredToolkit);
+			expect(connect).toHaveBeenCalledTimes(2);
+			expect(listTools).toHaveBeenCalledTimes(1);
+			expect(manager.size).toBe(1);
+		});
+
+		it('does not cache an empty tool list', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [] });
+			const close = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+			const ctx = createCachedSupplyCtx('exec-1');
+
+			await expect(buildMcpToolkit(ctx, 0, baseConfig)).rejects.toThrow(
+				'MCP Server returned no tools',
+			);
+			expect(close).toHaveBeenCalled();
+			expect(manager.size).toBe(0);
+		});
+
+		it('shares one in-flight initialization across concurrent supplyData calls', async () => {
+			let releaseConnect: () => void = () => {};
+			const connectStarted = new Promise<void>((resolve) => {
+				releaseConnect = resolve;
+			});
+			const connect = vi.spyOn(Client.prototype, 'connect').mockImplementation(async () => {
+				await connectStarted;
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createCachedSupplyCtx('exec-1');
+			const first = buildMcpToolkit(ctx, 0, baseConfig);
+			const second = buildMcpToolkit(ctx, 0, baseConfig);
+			releaseConnect();
+			await Promise.all([first, second]);
+
+			expect(connect).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.listTools).toHaveBeenCalledTimes(1);
+			expect(manager.size).toBe(1);
+		});
+
+		it('evicts the client when cancellation fires while tools/list is still in flight', async () => {
+			const abort = new AbortController();
+			let releaseList: (value: { tools: Array<typeof sampleTool> }) => void = () => {};
+			let markListStarted: () => void = () => {};
+			const listStarted = new Promise<void>((resolve) => {
+				markListStarted = resolve;
+			});
+
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						releaseList = resolve;
+						markListStarted();
+					}),
+			);
+			const close = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createCachedSupplyCtx('exec-1', {
+				getExecutionCancelSignal: vi.fn(() => abort.signal),
+				onExecutionCancellation: vi.fn((handler: () => void) => {
+					const fn = () => {
+						abort.signal.removeEventListener('abort', fn);
+						handler();
+					};
+					abort.signal.addEventListener('abort', fn);
+				}),
+			});
+
+			const pending = buildMcpToolkit(ctx, 0, baseConfig);
+			await listStarted;
+			abort.abort();
+			releaseList({ tools: [sampleTool] });
+
+			await expect(pending).rejects.toThrow('Execution was cancelled');
+			expect(manager.size).toBe(0);
+			expect(close).toHaveBeenCalled();
+		});
+
+		it.each(['onExecutionCancellation', 'onExecutionFinish'] as const)(
+			'closes and evicts the cached client on %s',
+			async (hookName) => {
+				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+				const close = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+				let fire: () => void = () => {};
+				const ctx = createCachedSupplyCtx('exec-1', {
+					[hookName]: vi.fn((handler: () => void) => {
+						fire = handler;
+					}),
+				});
+
+				await buildMcpToolkit(ctx, 0, baseConfig);
+				expect(manager.size).toBe(1);
+
+				fire();
+				expect(close).toHaveBeenCalledTimes(1);
+				expect(manager.size).toBe(0);
+			},
+		);
+
+		it('still exposes working tools from the cached client', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'ok' }],
+			});
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const first = await buildMcpToolkit(createCachedSupplyCtx('exec-1'), 0, baseConfig);
+			const second = await buildMcpToolkit(createCachedSupplyCtx('exec-1'), 0, baseConfig);
+
+			const tools = (second.response as StructuredToolkit).getTools();
+			await expect(tools[0].invoke({ query: 'hello' })).resolves.toEqual(
+				JSON.stringify([{ type: 'text', text: 'ok' }]),
+			);
+			expect(Client.prototype.callTool).toHaveBeenCalledTimes(1);
+			expect((first.response as StructuredToolkit).getTools()).toHaveLength(1);
 		});
 	});
 
