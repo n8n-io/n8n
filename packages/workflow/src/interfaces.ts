@@ -668,6 +668,7 @@ export interface IN8nHttpFullResponse {
 
 export interface IN8nRequestOperations {
 	pagination?:
+		| IN8nRequestOperationPaginationCursor
 		| IN8nRequestOperationPaginationGeneric
 		| IN8nRequestOperationPaginationOffset
 		| ((
@@ -698,6 +699,26 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 		offsetParameter: string;
 		pageSize: number;
 		rootProperty?: string; // Optional Path to option array
+		type: 'body' | 'query';
+	};
+}
+
+/**
+ * Pagination for APIs that return a cursor for the next page.
+ * The cursor is written into the existing query string or body, so the other
+ * parameters of the request stay as they are.
+ */
+export interface IN8nRequestOperationPaginationCursor extends IN8nRequestOperationPaginationBase {
+	type: 'cursor';
+	properties: {
+		/** Name of the query or body parameter that carries the cursor on follow-up requests */
+		cursorParameter: string;
+		/** Expression that resolves to the next cursor, for example `={{ $response.body.next_cursor }}`. Must resolve to a string or number. */
+		nextCursor: string;
+		/** Optional expression that decides whether to request another page. Defaults to `nextCursor` resolving to a value. */
+		continue?: boolean | string;
+		/** Optional path to the array of items in each page */
+		rootProperty?: string;
 		type: 'body' | 'query';
 	};
 }
