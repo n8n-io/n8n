@@ -439,6 +439,12 @@ export interface ICredentialType {
 	hideDomainRestrictionFields?: boolean;
 
 	/**
+	 * If `true`, the OAuth redirect URL is not shown in the credential form. Set it on
+	 * credential types whose authorization flow has no redirect URL, such as device-code login.
+	 */
+	hideOAuthRedirectUrl?: boolean;
+
+	/**
 	 * If `true`, the credential type will not be shown in the credentials add modal
 	 */
 	hidden?: boolean;
