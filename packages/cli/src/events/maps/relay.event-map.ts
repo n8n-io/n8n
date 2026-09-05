@@ -323,6 +323,14 @@ export type RelayEventMap = {
 		authenticationMethod: AuthenticationMethod;
 	};
 
+	/**
+	 * Emitted when a user logs in with email/password while SSO is the active
+	 * authentication method (the internal-auth fallback, e.g. `?internalAuth=true`).
+	 */
+	'user-logged-in-with-sso-fallback': {
+		user: UserLike;
+	};
+
 	'user-login-failed': {
 		userEmail: string;
 		authenticationMethod: AuthenticationMethod;

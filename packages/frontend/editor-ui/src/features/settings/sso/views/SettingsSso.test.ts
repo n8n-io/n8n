@@ -729,6 +729,53 @@ describe('SettingsSso View', () => {
 		});
 	});
 
+	describe('Redirect login to SSO toggle', () => {
+		it('renders the redirect toggle within the SSO settings form', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+
+			const { getByTestId } = renderView();
+
+			expect(await waitFor(() => getByTestId('sso-redirect-login-switch'))).toBeInTheDocument();
+		});
+
+		it('enables Save when only the redirect toggle is changed', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isSamlLoginEnabled = false;
+			ssoStore.redirectLoginToSso = true;
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+
+			const { getByTestId } = renderView();
+
+			const saveButton = await waitFor(() => getByTestId('sso-save'));
+			expect(saveButton).toBeDisabled();
+
+			await userEvent.click(getByTestId('sso-redirect-login-switch'));
+
+			expect(getByTestId('sso-save')).not.toBeDisabled();
+		});
+
+		it('shows the dedicated redirect error (not the SAML save error) when the toggle save fails', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isSamlLoginEnabled = false;
+			ssoStore.redirectLoginToSso = true;
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+			ssoStore.toggleRedirectLoginToSso.mockRejectedValueOnce(new Error('nope'));
+
+			const { getByTestId } = renderView();
+
+			await userEvent.click(await waitFor(() => getByTestId('sso-redirect-login-switch')));
+			await userEvent.click(getByTestId('sso-save'));
+
+			await waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(
+					expect.anything(),
+					'Error updating SSO login redirect setting',
+				),
+			);
+		});
+	});
+
 	describe('Protocol Selection Persistence', () => {
 		it('should not persist protocol selection to store until save is clicked', async () => {
 			ssoStore.isEnterpriseSamlEnabled = true;
