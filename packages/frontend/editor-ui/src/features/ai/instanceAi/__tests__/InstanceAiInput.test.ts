@@ -479,6 +479,7 @@ describe('InstanceAiInput', () => {
 		expect(emitted().submit?.[0]).toEqual([
 			'I want to build a new agent. Help me figure out what to build. Ask me what the main purpose of the agent is, what should trigger it into action, what apps, tools, or knowledge it should have access to, and whether I have a preference for the AI model used.',
 			undefined,
+			expect.any(Function),
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -645,6 +646,25 @@ describe('InstanceAiInput', () => {
 		});
 	});
 
+	it('emits a draft recovery callback for a text-only message', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: { isStreaming: false },
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Build me an invoice workflow');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(textbox).toHaveValue('');
+
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		expect(restoreDraft).toBeTypeOf('function');
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		expect(restoreDraft()).toBe(true);
+		await waitFor(() => expect(textbox).toHaveValue('Build me an invoice workflow'));
+	});
+
 	it('opens the hidden file picker from the input menu', async () => {
 		const fileInputClick = vi.spyOn(HTMLInputElement.prototype, 'click');
 		const { getByTestId, queryByTestId } = renderComponent({
@@ -805,7 +825,9 @@ describe('InstanceAiInput', () => {
 		await userEvent.type(textbox, 'Make the first workflow simpler');
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 
-		expect(emitted().submit).toEqual([['Make the first workflow simpler', undefined]]);
+		expect(emitted().submit).toEqual([
+			['Make the first workflow simpler', undefined, expect.any(Function)],
+		]);
 	});
 
 	it('emits cancel-plan-edit and clears the draft when the plan edit context is closed', async () => {

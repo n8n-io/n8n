@@ -471,6 +471,7 @@ async function handleSubmit(
 	}
 
 	if (!selectedProject.value) {
+		restoreDraft?.();
 		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
 		return;
 	}
@@ -495,6 +496,7 @@ async function handleSubmit(
 		});
 	} catch {
 		isStartingThread.value = false;
+		restoreDraft?.();
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
