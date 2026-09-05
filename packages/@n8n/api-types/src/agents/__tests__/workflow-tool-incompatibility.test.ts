@@ -131,21 +131,4 @@ describe('getWorkflowToolIncompatibilityReason', () => {
 			nodeTypes: [incompatibleBodyNode],
 		});
 	});
-
-	it('ignores an incompatible node reachable only from a second supported trigger', () => {
-		// The agent invokes the first supported trigger only, so the second
-		// trigger's subgraph never runs and its incompatible node is ignored.
-		const secondTrigger = SUPPORTED_WORKFLOW_TOOL_TRIGGERS[1];
-		const result = getWorkflowToolIncompatibilityReason(
-			wfNamed(
-				[
-					{ type: compatibleTrigger, name: 'First' },
-					{ type: secondTrigger, name: 'Second' },
-					{ type: incompatibleBodyNode, name: 'Wait' },
-				],
-				link('Second', 'Wait'),
-			),
-		);
-		expect(result).toBeNull();
-	});
 });

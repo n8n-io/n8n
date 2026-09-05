@@ -877,6 +877,20 @@ export class DataTableService {
 		};
 	}
 
+	/**
+	 * Sizes in bytes from the shared size cache, so callers add no query load.
+	 * Does no project filtering, so callers must have authorised these ids.
+	 */
+	async getCachedSizeBytesByIds(dataTableIds: string[]): Promise<Map<string, number>> {
+		if (dataTableIds.length === 0) return new Map();
+
+		const sizeData = await this.dataTableSizeValidator.getCachedSizeData(
+			async () => await this.dataTableRepository.findDataTablesSize(),
+		);
+
+		return new Map(dataTableIds.map((id) => [id, sizeData.dataTables[id]?.sizeBytes ?? 0]));
+	}
+
 	async findDataTablesByIdsForUser(
 		dataTableIds: string[],
 		user: User,

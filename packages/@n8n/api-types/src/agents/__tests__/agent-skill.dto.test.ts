@@ -1,6 +1,6 @@
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
-	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	agentSkillSchema,
 } from '../agent-skill.schema';
@@ -72,7 +72,7 @@ describe('agent skill DTOs', () => {
 		).toBe(false);
 	});
 
-	it('measures the instructions limit in UTF-8 bytes, not UTF-16 code units', () => {
+	it('measures the instructions limit in characters, not UTF-8 bytes', () => {
 		expect(
 			agentSkillSchema.safeParse({
 				...validSkill,
@@ -80,14 +80,21 @@ describe('agent skill DTOs', () => {
 			}).success,
 		).toBe(true);
 
-		// '€' is 1 code unit but 3 UTF-8 bytes, so this exceeds the byte cap
-		// while staying well under it in .length terms.
 		expect(
 			agentSkillSchema.safeParse({
 				...validSkill,
-				instructions: '€'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH / 3 + 1),
+				instructions: 'x'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
 			}).success,
 		).toBe(false);
+
+		// '€' is 3 UTF-8 bytes but one character, so content that used to blow
+		// the byte cap now fits — the editor's counter and the limit agree.
+		expect(
+			agentSkillSchema.safeParse({
+				...validSkill,
+				instructions: '€'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH),
+			}).success,
+		).toBe(true);
 	});
 
 	it('rejects oversized or too many references', () => {
@@ -97,7 +104,7 @@ describe('agent skill DTOs', () => {
 				references: [
 					{
 						path: 'references/guide.md',
-						content: 'x'.repeat(AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES + 1),
+						content: 'x'.repeat(AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH + 1),
 					},
 				],
 			}).success,

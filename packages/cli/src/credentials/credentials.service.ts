@@ -1209,10 +1209,28 @@ export class CredentialsService {
 			return;
 		}
 
+		// Read before the delete cascades away the `shared_credentials` rows that name it. An
+		// instance-scoped credential has no such row and resolves to nothing, which is expected.
+		let owningProject: Project | undefined;
+
 		if (credential.isResolvable) {
-			const owningProject =
+			// The authorization check depends on the project, so a failed lookup has to fail the
+			// delete — and with its own error, rather than a misleading permission one.
+			owningProject =
 				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
 			await this.ensureCanManageEndUserCredential(user, owningProject?.id);
+		} else {
+			// Here it only attributes the activity entry, so recording must never be the reason a
+			// delete fails. Without a project the entry is dropped, which is the right outcome.
+			try {
+				owningProject =
+					await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			} catch (error) {
+				this.logger.warn('Failed to resolve the project owning a credential', {
+					credentialId,
+					error,
+				});
+			}
 		}
 		await this.externalHooks.run('credentials.delete', [credentialId]);
 
@@ -1226,20 +1244,26 @@ export class CredentialsService {
 				);
 			}
 			if (result.status === 'deleted') {
-				this.emitCredentialDeleted(user, credential);
+				this.emitCredentialDeleted(user, credential, owningProject?.id);
 			}
 			return;
 		}
 
 		await this.credentialsRepository.remove(credential);
-		this.emitCredentialDeleted(user, credential);
+		this.emitCredentialDeleted(user, credential, owningProject?.id);
 	}
 
-	private emitCredentialDeleted(user: User, credential: CredentialsEntity) {
+	private emitCredentialDeleted(
+		user: User,
+		credential: CredentialsEntity,
+		projectId: string | undefined,
+	) {
 		this.eventService.emit('credentials-deleted', {
 			user,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			credentialName: credential.name,
+			projectId,
 		});
 
 		if (credential.isResolvable) {
