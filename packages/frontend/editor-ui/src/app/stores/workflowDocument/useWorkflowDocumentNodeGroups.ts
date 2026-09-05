@@ -152,6 +152,40 @@ export function useWorkflowDocumentNodeGroups() {
 		applyDeleteGroup(id);
 	}
 
+	/**
+	 * Upsert groups coming from an AI builder update, matched by name.
+	 *
+	 * Uses group names since they are unique. Matching by id would recreate
+	 * groups whenever the builder regenerates ids on next passes of the process,
+	 * and `createGroup` would then rename each copy via `getNextDefaultName`.
+	 */
+	function upsertGroups(
+		nextGroups: IWorkflowGroup[],
+		{ markDirty = true, startCollapsed }: NodeGroupCreateOptions = {},
+	): IWorkflowGroup[] {
+		const existingByName = new Map(allGroups.value.map((group) => [group.name, group]));
+
+		return nextGroups.map((group) => {
+			const existing = existingByName.get(group.name);
+			const description = normalizeGroupDescription(group.description);
+			const next: IWorkflowGroup = {
+				// Keep the existing id on update so subscribers see the same group.
+				// `||` also covers AI payloads that send an empty id.
+				id: existing?.id || group.id || window.crypto.randomUUID(),
+				nodeIds: [...group.nodeIds],
+				name: group.name,
+				...(description ? { description } : {}),
+			};
+
+			applyUpsertGroup(next, existing ? CHANGE_ACTION.UPDATE : CHANGE_ACTION.ADD, {
+				markDirty,
+				startCollapsed,
+			});
+
+			return next;
+		});
+	}
+
 	// Id-preserving upsert used by undo/redo to restore a group snapshot.
 	function restoreGroup(group: IWorkflowGroup) {
 		const action = groups.value.has(group.id) ? CHANGE_ACTION.UPDATE : CHANGE_ACTION.ADD;
@@ -216,6 +250,7 @@ export function useWorkflowDocumentNodeGroups() {
 		nodeIdToGroupId,
 		setNodeGroups,
 		createGroup,
+		upsertGroups,
 		getNextDefaultName,
 		updateName,
 		updateDescription,

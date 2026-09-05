@@ -1620,12 +1620,42 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 }
 
 async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
+	// VueFlow's graph lags the nodes prop by a flush, so a layout requested in
+	// the same tick as a store mutation can still see a group's members as loose nodes.
+	const hasGraphCaughtUpWithChanges = () => {
+		return vueFlowNodes.value.every((node) => {
+			const graphNode = findNode(node.id);
+			if (!graphNode) {
+				return false;
+			}
+
+			const { data } = node;
+			// A collapsed group only lays out as one chip once its members are hidden.
+			if (!data || !('isCollapsed' in data) || !data.isCollapsed) {
+				return true;
+			}
+
+			return data.group.nodeIds.every((memberId) => findNode(memberId)?.hidden);
+		});
+	};
+
+	// Always await at least one tick before the first check: onTidyUp can run
+	// synchronously in the same tick as the store mutation it's reacting to,
+	// before VueFlow's internal graph has had any chance to sync at all.
+	for (let attempt = 0; attempt < 5; attempt++) {
+		await nextTick();
+		if (hasGraphCaughtUpWithChanges()) {
+			break;
+		}
+	}
+
 	if (payload.nodeIdsFilter && payload.nodeIdsFilter.length > 0) {
 		clearSelectedNodes();
 		addSelectedNodes(payload.nodeIdsFilter.map(findNode).filter(isPresent));
 	}
 	const applyOnSelection = selectedNodes.value.length > 1;
 	const target = applyOnSelection ? 'selection' : 'all';
+
 	const result = layout(target);
 
 	emit(
