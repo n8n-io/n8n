@@ -1,7 +1,7 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
-import { getAuditLogReasonHeaders, prepareMultiPartForm } from '../utils';
+import { getAuditLogReasonHeaders, prepareEmbeds, prepareMultiPartForm } from '../utils';
 
 describe('Discord V2 Utils', () => {
 	describe('prepareMultiPartForm', () => {
@@ -408,6 +408,90 @@ describe('Discord V2 Utils', () => {
 			mockParams({});
 
 			expect(getAuditLogReasonHeaders.call(mockExecuteFunctions, 0)).toEqual({});
+		});
+	});
+
+	describe('prepareEmbeds', () => {
+		let mockExecuteFunctions: IExecuteFunctions;
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+		});
+
+		afterEach(() => {
+			vi.resetAllMocks();
+		});
+
+		it('should wrap string image and thumbnail in { url } objects', () => {
+			const embeds: IDataObject[] = [
+				{
+					image: 'https://example.com/image.png',
+					thumbnail: 'https://example.com/thumb.png',
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].image).toEqual({ url: 'https://example.com/image.png' });
+			expect(result[0].thumbnail).toEqual({ url: 'https://example.com/thumb.png' });
+		});
+
+		it('should NOT double-wrap object image and thumbnail from JSON embeds', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'json',
+					json: JSON.stringify({
+						title: 'Test',
+						image: { url: 'https://example.com/image.png' },
+						thumbnail: { url: 'https://example.com/thumb.png' },
+					}),
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].image).toEqual({ url: 'https://example.com/image.png' });
+			expect(result[0].thumbnail).toEqual({ url: 'https://example.com/thumb.png' });
+		});
+
+		it('should parse JSON string and preserve object image fields', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'json',
+					json: '{"title":"Test","image":{"url":"https://example.com/img.png","proxy_url":"https://proxy.com/img.png"}}',
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].image).toEqual({
+				url: 'https://example.com/img.png',
+				proxy_url: 'https://proxy.com/img.png',
+			});
+		});
+
+		it('should NOT double-wrap object video from JSON embeds', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'json',
+					json: JSON.stringify({
+						title: 'Test',
+						video: { url: 'https://example.com/video.mp4', width: 1920, height: 1080 },
+					}),
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].video).toEqual({
+				url: 'https://example.com/video.mp4',
+				width: 1920,
+				height: 1080,
+			});
 		});
 	});
 });
