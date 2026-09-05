@@ -4,7 +4,9 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { isObjectEmpty, jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import { isObjectEmpty, updateDisplayOptions } from 'n8n-workflow';
+
+import { parseJsonParameter } from '@utils/helpers';
 
 import { apiRequest } from '../../../transport';
 import { metadataProperty, textMessageProperties } from '../descriptions';
@@ -88,9 +90,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 
 	if (options.metadata) {
-		const metadata = jsonParse(options.metadata as string, {
-			errorMessage: 'Invalid JSON in metadata field',
-		}) as IDataObject;
+		const metadata = parseJsonParameter<IDataObject>(
+			options.metadata,
+			'Invalid JSON in metadata field',
+		);
 		if (!isObjectEmpty(metadata)) {
 			body.metadata = metadata;
 		}
