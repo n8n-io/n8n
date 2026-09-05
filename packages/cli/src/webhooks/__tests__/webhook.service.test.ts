@@ -51,15 +51,28 @@ describe('WebhookService', () => {
 				const path = 'user/profile';
 				const mockWebhook = createWebhook(method, path);
 
-				webhookRepository.findOneBy.mockResolvedValue(mockWebhook);
+				webhookRepository.find.mockResolvedValue([mockWebhook]);
 
 				const returnedWebhook = await webhookService.findWebhook(method, path);
 
 				expect(returnedWebhook).toBe(mockWebhook);
 			});
 
+			test('should return the first webhook if multiple match the path and method', async () => {
+				const method = 'GET';
+				const path = 'user/profile';
+				const firstWebhook = createWebhook(method, path);
+				const secondWebhook = createWebhook(method, path);
+
+				webhookRepository.find.mockResolvedValue([firstWebhook, secondWebhook]);
+
+				const returnedWebhook = await webhookService.findWebhook(method, path);
+
+				expect(returnedWebhook).toBe(firstWebhook);
+			});
+
 			test('should return null if not found', async () => {
-				webhookRepository.findOneBy.mockResolvedValue(null); // static
+				webhookRepository.find.mockResolvedValue([]); // static
 				webhookRepository.findBy.mockResolvedValue([]);
 
 				const returnValue = await webhookService.findWebhook('GET', 'user/profile');
@@ -75,7 +88,7 @@ describe('WebhookService', () => {
 				const path = 'user/:id/posts';
 				const mockWebhook = createWebhook(method, path, webhookId, 3);
 
-				webhookRepository.findOneBy.mockResolvedValue(null); // static
+				webhookRepository.find.mockResolvedValue([]); // static
 				webhookRepository.findBy.mockResolvedValue([mockWebhook]); // dynamic
 
 				const returnedWebhook = await webhookService.findWebhook(
@@ -97,7 +110,7 @@ describe('WebhookService', () => {
 				const path2 = 'user/:id/posts/:postId/comments';
 				const mockWebhook2 = createWebhook(method2, path2, webhookId2, 3);
 
-				webhookRepository.findOneBy.mockResolvedValue(null); // static
+				webhookRepository.find.mockResolvedValue([]); // static
 				webhookRepository.findBy.mockResolvedValue([mockWebhook1, mockWebhook2]); // dynamic
 
 				const fullPath1 = [webhookId1, 'user/123/posts'].join('/');
@@ -121,7 +134,7 @@ describe('WebhookService', () => {
 				const path2 = 'user/:id/posts/:postId/comments';
 				const mockWebhook2 = createWebhook(method2, path2, webhookId2, 3);
 
-				webhookRepository.findOneBy.mockResolvedValue(null); // static
+				webhookRepository.find.mockResolvedValue([]); // static
 				webhookRepository.findBy.mockResolvedValue([mockWebhook1, mockWebhook2]); // dynamic
 
 				const fullPath = [webhookId1, 'user/123/posts/456'].join('/');
@@ -133,7 +146,7 @@ describe('WebhookService', () => {
 			test('should return null if not found', async () => {
 				const fullPath = [uuid(), 'user/:id/posts'].join('/');
 
-				webhookRepository.findOneBy.mockResolvedValue(null); // static
+				webhookRepository.find.mockResolvedValue([]); // static
 				webhookRepository.findBy.mockResolvedValue([]); // dynamic
 
 				const returnValue = await webhookService.findWebhook('GET', fullPath);
@@ -885,7 +898,7 @@ describe('WebhookService', () => {
 			const fullPath = `${webhookId}/user/123/posts`;
 			const dynamicWebhook = createWebhook(method, 'user/:id/posts', webhookId, 3);
 
-			webhookRepository.findOneBy.mockResolvedValueOnce(null); // static lookup
+			webhookRepository.find.mockResolvedValueOnce([]); // static lookup
 			webhookRepository.findBy.mockResolvedValueOnce([dynamicWebhook]); // dynamic lookup
 
 			const result1 = await webhookService.findWebhook(method, fullPath);
@@ -893,13 +906,13 @@ describe('WebhookService', () => {
 
 			expect(cacheService.set).not.toHaveBeenCalled();
 
-			webhookRepository.findOneBy.mockResolvedValueOnce(null);
+			webhookRepository.find.mockResolvedValueOnce([]);
 			webhookRepository.findBy.mockResolvedValueOnce([dynamicWebhook]);
 
 			const result2 = await webhookService.findWebhook(method, fullPath);
 			expect(result2).toBe(dynamicWebhook);
 
-			expect(webhookRepository.findOneBy).toHaveBeenCalledTimes(2);
+			expect(webhookRepository.find).toHaveBeenCalledTimes(2);
 			expect(webhookRepository.findBy).toHaveBeenCalledTimes(2);
 		});
 	});
