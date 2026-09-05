@@ -30,6 +30,7 @@ import {
 	isStructuredContent,
 	mapToNodeOperationError,
 } from './utils';
+import { INTERNAL_TOOL_ARG_STASH_KEY } from '../../../utils/agent-execution';
 import type { McpToolIncludeMode } from '../McpClientTool/types';
 import {
 	buildMcpToolName,
@@ -243,7 +244,15 @@ async function runToolCall(opts: {
 		const prefixedName = buildMcpToolName(node.name, tool.name);
 		if (toolName !== prefixedName) continue;
 
-		const { tool: _, ...toolArguments } = item.json;
+		const {
+			tool: _routingKey,
+			toolCallId: _toolCallId,
+			[INTERNAL_TOOL_ARG_STASH_KEY]: originalToolArg,
+			...toolArguments
+		} = item.json;
+		if (originalToolArg !== undefined) {
+			toolArguments.tool = originalToolArg;
+		}
 		const schema: JSONSchema7 = tool.inputSchema;
 		const sanitizedToolArguments: IDataObject =
 			schema.additionalProperties !== true

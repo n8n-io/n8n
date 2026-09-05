@@ -430,6 +430,209 @@ describe('runtime', () => {
 				response: [{ type: 'text', text: 'some error' }],
 			});
 		});
+		describe('Tool argument restoration and metadata stripping', () => {
+			it('restores user `tool` argument and strips metadata', async () => {
+				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+					tools: [
+						{
+							name: 'search',
+							description: '',
+							inputSchema: {
+								type: 'object' as const,
+								properties: {
+									tool: { type: 'string' },
+									extra: { type: 'string' },
+								},
+								additionalProperties: false,
+							},
+						},
+					],
+				});
+				const callTool = vi
+					.spyOn(Client.prototype, 'callTool')
+					.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+				vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+				const ctx = createExecuteCtx([
+					{
+						json: {
+							tool: buildMcpToolName('MCP', 'search'),
+							_n8nOriginalToolArg: 'user-value',
+							toolCallId: 'abc',
+							extra: 'data',
+						},
+					},
+				]);
+
+				await executeMcpTool(ctx, () => baseConfig);
+
+				expect(callTool).toHaveBeenCalledWith(
+					{ name: 'search', arguments: { tool: 'user-value', extra: 'data' } },
+					expect.anything(),
+					expect.anything(),
+				);
+			});
+
+			it('does not restore when stash key is absent (backward compat)', async () => {
+				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+					tools: [
+						{
+							name: 'search',
+							description: '',
+							inputSchema: {
+								type: 'object' as const,
+								properties: { extra: { type: 'string' } },
+								additionalProperties: false,
+							},
+						},
+					],
+				});
+				const callTool = vi
+					.spyOn(Client.prototype, 'callTool')
+					.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+				vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+				const ctx = createExecuteCtx([
+					{
+						json: {
+							tool: buildMcpToolName('MCP', 'search'),
+							extra: 'data',
+						},
+					},
+				]);
+
+				await executeMcpTool(ctx, () => baseConfig);
+
+				expect(callTool).toHaveBeenCalledWith(
+					{ name: 'search', arguments: { extra: 'data' } },
+					expect.anything(),
+					expect.anything(),
+				);
+			});
+
+			it('drops restored tool if not in schema', async () => {
+				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+					tools: [
+						{
+							name: 'search',
+							description: '',
+							inputSchema: {
+								type: 'object' as const,
+								properties: { extra: { type: 'string' } },
+								additionalProperties: false,
+							},
+						},
+					],
+				});
+				const callTool = vi
+					.spyOn(Client.prototype, 'callTool')
+					.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+				vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+				const ctx = createExecuteCtx([
+					{
+						json: {
+							tool: buildMcpToolName('MCP', 'search'),
+							_n8nOriginalToolArg: 'user-value',
+							extra: 'data',
+						},
+					},
+				]);
+
+				await executeMcpTool(ctx, () => baseConfig);
+
+				expect(callTool).toHaveBeenCalledWith(
+					{ name: 'search', arguments: { extra: 'data' } },
+					expect.anything(),
+					expect.anything(),
+				);
+			});
+
+			it('always strips toolCallId', async () => {
+				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+					tools: [
+						{
+							name: 'search',
+							description: '',
+							inputSchema: {
+								type: 'object' as const,
+								properties: { extra: { type: 'string' } },
+								additionalProperties: false,
+							},
+						},
+					],
+				});
+				const callTool = vi
+					.spyOn(Client.prototype, 'callTool')
+					.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+				vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+				const ctx = createExecuteCtx([
+					{
+						json: {
+							tool: buildMcpToolName('MCP', 'search'),
+							toolCallId: 'abc',
+							extra: 'data',
+						},
+					},
+				]);
+
+				await executeMcpTool(ctx, () => baseConfig);
+
+				expect(callTool).toHaveBeenCalledWith(
+					{ name: 'search', arguments: { extra: 'data' } },
+					expect.anything(),
+					expect.anything(),
+				);
+			});
+
+			it('restores optional tool when present in schema', async () => {
+				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+					tools: [
+						{
+							name: 'search',
+							description: '',
+							inputSchema: {
+								type: 'object' as const,
+								properties: {
+									tool: { type: 'string' },
+									extra: { type: 'string' },
+								},
+								required: ['extra'],
+								additionalProperties: false,
+							},
+						},
+					],
+				});
+				const callTool = vi
+					.spyOn(Client.prototype, 'callTool')
+					.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+				vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+				const ctx = createExecuteCtx([
+					{
+						json: {
+							tool: buildMcpToolName('MCP', 'search'),
+							_n8nOriginalToolArg: 'user-value',
+							extra: 'data',
+						},
+					},
+				]);
+
+				await executeMcpTool(ctx, () => baseConfig);
+
+				expect(callTool).toHaveBeenCalledWith(
+					{ name: 'search', arguments: { tool: 'user-value', extra: 'data' } },
+					expect.anything(),
+					expect.anything(),
+				);
+			});
+		});
 	});
 
 	describe('executeMcpTool session cache', () => {
