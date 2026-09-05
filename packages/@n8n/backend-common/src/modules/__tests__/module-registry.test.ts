@@ -1,10 +1,14 @@
 import type { ModuleInterface, ModuleMetadata, SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import type { LicenseState } from '../../license-state';
+import { MissingModuleError } from '../errors/missing-module.error';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
+import { ModuleLoadError } from '../errors/module-load.error';
 import { getModuleEntryUrl, ModuleRegistry } from '../module-registry';
 
 beforeEach(() => {
@@ -154,6 +158,99 @@ describe('loadModules', () => {
 		await moduleRegistry.loadModules([]);
 
 		expect(moduleRegistry.entities).toEqual([]);
+	});
+
+	describe('entrypoint resolution', () => {
+		const MISSING_DEPENDENCY = 'n8n-fixture-absent-dependency';
+
+		let tmpDir: string;
+		let originalArgv1: string;
+
+		/** Writes `<modulesDir>/<dirName>/<moduleName>.module.js`. */
+		const writeEntrypoint = async (
+			dirName: string,
+			moduleName: string,
+			contents: string,
+			packageJson?: string,
+		) => {
+			const moduleDir = path.join(tmpDir, 'dist', 'modules', dirName);
+			await fs.mkdir(moduleDir, { recursive: true });
+			await fs.writeFile(path.join(moduleDir, `${moduleName}.module.js`), contents);
+			if (packageJson) await fs.writeFile(path.join(moduleDir, 'package.json'), packageJson);
+		};
+
+		const loadModule = async (moduleName: string) => {
+			const moduleMetadata = mock<ModuleMetadata>({ getClasses: vi.fn().mockReturnValue([]) });
+			const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			return await moduleRegistry.loadModules([moduleName as any]);
+		};
+
+		beforeAll(async () => {
+			tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-module-registry-'));
+
+			// Mark the tree as CommonJS, so each entrypoint below is evaluated as CJS
+			// unless its own directory says otherwise.
+			await fs.writeFile(path.join(tmpDir, 'package.json'), '{ "type": "commonjs" }');
+
+			// Entrypoints that are present but cannot resolve a dependency. This is what
+			// an incomplete install produces. CommonJS reports `MODULE_NOT_FOUND`, ESM
+			// reports `ERR_MODULE_NOT_FOUND` with no `url`, so neither may be mistaken
+			// for an absent entrypoint.
+			await writeEntrypoint(
+				'cjs-module',
+				'cjs-module',
+				`require(${JSON.stringify(MISSING_DEPENDENCY)});\n`,
+			);
+			await writeEntrypoint(
+				'esm-module',
+				'esm-module',
+				`import ${JSON.stringify(MISSING_DEPENDENCY)};\n`,
+				'{ "type": "module" }',
+			);
+
+			// A module that lives only in the enterprise directory.
+			await writeEntrypoint('ee-module.ee', 'ee-module', 'module.exports = {};\n');
+		});
+
+		afterAll(async () => {
+			await fs.rm(tmpDir, { recursive: true, force: true });
+		});
+
+		beforeEach(() => {
+			originalArgv1 = process.argv[1];
+			// `n8n` is not a dependency of this package, so `loadModules` falls back to
+			// deriving `modulesDir` from the n8n binary path, two levels up.
+			process.argv[1] = path.join(tmpDir, 'bin', 'n8n');
+		});
+
+		afterEach(() => {
+			process.argv[1] = originalArgv1;
+		});
+
+		it.each(['cjs-module', 'esm-module'])(
+			'should report the missing dependency of a %s entrypoint, not the enterprise fallback path',
+			async (moduleName) => {
+				const loading = loadModule(moduleName);
+
+				// The user must see the dependency that could not be resolved. Retrying
+				// with the `.ee` path - a directory that never existed - would replace it
+				// with a "cannot find module" error and send the user looking for a
+				// naming mistake.
+				await expect(loading).rejects.toThrow(ModuleLoadError);
+				await expect(loading).rejects.toThrow(MISSING_DEPENDENCY);
+				await expect(loading).rejects.not.toThrow(`${moduleName}.ee`);
+			},
+		);
+
+		it('should fall back to the enterprise directory when only that entrypoint exists', async () => {
+			await expect(loadModule('ee-module')).resolves.not.toThrow();
+		});
+
+		it('should throw `MissingModuleError` if neither entrypoint exists', async () => {
+			await expect(loadModule('absent-module')).rejects.toThrow(MissingModuleError);
+		});
 	});
 });
 

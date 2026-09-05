@@ -7,21 +7,19 @@ import type { NodeLoader } from 'n8n-workflow';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
-import { MissingModuleError } from './errors/missing-module.error';
-import { ModuleConfusionError } from './errors/module-confusion.error';
-import { ModulesConfig } from './modules.config';
-import type { ModuleName } from './modules.config';
 import { LicenseState } from '../license-state';
 import { Logger } from '../logging/logger';
+import { MissingModuleError } from './errors/missing-module.error';
+import { ModuleConfusionError } from './errors/module-confusion.error';
+import { ModuleLoadError } from './errors/module-load.error';
+import { ModulesConfig } from './modules.config';
+import type { ModuleName } from './modules.config';
+
+const getModuleEntryPath = (modulesDir: string, moduleName: string, isEnterprise = false) =>
+	path.join(modulesDir, isEnterprise ? `${moduleName}.ee` : moduleName, `${moduleName}.module.js`);
 
 export const getModuleEntryUrl = (modulesDir: string, moduleName: string, isEnterprise = false) =>
-	pathToFileURL(
-		path.join(
-			modulesDir,
-			isEnterprise ? `${moduleName}.ee` : moduleName,
-			`${moduleName}.module.js`,
-		),
-	).href;
+	pathToFileURL(getModuleEntryPath(modulesDir, moduleName, isEnterprise)).href;
 
 @Service()
 export class ModuleRegistry {
@@ -115,21 +113,34 @@ export class ModuleRegistry {
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
+			const entryPath = getModuleEntryPath(modulesDir, moduleName);
+
 			try {
-				await import(getModuleEntryUrl(modulesDir, moduleName));
+				await import(pathToFileURL(entryPath).href);
 			} catch (primaryError) {
+				// Only an absent entrypoint means the module may live in the enterprise
+				// directory instead. If the entrypoint is on disk, the failure comes from
+				// its own code - e.g. a dependency it cannot resolve - so surface it.
+				// Retrying with the enterprise path would replace it with a "cannot find
+				// module" error for a directory that never existed, and send the reader
+				// looking for a naming mistake. The filesystem is the reliable test here:
+				// a missing dependency and a missing entrypoint can both surface as
+				// `ERR_MODULE_NOT_FOUND`.
+				if (existsSync(entryPath)) throw new ModuleLoadError(moduleName, primaryError);
+
+				const enterpriseEntryPath = getModuleEntryPath(modulesDir, moduleName, true);
+
 				try {
-					await import(getModuleEntryUrl(modulesDir, moduleName, true));
-				} catch (error) {
-					const loggedError =
-						primaryError instanceof Error &&
-						'code' in primaryError &&
-						primaryError.code !== 'MODULE_NOT_FOUND'
-							? primaryError
-							: error;
+					await import(pathToFileURL(enterpriseEntryPath).href);
+				} catch (enterpriseError) {
+					if (existsSync(enterpriseEntryPath)) {
+						throw new ModuleLoadError(moduleName, enterpriseError);
+					}
+
+					// Neither entrypoint is on disk.
 					throw new MissingModuleError(
 						moduleName,
-						loggedError instanceof Error ? loggedError.message : '',
+						enterpriseError instanceof Error ? enterpriseError.message : '',
 					);
 				}
 			}
