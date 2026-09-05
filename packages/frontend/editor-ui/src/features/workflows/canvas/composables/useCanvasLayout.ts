@@ -1,13 +1,14 @@
 import dagre from '@dagrejs/dagre';
 
 import { useVueFlow, type GraphEdge, type GraphNode, type XYPosition } from '@vue-flow/core';
-import { STICKY_NODE_TYPE } from '@/app/constants';
 import {
 	CanvasNodeRenderType,
 	isCanvasGroupNode,
 	type BoundingBox,
 	type CanvasConnection,
-	type CanvasGroupNode,
+	type CanvasGroupNodeData,
+	type CanvasLayoutNode,
+	type CanvasLayoutNodeData,
 	type CanvasNodeData,
 } from '../canvas.types';
 import { isPresent } from '@/app/utils/typesUtils';
@@ -24,6 +25,13 @@ import {
 } from '../stores/canvasNodeGroups.constants';
 import type { ComputedRef, Ref } from 'vue';
 import { computeNodeDisplaySize, type CanvasRenderData } from '../canvas.utils';
+import { computeGroupFrameRects } from './useCanvasMapping.groups';
+import {
+	hasMeasuredDimensions,
+	isAiConfigNode,
+	isAiParentNode,
+	isStickyCanvasNode,
+} from './useCanvasLayout.guards';
 
 export type CanvasLayoutTarget = 'selection' | 'all';
 export type CanvasLayoutSource =
@@ -33,12 +41,6 @@ export type CanvasLayoutSource =
 	| 'command-bar'
 	| 'import-workflow-data'
 	| 'builder-update';
-export type CanvasLayoutTargetData = {
-	nodes: Array<GraphNode<CanvasNodeData>>;
-	edges: CanvasConnection[];
-	collapsedGroups: CanvasGroupNode[];
-};
-
 export type NodeLayoutResult = {
 	id: string;
 	x: number;
@@ -54,7 +56,25 @@ export type CanvasLayoutEvent = {
 	target: CanvasLayoutTarget;
 };
 
-export type CanvasNodeDictionary = Record<string, GraphNode<CanvasNodeData>>;
+type CanvasLayoutNodeDictionary = Record<string, CanvasLayoutNode>;
+type LayoutConnection = CanvasConnection & Partial<Pick<GraphEdge, 'targetX' | 'targetY'>>;
+
+type CanvasLayoutTargetData = {
+	nodes: CanvasLayoutNode[];
+	edges: LayoutConnection[];
+	groupUnits: CanvasLayoutGroupUnit[];
+};
+
+interface CanvasLayoutGroupUnit {
+	node: GraphNode<CanvasGroupNodeData>;
+	memberIds: string[];
+	/** Stickies that cover the group and move with it. */
+	stickyIds: string[];
+	/** The rendered frame of an expanded group, or the chip of a collapsed one. */
+	groupBox: BoundingBox;
+	/** The box dagre reserves: the group box grown to include attached stickies. */
+	boundingBox: BoundingBox;
+}
 
 const NODE_Y_SPACING = GRID_SIZE * 6;
 const SUBGRAPH_SPACING = GRID_SIZE * 8;
@@ -67,35 +87,158 @@ export function useCanvasLayout(
 	isEmbeddedNdvActive: ComputedRef<boolean>,
 	renderData: Ref<CanvasRenderData>,
 ) {
-	const {
-		findNode,
-		findEdge,
-		getSelectedNodes,
-		edges: allEdges,
-		nodes: allNodes,
-	} = useVueFlow(canvasId);
+	const { findNode, getSelectedNodes, edges: allEdges, nodes: allNodes } = useVueFlow(canvasId);
 
 	function getSourceNodes(target: CanvasLayoutTarget) {
 		return target === 'selection' ? getSelectedNodes.value : allNodes.value;
 	}
 
+	/** Returns the nodes, edges, and group units to pass into dagre. */
 	function getTargetData(target: CanvasLayoutTarget): CanvasLayoutTargetData {
 		const source = getSourceNodes(target);
+		const sourceNodeIds = new Set(source.map((node) => node.id));
 
-		const collapsedGroups = source
+		// Dagre lays out each complete group as one box:
+		// collapsed groups use their chip, expanded groups use their frame.
+		const groupUnits = allNodes.value
 			.filter(isCanvasGroupNode)
-			.filter((node) => node.data.isCollapsed);
+			.map((groupNode) => getGroupUnitForTarget(groupNode, sourceNodeIds))
+			.filter(isPresent);
+		const groupedMemberIds = new Set(groupUnits.flatMap(({ memberIds }) => memberIds));
 
-		// Collapsed groups: keep the chip as one unit, discard its hidden members
-		// Expanded groups: discard the chip, keep the members
-		const belongsInGraph = (node: GraphNode<CanvasNodeData>) =>
-			isCanvasGroupNode(node) ? node.data.isCollapsed : !node.hidden;
+		// Grouped members move with their group box after dagre runs.
+		const regularNodes = source.filter(
+			(node) => !isCanvasGroupNode(node) && !node.hidden && !groupedMemberIds.has(node.id),
+		);
+
+		const unitsWithStickies = attachCoveringStickies(groupUnits, regularNodes);
+		const attachedStickyIds = new Set(unitsWithStickies.flatMap(({ stickyIds }) => stickyIds));
 
 		return {
-			nodes: source.filter(belongsInGraph),
-			edges: allEdges.value,
-			collapsedGroups,
+			nodes: [
+				...regularNodes.filter((node) => !attachedStickyIds.has(node.id)),
+				...unitsWithStickies.map(({ node }) => node),
+			],
+			edges: remapGroupUnitConnections(allEdges.value, unitsWithStickies),
+			groupUnits: unitsWithStickies,
 		};
+	}
+
+	/**
+	 * Folds a sticky that covers exactly one group, and nothing else, into that
+	 * group's layout unit. Dagre then reserves room for the sticky too, so it
+	 * cannot land on a neighbour after the group moves.
+	 */
+	function attachCoveringStickies(
+		groupUnits: CanvasLayoutGroupUnit[],
+		regularNodes: CanvasLayoutNode[],
+	): CanvasLayoutGroupUnit[] {
+		const stickies = regularNodes.filter(isStickyCanvasNode);
+		if (stickies.length === 0 || groupUnits.length === 0) return groupUnits;
+
+		const plainNodeBoxes = regularNodes
+			.filter((node) => !isStickyCanvasNode(node))
+			.map((node) => boundingBoxFromCanvasNode(node));
+
+		const stickiesByUnitId = new Map<string, Array<{ id: string; box: BoundingBox }>>();
+		for (const sticky of stickies) {
+			const stickyBox = boundingBoxFromCanvasNode(sticky);
+			if (plainNodeBoxes.some((box) => isCoveredBy(stickyBox, box))) continue;
+
+			const coveredUnits = groupUnits.filter(({ groupBox }) => isCoveredBy(stickyBox, groupBox));
+			if (coveredUnits.length !== 1) continue;
+
+			const unitId = coveredUnits[0].node.id;
+			stickiesByUnitId.set(unitId, [
+				...(stickiesByUnitId.get(unitId) ?? []),
+				{ id: sticky.id, box: stickyBox },
+			]);
+		}
+
+		return groupUnits.map((unit) => {
+			const attached = stickiesByUnitId.get(unit.node.id);
+			if (!attached) return unit;
+
+			return {
+				...unit,
+				stickyIds: attached.map(({ id }) => id),
+				boundingBox: compositeBoundingBox([unit.boundingBox, ...attached.map(({ box }) => box)]),
+			};
+		});
+	}
+
+	/** Returns a group as one layout unit when its full contents are in scope. */
+	function getGroupUnitForTarget(
+		groupNode: GraphNode<CanvasGroupNodeData>,
+		sourceNodeIds: Set<string>,
+	): CanvasLayoutGroupUnit | undefined {
+		const groupData = groupNode.data;
+		if (!groupData) return undefined;
+
+		const memberIds = groupData.group.nodeIds;
+
+		if (groupData.isCollapsed) {
+			if (!sourceNodeIds.has(groupNode.id)) return undefined;
+
+			// The collapsed group chip already has the box dagre needs.
+			const chipBox = boundingBoxFromCanvasNode(groupNode);
+			return { node: groupNode, memberIds, stickyIds: [], groupBox: chipBox, boundingBox: chipBox };
+		}
+
+		if (!memberIds.every((memberId) => sourceNodeIds.has(memberId))) return undefined;
+
+		// Expanded groups need their frame size, not only their member bounds.
+		const expandedFrame = computeGroupFrameRects(groupData.nodesRect).expanded;
+
+		const frameBox = {
+			x: groupNode.position.x,
+			y: groupNode.position.y,
+			width: expandedFrame.width,
+			height: expandedFrame.height,
+		};
+		return { node: groupNode, memberIds, stickyIds: [], groupBox: frameBox, boundingBox: frameBox };
+	}
+
+	/** Converts member connections to group-unit connections for dagre. */
+	function remapGroupUnitConnections(
+		connections: LayoutConnection[],
+		groupUnits: CanvasLayoutGroupUnit[],
+	): LayoutConnection[] {
+		if (groupUnits.length === 0) return connections;
+
+		const unitIdByMemberId = new Map<string, string>();
+		for (const { node, memberIds } of groupUnits) {
+			for (const memberId of memberIds) {
+				unitIdByMemberId.set(memberId, node.id);
+			}
+		}
+
+		const result: LayoutConnection[] = [];
+		const emittedConnectionKeys = new Set<string>();
+
+		for (const connection of connections) {
+			const sourceUnitId = unitIdByMemberId.get(connection.source);
+			const targetUnitId = unitIdByMemberId.get(connection.target);
+
+			if (sourceUnitId && targetUnitId && sourceUnitId === targetUnitId) continue;
+
+			const source = sourceUnitId ?? connection.source;
+			const target = targetUnitId ?? connection.target;
+			if (source === target) continue;
+
+			const key = JSON.stringify([source, target]);
+			if (emittedConnectionKeys.has(key)) continue;
+
+			emittedConnectionKeys.add(key);
+			const remappedConnection = { ...connection, source, target };
+			if (targetUnitId) {
+				delete remappedConnection.targetX;
+				delete remappedConnection.targetY;
+			}
+			result.push(remappedConnection);
+		}
+
+		return result;
 	}
 
 	function sortByPosition(posA: XYPosition, posB: XYPosition): number {
@@ -103,45 +246,66 @@ export function useCanvasLayout(
 		return yDiff === 0 ? posA.x - posB.x : yDiff;
 	}
 
-	function sortNodesByPosition(nodeA: GraphNode, nodeB: GraphNode): number {
-		const hasEdgesA = allEdges.value.some((edge) => edge.target === nodeA.id);
-		const hasEdgesB = allEdges.value.some((edge) => edge.target === nodeB.id);
+	function sortNodesByPosition(
+		nodeA: CanvasLayoutNode,
+		nodeB: CanvasLayoutNode,
+		edgeTargets: Set<string>,
+	): number {
+		const hasEdgesA = edgeTargets.has(nodeA.id);
+		const hasEdgesB = edgeTargets.has(nodeB.id);
 
 		if (!hasEdgesA && hasEdgesB) return -1;
 		if (hasEdgesA && !hasEdgesB) return 1;
 		return sortByPosition(nodeA.position, nodeB.position);
 	}
 
-	function sortEdgesByPosition(edgeA: GraphEdge, edgeB: GraphEdge): number {
+	function sortEdgesByPosition(edgeA: LayoutConnection, edgeB: LayoutConnection): number {
 		return sortByPosition(positionFromEdge(edgeA), positionFromEdge(edgeB));
 	}
 
-	function positionFromEdge(edge: GraphEdge): XYPosition {
-		return { x: edge.targetX, y: edge.targetY };
+	/** Returns the target position used to order layout connections. */
+	function positionFromEdge(edge: LayoutConnection): XYPosition {
+		if (typeof edge.targetX === 'number' && typeof edge.targetY === 'number') {
+			return { x: edge.targetX, y: edge.targetY };
+		}
+
+		return findNode<CanvasLayoutNodeData>(edge.target)?.position ?? { x: 0, y: 0 };
 	}
 
-	function getNodeDimensions(node: GraphNode<CanvasNodeData>): { width: number; height: number } {
+	/** Returns measured node dimensions when VueFlow has a usable value. */
+	function getMeasuredDimensions(
+		node: CanvasLayoutNode,
+	): { width: number; height: number } | undefined {
+		return hasMeasuredDimensions(node.dimensions) ? node.dimensions : undefined;
+	}
+
+	/** Returns the size that dagre must reserve for a layout node. */
+	function getNodeDimensions(
+		node: CanvasLayoutNode,
+		groupUnitBoundingBoxes?: Map<string, BoundingBox>,
+	): { width: number; height: number } {
+		const groupUnitBox = groupUnitBoundingBoxes?.get(node.id);
+		if (groupUnitBox) {
+			return { width: groupUnitBox.width, height: groupUnitBox.height };
+		}
+
 		// A collapsed group enters the graph as its fixed-size chip
 		if (isCanvasGroupNode(node)) {
+			const dimensions = getMeasuredDimensions(node);
 			return {
-				width: node.dimensions?.width || GROUP_HEADER_WIDTH_COLLAPSED,
-				height: node.dimensions?.height || GROUP_HEADER_HEIGHT,
+				width: dimensions?.width || GROUP_HEADER_WIDTH_COLLAPSED,
+				height: dimensions?.height || GROUP_HEADER_HEIGHT,
 			};
 		}
 
 		// Check if dimensions exist and have valid values
-		if (
-			node.dimensions &&
-			typeof node.dimensions.width === 'number' &&
-			typeof node.dimensions.height === 'number' &&
-			node.dimensions.width > 0 &&
-			node.dimensions.height > 0
-		) {
-			return { width: node.dimensions.width, height: node.dimensions.height };
+		const dimensions = getMeasuredDimensions(node);
+		if (dimensions) {
+			return dimensions;
 		}
 
 		// Calculate dimensions based on node data
-		if (node.data?.render?.type === CanvasNodeRenderType.Default) {
+		if (node.data.render?.type === CanvasNodeRenderType.Default) {
 			return computeNodeDisplaySize(
 				node.id,
 				node.data.render.options,
@@ -152,7 +316,7 @@ export function useCanvasLayout(
 
 		// The agent card is far larger than the default node — without this the
 		// unmeasured fallback below would feed dagre a 96x96 box for it
-		if (node.data?.render?.type === CanvasNodeRenderType.Agent) {
+		if (node.data.render?.type === CanvasNodeRenderType.Agent) {
 			return { width: AGENT_NODE_SIZE[0], height: AGENT_NODE_SIZE[1] };
 		}
 
@@ -160,26 +324,29 @@ export function useCanvasLayout(
 		return { width: DEFAULT_NODE_SIZE[0], height: DEFAULT_NODE_SIZE[1] };
 	}
 
-	function createDagreGraph({ nodes, edges }: Pick<CanvasLayoutTargetData, 'nodes' | 'edges'>) {
+	/** Builds the parent dagre graph from layout nodes and connections. */
+	function createDagreGraph({ nodes, edges, groupUnits }: CanvasLayoutTargetData) {
 		const graph = new dagre.graphlib.Graph();
 		graph.setDefaultEdgeLabel(() => ({}));
+		const groupUnitBoundingBoxes = new Map(
+			groupUnits.map(({ node, boundingBox }) => [node.id, boundingBox]),
+		);
 
-		const graphNodes = nodes
-			.map((node) => findNode<CanvasNodeData>(node.id))
-			.filter(isPresent)
-			.sort(sortNodesByPosition);
+		const edgeTargets = new Set(edges.map(({ target }) => target));
+		const graphNodes = [...nodes].sort((nodeA, nodeB) =>
+			sortNodesByPosition(nodeA, nodeB, edgeTargets),
+		);
 
 		const nodeIdSet = new Set(nodes.map((node) => node.id));
 
 		graphNodes.forEach((node) => {
-			const { width, height } = getNodeDimensions(node);
-			const { x, y } = node.position;
+			const { width, height } = getNodeDimensions(node, groupUnitBoundingBoxes);
+			const groupUnitBox = groupUnitBoundingBoxes.get(node.id);
+			const { x, y } = groupUnitBox ?? node.position;
 			graph.setNode(node.id, { width, height, x, y });
 		});
 
 		edges
-			.map((node) => findEdge<CanvasNodeData>(node.id))
-			.filter(isPresent)
 			.filter((edge) => nodeIdSet.has(edge.source) && nodeIdSet.has(edge.target))
 			.sort(sortEdgesByPosition)
 			.forEach((edge) => graph.setEdge(edge.source, edge.target));
@@ -297,11 +464,16 @@ export function useCanvasLayout(
 		};
 	}
 
-	function boundingBoxFromCanvasNode(node: GraphNode<CanvasNodeData>): BoundingBox {
-		const { width, height } = getNodeDimensions(node);
+	/** Returns the canvas-space box used by layout measurements. */
+	function boundingBoxFromCanvasNode(
+		node: CanvasLayoutNode,
+		groupUnitBoundingBoxes?: Map<string, BoundingBox>,
+	): BoundingBox {
+		const groupUnitBox = groupUnitBoundingBoxes?.get(node.id);
+		const { width, height } = getNodeDimensions(node, groupUnitBoundingBoxes);
 		return {
-			x: node.position.x,
-			y: node.position.y,
+			x: groupUnitBox?.x ?? node.position.x,
+			y: groupUnitBox?.y ?? node.position.y,
 			width,
 			height,
 		};
@@ -322,8 +494,13 @@ export function useCanvasLayout(
 		);
 	}
 
-	function boundingBoxFromCanvasNodes(nodes: Array<GraphNode<CanvasNodeData>>): BoundingBox {
-		return compositeBoundingBox(nodes.map(boundingBoxFromCanvasNode));
+	function boundingBoxFromCanvasNodes(
+		nodes: CanvasLayoutNode[],
+		groupUnitBoundingBoxes?: Map<string, BoundingBox>,
+	): BoundingBox {
+		return compositeBoundingBox(
+			nodes.map((node) => boundingBoxFromCanvasNode(node, groupUnitBoundingBoxes)),
+		);
 	}
 
 	// Is the `child` bounding box completely contained in the `parent` bounding box
@@ -365,18 +542,6 @@ export function useCanvasLayout(
 		return !noIntersection;
 	}
 
-	function isAiParentNode(node: CanvasNodeData) {
-		return (
-			node.render?.type === CanvasNodeRenderType.Default &&
-			node.render.options.configurable &&
-			!node.render.options.configuration
-		);
-	}
-
-	function isAiConfigNode(node: CanvasNodeData) {
-		return node.render?.type === CanvasNodeRenderType.Default && node.render.options.configuration;
-	}
-
 	function getAllConnectedAiConfigNodes({
 		graph,
 		root,
@@ -384,33 +549,44 @@ export function useCanvasLayout(
 	}: {
 		graph: dagre.graphlib.Graph;
 		root: CanvasNodeData;
-		nodeById: CanvasNodeDictionary;
+		nodeById: CanvasLayoutNodeDictionary;
 	}): string[] {
-		return (graph.predecessors(root.id) as unknown as string[])
-			.map((successor) => nodeById[successor])
-			.filter((node) => isAiConfigNode(node.data))
-			.flatMap((node) => [
-				node.id,
-				...getAllConnectedAiConfigNodes({ graph, root: node.data, nodeById }),
-			]);
+		return (graph.predecessors(root.id) ?? []).flatMap((successor) => {
+			if (typeof successor !== 'string') return [];
+
+			const node = nodeById[successor];
+			if (!node || !isAiConfigNode(node.data)) return [];
+
+			return [node.id, ...getAllConnectedAiConfigNodes({ graph, root: node.data, nodeById })];
+		});
+	}
+
+	/** Returns the part of a group unit that connections attach to: its visible members, or its chip. */
+	function getGroupUnitContentBox(groupUnit: CanvasLayoutGroupUnit): BoundingBox {
+		if (groupUnit.node.data?.isCollapsed) return groupUnit.groupBox;
+
+		const memberBoxes = groupUnit.memberIds
+			.map((memberId) => findNode<CanvasNodeData>(memberId))
+			.filter(isPresent)
+			.map((member) => boundingBoxFromCanvasNode(member));
+
+		return memberBoxes.length > 0 ? compositeBoundingBox(memberBoxes) : groupUnit.groupBox;
 	}
 
 	function layout(target: CanvasLayoutTarget): CanvasLayoutResult {
-		// Collapsed groups are laid out as single chips — afterwards we translate
-		// their members so each chip lands where dagre placed it
-		const { nodes, edges, collapsedGroups } = getTargetData(target);
+		const { nodes, edges, groupUnits } = getTargetData(target);
+		const groupUnitBoundingBoxes = new Map(
+			groupUnits.map(({ node, boundingBox }) => [node.id, boundingBox]),
+		);
 
-		const nonStickyNodes = nodes
-			.filter((node) => node.data.type !== STICKY_NODE_TYPE)
-			.map((node) => findNode(node.id))
-			.filter(isPresent);
-		const boundingBoxBefore = boundingBoxFromCanvasNodes(nonStickyNodes);
+		const nonStickyNodes = nodes.filter((node) => !isStickyCanvasNode(node));
+		const boundingBoxBefore = boundingBoxFromCanvasNodes(nonStickyNodes, groupUnitBoundingBoxes);
 
-		const parentGraph = createDagreGraph({ nodes: nonStickyNodes, edges });
-		const nodeById = nonStickyNodes.reduce((acc, node) => {
-			acc[node.id] = node;
-			return acc;
-		}, {} as CanvasNodeDictionary);
+		const parentGraph = createDagreGraph({ nodes: nonStickyNodes, edges, groupUnits });
+		const nodeById: CanvasLayoutNodeDictionary = {};
+		for (const node of nonStickyNodes) {
+			nodeById[node.id] = node;
+		}
 
 		// Divide workflow in to subgraphs
 		// A subgraph contains a group of connected nodes that is not connected to any node outside of this group
@@ -418,7 +594,7 @@ export function useCanvasLayout(
 			const subgraph = createDagreSubGraph({ nodeIds, parent: parentGraph });
 			const aiParentNodes = subgraph
 				.nodes()
-				.map((nodeId) => nodeById[nodeId].data)
+				.map((nodeId) => (typeof nodeId === 'string' ? nodeById[nodeId]?.data : undefined))
 				.filter(isAiParentNode);
 
 			// Create a subgraph for each AI (configurable) node and apply a top-bottom layout
@@ -551,24 +727,56 @@ export function useCanvasLayout(
 				}
 			});
 
-		// Measure while groups are still chips, to match boundingBoxBefore
+		// Dagre centers a group's box on the connection axis, but the frame header,
+		// padding and any attached sticky put the members off that center. Slide the
+		// unit so the members sit on the axis, unless that would run into a neighbour.
+		for (const groupUnit of groupUnits) {
+			const unitBox = boundingBoxByNodeId[groupUnit.node.id];
+			if (!unitBox) continue;
+
+			const contentBox = getGroupUnitContentBox(groupUnit);
+			const axisOffset =
+				contentBox.y +
+				contentBox.height / 2 -
+				(groupUnit.boundingBox.y + groupUnit.boundingBox.height / 2);
+			if (axisOffset === 0) continue;
+
+			const candidate = { ...unitBox, y: unitBox.y - axisOffset };
+			const isBlocked = Object.entries(boundingBoxByNodeId).some(
+				([id, box]) => id !== groupUnit.node.id && intersects(candidate, box, NODE_Y_SPACING),
+			);
+			if (!isBlocked) boundingBoxByNodeId[groupUnit.node.id] = candidate;
+		}
+
+		// Measure before grouped members replace their dagre boxes.
 		const boundingBoxAfter = compositeBoundingBox(Object.values(boundingBoxByNodeId));
 
-		// Move hidden nodes by the same offset as their collapsed group chip,
-		// then remove the chip since its position is derived from the nodes
-		for (const groupNode of collapsedGroups) {
-			const chipBox = boundingBoxByNodeId[groupNode.id];
-			if (!chipBox || !groupNode.data) continue;
+		// Pre-layout boxes of the nodes that get a final position, so stickies can
+		// follow the nodes they covered. Group members are added below.
+		const boundingBoxBeforeById = new Map(
+			nonStickyNodes
+				.filter((node) => !groupUnitBoundingBoxes.has(node.id))
+				.map((node) => [node.id, boundingBoxFromCanvasNode(node)]),
+		);
+
+		const attachedStickies: Array<{ id: string; boundingBox: BoundingBox }> = [];
+
+		// Move group members and attached stickies by the offset of their dagre box,
+		// then remove that box. The rendered group position is derived from its members.
+		for (const groupUnit of groupUnits) {
+			const groupBox = boundingBoxByNodeId[groupUnit.node.id];
+			if (!groupBox) continue;
 
 			const delta = {
-				x: chipBox.x - groupNode.position.x,
-				y: chipBox.y - groupNode.position.y,
+				x: groupBox.x - groupUnit.boundingBox.x,
+				y: groupBox.y - groupUnit.boundingBox.y,
 			};
 
-			for (const memberId of groupNode.data.group.nodeIds) {
+			for (const memberId of groupUnit.memberIds) {
 				const member = findNode<CanvasNodeData>(memberId);
 				if (!member) continue;
 				const box = boundingBoxFromCanvasNode(member);
+				boundingBoxBeforeById.set(memberId, box);
 				boundingBoxByNodeId[memberId] = {
 					x: box.x + delta.x,
 					y: box.y + delta.y,
@@ -577,7 +785,17 @@ export function useCanvasLayout(
 				};
 			}
 
-			delete boundingBoxByNodeId[groupNode.id];
+			for (const stickyId of groupUnit.stickyIds) {
+				const sticky = findNode<CanvasNodeData>(stickyId);
+				if (!sticky) continue;
+				const box = boundingBoxFromCanvasNode(sticky);
+				attachedStickies.push({
+					id: stickyId,
+					boundingBox: { ...box, x: box.x + delta.x, y: box.y + delta.y },
+				});
+			}
+
+			delete boundingBoxByNodeId[groupUnit.node.id];
 		}
 
 		const positionedNodes = Object.entries(boundingBoxByNodeId).map(([id, boundingBox]) => ({
@@ -591,24 +809,35 @@ export function useCanvasLayout(
 		};
 
 		const stickies = nodes
-			.filter((node) => node.data.type === STICKY_NODE_TYPE)
-			.map((node) => findNode(node.id))
+			.filter(isStickyCanvasNode)
+			.map((node) => findNode<CanvasNodeData>(node.id))
 			.filter(isPresent);
+
+		// A sticky covers a group when it covers the group frame or chip; it then
+		// follows all of that group's members.
+		function getCoveredNodeIds(stickyBox: BoundingBox): Set<string> {
+			const coveredNodeIds = new Set<string>();
+			for (const [id, box] of boundingBoxBeforeById) {
+				if (isCoveredBy(stickyBox, box)) coveredNodeIds.add(id);
+			}
+			for (const { memberIds, boundingBox } of groupUnits) {
+				if (!isCoveredBy(stickyBox, boundingBox)) continue;
+				for (const memberId of memberIds) coveredNodeIds.add(memberId);
+			}
+			return coveredNodeIds;
+		}
 
 		const positionedStickies = stickies
 			.map((sticky) => {
 				const stickyBox = boundingBoxFromCanvasNode(sticky);
-				const coveredNodes = nonStickyNodes.filter((node) =>
-					isCoveredBy(boundingBoxFromCanvasNode(sticky), boundingBoxFromCanvasNode(node)),
-				);
+				const coveredNodeIds = getCoveredNodeIds(stickyBox);
+				const coveredBoxesAfter = positionedNodes
+					.filter(({ id }) => coveredNodeIds.has(id))
+					.map(({ boundingBox }) => boundingBox);
 
-				if (coveredNodes.length === 0) return null;
+				if (coveredBoxesAfter.length === 0) return null;
 
-				const coveredNodesBoxAfter = compositeBoundingBox(
-					positionedNodes
-						.filter((node) => coveredNodes.some((covered) => covered.id === node.id))
-						.map(({ boundingBox }) => boundingBox),
-				);
+				const coveredNodesBoxAfter = compositeBoundingBox(coveredBoxesAfter);
 				return {
 					id: sticky.id,
 					boundingBox: {
@@ -623,7 +852,8 @@ export function useCanvasLayout(
 					},
 				};
 			})
-			.filter(isPresent);
+			.filter(isPresent)
+			.concat(attachedStickies);
 
 		const snapToGrid = (value: number) => Math.round(value / GRID_SIZE) * GRID_SIZE;
 

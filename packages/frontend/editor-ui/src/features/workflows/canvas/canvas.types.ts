@@ -9,6 +9,7 @@ import type {
 import type {
 	Connection,
 	DefaultEdge,
+	GraphNode,
 	Node,
 	NodeProps,
 	Position,
@@ -212,6 +213,10 @@ export interface CanvasGroupNodeData {
 export type CanvasGroupNode = Node<CanvasGroupNodeData>;
 
 export type CanvasNodeOrGroup = CanvasNode | CanvasGroupNode;
+
+/** A rendered VueFlow node as auto-layout sees it: a regular node or a group node. */
+export type CanvasLayoutNode = GraphNode<CanvasNodeData> | GraphNode<CanvasGroupNodeData>;
+export type CanvasLayoutNodeData = CanvasNodeData | CanvasGroupNodeData;
 
 export function isCanvasGroupNode(node: CanvasNodeOrGroup): node is CanvasGroupNode;
 export function isCanvasGroupNode(node: { type?: string }): boolean;
