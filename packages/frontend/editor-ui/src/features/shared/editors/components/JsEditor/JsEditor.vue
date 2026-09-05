@@ -4,7 +4,7 @@ import { javascript } from '@codemirror/lang-javascript';
 import { foldGutter, indentOnInput } from '@codemirror/language';
 import { lintGutter } from '@codemirror/lint';
 import type { Extension } from '@codemirror/state';
-import { EditorState, Prec } from '@codemirror/state';
+import { EditorState, Prec, StateEffect } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import {
 	EditorView,
@@ -106,6 +106,14 @@ const extensions = computed(() => {
 		);
 	}
 	return extensionsToApply;
+});
+
+// Read-only lives in the extensions, so reconfigure the editor in place when it
+// toggles at runtime (e.g. when a collaboration write lock is taken or released).
+// Reconfiguring keeps the live doc, which a destroy/recreate would reset to the
+// debounced `modelValue` and roll back the last keystrokes.
+watch(extensions, (newExtensions) => {
+	editor.value?.dispatch({ effects: StateEffect.reconfigure.of(newExtensions) });
 });
 
 const focus = () => {

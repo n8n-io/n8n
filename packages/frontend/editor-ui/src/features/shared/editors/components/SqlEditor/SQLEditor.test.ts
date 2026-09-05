@@ -6,6 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 
 import SqlEditor from '@/features/shared/editors/components/SqlEditor/SqlEditor.vue';
 import { renderComponent, type RenderOptions } from '@/__tests__/render';
+import { EditorView } from '@codemirror/view';
 import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
@@ -31,6 +32,11 @@ const DEFAULT_SETUP: RenderOptions<typeof SqlEditor> = {
 		isReadOnly: false,
 	},
 };
+
+function editorState(container: Element) {
+	const dom = container.querySelector<HTMLElement>('.cm-editor');
+	return dom ? EditorView.findFromDOM(dom)?.state : undefined;
+}
 
 async function focusEditor(container: Element) {
 	await waitFor(() => expect(container.querySelector('.cm-line')).toBeInTheDocument());
@@ -218,5 +224,40 @@ describe('SqlEditor.vue', () => {
 		// Does hide output when clicking outside the container
 		await userEvent.click(baseElement);
 		await waitFor(() => expect(queryByTestId(EXPRESSION_OUTPUT_TEST_ID)).not.toBeInTheDocument());
+	});
+
+	describe('read-only state', () => {
+		it('becomes editable when the read-only prop is turned off at runtime', async () => {
+			const { container, rerender } = renderComponent(SqlEditor, {
+				...DEFAULT_SETUP,
+				props: {
+					...DEFAULT_SETUP.props,
+					isReadOnly: true,
+					modelValue: 'SELECT * FROM users',
+				},
+			});
+
+			await waitFor(() => expect(editorState(container)?.readOnly).toBe(true));
+
+			await rerender({ isReadOnly: false });
+
+			await waitFor(() => expect(editorState(container)?.readOnly).toBe(false));
+		});
+
+		it('becomes read-only when the read-only prop is turned on at runtime', async () => {
+			const { container, rerender } = renderComponent(SqlEditor, {
+				...DEFAULT_SETUP,
+				props: {
+					...DEFAULT_SETUP.props,
+					modelValue: 'SELECT * FROM users',
+				},
+			});
+
+			await waitFor(() => expect(editorState(container)?.readOnly).toBe(false));
+
+			await rerender({ isReadOnly: true });
+
+			await waitFor(() => expect(editorState(container)?.readOnly).toBe(true));
+		});
 	});
 });
