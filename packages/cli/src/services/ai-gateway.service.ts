@@ -11,13 +11,14 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { ICredentialDataDecryptedObject, IHttpRequestMethods } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/license';
+import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 
@@ -165,6 +166,10 @@ export class AiGatewayService {
 	 * Returns a synthetic credential for the given type, pointing the node at the gateway
 	 * instead of the real provider. Called from `CredentialsHelper.getDecrypted` when
 	 * `nodeCredentials.__aiGatewayManaged` is set.
+	 *
+	 * `node` is optional — callers with no workflow node to check against (e.g.
+	 * Agents) skip eligibility entirely. When provided, it's checked against
+	 * `checkAiGatewayEligibility` before minting.
 	 */
 	async getSyntheticCredential({
 		credentialType,
@@ -172,12 +177,14 @@ export class AiGatewayService {
 		workflowId,
 		projectId,
 		executionId,
+		node,
 	}: {
 		credentialType: string;
 		userId: string | undefined;
 		workflowId?: string;
 		projectId?: string;
 		executionId?: string;
+		node?: Pick<INode, 'type' | 'typeVersion' | 'parameters'>;
 	}): Promise<ICredentialDataDecryptedObject> {
 		if (!this.licenseState.isAiGatewayLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
@@ -194,6 +201,15 @@ export class AiGatewayService {
 			throw new UserError(
 				`Credential type "${credentialType}" is not supported by Gateway credits.`,
 			);
+		}
+
+		if (node) {
+			const eligibility = checkAiGatewayEligibility(node, credentialType, config);
+			if (!eligibility.eligible) {
+				throw new UserError(
+					`Gateway credits eligibility check failed: ${eligibility.reason}${eligibility.details ? ` (${eligibility.details})` : ''}.`,
+				);
+			}
 		}
 
 		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
