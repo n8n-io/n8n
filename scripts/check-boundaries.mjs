@@ -24,11 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const write = process.argv.includes('--write');
-const baselineFile = join(
-	dirname(fileURLToPath(import.meta.url)),
-	'..',
-	'.boundaries-baseline.json',
-);
+const baselineFile = join(dirname(fileURLToPath(import.meta.url)), '..', '.boundaries-baseline.json');
 const baseline = JSON.parse(readFileSync(baselineFile, 'utf8')).issues;
 
 // turbo exits non-zero when issues exist; we read the output regardless.

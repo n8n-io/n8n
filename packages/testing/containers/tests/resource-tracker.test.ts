@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import { ResourceTracker } from './resource-tracker';
+import { ResourceTracker } from '../resource-tracker';
 
 function container(id: string, stop = vi.fn().mockResolvedValue(undefined)) {
 	return {

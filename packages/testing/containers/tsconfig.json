@@ -5,6 +5,6 @@
 		"declaration": false,
 		"types": ["node", "vitest/globals"]
 	},
-	"include": ["**/*.ts"],
+	"include": ["*.ts", "services/**/*.ts", "helpers/**/*.ts", "tests/**/*.ts"],
 	"exclude": ["**/node_modules/**", "**/dist/**"]
 }
