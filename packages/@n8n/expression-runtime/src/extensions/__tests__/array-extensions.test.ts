@@ -27,6 +27,11 @@ const mergeIntoObject = arrayExtensions.functions.mergeIntoObject as (
 	extraArgs: unknown[][],
 ) => Record<string, unknown>;
 
+const chunk = arrayExtensions.functions.chunk as (
+	value: unknown[],
+	extraArgs: number[],
+) => unknown[][];
+
 describe('smartJoin', () => {
 	it('should join own key and value fields', () => {
 		expect(
@@ -130,5 +135,45 @@ describe.each([
 		expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
 		expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
 		expect(({} as Record<string, unknown>).marker).toBeUndefined();
+	});
+});
+
+describe('chunk', () => {
+	it('should split an array into groups of the given size', () => {
+		expect(chunk([1, 2, 3, 4, 5], [2])).toEqual([
+			[1, 2],
+			[3, 4],
+			[5],
+		]);
+	});
+
+	it('should reject a zero size', () => {
+		expect(() => chunk([1, 2, 3], [0])).toThrow(
+			'chunk(): expected positive integer arg, e.g. .chunk(5)',
+		);
+	});
+
+	it('should reject a negative size', () => {
+		expect(() => chunk([1, 2, 3], [-2])).toThrow(
+			'chunk(): expected positive integer arg, e.g. .chunk(5)',
+		);
+	});
+
+	it('should reject a fractional size', () => {
+		expect(() => chunk([1, 2, 3], [1.5])).toThrow(
+			'chunk(): expected positive integer arg, e.g. .chunk(5)',
+		);
+	});
+
+	it('should reject a NaN size', () => {
+		expect(() => chunk([1, 2, 3], [Number.NaN])).toThrow(
+			'chunk(): expected positive integer arg, e.g. .chunk(5)',
+		);
+	});
+
+	it('should reject a non-number size', () => {
+		expect(() => chunk([1, 2, 3], ['2' as unknown as number])).toThrow(
+			'chunk(): expected positive integer arg, e.g. .chunk(5)',
+		);
 	});
 });

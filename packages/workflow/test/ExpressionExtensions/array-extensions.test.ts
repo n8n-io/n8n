@@ -417,6 +417,30 @@ describe('Data Transformation Functions', () => {
 			]);
 		});
 
+		test('.chunk() should reject a zero size', () => {
+			expect(() => evaluate('={{ [1, 2, 3].chunk(0) }}')).toThrow(
+				'chunk(): expected positive integer arg, e.g. .chunk(5)',
+			);
+		});
+
+		test('.chunk() should reject a negative size', () => {
+			expect(() => evaluate('={{ [1, 2, 3].chunk(-2) }}')).toThrow(
+				'chunk(): expected positive integer arg, e.g. .chunk(5)',
+			);
+		});
+
+		test('.chunk() should reject a fractional size', () => {
+			expect(() => evaluate('={{ [1, 2, 3].chunk(1.5) }}')).toThrow(
+				'chunk(): expected positive integer arg, e.g. .chunk(5)',
+			);
+		});
+
+		test('.chunk() should reject a non-number size', () => {
+			expect(() => evaluate('={{ [1, 2, 3].chunk("2") }}')).toThrow(
+				'chunk(): expected positive integer arg, e.g. .chunk(5)',
+			);
+		});
+
 		test('.toJsonString() should work on an array', () => {
 			expect(evaluate('={{ [true, 1, "one", {foo: "bar"}].toJsonString() }}')).toEqual(
 				'[true,1,"one",{"foo":"bar"}]',
