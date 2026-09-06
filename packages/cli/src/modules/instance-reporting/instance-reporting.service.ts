@@ -1,4 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import type { HttpRequestClient } from '@n8n/backend-network';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -18,8 +20,13 @@ import { INSTANCE_REPORTS_PATH } from './instance-reporting.constants';
  * Measures and delivers one instance report. *When* that happens is
  * {@link InstanceReportingScheduler}'s concern.
  */
+/** A hung receiver must not hold a delivery open until the next report is due. */
+const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
+
 @Service()
 export class InstanceReportingService {
+	private readonly http: HttpRequestClient;
+
 	constructor(
 		private readonly config: InstanceReportingConfig,
 		private readonly reportRepository: CentralInstanceMonitoringReportRepository,
@@ -28,8 +35,23 @@ export class InstanceReportingService {
 		private readonly ownershipService: OwnershipService,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 		private readonly logger: Logger,
+		outboundHttp: OutboundHttp,
 	) {
 		this.logger = this.logger.scoped('instance-reporting');
+
+		this.http = outboundHttp.requests({
+			// The receiver is set by the operator and may legitimately be an internal
+			// collector, so the URL is never user-controlled.
+			useDefaultSsrfPolicy: 'unsafe',
+			baseURL: this.config.instanceReportingBaseUrl.replace(/\/+$/, ''),
+			// An unset token drops the header, so an unauthenticated receiver works.
+			headers: () => ({
+				authorization: this.config.instanceReportingAuthToken
+					? `Bearer ${this.config.instanceReportingAuthToken}`
+					: undefined,
+			}),
+			timeout: REQUEST_TIMEOUT_MS,
+		});
 	}
 
 	/**
@@ -66,20 +88,22 @@ export class InstanceReportingService {
 		};
 
 		try {
-			const response = await fetch(this.reportsUrl(), {
+			const response = await this.http.request<unknown>({
+				url: INSTANCE_REPORTS_PATH,
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					...(this.config.instanceReportingAuthToken
-						? { Authorization: `Bearer ${this.config.instanceReportingAuthToken}` }
-						: {}),
-				},
-				body: JSON.stringify(payload),
+				body: payload,
+				json: true,
+				returnFullResponse: true,
+				// Inspect the status here rather than catching a generic request error.
+				ignoreHttpStatusErrors: true,
+				// A redirect would forward the auth token to whatever host it names.
+				disableFollowRedirect: true,
 			});
 
-			if (!response.ok) {
+			// 3xx too: redirects are not followed, so one is a misconfiguration.
+			if (response.statusCode >= 300) {
 				throw new OperationalError(
-					`Instance report was rejected with status ${response.status} ${response.statusText}`,
+					`Instance report was rejected with status ${response.statusCode}`,
 				);
 			}
 		} catch (error) {
@@ -122,11 +146,6 @@ export class InstanceReportingService {
 			{ kind: 'cumulative', name: 'billableExecutions', value: productionRootExecutions },
 			{ kind: 'daily', name: 'billableExecutions', value: summary.total.value, date: reportDate },
 		];
-	}
-
-	/** The configured base URL joined with the receiver's endpoint path. */
-	private reportsUrl(): string {
-		return this.config.instanceReportingBaseUrl.replace(/\/+$/, '') + INSTANCE_REPORTS_PATH;
 	}
 }
 

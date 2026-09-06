@@ -1,8 +1,13 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type {
+	HttpRequestClient,
+	HttpRequestClientOptions,
+	OutboundHttp,
+} from '@n8n/backend-network';
 import type { LicenseMetricsRepository, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
-import type { Mocked, MockInstance } from 'vitest';
+import type { IHttpRequestOptions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { InsightsService } from '@/modules/insights/insights.service';
@@ -75,6 +80,8 @@ interface Harness {
 	service: InstanceReportingService;
 	reportRepository: Mocked<CentralInstanceMonitoringReportRepository>;
 	insightsService: Mocked<InsightsService>;
+	http: HttpRequestClient;
+	clientOptions: HttpRequestClientOptions | undefined;
 }
 
 function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
@@ -93,6 +100,17 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	const licenseMetricsRepository = mock<LicenseMetricsRepository>();
 	licenseMetricsRepository.getLicenseRenewalMetrics.mockResolvedValue(LICENSE_METRICS_MOCK);
 
+	const http = mock<HttpRequestClient>();
+	vi.mocked(http.request).mockResolvedValue({ statusCode: 200, body: '', headers: {} });
+
+	let clientOptions: HttpRequestClientOptions | undefined;
+	const outboundHttp = mock<OutboundHttp>({
+		requests: vi.fn((options?: HttpRequestClientOptions) => {
+			clientOptions = options;
+			return http;
+		}),
+	});
+
 	const service = new InstanceReportingService(
 		config,
 		reportRepository,
@@ -101,20 +119,18 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		ownershipService,
 		licenseMetricsRepository,
 		mockLogger(),
+		outboundHttp,
 	);
 
-	return { service, reportRepository, insightsService };
+	return { service, reportRepository, insightsService, http, clientOptions };
 }
 
 describe('InstanceReportingService', () => {
 	describe('sendReport', () => {
-		let mockFetch: MockInstance<typeof fetch>;
-
 		beforeEach(() => {
 			// Pinned so the previous UTC day the service derives is deterministic.
 			vi.useFakeTimers();
 			vi.setSystemTime(new Date('2026-03-26T07:42:00.000Z'));
-			mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue(new Response(null, { status: 200 }));
 		});
 
 		afterEach(() => {
@@ -122,44 +138,70 @@ describe('InstanceReportingService', () => {
 			vi.restoreAllMocks();
 		});
 
-		function body(callIndex = 0): ReportPayload {
-			const [, options] = mockFetch.mock.calls[callIndex] as [string, RequestInit];
-			return jsonParse<ReportPayload>(options.body as string);
+		function sentOptions(http: HttpRequestClient, callIndex = 0): IHttpRequestOptions {
+			return vi.mocked(http.request).mock.calls[callIndex][0];
 		}
 
-		function headers(callIndex = 0): Record<string, string> {
-			const [, options] = mockFetch.mock.calls[callIndex] as [string, RequestInit];
-			return options.headers as Record<string, string>;
+		function body(http: HttpRequestClient, callIndex = 0): ReportPayload {
+			return sentOptions(http, callIndex).body as unknown as ReportPayload;
+		}
+
+		/** The default headers the client was built with, as the transport receives them. */
+		function clientHeaders(
+			clientOptions: HttpRequestClientOptions | undefined,
+		): Record<string, string | undefined> {
+			const { headers } = clientOptions ?? {};
+
+			return (typeof headers === 'function' ? headers() : headers) ?? {};
 		}
 
 		test('posts the report to the receiver endpoint under the configured base URL', async () => {
-			const { service } = makeHarness();
+			const { service, http, clientOptions } = makeHarness();
 
 			await service.sendReport();
 
-			const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
-
-			expect(url).toBe('https://example.com/api/v1/instance-reports');
-			expect(options.method).toBe('POST');
-			expect(headers()['Content-Type']).toBe('application/json');
+			expect(clientOptions?.baseURL).toBe('https://example.com');
+			expect(sentOptions(http)).toMatchObject({
+				url: '/api/v1/instance-reports',
+				method: 'POST',
+				json: true,
+			});
 		});
 
-		test('does not double up the slash when the base URL has a trailing one', async () => {
-			const { service } = makeHarness(
+		test('does not double up the slash when the base URL has a trailing one', () => {
+			const { clientOptions } = makeHarness(
 				makeConfig({ instanceReportingBaseUrl: 'https://example.com/' }),
 			);
 
+			expect(clientOptions?.baseURL).toBe('https://example.com');
+		});
+
+		test('opts out of SSRF protection, as the receiver is operator-configured', () => {
+			const { clientOptions } = makeHarness();
+
+			expect(clientOptions?.useDefaultSsrfPolicy).toBe('unsafe');
+		});
+
+		test('bounds the request, so a hung receiver does not hold the delivery open', () => {
+			const { clientOptions } = makeHarness();
+
+			expect(clientOptions?.timeout).toBe(30_000);
+		});
+
+		test('does not follow redirects, so the auth token reaches only the configured host', async () => {
+			const { service, http } = makeHarness();
+
 			await service.sendReport();
 
-			expect(mockFetch.mock.calls[0][0]).toBe('https://example.com/api/v1/instance-reports');
+			expect(sentOptions(http).disableFollowRedirect).toBe(true);
 		});
 
 		test('sends one cumulative and one daily data point, with the row id as batchId', async () => {
-			const { service } = makeHarness();
+			const { service, http } = makeHarness();
 
 			await service.sendReport();
 
-			expect(body()).toMatchObject({
+			expect(body(http)).toMatchObject({
 				instanceId: 'abc123',
 				batchId: BATCH_ID,
 				label: 'my-instance',
@@ -172,27 +214,26 @@ describe('InstanceReportingService', () => {
 		});
 
 		test('omits label when no identifier is configured', async () => {
-			const { service } = makeHarness(makeConfig({ instanceReportingIdentifier: '' }));
+			const { service, http } = makeHarness(makeConfig({ instanceReportingIdentifier: '' }));
 
 			await service.sendReport();
 
-			expect(body()).not.toHaveProperty('label');
+			expect(body(http)).not.toHaveProperty('label');
 		});
 
-		test('sends the auth token as a bearer token when configured', async () => {
-			const { service } = makeHarness(makeConfig({ instanceReportingAuthToken: 'secret-token' }));
+		test('sends the auth token as a bearer token when configured', () => {
+			const { clientOptions } = makeHarness(
+				makeConfig({ instanceReportingAuthToken: 'secret-token' }),
+			);
 
-			await service.sendReport();
-
-			expect(headers().Authorization).toBe('Bearer secret-token');
+			expect(clientHeaders(clientOptions).authorization).toBe('Bearer secret-token');
 		});
 
-		test('omits the Authorization header when no auth token is configured', async () => {
-			const { service } = makeHarness();
+		test('omits the Authorization header when no auth token is configured', () => {
+			const { clientOptions } = makeHarness();
 
-			await service.sendReport();
-
-			expect(headers()).not.toHaveProperty('Authorization');
+			// An `undefined` default header is dropped before the request goes out.
+			expect(clientHeaders(clientOptions).authorization).toBeUndefined();
 		});
 
 		test('queries the instance owner insights for the reported UTC day', async () => {
@@ -221,8 +262,8 @@ describe('InstanceReportingService', () => {
 		});
 
 		test('records the failure and rethrows when the request fails', async () => {
-			const { service, reportRepository } = makeHarness();
-			mockFetch.mockRejectedValue(new Error('Network error'));
+			const { service, reportRepository, http } = makeHarness();
+			vi.mocked(http.request).mockRejectedValue(new Error('Network error'));
 
 			await expect(service.sendReport()).rejects.toThrow('Network error');
 
@@ -231,8 +272,8 @@ describe('InstanceReportingService', () => {
 		});
 
 		test('treats a non-2xx response as a failure', async () => {
-			const { service, reportRepository } = makeHarness();
-			mockFetch.mockResolvedValue(new Response(null, { status: 500 }));
+			const { service, reportRepository, http } = makeHarness();
+			vi.mocked(http.request).mockResolvedValue({ statusCode: 500, body: '', headers: {} });
 
 			await expect(service.sendReport()).rejects.toThrow('500');
 
@@ -243,20 +284,29 @@ describe('InstanceReportingService', () => {
 			expect(reportRepository.markDelivered).not.toHaveBeenCalled();
 		});
 
+		test('treats a redirect as a failure, as redirects are not followed', async () => {
+			const { service, reportRepository, http } = makeHarness();
+			vi.mocked(http.request).mockResolvedValue({ statusCode: 301, body: '', headers: {} });
+
+			await expect(service.sendReport()).rejects.toThrow('301');
+
+			expect(reportRepository.markDelivered).not.toHaveBeenCalled();
+		});
+
 		test('reuses the same batchId when an undelivered report is retried', async () => {
-			const { service, reportRepository } = makeHarness();
-			mockFetch.mockRejectedValueOnce(new Error('Network error'));
+			const { service, reportRepository, http } = makeHarness();
+			vi.mocked(http.request).mockRejectedValueOnce(new Error('Network error'));
 
 			await expect(service.sendReport()).rejects.toThrow();
 			// The retry picks up the still-undelivered row the first attempt created.
 			reportRepository.findTodaysPending.mockResolvedValue(makeReport({ attempts: 1 }));
 			await service.sendReport();
 
-			expect(body(1).batchId).toBe(BATCH_ID);
+			expect(body(http, 1).batchId).toBe(BATCH_ID);
 		});
 
 		test('resends a pending report as measured, without taking fresh numbers', async () => {
-			const { service, reportRepository, insightsService } = makeHarness();
+			const { service, reportRepository, insightsService, http } = makeHarness();
 			// Measured at this instance's report time on an earlier attempt today.
 			const measured = [
 				{ kind: 'cumulative', name: 'billableExecutions', value: 800 },
@@ -268,7 +318,7 @@ describe('InstanceReportingService', () => {
 
 			// Re-measuring would sample the cumulative total at a different point in
 			// the day and stretch its interval past 24 hours.
-			expect(body().dataPoints).toEqual(measured);
+			expect(body(http).dataPoints).toEqual(measured);
 			expect(insightsService.getInsightsSummary).not.toHaveBeenCalled();
 			expect(reportRepository.createPending).not.toHaveBeenCalled();
 		});
