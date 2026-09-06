@@ -1,6 +1,8 @@
+import { PassThrough } from 'node:stream';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { pollContainerHttpEndpoint } from '../helpers/utils';
+import { pollHealthEndpoint } from '../helm-stack';
+import { pollContainerHttpEndpoint, waitForContainerLogMessages } from '../helpers/utils';
 import { StartupDeadline, StartupTimeoutError } from '../startup-deadline';
 
 afterEach(() => {
@@ -64,6 +66,51 @@ describe('StartupDeadline', () => {
 			deadline.remainingMs,
 			deadline.signal,
 		);
+		deadline.abort(new Error('cancelled by test'));
+
+		await expect(polling).rejects.toThrow('cancelled by test');
+		expect(fetchMock).toHaveBeenCalledOnce();
+		deadline.dispose();
+	});
+
+	test('destroys a log stream that resolves after cancellation', async () => {
+		const deadline = new StartupDeadline(1_000);
+		const stream = new PassThrough();
+		let resolveLogs!: (value: PassThrough) => void;
+		const container = {
+			getName: () => 'test-container',
+			logs: async () => await new Promise<PassThrough>((resolve) => (resolveLogs = resolve)),
+		};
+
+		const waiting = waitForContainerLogMessages(container as never, [/ready/], {
+			signal: deadline.signal,
+		});
+		deadline.abort(new Error('cancelled by test'));
+
+		await expect(waiting).rejects.toThrow('cancelled by test');
+		resolveLogs(stream);
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(stream.destroyed).toBe(true);
+		deadline.dispose();
+	});
+
+	test('forwards cancellation to Helm readiness polling', async () => {
+		const deadline = new StartupDeadline(1_000);
+		const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+			return await new Promise<Response>((_, reject) => {
+				init?.signal?.addEventListener(
+					'abort',
+					() =>
+						reject(
+							init.signal?.reason instanceof Error ? init.signal.reason : new Error('aborted'),
+						),
+					{ once: true },
+				);
+			});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const polling = pollHealthEndpoint('http://localhost:5678', 1_000, deadline.signal);
 		deadline.abort(new Error('cancelled by test'));
 
 		await expect(polling).rejects.toThrow('cancelled by test');

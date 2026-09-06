@@ -19,6 +19,9 @@ export async function waitForNetworkQuiet(
 	if (!process.env.CI || os.platform() !== 'linux') {
 		return;
 	}
+	if (signal?.aborted) {
+		signal.throwIfAborted();
+	}
 
 	return await new Promise((resolve) => {
 		let lastEventTime = Date.now();
@@ -29,6 +32,7 @@ export async function waitForNetworkQuiet(
 		const cleanup = () => {
 			if (resolved) return;
 			resolved = true;
+			signal?.removeEventListener('abort', abort);
 			if (checkInterval) clearInterval(checkInterval);
 			if (maxTimeout) clearTimeout(maxTimeout);
 			monitor.kill();
