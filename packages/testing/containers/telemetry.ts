@@ -174,12 +174,17 @@ function getCorrelationContext(config: StackConfig): StackTelemetryRecord['corre
 		'intentional-isolation',
 		'unknown',
 	]);
+	const resolvedRestartReason = restartReason
+		? knownRestartReasons.has(restartReason)
+			? restartReason
+			: 'unknown'
+		: null;
 	return {
 		profile: resolveProfile(config),
 		shard: safeValue(process.env.TEST_SHARD ?? process.env.CI_NODE_INDEX),
 		worker: safeValue(process.env.TEST_WORKER_INDEX ?? process.env.PLAYWRIGHT_WORKER_INDEX),
 		retry: Number.isFinite(retry) && retry > 0 ? retry : null,
-		restartReason: restartReason && knownRestartReasons.has(restartReason) ? restartReason : null,
+		restartReason: resolvedRestartReason,
 	};
 }
 
@@ -414,6 +419,8 @@ export class TelemetryRecorder {
 				attempt: record.ci.attempt ?? null,
 			},
 			correlation: record.correlation,
+			success: record.success,
+			error_message: record.errorMessage ?? null,
 			attempt_id: record.attemptId,
 			stages: record.stages,
 			failure_phase: record.failurePhase ?? null,

@@ -8,17 +8,19 @@ afterEach(() => {
 });
 
 describe('TelemetryRecorder', () => {
-	test('correlates stages and keeps failed elapsed time', () => {
+	test('correlates stages and keeps failed elapsed time', async () => {
 		vi.stubEnv('CONTAINER_TELEMETRY_VERBOSE', '1');
 		vi.stubEnv('N8N_TEST_PROFILE', 'sqlite');
 		vi.stubEnv('TEST_SHARD', '3');
 		vi.stubEnv('TEST_WORKER_INDEX', '2');
+		vi.stubEnv('N8N_TEST_RESTART_REASON', 'unexpected-value');
 		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
 		const telemetry = new TelemetryRecorder({});
 
 		telemetry.startStage('network');
 		telemetry.finishStage();
 		telemetry.startStage('n8n-startup');
+		await new Promise((resolve) => setTimeout(resolve, 2));
 		telemetry.finishStage('failure', new Error('readiness failed after 25ms'));
 		telemetry.flush(false, 'n8n startup failed');
 
@@ -26,7 +28,7 @@ describe('TelemetryRecorder', () => {
 		expect(typeof output).toBe('string');
 		let record: {
 			attemptId: string;
-			correlation: { profile: string; shard: string; worker: string };
+			correlation: { profile: string; shard: string; worker: string; restartReason: string };
 			stages: Array<{ name: string; elapsedMs: number; outcome: string }>;
 			failurePhase: string;
 		};
@@ -36,7 +38,12 @@ describe('TelemetryRecorder', () => {
 			throw new Error('Telemetry output was not valid JSON');
 		}
 		expect(record.attemptId).toMatch(/^[0-9a-f-]{36}$/);
-		expect(record.correlation).toMatchObject({ profile: 'sqlite', shard: '3', worker: '2' });
+		expect(record.correlation).toMatchObject({
+			profile: 'sqlite',
+			shard: '3',
+			worker: '2',
+			restartReason: 'unknown',
+		});
 		expect(record.stages).toEqual([
 			expect.objectContaining({ name: 'network', outcome: 'success' }),
 			expect.objectContaining({
@@ -45,6 +52,7 @@ describe('TelemetryRecorder', () => {
 				elapsedMs: expect.any(Number),
 			}),
 		]);
+		expect(record.stages[1].elapsedMs).toBeGreaterThan(0);
 		expect(record.failurePhase).toBe('n8n-startup');
 	});
 
@@ -67,7 +75,7 @@ describe('TelemetryRecorder', () => {
 		expect(output).toContain('[REDACTED]');
 	});
 
-	test('marks aborted stages as cancelled', () => {
+	test('marks aborted stages as cancelled', async () => {
 		vi.stubEnv('CONTAINER_TELEMETRY_VERBOSE', '1');
 		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
 		const telemetry = new TelemetryRecorder({});
@@ -75,6 +83,7 @@ describe('TelemetryRecorder', () => {
 		error.name = 'AbortError';
 
 		telemetry.startStage('service:postgres');
+		await new Promise((resolve) => setTimeout(resolve, 2));
 		telemetry.finishStage('failure', error);
 		telemetry.flush(false, error.message);
 

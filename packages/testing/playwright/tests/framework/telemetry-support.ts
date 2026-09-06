@@ -3,6 +3,8 @@ import { createServer, type IncomingMessage, type Server } from 'node:http';
 
 type TelemetryPayload = {
 	attempt_id?: unknown;
+	success?: unknown;
+	failure_phase?: unknown;
 	stages?: unknown;
 	metrics?: Array<{
 		metric_name?: unknown;
@@ -54,7 +56,7 @@ export async function startTelemetryContractServer(
 		}
 
 		requests.push({ authorization: request.headers.authorization, payload });
-		const status = responseStatus === 200 && isValidPayload(payload) ? 200 : responseStatus;
+		const status = isValidPayload(payload) ? responseStatus : 400;
 		response.writeHead(status, { 'Content-Type': 'application/json' }).end('{}');
 	});
 	server.listen(0, '127.0.0.1');

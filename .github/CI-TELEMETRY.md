@@ -48,8 +48,9 @@ Container startup payloads also include:
 `attempt_id` identifies one stack startup. Join all stage records and attached
 Playwright startup evidence with this value. `outcome` is `success`, `failure`,
 or `cancelled`. Stage durations are also sent as `stack-startup-stage` metrics
-with `attempt_id`, `stage`, `source`, and `outcome` dimensions. Missing
-correlation values stay `null`; they are not inferred.
+with `attempt_id`, `stage`, `source`, and `outcome` dimensions. `profile` is
+resolved from the configured profile or stack shape. Other unavailable
+correlation values stay `null`.
 
 ## Standard Context Fields
 

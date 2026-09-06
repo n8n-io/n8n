@@ -53,12 +53,41 @@ describe('container telemetry webhook contract', () => {
 		);
 	});
 
-	test('does not throw when the contract server rejects a payload', async () => {
+	test('delivers failure evidence when the contract server rejects a payload', async () => {
 		server = await startTelemetryContractServer(500);
 		configureTelemetryWebhook(server.url);
 		const telemetry = new TelemetryRecorder({});
 
-		expect(() => telemetry.flush(false, 'startup failed')).not.toThrow();
+		telemetry.startStage('n8n-startup');
+		await new Promise((resolve) => setTimeout(resolve, 2));
+		telemetry.finishStage('failure', new Error('startup failed'));
+		telemetry.flush(false, 'startup failed');
 		await waitForRequest();
+
+		const request = server.requests[0];
+		expect(request.payload.success).toBe(false);
+		expect(request.payload.attempt_id).toMatch(/^[0-9a-f-]{36}$/);
+		expect(request.payload.stages).toContainEqual(
+			expect.objectContaining({
+				name: 'n8n-startup',
+				outcome: 'failure',
+				elapsedMs: expect.any(Number),
+			}),
+		);
+		expect((request.payload.stages as Array<{ elapsedMs: number }>)[0].elapsedMs).toBeGreaterThan(
+			0,
+		);
+	});
+
+	test('rejects payloads that do not meet the telemetry contract', async () => {
+		server = await startTelemetryContractServer();
+
+		const response = await fetch(server.url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ attempt_id: 'missing-stages' }),
+		});
+
+		expect(response.status).toBe(400);
 	});
 });
