@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
+import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
@@ -27,6 +28,7 @@ import type {
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	IExecuteData,
+	IGetDecryptedCredentialsOptions,
 	IDataObject,
 } from 'n8n-workflow';
 import {
@@ -35,12 +37,14 @@ import {
 	Workflow,
 	UnexpectedError,
 	UserError,
+	classifyTriggerIdentity,
 	isExpression,
 	jsonParse,
 } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { isChatOAuth2Enabled } from '@/constants/oauth2-triggers';
 import {
 	DCR_MANAGED_CREDENTIAL_FIELDS,
 	MANAGED_OAUTH_PINNED_FIELDS,
@@ -53,6 +57,7 @@ import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
 import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
+import { UnsupportedEndUserCredentialTriggerError } from './errors/unsupported-end-user-credential-trigger.error';
 
 const mockNode = {
 	name: '',
@@ -505,6 +510,31 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 	}
 
+	private assertTriggerSupportsEndUserCredential(
+		credentialsEntity: CredentialsEntity,
+		additionalData: IWorkflowExecuteAdditionalData,
+		executeData: IExecuteData | undefined,
+	): void {
+		if (!executeData) return;
+
+		const resolverId =
+			credentialsEntity.resolverId ??
+			this.dynamicCredentialsProxy.getEffectiveResolverId(additionalData.workflowSettings);
+		if (!resolverId) return;
+
+		const isSystemResolver = resolverId === SYSTEM_RESOLVER_ID;
+		const { providesN8nIdentity, providesExternalIdentity } = classifyTriggerIdentity(
+			executeData.node.type,
+			executeData.node.parameters,
+			{ isChatOAuth2Enabled: isChatOAuth2Enabled() },
+		);
+		const supportsResolver = isSystemResolver ? providesN8nIdentity : providesExternalIdentity;
+
+		if (!supportsResolver) {
+			throw new UnsupportedEndUserCredentialTriggerError(isSystemResolver ? 'system' : 'custom');
+		}
+	}
+
 	/**
 	 * Returns the decrypted credential data with applied overwrites
 	 */
@@ -516,6 +546,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		options?: IGetDecryptedCredentialsOptions,
 	): Promise<ICredentialDataDecryptedObject> {
 		if (nodeCredentials.__aiGatewayManaged) {
 			const { userId, workflowId, projectId, executionId } = additionalData;
@@ -547,23 +578,41 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		// In manual or internal mode (or when the root execution is manual, e.g. a subworkflow
 		// called from a manual parent), skip dynamic resolution unless a credentials context is
-		// present (set by webhook triggers with an identity extractor). Canvas node tests
-		// have no incoming request, so we fall back to static data for easier developer
-		// testing. Internal mode is used by OAuth authorize/revoke flows which are not
-		// actual workflow executions and should not trigger dynamic resolution.
+		// present or a trigger explicitly requests the credential. Canvas action-node tests have
+		// no incoming request, so they fall back to static data for easier developer testing.
+		// Trigger contexts opt in so a missing identity produces an actionable error instead.
+		// Internal mode is used by OAuth authorize/revoke flows which are not actual workflow
+		// executions and should not trigger dynamic resolution.
 		// For all other modes (especially production), always attempt resolution —
 		// missing credentials will surface an error rather than silently falling back to
 		// static data.
 		const effectiveMode = additionalData.rootExecutionMode ?? mode;
 		const skipDynamicResolution = effectiveMode === 'manual' || effectiveMode === 'internal';
-		if (additionalData.executionContext?.credentials !== undefined || !skipDynamicResolution) {
-			// Mark that this execution attempted to run with a private credential before
-			// resolution is attempted, so the flag survives even when resolution throws
-			// (e.g. the running user has not connected the credential). Telemetry-only;
-			// the redaction layer relies on `currentNodeUsedDynamicCredentials` instead.
-			if (credentialsEntity.isResolvable) {
-				additionalData.currentNodeAttemptedDynamicCredentials = true;
-			}
+		const isManualTriggerCredentialRequest =
+			effectiveMode === 'manual' &&
+			options?.credentialUsage === 'trigger' &&
+			credentialsEntity.isResolvable;
+		const shouldAttemptDynamicResolution =
+			additionalData.executionContext?.credentials !== undefined ||
+			isManualTriggerCredentialRequest ||
+			!skipDynamicResolution;
+
+		// Mark that this execution attempted to run with a private credential before
+		// resolution is attempted, so the flag survives even when resolution throws
+		// (e.g. the running user has not connected the credential). Telemetry-only;
+		// the redaction layer relies on `currentNodeUsedDynamicCredentials` instead.
+		if (shouldAttemptDynamicResolution && credentialsEntity.isResolvable) {
+			additionalData.currentNodeAttemptedDynamicCredentials = true;
+		}
+
+		if (
+			isManualTriggerCredentialRequest &&
+			additionalData.executionContext?.credentials === undefined
+		) {
+			this.assertTriggerSupportsEndUserCredential(credentialsEntity, additionalData, executeData);
+		}
+
+		if (shouldAttemptDynamicResolution) {
 			// Resolve dynamic credentials if configured (EE feature)
 			const resolveResult = await this.dynamicCredentialsProxy.resolveIfNeeded(
 				{
