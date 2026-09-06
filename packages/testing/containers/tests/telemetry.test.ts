@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { TelemetryRecorder } from './telemetry';
+import { TelemetryRecorder } from '../telemetry';
 
 afterEach(() => {
 	vi.unstubAllEnvs();

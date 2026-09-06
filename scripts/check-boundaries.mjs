@@ -24,11 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const write = process.argv.includes('--write');
-const baselineFile = join(
-	dirname(fileURLToPath(import.meta.url)),
-	'..',
-	'.boundaries-baseline.json',
-);
+const baselineFile = join(dirname(fileURLToPath(import.meta.url)), '..', '.boundaries-baseline.json');
 const baseline = JSON.parse(readFileSync(baselineFile, 'utf8')).issues;
 
 // turbo exits non-zero when issues exist; we read the output regardless.
@@ -41,9 +37,10 @@ if (!match) {
 	process.exit(2);
 }
 
-// These are sanctioned test-only imports across package boundaries. Exempt the
-// classes; turbo's `implicitDependencies` only covers undeclared-package issues,
-// not path leaves.
+// `@nodes-testing/*` is a tsconfig path alias into packages/core/nodes-testing
+// (NodeTestHarness) — the sanctioned way to write node workflow tests, so every
+// new suite would otherwise ratchet the count up. Exempt the class; turbo's
+// `implicitDependencies` only covers undeclared-package issues, not path leaves.
 const exempted = (output.match(/import `@nodes-testing\/[^`]+` leaves the package/g) ?? []).length;
 const current = Number(match[1]) - exempted;
 
