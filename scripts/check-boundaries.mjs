@@ -44,10 +44,7 @@ if (!match) {
 // These are sanctioned test-only imports across package boundaries. Exempt the
 // classes; turbo's `implicitDependencies` only covers undeclared-package issues,
 // not path leaves.
-const exempted = [
-	...output.matchAll(/import `@nodes-testing\/[^`]+` leaves the package/g),
-	...output.matchAll(/import `\.\.\/\.\.\/\.\.\/containers\/[^`]+` leaves the package/g),
-].length;
+const exempted = (output.match(/import `@nodes-testing\/[^`]+` leaves the package/g) ?? []).length;
 const current = Number(match[1]) - exempted;
 
 if (write) {
