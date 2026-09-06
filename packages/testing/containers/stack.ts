@@ -158,16 +158,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const networkPromise = new Network(uuid).start();
 		const trackedNetworkPromise = networkPromise.then(async (startedNetwork) => {
 			if (cleanupStarted) {
-				await startedNetwork.stop();
+				try {
+					await startedNetwork.stop();
+				} catch (error: unknown) {
+					const message = error instanceof Error ? error.message : String(error);
+					console.error(`[stack] Late network cleanup failed: ${message}`);
+				}
 				return startedNetwork;
 			}
 			resources.trackNetwork(startedNetwork);
 			return startedNetwork;
-		});
-		void trackedNetworkPromise.catch((error: unknown) => {
-			if (!cleanupStarted) return;
-			const message = error instanceof Error ? error.message : String(error);
-			console.error(`[stack] Late network cleanup failed: ${message}`);
 		});
 		network = await startupDeadline.run(async () => await trackedNetworkPromise);
 		telemetry.recordNetwork(Math.round(performance.now() - networkStart));
