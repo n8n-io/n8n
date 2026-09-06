@@ -27,7 +27,6 @@ A menu that opens at the pointer on right-click or long-press. Built on Reka UI 
 - `update:selectedValues(value: T[])` Full selected-id list after a radio or checkbox change
 - `select(value: T)` A command (`type: 'item'`) was chosen. Radio and checkbox do not emit this. Menu closes unless `keepOpen`.
 - `submenu:toggle(itemId: T, open: boolean)` A `submenu` flyout opened or closed.
-- `search(searchTerm: string, itemId: T)` Search text in a searchable `submenu` changed. The submenu already filters `children` by `label`. Listen when you fetch remote results.
 - `close-auto-focus(event: Event)` Focus is about to return to the trigger as the menu closes. `preventDefault` to hand focus to another layer (popover, inline rename).
 
 **Slots**
@@ -38,9 +37,7 @@ A menu that opens at the pointer on right-click or long-press. Built on Reka UI 
 - `item-label` `{ item: ContextMenuLeaf<T>, ui: { class: string } }`
 - `item-trailing` `{ item: ContextMenuLeaf<T>, ui: { class: string } }`
 - `loading`
-- `empty` Root empty state, and empty search results in a searchable submenu
-- `search-prefix` Content before the submenu search input. Default is a search icon
-- `search-suffix` Content after the submenu search input
+- `empty` Root empty state
 
 **Exposed methods**
 
@@ -88,9 +85,6 @@ type ContextMenuSubmenu<T = string> = ContextMenuLeafBase<T> & {
   children: Array<ContextMenuNode<T>>;
   loading?: boolean;
   loadingItemCount?: number;
-  searchable?: boolean;
-  searchPlaceholder?: string;
-  searchDebounce?: number;
 };
 
 type ContextMenuRadioGroup<T = string> = {
@@ -240,8 +234,6 @@ const items: ContextMenuBranch[] = [
     id: 'assign',
     label: 'Assign to…',
     icon: { type: 'icon', value: 'user' },
-    searchable: true,
-    searchPlaceholder: 'Search people…',
     children: [
       {
         type: 'group',
@@ -338,18 +330,6 @@ function onSelect(id: string) {
         v-bind="item.shortcut"
         :class="ui.class"
       />
-    </template>
-
-    <template #search-prefix>
-      <N8nIcon icon="user" size="small" color="text-light" />
-    </template>
-
-    <template #search-suffix>
-      <N8nBadge theme="tertiary">↵</N8nBadge>
-    </template>
-
-    <template #empty>
-      No matching people
     </template>
   </N8nContextMenu>
 </template>
