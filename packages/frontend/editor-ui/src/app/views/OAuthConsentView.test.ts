@@ -1,12 +1,24 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useConsentStore } from '@/app/stores/consent.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import OAuthConsentView from '@/app/views/OAuthConsentView.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { within } from '@testing-library/vue';
 
 vi.mock('@n8n/rest-api-client/api/consent');
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({
+		resolve: () => ({ href: '/settings/mcp' }),
+	}),
+}));
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: vi.fn().mockReturnValue(false),
+}));
 
 const renderComponent = createComponentRenderer(OAuthConsentView);
 
@@ -18,6 +30,7 @@ describe('OAuthConsentView', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
 		consentStore = mockedStore(useConsentStore);
+		vi.mocked(hasPermission).mockReturnValue(false);
 
 		const details = {
 			clientName: 'Test MCP Client',
@@ -117,6 +130,50 @@ describe('OAuthConsentView', () => {
 		// A rejected request must not present the broad instance permission grant.
 		expect(queryByText('Test MCP Client wants access to your n8n instance')).toBeNull();
 		expect(queryByText('Get a list of your workflows')).toBeNull();
+	});
+
+	it('should tell a member to ask an admin when MCP access is switched off', async () => {
+		consentStore.error = 'The requested resource is disabled on this n8n instance';
+		consentStore.errorCode = 'resource_disabled';
+		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails!);
+
+		const { getByTestId, queryByTestId } = renderComponent();
+		await waitAllPromises();
+
+		const notice = getByTestId('consent-error-notice');
+		expect(notice).toHaveTextContent(
+			'MCP access is turned off for this n8n instance. Ask an instance owner or admin to turn it on, then start the connection again from your MCP client. Learn more',
+		);
+		// No settings link for a user who cannot change the setting, only the docs.
+		expect(within(notice).getAllByRole('link')).toHaveLength(1);
+		expect(within(notice).getByRole('link', { name: 'Learn more' })).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/connect/connect-to-n8n-mcp-server#enabling-mcp-access',
+		);
+		expect(queryByTestId('consent-allow-button')).toBeNull();
+		expect(getByTestId('consent-close-button')).toBeVisible();
+	});
+
+	it('should link a user who can manage MCP to the settings when MCP access is switched off', async () => {
+		vi.mocked(hasPermission).mockReturnValue(true);
+		consentStore.error = 'The requested resource is disabled on this n8n instance';
+		consentStore.errorCode = 'resource_disabled';
+		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails!);
+
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		const notice = getByTestId('consent-error-notice');
+		expect(notice).toHaveTextContent(
+			'MCP access is turned off for this n8n instance. Turn it on in the MCP settings, then start the connection again from your MCP client. Learn more',
+		);
+		expect(
+			within(notice).getByRole('link', { name: 'Turn it on in the MCP settings' }),
+		).toHaveAttribute('href', '/settings/mcp');
+		expect(within(notice).getByRole('link', { name: 'Learn more' })).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/connect/connect-to-n8n-mcp-server#enabling-mcp-access',
+		);
 	});
 
 	it('should redirect to home page when deny is clicked', async () => {

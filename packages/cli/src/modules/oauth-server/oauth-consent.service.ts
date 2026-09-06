@@ -8,6 +8,7 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
+import { ProtectedResourceDisabledError } from './oauth.errors';
 import { OAuthHelpers } from './oauth.helpers';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import {
@@ -39,7 +40,18 @@ type ConsentDetailsResult =
 			isFirstParty: boolean;
 	  }
 	| { ok: false; reason: 'resource_unavailable' }
+	| { ok: false; reason: 'resource_disabled' }
 	| { ok: false; reason: 'forbidden' };
+
+type ConsentRefusal = Extract<ConsentDetailsResult, { ok: false }>;
+
+/**
+ * Why a consent request was refused. `resource_unavailable`: the target no
+ * longer resolves. `resource_disabled`: the target exists but is switched off
+ * on this instance (e.g. instance MCP access). `forbidden`: this user may not
+ * grant access to the target.
+ */
+export type ConsentRefusalReason = ConsentRefusal['reason'];
 
 /**
  * Manages the consent flow for the shared OAuth server.
@@ -82,11 +94,8 @@ export class OAuthConsentService {
 					return { ok: false, reason: 'resource_unavailable' };
 				}
 
-				if (!(await resource.authorize(user)))
-					return {
-						ok: false,
-						reason: 'forbidden',
-					};
+				const refusal = await this.refusalFor(resource, user, client.id);
+				if (refusal) return refusal;
 
 				const scopes = this.grantableScopes(resource.scopes, sessionPayload.requestedScopes);
 
@@ -106,8 +115,9 @@ export class OAuthConsentService {
 
 			const defaultResource = this.protectedResourceRegistry.getDefaultResource();
 
-			if (defaultResource && !(await defaultResource.authorize(user))) {
-				return { ok: false, reason: 'forbidden' };
+			if (defaultResource) {
+				const refusal = await this.refusalFor(defaultResource, user, client.id);
+				if (refusal) return refusal;
 			}
 
 			const scopes = this.grantableScopes(
@@ -221,18 +231,49 @@ export class OAuthConsentService {
 		return await this.issueGrant(user, sessionPayload, grantedScopes);
 	}
 
+	/**
+	 * Why the consent screen must not offer a grant on `resource`, or `null` when
+	 * it may. A switched-off resource is reported apart from a permission
+	 * problem, so the screen can point the user at the setting rather than at
+	 * their role.
+	 */
+	private async refusalFor(
+		resource: ProtectedResource,
+		user: User,
+		clientId: string,
+	): Promise<ConsentRefusal | null> {
+		if (!((await resource.isAvailable?.()) ?? true)) {
+			this.logger.warn('Consent refused: target resource is disabled on this instance', {
+				clientId,
+				userId: user.id,
+				resourceUrl: resource.getResourceUrl(),
+			});
+			return { ok: false, reason: 'resource_disabled' };
+		}
+
+		if (!(await resource.authorize(user))) {
+			this.logger.warn('Consent refused: user is not authorized for the requested resource', {
+				clientId,
+				userId: user.id,
+				resourceUrl: resource.getResourceUrl(),
+			});
+			return { ok: false, reason: 'forbidden' };
+		}
+
+		return null;
+	}
+
 	private async assertAuthorized(
 		resource: ProtectedResource,
 		user: User,
 		clientId: string,
 	): Promise<void> {
-		if (await resource.authorize(user)) return;
+		const refusal = await this.refusalFor(resource, user, clientId);
+		if (!refusal) return;
 
-		this.logger.warn('User is not authorized for the requested resource', {
-			clientId,
-			userId: user.id,
-			resourceUrl: resource.getResourceUrl(),
-		});
+		if (refusal.reason === 'resource_disabled') {
+			throw new ProtectedResourceDisabledError();
+		}
 
 		throw new ForbiddenError('User is not authorized for the requested resource');
 	}

@@ -77,6 +77,45 @@ describe('GET /rest/consent/details', () => {
 		});
 	});
 
+	test('should name the disabled resource when MCP access is switched off', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'disabled-client-id',
+			name: 'Test OAuth Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		const sessionToken = createSessionToken({
+			clientId: client.id,
+			redirectUri: 'https://example.com/callback',
+			codeChallenge: 'test-challenge',
+			state: 'test-state',
+		});
+
+		const mcpSettingsService = Container.get(McpSettingsService);
+		await mcpSettingsService.setEnabled(false);
+		try {
+			const response = await testServer
+				.authAgentFor(owner)
+				.get('/consent/details')
+				.set('Cookie', `n8n-oauth-session=${sessionToken}`);
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body).toEqual({
+				status: 'error',
+				message: 'The requested resource is disabled on this n8n instance',
+				meta: { reason: 'resource_disabled' },
+			});
+			// The pending session is cleared: the user has to start over from the client.
+			expect(response.headers['set-cookie']).toEqual(
+				expect.arrayContaining([expect.stringContaining('n8n-oauth-session=;')]),
+			);
+		} finally {
+			await mcpSettingsService.setEnabled(true);
+		}
+	});
+
 	test('should include the resource name when the session resource resolves', async () => {
 		const client = await oauthClientRepository.save({
 			id: 'resource-client-id',
@@ -145,6 +184,7 @@ describe('GET /rest/consent/details', () => {
 		expect(response.statusCode).toBe(422);
 		expect(response.body).toEqual({
 			status: 'error',
+			meta: { reason: 'resource_unavailable' },
 			message: 'Authorization target is no longer available',
 		});
 

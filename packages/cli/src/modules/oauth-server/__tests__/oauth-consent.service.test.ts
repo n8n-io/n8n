@@ -8,6 +8,7 @@ import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.servi
 import { OAuthConsentService } from '../oauth-consent.service';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthSessionService } from '../oauth-session.service';
+import { ProtectedResourceDisabledError } from '../oauth.errors';
 import type { UserConsent } from '../database/entities/oauth-user-consent.entity';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import {
@@ -116,11 +117,60 @@ describe('OAuthConsentService', () => {
 			protectedResourceRegistry.getDefaultResource.mockReturnValue({
 				scopes: INSTANCE_SCOPES,
 				authorize: async () => false,
+				getResourceUrl: () => 'https://n8n.example.com/mcp-server/http',
 			} as unknown as ProtectedResource);
 
 			const result = await service.getConsentDetails('token', mock<User>({ id: 'user-1' }));
 
 			expect(result).toEqual({ ok: false, reason: 'forbidden' });
+		});
+
+		it('should report resource_disabled for a resource-less request when the default resource is switched off', async () => {
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: 'state',
+			};
+			const authorize = vi.fn().mockResolvedValue(true);
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(mock<OAuthClient>({ id: 'client-123' }));
+			protectedResourceRegistry.getDefaultResource.mockReturnValue({
+				scopes: INSTANCE_SCOPES,
+				isAvailable: async () => false,
+				authorize,
+				getResourceUrl: () => 'https://n8n.example.com/mcp-server/http',
+			} as unknown as ProtectedResource);
+
+			const result = await service.getConsentDetails('token', mock<User>({ id: 'user-1' }));
+
+			expect(result).toEqual({ ok: false, reason: 'resource_disabled' });
+			// A switched-off resource is refused before the user's own access is judged.
+			expect(authorize).not.toHaveBeenCalled();
+		});
+
+		it('should report resource_disabled when the named resource is switched off', async () => {
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: 'state',
+				resource: 'https://n8n.example.com/mcp-server/http',
+			};
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(mock<OAuthClient>({ id: 'client-123' }));
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				scopes: INSTANCE_SCOPES,
+				isAvailable: async () => false,
+				authorize: async () => true,
+				getResourceUrl: () => 'https://n8n.example.com/mcp-server/http',
+			} as unknown as ProtectedResource);
+
+			const result = await service.getConsentDetails('token', mock<User>({ id: 'user-1' }));
+
+			expect(result).toEqual({ ok: false, reason: 'resource_disabled' });
 		});
 
 		it('should return null when client not found', async () => {
@@ -468,6 +518,30 @@ describe('OAuthConsentService', () => {
 			await expect(
 				service.handleConsentDecision('token', mock<User>({ id: 'user-123' }), true),
 			).rejects.toThrow(ForbiddenError);
+
+			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+		});
+
+		it('should refuse approval with ProtectedResourceDisabledError when the default resource is switched off', async () => {
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: 'state-xyz',
+			};
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			protectedResourceRegistry.getDefaultResource.mockReturnValue({
+				scopes: INSTANCE_SCOPES,
+				isAvailable: async () => false,
+				authorize: async () => true,
+				getResourceUrl: () => 'https://n8n.example.com/mcp-server/http',
+			} as unknown as ProtectedResource);
+
+			await expect(
+				service.handleConsentDecision('token', mock<User>({ id: 'user-123' }), true),
+			).rejects.toThrow(ProtectedResourceDisabledError);
 
 			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
 			expect(userConsentRepository.upsert).not.toHaveBeenCalled();

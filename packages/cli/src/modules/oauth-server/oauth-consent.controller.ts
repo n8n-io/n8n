@@ -4,10 +4,17 @@ import { Body, Get, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
-import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
-import { OAuthConsentService } from './oauth-consent.service';
-import { OAuthSessionService } from './oauth-session.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+
+import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
+import { OAuthConsentService, type ConsentRefusalReason } from './oauth-consent.service';
+import { OAuthSessionService } from './oauth-session.service';
+import { ProtectedResourceDisabledError } from './oauth.errors';
+
+const INSUFFICIENT_PERMISSIONS_MESSAGE =
+	'You do not have sufficient permissions to authorize this request';
+const RESOURCE_DISABLED_MESSAGE = 'The requested resource is disabled on this n8n instance';
+const RESOURCE_UNAVAILABLE_MESSAGE = 'Authorization target is no longer available';
 
 @RestController('/consent')
 export class OAuthConsentController {
@@ -32,15 +39,7 @@ export class OAuthConsentController {
 
 			if (!consentDetails.ok) {
 				this.oauthSessionService.clearSession(res);
-				if (consentDetails.reason === 'forbidden') {
-					this.sendErrorResponse(
-						res,
-						403,
-						'You do not have sufficient permissions to authorize this request',
-					);
-				} else {
-					this.sendErrorResponse(res, 422, 'Authorization target is no longer available');
-				}
+				this.sendRefusal(res, consentDetails.reason);
 				return;
 			}
 
@@ -92,12 +91,12 @@ export class OAuthConsentController {
 		} catch (error) {
 			this.logger.error('Failed to process consent', { error });
 			this.oauthSessionService.clearSession(res);
+			if (error instanceof ProtectedResourceDisabledError) {
+				this.sendRefusal(res, 'resource_disabled');
+				return;
+			}
 			if (error instanceof ForbiddenError) {
-				this.sendErrorResponse(
-					res,
-					403,
-					'You do not have sufficient permissions to authorize this request',
-				);
+				this.sendRefusal(res, 'forbidden');
 				return;
 			}
 			const message = error instanceof Error ? error.message : 'Failed to process authorization';
@@ -106,10 +105,34 @@ export class OAuthConsentController {
 		}
 	}
 
-	private sendErrorResponse(res: Response, statusCode: number, message: string): void {
+	/**
+	 * The reason travels in `meta` so the consent screen can pick its copy from
+	 * it directly instead of inferring it from the status code.
+	 */
+	private sendRefusal(res: Response, reason: ConsentRefusalReason): void {
+		switch (reason) {
+			case 'resource_disabled':
+				this.sendErrorResponse(res, 403, RESOURCE_DISABLED_MESSAGE, { reason });
+				break;
+			case 'forbidden':
+				this.sendErrorResponse(res, 403, INSUFFICIENT_PERMISSIONS_MESSAGE, { reason });
+				break;
+			case 'resource_unavailable':
+				this.sendErrorResponse(res, 422, RESOURCE_UNAVAILABLE_MESSAGE, { reason });
+				break;
+		}
+	}
+
+	private sendErrorResponse(
+		res: Response,
+		statusCode: number,
+		message: string,
+		meta?: { reason: ConsentRefusalReason },
+	): void {
 		res.status(statusCode).json({
 			status: 'error',
 			message,
+			...(meta && { meta }),
 		});
 	}
 

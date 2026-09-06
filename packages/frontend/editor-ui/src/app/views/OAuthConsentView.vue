@@ -4,6 +4,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { onMounted, computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
 import {
 	N8nButton,
@@ -16,13 +17,19 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { MCP_SCOPE_GROUPS } from '@/features/ai/mcpAccess/mcp.constants';
+import {
+	MCP_DOCS_PAGE_URL,
+	MCP_SCOPE_GROUPS,
+	MCP_SETTINGS_VIEW,
+} from '@/features/ai/mcpAccess/mcp.constants';
 import { getClientBrand } from '@/features/ai/mcpAccess/clients.utils';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
 
 const consentStore = useConsentStore();
+const router = useRouter();
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -38,13 +45,32 @@ const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
 const resourceName = computed(() => consentStore.consentDetails?.resourceName);
 
+// Today only the instance MCP server can be switched off, so a disabled target
+// is the MCP access setting. Users who can change it get the link.
+const canManageMcp = computed(() => hasPermission(['rbac'], { rbac: { scope: 'mcp:manage' } }));
+
 const errorMessage = computed(() => {
-	if (consentStore.errorCode === 'resource_unavailable') {
-		return i18n.baseText('oauth.consentView.error.resourceUnavailable');
-	} else if (consentStore.errorCode === 'forbidden') {
-		return i18n.baseText('oauth.consentView.error.insufficientScope');
+	switch (consentStore.errorCode) {
+		case 'resource_unavailable':
+			return i18n.baseText('oauth.consentView.error.resourceUnavailable');
+		case 'resource_disabled': {
+			const docsUrl = `${MCP_DOCS_PAGE_URL}#enabling-mcp-access`;
+			return canManageMcp.value
+				? i18n.baseText('oauth.consentView.error.mcpAccessDisabled.manage', {
+						interpolate: {
+							settingsUrl: router.resolve({ name: MCP_SETTINGS_VIEW }).href,
+							docsUrl,
+						},
+					})
+				: i18n.baseText('oauth.consentView.error.mcpAccessDisabled', {
+						interpolate: { docsUrl },
+					});
+		}
+		case 'forbidden':
+			return i18n.baseText('oauth.consentView.error.insufficientScope');
+		default:
+			return consentStore.error;
 	}
-	return consentStore.error;
 });
 
 const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
@@ -145,7 +171,10 @@ onMounted(async () => {
 			available_scopes_count: availableScopes.value.length,
 		});
 	} catch (err) {
-		toast.showError(err, i18n.baseText('oauth.consentView.error.fetchDetails'));
+		// A named refusal renders its own notice in place; a toast would repeat it.
+		if (consentStore.errorCode === null) {
+			toast.showError(err, i18n.baseText('oauth.consentView.error.fetchDetails'));
+		}
 	}
 });
 </script>

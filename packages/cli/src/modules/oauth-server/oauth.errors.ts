@@ -1,6 +1,7 @@
 import { ServerError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 // The wording references MCP because the instance MCP server is currently the
 // only protected resource; clients registered via its DCR endpoint see this
@@ -21,6 +22,19 @@ export class OAuthClientLimitReachedError extends ServerError {
 		super(buildOAuthClientLimitReachedMessage(limit));
 		this.name = 'OAuthClientLimitReachedError';
 		this.limit = limit;
+	}
+}
+
+/**
+ * Thrown from the consent flow when the target protected resource is switched
+ * off on this instance (e.g. instance MCP access disabled). Distinct from a
+ * plain `ForbiddenError` so the consent screen can tell the user which setting
+ * to change instead of reporting a permission problem.
+ */
+export class ProtectedResourceDisabledError extends ForbiddenError {
+	constructor() {
+		super('The requested resource is not available for authorization');
+		this.name = 'ProtectedResourceDisabledError';
 	}
 }
 
