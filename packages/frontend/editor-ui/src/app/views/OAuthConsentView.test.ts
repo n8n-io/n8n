@@ -187,6 +187,61 @@ describe('OAuthConsentView', () => {
 		);
 	});
 
+	describe('client icon', () => {
+		it('should render the generic MCP icon for a client whose name matches a known brand', async () => {
+			const details = { clientName: 'Claude Code', clientId: 'c1', scopes: [] };
+			consentStore.consentDetails = details;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = details;
+				return details;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-client-icon')).toHaveAttribute('data-icon', 'mcp');
+		});
+
+		// Deliberately not a first-party client: the icon follows the resource, not the client.
+		it('should render the icon supplied by the resource', async () => {
+			const details = {
+				clientName: 'Test MCP Client',
+				clientId: 'c1',
+				scopes: [],
+				uiHints: { icon: 'square-pen' },
+			};
+			consentStore.consentDetails = details;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = details;
+				return details;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-client-icon')).toHaveAttribute('data-icon', 'square-pen');
+		});
+
+		it('should fall back to the generic MCP icon when the resource hint is blank', async () => {
+			const details = {
+				clientName: 'Test MCP Client',
+				clientId: 'c1',
+				scopes: [],
+				uiHints: { icon: '' },
+			};
+			consentStore.consentDetails = details;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = details;
+				return details;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-client-icon')).toHaveAttribute('data-icon', 'mcp');
+		});
+	});
+
 	describe('first-party consent', () => {
 		const firstPartyDetails = {
 			clientName: 'My Form',
