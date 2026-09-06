@@ -6,7 +6,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, afterEach, describe, it } from 'node:test';
 
-import { reportUp, serveHealthPath, servePort, serveUrl, waitForHealth } from './serve-ready.mjs';
+import {
+	reportUp,
+	serveHealthPath,
+	servePort,
+	serveUrl,
+	waitForHealth,
+	waitForReady,
+} from './serve-ready.mjs';
 
 const NAME = 'psychic-umbrella-wqj9pvw9p939vp6';
 const DOMAIN = 'app.github.dev';
@@ -139,5 +146,40 @@ describe('reportUp', () => {
 		const lines = captureLog(() => reportUp('5678', { shared: false }, dir));
 		assert.equal(lines[0], '\nUp: http://localhost:5678');
 		assert.match(lines[1], /the box name did not resolve, so 5678 was not shared/);
+	});
+});
+
+describe('waitForReady', () => {
+	/** Records the paths requested, and answers 200 only on /healthz/readiness. */
+	function readinessServer() {
+		const paths = [];
+		const server = createServer((req, res) => {
+			paths.push(req.url);
+			res.writeHead(req.url === '/healthz/readiness' ? 200 : 503).end('');
+		});
+		return new Promise((resolve) => {
+			server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port, paths }));
+		});
+	}
+
+	it('probes the readiness path, not the health path', async () => {
+		const { server, port, paths } = await readinessServer();
+		try {
+			assert.equal(await waitForReady(port, '/healthz', 5000, 10), true);
+			assert.deepEqual(paths, ['/healthz/readiness']);
+		} finally {
+			server.close();
+		}
+	});
+
+	// A backend that has migrated but not mounted its controllers answers 503 here,
+	// while /healthz already answers ok. Seeding then races the REST routes.
+	it('does not accept the 503 a booting backend serves', async () => {
+		const { server, port } = await healthServer(503);
+		try {
+			assert.equal(await waitForReady(port, '/healthz', 60, 10), false);
+		} finally {
+			server.close();
+		}
 	});
 });

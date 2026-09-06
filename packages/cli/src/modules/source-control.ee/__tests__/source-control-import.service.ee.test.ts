@@ -1659,6 +1659,7 @@ describe('SourceControlImportService', () => {
 						nodes: mockWorkflowData.nodes,
 					},
 					projectId: 'personal-project-id-123',
+					transport: 'source-control',
 				});
 			});
 

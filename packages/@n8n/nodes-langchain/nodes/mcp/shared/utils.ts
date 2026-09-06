@@ -8,6 +8,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	McpOAuth2CredentialType,
 	McpRegistryConnection,
 	INode,
 	ISupplyDataFunctions,
@@ -356,7 +357,7 @@ export async function getAuthHeaders(
 	if (isMcpOAuth2Authentication(authentication)) {
 		credentialType = authentication;
 	} else {
-		const credentialTypes = {
+		const credentialTypes: Record<string, string> = {
 			headerAuth: 'httpHeaderAuth',
 			bearerAuth: 'httpBearerAuth',
 			multipleHeadersAuth: 'httpMultipleHeadersAuth',
@@ -437,6 +438,7 @@ export async function connectMcpClientForCredential(
 		endpointUrl: string;
 		registryCredential?: {
 			connection: McpRegistryConnection;
+			credentialType: McpOAuth2CredentialType;
 			prepareConnection(
 				input: PrepareMcpRegistryConnectionInput,
 			): PrepareMcpRegistryConnectionResult;
@@ -447,6 +449,7 @@ export async function connectMcpClientForCredential(
 ): Promise<Result<Client, ConnectMcpClientError>> {
 	const node = ctx.getNode();
 	const { headers, credentials } = await getAuthHeaders(ctx, config.authentication);
+	const isOAuth2 = isMcpOAuth2Authentication(config.authentication);
 	let endpointUrl = config.endpointUrl;
 	let serverTransport = config.serverTransport;
 	let authHeaders = headers;
@@ -458,6 +461,7 @@ export async function connectMcpClientForCredential(
 		}
 		const prepared = config.registryCredential.prepareConnection({
 			connection: config.registryCredential.connection,
+			credentialType: config.registryCredential.credentialType,
 			credentialData: credentials,
 			headers,
 		});
@@ -485,7 +489,9 @@ export async function connectMcpClientForCredential(
 		secureEgressFilter: ctx.helpers.getSecureEgressFilter(),
 		name: node.type,
 		version: node.typeVersion,
-		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
+		onUnauthorized: isOAuth2
+			? async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h)
+			: undefined,
 		signal: config.signal,
 	});
 }

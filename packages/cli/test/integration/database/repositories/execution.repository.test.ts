@@ -280,6 +280,76 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
+	describe('cancelManyRunning', () => {
+		const createExecution = async (status: ExecutionStatus, extra: { waitTill?: Date } = {}) => {
+			const workflow = await createWorkflow();
+			const { identifiers } = await Container.get(ExecutionRepository).insert({
+				workflowId: workflow.id,
+				mode: 'manual',
+				startedAt: new Date(),
+				status,
+				finished: status === 'success',
+				createdAt: new Date(),
+				...extra,
+			});
+			return identifiers[0].id as string;
+		};
+
+		it('should cancel a running execution and clear its waitTill', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const runningId = await createExecution('running', {
+				waitTill: new Date(Date.now() + 1000 * 60 * 60),
+			});
+
+			await executionRepo.cancelManyRunning([runningId]);
+
+			const runningExec = await executionRepo.findOneBy({ id: runningId });
+			expect(runningExec?.status).toBe('canceled');
+			expect(runningExec?.stoppedAt).toBeInstanceOf(Date);
+			expect(runningExec?.waitTill).toBeNull();
+		});
+
+		it('should not overwrite executions in a terminal status', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const successId = await createExecution('success');
+			const errorId = await createExecution('error');
+			const crashedId = await createExecution('crashed');
+
+			await executionRepo.cancelManyRunning([successId, errorId, crashedId]);
+
+			const [successExec, errorExec, crashedExec] = await Promise.all([
+				executionRepo.findOneBy({ id: successId }),
+				executionRepo.findOneBy({ id: errorId }),
+				executionRepo.findOneBy({ id: crashedId }),
+			]);
+
+			expect(successExec?.status).toBe('success');
+			expect(errorExec?.status).toBe('error');
+			expect(crashedExec?.status).toBe('crashed');
+		});
+
+		it('should cancel only the running executions in a mixed batch', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const waitTill = new Date(Date.now() + 1000 * 60 * 60);
+			const runningId = await createExecution('running');
+			const waitingId = await createExecution('waiting', { waitTill });
+			const successId = await createExecution('success');
+
+			await executionRepo.cancelManyRunning([runningId, waitingId, successId]);
+
+			const [runningExec, waitingExec, successExec] = await Promise.all([
+				executionRepo.findOneBy({ id: runningId }),
+				executionRepo.findOneBy({ id: waitingId }),
+				executionRepo.findOneBy({ id: successId }),
+			]);
+
+			expect(runningExec?.status).toBe('canceled');
+			expect(waitingExec?.status).toBe('waiting');
+			expect(waitingExec?.waitTill?.getTime()).toBe(waitTill.getTime());
+			expect(successExec?.status).toBe('success');
+		});
+	});
+
 	describe('getWorkflowIdsWithExecutionsSince', () => {
 		const insertExecution = async (workflowId: string, startedAt: Date) =>
 			await Container.get(ExecutionRepository).insert({
