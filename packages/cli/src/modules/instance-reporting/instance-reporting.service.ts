@@ -100,8 +100,9 @@ export class InstanceReportingService {
 				disableFollowRedirect: true,
 			});
 
-			// 3xx too: redirects are not followed, so one is a misconfiguration.
-			if (response.statusCode >= 300) {
+			// The endpoint answers 201 on success. Anything else, including a 2xx or a
+			// 3xx (redirects are not followed), means the report did not land.
+			if (response.statusCode !== 201) {
 				throw new OperationalError(
 					`Instance report was rejected with status ${response.statusCode}`,
 				);

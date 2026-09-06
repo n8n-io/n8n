@@ -101,7 +101,7 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	licenseMetricsRepository.getLicenseRenewalMetrics.mockResolvedValue(LICENSE_METRICS_MOCK);
 
 	const http = mock<HttpRequestClient>();
-	vi.mocked(http.request).mockResolvedValue({ statusCode: 200, body: '', headers: {} });
+	vi.mocked(http.request).mockResolvedValue({ statusCode: 201, body: '', headers: {} });
 
 	let clientOptions: HttpRequestClientOptions | undefined;
 	const outboundHttp = mock<OutboundHttp>({
@@ -271,7 +271,20 @@ describe('InstanceReportingService', () => {
 			expect(reportRepository.markDelivered).not.toHaveBeenCalled();
 		});
 
-		test('treats a non-2xx response as a failure', async () => {
+		test('treats a 2xx other than 201 as a failure', async () => {
+			const { service, reportRepository, http } = makeHarness();
+			vi.mocked(http.request).mockResolvedValue({ statusCode: 200, body: '', headers: {} });
+
+			await expect(service.sendReport()).rejects.toThrow('200');
+
+			expect(reportRepository.recordFailure).toHaveBeenCalledWith(
+				BATCH_ID,
+				expect.stringContaining('200'),
+			);
+			expect(reportRepository.markDelivered).not.toHaveBeenCalled();
+		});
+
+		test('treats an error response as a failure', async () => {
 			const { service, reportRepository, http } = makeHarness();
 			vi.mocked(http.request).mockResolvedValue({ statusCode: 500, body: '', headers: {} });
 
