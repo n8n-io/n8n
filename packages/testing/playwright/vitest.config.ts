@@ -11,6 +11,7 @@ export default defineConfig({
 			'utils/**/*.test.ts',
 			'tests/framework/telemetry.test.ts',
 			'tests/framework/telemetry-integration.test.ts',
+			'tests/framework/resource-tracker.test.ts',
 			'*.test.ts',
 		],
 	},
