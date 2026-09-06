@@ -1,3 +1,4 @@
+import { EngineConfig } from '@n8n/config';
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import type {
 	INode,
@@ -74,6 +75,7 @@ describe('EngineV2Dispatcher', () => {
 	const proxy = mock<EngineDataPlaneProxyService>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	const pushRegistry = mock<EngineV2PushRegistry>();
+	let engineConfig: EngineConfig;
 
 	let dispatcher: EngineV2Dispatcher;
 
@@ -81,7 +83,13 @@ describe('EngineV2Dispatcher', () => {
 		vi.clearAllMocks();
 		proxy.isAvailable.mockReturnValue(true);
 		proxy.startExecution.mockResolvedValue({ executionId: 'dp-uuid' });
-		dispatcher = new EngineV2Dispatcher(proxy, credentialsPermissionChecker, pushRegistry);
+		engineConfig = new EngineConfig();
+		dispatcher = new EngineV2Dispatcher(
+			proxy,
+			credentialsPermissionChecker,
+			pushRegistry,
+			engineConfig,
+		);
 	});
 
 	describe('routesToEngineV2', () => {
@@ -94,6 +102,20 @@ describe('EngineV2Dispatcher', () => {
 			{ name: 'engineType v1', settings: { engineType: 'v1' as const } },
 		])('does not route a workflow with $name', ({ settings }) => {
 			const data = runData({ workflowData: workflow({ settings }) });
+
+			expect(dispatcher.routesToEngineV2(data)).toBe(false);
+		});
+
+		it('routes a workflow with no engineType when the instance defaults to v2', () => {
+			engineConfig.defaultEngineType = 'v2';
+			const data = runData({ workflowData: workflow({ settings: {} }) });
+
+			expect(dispatcher.routesToEngineV2(data)).toBe(true);
+		});
+
+		it('does not route a workflow pinned to v1 when the instance defaults to v2', () => {
+			engineConfig.defaultEngineType = 'v2';
+			const data = runData({ workflowData: workflow({ settings: { engineType: 'v1' } }) });
 
 			expect(dispatcher.routesToEngineV2(data)).toBe(false);
 		});

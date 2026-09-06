@@ -1,3 +1,4 @@
+import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { StepSlots, TriggerOutputs } from '@n8n/engine';
 import type { INodeExecutionData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
@@ -33,21 +34,26 @@ export class EngineV2Dispatcher {
 		private readonly proxy: EngineDataPlaneProxyService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly pushRegistry: EngineV2PushRegistry,
+		private readonly engineConfig: EngineConfig,
 	) {}
 
 	/**
 	 * Manual runs only for now: webhook (CAT-2920) and trigger (CAT-2921) entry
 	 * paths reuse this seam later. A resume must not start a fresh data-plane
 	 * execution, hence the `existingExecution` check.
+	 *
+	 * A workflow with no `engineType` follows the instance default, so an
+	 * instance can be pointed at engine 2.0 wholesale.
 	 */
 	routesToEngineV2(
 		data: IWorkflowExecutionDataProcess,
 		existingExecution?: ResumableExecution,
 	): boolean {
+		const engineType =
+			data.workflowData.settings?.engineType ?? this.engineConfig.defaultEngineType;
+
 		return (
-			data.workflowData.settings?.engineType === 'v2' &&
-			data.executionMode === 'manual' &&
-			existingExecution === undefined
+			engineType === 'v2' && data.executionMode === 'manual' && existingExecution === undefined
 		);
 	}
 
