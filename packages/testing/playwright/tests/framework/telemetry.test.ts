@@ -75,6 +75,25 @@ describe('TelemetryRecorder', () => {
 		expect(output).toContain('[REDACTED]');
 	});
 
+	test('redacts credential-shaped values from failure evidence', () => {
+		vi.stubEnv('CONTAINER_TELEMETRY_VERBOSE', '1');
+		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+		const telemetry = new TelemetryRecorder({});
+		const credentials = [
+			['AKIA', '1234567890ABCDEF'].join(''),
+			['ghp_', 'abcdefghijklmnopqrstuvwxyz123456'].join(''),
+			['xoxb-', '1234567890-abcdefghijklmnop'].join(''),
+			['sk-proj-', 'abcdefghijklmnopqrstuvwxyz123456'].join(''),
+		];
+
+		telemetry.startStage('n8n-startup');
+		telemetry.finishStage('failure', new Error(credentials.join(' ')));
+		telemetry.flush(false, credentials.join(' '));
+
+		const output = log.mock.calls[0][0] as string;
+		for (const credential of credentials) expect(output).not.toContain(credential);
+	});
+
 	test('marks aborted stages as cancelled', async () => {
 		vi.stubEnv('CONTAINER_TELEMETRY_VERBOSE', '1');
 		const log = vi.spyOn(console, 'log').mockImplementation(() => {});

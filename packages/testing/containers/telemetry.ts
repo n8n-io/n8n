@@ -150,6 +150,10 @@ function sanitizeError(message: string): string {
 		.replace(/([?&](?:token|key|secret|password|authorization)=)[^&\s]+/gi, '$1[REDACTED]')
 		.replace(/(Bearer\s+|Basic\s+)[^\s]+/gi, '$1[REDACTED]')
 		.replace(/((?:token|key|secret|password|authorization)\s*[:=]\s*)[^\s,;]+/gi, '$1[REDACTED]')
+		.replace(/\bAKIA[0-9A-Z]{16}\b/g, '[REDACTED]')
+		.replace(/\bgh[pousr]_[A-Za-z0-9_]{20,}\b/g, '[REDACTED]')
+		.replace(/\bxox[baprs]-[A-Za-z0-9-]{20,}\b/g, '[REDACTED]')
+		.replace(/\bsk-[A-Za-z0-9_-]{20,}\b/g, '[REDACTED]')
 		.replace(/(https?:\/\/)([^\s/@]+):([^\s/@]+)@/gi, '$1[REDACTED]@');
 }
 
