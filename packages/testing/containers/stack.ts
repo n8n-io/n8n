@@ -128,10 +128,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const resources = new ResourceTracker();
 	const startupDeadline = new StartupDeadline(startupTimeoutMs);
 
-	if (needsLoadBalancer) {
-		allocatedLbPort = await startupDeadline.run(async () => await getPort());
-	} else {
-		allocatedMainPort = await startupDeadline.run(async () => await getPort());
+	try {
+		if (needsLoadBalancer) {
+			allocatedLbPort = await startupDeadline.run(async () => await getPort());
+		} else {
+			allocatedMainPort = await startupDeadline.run(async () => await getPort());
+		}
+	} catch (error) {
+		startupDeadline.dispose();
+		throw error;
 	}
 
 	const containers: StartedTestContainer[] = [];
@@ -144,19 +149,21 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const telemetry = createTelemetryRecorder(config);
 
 	let network: StartedNetwork;
+	let cleanupStarted = false;
 	try {
 		telemetry.startStage('network');
 		const networkStart = performance.now();
 		const uuid = networkName ? { nextUuid: () => networkName } : undefined;
 		startupDeadline.throwIfAborted();
-		const endNetworkAcquisition = resources.beginAcquisition();
 		const networkPromise = new Network(uuid).start();
-		const trackedNetworkPromise = networkPromise
-			.then((startedNetwork) => {
-				resources.trackNetwork(startedNetwork);
+		const trackedNetworkPromise = networkPromise.then(async (startedNetwork) => {
+			if (cleanupStarted) {
+				await startedNetwork.stop();
 				return startedNetwork;
-			})
-			.finally(endNetworkAcquisition);
+			}
+			resources.trackNetwork(startedNetwork);
+			return startedNetwork;
+		});
 		network = await startupDeadline.run(async () => await trackedNetworkPromise);
 		telemetry.recordNetwork(Math.round(performance.now() - networkStart));
 		telemetry.finishStage();
@@ -165,6 +172,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		telemetry.setFailurePhase('network');
 		const message = error instanceof Error ? error.message : String(error);
 		telemetry.flush(false, `Network creation failed: ${message}`);
+		cleanupStarted = true;
 		const cleanup = await resources.dispose();
 		attachCleanupReport(error, cleanup);
 		startupDeadline.dispose();

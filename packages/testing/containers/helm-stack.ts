@@ -376,12 +376,18 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 	// Step 1: Start K3s with NodePort exposed (bypasses flaky kubectl port-forward)
 	// Ryuk is disabled so the container survives process exit — clean up via stack:helm:clean.
 	log('Starting K3s container (privileged)...');
-	const k3s = await new K3sContainer(k3sImage)
-		.withName(containerName)
-		.withLabels({ 'n8n.helm': 'true', 'n8n.helm.mode': mode })
-		.withExposedPorts(N8N_NODE_PORT)
-		.withStartupTimeout(Math.min(K3S_STARTUP_TIMEOUT_MS, startupDeadline.remainingMs))
-		.start();
+	let k3s: StartedK3sContainer;
+	try {
+		k3s = await new K3sContainer(k3sImage)
+			.withName(containerName)
+			.withLabels({ 'n8n.helm': 'true', 'n8n.helm.mode': mode })
+			.withExposedPorts(N8N_NODE_PORT)
+			.withStartupTimeout(Math.min(K3S_STARTUP_TIMEOUT_MS, startupDeadline.remainingMs))
+			.start();
+	} catch (error) {
+		startupDeadline.dispose();
+		throw error;
+	}
 	const hostPort = k3s.getMappedPort(N8N_NODE_PORT);
 	const baseUrl = `http://localhost:${hostPort}`;
 	log(`K3s started (NodePort ${N8N_NODE_PORT} -> host ${hostPort})`);
