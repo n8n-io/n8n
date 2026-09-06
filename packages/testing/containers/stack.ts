@@ -29,6 +29,7 @@ import type {
 	StackConfig,
 	StartContext,
 } from './services/types';
+import { StartupDeadline } from './startup-deadline';
 import { recordStartupFailure } from './startup-diagnostics';
 import { createTelemetryRecorder } from './telemetry';
 
@@ -112,6 +113,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		external = false,
 		networkName,
 		coverageHostDir,
+		startupTimeoutMs = 300_000,
 	} = config;
 
 	const log = createElapsedLogger('stack');
@@ -124,11 +126,12 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
 	const resources = new ResourceTracker();
+	const startupDeadline = new StartupDeadline(startupTimeoutMs);
 
 	if (needsLoadBalancer) {
-		allocatedLbPort = await getPort();
+		allocatedLbPort = await startupDeadline.run(async () => await getPort());
 	} else {
-		allocatedMainPort = await getPort();
+		allocatedMainPort = await startupDeadline.run(async () => await getPort());
 	}
 
 	const containers: StartedTestContainer[] = [];
@@ -198,7 +201,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			telemetry.startStage(`hosted:${name}`, 'hosted');
 			let hostedEnv: Record<string, string> | undefined;
 			try {
-				hostedEnv = await SERVICE_REGISTRY[name].hostedEnv?.(ctx);
+				startupDeadline.throwIfAborted();
+				hostedEnv = await (SERVICE_REGISTRY[name].hostedEnv?.(ctx) ?? Promise.resolve(undefined));
+				startupDeadline.throwIfAborted();
 				telemetry.finishStage();
 			} catch (error) {
 				telemetry.finishStage('failure', error);
@@ -224,7 +229,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			telemetry.startStage(`service:${name}`);
 			const endAcquisition = resources.beginAcquisition();
 			try {
+				startupDeadline.throwIfAborted();
 				const result = await service.start(network, uniqueProjectName, options, ctx);
+				startupDeadline.throwIfAborted();
 				const serviceContainers =
 					'containers' in result && Array.isArray(result.containers)
 						? (result.containers as StartedTestContainer[])
@@ -308,7 +315,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 					resources.trackContainer(container);
 					if (!containers.includes(container)) containers.push(container);
 				},
+				startupDeadline,
 			});
+			startupDeadline.throwIfAborted();
 			telemetry.finishStage();
 		} catch (error) {
 			telemetry.finishStage('failure', error);
@@ -325,7 +334,12 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		if (lbResult) {
 			telemetry.startStage('load-balancer-readiness');
 			try {
-				await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
+				await pollContainerHttpEndpoint(
+					lbResult.container,
+					'/healthz/readiness',
+					startupDeadline.remainingMs,
+					startupDeadline.signal,
+				);
 				telemetry.finishStage();
 			} catch (error) {
 				telemetry.finishStage('failure', error);
@@ -351,7 +365,11 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						/\[launcher:js\].*Received message `broker:runnerregistered`/,
 						/\[launcher:py\].*Received message `broker:runnerregistered`/,
 					],
-					{ since: n8nStartedAtSeconds },
+					{
+						since: n8nStartedAtSeconds,
+						timeoutMs: startupDeadline.remainingMs,
+						signal: startupDeadline.signal,
+					},
 				);
 				telemetry.finishStage();
 			} catch (error) {
@@ -406,7 +424,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 		telemetry.startStage('network-quiet');
 		try {
-			await waitForNetworkQuiet();
+			await waitForNetworkQuiet(1000, startupDeadline.remainingMs, startupDeadline.signal);
+			startupDeadline.throwIfAborted();
 			telemetry.finishStage();
 		} catch (error) {
 			telemetry.finishStage('failure', error);
@@ -500,6 +519,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const cleanup = await resources.dispose();
 		attachCleanupReport(error, cleanup);
 		throw error;
+	} finally {
+		startupDeadline.dispose();
 	}
 }
 

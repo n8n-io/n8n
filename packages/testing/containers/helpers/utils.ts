@@ -82,22 +82,24 @@ export async function pollContainerHttpEndpoint(
 	container: StartedTestContainer,
 	endpoint: string,
 	timeoutMs: number = 60000,
+	signal?: AbortSignal,
 ): Promise<void> {
 	const startTime = Date.now();
 	const url = `http://${container.getHost()}:${container.getFirstMappedPort()}${endpoint}`;
 	const retryIntervalMs = 1000;
 
 	while (Date.now() - startTime < timeoutMs) {
+		signal?.throwIfAborted();
 		try {
-			const response = await fetch(url);
+			const response = await fetch(url, { signal });
 			if (response.status === 200) {
 				return;
 			}
 		} catch {
-			// Don't log errors, just retry
+			if (signal?.aborted) signal.throwIfAborted();
 		}
 
-		await wait(retryIntervalMs);
+		await wait(retryIntervalMs, { signal });
 	}
 
 	console.error(`HTTP endpoint at ${url} did not return 200 within ${timeoutMs / 1000} seconds.`);
@@ -121,9 +123,10 @@ export async function pollContainerHttpEndpoint(
 export async function waitForContainerLogMessages(
 	container: StartedTestContainer,
 	patterns: RegExp[],
-	options: { since?: number; timeoutMs?: number } = {},
+	options: { since?: number; timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<void> {
-	const { since = 0, timeoutMs = 60000 } = options;
+	const { since = 0, timeoutMs = 60000, signal } = options;
+	signal?.throwIfAborted();
 	const stream = await container.logs({ since });
 	const pending = new Set(patterns);
 
@@ -138,11 +141,17 @@ export async function waitForContainerLogMessages(
 				);
 			}, timeoutMs);
 
+			const abort = () =>
+				finish(
+					signal?.reason instanceof Error ? signal.reason : new Error('Startup was cancelled'),
+				);
 			const finish = (error?: Error) => {
 				clearTimeout(timer);
+				signal?.removeEventListener('abort', abort);
 				if (error) reject(error);
 				else resolve();
 			};
+			signal?.addEventListener('abort', abort, { once: true });
 
 			let partialLine = '';
 			stream.on('data', (chunk: Buffer | string) => {
