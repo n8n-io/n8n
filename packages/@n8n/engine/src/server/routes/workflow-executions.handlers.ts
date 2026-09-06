@@ -53,8 +53,8 @@ function toStepDetail(record: StepView): StepDetail {
 		status: record.status,
 		outputs: record.outputs,
 		error: record.error,
-		createdAt: record.createdAt.toISOString(),
-		updatedAt: record.updatedAt.toISOString(),
+		createdAt: record.createdAt,
+		updatedAt: record.updatedAt,
 	};
 }
 

@@ -31,6 +31,10 @@ export interface ExecutionView {
  * Read view of a step. It carries the timing and the error the execution path
  * writes but never reads back, and omits `executionId`: a step is only ever
  * read under the execution that owns it.
+ *
+ * `createdAt`/`updatedAt` are ISO 8601 strings, not `Date`: the store reads
+ * them out of a JSON aggregate, and the only consumer re-serializes them to
+ * JSON, so there is no point parsing them in between.
  */
 export interface StepView {
 	id: string;
@@ -41,8 +45,8 @@ export interface StepView {
 	outputs: StepSlots | null;
 	/** The error that failed the step; `null` unless it failed. */
 	error: StepError | null;
-	createdAt: Date;
-	updatedAt: Date;
+	createdAt: string;
+	updatedAt: string;
 }
 
 /** An execution with its steps, read as one query so the two cannot disagree. */

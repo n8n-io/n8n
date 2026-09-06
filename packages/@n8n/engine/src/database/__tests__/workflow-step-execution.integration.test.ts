@@ -794,8 +794,8 @@ describe('workflow_step_execution table (integration)', () => {
 			outputs: [[{ json: { ok: true } }]],
 			error: null,
 		});
-		expect(completed?.createdAt).toBeInstanceOf(Date);
-		expect(completed?.updatedAt).toBeInstanceOf(Date);
+		expect(completed?.createdAt).toEqual(expect.any(String));
+		expect(completed?.updatedAt).toEqual(expect.any(String));
 		const failed = steps.find((step) => step.nodeId === 'b');
 		expect(failed).toMatchObject({
 			status: 'failed',

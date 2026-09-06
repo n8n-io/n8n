@@ -9,17 +9,8 @@ import type {
 	StepView,
 } from '../execution/execution-view-store';
 
-/**
- * One step as `json_agg` reports it. Postgres renders a timestamp inside JSON as
- * a string, so the two date columns arrive unparsed.
- */
-type StepJson = Omit<StepView, 'createdAt' | 'updatedAt'> & {
-	createdAt: string;
-	updatedAt: string;
-};
-
 /** The execution row, with its steps aggregated into one column. */
-type ExecutionWithStepsRow = ExecutionView & { steps: StepJson[] };
+type ExecutionWithStepsRow = ExecutionView & { steps: StepView[] };
 
 /**
  * TypeORM-backed `ExecutionViewStore` adapter. It spans both tables, since a
@@ -76,7 +67,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		if (!row) throw new ExecutionNotFoundError(id);
 
 		const { steps, ...execution } = row;
-		return { ...execution, steps: steps.map(toStepView) };
+		return { ...execution, steps };
 	}
 
 	private selectExecution(id: string): SelectQueryBuilder<WorkflowExecution> {
@@ -93,8 +84,4 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect('execution.finished_at', 'finishedAt')
 			.where('execution.id = :id', { id });
 	}
-}
-
-function toStepView(step: StepJson): StepView {
-	return { ...step, createdAt: new Date(step.createdAt), updatedAt: new Date(step.updatedAt) };
 }
