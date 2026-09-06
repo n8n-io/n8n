@@ -420,10 +420,7 @@ export class OAuthServerService implements OAuthServerProvider {
 					clientId: client.client_id,
 					resource: targetResource.getResourceUrl(),
 				});
-				res.status(400).json({
-					error: 'invalid_target',
-					error_description: 'Resource is not available for authorization',
-				});
+				this.respondResourceUnavailable(res, client, targetResource);
 				return;
 			}
 
@@ -635,6 +632,34 @@ export class OAuthServerService implements OAuthServerProvider {
 	// Resources without `isAvailable` are treated as always available.
 	private async isResourceUnavailable(resource: ProtectedResource): Promise<boolean> {
 		return !((await resource.isAvailable?.()) ?? true);
+	}
+
+	/**
+	 * MCP clients open the authorize URL in the user's browser, so a browser gets
+	 * a page that names the setting to change. Every other caller gets the
+	 * RFC 8707 `invalid_target` error the endpoint answered with before.
+	 */
+	private respondResourceUnavailable(
+		res: Response,
+		client: OAuthClientInformationFull,
+		resource: ProtectedResource,
+	): void {
+		res.status(400);
+
+		if (res.req.accepts(['json', 'html']) === 'html') {
+			const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
+			res.render('oauth-resource-unavailable', {
+				clientName: client.client_name,
+				isInstanceMcp: resource.id === INSTANCE_MCP_RESOURCE_ID,
+				settingsUrl: `${baseUrl}/settings/mcp`,
+			});
+			return;
+		}
+
+		res.json({
+			error: 'invalid_target',
+			error_description: 'Resource is not available for authorization',
+		});
 	}
 
 	// Exact-match against a registered resource, as required by RFC 8707 §2.1.

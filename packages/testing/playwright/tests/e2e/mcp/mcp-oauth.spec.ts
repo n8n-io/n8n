@@ -431,6 +431,33 @@ test.describe(
 				const body = await authorizeResponse.json();
 				expect(body.error).toBe('invalid_target');
 			});
+
+			// The authorize URL is opened in the user's browser, so a browser must get a
+			// page that names the setting rather than the machine-readable error.
+			test('should explain to a browser that MCP access is disabled', async ({ api }) => {
+				const client = await api.mcpOauth.registerClientOrFail({
+					client_name: `e2e OAuth client ${nanoid(8)}`,
+					redirect_uris: ['https://example.com/callback'],
+					grant_types: ['authorization_code'],
+					token_endpoint_auth_method: 'none',
+				});
+
+				const authorizeResponse = await api.request.get(
+					api.mcpOauth.buildAuthorizeUrl({
+						clientId: client.client_id,
+						redirectUri: 'https://example.com/callback',
+						challenge: api.mcpOauth.createPkcePair().challenge,
+					}),
+					{ headers: { accept: 'text/html' }, maxRedirects: 0 },
+				);
+
+				expect(authorizeResponse.status()).toBe(400);
+				expect(authorizeResponse.headers()['content-type']).toContain('text/html');
+				const html = await authorizeResponse.text();
+				expect(html).toContain('MCP access is turned off');
+				expect(html).toContain('/settings/mcp');
+				expect(html).toContain('connect-to-n8n-mcp-server#enabling-mcp-access');
+			});
 		});
 
 		test.describe('Consent screen', () => {

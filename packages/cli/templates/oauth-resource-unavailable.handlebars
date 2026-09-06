@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+  <meta charset='UTF-8' />
+  <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+  <link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css' />
+  {{#if isInstanceMcp}}
+    <title>MCP access is turned off</title>
+  {{else}}
+    <title>Authorization unavailable</title>
+  {{/if}}
+  <style>
+    :root {
+      --font-family: 'Open Sans', sans-serif;
+      --font-weight-normal: 400;
+      --font-weight-bold: 600;
+      --font-size-body: 14px;
+      --font-size-header: 20px;
+
+      --color-background: #FBFCFE;
+      --color-card-bg: white;
+      --color-card-border: #DBDFE7;
+      --color-card-shadow: #634DFF0F;
+      --color-header: #525356;
+      --color-text: #7E8186;
+
+      /* Mirrors the design-system button (variant solid / ghost, size medium). */
+      --color-brand: oklch(69.96% 0.202 44.44);
+      --color-brand-hover: oklch(64.71% 0.2173 36.85);
+      --color-brand-active: oklch(55.42% 0.1922 35.48);
+      --color-ghost-hover: oklch(0% 0 0 / 0.05);
+      --color-ghost-active: oklch(0% 0 0 / 0.1);
+      --color-button-text: oklch(26.86% 0 89.88);
+      --color-focus-ring: oklch(55.9% 0.235 289.5 / 0.2);
+      --button-height: 32px;
+      --button-padding: 0 12px;
+      --button-radius: 4px;
+      --button-shadow: 0 1px 3px -1px rgba(0, 0, 0, 0.15);
+
+      --padding-container-top: 48px;
+      --container-width: 448px;
+      --card-padding: 24px;
+      --card-border-radius: 8px;
+    }
+
+    *,
+    ::after,
+    ::before {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-family);
+      font-weight: var(--font-weight-normal);
+      font-size: var(--font-size-body);
+      background-color: var(--color-background);
+    }
+
+    .container {
+      margin: auto;
+      padding-top: var(--padding-container-top);
+      max-width: var(--container-width);
+    }
+
+    .card {
+      padding: var(--card-padding);
+      background-color: var(--color-card-bg);
+      border: 1px solid var(--color-card-border);
+      border-radius: var(--card-border-radius);
+      box-shadow: 0px 4px 16px 0px var(--color-card-shadow);
+    }
+
+    h1 {
+      color: var(--color-header);
+      font-size: var(--font-size-header);
+      font-weight: var(--font-weight-bold);
+      padding-bottom: 12px;
+    }
+
+    p {
+      color: var(--color-text);
+      line-height: 1.5;
+      padding-bottom: 12px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: var(--button-height);
+      padding: var(--button-padding);
+      border-radius: var(--button-radius);
+      font-size: var(--font-size-body);
+      font-weight: var(--font-weight-bold);
+      text-decoration: none;
+      transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .button:focus-visible {
+      outline: 2px solid var(--color-focus-ring);
+      outline-offset: 1px;
+    }
+
+    .button-solid {
+      background-color: var(--color-brand);
+      color: white;
+      box-shadow: inset 0 0 0 1px var(--color-brand), var(--button-shadow);
+    }
+
+    .button-solid:hover {
+      background-color: var(--color-brand-hover);
+      box-shadow: inset 0 0 0 1px var(--color-brand-hover), var(--button-shadow);
+    }
+
+    .button-solid:active {
+      background-color: var(--color-brand-active);
+      box-shadow: inset 0 0 0 1px var(--color-brand-active), var(--button-shadow);
+    }
+
+    .button-ghost {
+      color: var(--color-button-text);
+    }
+
+    .button-ghost:hover {
+      background-color: var(--color-ghost-hover);
+    }
+
+    .button-ghost:active {
+      background-color: var(--color-ghost-active);
+    }
+
+    .button-ghost svg {
+      width: 14px;
+      height: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class='container'>
+    <div class='card'>
+      {{#if isInstanceMcp}}
+        <h1>MCP access is turned off</h1>
+        <p>{{clientName}} could not connect because this n8n instance does not accept MCP connections yet.</p>
+        <p>An instance owner or admin can turn on MCP access in the instance settings. After that, start the connection again from your MCP client.</p>
+        <div class='actions'>
+          <a class='button button-ghost' href='https://docs.n8n.io/connect/connect-to-n8n-mcp-server#enabling-mcp-access' target='_blank' rel='noopener'>
+            Learn more
+            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'>
+              <path d='M7 7h10v10' />
+              <path d='M7 17 17 7' />
+            </svg>
+          </a>
+          <a class='button button-solid' href='{{settingsUrl}}'>Open MCP settings</a>
+        </div>
+      {{else}}
+        <h1>Authorization unavailable</h1>
+        <p>{{clientName}} could not connect because the requested resource is not available on this n8n instance.</p>
+        <p>Start the connection again once the resource is available.</p>
+      {{/if}}
+    </div>
+  </div>
+</body>
+
+</html>

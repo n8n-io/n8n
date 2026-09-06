@@ -8,7 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
-import { mock } from 'vitest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
@@ -601,7 +601,8 @@ describe('OAuthServerService', () => {
 				resource: new URL(TEST_RESOURCE_URL),
 			};
 
-			const res = mock<Response>();
+			// Deep: the unavailable branch reads `res.req.accepts` for content negotiation.
+			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.json.mockReturnThis();
 
@@ -636,7 +637,8 @@ describe('OAuthServerService', () => {
 				codeChallenge: 'challenge-123',
 			};
 
-			const res = mock<Response>();
+			// Deep: the unavailable branch reads `res.req.accepts` for content negotiation.
+			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.json.mockReturnThis();
 
@@ -649,6 +651,44 @@ describe('OAuthServerService', () => {
 				error: 'invalid_target',
 				error_description: 'Resource is not available for authorization',
 			});
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+		});
+
+		it('should render an explanatory page when a browser requests an unavailable resource', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Claude',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				resource: new URL(TEST_RESOURCE_URL),
+			};
+
+			const res = mockDeep<Response>();
+			res.status.mockReturnThis();
+			res.req.accepts.mockReturnValue('html');
+			urlServiceMock.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com/');
+
+			isResourceAvailable.mockResolvedValue(false);
+
+			await service.authorize(client, params, res);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.render).toHaveBeenCalledWith('oauth-resource-unavailable', {
+				clientName: 'Claude',
+				isInstanceMcp: true,
+				settingsUrl: 'https://n8n.example.com/settings/mcp',
+			});
+			expect(res.json).not.toHaveBeenCalled();
 			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
 		});
 
