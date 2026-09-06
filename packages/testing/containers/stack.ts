@@ -148,8 +148,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		telemetry.startStage('network');
 		const networkStart = performance.now();
 		const uuid = networkName ? { nextUuid: () => networkName } : undefined;
-		network = await new Network(uuid).start();
-		resources.trackNetwork(network);
+		startupDeadline.throwIfAborted();
+		const endNetworkAcquisition = resources.beginAcquisition();
+		const networkPromise = new Network(uuid).start();
+		const trackedNetworkPromise = networkPromise
+			.then((startedNetwork) => {
+				resources.trackNetwork(startedNetwork);
+				return startedNetwork;
+			})
+			.finally(endNetworkAcquisition);
+		network = await startupDeadline.run(async () => await trackedNetworkPromise);
 		telemetry.recordNetwork(Math.round(performance.now() - networkStart));
 		telemetry.finishStage();
 	} catch (error) {
@@ -157,6 +165,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		telemetry.setFailurePhase('network');
 		const message = error instanceof Error ? error.message : String(error);
 		telemetry.flush(false, `Network creation failed: ${message}`);
+		const cleanup = await resources.dispose();
+		attachCleanupReport(error, cleanup);
+		startupDeadline.dispose();
 		throw error;
 	}
 
@@ -201,8 +212,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			telemetry.startStage(`hosted:${name}`, 'hosted');
 			let hostedEnv: Record<string, string> | undefined;
 			try {
-				startupDeadline.throwIfAborted();
-				hostedEnv = await (SERVICE_REGISTRY[name].hostedEnv?.(ctx) ?? Promise.resolve(undefined));
+				hostedEnv = await startupDeadline.run(
+					async () => await (SERVICE_REGISTRY[name].hostedEnv?.(ctx) ?? Promise.resolve(undefined)),
+				);
 				startupDeadline.throwIfAborted();
 				telemetry.finishStage();
 			} catch (error) {
