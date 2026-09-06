@@ -205,7 +205,8 @@ function slotOn(reportTime: string, now: Date): number {
  */
 function msUntilNext(reportTime: string, now: Date): number {
 	const today = slotOn(reportTime, now);
-	const next = today > now.getTime() ? today : today + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
+	const next =
+		today > now.getTime() ? today : today + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
 
 	return next - now.getTime();
 }

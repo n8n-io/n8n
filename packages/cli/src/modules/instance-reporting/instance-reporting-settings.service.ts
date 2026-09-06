@@ -130,9 +130,9 @@ export class InstanceReportingSettingsService {
 	 * late that no minute of the day qualifies.
 	 */
 	private compactionFloorMinutes(): number {
-		const required = 2 * this.insightsConfig.compactionIntervalMinutes;
+		const requiredMinutes = Math.ceil(2 * this.insightsConfig.compactionIntervalMinutes);
 
-		return Math.min(Math.max(EARLIEST_REPORT_MINUTES, required), MINUTES_PER_DAY - 1);
+		return Math.min(Math.max(EARLIEST_REPORT_MINUTES, requiredMinutes), MINUTES_PER_DAY - 1);
 	}
 
 	/** A random minute of the day at or after the compaction floor. */
