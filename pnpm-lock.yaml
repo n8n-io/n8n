@@ -5551,6 +5551,12 @@ importers:
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../design-system
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
