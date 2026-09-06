@@ -65,9 +65,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.groupBy('execution.id')
 			.getRawOne();
 		if (!row) throw new ExecutionNotFoundError(id);
-
-		const { steps, ...execution } = row;
-		return { ...execution, steps };
+		return row;
 	}
 
 	private selectExecution(id: string): SelectQueryBuilder<WorkflowExecution> {
