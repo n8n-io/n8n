@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 
 import postgresVersions from './postgres-versions.json';
+import { StartupDeadline } from './startup-deadline';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 const DEFAULT_K3S_IMAGE = 'rancher/k3s:v1.32.2-k3s1';
@@ -266,20 +267,25 @@ function deployQueueInfrastructure(env: NodeJS.ProcessEnv): void {
 
 // -- Health check -------------------------------------------------------------
 
-async function pollHealthEndpoint(baseUrl: string, timeoutMs: number): Promise<void> {
+async function pollHealthEndpoint(
+	baseUrl: string,
+	timeoutMs: number,
+	signal?: AbortSignal,
+): Promise<void> {
 	const url = `${baseUrl}/healthz/readiness`;
 	const startTime = Date.now();
 
 	while (Date.now() - startTime < timeoutMs) {
+		signal?.throwIfAborted();
 		try {
-			const response = await fetch(url);
+			const response = await fetch(url, { signal });
 			if (response.status === 200) {
 				return;
 			}
 		} catch {
-			// Retry
+			if (signal?.aborted) signal.throwIfAborted();
 		}
-		await wait(HEALTH_POLL_INTERVAL_MS);
+		await wait(HEALTH_POLL_INTERVAL_MS, { signal });
 	}
 
 	throw new Error(`n8n health check at ${url} did not return 200 within ${timeoutMs / 1000}s`);
@@ -297,6 +303,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		mode = 'standalone',
 		env: envOverrides,
 	} = config;
+	const startupDeadline = new StartupDeadline(startupTimeoutMs);
 
 	const containerName = `n8n-helm-${mode}-${Date.now().toString(36)}`;
 
@@ -314,7 +321,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		.withName(containerName)
 		.withLabels({ 'n8n.helm': 'true', 'n8n.helm.mode': mode })
 		.withExposedPorts(N8N_NODE_PORT)
-		.withStartupTimeout(K3S_STARTUP_TIMEOUT_MS)
+		.withStartupTimeout(Math.min(K3S_STARTUP_TIMEOUT_MS, startupDeadline.remainingMs))
 		.start();
 	const hostPort = k3s.getMappedPort(N8N_NODE_PORT);
 	const baseUrl = `http://localhost:${hostPort}`;
@@ -410,8 +417,13 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 
 		// Step 10: Poll health endpoint
 		log(`Polling ${baseUrl}/healthz/readiness...`);
-		await pollHealthEndpoint(baseUrl, Math.min(startupTimeoutMs, 120_000));
+		await pollHealthEndpoint(
+			baseUrl,
+			Math.min(startupDeadline.remainingMs, 120_000),
+			startupDeadline.signal,
+		);
 		log(`n8n is ready at ${baseUrl}`);
+		startupDeadline.dispose();
 
 		return {
 			baseUrl,
@@ -473,6 +485,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 				/* ignore */
 			}
 		await k3s.stop();
+		startupDeadline.dispose();
 		throw error;
 	}
 }
