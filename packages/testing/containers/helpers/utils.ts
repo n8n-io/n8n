@@ -127,7 +127,28 @@ export async function waitForContainerLogMessages(
 ): Promise<void> {
 	const { since = 0, timeoutMs = 60000, signal } = options;
 	signal?.throwIfAborted();
-	const stream = await container.logs({ since });
+	const logsPromise = container.logs({ since });
+	let removeAbortListener: (() => void) | undefined;
+	const abortPromise = new Promise<never>((_, reject) => {
+		const abort = () =>
+			reject(signal?.reason instanceof Error ? signal.reason : new Error('Startup was cancelled'));
+		if (signal?.aborted) abort();
+		else if (signal) {
+			signal.addEventListener('abort', abort, { once: true });
+			removeAbortListener = () => signal.removeEventListener('abort', abort);
+		}
+	});
+	void logsPromise
+		.then((lateStream) => {
+			if (signal?.aborted) lateStream.destroy();
+		})
+		.catch(() => undefined);
+	let stream: Awaited<typeof logsPromise>;
+	try {
+		stream = await Promise.race([logsPromise, abortPromise]);
+	} finally {
+		removeAbortListener?.();
+	}
 	const pending = new Set(patterns);
 
 	try {

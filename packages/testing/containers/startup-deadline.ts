@@ -26,7 +26,6 @@ export class StartupDeadline {
 		this.timeout = setTimeout(() => {
 			this.controller.abort(new StartupTimeoutError(timeoutMs));
 		}, timeoutMs);
-		this.timeout.unref();
 
 		if (parentSignal) {
 			this.onParentAbort = () => this.controller.abort(parentSignal.reason);
