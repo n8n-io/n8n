@@ -1,13 +1,12 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import { ResourceTracker } from '../../../containers/resource-tracker';
+import { ResourceTracker } from './resource-tracker';
 
 function container(id: string, stop = vi.fn().mockResolvedValue(undefined)) {
-	const resource = {
+	return {
 		getId: () => id,
 		stop,
 	};
-	return resource;
 }
 
 describe('ResourceTracker', () => {
@@ -32,12 +31,9 @@ describe('ResourceTracker', () => {
 
 		const cleanup = await tracker.dispose();
 
-		expect(cleanup.failures).toEqual([
-			expect.objectContaining({
-				resource: 'container stuck-container',
-				error: expect.objectContaining({ message: 'daemon refused to stop' }),
-			}),
-		]);
+		expect(cleanup.failures).toHaveLength(1);
+		expect(cleanup.failures[0]?.resource).toBe('container stuck-container');
+		expect(cleanup.failures[0]?.error.message).toBe('daemon refused to stop');
 		expect(cleanup.remaining).toEqual(['container stuck-container']);
 	});
 });

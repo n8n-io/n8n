@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { TelemetryRecorder } from '../../../containers/telemetry';
+import { TelemetryRecorder } from './telemetry';
 
 afterEach(() => {
 	vi.unstubAllEnvs();
@@ -24,7 +24,7 @@ describe('TelemetryRecorder', () => {
 		telemetry.finishStage('failure', new Error('readiness failed after 25ms'));
 		telemetry.flush(false, 'n8n startup failed');
 
-		const output = log.mock.calls[0][0];
+		const output = String(log.mock.calls[0]?.[0] ?? '');
 		expect(typeof output).toBe('string');
 		let record: {
 			attemptId: string;
@@ -33,7 +33,7 @@ describe('TelemetryRecorder', () => {
 			failurePhase: string;
 		};
 		try {
-			record = JSON.parse(output as string) as typeof record;
+			record = JSON.parse(output) as typeof record;
 		} catch {
 			throw new Error('Telemetry output was not valid JSON');
 		}
@@ -46,11 +46,7 @@ describe('TelemetryRecorder', () => {
 		});
 		expect(record.stages).toEqual([
 			expect.objectContaining({ name: 'network', outcome: 'success' }),
-			expect.objectContaining({
-				name: 'n8n-startup',
-				outcome: 'failure',
-				elapsedMs: expect.any(Number),
-			}),
+			expect.objectContaining({ name: 'n8n-startup', outcome: 'failure' }),
 		]);
 		expect(record.stages[1].elapsedMs).toBeGreaterThan(0);
 		expect(record.failurePhase).toBe('n8n-startup');
@@ -68,7 +64,7 @@ describe('TelemetryRecorder', () => {
 		);
 		telemetry.flush(false, 'Authorization: Bearer secret-token');
 
-		const output = log.mock.calls[0][0] as string;
+		const output = String(log.mock.calls[0]?.[0] ?? '');
 		expect(output).not.toContain('password');
 		expect(output).not.toContain('secret-value');
 		expect(output).not.toContain('secret-token');
@@ -90,7 +86,7 @@ describe('TelemetryRecorder', () => {
 		telemetry.finishStage('failure', new Error(credentials.join(' ')));
 		telemetry.flush(false, credentials.join(' '));
 
-		const output = log.mock.calls[0][0] as string;
+		const output = String(log.mock.calls[0]?.[0] ?? '');
 		for (const credential of credentials) expect(output).not.toContain(credential);
 	});
 
@@ -106,7 +102,7 @@ describe('TelemetryRecorder', () => {
 		telemetry.finishStage('failure', error);
 		telemetry.flush(false, error.message);
 
-		const output = log.mock.calls[0][0] as string;
+		const output = String(log.mock.calls[0]?.[0] ?? '');
 		expect(output).toContain('"outcome": "cancelled"');
 	});
 });
