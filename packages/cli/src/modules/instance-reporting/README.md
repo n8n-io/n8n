@@ -49,7 +49,7 @@ there.
 | Env var | Default | Notes |
 |---|---|---|
 | `N8N_INSTANCE_REPORTING_BASE_URL` | `''` | Base URL of the receiver. The report is POSTed to `<base>/api/v1/instance-reports`. Left unset, the module loads but warns and never sends. |
-| `N8N_INSTANCE_REPORTING_IDENTIFIER` | `''` | Sent as `label` in the payload, when set. |
+| `N8N_INSTANCE_REPORTING_LABEL` | `''` | Sent as `label` in the payload, when set. |
 | `N8N_INSTANCE_REPORTING_AUTH_TOKEN` | `''` | Sent as `Authorization: Bearer …`, when set. |
 
 ## Report time

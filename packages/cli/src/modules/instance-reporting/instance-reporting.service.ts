@@ -80,9 +80,7 @@ export class InstanceReportingService {
 		const payload = {
 			instanceId: this.instanceSettings.instanceId,
 			batchId: report.id,
-			...(this.config.instanceReportingIdentifier
-				? { label: this.config.instanceReportingIdentifier }
-				: {}),
+			...(this.config.instanceReportingLabel ? { label: this.config.instanceReportingLabel } : {}),
 			n8nVersion: N8N_VERSION,
 			dataPoints: report.dataPoints,
 		};

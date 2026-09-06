@@ -59,7 +59,7 @@ const SUMMARY_MOCK = {
 function makeConfig(overrides: Partial<InstanceReportingConfig> = {}): InstanceReportingConfig {
 	const config = new InstanceReportingConfig();
 	config.instanceReportingBaseUrl = 'https://example.com';
-	config.instanceReportingIdentifier = 'my-instance';
+	config.instanceReportingLabel = 'my-instance';
 	return Object.assign(config, overrides);
 }
 
@@ -213,8 +213,8 @@ describe('InstanceReportingService', () => {
 			});
 		});
 
-		test('omits label when no identifier is configured', async () => {
-			const { service, http } = makeHarness(makeConfig({ instanceReportingIdentifier: '' }));
+		test('omits label when no label is configured', async () => {
+			const { service, http } = makeHarness(makeConfig({ instanceReportingLabel: '' }));
 
 			await service.sendReport();
 
