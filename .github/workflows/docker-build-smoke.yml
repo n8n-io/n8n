@@ -24,12 +24,24 @@ on:
     - cron: '0 3 * * *' # 3:00 AM UTC, after the nightly Docker build at midnight
   pull_request:
     paths:
+      - 'docker/docker-bake.hcl'
       - 'docker/images/n8n/**'
       - 'docker/images/n8n-base/**'
       - 'docker/images/runners/**'
       - 'scripts/build-n8n.mjs'
       - 'scripts/dockerize-n8n.mjs'
       - 'scripts/smoke-n8n-image.mjs'
+      - '.github/scripts/docker/kafka-native-smoke-check.mjs'
+      - '.github/scripts/docker/should-smoke-build.mjs'
+      # These drive the build and the image distribution, so a change here can
+      # break the chain without touching a Dockerfile.
+      - '.github/actions/build-n8n-docker/action.yml'
+      - '.github/actions/load-n8n-docker/action.yml'
+      - '.github/workflows/docker-build-push.yml'
+      - 'patches/**'
+      # Pins the native deps this build compiles, but changes far more often
+      # than they do — the gate job narrows it to the pins that matter.
+      - 'pnpm-workspace.yaml'
   workflow_dispatch:
 
 concurrency:
@@ -37,6 +49,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    name: 'Check for relevant changes'
+    runs-on: ubuntu-slim
+    outputs:
+      build: ${{ steps.gate.outputs.build }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # HEAD is the PR merge commit, so HEAD^1 is the base tip.
+          fetch-depth: 2
+
+      - id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT" != 'pull_request' ]]; then
+            echo 'build=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed-files"
+          node .github/scripts/docker/should-smoke-build.mjs \
+            --base HEAD^1 --changed-files "$RUNNER_TEMP/changed-files"
+
   docker-smoke-test:
     name: 'Docker Build (no cache, ${{ matrix.platform }})'
     # Both architectures build natively: the runtime images assemble binaries
@@ -52,7 +88,8 @@ jobs:
           - platform: arm64
             runner: blacksmith-8vcpu-ubuntu-2204-arm
     runs-on: ${{ matrix.runner }}
-    if: ${{ !github.event.pull_request.head.repo.fork }}
+    needs: gate
+    if: ${{ !github.event.pull_request.head.repo.fork && needs.gate.outputs.build == 'true' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -70,6 +107,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           build-command: 'pnpm build:docker:clean'
           enable-docker-cache: true
+          # Use a separate key. This job builds with --no-cache. A shared key
+          # would write an empty snapshot over the release layers.
+          docker-cache-key: docker-smoke
 
       - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
 

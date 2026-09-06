@@ -111,8 +111,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 *
 	 * Selects no `payload`, so it does not pay the JSON cost of the rows it
 	 * scans. The scan itself is bounded by the thread (PK-led); if it ever shows
-	 * up in a profile, a `(threadId, createdAt)` index is the next lever —
-	 * `instance_ai_run_snapshots` already carries the equivalent one.
+	 * up in a profile, a `(threadId, createdAt)` index is the next lever.
 	 */
 	async findRunIdsInWindow(
 		threadId: string,
@@ -146,6 +145,40 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 				messageGroupId: typeof groupId === 'string' && groupId ? groupId : undefined,
 			};
 		});
+	}
+
+	/**
+	 * Resolve the LangSmith root-run anchor for a responseId (UI sends
+	 * `messageGroupId ?? runId`). The ids ride on the run-start fact; prefer the
+	 * earliest run-start in the message group THAT CARRIES the ids, falling back
+	 * to the run whose id matches. Sibling runs of one turn share the
+	 * `message_turn` root, but not every sibling's run-start is anchored — a
+	 * segment without tracing leaves the ids to a later one — mirroring the
+	 * snapshot store, which kept the group's first non-null ids. Runs recorded
+	 * before the anchor rode on run-start (the snapshot table carried it and
+	 * dropped without a copy), and genuinely untraced runs, resolve undefined.
+	 */
+	async findLangsmithAnchor(
+		threadId: string,
+		responseId: string,
+	): Promise<{ langsmithRunId: string; langsmithTraceId: string } | undefined> {
+		const rows = await this.find({
+			where: { threadId, type: 'run-start' },
+			order: { seq: 'ASC' },
+		});
+		const starts = rows.map((r) => this.toEvent(r));
+		const isAnchoredRunStart = (
+			e: InstanceAiEvent,
+		): e is Extract<InstanceAiEvent, { type: 'run-start' }> =>
+			e.type === 'run-start' && Boolean(e.payload.langsmithRunId && e.payload.langsmithTraceId);
+		const byGroup = starts.find(
+			(e) => isAnchoredRunStart(e) && e.payload.messageGroupId === responseId,
+		);
+		const anchor = byGroup ?? starts.find((e) => e.runId === responseId);
+		if (anchor?.type !== 'run-start') return undefined;
+		const { langsmithRunId, langsmithTraceId } = anchor.payload;
+		if (!langsmithRunId || !langsmithTraceId) return undefined;
+		return { langsmithRunId, langsmithTraceId };
 	}
 
 	/** Timestamp of the run's most recent durable fact (sweep liveness proxy). */

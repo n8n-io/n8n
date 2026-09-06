@@ -44,6 +44,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 	searxngSearch: vi.fn(),
 }));
 
+import type { PolicyCleared } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
@@ -60,6 +61,9 @@ import type {
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
@@ -101,7 +105,15 @@ function globalConfigStub(
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
 		executions: { mode: overrides.queueMode ? 'queue' : 'regular' },
+		// Node usage is gated on the dependency index being wired too, which these tests do not
+		// pass, so the value here only has to exist. See instance-ai.adapter.node-usage.test.ts.
+		instanceAi: { nodeUsageEnabled: false },
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
+}
+
+/** Clears every save: the adapter's own tests are not exercising policy decisions. */
+function createMockPolicyEnforcementService() {
+	return { enforceWorkflowSave: vi.fn().mockResolvedValue(mock()) };
 }
 
 function createMockCollaborationService() {
@@ -1358,6 +1370,9 @@ function createNodeAdapterServiceForTests(
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[34],
+		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 		nodeCatalogService,
 	);
 
@@ -1721,6 +1736,9 @@ function createDataTableAdapterForTests(overrides?: {
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[34],
+		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -1939,15 +1957,13 @@ function createWorkflowAdapterForTests(overrides?: {
 		create: vi.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: vi.fn().mockResolvedValue(savedWorkflow),
 		update: vi.fn().mockResolvedValue(undefined),
-		manager: {
-			transaction: vi.fn(
-				async (fn: (transactionManager: { save: Mock }) => Promise<unknown>): Promise<unknown> => {
-					return await fn({
-						save: vi.fn().mockResolvedValue(savedWorkflow),
-					});
-				},
-			),
-		},
+		createContent: vi.fn().mockResolvedValue(savedWorkflow),
+		runInTransaction: vi.fn(
+			async (
+				ctx: unknown,
+				fn: (transactionManager: { save: Mock }, ctx: unknown) => Promise<unknown>,
+			): Promise<unknown> => await fn({ save: vi.fn().mockResolvedValue(savedWorkflow) }, ctx),
+		),
 	};
 
 	const mockWorkflowFinderService = {
@@ -1988,6 +2004,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 	mockLogger.scoped.mockReturnValue(mockLogger);
 	const mockCollaborationService = createMockCollaborationService();
+	const mockPolicyEnforcementService = createMockPolicyEnforcementService();
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
@@ -2049,6 +2066,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockCollaborationService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[34],
+		mockPolicyEnforcementService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const boundProjectId =
@@ -2072,6 +2092,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockWorkflowHistoryService,
 		mockEnterpriseWorkflowService,
 		mockCollaborationService,
+		mockPolicyEnforcementService,
 		mockTelemetry,
 		mockLogger,
 		mockUser,
@@ -2188,7 +2209,7 @@ describe('createWorkflowAdapter', () => {
 					credentials: {
 						googlePalmApi: {
 							id: null,
-							name: 'n8n credits',
+							name: 'Gateway credits',
 							__aiGatewayManaged: true,
 						},
 					},
@@ -2207,13 +2228,13 @@ describe('createWorkflowAdapter', () => {
 		expect(workflow.nodes[1].credentials).toEqual({
 			googlePalmApi: {
 				id: null,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				__aiGatewayManaged: true,
 			},
 		});
 		const code = generateWorkflowCode(workflow);
-		expect(code).toContain("newCredential('n8n credits')");
-		expect(code).not.toContain("newCredential('n8n credits', 'null')");
+		expect(code).toContain("newCredential('Gateway credits')");
+		expect(code).not.toContain("newCredential('Gateway credits', 'null')");
 	});
 
 	it('returns the version graph with current workflow metadata when a versionId is passed', async () => {
@@ -2367,6 +2388,41 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	// The shell carries no nodes; the generated content is policed by the sealed `update()`
+	// below. Enforced here anyway, because no `WorkflowEntity` write may skip the funnel.
+	it('enforces the save for the shell and threads the clearance to the write', async () => {
+		const { adapter, mockWorkflowRepository, mockPolicyEnforcementService } =
+			createWorkflowAdapterForTests();
+		const cleared = mock<PolicyCleared<'workflowSave'>>();
+		mockPolicyEnforcementService.enforceWorkflowSave.mockResolvedValue(cleared);
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockPolicyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith({
+			workflow: { id: null, name: minimalWorkflowJSON.name, nodes: [] },
+			storedWorkflow: null,
+			projectId: 'team-project-id',
+		});
+		expect(mockWorkflowRepository.runInTransaction).toHaveBeenCalledWith(
+			{ policyCleared: cleared },
+			expect.any(Function),
+		);
+		expect(mockWorkflowRepository.createContent).toHaveBeenCalledWith(
+			expect.objectContaining({ nodes: [] }),
+			expect.objectContaining({ policyCleared: cleared }),
+		);
+	});
+
+	it('does not write the shell when the policy blocks the save', async () => {
+		const { adapter, mockWorkflowRepository, mockPolicyEnforcementService } =
+			createWorkflowAdapterForTests();
+		mockPolicyEnforcementService.enforceWorkflowSave.mockRejectedValue(new Error('blocked'));
+
+		await expect(adapter.createFromWorkflowJSON(minimalWorkflowJSON)).rejects.toThrow('blocked');
+
+		expect(mockWorkflowRepository.createContent).not.toHaveBeenCalled();
+	});
+
 	it('throws when the run has no bound project', async () => {
 		const { adapter } = createWorkflowAdapterForTests({ projectId: null });
 
@@ -2412,7 +2468,7 @@ describe('createWorkflowAdapter', () => {
 		expect(mockWorkflowRepository.create).toHaveBeenCalledWith(
 			expect.not.objectContaining({ meta: expect.anything() }),
 		);
-		expect(mockWorkflowRepository.manager.transaction).toHaveBeenCalled();
+		expect(mockWorkflowRepository.runInTransaction).toHaveBeenCalled();
 		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
 			['wf-new'],
 			'team-project-id',
@@ -3178,6 +3234,9 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[34],
+		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -3445,6 +3504,9 @@ function createRunAdapterForTests(
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[34],
+		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -4380,38 +4442,89 @@ describe('createNodeAdapter — n8n Connect annotations', () => {
 	});
 });
 
-describe('isConfigEvalsEnabled', () => {
+describe('resolveExperimentGates', () => {
 	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
 
-	it('resolves true when config-evaluations is on the enabled variant', async () => {
-		const adapter = createAdapterWithGatewayMock(vi.fn());
-		const getFeatureFlags = vi.fn().mockResolvedValue({
-			[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	/** Route `Container.get` by token: PostHog for the flags, ModuleRegistry for the MCP precondition. */
+	function stubContainer(flags: Record<string, string | boolean>, mcpModuleActive = true) {
+		const getFeatureFlags = vi.fn().mockResolvedValue(flags);
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === PostHogClient) return { getFeatureFlags };
+			return { isActive: (name: string) => mcpModuleActive && name === 'mcp-registry' };
 		});
-		vi.spyOn(Container, 'get').mockReturnValue({ getFeatureFlags } as unknown as PostHogClient);
+		return getFeatureFlags;
+	}
 
-		expect(await adapter.isConfigEvalsEnabled(user)).toBe(true);
+	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
+		return createAdapterWithGatewayMock(vi.fn(), {
+			settingsService: { isMcpAccessEnabled: vi.fn().mockReturnValue(mcpAccessEnabled) },
+		});
+	}
+
+	const allEnabled = {
+		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
+		[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
+	};
+
+	it('resolves every gate from one flag fetch', async () => {
+		const getFeatureFlags = stubContainer(allEnabled);
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			configEvalsEnabled: true,
+			mcpConnectionsEnabled: true,
+			conversationHistoryEnabled: true,
+			nodeUsageEnabled: true,
+		});
+		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
 	});
 
-	it('resolves false when config-evaluations is not on the enabled variant', async () => {
-		const adapter = createAdapterWithGatewayMock(vi.fn());
-		vi.spyOn(Container, 'get').mockReturnValue({
-			getFeatureFlags: vi.fn().mockResolvedValue({
-				[CONFIG_EVALUATIONS_FLAG]: 'control',
-			}),
-		} as unknown as PostHogClient);
+	it('is off for flags on the control variant', async () => {
+		stubContainer({
+			[CONFIG_EVALUATIONS_FLAG]: 'control',
+			[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: 'control',
+			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
+			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
+		});
 
-		expect(await adapter.isConfigEvalsEnabled(user)).toBe(false);
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			configEvalsEnabled: false,
+			mcpConnectionsEnabled: false,
+			conversationHistoryEnabled: false,
+			nodeUsageEnabled: false,
+		});
 	});
 
-	it('resolves false when the flags are absent (PostHog outage returns {})', async () => {
-		const adapter = createAdapterWithGatewayMock(vi.fn());
-		vi.spyOn(Container, 'get').mockReturnValue({
-			getFeatureFlags: vi.fn().mockResolvedValue({}),
-		} as unknown as PostHogClient);
+	it('fails closed when no flags resolve (PostHog outage returns {})', async () => {
+		stubContainer({});
 
-		expect(await adapter.isConfigEvalsEnabled(user)).toBe(false);
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			configEvalsEnabled: false,
+			mcpConnectionsEnabled: false,
+			conversationHistoryEnabled: false,
+			nodeUsageEnabled: false,
+		});
+	});
+
+	it('keeps MCP connections off when the mcp-registry module is disabled', async () => {
+		// With the module off the registry entity is never registered, so a
+		// search would throw rather than return nothing.
+		stubContainer(allEnabled, false);
+
+		const gates = await createAdapter().resolveExperimentGates(user);
+
+		expect(gates.mcpConnectionsEnabled).toBe(false);
+		expect(gates.conversationHistoryEnabled).toBe(true);
+	});
+
+	it('keeps MCP connections off when the admin disabled MCP access', async () => {
+		stubContainer(allEnabled);
+
+		const gates = await createAdapter(false).resolveExperimentGates(user);
+
+		expect(gates.mcpConnectionsEnabled).toBe(false);
 	});
 });
 
@@ -4422,7 +4535,7 @@ describe('MCP registry discovery', () => {
 		moduleActive?: boolean;
 		featureFlags?: Record<string, string>;
 		registrySearch?: Mock;
-		registryResolveBySlugs?: Mock;
+		registryGetBySlugs?: Mock;
 		listConnectionsForUser?: Mock;
 	}
 
@@ -4431,12 +4544,12 @@ describe('MCP registry discovery', () => {
 	function stubContainer(stubs: McpStubs = {}) {
 		const getFeatureFlags = vi.fn().mockResolvedValue(stubs.featureFlags ?? {});
 		const search = stubs.registrySearch ?? vi.fn().mockResolvedValue([]);
-		const resolveBySlugs = stubs.registryResolveBySlugs ?? vi.fn().mockResolvedValue([]);
+		const getBySlugs = stubs.registryGetBySlugs ?? vi.fn().mockResolvedValue([]);
 		const listConnectionsForUser = stubs.listConnectionsForUser ?? vi.fn().mockResolvedValue([]);
 
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === PostHogClient) return { getFeatureFlags };
-			if (token === McpRegistryService) return { search, resolveBySlugs };
+			if (token === McpRegistryService) return { search, getBySlugs };
 			if (token === InstanceAiMcpRegistryService) return { listConnectionsForUser };
 			// Stands in for ModuleRegistry: `mcp-registry` active, `agents` not.
 			return {
@@ -4444,7 +4557,7 @@ describe('MCP registry discovery', () => {
 			};
 		});
 
-		return { getFeatureFlags, search, resolveBySlugs, listConnectionsForUser };
+		return { getFeatureFlags, search, getBySlugs, listConnectionsForUser };
 	}
 
 	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
@@ -4452,50 +4565,6 @@ describe('MCP registry discovery', () => {
 			settingsService: { isMcpAccessEnabled: vi.fn().mockReturnValue(mcpAccessEnabled) },
 		});
 	}
-
-	const enabledFlags = {
-		[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
-	};
-
-	describe('isMcpConnectionsEnabled', () => {
-		it('is on when the module is active, MCP access is enabled, and the user is on the enabled variant', async () => {
-			const { getFeatureFlags } = stubContainer({ featureFlags: enabledFlags });
-
-			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(true);
-			expect(getFeatureFlags).toHaveBeenCalledWith(user);
-		});
-
-		it('is off when the mcp-registry module is disabled, without consulting the flag', async () => {
-			// With the module off the registry entity is never registered, so a
-			// search would throw rather than return nothing.
-			const { getFeatureFlags } = stubContainer({
-				moduleActive: false,
-				featureFlags: enabledFlags,
-			});
-
-			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(false);
-			expect(getFeatureFlags).not.toHaveBeenCalled();
-		});
-
-		it('is off when the admin disabled MCP access, without consulting the flag', async () => {
-			const { getFeatureFlags } = stubContainer({ featureFlags: enabledFlags });
-
-			expect(await createAdapter(false).isMcpConnectionsEnabled(user)).toBe(false);
-			expect(getFeatureFlags).not.toHaveBeenCalled();
-		});
-
-		it('is off when the user is on the control variant', async () => {
-			stubContainer({ featureFlags: { [INSTANCE_AI_MCP_CONNECTIONS_FLAG]: 'control' } });
-
-			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(false);
-		});
-
-		it('fails closed when no flags resolve (PostHog outage or diagnostics off)', async () => {
-			stubContainer({ featureFlags: {} });
-
-			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(false);
-		});
-	});
 
 	describe('mcpService', () => {
 		const registryHit = {
@@ -4509,6 +4578,46 @@ describe('MCP registry discovery', () => {
 			credentialType: 'googleDriveMcpOAuth2Api',
 			tools: [{ name: 'list_files', title: 'List files' }],
 			metadata: { nodeTypeName: '@n8n/mcp-registry.googleDrive' },
+			isTemplated: false,
+		};
+		const templatedHit = {
+			...registryHit,
+			slug: 'databricks-genie',
+			name: 'databricksGenie',
+			title: 'Databricks Genie',
+			url: '={{$self["host"]}}/api/2.0/mcp/genie',
+			isTemplated: true,
+		};
+		const registryServer = {
+			name: 'google-drive',
+			slug: 'google-drive',
+			title: 'Google Drive',
+			description: 'Google Drive MCP server',
+			tagline: 'Work with Drive files',
+			version: '1.0.0',
+			updatedAt: '2026-08-26T00:00:00.000Z',
+			icons: [],
+			authType: 'usesCredentials',
+			usesCredentials: [
+				{ credentialType: 'googleDriveOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+			],
+			remotes: [{ type: 'streamable-http', url: 'https://example.com/mcp' }],
+			tools: [{ name: 'list_files', title: 'List files' }],
+			isOfficial: true,
+			origin: 'registry',
+			status: 'active',
+		};
+		const templatedRegistryServer = {
+			...registryServer,
+			name: 'databricks-genie',
+			slug: 'databricks-genie',
+			title: 'Databricks Genie',
+			remotes: [
+				{
+					type: 'streamable-http-templated',
+					url: '={{$self["host"]}}/api/2.0/mcp/genie',
+				},
+			],
 		};
 
 		it('is absent from the context unless the gate passed', () => {
@@ -4532,7 +4641,6 @@ describe('MCP registry discovery', () => {
 					slug: 'google-drive',
 					title: 'Google Drive',
 					description: 'Work with Drive files',
-					credentialType: 'googleDriveMcpOAuth2Api',
 					tools: ['list_files'],
 				},
 			]);
@@ -4552,16 +4660,48 @@ describe('MCP registry discovery', () => {
 			expect(results.map((result) => result.slug)).toEqual(['notion']);
 		});
 
-		it('resolves exact slugs through the same summary shape', async () => {
-			const { resolveBySlugs } = stubContainer({
-				registryResolveBySlugs: vi.fn().mockResolvedValue([registryHit]),
+		// This path cannot resolve a templated url, so `createConnection` refuses
+		// such a row. Offering it would end at a credential picker and an error.
+		it('drops a templated server from search results', async () => {
+			stubContainer({
+				registrySearch: vi.fn().mockResolvedValue([registryHit, templatedHit]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			const results = await context.mcpService!.search(['drive', 'genie']);
+
+			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
+		});
+
+		it('drops a templated server from an exact slug lookup', async () => {
+			stubContainer({
+				registryGetBySlugs: vi.fn().mockResolvedValue([templatedRegistryServer]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			expect(await context.mcpService!.getServers(['databricks-genie'])).toEqual([]);
+		});
+
+		it('drops a server without a usable connection from an exact slug lookup', async () => {
+			stubContainer({
+				registryGetBySlugs: vi.fn().mockResolvedValue([{ ...registryServer, remotes: [] }]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			expect(await context.mcpService!.getServers(['google-drive'])).toEqual([]);
+		});
+
+		it('resolves exact slugs with credential options for the connect card', async () => {
+			const { getBySlugs } = stubContainer({
+				registryGetBySlugs: vi.fn().mockResolvedValue([registryServer]),
 			});
 			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
 
 			const results = await context.mcpService!.getServers(['google-drive', 'made-up']);
 
-			expect(resolveBySlugs).toHaveBeenCalledWith(['google-drive', 'made-up']);
+			expect(getBySlugs).toHaveBeenCalledWith(['google-drive', 'made-up']);
 			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
+			expect(results[0].usesCredentials).toEqual(registryServer.usesCredentials);
 		});
 
 		it('lists slugs with a connection row, not just the loadable ones', async () => {

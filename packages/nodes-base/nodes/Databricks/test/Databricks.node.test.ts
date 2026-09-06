@@ -69,6 +69,10 @@ describe('Databricks', () => {
 					wait_timeout: '50s',
 					on_wait_timeout: 'CONTINUE',
 				})
+				// Proves the UA comes from the node helper: the harness only invokes a
+				// function-style `authenticate`, and this credential's is a generic object,
+				// so the credential contributes no headers here.
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
 				.reply(200, {
 					statement_id: 'stmt-abc123',
 					status: { state: 'SUCCEEDED' },
@@ -186,6 +190,29 @@ describe('Databricks', () => {
 		new NodeTestHarness().setupTests({
 			credentials,
 			workflowFiles: ['files.workflow.json'],
+		});
+	});
+
+	describe('Files -> Download File', () => {
+		// Guards the one call site whose options must survive the shared request helper
+		// intact: dropping `encoding: 'arraybuffer'` or `returnFullResponse` still
+		// compiles (the helper returns `any`) but breaks at runtime. The reply bytes are
+		// deliberately not valid UTF-8, so a string round-trip would change the output.
+		beforeAll(() => {
+			nock(HOST)
+				.get('/api/2.0/fs/files/Volumes/main/default/my_volume/data/logo.png')
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0xff, 0xfe]), {
+					'content-type': 'application/octet-stream',
+				});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['files-download.workflow.json'],
+			assertBinaryData: true,
 		});
 	});
 

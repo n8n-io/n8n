@@ -5,7 +5,6 @@ import type {
 	BuiltTool,
 	CheckpointStore,
 	MemoryTaskUsageReport,
-	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	ScopedMemoryTaskEvent,
@@ -16,10 +15,12 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
+	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
+	InstanceAiSetupItem,
 	McpTool,
 	McpToolCallRequest,
 	McpToolCallResult,
@@ -32,6 +33,7 @@ import type {
 	ITaskData,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import type { z } from 'zod';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -46,6 +48,14 @@ import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
+import type {
+	conversationHistoryExcerptSchema,
+	conversationHistoryMatchSourceSchema,
+	conversationHistoryMessageSchema,
+	conversationHistoryMessagesResultSchema,
+	conversationHistorySearchHitSchema,
+	conversationHistorySearchResultSchema,
+} from './tools/conversation-history.schema';
 import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
@@ -311,6 +321,22 @@ export interface WorkflowListResult {
 	totalInScope: number;
 }
 
+/**
+ * What the workflows in scope are built out of. The cheap rung of preference discovery:
+ * `nodeTypes` answers "what does this project reach for" without opening a workflow, and
+ * `workflows` names the ones using a given type so one read gets the current house style.
+ */
+export interface NodeUsageResult {
+	/** Indexed, non-archived workflows in scope — the denominator for every count. */
+	workflowsInScope: number;
+	/** Set when no `nodeType` was asked for: every node type in use, most-used first. */
+	nodeTypes?: Array<{ nodeType: string; workflowCount: number }>;
+	/** Set when a `nodeType` was asked for: the workflows using it, most recently updated first. */
+	workflows?: Array<{ workflowId: string; name: string; updatedAt: string }>;
+	/** True when the limit cut the list short, so a partial answer is never read as the whole. */
+	truncated?: boolean;
+}
+
 export interface InstanceAiWorkflowService {
 	list(options?: {
 		query?: string;
@@ -324,7 +350,27 @@ export interface InstanceAiWorkflowService {
 		 * access. Writes stay locked to the thread's bound project regardless.
 		 */
 		projectId?: string;
+		/**
+		 * Keep only workflows containing at least one node of these types
+		 * (`n8n-nodes-base.slack`). Resolved from the dependency index, so it matches what a
+		 * workflow actually contains rather than what its name suggests, and costs one join
+		 * instead of a fetch per workflow.
+		 */
+		nodeTypes?: string[];
 	}): Promise<WorkflowListResult>;
+	/**
+	 * Node-type usage across the workflows in scope, read from the dependency index rather than by
+	 * fetching workflows. Without `nodeType` it returns the histogram; with one, the workflows using
+	 * it. Node types only — parameter-level house style still needs a `get`.
+	 *
+	 * Optional: present only where the host wires the index behind it.
+	 */
+	nodeUsage?(options?: {
+		nodeType?: string;
+		limit?: number;
+		scope?: 'project' | 'instance';
+		projectId?: string;
+	}): Promise<NodeUsageResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
 	 *  Pass a versionId to get a past version's graph instead of the current draft. */
@@ -546,8 +592,15 @@ export interface McpRegistryServerSummary {
 	slug: string;
 	title: string;
 	description: string;
-	credentialType: string;
 	tools: string[];
+}
+
+export interface McpRegistryConnectServerSummary extends McpRegistryServerSummary {
+	usesCredentials: Array<{
+		credentialType: string;
+		name: string;
+		value: string;
+	}>;
 }
 
 /** A service the user connected, with those of its tools that reached the agent.
@@ -559,7 +612,7 @@ export interface ConnectedMcpService {
 
 export interface InstanceAiMcpService {
 	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
-	getServers(slugs: string[]): Promise<McpRegistryServerSummary[]>;
+	getServers(slugs: string[]): Promise<McpRegistryConnectServerSummary[]>;
 	listConnections(): Promise<Array<{ slug: string }>>;
 }
 
@@ -603,7 +656,7 @@ export interface UnavailableLocatorValue {
 }
 
 export interface InstanceAiNodeService {
-	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
+	listAvailable(options?: { query?: string; gatewayCreditsOnly?: boolean }): Promise<NodeSummary[]>;
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
@@ -616,7 +669,14 @@ export interface InstanceAiNodeService {
 			operation?: string;
 			mode?: string;
 		},
-	): Promise<{ content: string; version?: string; error?: string; builderHint?: string } | null>;
+	): Promise<{
+		content: string;
+		version?: string;
+		error?: string;
+		builderHint?: string;
+		/** The node type is retired. It still works, but it shouldn't be used anymore at anything new. */
+		deprecated?: boolean;
+	} | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
 		nodeType: string,
@@ -707,7 +767,7 @@ export interface DataTableFilterInput {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq' | 'like' | 'gt' | 'gte' | 'lt' | 'lte';
+		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 		value: string | number | boolean | null;
 	}>;
 }
@@ -1037,6 +1097,20 @@ export interface BuilderOpenSuspension {
  * suspend, which the caller cascades through its own suspend/resume so the
  * builder's questions survive a process restart.
  */
+
+/** Capabilities and limitations the orchestrator surfaces to plan an agent
+ *  build, sourced from the agents module via `InstanceAiBuilderDelegate.listAgentCapabilities`
+ *  so they stay aligned with the agent config schema and business rules as
+ * they evolve — the orchestrator never hardcodes these. */
+export interface AgentCapabilitiesSummary {
+	/** Supported chat-channel integrations; absence from this list means unsupported. */
+	channels: ChatIntegrationDescriptor[];
+	/** What an n8n Agent can do beyond chat channels — brief, for planning. */
+	agentCapabilities: string[];
+	/** Agent-level limitations the orchestrator must respect when planning a build. */
+	limitations: string[];
+}
+
 export interface InstanceAiBuilderDelegate {
 	/** `id` creates the agent under an id the frontend already minted for its
 	 *  unsaved artifact, so the chat and the editor converge on one agent. */
@@ -1062,6 +1136,11 @@ export interface InstanceAiBuilderDelegate {
 	listAgents(): Promise<
 		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
 	>;
+	/** Capabilities and limitations the orchestrator surfaces to plan an agent
+	 *  build, sourced from the agents module via `listAgentCapabilities` so they
+	 *  stay aligned with the agent config schema and business rules as they
+	 *  evolve — the orchestrator never hardcodes these. */
+	listAgentCapabilities(): Promise<AgentCapabilitiesSummary>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
 	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
@@ -1085,6 +1164,37 @@ export type LocalGatewayStatus =
 	| {
 			status: 'disabledGlobally' | 'disconnected' | 'disabled';
 	  };
+
+// ── Conversation history ─────────────────────────────────────────────────────
+
+export const CONVERSATION_HISTORY_MAX_SEARCH_LIMIT = 10;
+export const CONVERSATION_HISTORY_MAX_WINDOW_SIDE = 5;
+
+export type ConversationHistoryMatchSource = z.infer<typeof conversationHistoryMatchSourceSchema>;
+
+export type ConversationHistoryExcerpt = z.infer<typeof conversationHistoryExcerptSchema>;
+
+export type ConversationHistorySearchHit = z.infer<typeof conversationHistorySearchHitSchema>;
+
+export type ConversationHistorySearchResult = z.infer<typeof conversationHistorySearchResultSchema>;
+
+export type ConversationHistoryMessage = z.infer<typeof conversationHistoryMessageSchema>;
+
+export type ConversationHistoryMessagesResult = z.infer<
+	typeof conversationHistoryMessagesResultSchema
+>;
+
+/** Read-only recall over past conversations, pre-bound by the host to one
+ *  user, project and current thread. */
+export interface InstanceAiConversationHistoryReader {
+	search(params: { query?: string; limit?: number }): Promise<ConversationHistorySearchResult>;
+	getMessages(params: {
+		threadId: string;
+		aroundMessageId?: string;
+		before?: number;
+		after?: number;
+	}): Promise<ConversationHistoryMessagesResult>;
+}
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 
@@ -1114,6 +1224,9 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
+	/** Optional — wired by the host when the run has a bound project. Presence
+	 *  gates the `conversation-history` tool (orchestrator only). */
+	conversationHistoryService?: InstanceAiConversationHistoryReader;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
@@ -1193,6 +1306,13 @@ export interface InstanceAiContext {
 	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
 	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
+	 * Setup panel v2 sink for durable `setup-items` snapshots. Wired by the host
+	 * only while the setup panel flag is on, so its presence is the package-side
+	 * flag accessor (`isSetupPanelEnabled`). Absent: the suspending setup card
+	 * paths stay in effect.
+	 */
+	setupItemsEmitter?: SetupItemsEmitter;
+	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
 	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
 	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
@@ -1252,6 +1372,29 @@ export interface InstanceAiContext {
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
 	};
+}
+
+// ── Setup panel v2 ───────────────────────────────────────────────────────────
+
+/**
+ * Publishes `setup-items` snapshots for a workflow. Full-snapshot semantics:
+ * every emission replaces the previous list for its workflowId, so callers
+ * hand over the complete current list, never a delta.
+ */
+export interface SetupItemsEmitter {
+	/** Replace the workflow's snapshot. Returns false when nothing changed (no event published). */
+	emit(workflowId: string, items: InstanceAiSetupItem[]): boolean;
+	/**
+	 * Upsert items (by id) into the workflow's last snapshot and publish the
+	 * merged list. For emitters that know only part of the checklist, e.g. a
+	 * credential announcement without node context.
+	 */
+	merge(workflowId: string, items: InstanceAiSetupItem[]): boolean;
+	/**
+	 * The workflow of the most recent emission this run, i.e. the latest saved
+	 * artifact — the workflow the panel follows. Undefined before the first save.
+	 */
+	lastWorkflowId(): string | undefined;
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -1441,6 +1584,8 @@ export interface McpServerConfig {
 	 */
 	cacheKey?: string;
 	metadata?: {
+		/** ID of an Instance AI MCP registry connection. */
+		connectionId?: string;
 		/** Registry slug for Instance AI MCP registry servers. */
 		serverSlug?: string;
 		/** User who owns the registry MCP connection. */
@@ -1697,12 +1842,6 @@ export interface OrchestrationContext {
 	checkpointStore?: CheckpointStore;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
-	/**
-	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
-	 * default policy, which on the durable-log path would persist redacted text
-	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
-	 */
-	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/**
 	 * Claim AI credits for a sub-agent stream segment. Wired by the host (cli);

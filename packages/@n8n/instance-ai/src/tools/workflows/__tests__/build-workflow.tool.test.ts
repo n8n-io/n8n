@@ -90,7 +90,8 @@ vi.mock('../workflow-json-utils', async () => {
 vi.mock('../classify-node-destructiveness.service', () => ({
 	classifyNodesForSimulation: vi.fn(async () => await Promise.resolve([])),
 }));
-vi.mock('../generate-simulation-fixtures.service', () => ({
+vi.mock('../generate-simulation-fixtures.service', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	generateSimulationFixtures: vi.fn(async () => await Promise.resolve({})),
 }));
 
@@ -659,6 +660,154 @@ describe('createBuildWorkflowTool', () => {
 				status: 'required',
 				reason: 'workflow-needs-setup',
 			},
+		});
+	});
+
+	describe('setup panel announcements', () => {
+		const openSlackRequest = {
+			node: {
+				id: 'slack-1',
+				name: 'Post alert',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2.3,
+				parameters: {},
+				position: [0, 0],
+			},
+			credentialType: 'slackApi',
+			isTrigger: false,
+			needsAction: true,
+			credentialNeedsAction: true,
+		} as SetupRequest;
+		const boundGmailRequest = {
+			node: {
+				id: 'gmail-1',
+				name: 'Send digest',
+				type: 'n8n-nodes-base.gmail',
+				typeVersion: 2.1,
+				parameters: {},
+				position: [0, 0],
+				credentials: { gmailOAuth2: { id: 'cred-1', name: 'Work Gmail' } },
+			},
+			credentialType: 'gmailOAuth2',
+			isTrigger: false,
+			needsAction: false,
+			credentialNeedsAction: false,
+		} as SetupRequest;
+
+		it('announces the checklist on save, including bound slots, while routing only on open ones', async () => {
+			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest, boundGmailRequest]);
+			const emitter = {
+				emit: vi.fn(() => true),
+				merge: vi.fn(() => true),
+				lastWorkflowId: vi.fn(),
+			};
+			const { context, filePath } = makeContext({
+				source: 'workflow source from workspace',
+				overrides: { setupItemsEmitter: emitter },
+			});
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Daily Weather to Slack',
+			});
+
+			expect(vi.mocked(analyzeWorkflow)).toHaveBeenCalledWith(
+				context,
+				'wf-1',
+				undefined,
+				expect.objectContaining({ includeSettled: true }),
+			);
+			expect(emitter.emit).toHaveBeenCalledWith('wf-1', [
+				{
+					id: 'wf-1:credential:slackApi',
+					kind: 'credential',
+					credentialType: 'slackApi',
+					nodeBindings: [{ nodeName: 'Post alert' }],
+				},
+				{
+					id: 'wf-1:credential:gmailOAuth2',
+					kind: 'credential',
+					credentialType: 'gmailOAuth2',
+					nodeBindings: [{ nodeName: 'Send digest' }],
+				},
+			]);
+			expect(result).toMatchObject({
+				success: true,
+				setupRequirement: { status: 'required', reason: 'workflow-needs-setup' },
+			});
+		});
+
+		it('reports no setup requirement from a snapshot made only of bound slots', async () => {
+			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([boundGmailRequest]);
+			const emitter = {
+				emit: vi.fn(() => true),
+				merge: vi.fn(() => true),
+				lastWorkflowId: vi.fn(),
+			};
+			const { context, filePath } = makeContext({
+				source: 'workflow source from workspace',
+				overrides: { setupItemsEmitter: emitter },
+			});
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Daily Weather to Slack',
+			});
+
+			expect(emitter.emit).toHaveBeenCalledWith('wf-1', [
+				expect.objectContaining({ id: 'wf-1:credential:gmailOAuth2' }),
+			]);
+			expect(result).toMatchObject({
+				success: true,
+				setupRequirement: { status: 'not_required' },
+			});
+		});
+
+		it('neither requests settled slots nor emits when the setup panel is off', async () => {
+			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest]);
+			const { context, filePath } = makeContext({ source: 'workflow source from workspace' });
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Daily Weather to Slack',
+			});
+
+			expect(vi.mocked(analyzeWorkflow)).toHaveBeenCalledWith(
+				context,
+				'wf-1',
+				undefined,
+				expect.not.objectContaining({ includeSettled: true }),
+			);
+			expect(result).toMatchObject({
+				success: true,
+				setupRequirement: { status: 'required' },
+			});
+		});
+
+		it('keeps the build successful when the announcement throws', async () => {
+			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest]);
+			const emitter = {
+				emit: vi.fn(() => {
+					throw new Error('bus down');
+				}),
+				merge: vi.fn(() => true),
+				lastWorkflowId: vi.fn(),
+			};
+			const { context, filePath } = makeContext({
+				source: 'workflow source from workspace',
+				overrides: { setupItemsEmitter: emitter },
+			});
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Daily Weather to Slack',
+			});
+
+			expect(result.success).toBe(true);
+			expect(context.logger.warn).toHaveBeenCalledWith(
+				'Failed to emit setup-items snapshot for built workflow',
+				expect.objectContaining({ workflowId: 'wf-1', error: 'bus down' }),
+			);
 		});
 	});
 
@@ -1928,7 +2077,7 @@ describe('createBuildWorkflowTool', () => {
 			heldForNewCredentialTypes: [],
 			resolvedCredentialsByNode: {
 				'OpenAI Chat Model': [
-					{ type: 'openAiApi', id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					{ type: 'openAiApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 				],
 			},
 		});
