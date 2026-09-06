@@ -337,6 +337,7 @@ export const sandbox: Service<SandboxResult> = {
 				.withLogConsumer(apiConsumer)
 				.withReuse()
 				.start();
+			ctx?.registerContainer?.(apiContainer);
 		} catch (error: unknown) {
 			return throwApiLogs(error);
 		}
@@ -383,6 +384,7 @@ export const sandbox: Service<SandboxResult> = {
 				.withLogConsumer(runnerConsumer)
 				.withReuse()
 				.start();
+			ctx?.registerContainer?.(runnerContainer);
 		} catch (error: unknown) {
 			return throwRunnerLogs(error);
 		}

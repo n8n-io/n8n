@@ -390,21 +390,23 @@ export async function createN8NInstances(
 
 	if (remaining.length > 0) {
 		log(`Starting ${remaining.length} remaining instances in parallel...`);
-		try {
-			const parallelResults = await Promise.all(
-				remaining.map(async (instance) => {
-					log(`Starting ${instance.role} ${instance.instanceNumber}: ${instance.name}`);
-					const result = await createContainer(instance, sharedByRole[instance.role], diagnostics);
-					log(`${instance.role} ${instance.instanceNumber} ready`);
-					return { instance, result };
-				}),
-			);
-			for (const { instance, result } of parallelResults) {
-				recordSuccess(instance, result);
-				containers.push(result.container);
+		const parallelResults = await Promise.allSettled(
+			remaining.map(async (instance) => {
+				log(`Starting ${instance.role} ${instance.instanceNumber}: ${instance.name}`);
+				const result = await createContainer(instance, sharedByRole[instance.role], diagnostics);
+				log(`${instance.role} ${instance.instanceNumber} ready`);
+				return { instance, result };
+			}),
+		);
+		const rejected = parallelResults.find(
+			(result): result is PromiseRejectedResult => result.status === 'rejected',
+		);
+		if (rejected) return rethrowWithDiagnostics(rejected.reason);
+		for (const result of parallelResults) {
+			if (result.status === 'fulfilled') {
+				recordSuccess(result.value.instance, result.value.result);
+				containers.push(result.value.result.container);
 			}
-		} catch (error) {
-			return rethrowWithDiagnostics(error);
 		}
 	}
 
