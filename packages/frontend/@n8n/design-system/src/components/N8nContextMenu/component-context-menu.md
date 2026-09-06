@@ -10,7 +10,7 @@ A menu that opens at the pointer on right-click or long-press. Built on Reka UI 
 **Props**
 
 - `id?: string`
-- `items: Array<ContextMenuBranch<T>>`
+- `items: Array<ContextMenuNode<T>>` Root list. May mix rows (`item`, `checkbox`) and sections (`group`, `submenu`, `radio-group`). `radio` is not a node; nest it in `radio-group`. A separator renders before each section that follows another node.
 - `open?: boolean` Controlled open state
 - `defaultOpen?: boolean` Initial open state when uncontrolled
 - `selectedValues?: T[]` Controlled selected **item** ids
@@ -32,7 +32,7 @@ A menu that opens at the pointer on right-click or long-press. Built on Reka UI 
 **Slots**
 
 - `trigger` Target element. Omit in coordinate mode
-- `item` `{ item: ContextMenuNode<T> | ContextMenuRadio<T> }` Replaces default `N8nContextMenuItem`. Re-render `N8nContextMenuItem` so the row keeps selection and keyboard behaviour.
+- `item` `{ item: ContextMenuLeaf<T> }` Replaces default `N8nContextMenuItem`. Re-render `N8nContextMenuItem` so the row keeps selection and keyboard behaviour.
 - `item-leading` `{ item: ContextMenuLeaf<T>, ui: { class: string } }`
 - `item-label` `{ item: ContextMenuLeaf<T>, ui: { class: string } }`
 - `item-trailing` `{ item: ContextMenuLeaf<T>, ui: { class: string } }`
@@ -47,7 +47,8 @@ A menu that opens at the pointer on right-click or long-press. Built on Reka UI 
 **Types**
 
 ```typescript
-type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
+import type { ClassValue } from 'clsx'
+import type { IconOrEmoji, KeyboardShortcut } from '@n8n/design-system'
 
 type ContextMenuLeafBase<T> = {
   id: T;
@@ -55,7 +56,7 @@ type ContextMenuLeafBase<T> = {
   icon?: IconOrEmoji;
   shortcut?: KeyboardShortcut;
   disabled?: boolean;
-  class?: VueCssClass;
+  class?: ClassValue;
 };
 
 type ContextMenuItem<T = string> = ContextMenuLeafBase<T> & {
@@ -76,7 +77,7 @@ type ContextMenuGroup<T = string> = {
   type: 'group';
   id: T;
   label?: string;
-  class?: VueCssClass;
+  class?: ClassValue;
   children: Array<ContextMenuNode<T>>;
 };
 
@@ -91,18 +92,13 @@ type ContextMenuRadioGroup<T = string> = {
   type: 'radio-group';
   id: T;
   label?: string;
-  class?: VueCssClass;
+  class?: ClassValue;
   children: Array<ContextMenuRadio<T>>;
 };
 
 type ContextMenuNode<T = string> =
   | ContextMenuItem<T>
   | ContextMenuCheckbox<T>
-  | ContextMenuGroup<T>
-  | ContextMenuSubmenu<T>
-  | ContextMenuRadioGroup<T>;
-
-type ContextMenuBranch<T = string> =
   | ContextMenuGroup<T>
   | ContextMenuSubmenu<T>
   | ContextMenuRadioGroup<T>;
@@ -126,11 +122,11 @@ import {
   N8nIcon,
   N8nKeyboardShortcut,
 } from '@n8n/design-system'
-import type { ContextMenuBranch } from '@n8n/design-system'
+import type { ContextMenuNode } from '@n8n/design-system'
 
 const selectedValues = ref(['snap-grid', 'show-grid'])
 
-const items: ContextMenuBranch[] = [
+const items: ContextMenuNode[] = [
   {
     type: 'group',
     id: 'edit',
