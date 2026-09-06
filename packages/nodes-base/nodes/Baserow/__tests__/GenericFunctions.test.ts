@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+import { DateTime } from 'luxon';
 import { NodeApiError } from 'n8n-workflow';
 
 import {
@@ -131,6 +132,44 @@ describe('Baserow > GenericFunctions', () => {
 	describe('formatBaserowFilterValue', () => {
 		it('should treat a missing value as empty', () => {
 			expect(formatBaserowFilterValue('equal', undefined)).toBe('');
+		});
+
+		it.each([undefined, null])('should preserve empty-value formatting for %s', (value) => {
+			expect(formatBaserowFilterValue('equal', value)).toBe('');
+			expect(formatBaserowFilterValue('date_is_after', value)).toBe('');
+			expect(formatBaserowFilterValue('date_equals_today', value, 'Europe/Berlin')).toBe(
+				'Europe/Berlin',
+			);
+		});
+
+		it.each([
+			{ value: 252284, expected: '252284' },
+			{ value: 0, expected: '0' },
+			{ value: true, expected: 'true' },
+			{ value: false, expected: 'false' },
+		])('should stringify scalar filter value $value', ({ value, expected }) => {
+			expect(formatBaserowFilterValue('equal', value)).toBe(expected);
+		});
+
+		it('should preserve ISO timestamps from Luxon DateTime expressions', () => {
+			const value = DateTime.fromISO('2026-06-17T12:30:00.000Z', { zone: 'UTC' });
+			expect(formatBaserowFilterValue('date_after_or_equal', value)).toBe(
+				'2026-06-17T12:30:00.000Z',
+			);
+		});
+
+		it('should format numeric days for multi-step date filters', () => {
+			expect(formatBaserowFilterValue('date_is_within', 30)).toBe('UTC?30?nr_days_from_now');
+		});
+
+		it('should format numeric days for deprecated date filters', () => {
+			expect(formatBaserowFilterValue('date_within_days', 0, 'Europe/Berlin')).toBe(
+				'Europe/Berlin?0',
+			);
+		});
+
+		it('should continue trimming string filter values', () => {
+			expect(formatBaserowFilterValue('equal', '  foo  ')).toBe('foo');
 		});
 
 		it('should format plain ISO date for date_is_after', () => {
