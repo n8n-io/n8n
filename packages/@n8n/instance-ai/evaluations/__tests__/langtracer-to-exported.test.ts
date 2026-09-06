@@ -133,10 +133,32 @@ describe('unsupportedPushReason', () => {
 					workflows: [],
 					dataTables: [],
 					agents: [],
+					projects: [],
 				},
 			}),
 		);
 		expect(reason).toBeNull();
+	});
+
+	// The write API validates `metadata.seed` against a fixed key set, so `projects`
+	// is not stored. Pushing anyway would land a project-scope case WITHOUT its seeded
+	// project — it would still run, and the agent's refusal would be graded against a
+	// project list it never saw. Refusing the push is the only outcome that can't
+	// silently corrupt the suite.
+	it('REFUSES an inline seed that carries projects, until lang-tracer stores them', () => {
+		const reason = unsupportedPushReason(
+			diskCase({
+				seed: {
+					mode: 'inline',
+					messages: [],
+					workflows: [],
+					dataTables: [],
+					agents: [],
+					projects: [{ name: 'Foobar' }],
+				},
+			}),
+		);
+		expect(reason).toMatch(/projects/);
 	});
 
 	it('carries the inline seed into the create body verbatim', () => {
@@ -154,6 +176,7 @@ describe('unsupportedPushReason', () => {
 			workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
 			dataTables: [],
 			agents: [],
+			projects: [],
 		};
 		const body = diskCaseToLangTracerCreate(diskCase({ seed }), 'repair-it', {
 			suiteId: 1,
@@ -198,6 +221,7 @@ describe('attach round-trip: write → export → reparse', () => {
 				workflows: [{ id: WORKFLOW_ID, name: 'Batch loop', nodes: [], connections: {} }],
 				dataTables: [],
 				agents: [],
+				projects: [],
 			},
 		} as Partial<EvalTestCaseInput>);
 	}

@@ -7,6 +7,7 @@ import { ExecutionNotFoundError } from '../../execution/execution-store';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
+import { generateId } from '../generate-id';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 
 describe('workflow_execution table (integration)', () => {
@@ -29,6 +30,7 @@ describe('workflow_execution table (integration)', () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 
 		const created = repo.create({
+			id: generateId(),
 			workflowId: 'wf-1',
 			status: 'running',
 			mode: 'production',
@@ -57,6 +59,7 @@ describe('workflow_execution table (integration)', () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const finishedAt = new Date();
 		const created = repo.create({
+			id: generateId(),
 			workflowId: 'wf-3',
 			status: 'completed',
 			mode: 'manual',
@@ -84,22 +87,26 @@ describe('workflow_execution table (integration)', () => {
 		});
 	});
 
-	it('TypeOrmExecutionViewStore.loadExecutionView throws for an unknown id', async () => {
-		const viewStore = new TypeOrmExecutionViewStore(
-			dataSource.getRepository(WorkflowExecution),
-			dataSource.getRepository(WorkflowStepExecution),
-		);
+	it.each(['loadExecutionView', 'loadExecutionWithStepsView'] as const)(
+		'TypeOrmExecutionViewStore.%s throws for an unknown id',
+		async (method) => {
+			const viewStore = new TypeOrmExecutionViewStore(
+				dataSource.getRepository(WorkflowExecution),
+				dataSource.getRepository(WorkflowStepExecution),
+			);
 
-		await expect(
-			viewStore.loadExecutionView('00000000-0000-0000-0000-000000000000'),
-		).rejects.toBeInstanceOf(ExecutionNotFoundError);
-	});
+			await expect(
+				viewStore[method]('00000000-0000-0000-0000-000000000000'),
+			).rejects.toBeInstanceOf(ExecutionNotFoundError);
+		},
+	);
 
 	it('counts rows by workflowId and status (admittance support)', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 
 		await repo.save(
 			repo.create({
+				id: generateId(),
 				workflowId: 'wf-2',
 				status: 'running',
 				mode: 'production',
@@ -110,6 +117,7 @@ describe('workflow_execution table (integration)', () => {
 		);
 		await repo.save(
 			repo.create({
+				id: generateId(),
 				workflowId: 'wf-2',
 				status: 'completed',
 				mode: 'production',

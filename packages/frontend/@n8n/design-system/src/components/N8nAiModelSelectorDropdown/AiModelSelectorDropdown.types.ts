@@ -14,6 +14,8 @@ export interface AiModelSelectorMenuItemData {
 	leadingIcon?: string;
 	/** Whether the item label represents content that is being resolved. */
 	loading?: boolean;
+	/** Trailing "✓ <label>" marker, e.g. for the provider currently in use. */
+	connectedLabel?: string;
 }
 
 export type AiModelSelectorMenuItem<

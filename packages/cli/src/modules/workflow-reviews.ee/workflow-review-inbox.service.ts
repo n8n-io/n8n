@@ -8,7 +8,7 @@ import type {
 	WorkflowReviewVersionSnapshot,
 } from '@n8n/api-types';
 import {
-	WorkflowReviewRequestRepository,
+	WorkflowReviewInboxRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type InboxCursor,
 	type User,
@@ -41,7 +41,7 @@ export class WorkflowReviewInboxService {
 		private readonly featureGate: WorkflowReviewFeatureGate,
 		private readonly authorizationService: WorkflowReviewAuthorizationService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
+		private readonly workflowReviewInboxRepository: WorkflowReviewInboxRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly participantResolver: WorkflowReviewParticipantResolver,
 	) {}
@@ -54,7 +54,7 @@ export class WorkflowReviewInboxService {
 
 		const visibility = await this.authorizationService.resolveInboxVisibility(user);
 		const { limit } = query;
-		const rows = await this.workflowReviewRequestRepository.findManyForInbox({
+		const rows = await this.workflowReviewInboxRepository.findRequests({
 			visibility,
 			state: query.state ?? 'open',
 			category:
@@ -91,7 +91,7 @@ export class WorkflowReviewInboxService {
 		await this.featureGate.assertAvailable();
 
 		const visibility = await this.authorizationService.resolveInboxVisibility(user);
-		return await this.workflowReviewRequestRepository.countByStateForInbox({ visibility });
+		return await this.workflowReviewInboxRepository.countRequestsByState(visibility);
 	}
 
 	async getDetail(

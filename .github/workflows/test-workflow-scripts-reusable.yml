@@ -36,3 +36,7 @@ jobs:
       - name: Run tests
         id: run-tests
         run: npm test --prefix=.github/scripts
+
+      - name: Check cubic.yaml
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/quality/check-cubic-config.mjs

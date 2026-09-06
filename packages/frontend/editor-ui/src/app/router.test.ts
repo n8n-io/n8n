@@ -199,6 +199,38 @@ describe('router', () => {
 		20000,
 	);
 
+	const gitConnectionScopes: Scope[] = [
+		'gitConnection:list',
+		'gitConnection:read',
+		'gitConnection:create',
+		'gitConnection:update',
+		'gitConnection:delete',
+	];
+
+	test.each<[string, RouteRecordName, Scope[], boolean, boolean]>([
+		['/settings/git-connections', VIEWS.WORKFLOWS, [], true, true],
+		['/settings/git-connections', VIEWS.WORKFLOWS, ['gitConnection:list'], true, true],
+		['/settings/git-connections', VIEWS.GIT_CONNECTIONS_SETTINGS, gitConnectionScopes, true, true],
+		['/settings/git-connections', VIEWS.WORKFLOWS, gitConnectionScopes, false, true],
+		['/settings/git-connections', VIEWS.WORKFLOWS, gitConnectionScopes, true, false],
+	])(
+		'should resolve %s to %s with %s permissions, module active %s and flag on %s (git connections)',
+		async (path, name, scopes, isModuleActive, isFlagOn) => {
+			const rbacStore = useRBACStore();
+
+			settingsStore.settings.activeModules = isModuleActive ? ['git-connections'] : [];
+			settingsStore.settings.envFeatureFlags = {
+				N8N_ENV_FEAT_PROMOTIONS: isFlagOn ? 'true' : 'false',
+			} as typeof settingsStore.settings.envFeatureFlags;
+			rbacStore.setGlobalScopes(scopes);
+
+			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		20000,
+	);
+
 	test.each([
 		[VIEWS.PERSONAL_SETTINGS, true],
 		[VIEWS.USAGE, false],
@@ -208,12 +240,20 @@ describe('router', () => {
 		expect(router.currentRoute.value.name).toBe(name);
 	});
 
-	test('should block n8n Connect settings for Cloud UBB', async () => {
+	test('should block Gateway credits settings for Cloud UBB', async () => {
 		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: true };
+
+		await router.push('/settings/gateway-credits');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+	});
+
+	test('should redirect the old n8n-connect settings path to Gateway credits settings', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: false };
 
 		await router.push('/settings/n8n-connect');
 
-		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+		expect(router.currentRoute.value.name).toBe(VIEWS.AI_GATEWAY_SETTINGS);
 	});
 
 	describe('resource center route guard', () => {
@@ -230,7 +270,9 @@ describe('router', () => {
 
 		test('allows enrolled users to reach the resource center view', async () => {
 			const posthog = usePostHog();
-			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+				value: RESOURCE_CENTER_EXPERIMENT.variant,
+			};
 
 			await router.push('/resource-center');
 			expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
@@ -238,7 +280,9 @@ describe('router', () => {
 
 		test('redirects control users away from the resource center view', async () => {
 			const posthog = usePostHog();
-			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.control;
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+				value: RESOURCE_CENTER_EXPERIMENT.control,
+			};
 
 			await router.push('/resource-center');
 			expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
@@ -257,7 +301,9 @@ describe('router', () => {
 			const waitForFeatureFlagsSpy = vi
 				.spyOn(posthog, 'waitForFeatureFlags')
 				.mockImplementation(async () => {
-					posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+					posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+						value: RESOURCE_CENTER_EXPERIMENT.variant,
+					};
 					return null;
 				});
 

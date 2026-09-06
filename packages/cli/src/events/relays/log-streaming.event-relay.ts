@@ -167,6 +167,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		user,
 		counts,
 		credentialExportPolicy,
+		includeArchivedWorkflows,
 		...rest
 	}: RelayEventMap['n8n-package-exported']) {
 		void this.eventBus.sendAuditEvent({
@@ -645,19 +646,51 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #region Credentials
 
+	/**
+	 * These name every field they publish. The events they read carry more than the audit stream
+	 * should, and spreading the rest would widen it again the next time one gains a field.
+	 */
 	@Redactable()
-	private credentialsCreated({ user, ...rest }: RelayEventMap['credentials-created']) {
+	private credentialsCreated({
+		user,
+		credentialType,
+		credentialId,
+		publicApi,
+		projectId,
+		projectType,
+		isDynamic,
+		usesExternalSecrets,
+		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
+	}: RelayEventMap['credentials-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.created',
-			payload: { ...user, ...rest },
+			payload: {
+				...user,
+				credentialType,
+				credentialId,
+				publicApi,
+				projectId,
+				projectType,
+				isDynamic,
+				usesExternalSecrets,
+				jweEnabled,
+				supportsManagedAuth,
+				usesManagedAuth,
+			},
 		});
 	}
 
 	@Redactable()
-	private credentialsDeleted({ user, ...rest }: RelayEventMap['credentials-deleted']) {
+	private credentialsDeleted({
+		user,
+		credentialType,
+		credentialId,
+	}: RelayEventMap['credentials-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
-			payload: { ...user, ...rest },
+			payload: { ...user, credentialType, credentialId },
 		});
 	}
 
@@ -681,10 +714,28 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private credentialsUpdated({ user, ...rest }: RelayEventMap['credentials-updated']) {
+	private credentialsUpdated({
+		user,
+		credentialType,
+		credentialId,
+		isDynamic,
+		usesExternalSecrets,
+		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
+	}: RelayEventMap['credentials-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.updated',
-			payload: { ...user, ...rest },
+			payload: {
+				...user,
+				credentialType,
+				credentialId,
+				isDynamic,
+				usesExternalSecrets,
+				jweEnabled,
+				supportsManagedAuth,
+				usesManagedAuth,
+			},
 		});
 	}
 

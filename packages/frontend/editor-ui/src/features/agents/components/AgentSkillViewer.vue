@@ -2,9 +2,9 @@
 import { computed, reactive, ref, watch } from 'vue';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
-	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
-	AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -120,15 +120,14 @@ const referenceNameValidators: Record<string, IValidator> = {
 	},
 };
 
-const utf8Bytes = (value: string) => new TextEncoder().encode(value).byteLength;
-// Bytes, not characters — matching the server-side agentSkillSchema limit.
-const instructionsBytes = computed(() => utf8Bytes(props.skill.instructions ?? ''));
+// Characters, matching the server-side agentSkillSchema limits.
+const instructionsLength = computed(() => (props.skill.instructions ?? '').length);
 const instructionsError = computed(() => {
 	const value = props.skill.instructions ?? '';
 	if (!value.trim()) return '';
-	if (instructionsBytes.value > AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) {
+	if (instructionsLength.value > AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) {
 		return i18n.baseText('agents.builder.skills.validation.instructionsMaxLength', {
-			interpolate: { max: String(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) },
+			interpolate: { max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString() },
 		});
 	}
 	return '';
@@ -136,19 +135,22 @@ const instructionsError = computed(() => {
 const instructionsValid = computed(
 	() => Boolean((props.skill.instructions ?? '').trim()) && !instructionsError.value,
 );
-const referenceBytes = (reference: AgentSkillReference) => utf8Bytes(reference.content);
+const referenceLength = (reference: AgentSkillReference) => reference.content.length;
 const invalidReferences = computed(() =>
 	(props.skill.references ?? []).filter(
 		(reference) =>
 			!reference.content.trim() ||
-			referenceBytes(reference) > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+			referenceLength(reference) > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	),
 );
-const totalReferenceBytes = computed(() =>
-	(props.skill.references ?? []).reduce((total, reference) => total + referenceBytes(reference), 0),
+const totalReferenceLength = computed(() =>
+	(props.skill.references ?? []).reduce(
+		(total, reference) => total + referenceLength(reference),
+		0,
+	),
 );
 const referencesTotalError = computed(() => {
-	if (totalReferenceBytes.value <= AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES) return '';
+	if (totalReferenceLength.value <= AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH) return '';
 	return i18n.baseText('agents.builder.skills.import.referencesTooLarge');
 });
 const referencesCountError = computed(() => {
@@ -171,10 +173,10 @@ const formIsValid = computed(
 		instructionsValid.value &&
 		referencesValid.value,
 );
-const instructionsByteCount = computed(() =>
-	i18n.baseText('agents.builder.skills.instructions.byteCount', {
+const instructionsCharacterCount = computed(() =>
+	i18n.baseText('agents.builder.skills.instructions.characterCount', {
 		interpolate: {
-			count: instructionsBytes.value.toLocaleString(),
+			count: instructionsLength.value.toLocaleString(),
 			max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString(),
 		},
 	}),
@@ -201,14 +203,14 @@ const addableAllowedTools = computed(() => {
 	const selected = new Set(props.skill.allowedTools ?? []);
 	return props.availableTools.filter((tool) => !selected.has(tool.name));
 });
-const selectedReferenceByteCount = computed(() =>
-	i18n.baseText('agents.builder.skills.references.byteCount' as BaseTextKey, {
+const selectedReferenceCharacterCount = computed(() =>
+	i18n.baseText('agents.builder.skills.references.characterCount' as BaseTextKey, {
 		interpolate: {
 			count: (selectedReference.value
-				? referenceBytes(selectedReference.value)
+				? referenceLength(selectedReference.value)
 				: 0
 			).toLocaleString(),
-			max: AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES.toLocaleString(),
+			max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString(),
 		},
 	}),
 );
@@ -217,10 +219,9 @@ const selectedReferenceError = computed(() => {
 	if (!reference) return '';
 	if (!reference.content.trim())
 		return i18n.baseText('agents.builder.skills.references.contentRequired');
-	const bytes = referenceBytes(reference);
-	if (bytes > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
-		return i18n.baseText('agents.builder.skills.references.contentMaxBytes', {
-			interpolate: { max: AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES.toLocaleString() },
+	if (referenceLength(reference) > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH) {
+		return i18n.baseText('agents.builder.skills.references.contentMaxLength', {
+			interpolate: { max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString() },
 		});
 	}
 	return '';
@@ -584,7 +585,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 						<N8nText v-if="props.errors?.instructions" size="small" color="danger">{{
 							props.errors.instructions
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">{{ instructionsByteCount }}</N8nText>
+						<N8nText size="xsmall" color="text-light">{{ instructionsCharacterCount }}</N8nText>
 					</div>
 				</N8nInputLabel>
 			</div>
@@ -630,7 +631,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					<N8nText v-if="referencesError && !selectedReferenceError" size="small" color="danger">{{
 						referencesError
 					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">{{ selectedReferenceByteCount }}</N8nText>
+					<N8nText size="xsmall" color="text-light">{{ selectedReferenceCharacterCount }}</N8nText>
 				</div>
 			</N8nInputLabel>
 		</div>

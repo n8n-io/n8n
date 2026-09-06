@@ -1,5 +1,6 @@
 import { OllamaEmbeddings } from '@langchain/ollama';
 import {
+	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -7,7 +8,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { logWrapper, getConnectionHintNoticeField, proxyFetch } from '@n8n/ai-utilities';
 
 import { ollamaDescription, ollamaModel } from '../../llms/LMOllama/description';
 
@@ -48,16 +49,29 @@ export class EmbeddingsOllama implements INodeType {
 		this.logger.debug('Supply data for embeddings Ollama');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const credentials = await this.getCredentials('ollamaApi');
+		const baseUrl = credentials.baseUrl as string;
+
+		assertCredentialAllowsUrl({
+			node: this.getNode(),
+			credentialData: credentials,
+			url: baseUrl,
+			surface: 'Ollama',
+		});
+
 		const headers = credentials.apiKey
 			? {
 					Authorization: `Bearer ${credentials.apiKey as string}`,
 				}
 			: undefined;
 
+		const lookup = this.helpers.getSecureEgressFilter().createSecureLookup();
+
 		const embeddings = new OllamaEmbeddings({
-			baseUrl: credentials.baseUrl as string,
+			baseUrl,
 			model: modelName,
 			headers,
+			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
+				await proxyFetch({ input, init, lookup }),
 		});
 
 		return {

@@ -131,6 +131,48 @@ describe('HTTP Node Utils', () => {
 				},
 			});
 		});
+
+		it('should keep a passphrase containing whitespace unchanged', async () => {
+			const requestOptions: IRequestOptions = {
+				method: 'GET',
+				uri: 'https://example.com',
+			};
+
+			const sslCertificates = {
+				passphrase: 'my secret key',
+			};
+
+			setAgentOptions(requestOptions, sslCertificates);
+
+			expect(requestOptions).toStrictEqual({
+				method: 'GET',
+				uri: 'https://example.com',
+				agentOptions: {
+					passphrase: 'my secret key',
+				},
+			});
+		});
+
+		it('should wrap compact PEM certificates but not the passphrase', async () => {
+			const requestOptions: IRequestOptions = {
+				method: 'GET',
+				uri: 'https://example.com',
+			};
+
+			const sslCertificates = {
+				cert: `-----BEGIN CERTIFICATE-----${'A'.repeat(70)}-----END CERTIFICATE-----`,
+				key: `-----BEGIN PRIVATE KEY-----${'B'.repeat(70)}-----END PRIVATE KEY-----`,
+				passphrase: 'my secret key',
+			};
+
+			setAgentOptions(requestOptions, sslCertificates);
+
+			expect(requestOptions.agentOptions).toStrictEqual({
+				cert: `-----BEGIN CERTIFICATE-----\n${'A'.repeat(64)}\n${'A'.repeat(6)}\n-----END CERTIFICATE-----`,
+				key: `-----BEGIN PRIVATE KEY-----\n${'B'.repeat(64)}\n${'B'.repeat(6)}\n-----END PRIVATE KEY-----`,
+				passphrase: 'my secret key',
+			});
+		});
 	});
 
 	describe('sanitizeUiMessage', () => {

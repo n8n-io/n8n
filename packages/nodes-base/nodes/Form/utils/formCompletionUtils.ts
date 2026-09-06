@@ -13,6 +13,7 @@ import {
 import {
 	generateFormUserAuthToken,
 	getHostNavigationPath,
+	getN8nWebsiteLink,
 	getNodeReference,
 	handleNewlines,
 	resolveRawData,
@@ -93,6 +94,7 @@ export const renderFormCompletion = async (
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
 		customCss?: string;
+		appendAttribution?: boolean;
 	};
 	const respondWith = context.getNodeParameter('respondWith', '') as
 		| 'text'
@@ -111,9 +113,13 @@ export const renderFormCompletion = async (
 		title = context.evaluateExpression(`{{ ${triggerRef}.params.formTitle }}`) as string;
 		title = resolveRawData(context, title);
 	}
-	const appendAttribution = context.evaluateExpression(
-		`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
-	) as boolean;
+	// The completion page inherits the trigger's attribution setting unless it
+	// carries its own, so an ending page can drop the footer on its own.
+	const appendAttribution =
+		options.appendAttribution ??
+		(context.evaluateExpression(
+			`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
+		) as boolean);
 
 	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
@@ -134,6 +140,9 @@ export const renderFormCompletion = async (
 		message: completionMessage,
 		formTitle: title,
 		appendAttribution,
+		// Without this the footer's anchor renders with an empty href and the
+		// browser resolves it against the completion page's own URL.
+		n8nWebsiteLink: appendAttribution ? getN8nWebsiteLink(context.getInstanceId()) : undefined,
 		responseText,
 		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),

@@ -53,7 +53,7 @@ on:
         default: 'e2e'
         type: string
       build-variant:
-        description: 'Build variant for docker-artifact mode. Must match the variant used by prepare-docker (standard or coverage).'
+        description: 'Build variant for docker-artifact mode. Must match the variant used by prepare-docker (standard, coverage, or pc).'
         required: false
         default: 'standard'
         type: string
@@ -172,7 +172,15 @@ jobs:
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+          # Hosted sandbox service for the instance-ai specs. When both are set the
+          # `sandbox` test service skips its local dind stack and points n8n here.
+          # Unset (fork PRs get no secrets) falls back to the local containers.
+          N8N_SANDBOX_SERVICE_URL: ${{ secrets.N8N_SANDBOX_SERVICE_URL }}
+          N8N_SANDBOX_SERVICE_API_KEY: ${{ secrets.N8N_SANDBOX_SERVICE_API_KEY }}
           N8N_TEST_ENV: ${{ inputs.n8n-env }}
+          # Opt in to the a11y reporter here rather than in playwright.config.ts,
+          # so a local run stays quiet unless it is asked for.
+          PLAYWRIGHT_A11Y_REPORT: '1'
 
       - name: Upload Shard Artifacts
         if: always()
@@ -188,6 +196,19 @@ jobs:
             packages/testing/playwright/coverage/index.html
             packages/testing/playwright/coverage/assets/
           retention-days: 1
+          if-no-files-found: ignore
+
+      # Only on a red run: the per-test axe scans are already attached to their
+      # test in Currents, and a green run still gets the violation table in the
+      # job summary, so uploading the full report every time would be a third
+      # copy of the same data per shard.
+      - name: Upload Accessibility Report
+        if: failure()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ${{ inputs.artifact-prefix }}-a11y-report-shard-${{ matrix.shard }}
+          path: packages/testing/playwright/a11y-report/
+          retention-days: 7
           if-no-files-found: ignore
 
       - name: Cancel Currents run if workflow is cancelled

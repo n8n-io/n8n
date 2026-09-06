@@ -20,16 +20,26 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
 		baseText: (key: string, opts?: { interpolate?: Record<string, string> }) => {
+			const translations: Record<string, string> = {
+				'instanceAi.confirmation.credentialDestination.title': 'Send credential data to {origin}?',
+				'instanceAi.confirmation.credentialDestination.description':
+					"The '{nodeName}' node will send credentials here for tests and executions.",
+				'instanceAi.confirmation.credentialDestination.descriptionMultiple':
+					'These nodes will send credentials here for tests and executions: {nodeNames}.',
+				'instanceAi.confirmation.credentialDestination.approve': 'Use destination',
+				'instanceAi.confirmation.credentialDestination.deny': "Don't use destination",
+			};
 			if (key === 'agents.chat.approval.description') {
 				return `The agent wants to run the ${opts?.interpolate?.toolName ?? ''} tool.`;
 			}
+			const value = translations[key] ?? key;
 			if (opts?.interpolate) {
 				return Object.entries(opts.interpolate).reduce(
 					(str, [k, v]) => str.replace(`{${k}}`, v),
-					key,
+					value,
 				);
 			}
-			return key;
+			return value;
 		},
 	}),
 }));
@@ -172,6 +182,58 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 	});
 
 	describe('approval confirmation', () => {
+		it('requires a specific decision for the credential destination', async () => {
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'req-destination',
+					severity: 'warning',
+					message: 'Review where this credential will be used',
+					workflowId: 'workflow-1',
+					credentialDestination: {
+						origin: 'https://api.example.com',
+						nodeNames: ['Fetch account'],
+					},
+				},
+				{ action: 'setup', workflowId: 'workflow-1' },
+				'workflows',
+			);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByText, getByTestId, queryByTestId } = renderComponent({
+				props: { kind: 'floating' },
+			});
+
+			expect(getByText('Send credential data to https://api.example.com?')).toBeVisible();
+			expect(
+				getByText("The 'Fetch account' node will send credentials here for tests and executions."),
+			).toBeVisible();
+			expect(getByText('Use destination')).toBeVisible();
+			expect(getByText("Don't use destination")).toBeVisible();
+			expect(queryByTestId('instance-ai-panel-confirm-always-allow')).toBeNull();
+
+			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-destination', {
+				kind: 'credentialDestination',
+				approved: true,
+				origin: 'https://api.example.com',
+			});
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({
+					type: 'credential-destination',
+					provided_inputs: [
+						{
+							label: 'Review where this credential will be used',
+							options: ['approve', 'deny'],
+							option_chosen: 'approve',
+						},
+					],
+				}),
+			);
+		});
+
 		it('tracks approve with correct payload', async () => {
 			injectPendingConfirmation(thread, {
 				requestId: 'req-1',

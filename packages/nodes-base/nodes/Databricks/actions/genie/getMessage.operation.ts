@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { getActiveCredentialType, getHost } from '../helpers';
+import { databricksApiRequest, getActiveCredentialType, getHost } from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -9,7 +9,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const conversationId = this.getNodeParameter('conversationId', i) as string;
 	const messageId = this.getNodeParameter('messageId', i) as string;
 
-	const response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+	const response = await databricksApiRequest(this, credentialType, {
 		method: 'GET',
 		url: `${host}/api/2.0/genie/spaces/${spaceId}/conversations/${conversationId}/messages/${messageId}`,
 		headers: { 'Content-Type': 'application/json' },

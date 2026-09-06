@@ -5,6 +5,7 @@ import {
 	DbLock,
 	DbLockService,
 	WorkflowReviewActivityRepository,
+	WorkflowReviewLifecycleRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
@@ -50,6 +51,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
+		private readonly workflowReviewLifecycleRepository: WorkflowReviewLifecycleRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly activityRepository: WorkflowReviewActivityRepository,
 		private readonly dbLockService: DbLockService,
@@ -70,10 +72,11 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 	/** Capture request data before deletion without writing activity or blocking the delete. */
 	async beforeWorkflowDeleted(workflowId: string, userId: string | null): Promise<void> {
 		try {
-			const openRequests = await this.workflowReviewRequestRepository.findOpenRequestsForWorkflows(
-				[workflowId],
-				{},
-			);
+			const openRequests =
+				await this.workflowReviewLifecycleRepository.findOpenRequestsAffectedByWorkflows(
+					[workflowId],
+					{},
+				);
 
 			// Keep only the latest state captured before deletion.
 			this.pendingDeleteCaptures.delete(workflowId);
@@ -205,10 +208,11 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 
 		await this.recordCauseEventsAndClose(type, workflowIds, async (ctx) => {
 			// Read under the lock to avoid racing a decision or version update.
-			const openRequests = await this.workflowReviewRequestRepository.findOpenRequestsForWorkflows(
-				workflowIds,
-				ctx,
-			);
+			const openRequests =
+				await this.workflowReviewLifecycleRepository.findOpenRequestsAffectedByWorkflows(
+					workflowIds,
+					ctx,
+				);
 
 			const affected = new Set<string>();
 			const candidateRequestIds: string[] = [];
@@ -326,7 +330,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		candidateRequestIds?: string[],
 	): Promise<string[]> {
 		const closableRequestIds =
-			await this.workflowReviewRequestRepository.findUnreviewableOpenRequestIds(
+			await this.workflowReviewLifecycleRepository.findUnreviewableOpenRequestIds(
 				ctx,
 				candidateRequestIds,
 			);

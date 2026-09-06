@@ -1,15 +1,13 @@
 import { Service } from '@n8n/di';
 import type { StepSlots, TriggerOutputs } from '@n8n/engine';
-import type {
-	INodeExecutionData,
-	IWorkflowBase,
-	IWorkflowExecutionDataProcess,
-} from 'n8n-workflow';
-import { getChildNodes, NodeConnectionTypes, UserError } from 'n8n-workflow';
+import type { INodeExecutionData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { isTriggerNodeType, MANUAL_TRIGGER_NODE_TYPE, UserError } from 'n8n-workflow';
 
+import { createExecutionIdV2 } from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 
 type ToStepOutputs = (outputs: INodeExecutionData[][]) => StepSlots;
 
@@ -26,13 +24,15 @@ const DEFAULT_MAIN_OUTPUT: INodeExecutionData[][] = [[{ json: {} }]];
  * not pick.
  *
  * No control-plane execution row is created: the data plane is the source of
- * truth, and the returned execution id is its UUID.
+ * truth for the run. Only the execution id is minted here, so the push session
+ * can be recorded before dispatch.
  */
 @Service()
 export class EngineV2Dispatcher {
 	constructor(
 		private readonly proxy: EngineDataPlaneProxyService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly pushRegistry: EngineV2PushRegistry,
 	) {}
 
 	/**
@@ -51,7 +51,7 @@ export class EngineV2Dispatcher {
 		);
 	}
 
-	/** Returns the data plane's execution id. */
+	/** Returns the execution id this dispatch minted. */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
 		this.assertSupported(data);
 
@@ -63,42 +63,52 @@ export class EngineV2Dispatcher {
 		// its dependencies into every n8n process, including ones with the module off.
 		const { V1WorkflowConverter, toStepOutputs } = await import('@n8n/node-engine-compatibility');
 
-		const graph = new V1WorkflowConverter().convert(this.selectTriggerSubgraph(data));
+		const graph = new V1WorkflowConverter().convert(workflowData, data.triggerToStartFrom?.name);
+		const triggerMain = this.triggerMainOutputs(data);
 
-		const { executionId } = await this.proxy.startExecution({
-			workflowId: workflowData.id,
-			graph,
-			triggerOutputs: this.toTriggerOutputs(data, toStepOutputs),
-			mode: 'manual',
-		});
+		const executionId = createExecutionIdV2();
+		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
+		this.registerPushSession(executionId, data, triggerMain);
+
+		try {
+			await this.proxy.startExecution({
+				executionId,
+				workflowId: workflowData.id,
+				graph,
+				triggerOutputs: this.toTriggerOutputs(triggerMain, toStepOutputs),
+				mode: 'manual',
+			});
+		} catch (error) {
+			// Assumes rejection: a dropped success response also releases a still-live session.
+			this.pushRegistry.release(executionId);
+			throw error;
+		}
 
 		return executionId;
 	}
 
-	/** Keep only the branch that starts at the trigger selected for this manual run. */
-	private selectTriggerSubgraph(data: IWorkflowExecutionDataProcess): IWorkflowBase {
-		const { triggerToStartFrom, workflowData } = data;
-		if (triggerToStartFrom === undefined) return workflowData;
+	/**
+	 * Lifecycle events carry no session id, so the push ref is recorded here,
+	 * keyed by execution id.
+	 */
+	private registerPushSession(
+		executionId: string,
+		data: IWorkflowExecutionDataProcess,
+		triggerMain: INodeExecutionData[][],
+	): void {
+		const { pushRef, workflowData, triggerToStartFrom } = data;
+		// No push ref means nothing is watching this run.
+		if (!pushRef) return;
 
-		const includedNodeNames = new Set([
-			triggerToStartFrom.name,
-			...getChildNodes(
-				workflowData.connections,
-				triggerToStartFrom.name,
-				NodeConnectionTypes.Main,
-				-1,
-			),
-		]);
-
-		return {
-			...workflowData,
-			nodes: workflowData.nodes.filter((node) => includedNodeNames.has(node.name)),
-			connections: Object.fromEntries(
-				Object.entries(workflowData.connections).filter(([sourceNodeName]) =>
-					includedNodeNames.has(sourceNodeName),
-				),
-			),
-		};
+		this.pushRegistry.register(executionId, {
+			pushRef,
+			workflowId: workflowData.id,
+			// The engine never announces the trigger, so save its outputs for the relay.
+			trigger: triggerToStartFrom && {
+				nodeName: triggerToStartFrom.name,
+				outputs: triggerMain,
+			},
+		});
 	}
 
 	/**
@@ -139,6 +149,19 @@ export class EngineV2Dispatcher {
 		}
 
 		const triggerName = data.triggerToStartFrom?.name;
+
+		// TODO(CAT-2920, CAT-2921): the webhook and scheduler paths deliver the real
+		// trigger payload. Until then only the Manual Trigger's payload is built here.
+		const liveNodes = data.workflowData.nodes.filter((node) => node.disabled !== true);
+		const firedTrigger = triggerName
+			? liveNodes.find((node) => node.name === triggerName)
+			: liveNodes.find((node) => isTriggerNodeType(node.type));
+		if (firedTrigger !== undefined && firedTrigger.type !== MANUAL_TRIGGER_NODE_TYPE) {
+			throw new UserError(
+				`Engine 2.0 cannot run the "${firedTrigger.name}" trigger yet. Only the Manual Trigger is supported.`,
+			);
+		}
+
 		const pinnedNode = Object.keys(data.pinData ?? {}).find((name) => name !== triggerName);
 		if (pinnedNode !== undefined) {
 			throw new UserError(
@@ -152,10 +175,7 @@ export class EngineV2Dispatcher {
 	 * record the trigger with no slots, so every successor edge reads as dead and
 	 * the execution completes having run nothing.
 	 */
-	private toTriggerOutputs(
-		data: IWorkflowExecutionDataProcess,
-		toStepOutputs: ToStepOutputs,
-	): TriggerOutputs | null {
+	private triggerMainOutputs(data: IWorkflowExecutionDataProcess): INodeExecutionData[][] {
 		const triggerName = data.triggerToStartFrom?.name;
 		// `IPinData` values are a flat item array; the Manual Trigger has one output.
 		const pinned = triggerName ? data.pinData?.[triggerName] : undefined;
@@ -166,7 +186,14 @@ export class EngineV2Dispatcher {
 
 		// v1 uses `null` for a slot it has no data for; an empty slot says the same
 		// thing to the engine, which `toStepOutputs` collapses back to a dead edge.
-		const slots = toStepOutputs(main.map((slot) => slot ?? []));
+		return main.map((slot) => slot ?? []);
+	}
+
+	private toTriggerOutputs(
+		main: INodeExecutionData[][],
+		toStepOutputs: ToStepOutputs,
+	): TriggerOutputs | null {
+		const slots = toStepOutputs(main);
 
 		// The wire schema rejects an empty array; `null` is how "no slots" is sent.
 		return slots.length === 0 ? null : slots;

@@ -29,7 +29,7 @@ const signRawToken = (claims: Record<string, unknown>, options: jwt.SignOptions 
 		...options,
 	});
 
-const verify = (token: string) => verifyActionToken(secret, token, 'status:write');
+const verify = (token: string) => verifyActionToken(secret, token, 'lifecycle-events:write');
 
 describe('verifyActionToken', () => {
 	beforeEach(() => {
@@ -41,7 +41,7 @@ describe('verifyActionToken', () => {
 	});
 
 	it('round trips: accepts a token it minted for the scope', () => {
-		expect(() => verify(mintActionToken(secret, 'status:write'))).not.toThrow();
+		expect(() => verify(mintActionToken(secret, 'lifecycle-events:write'))).not.toThrow();
 	});
 
 	it('rejects an identity token minted for the control plane to data plane direction', () => {
@@ -67,7 +67,7 @@ describe('verifyActionToken', () => {
 	});
 
 	it('rejects a token signed with a different secret', () => {
-		const token = mintActionToken('b'.repeat(32), 'status:write');
+		const token = mintActionToken('b'.repeat(32), 'lifecycle-events:write');
 
 		expect(() => verify(token)).toThrow(InvalidActionTokenError);
 	});
@@ -76,15 +76,15 @@ describe('verifyActionToken', () => {
 		['unset', ''],
 		['under-length', 'a'.repeat(31)],
 	])('rejects every token when the verifying secret is %s', (_label, verifyingSecret) => {
-		const token = mintActionToken(secret, 'status:write');
+		const token = mintActionToken(secret, 'lifecycle-events:write');
 
-		expect(() => verifyActionToken(verifyingSecret, token, 'status:write')).toThrow(
+		expect(() => verifyActionToken(verifyingSecret, token, 'lifecycle-events:write')).toThrow(
 			InvalidActionTokenError,
 		);
 	});
 
 	it('accepts a token still inside its lifetime', () => {
-		const token = mintActionToken(secret, 'status:write');
+		const token = mintActionToken(secret, 'lifecycle-events:write');
 
 		vi.advanceTimersByTime((ACTION_TOKEN.ttlSeconds - 1) * 1000);
 
@@ -92,7 +92,7 @@ describe('verifyActionToken', () => {
 	});
 
 	it('rejects a token once its lifetime has passed', () => {
-		const token = mintActionToken(secret, 'status:write');
+		const token = mintActionToken(secret, 'lifecycle-events:write');
 
 		vi.advanceTimersByTime(PAST_EVERY_DEADLINE_MS);
 
@@ -104,7 +104,7 @@ describe('verifyActionToken', () => {
 
 		// Minted on a clock that runs ahead of this host by more than it tolerates.
 		vi.setSystemTime(now + (ACTION_TOKEN.clockToleranceSeconds + 60) * 1000);
-		const token = mintActionToken(secret, 'status:write');
+		const token = mintActionToken(secret, 'lifecycle-events:write');
 		vi.setSystemTime(now);
 
 		expect(() => verify(token)).toThrow(InvalidActionTokenError);
@@ -112,7 +112,7 @@ describe('verifyActionToken', () => {
 
 	it('rejects a token older than the maximum age even when it has not expired', () => {
 		// `mintActionToken` ties `exp` to the TTL, so only a raw token can outlive it.
-		const token = signRawToken({ scope: 'status:write' }, { expiresIn: '1h' });
+		const token = signRawToken({ scope: 'lifecycle-events:write' }, { expiresIn: '1h' });
 
 		vi.advanceTimersByTime(PAST_EVERY_DEADLINE_MS);
 
@@ -120,14 +120,14 @@ describe('verifyActionToken', () => {
 	});
 
 	it('rejects a token without an expiration', () => {
-		const token = signRawToken({ scope: 'status:write' });
+		const token = signRawToken({ scope: 'lifecycle-events:write' });
 
 		expect(() => verify(token)).toThrow(InvalidActionTokenError);
 	});
 
 	it('rejects a token with the wrong audience', () => {
 		const token = signRawToken(
-			{ scope: 'status:write' },
+			{ scope: 'lifecycle-events:write' },
 			{ audience: 'someone-else', expiresIn: ACTION_TOKEN.ttlSeconds },
 		);
 
@@ -136,7 +136,7 @@ describe('verifyActionToken', () => {
 
 	it('rejects a token with the wrong issuer', () => {
 		const token = signRawToken(
-			{ scope: 'status:write' },
+			{ scope: 'lifecycle-events:write' },
 			{ issuer: 'someone-else', expiresIn: ACTION_TOKEN.ttlSeconds },
 		);
 
@@ -147,7 +147,7 @@ describe('verifyActionToken', () => {
 		const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
 		const payload = Buffer.from(
 			JSON.stringify({
-				scope: 'status:write',
+				scope: 'lifecycle-events:write',
 				iss: ACTION_TOKEN.issuer,
 				aud: ACTION_TOKEN.audience,
 				exp: Math.floor(Date.now() / 1000) + ACTION_TOKEN.ttlSeconds,

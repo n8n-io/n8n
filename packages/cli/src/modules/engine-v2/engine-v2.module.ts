@@ -29,6 +29,10 @@ export class EngineV2Module implements ModuleInterface {
 			engineConfig.authSecret = randomBytes(32).toString('hex');
 		}
 
+		// Before the engine, so nothing is reported with no server to receive it.
+		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
+		await Container.get(EngineControlPlaneServer).start();
+
 		const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
 		await Container.get(EngineV2Runtime).init();
 
@@ -45,5 +49,9 @@ export class EngineV2Module implements ModuleInterface {
 	async shutdown() {
 		const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
 		await Container.get(EngineV2Runtime).shutdown();
+
+		// After the engine, so its final flush still has somewhere to land.
+		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
+		await Container.get(EngineControlPlaneServer).stop();
 	}
 }
