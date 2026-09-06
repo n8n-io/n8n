@@ -10,6 +10,7 @@ import {
 	createSilentLogConsumer,
 } from '../helpers/utils';
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
+import type { StartupDeadline } from '../startup-deadline';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { FileToMount } from './types';
 
@@ -83,6 +84,7 @@ export interface N8NInstancesOptions {
 	filesToMount?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
+	startupDeadline: StartupDeadline;
 }
 
 export interface N8NInstancesResult {
@@ -154,6 +156,7 @@ interface SharedConfig {
 	filesToMount?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
+	startupDeadline: StartupDeadline;
 }
 
 interface ContainerStartResult {
@@ -182,12 +185,16 @@ async function createContainer(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 	} = shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
 		'/healthz/readiness',
 		N8N_READINESS_PORT,
-		{ startupTimeoutMs: N8N_STARTUP_TIMEOUT_MS, readTimeoutMs: N8N_READ_TIMEOUT_MS },
+		{
+			startupTimeoutMs: Math.min(N8N_STARTUP_TIMEOUT_MS, startupDeadline.remainingMs),
+			readTimeoutMs: N8N_READ_TIMEOUT_MS,
+		},
 	);
 
 	const containerEnvironment = coverageHostDir
@@ -250,6 +257,7 @@ async function createContainer(
 	}
 
 	try {
+		startupDeadline.throwIfAborted();
 		const started = await container.start();
 		registerContainer?.(started);
 		return { container: started, getLogs, getLastReadinessBody };
@@ -285,6 +293,7 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 	} = options;
 
 	const log = createElapsedLogger('n8n-instances');
@@ -300,6 +309,7 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 	};
 
 	const workerShared: SharedConfig = {
@@ -310,6 +320,7 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 	};
 
 	const webhookShared: SharedConfig = {
@@ -319,6 +330,7 @@ export async function createN8NInstances(
 		resourceQuota: webhookResourceQuota ?? resourceQuota,
 		filesToMount,
 		registerContainer,
+		startupDeadline,
 	};
 
 	const sharedByRole: Record<InstanceRole, SharedConfig> = {
@@ -368,6 +380,7 @@ export async function createN8NInstances(
 		diagnostics.logs[instance.name] = result.getLogs();
 		diagnostics.readinessPayloads[instance.name] = result.getLastReadinessBody();
 	};
+	options.startupDeadline.throwIfAborted();
 
 	const rethrowWithDiagnostics = (error: unknown): never => {
 		const message =
