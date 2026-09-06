@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const TABLE_NAME = 'central_instance_monitoring_report';
 
-export class CreateCentralInstanceMonitoringReportTable1787766944676
+export class CreateCentralInstanceMonitoringReportTable1788445119184
 	implements ReversibleMigration
 {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
