@@ -121,6 +121,9 @@ test.each(['api-only', 'ui-only', 'combined', 'service-only', 'body-failure', 'b
 				await expect(fetch(server.url!, { signal: AbortSignal.timeout(1000) })).rejects.toThrow();
 			}
 			const launches = [...output.matchAll(/<launched> pid=(\d+)/g)];
+			if (['ui-only', 'combined', 'body-failure'].includes(scenario)) {
+				expect(launches.length, output).toBeGreaterThan(0);
+			}
 			for (const [, pid] of launches) {
 				expect(output).toContain(`[pid=${pid}] <process did exit:`);
 			}
