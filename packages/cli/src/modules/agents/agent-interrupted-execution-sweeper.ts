@@ -55,12 +55,16 @@ export class AgentInterruptedExecutionSweeper {
 		// Background job rows ride along on the same cadence: after abandoned
 		// child executions were marked interrupted above, reconciliation can
 		// settle the job rows that pointed at them (plus timed-out ones).
-		if (this.agentsConfig.backgroundTasksEnabled) {
-			try {
+		// Workflow-job reconciliation runs even with the feature flag off, so
+		// rows created while it was on cannot strand as `running`.
+		try {
+			if (this.agentsConfig.backgroundTasksEnabled) {
 				await this.backgroundJobService.reconcile();
-			} catch (error) {
-				this.logger.error('Failed to reconcile background job rows', { error });
+			} else {
+				await this.backgroundJobService.reconcileWorkflowJobs();
 			}
+		} catch (error) {
+			this.logger.error('Failed to reconcile background job rows', { error });
 		}
 	}
 }

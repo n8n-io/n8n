@@ -1,4 +1,7 @@
 import { lookup as dnsLookup } from 'node:dns';
+import { createServer } from 'node:http';
+import { createRequire } from 'node:module';
+import type { AddressInfo } from 'node:net';
 import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
 import type { MockedFunction } from 'vitest';
 
@@ -41,6 +44,15 @@ describe('getProxyAgent', () => {
 	// Restore original environment after all tests
 	afterAll(() => {
 		process.env = originalEnv;
+	});
+
+	it('resolves undici v7, whose dispatchers the global fetch of every supported Node accepts', () => {
+		// A v6 dispatcher handed to the global fetch of Node >= 26 rejects its
+		// dispatch handlers ('invalid onError method'), so every consumer call
+		// fails with an opaque 'fetch failed'. See the module doc.
+		// createRequire bypasses the vi.mock('undici') above.
+		const { version } = createRequire(__filename)('undici/package.json') as { version: string };
+		expect(Number(version.split('.')[0])).toBeGreaterThanOrEqual(7);
 	});
 
 	describe('default behavior (no timeout options)', () => {
@@ -420,20 +432,7 @@ describe('proxyFetch', () => {
 			const url = new URL('https://api.openai.com/v1');
 			await proxyFetch({ input: url, lookup: dnsLookup });
 
-			expect(mockFetch).toHaveBeenCalledWith(url, {
-				dispatcher: expect.objectContaining({ type: 'Agent' }),
-			});
-		});
-
-		it('should handle Request objects', async () => {
-			const request = new Request('https://api.openai.com/v1', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ test: 'data' }),
-			});
-			await proxyFetch({ input: request, lookup: dnsLookup });
-
-			expect(mockFetch).toHaveBeenCalledWith(request, {
+			expect(mockFetch).toHaveBeenCalledWith(url.href, {
 				dispatcher: expect.objectContaining({ type: 'Agent' }),
 			});
 		});
@@ -480,7 +479,7 @@ describe('proxyFetch', () => {
 			await proxyFetch({ input: url, lookup: dnsLookup });
 
 			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
-			expect(mockFetch).toHaveBeenCalledWith(url, {
+			expect(mockFetch).toHaveBeenCalledWith(url.href, {
 				dispatcher: expect.objectContaining({ type: 'ProxyAgent' }),
 			});
 		});
@@ -493,9 +492,10 @@ describe('proxyFetch', () => {
 			await proxyFetch({ input: request, lookup: dnsLookup });
 
 			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
-			expect(mockFetch).toHaveBeenCalledWith(request, {
-				dispatcher: expect.objectContaining({ type: 'ProxyAgent' }),
-			});
+			expect(mockFetch).toHaveBeenCalledWith(
+				request.url,
+				expect.objectContaining({ dispatcher: expect.objectContaining({ type: 'ProxyAgent' }) }),
+			);
 		});
 
 		it('should respect NO_PROXY environment variable', async () => {
@@ -599,5 +599,73 @@ describe('getNodeProxyAgent', () => {
 
 		expect(agent).toBeDefined();
 		expect(agent).toMatchObject({ keepAlive: true, keepAliveMsecs: 30_000 });
+	});
+});
+
+describe('proxyFetch with the real undici', () => {
+	const originalEnv = { ...process.env };
+
+	beforeEach(() => {
+		process.env = { ...originalEnv };
+		delete process.env.HTTP_PROXY;
+		delete process.env.http_proxy;
+		delete process.env.HTTPS_PROXY;
+		delete process.env.https_proxy;
+	});
+
+	afterAll(() => {
+		process.env = originalEnv;
+	});
+
+	// The Mistral SDK builds its requests with the global Request class and hands
+	// them to the fetcher; the package's undici fetch only recognizes its own
+	// Request class and used to stringify these to '[object Request]'. Either
+	// class can arrive, so both must reach the wire.
+	it.each([
+		['the global Request class', async () => Request],
+		[
+			'the undici Request class',
+			async () => (await import('undici')).Request as unknown as typeof Request,
+		],
+	])('should send a Request built with %s', async (_, loadRequestClass) => {
+		vi.doUnmock('undici');
+		vi.resetModules();
+		const { proxyFetch: realProxyFetch } = await import('../../utils/http-proxy-agent.js');
+		const RequestClass = await loadRequestClass();
+
+		const received: { method?: string; contentType?: string; body?: string } = {};
+		const server = createServer((req, res) => {
+			let body = '';
+			req.on('data', (chunk: Buffer) => (body += chunk.toString()));
+			req.on('end', () => {
+				Object.assign(received, {
+					method: req.method,
+					contentType: req.headers['content-type'],
+					body,
+				});
+				res.end('ok');
+			});
+		});
+		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+		const { port } = server.address() as AddressInfo;
+
+		try {
+			const request = new RequestClass(`http://127.0.0.1:${port}/v1/chat/completions`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: '{"model":"mistral-small"}',
+			});
+			const response = await realProxyFetch({ input: request, lookup: dnsLookup });
+
+			expect(await response.text()).toBe('ok');
+			expect(received).toEqual({
+				method: 'POST',
+				contentType: 'application/json',
+				body: '{"model":"mistral-small"}',
+			});
+		} finally {
+			server.closeAllConnections();
+			await new Promise((resolve) => server.close(resolve));
+		}
 	});
 });
