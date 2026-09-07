@@ -409,17 +409,24 @@ confirmation card.
 `nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
 actively dismissed and the agent must not re-open (see `reopenSkipped`).
 
-**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): the tool does not suspend.
-It analyzes the whole workflow (bound slots included), publishes the `setup-items`
-snapshot, tells the host the build's setup is handled, and returns
-`{ success: true, announced: true, workflowId, open, configured, message }`. `open`
-lists what the user still has to do in the panel, `configured` what is already
-bound. The agent summarizes `open` and ends its turn; the user completes items in
-the panel, and each new user turn carries a `<workflow-setup-state>` block that
-recomputes the state and names what settled since the agent's previous look. The
-validation steps (credential hints, plain generic auth, credential destination
-review) run before the announcement, and the resume paths (`apply`,
-`test-trigger`, decline) are unchanged for a card that was already open.
+**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): the normal setup call
+analyzes the whole workflow, including bound slots. It publishes the `setup-items`
+snapshot and confirms that it reached storage. It then saves the build's setup
+routing marker. Only after both steps succeed does it return
+`{ success: true, announced: true, workflowId, open, configured, validationWarnings, message }`.
+The agent summarizes the result and ends its turn. `open` lists pending items.
+`configured` lists stored bindings. Configuration does not prove that a connection
+test or workflow execution passed. Failed connection checks appear in `validationWarnings`.
+
+Validation and destination approval run before the announcement. The agent follows
+the returned guidance for errors, denials, or approvals. Explicit
+`preferNewCredentials` requests use the selection card. Existing cards keep their
+`apply`, `test-trigger`, and decline paths.
+
+Each new user turn carries a `<workflow-setup-state>` block with current saved
+state and items that settled since the previous look. This observation does not
+publish snapshots or change the current workflow target. It preserves announced
+recipes and does not count temporary credential replacement requests as user progress.
 
 ### `workflows(action="publish")`
 

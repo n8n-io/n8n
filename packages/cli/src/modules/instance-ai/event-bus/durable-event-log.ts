@@ -251,6 +251,7 @@ export class DurableEventLog {
 
 	/** Latest persisted setup panel snapshot per workflow (see repository). */
 	async getSetupItemsSnapshots(threadId: string) {
+		await this.flush(threadId);
 		return await this.repo.getSetupItemsSnapshots(threadId);
 	}
 

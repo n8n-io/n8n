@@ -1391,6 +1391,8 @@ export interface InstanceAiContext {
 export interface SetupItemsEmitter {
 	/** Replace the workflow's snapshot. Returns false when nothing changed (no event published). */
 	emit(workflowId: string, items: InstanceAiSetupItem[]): boolean;
+	/** Publish the final checklist and confirm persistence before setup routing ends. */
+	announce(workflowId: string, items: InstanceAiSetupItem[]): Promise<void>;
 	/**
 	 * Upsert items (by id) into the workflow's last snapshot and publish the
 	 * merged list. For emitters that know only part of the checklist, e.g. a

@@ -374,6 +374,9 @@ describe('formatWorkflowLoopGuidance — setup panel', () => {
 		expect(result).toContain('wf-123');
 		expect(result).toContain('setup panel next to the chat');
 		expect(result).toContain('end your turn');
+		expect(result).toContain('When the result has `announced: true`');
+		expect(result).toContain('Otherwise follow the returned guidance');
+		expect(result).not.toContain('No card opens');
 		expect(result).not.toContain('inline setup card');
 	});
 

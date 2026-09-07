@@ -1,12 +1,9 @@
 /**
  * Setup panel v2: the agent's view of a workflow's setup state.
  *
- * With the panel on, the agent never suspends for setup, so it has to learn what
- * the user configured between turns from the saved workflow itself. Every look
- * recomputes the checklist (`analyzeWorkflow`), re-announces the snapshot, and
- * remembers which items were open. The next look diffs against that memo to
- * name what settled meanwhile — no completion events are stored, the memo only
- * says what the agent last saw as open.
+ * Read saved workflows to learn what changed between turns. Keep a memo of
+ * open items to identify changes at the next observation. Observation does
+ * not publish snapshots or select a build target.
  */
 import type { InstanceAiSetupItem } from '@n8n/api-types';
 
@@ -17,7 +14,6 @@ import {
 	parametersSetupItemId,
 } from './setup-items';
 import type { SetupRequest } from './setup-workflow.schema';
-import { analyzeWorkflow } from './setup-workflow.service';
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
 
@@ -34,7 +30,7 @@ export type SetupItemDescription =
 
 export interface WorkflowSetupStateSummary {
 	workflowId: string;
-	/** The full snapshot, as announced to the panel. */
+	/** The full checklist derived from the current analysis. */
 	items: InstanceAiSetupItem[];
 	/** Items the user still has to act on. */
 	open: InstanceAiSetupItem[];
@@ -42,6 +38,8 @@ export interface WorkflowSetupStateSummary {
 	configured: InstanceAiSetupItem[];
 	/** Items open at the agent's previous look that are no longer open. */
 	settledSinceLastLook: SetupItemDescription[];
+	/** A stored binding does not guarantee that its connection test passed. */
+	validationWarnings: Array<{ nodeName: string; credentialType?: string; message?: string }>;
 }
 
 /** Ids of the items the requests report as still needing the user. */
@@ -81,7 +79,10 @@ export function describeSetupItem(item: InstanceAiSetupItem): SetupItemDescripti
 function describeSetupItemId(workflowId: string, id: string): SetupItemDescription | undefined {
 	const credentialPrefix = `${workflowId}:credential:`;
 	if (id.startsWith(credentialPrefix)) {
-		const [credentialType, nodeName] = id.slice(credentialPrefix.length).split(':');
+		const key = id.slice(credentialPrefix.length);
+		const separator = key.indexOf(':');
+		const credentialType = separator === -1 ? key : key.slice(0, separator);
+		const nodeName = separator === -1 ? undefined : key.slice(separator + 1);
 		if (!credentialType) return undefined;
 		return { kind: 'credential', credentialType, ...(nodeName ? { nodes: [nodeName] } : {}) };
 	}
@@ -111,7 +112,18 @@ export function summarizeWorkflowSetupState(
 			return item ? describeSetupItem(item) : describeSetupItemId(workflowId, id);
 		})
 		.filter((description): description is SetupItemDescription => description !== undefined);
-	return { workflowId, items, open, configured, settledSinceLastLook };
+	const validationWarnings = requests.flatMap((request) =>
+		request.credentialTestResult?.success === false
+			? [
+					{
+						nodeName: request.node.name,
+						credentialType: request.credentialType,
+						message: request.credentialTestResult.message,
+					},
+				]
+			: [],
+	);
+	return { workflowId, items, open, configured, settledSinceLastLook, validationWarnings };
 }
 
 type OpenItemsMemo = Record<string, string[]>;
@@ -164,11 +176,23 @@ async function rememberOpenItems(
 	}
 }
 
+/** Do not turn a temporary request for replacement into a completion fact. */
+export async function rememberWorkflowSetupState(
+	context: InstanceAiContext,
+	workflowId: string,
+	requests: readonly SetupRequest[],
+): Promise<void> {
+	const savedRequests = requests.map((request) =>
+		request.preferNewCredential ? { ...request, credentialNeedsAction: false } : request,
+	);
+	await rememberOpenItems(context, workflowId, [...openSetupItemIds(workflowId, savedRequests)]);
+}
+
 /**
  * One "look" at a workflow the caller already analyzed with `includeSettled`:
  * announce the snapshot, diff against the previous look, remember this one.
- * Best-effort throughout — a build or a setup call must never fail over the
- * panel bookkeeping.
+ * A build must not fail because its early checklist could not be published.
+ * The final setup handoff confirms persistence separately.
  */
 export async function recordWorkflowSetupState(
 	context: InstanceAiContext,
@@ -191,11 +215,7 @@ export async function recordWorkflowSetupState(
 			});
 		}
 	}
-	await rememberOpenItems(
-		context,
-		workflowId,
-		summary.open.map((item) => item.id),
-	);
+	await rememberWorkflowSetupState(context, workflowId, requests);
 	return summary;
 }
 
@@ -208,13 +228,18 @@ export async function observeWorkflowSetupStates(
 	context: InstanceAiContext,
 	workflowIds: readonly string[],
 ): Promise<WorkflowSetupStateSummary[]> {
+	const { analyzeWorkflow } = await import('./setup-workflow.service.js');
+	const memo = await readOpenItemsMemo(context);
 	const summaries: WorkflowSetupStateSummary[] = [];
 	for (const workflowId of workflowIds.slice(0, MAX_OBSERVED_WORKFLOWS)) {
 		try {
 			const requests = await analyzeWorkflow(context, workflowId, undefined, {
 				includeSettled: true,
 			});
-			summaries.push(await recordWorkflowSetupState(context, workflowId, requests));
+			summaries.push(
+				summarizeWorkflowSetupState(workflowId, requests, new Set(memo[workflowId] ?? [])),
+			);
+			await rememberWorkflowSetupState(context, workflowId, requests);
 		} catch (error) {
 			context.logger?.debug?.('Skipping setup state for a workflow that did not analyze', {
 				workflowId,
@@ -238,11 +263,15 @@ export function formatWorkflowSetupStateNote(
 		open: summary.open.map(describeSetupItem),
 		configured: summary.configured.map(describeSetupItem),
 		settledSinceLastTurn: summary.settledSinceLastLook,
+		...(summary.validationWarnings.length > 0
+			? { validationWarnings: summary.validationWarnings }
+			: {}),
 	}));
 	return [
 		'Setup state of the workflows this conversation built, recomputed just now from the saved ' +
 			'workflows and the credentials in this project. The setup panel next to the chat shows the ' +
-			'same list and the user completes items there: never open a setup card for them, never ask ' +
+			'current checklist and the user completes items there. A configured item is not proof of ' +
+			'a successful connection test or workflow execution. Report validationWarnings when present. Never ask ' +
 			'for secrets in chat. `settledSinceLastTurn` names items that were open at your previous ' +
 			'look and are not anymore (configured, or removed from the workflow). Trust this over older ' +
 			'tool results.',

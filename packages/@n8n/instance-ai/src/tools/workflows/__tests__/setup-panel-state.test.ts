@@ -137,7 +137,7 @@ describe('summarizeWorkflowSetupState', () => {
 		const previouslyOpen = new Set([
 			'wf-1:credential:gmailOAuth2', // bound since: still in the snapshot
 			'wf-1:parameters:Sheet', // resolved since: gone from the snapshot
-			'wf-1:credential:httpBasicAuth:Removed', // node removed since
+			'wf-1:credential:httpBasicAuth:Removed:primary', // node removed since
 			'wf-1:credential:slackApi', // still open
 		]);
 
@@ -146,7 +146,7 @@ describe('summarizeWorkflowSetupState', () => {
 		expect(summary.settledSinceLastLook).toEqual([
 			{ kind: 'credential', credentialType: 'gmailOAuth2', nodes: ['Gmail'] },
 			{ kind: 'parameters', nodeName: 'Sheet' },
-			{ kind: 'credential', credentialType: 'httpBasicAuth', nodes: ['Removed'] },
+			{ kind: 'credential', credentialType: 'httpBasicAuth', nodes: ['Removed:primary'] },
 		]);
 	});
 });
@@ -238,7 +238,9 @@ describe('recordWorkflowSetupState', () => {
 					throw new Error('publish failed');
 				}),
 				merge: vi.fn(() => true),
-				workflowIds: vi.fn(() => []), lastWorkflowId: vi.fn(),
+				announce: vi.fn().mockResolvedValue(undefined),
+				workflowIds: vi.fn(() => []),
+				lastWorkflowId: vi.fn(),
 			},
 		});
 
@@ -268,6 +270,55 @@ describe('observeWorkflowSetupStates', () => {
 		expect(summaries.map((summary) => summary.workflowId)).toEqual(['wf-1']);
 	});
 
+	it('preserves announced recipes and the current build target during observation', async () => {
+		const { emitter: setupItemsEmitter, published } = emitter();
+		const items = summarizeWorkflowSetupState('wf-1', [
+			{ ...openSlack, setupHint: { template: {}, placeholders: [] } },
+		]).items;
+		setupItemsEmitter.emit('wf-1', items);
+		setupItemsEmitter.emit('wf-2', []);
+		vi.mocked(analyzeWorkflow).mockResolvedValue([openSlack]);
+
+		await observeWorkflowSetupStates(context({ setupItemsEmitter }), ['wf-2', 'wf-1']);
+
+		expect(published).toHaveLength(2);
+		expect(setupItemsEmitter.lastWorkflowId()).toBe('wf-2');
+		expect(setupItemsEmitter.emit('wf-1', items)).toBe(false);
+	});
+
+	it('does not turn a historical workflow into the target for standalone credentials', async () => {
+		const setupItemsEmitter = createSetupItemsEmitter({
+			eventBus: { publish: vi.fn() },
+			threadId: 'thread-1',
+			runId: 'run-2',
+			agentId: 'orchestrator',
+			initialSnapshots: [{ workflowId: 'wf-old', items: [] }],
+		});
+		vi.mocked(analyzeWorkflow).mockResolvedValue([openSlack]);
+
+		await observeWorkflowSetupStates(context({ setupItemsEmitter }), ['wf-old']);
+
+		expect(setupItemsEmitter.lastWorkflowId()).toBeUndefined();
+	});
+
+	it('does not report temporary credential replacement as user progress', async () => {
+		const memory = threadMemory();
+		const ctx = context({ threadMemory: memory, setupItemsEmitter: emitter().emitter });
+		await recordWorkflowSetupState(ctx, 'wf-1', [
+			{ ...openSlack, preferNewCredential: true, parameterIssues: { channel: ['missing'] } },
+		]);
+		vi.mocked(analyzeWorkflow).mockResolvedValue([
+			{ ...openSlack, credentialNeedsAction: false, parameterIssues: { channel: ['missing'] } },
+		]);
+
+		const [summary] = await observeWorkflowSetupStates(ctx, ['wf-1']);
+
+		expect(summary.settledSinceLastLook).toEqual([]);
+		expect(memory.metadata().instanceAiSetupPanelOpenItems).toEqual({
+			'wf-1': ['wf-1:parameters:Slack'],
+		});
+	});
+
 	it('caps the number of workflows it analyzes per turn', async () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
 
@@ -292,7 +343,7 @@ describe('formatWorkflowSetupStateNote', () => {
 		const note = formatWorkflowSetupStateNote([summary]);
 		const [guidance, json] = note.split('\n');
 
-		expect(guidance).toContain('never open a setup card');
+		expect(guidance).toContain('not proof of a successful connection test');
 		expect(jsonParse(json)).toEqual({
 			workflows: [
 				{

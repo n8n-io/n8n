@@ -1,4 +1,8 @@
-import { instanceAiEventSchema, type InstanceAiEvent } from '@n8n/api-types';
+import {
+	instanceAiEventSchema,
+	type InstanceAiEvent,
+	type InstanceAiSetupItem,
+} from '@n8n/api-types';
 
 import {
 	buildSetupItemsFromAnnouncement,
@@ -63,6 +67,96 @@ function setupRequest(overrides: {
 }
 
 describe('createSetupItemsEmitter', () => {
+	it('waits for persisted state before it completes the final announcement', async () => {
+		const items: InstanceAiSetupItem[] = [
+			{ id: 'wf-1:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+		];
+		let resolve!: (items: InstanceAiSetupItem[]) => void;
+		const promise = new Promise<InstanceAiSetupItem[]>((done) => {
+			resolve = done;
+		});
+		const emitter = createSetupItemsEmitter({
+			eventBus: { publish: vi.fn() },
+			threadId: 'thread-1',
+			runId: 'run-1',
+			agentId: 'orchestrator',
+			readPersistedSnapshot: async () => await promise,
+		});
+		const completed = vi.fn();
+
+		const announcement = emitter.announce('wf-1', items).then(completed);
+		await Promise.resolve();
+		expect(completed).not.toHaveBeenCalled();
+		resolve(items);
+		await announcement;
+		expect(completed).toHaveBeenCalledOnce();
+	});
+
+	it.each(['missing', 'read failure', 'publish failure'])(
+		'retries a final announcement after %s',
+		async (failure) => {
+			const items: InstanceAiSetupItem[] = [
+				{ id: 'wf-1:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+			];
+			const publish = vi.fn();
+			const readPersistedSnapshot = vi.fn().mockResolvedValue(items);
+			if (failure === 'missing') readPersistedSnapshot.mockResolvedValueOnce(undefined);
+			if (failure === 'read failure') {
+				readPersistedSnapshot.mockRejectedValueOnce(new Error('read failed'));
+			}
+			if (failure === 'publish failure') {
+				publish.mockImplementationOnce(() => {
+					throw new Error('publish failed');
+				});
+			}
+			const emitter = createSetupItemsEmitter({
+				eventBus: { publish },
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'orchestrator',
+				readPersistedSnapshot,
+			});
+
+			await expect(emitter.announce('wf-1', items)).resolves.toBeUndefined();
+			expect(publish).toHaveBeenCalledTimes(2);
+		},
+	);
+
+	it('rejects an announcement that never reaches storage and allows a later retry', async () => {
+		const publish = vi.fn();
+		const readPersistedSnapshot = vi.fn().mockResolvedValue(undefined);
+		const emitter = createSetupItemsEmitter({
+			eventBus: { publish },
+			threadId: 'thread-1',
+			runId: 'run-1',
+			agentId: 'orchestrator',
+			readPersistedSnapshot,
+		});
+
+		await expect(emitter.announce('wf-1', [])).rejects.toThrow('not persisted');
+		readPersistedSnapshot.mockResolvedValue([]);
+		await expect(emitter.announce('wf-1', [])).resolves.toBeUndefined();
+		expect(publish).toHaveBeenCalledTimes(3);
+	});
+
+	it('confirms a deduplicated announcement against storage', async () => {
+		const publish = vi.fn();
+		const readPersistedSnapshot = vi.fn().mockResolvedValue([]);
+		const emitter = createSetupItemsEmitter({
+			eventBus: { publish },
+			threadId: 'thread-1',
+			runId: 'run-1',
+			agentId: 'orchestrator',
+			initialSnapshots: [{ workflowId: 'wf-1', items: [] }],
+			readPersistedSnapshot,
+		});
+
+		await emitter.announce('wf-1', []);
+
+		expect(publish).not.toHaveBeenCalled();
+		expect(readPersistedSnapshot).toHaveBeenCalledWith('wf-1');
+	});
+
 	it('publishes a durable setup-items snapshot for the workflow', () => {
 		const { emitter, published } = makeEmitter();
 

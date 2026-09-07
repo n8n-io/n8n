@@ -323,11 +323,18 @@ Emitted only while the setup panel flag is on, through the host-wired
 snapshot on every successful save (open credential slots fanned out to their
 nodes, slots already bound to a stored credential, and nodes with unresolved
 parameters); `workflows(action="setup")` publishes the same whole-workflow
-snapshot instead of opening a card; `credentials(action="setup")` re-analyses
+snapshot for normal setup calls; `credentials(action="setup")` re-analyses
 the saved workflow and merges the result, with the announced `reason`/`setupHint`
 applied, into the last snapshot. The emitter is seeded with the thread's
 persisted snapshots at run start and drops a snapshot whose content did not
-change, so a recomputed, unchanged list publishes nothing.
+change, so a recomputed, unchanged list publishes nothing. Snapshot reads wait for
+pending events to drain. The final workflow setup handoff confirms the stored
+snapshot before it saves the setup routing marker. A failed handoff returns an
+error instead of `announced: true`. Credential replacement requests and existing
+setup cards keep their selection and resume flows.
+
+The agent observes saved workflows at the start of a user turn. This read updates
+its private open-item memo. It does not publish a snapshot or select a workflow.
 
 ```json
 {

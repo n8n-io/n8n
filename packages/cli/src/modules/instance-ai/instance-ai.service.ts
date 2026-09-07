@@ -2497,10 +2497,22 @@ export class InstanceAiService {
 				threadId,
 				runId,
 				agentId: orchestratorAgentId(runId),
-				initialSnapshots: await this.eventLog.getSetupItemsSnapshots(threadId),
+				initialSnapshots: await this.eventLog.getSetupItemsSnapshots(threadId).catch((error) => {
+					this.logger.warn('Failed to read setup panel snapshots', {
+						threadId,
+						error: getErrorMessage(error),
+					});
+					return [];
+				}),
+				readPersistedSnapshot: async (workflowId) => {
+					const snapshots = await this.eventLog.getSetupItemsSnapshots(threadId);
+					return snapshots.find((snapshot) => snapshot.workflowId === workflowId)?.items;
+				},
 			});
 			context.markWorkflowSetupHandled = async (workflowId) => {
-				await this.markWorkflowSetupHandled(threadId, workflowId, runId);
+				await this.markWorkflowSetupHandled(threadId, workflowId, runId, {
+					requirePersisted: true,
+				});
 			};
 		}
 
@@ -3110,6 +3122,7 @@ export class InstanceAiService {
 		threadId: string,
 		workflowId: string,
 		runId?: string,
+		options: { requirePersisted?: boolean } = {},
 	): Promise<boolean> {
 		const records = await this.listWorkflowLoopRecords(threadId);
 		if (records.length === 0) return false;
@@ -3145,17 +3158,30 @@ export class InstanceAiService {
 			const claim = await this.claimWorkItemSetupRouting(threadId, record);
 			if (!claim) continue;
 
-			const marked = await this.markWorkItemSetupRouted(
-				threadId,
-				record.state.workItemId,
-				claim.claimId,
-			);
+			let marked: boolean;
+			try {
+				marked = await this.markWorkItemSetupRouted(
+					threadId,
+					record.state.workItemId,
+					claim.claimId,
+				);
+			} catch (error) {
+				await this.releaseWorkItemSetupRoutingClaim(
+					threadId,
+					record.state.workItemId,
+					claim.claimId,
+				);
+				throw error;
+			}
 			if (!marked) {
 				await this.releaseWorkItemSetupRoutingClaim(
 					threadId,
 					record.state.workItemId,
 					claim.claimId,
 				);
+				if (options.requirePersisted) {
+					throw new OperationalError('Workflow setup routing marker was not saved');
+				}
 				this.logger.warn('Workflow setup completed but routing marker was not saved', {
 					threadId,
 					workItemId: record.state.workItemId,

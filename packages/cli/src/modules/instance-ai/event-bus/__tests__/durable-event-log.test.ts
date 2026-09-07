@@ -116,6 +116,10 @@ class FakeRepo {
 		const set = new Set(runIds);
 		return this.rows.filter((r) => set.has(r.event.runId)).map((r) => r.event);
 	}
+
+	async getSetupItemsSnapshots(_threadId: string) {
+		return this.rows.flatMap(({ event }) => (event.type === 'setup-items' ? [event.payload] : []));
+	}
 }
 
 function buildLog(repo: FakeRepo) {
@@ -176,6 +180,39 @@ function useIdleFlushTimers(): void {
 describe('DurableEventLog', () => {
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('waits for an in-flight append before reading setup snapshots', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		let releaseAppend!: () => void;
+		repo.gateNextAppend = new Promise((resolve) => {
+			releaseAppend = resolve;
+		});
+		let enteredAppend!: () => void;
+		const entered = new Promise<void>((resolve) => {
+			enteredAppend = resolve;
+		});
+		repo.onGatedAppend = enteredAppend;
+		log.publish(
+			THREAD,
+			{
+				type: 'setup-items',
+				runId: RUN,
+				agentId: AGENT,
+				payload: { workflowId: 'wf-1', items: [] },
+			},
+			vi.fn(),
+		);
+		await entered;
+		const read = vi.spyOn(repo, 'getSetupItemsSnapshots');
+
+		const snapshots = log.getSetupItemsSnapshots(THREAD);
+		await Promise.resolve();
+		expect(read).not.toHaveBeenCalled();
+		releaseAppend();
+
+		await expect(snapshots).resolves.toEqual([{ workflowId: 'wf-1', items: [] }]);
 	});
 
 	it('coalesces a segment into one text-block flushed immediately before the next structural fact', async () => {

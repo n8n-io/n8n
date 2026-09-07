@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.error';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
-import type { InstanceAiContext } from '../types';
+import type { InstanceAiContext, SetupItemsEmitter } from '../types';
 import {
 	findSetupHintProblems,
 	findSetupHintTestUrlOriginProblem,
@@ -33,7 +33,11 @@ import {
 	rememberObservedWorkflowChecksum,
 } from './workflows/observed-workflow-checksums';
 import { isSetupPanelEnabled } from './workflows/setup-items';
-import { describeSetupItem, recordWorkflowSetupState } from './workflows/setup-panel-state';
+import {
+	describeSetupItem,
+	rememberWorkflowSetupState,
+	summarizeWorkflowSetupState,
+} from './workflows/setup-panel-state';
 import {
 	completedSetupSubjects,
 	describeSkippedSetup,
@@ -207,7 +211,7 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Open the inline AI Assistant workflow setup card for credential and parameter configuration. Use for setup routing after a build.',
+			'Configure workflow credentials and parameters after a build. Follow the returned guidance for a setup panel announcement, selection card, or approval.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
@@ -224,7 +228,7 @@ const setupAction = z.object({
 		)
 		.optional()
 		.describe(
-			'Recipes for the Simplified Custom Auth credentials the user will create during setup: the card pre-fills the template and asks only for the placeholder values. Provide one per templated credential. REQUIRED before composing: load the `credential-recipe-research` skill and execute its lookup procedure — the template and testUrl must come from provider pages fetched there, never from memory.',
+			'Recipes for the Simplified Custom Auth credentials the user will create during setup: the setup form pre-fills the template and asks only for the placeholder values. Provide one per templated credential. REQUIRED before composing: load the `credential-recipe-research` skill and execute its lookup procedure — the template and testUrl must come from provider pages fetched there, never from memory.',
 		),
 	allowPlainGenericAuth: z
 		.boolean()
@@ -1378,12 +1382,13 @@ const SETUP_PANEL_ANNOUNCED_GUIDANCE =
 	'waiting on you and no card is open. Finish your turn now: tell the user in one or two sentences ' +
 	'what to configure in the panel — name the services and any values — then stop. Do not call setup ' +
 	'again for this workflow, do not call `credentials(action="setup")`, and do not tell the user to ' +
-	'open the editor or canvas. Items under `configured` are already done; mention them only if asked.';
+	'open the editor or canvas. Items under `configured` have stored bindings. Report any ' +
+	'validationWarnings; a binding does not prove that a connection or workflow test passed.';
 
 const SETUP_PANEL_NOTHING_OPEN_GUIDANCE =
-	'Nothing in this workflow needs setup: every credential is connected and no parameter is ' +
-	'unresolved. Tell the user the workflow is ready and finish your turn. Do not call setup again ' +
-	'for this workflow.';
+	'No setup items are open. The credential slots have stored bindings and no parameter is ' +
+	'unresolved. Report any validationWarnings and finish your turn. Do not describe the workflow ' +
+	'as tested or ready based on configuration alone. Do not call setup again for this workflow.';
 
 /**
  * Setup panel v2 replacement for the setup card: publish the workflow's
@@ -1392,25 +1397,41 @@ const SETUP_PANEL_NOTHING_OPEN_GUIDANCE =
  * workflow, not the nodes the last build touched.
  */
 async function announceWorkflowSetup(
-	context: InstanceAiContext,
+	context: InstanceAiContext & { setupItemsEmitter: SetupItemsEmitter },
 	workflowId: string,
 	analyzedRequests: readonly SetupRequest[],
 ) {
-	const summary = await recordWorkflowSetupState(context, workflowId, analyzedRequests);
+	const summary = summarizeWorkflowSetupState(workflowId, analyzedRequests);
 	try {
-		await context.markWorkflowSetupHandled?.(workflowId);
+		await context.setupItemsEmitter.announce(workflowId, summary.items);
+		try {
+			await context.markWorkflowSetupHandled?.(workflowId);
+		} catch {
+			// Retry a transient storage failure before the finalizer can route setup again.
+			await context.markWorkflowSetupHandled?.(workflowId);
+		}
 	} catch (error) {
-		context.logger?.warn('Failed to mark workflow setup as handled', {
+		context.logger?.warn('Failed to complete the setup panel handoff', {
 			workflowId,
 			error: error instanceof Error ? error.message : String(error),
 		});
+		return {
+			success: false,
+			announced: false,
+			workflowId,
+			error: 'setup_announcement_failed',
+			message:
+				'The setup handoff could not be saved. Report the failure. Do not claim setup is complete.',
+		};
 	}
+	await rememberWorkflowSetupState(context, workflowId, analyzedRequests);
 	return {
 		success: true,
 		announced: true,
 		workflowId,
 		open: summary.open.map(describeSetupItem),
 		configured: summary.configured.map(describeSetupItem),
+		validationWarnings: summary.validationWarnings,
 		message:
 			summary.open.length > 0 ? SETUP_PANEL_ANNOUNCED_GUIDANCE : SETUP_PANEL_NOTHING_OPEN_GUIDANCE,
 	};
@@ -1594,7 +1615,8 @@ async function handleSetup(
 
 		// Setup panel v2: announce the final checklist and return. The user
 		// completes it in the panel; the turn ends with the agent's summary.
-		if (setupPanelEnabled) {
+		// Replacement needs an explicit selection. A saved binding already appears done in the panel.
+		if (isSetupPanelEnabled(context) && !input.preferNewCredentials?.length) {
 			return await announceWorkflowSetup(context, input.workflowId, analyzedRequests);
 		}
 

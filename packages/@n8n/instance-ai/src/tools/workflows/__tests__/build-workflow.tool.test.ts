@@ -698,6 +698,7 @@ describe('createBuildWorkflowTool', () => {
 			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest, boundGmailRequest]);
 			const emitter = {
 				emit: vi.fn(() => true),
+				announce: vi.fn().mockResolvedValue(undefined),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn(),
 				workflowIds: vi.fn(() => []),
@@ -742,6 +743,7 @@ describe('createBuildWorkflowTool', () => {
 			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([boundGmailRequest]);
 			const emitter = {
 				emit: vi.fn(() => true),
+				announce: vi.fn().mockResolvedValue(undefined),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn(),
 				workflowIds: vi.fn(() => []),
@@ -792,6 +794,7 @@ describe('createBuildWorkflowTool', () => {
 				emit: vi.fn(() => {
 					throw new Error('bus down');
 				}),
+				announce: vi.fn().mockResolvedValue(undefined),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn(),
 				workflowIds: vi.fn(() => []),
