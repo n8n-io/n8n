@@ -9,7 +9,7 @@ import { z } from 'zod';
  */
 
 /** Version of the extension protocol. Bump when commands/events change. */
-export const PROTOCOL_VERSION = 6;
+export const PROTOCOL_VERSION = 2;
 
 const browserRecordingTargetSchema = z
 	.object({
