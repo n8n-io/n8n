@@ -21,6 +21,10 @@ describe('AgentScheduledJobOwner', () => {
 		Container.set(AgentRepository, agentRepository);
 	});
 
+	afterEach(() => {
+		Container.reset();
+	});
+
 	it('names a task as an owner member and the agent as an owner', () => {
 		const owner = makeOwner();
 
