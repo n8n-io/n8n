@@ -315,17 +315,32 @@ export class WorkflowRunner {
 			}, STREAMING_HEARTBEAT_INTERVAL_MS);
 		}
 
-		if (this.executionsConfig.mode === 'queue') {
-			await this.enqueueExecution(
-				executionId,
-				workflowId,
-				data,
-				loadStaticData,
-				realtime,
-				existingExecution?.executionId,
-			);
-		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, existingExecution?.executionId);
+		const shouldReloadStaticData = Boolean(existingExecution && loadStaticData);
+
+		try {
+			if (this.executionsConfig.mode === 'queue') {
+				await this.enqueueExecution(
+					executionId,
+					workflowId,
+					data,
+					shouldReloadStaticData,
+					realtime,
+					existingExecution?.executionId,
+				);
+			} else {
+				await this.runMainProcess(
+					executionId,
+					data,
+					shouldReloadStaticData,
+					existingExecution?.executionId,
+					executionWorkflow,
+				);
+			}
+		} catch (error) {
+			// A failed start means the post-execute promise that normally clears the
+			// heartbeat never settles, so clear it here.
+			if (heartbeatInterval) clearInterval(heartbeatInterval);
+			throw error;
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
