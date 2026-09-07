@@ -6,14 +6,20 @@ import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 const IconParameterInput = async () => await import('./IconParameterInput.vue');
 
 /**
- * Owns the `icon` parameter input. There is no backend half and no
- * `/rest/module-settings` entry: `registerModuleParameterInputs` does not gate on
- * `isModuleActive`, because a parameter input is a render primitive rather than a
- * feature. A gated renderer would leave the field with nothing to draw it.
+ * Owns the `icon` parameter input.
+ *
+ * The `parameter-input-` prefix on the id marks a contribution-only module: it has no
+ * backend half, so its id is absent from `/rest/module-settings` and it is free to
+ * name the contribution point it feeds. A feature module cannot do that — its id has
+ * to equal its backend module directory name, because `isModuleActive(id)` tests it.
+ *
+ * `registerModuleParameterInputs` does not gate on `isModuleActive`, because a
+ * parameter input is a render primitive rather than a feature. A gated renderer would
+ * leave the field with nothing to draw it.
  */
-export const IconParameterModule: FrontendModuleDescription = {
-	id: 'icon-parameter',
-	name: 'Icon Parameter',
+export const ParameterInputIconModule: FrontendModuleDescription = {
+	id: 'parameter-input-icon',
+	name: 'Icon Parameter Input',
 	description: 'Renders the icon and emoji picker for parameters of type `icon`',
 	icon: 'smile',
 	parameterInputs: [

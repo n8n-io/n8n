@@ -9,6 +9,11 @@ pnpm n8n-module-sdk create my-feature --stack=frontend
 
 `create` writes `packages/modules/<name>/<frontend|backend>`.
 
+**Pick `<name>` by class.** A module with a backend half takes its backend module directory
+name and no prefix (`otel`). A contribution-only module — no backend half, so its id never
+reaches `/rest/module-settings` — takes a prefix naming the descriptor contribution point it
+feeds (`parameter-input-icon` feeds `parameterInputs`). See `packages/modules/README.md`.
+
 ## Frontend
 
 A real, resolvable workspace package: source-only (`main: "src/index.ts"`, no
