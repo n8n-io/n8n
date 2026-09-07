@@ -37,6 +37,7 @@ import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
+import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
 
 type AgentValidationScope = 'runtime' | 'publish';
@@ -301,17 +302,11 @@ export class AgentValidationService {
 		workflowsByReference: Map<string, WorkflowEntity>;
 	}> {
 		const subAgentIds = new Set<string>();
-		const workflowRefs: AgentJsonWorkflowToolConfig[] = [];
+		const workflowRefs = extractAgentWorkflowRefs(ctx.config).filter((ref) => ref.workflow);
 
 		for (const ref of ctx.config.subAgents?.agents ?? []) {
 			if (ref.agentId && ref.agentId !== ctx.agentId) {
 				subAgentIds.add(ref.agentId);
-			}
-		}
-
-		for (const tool of ctx.config.tools ?? []) {
-			if (tool.type === 'workflow' && tool.workflow) {
-				workflowRefs.push(tool);
 			}
 		}
 

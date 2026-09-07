@@ -4,6 +4,7 @@ import type {
 	ExecutionMode,
 	ExecutionStatus,
 	TriggerOutputs,
+	WorkflowDocument,
 } from './execution.types';
 
 /** The fields the write side supplies and the execution path reads back. */
@@ -14,6 +15,8 @@ interface BaseExecutionRecord {
 	status: ExecutionStatus;
 	mode: ExecutionMode;
 	graph: WorkflowGraph;
+	/** Stored for the read path only. Nothing on the execution path reads it. */
+	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
 	callerContext: CallerContext;
 }
