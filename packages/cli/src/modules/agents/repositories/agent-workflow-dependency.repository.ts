@@ -1,4 +1,3 @@
-import type { AgentJsonConfig, AgentJsonWorkflowToolConfig } from '@n8n/api-types';
 import {
 	agentToolReferenceWhere,
 	BaseRepository,
@@ -11,19 +10,12 @@ import { DataSource, In, type EntityManager } from '@n8n/typeorm';
 import { AgentHistory } from '../entities/agent-history.entity';
 import { AgentWorkflowDependency } from '../entities/agent-workflow-dependency.entity';
 import { Agent } from '../entities/agent.entity';
+import { extractAgentWorkflowRefs } from '../utils/extract-agent-workflow-refs';
 
 export type AgentWorkflowDependencyReference = Pick<
 	AgentWorkflowDependency,
 	'agentId' | 'workflowId'
 >;
-
-function workflowToolRefs(
-	schema: AgentJsonConfig | null | undefined,
-): AgentJsonWorkflowToolConfig[] {
-	return (schema?.tools ?? []).filter(
-		(tool): tool is AgentJsonWorkflowToolConfig => tool.type === 'workflow',
-	);
-}
 
 @Service()
 export class AgentWorkflowDependencyRepository extends BaseRepository<AgentWorkflowDependency> {
@@ -62,10 +54,9 @@ export class AgentWorkflowDependencyRepository extends BaseRepository<AgentWorkf
 					: await manager.findOne(AgentHistory, {
 							where: { versionId: agent.activeVersionId, agentId },
 						});
-			// Only `schema.tools` carries workflow refs; integrations never do.
 			const refs = [
-				...workflowToolRefs(agent.schema),
-				...workflowToolRefs(publishedVersion?.schema),
+				...extractAgentWorkflowRefs(agent.schema),
+				...extractAgentWorkflowRefs(publishedVersion?.schema),
 			];
 			const workflowIds = [
 				...new Set(refs.flatMap((ref) => (ref.workflowId === undefined ? [] : [ref.workflowId]))),
