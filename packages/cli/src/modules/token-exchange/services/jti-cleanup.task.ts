@@ -39,7 +39,7 @@ export class JtiCleanupTask implements SystemTask {
 		do {
 			deleted = await this.jtiRepository.deleteExpiredBatch(batchSize);
 			totalDeleted += deleted;
-		} while (deleted > 0 && deleted >= batchSize && !signal.aborted);
+		} while (deleted >= batchSize && !signal.aborted);
 
 		if (totalDeleted > 0) {
 			this.logger.debug('Cleaned up expired JTIs', { count: totalDeleted });

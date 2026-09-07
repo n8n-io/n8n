@@ -36,7 +36,7 @@ export class TokenExchangeConfig {
 	jtiCleanupIntervalSeconds: number = 60;
 
 	/** Maximum number of expired JTI rows to delete per cleanup run. */
-	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_BATCH_SIZE')
+	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_BATCH_SIZE', positiveIntSchema)
 	jtiCleanupBatchSize: number = 1000;
 
 	/** Maximum number of embed logins per ip per minute. */

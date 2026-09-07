@@ -60,19 +60,6 @@ describe('JtiCleanupTask', () => {
 			expect(jtiRepository.deleteExpiredBatch).toHaveBeenCalledTimes(1);
 		});
 
-		it('should stop when a batch deletes nothing even if batchSize is 0', async () => {
-			const zeroBatchTask = new JtiCleanupTask(
-				logger,
-				mock<TokenExchangeConfig>({ jtiCleanupBatchSize: 0 }),
-				jtiRepository,
-			);
-			jtiRepository.deleteExpiredBatch.mockResolvedValue(0);
-
-			await zeroBatchTask.run(signal);
-
-			expect(jtiRepository.deleteExpiredBatch).toHaveBeenCalledTimes(1);
-		});
-
 		it('should log total count when expired JTIs are deleted', async () => {
 			jtiRepository.deleteExpiredBatch.mockResolvedValueOnce(500).mockResolvedValueOnce(42);
 
