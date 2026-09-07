@@ -6,11 +6,14 @@ import { BinaryDataRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { existsSync } from 'node:fs';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { Header, type types } from 'tar';
 
 import { AppVersionRepository } from '@/modules/apps/app-version.repository';
+import { MAX_TARBALL_BYTES } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -94,6 +97,20 @@ beforeEach(async () => {
 
 const createApp = async () => await appRepository.createApp(ownerProject.id, 'Hello', 'hello');
 
+const rawGet = async (requestPath: string) =>
+	await new Promise<{ statusCode: number; body: string }>((resolve, reject) => {
+		const { port } = testServer.httpServer.address() as AddressInfo;
+		http
+			.request({ host: '127.0.0.1', port, path: requestPath }, (res) => {
+				let body = '';
+				res.setEncoding('utf8');
+				res.on('data', (chunk: string) => (body += chunk));
+				res.on('end', () => resolve({ statusCode: res.statusCode ?? 0, body }));
+			})
+			.on('error', reject)
+			.end();
+	});
+
 const upload = (appId: string, source = sourceTgz(), dist = distTgz()) =>
 	authOwnerAgent
 		.post(`/projects/${ownerProject.id}/apps/${appId}/versions`)
@@ -136,6 +153,18 @@ describe('POST /projects/:projectId/apps/:appId/versions', () => {
 		const app = await createApp();
 
 		await upload(app.id, sourceTgz(), Buffer.from('not a tarball')).expect(400);
+	});
+
+	test('rejects a gzip file that is not a tar archive with 400', async () => {
+		const app = await createApp();
+
+		await upload(app.id, sourceTgz(), gzipSync(Buffer.from('not a tar archive'))).expect(400);
+	});
+
+	test('rejects a file larger than the size limit with 400', async () => {
+		const app = await createApp();
+
+		await upload(app.id, sourceTgz(), Buffer.alloc(MAX_TARBALL_BYTES + 1)).expect(400);
 	});
 
 	test('skips entries that would land outside the dist directory', async () => {
@@ -199,6 +228,23 @@ describe('GET /apps/:namespace with an active version', () => {
 		expect(response.text).toBe(INDEX_HTML);
 	});
 
+	test('serves every html file with the sandbox policy and no caching', async () => {
+		const app = await createApp();
+		const about = '<!doctype html><html><body>about</body></html>';
+		const dist = tgz([
+			{ path: './index.html', content: INDEX_HTML },
+			{ path: './about.html', content: about },
+		]);
+		await upload(app.id, sourceTgz(), dist).expect(200);
+
+		const response = await visitor.get('/apps/hello/about.html').expect(200);
+
+		expect(response.headers['content-type']).toContain('text/html');
+		expect(response.headers['content-security-policy']).toContain('sandbox');
+		expect(response.headers['cache-control']).toBe('no-cache');
+		expect(response.text).toBe(about);
+	});
+
 	test('serves assets with their own content type and without the policy', async () => {
 		const app = await createApp();
 		await upload(app.id).expect(200);
@@ -233,6 +279,11 @@ describe('GET /apps/:namespace with an active version', () => {
 			const response = await visitor.get(url).expect(200);
 			expect(response.text).toBe(INDEX_HTML);
 		}
+
+		// superagent normalises `..` before the request leaves the process.
+		const raw = await rawGet('/apps/hello/../../config');
+		expect(raw.statusCode).toBe(200);
+		expect(raw.body).toBe(INDEX_HTML);
 	});
 
 	test('serves the newest version after a second upload', async () => {

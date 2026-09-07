@@ -6,7 +6,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { mkdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { extract as extractTar } from 'tar';
+import { extract as extractTar, list as listTar } from 'tar';
 
 import { AppVersionBlobStore, type StoredAppVersionBlob } from './app-version-blob-store';
 import type { AppVersion } from './app-version.entity';
@@ -18,7 +18,10 @@ import { createDistTarFilter } from './serving/dist-tar-filter';
 
 export const MAX_TARBALL_BYTES = 20 * 1024 * 1024;
 
-/** Dist tarballs kept per app besides the active version's; older versions keep source only. */
+/**
+ * The newest five dist tarballs of an app are kept; the active version's dist is
+ * always kept. Older versions keep their source only.
+ */
 const DIST_RETENTION = 5;
 
 const GZIP_MAGIC = Buffer.from([0x1f, 0x8b]);
@@ -36,21 +39,26 @@ export class AppVersionService {
 	) {}
 
 	async create(appId: string, source: Buffer, dist: Buffer): Promise<AppVersion> {
-		this.assertTarball('source', source);
-		this.assertTarball('dist', dist);
+		await this.assertTarball('source', source);
+		await this.assertTarball('dist', dist, createDistTarFilter());
 		if (!(await this.appRepository.existsBy({ id: appId }))) throw new AppNotFoundError(appId);
 
 		const versionId = generateNanoId();
 		const sourceBlob = await this.blobStore.write({ appId, versionId, kind: 'source' }, source);
 		const distBlob = await this.blobStore.write({ appId, versionId, kind: 'dist' }, dist);
 
-		const version = await this.appVersionRepository.insertVersion({
-			id: versionId,
-			appId,
-			storedAt: sourceBlob.storedAt,
-			sourceStorageKey: sourceBlob.storageKey,
-			distStorageKey: distBlob.storageKey,
-		});
+		const version = await this.appVersionRepository
+			.insertVersion({
+				id: versionId,
+				appId,
+				storedAt: sourceBlob.storedAt,
+				sourceStorageKey: sourceBlob.storageKey,
+				distStorageKey: distBlob.storageKey,
+			})
+			.catch(async (error: unknown) => {
+				await this.blobStore.delete([sourceBlob, distBlob]);
+				throw error;
+			});
 
 		await this.appRepository.setActiveVersionId(appId, versionId);
 		await this.pruneDist(appId, versionId);
@@ -134,13 +142,27 @@ export class AppVersionService {
 		await this.removeCacheDirs(prunable.map((version) => version.id));
 	}
 
-	private assertTarball(kind: 'source' | 'dist', body: Buffer) {
+	private async assertTarball(
+		kind: 'source' | 'dist',
+		body: Buffer,
+		filter?: ReturnType<typeof createDistTarFilter>,
+	): Promise<void> {
 		if (body.length > MAX_TARBALL_BYTES) {
 			throw new InvalidAppVersionTarballError(kind, `larger than ${MAX_TARBALL_BYTES} bytes`);
 		}
 		if (body.length < 2 || !body.subarray(0, 2).equals(GZIP_MAGIC)) {
 			throw new InvalidAppVersionTarballError(kind, 'not a gzip file');
 		}
+		// `strict` turns malformed headers, truncation and gunzip failures into errors.
+		const parser = listTar({ strict: true, filter });
+		await new Promise<void>((resolve, reject) => {
+			parser.on('error', reject);
+			parser.on('end', resolve);
+			parser.end(body);
+		}).catch((error: unknown) => {
+			const reason = error instanceof Error ? error.message : String(error);
+			throw new InvalidAppVersionTarballError(kind, `not a tar archive (${reason})`);
+		});
 	}
 
 	private async extract(tarball: Buffer, cwd: string): Promise<void> {
