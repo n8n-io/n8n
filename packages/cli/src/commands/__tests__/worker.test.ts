@@ -5,19 +5,31 @@ import { GlobalConfig } from '@n8n/config';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
+import { BinaryDataConfig, ErrorReporter } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
+import { JwtService } from '@/services/jwt.service';
 import { RedisClientService } from '@/services/redis-client.service';
+import { ShutdownService } from '@/shutdown/shutdown.service';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 import { Worker } from '../worker';
 
@@ -38,6 +50,21 @@ mockInstance(WorkerStatusService);
 const mockWorkerServer = mockInstance(WorkerServer);
 mockInstance(LoadNodesAndCredentials);
 const activeExecutions = mockInstance(ActiveExecutions);
+
+// Mocks for services reached by the full `init()` path, as in start.test.ts
+mockInstance(ErrorReporter);
+mockInstance(NodeTypes);
+mockInstance(ShutdownService);
+mockInstance(MessageEventBus);
+mockInstance(PostHogClient);
+mockInstance(TelemetryEventRelay);
+mockInstance(WorkflowFailureNotificationEventRelay);
+mockInstance(DeprecationService);
+mockInstance(CredentialsOverwrites);
+mockInstance(CommunityPackagesConfig, { enabled: false });
+mockInstance(JwtService);
+mockInstance(BinaryDataConfig);
+mockInstance(TaskRunnerModule);
 
 describe('Worker', () => {
 	beforeEach(() => {
@@ -111,52 +138,6 @@ describe('Worker', () => {
 		});
 	});
 
-<<<<<<< HEAD
-=======
-	describe('installOutboundProxyAgents', () => {
-		const workerWithOutboundProxyMode = (mode: 'all' | 'main-only') => {
-			const worker = new Worker();
-			// @ts-expect-error - Accessing protected property for testing
-			worker.globalConfig = { outboundProxy: { mode } };
-			return worker;
-		};
-
-		afterEach(() => {
-			uninstallGlobalProxyAgent();
-			vi.unstubAllEnvs();
-		});
-
-		it('should install env-proxy global agents in `all` mode', () => {
-			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
-
-			// @ts-expect-error - Accessing protected method for testing
-			workerWithOutboundProxyMode('all').installOutboundProxyAgents();
-
-			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
-			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
-		});
-
-		it('should keep plain global agents in `main-only` mode, as workers are not the main server', () => {
-			uninstallGlobalProxyAgent();
-			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
-
-			// @ts-expect-error - Accessing protected method for testing
-			workerWithOutboundProxyMode('main-only').installOutboundProxyAgents();
-
-			expect(http.globalAgent.constructor.name).toBe('Agent');
-			expect(https.globalAgent.constructor.name).toBe('Agent');
-		});
-
-		it('should install env-proxy global agents on `init()`, via the base command', async () => {
-			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
-
-			await createWorkerForInit({ outboundProxy: { mode: 'all' } }).init();
-
-			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
-			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
-		});
-	});
-
 	describe('init', () => {
 		afterEach(() => {
 			vi.unstubAllEnvs();
@@ -185,7 +166,6 @@ describe('Worker', () => {
 		);
 	});
 
->>>>>>> afc4a547 (fix(core): Wait for detached sub-workflows before the worker stops its task runner (#37737))
 	describe('stopProcess', () => {
 		it('should keep the DB connection open until in-flight executions have persisted', async () => {
 			// In-process executions on a worker e.g. sub-workflows started by
