@@ -355,6 +355,8 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 				triggerOutputs,
 				mode,
 				executionId: uuidv7(),
+				// the v1 mode of an unattended run is `trigger`
+				callerContext: { hostMode: mode === 'manual' ? 'manual' : 'trigger' },
 			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;

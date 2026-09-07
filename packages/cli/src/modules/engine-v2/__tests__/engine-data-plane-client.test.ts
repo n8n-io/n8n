@@ -23,6 +23,7 @@ describe('EngineDataPlaneClient', () => {
 		graph: { nodes: [], edges: [] },
 		workflow: {},
 		executionId: EXECUTION_ID,
+		callerContext: {},
 	};
 
 	let http: HttpRequestClient;

@@ -33,13 +33,20 @@ export class TokenExchangeModule implements ModuleInterface {
 		await import('./controllers/token-exchange.controller.js');
 		await import('./controllers/embed-auth.controller.js');
 
-		const { JtiCleanupService } = await import('./services/jti-cleanup.service.js');
-		Container.get(JtiCleanupService).init();
-
 		// Register the scoped JWT auth strategy into the public API auth chain.
 		// ScopedJwtStrategy runs after ApiKeyAuthStrategy (which abstains for token-exchange JWTs).
 		const { ScopedJwtStrategy } = await import('./services/scoped-jwt.strategy.js');
 		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
 		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
+	}
+
+	async systemTasks() {
+		if (!isFeatureFlagEnabled()) {
+			return [];
+		}
+
+		const { TrustedKeyRefreshTask } = await import('./services/trusted-key-refresh.task.js');
+		const { JtiCleanupTask } = await import('./services/jti-cleanup.task.js');
+		return [TrustedKeyRefreshTask, JtiCleanupTask];
 	}
 }

@@ -37,6 +37,11 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 		return await this.managerFor(ctx).findBy(TypeAvailabilityPolicy, { id: In(ids) });
 	}
 
+	/** Every policy document of one kind, for the document-library listing screen. */
+	async findByKind(kind: string, ctx: OperationContext): Promise<TypeAvailabilityPolicy[]> {
+		return await this.managerFor(ctx).findBy(TypeAvailabilityPolicy, { kind });
+	}
+
 	async createPolicy(input: NewPolicy, ctx: OperationContext): Promise<TypeAvailabilityPolicy> {
 		const policy = this.create({
 			kind: input.kind,

@@ -118,6 +118,7 @@ describe('workflow_execution table (integration)', () => {
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
 			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: {},
 		});
 	});
 

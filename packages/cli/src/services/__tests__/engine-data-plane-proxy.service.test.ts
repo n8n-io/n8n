@@ -15,6 +15,7 @@ describe('EngineDataPlaneProxyService', () => {
 		graph: { nodes: [], edges: [] },
 		workflow: {},
 		executionId,
+		callerContext: {},
 	};
 
 	let proxy: EngineDataPlaneProxyService;

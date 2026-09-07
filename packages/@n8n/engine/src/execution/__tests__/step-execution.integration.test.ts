@@ -108,6 +108,7 @@ describe('step execution (integration)', () => {
 				workflow: {},
 				triggerOutputs,
 				executionId: generateId(),
+				callerContext: {},
 			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
@@ -181,6 +182,7 @@ describe('step execution (integration)', () => {
 			workflowId: 'wf-1',
 			mode: 'production',
 			iteration: 0,
+			callerContext: {},
 		});
 	});
 
@@ -397,6 +399,7 @@ describe('step execution (integration)', () => {
 			graph,
 			workflow: {},
 			triggerOutputs: null,
+			callerContext: {},
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them
