@@ -110,6 +110,7 @@ vi.mock('@n8n/i18n', () => ({
 // --- helpers ---
 
 const WORKFLOW_ID = 'wf-1';
+const OTHER_WORKFLOW_ID = 'wf-2';
 const VERSION_ID = 'v-1';
 
 function makePublishedWorkflowResponse() {
@@ -209,7 +210,7 @@ describe('useWorkflowActivate', () => {
 			expect(mockSetChecksum).not.toHaveBeenCalled();
 		});
 
-		it('does NOT refresh the checksum when the editor closed while the request was in flight', async () => {
+		it('does NOT refresh the checksum when the editor closed or switched workflows while the request was in flight', async () => {
 			mockDocumentStore.hydrated = true;
 			mockDocumentStore.checksum = 'before-publish';
 			mockPublishWorkflow.mockImplementationOnce(async () => {
@@ -229,24 +230,28 @@ describe('useWorkflowActivate', () => {
 			expect(mockSetChecksum).not.toHaveBeenCalled();
 		});
 
-		it('does NOT touch the newly opened workflow when the editor switched while the request was in flight', async () => {
+		it('resolves the document store by the published workflow id, not by the editor in the route', async () => {
+			// wf-1 is the routed editor, wf-2 is an embedded (artifact) editor; publish wf-2
 			mockDocumentStore.hydrated = true;
-			mockDocumentStore.checksum = 'before-publish';
-			mockPublishWorkflow.mockImplementationOnce(async () => {
-				// wf-1 is torn down and wf-2 hydrates before the response arrives
-				mockDocumentStore.hydrated = false;
-				otherDocumentStore.hydrated = true;
-				return makePublishedWorkflowResponse();
-			});
+			mockDocumentStore.checksum = 'wf-1-checksum';
+			otherDocumentStore.hydrated = true;
+			otherDocumentStore.checksum = 'wf-2-checksum';
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
 
 			const { publishWorkflow } = useWorkflowActivate();
-			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+			const result = await publishWorkflow(OTHER_WORKFLOW_ID, VERSION_ID);
 
 			expect(result).toEqual({ success: true });
-			expect(otherDocumentStore.setActiveState).not.toHaveBeenCalled();
-			expect(otherDocumentStore.setPublicationStatus).not.toHaveBeenCalled();
-			expect(otherDocumentStore.setVersionData).not.toHaveBeenCalled();
-			expect(otherDocumentStore.setChecksum).not.toHaveBeenCalled();
+			expect(mockPublishWorkflow).toHaveBeenCalledWith(
+				OTHER_WORKFLOW_ID,
+				expect.objectContaining({ expectedChecksum: 'wf-2-checksum' }),
+			);
+			expect(otherDocumentStore.setChecksum).toHaveBeenCalledWith('abc123');
+			expect(otherDocumentStore.setVersionData).toHaveBeenCalledWith(
+				expect.objectContaining({ versionId: 'v-2' }),
+			);
+			expect(mockSetActiveState).not.toHaveBeenCalled();
+			expect(mockSetVersionData).not.toHaveBeenCalled();
 			expect(mockSetChecksum).not.toHaveBeenCalled();
 		});
 	});
