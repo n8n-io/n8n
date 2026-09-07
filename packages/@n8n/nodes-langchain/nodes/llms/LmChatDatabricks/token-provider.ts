@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { indicatesInvalidToken } from './error-handling';
 import type { OAuth2TokenData, RefreshingTokenSource } from '../../../utils/oauth2-token-provider';
 import { createRefreshingOAuth2TokenProvider } from '../../../utils/oauth2-token-provider';
 
@@ -117,12 +118,22 @@ function getServicePrincipalTokenProvider(
 	};
 }
 
+/** Cloned so the caller still gets a readable body when the refresh is skipped. */
+async function peekBody(response: Response): Promise<string> {
+	try {
+		return await response.clone().text();
+	} catch {
+		return '';
+	}
+}
+
 /**
- * Wraps fetch to inject a fresh bearer token per request. Never reads or
- * clones the body, so streaming responses pass through untouched. Redirects
- * are followed manually so every hop is validated against the egress filter
- * before the token is sent to it, matching the MCP client's fetch wrapper;
- * the redirect helper also drops the bearer on cross-origin hops.
+ * Wraps fetch to inject a fresh bearer token per request. Leaves a successful
+ * body untouched, so streaming responses pass through; only a rejected one is
+ * cloned, to read its short error payload. Redirects are followed manually so
+ * every hop is validated against the egress filter before the token is sent to
+ * it, matching the MCP client's fetch wrapper; the redirect helper also drops
+ * the bearer on cross-origin hops.
  */
 export function createDatabricksFetch(
 	tokenSource: RefreshingTokenSource,
@@ -169,6 +180,10 @@ export function createDatabricksFetch(
 
 		const response = await send(await getToken());
 		if (response.status !== expiredStatus || !refreshAfterRejection) return response;
+
+		// The status alone also matches "no permission on this endpoint", and a
+		// refresh spends the one-time-use refresh token, so read the body first
+		if (!indicatesInvalidToken(await peekBody(response))) return response;
 
 		// The clock check missed it: revoked server-side, or clock skew
 		const refreshed = await refreshAfterRejection();

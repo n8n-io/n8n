@@ -469,10 +469,27 @@ describe('createDatabricksFetch', () => {
 				new Headers((call[1] as RequestInit).headers).get('authorization'),
 			);
 
+		// Databricks reports a dead token and a missing endpoint permission both as
+		// 403 PERMISSION_DENIED, so only the message separates them
+		const invalidToken = () =>
+			new Response(
+				JSON.stringify({ error_code: 'PERMISSION_DENIED', message: 'Invalid access token.' }),
+				{ status: 403 },
+			);
+
+		const permissionDenied = () =>
+			new Response(
+				JSON.stringify({
+					error_code: 'PERMISSION_DENIED',
+					message: 'User does not have Can Query permission on serving endpoint my-endpoint.',
+				}),
+				{ status: 403 },
+			);
+
 		it('should refresh once and retry when the server rejects the token', async () => {
 			const mockFetch = vi
 				.fn()
-				.mockResolvedValueOnce(new Response('nope', { status: 403 }))
+				.mockResolvedValueOnce(invalidToken())
 				.mockResolvedValueOnce(new Response('ok', { status: 200 }));
 			globalThis.fetch = mockFetch;
 			const refreshAfterRejection = vi.fn().mockResolvedValue('refreshed-token');
@@ -487,6 +504,25 @@ describe('createDatabricksFetch', () => {
 			expect(response.status).toBe(200);
 			expect(refreshAfterRejection).toHaveBeenCalledTimes(1);
 			expect(authHeaders(mockFetch)).toEqual(['Bearer stale-token', 'Bearer refreshed-token']);
+		});
+
+		it('should not spend the refresh token when the endpoint denies permission', async () => {
+			const mockFetch = vi.fn().mockImplementation(async () => permissionDenied());
+			globalThis.fetch = mockFetch;
+			const refreshAfterRejection = vi.fn();
+
+			const wrappedFetch = createDatabricksFetch({
+				getToken: async () => 'valid-token',
+				refreshAfterRejection,
+				expiredStatus: 403,
+			});
+			const response = await wrappedFetch('https://my.databricks.com/serving-endpoints');
+
+			expect(refreshAfterRejection).not.toHaveBeenCalled();
+			expect(mockFetch).toHaveBeenCalledTimes(1);
+			expect(response.status).toBe(403);
+			// The skipped-refresh path must still hand back a readable body
+			await expect(response.text()).resolves.toContain('Can Query permission');
 		});
 
 		it('should not retry on a status that does not mean expiry', async () => {
@@ -507,7 +543,7 @@ describe('createDatabricksFetch', () => {
 		});
 
 		it('should surface the rejection when the session cannot be refreshed', async () => {
-			const mockFetch = vi.fn().mockResolvedValue(new Response('nope', { status: 403 }));
+			const mockFetch = vi.fn().mockImplementation(async () => invalidToken());
 			globalThis.fetch = mockFetch;
 
 			const wrappedFetch = createDatabricksFetch({
@@ -522,7 +558,7 @@ describe('createDatabricksFetch', () => {
 		});
 
 		it('should retry at most once so a rejecting server cannot loop', async () => {
-			const mockFetch = vi.fn().mockResolvedValue(new Response('nope', { status: 403 }));
+			const mockFetch = vi.fn().mockImplementation(async () => invalidToken());
 			globalThis.fetch = mockFetch;
 
 			const wrappedFetch = createDatabricksFetch({
@@ -539,7 +575,7 @@ describe('createDatabricksFetch', () => {
 		it('should replay the body on the retry', async () => {
 			const mockFetch = vi
 				.fn()
-				.mockResolvedValueOnce(new Response('nope', { status: 403 }))
+				.mockResolvedValueOnce(invalidToken())
 				.mockResolvedValueOnce(new Response('ok', { status: 200 }));
 			globalThis.fetch = mockFetch;
 

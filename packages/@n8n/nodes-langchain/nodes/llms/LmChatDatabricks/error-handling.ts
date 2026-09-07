@@ -3,12 +3,22 @@ import { OperationalError } from 'n8n-workflow';
 import { findSessionExpiredError } from '../../../utils/oauth2-token-provider';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
+/**
+ * Databricks answers both a dead token and "no permission on this endpoint" with
+ * 403 `PERMISSION_DENIED`, so only the message tells them apart. Reconnecting
+ * fixes the first; the second also must not spend the one-time refresh token.
+ */
+export function indicatesInvalidToken(text: string): boolean {
+	return /invalid\s+(access\s+)?token|token\s+(is\s+)?(invalid|expired)|expired\s+token/i.test(
+		text,
+	);
+}
+
 function isExpiredTokenResponse(error: unknown, expiredStatus: number): boolean {
 	if (typeof error !== 'object' || error === null) return false;
 	if (!('status' in error) || error.status !== expiredStatus) return false;
-	// A 403 also covers "no permission on this endpoint", which reconnecting won't fix
 	return (
-		'message' in error && typeof error.message === 'string' && /invalid token/i.test(error.message)
+		'message' in error && typeof error.message === 'string' && indicatesInvalidToken(error.message)
 	);
 }
 
