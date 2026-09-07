@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import * as XLSX from '@e965/xlsx';
 
 import { MAX_DECODED_SIZE_BYTES } from '../structured-file-parser';
 import { extractXlsxAsRows } from '../xlsx-parser';

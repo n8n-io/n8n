@@ -6,17 +6,6 @@ import type { AskAiRequest } from '@/features/ai/assistant/assistant.types';
 import type { Schema } from '@/Interface';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
-vi.mock('./utils', async () => {
-	const actual = await vi.importActual('./utils');
-	return {
-		...actual,
-		getSchemas: vi.fn(() => ({
-			parentNodesSchemas: { test: 'parentSchema' },
-			inputSchema: { test: 'inputSchema' },
-		})),
-	};
-});
-
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		pushRef: 'mockRootPushRef',
@@ -24,13 +13,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: () => ({
-		pushRef: 'mockNdvPushRef',
-	}),
-}));
-
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
 }));
 
@@ -60,6 +43,9 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 			'test prompt',
 			'test/path',
 			createWorkflowDocumentId(''),
+			null,
+			'mockNdvPushRef',
+			true,
 			2,
 		);
 
@@ -74,7 +60,15 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 		vi.mocked(generateCodeForPrompt).mockRejectedValue(new Error('All attempts failed'));
 
 		await expect(
-			generateCodeForAiTransform('test prompt', 'test/path', createWorkflowDocumentId(''), 3),
+			generateCodeForAiTransform(
+				'test prompt',
+				'test/path',
+				createWorkflowDocumentId(''),
+				null,
+				'mockNdvPushRef',
+				true,
+				3,
+			),
 		).rejects.toThrow('All attempts failed');
 
 		expect(generateCodeForPrompt).toHaveBeenCalledTimes(3);
@@ -88,6 +82,9 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 			'test prompt',
 			'test/path',
 			createWorkflowDocumentId(''),
+			null,
+			'mockNdvPushRef',
+			true,
 		);
 
 		expect(result).toEqual({

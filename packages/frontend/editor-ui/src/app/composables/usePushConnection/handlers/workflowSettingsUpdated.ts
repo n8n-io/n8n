@@ -1,17 +1,14 @@
 import type { WorkflowSettingsUpdated } from '@n8n/api-types/push/workflow';
 import type { IWorkflowSettings } from '@/Interface';
 
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { PushHandlerOptions } from './types';
 
-export async function workflowSettingsUpdated({
-	data: { workflowId, settings, checksum },
-}: WorkflowSettingsUpdated) {
-	const workflowsStore = useWorkflowsStore();
+export async function workflowSettingsUpdated(
+	{ data: { workflowId, settings, checksum } }: WorkflowSettingsUpdated,
+	{ documentId }: PushHandlerOptions,
+) {
 	const workflowsListStore = useWorkflowsListStore();
 
 	// Keep the list entry in sync so other views (workflow cards, MCP
@@ -28,10 +25,11 @@ export async function workflowSettingsUpdated({
 		}
 	}
 
-	// Only the editor tab needs to resync the document store + checksum.
-	if (workflowId !== workflowsStore.workflowId) return;
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 
-	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+	// Only the editor tab needs to resync the document store + checksum.
+	if (workflowId !== workflowDocumentStore.workflowId) return;
+
 	workflowDocumentStore.mergeSettings(settings);
 
 	if (checksum) {

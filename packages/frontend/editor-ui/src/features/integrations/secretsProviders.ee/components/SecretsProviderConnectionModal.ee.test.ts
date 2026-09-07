@@ -130,7 +130,7 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 
 const initialState = {
 	[STORES.UI]: {
-		modalsById: {
+		modalStateById: {
 			[SECRETS_PROVIDER_CONNECTION_MODAL_KEY]: {
 				open: true,
 			},

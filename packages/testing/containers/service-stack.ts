@@ -8,6 +8,7 @@ import { createN8NStack, type N8NStack } from './stack';
 export interface ServiceStackOptions {
 	services: ServiceName[];
 	projectName?: string;
+	networkName?: string;
 }
 
 /**
@@ -22,7 +23,7 @@ export interface ServiceStackOptions {
  * await stack.stop();
  */
 export async function createServiceStack(options: ServiceStackOptions): Promise<N8NStack> {
-	const { services, projectName } = options;
+	const { services, projectName, networkName } = options;
 
 	return await createN8NStack({
 		mains: 0,
@@ -30,6 +31,7 @@ export async function createServiceStack(options: ServiceStackOptions): Promise<
 		postgres: services.includes('postgres'),
 		services,
 		projectName,
+		networkName,
 		external: true,
 	});
 }
@@ -45,9 +47,15 @@ export function collectExternalEnv(
 ): Record<string, string> {
 	const env: Record<string, string> = {};
 	for (const name of services) {
-		const result = stack.serviceResults[name];
-		if (!result) continue;
 		const service = SERVICE_REGISTRY[name];
+		const result = stack.serviceResults[name];
+		if (!result) {
+			// Nothing started because a hosted deployment stands in for it. Reuse what
+			// the stack already resolved instead of re-probing, so the .env cannot
+			// disagree with the decision the stack actually made.
+			Object.assign(env, stack.hostedServiceEnv[name] ?? {});
+			continue;
+		}
 		Object.assign(env, service.env?.(result, true) ?? {}, service.extraEnv?.(result, true) ?? {});
 	}
 	return env;

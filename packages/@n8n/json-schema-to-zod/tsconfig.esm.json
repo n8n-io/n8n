@@ -1,9 +1,8 @@
 {
 	"compilerOptions": {
-		"ignoreDeprecations": "6.0",
 		"target": "es2020",
-		"module": "es2020",
-		"moduleResolution": "node",
+		"module": "esnext",
+		"moduleResolution": "bundler",
 		"rootDir": "src",
 		"outDir": "dist/esm",
 		"strict": true,

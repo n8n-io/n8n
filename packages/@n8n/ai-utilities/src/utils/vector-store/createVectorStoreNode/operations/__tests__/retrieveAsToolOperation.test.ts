@@ -6,22 +6,22 @@ import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { logWrapper } from '../../../../log-wrapper';
 import type { VectorStoreNodeConstructorArgs } from '../../types';
 import { handleRetrieveAsToolOperation } from '../retrieveAsToolOperation';
 
 // Mock the helper functions
-jest.mock('../../../../helpers', () => ({
-	getMetadataFiltersValues: jest.fn().mockReturnValue({ testFilter: 'value' }),
+vi.mock('../../../../helpers', () => ({
+	getMetadataFiltersValues: vi.fn().mockReturnValue({ testFilter: 'value' }),
 }));
 
-jest.mock('../../../../log-wrapper', () => ({
-	logWrapper: jest.fn().mockImplementation((obj) => obj),
+vi.mock('../../../../log-wrapper', () => ({
+	logWrapper: vi.fn().mockImplementation((obj) => obj),
 }));
 
 describe('handleRetrieveAsToolOperation', () => {
@@ -87,14 +87,14 @@ describe('handleRetrieveAsToolOperation', () => {
 				icon: 'file:testIcon.svg',
 			},
 			sharedFields: [],
-			getVectorStoreClient: jest.fn().mockResolvedValue(mockVectorStore),
-			populateVectorStore: jest.fn().mockResolvedValue(undefined),
-			releaseVectorStoreClient: jest.fn(),
+			getVectorStoreClient: vi.fn().mockResolvedValue(mockVectorStore),
+			populateVectorStore: vi.fn().mockResolvedValue(undefined),
+			releaseVectorStoreClient: vi.fn(),
 		};
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should create a structured tool with the correct name and description on version <= 1.2', async () => {

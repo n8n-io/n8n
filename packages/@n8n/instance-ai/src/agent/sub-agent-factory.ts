@@ -1,7 +1,12 @@
-import { Agent, type CheckpointStore } from '@n8n/agents';
+import { Agent, type CheckpointStore, type RuntimeSkillSource, type Workspace } from '@n8n/agents';
 
-import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
-import { ASK_USER_FALLBACK, SUBAGENT_OUTPUT_CONTRACT } from './shared-prompts';
+import { SECRET_ASK_GUARDRAIL, SECRET_PASTE_GUARDRAIL } from './credential-guardrails.prompt';
+import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
+import {
+	ASK_USER_FALLBACK,
+	SUBAGENT_OUTPUT_CONTRACT,
+	UNTRUSTED_CONTENT_DOCTRINE,
+} from './shared-prompts';
 import { getDateTimeSection } from './system-prompt';
 import { toolRegistryValues } from '../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
@@ -29,6 +34,10 @@ export interface SubAgentOptions {
 	traceRun?: InstanceAiTraceRun;
 	/** Optional trace context used to attach native AI SDK telemetry. */
 	tracing?: InstanceAiTraceContext;
+	/** Shared runtime workspace for skill scripts/files. */
+	workspace?: Workspace;
+	/** Runtime skills already materialized into the shared runtime workspace. */
+	runtimeSkills?: RuntimeSkillSource;
 	/** IANA time zone for the current user — used to render the datetime section so
 	 *  the sub-agent resolves "now" consistently with the orchestrator. */
 	timeZone?: string;
@@ -53,7 +62,9 @@ Keep diagnostics to 2-3 sentences maximum. Omit entirely when the task succeeded
 - One tool call at a time unless truly independent. Minimum tool calls needed.
 - You cannot delegate to other agents or create plans.
 - ${ASK_USER_FALLBACK}
-- ${SECRET_ASK_GUARDRAIL}`;
+- ${UNTRUSTED_CONTENT_DOCTRINE}
+- ${SECRET_ASK_GUARDRAIL}
+- ${SECRET_PASTE_GUARDRAIL}`;
 
 export { SUB_AGENT_PROTOCOL };
 
@@ -81,6 +92,10 @@ export function createSubAgent(options: SubAgentOptions): Agent {
 		})
 		.tool(toolRegistryValues(tools))
 		.checkpoint(options.checkpointStore ?? 'memory');
+	attachRuntimeWorkspaceCapabilities(agent, {
+		workspace: options.workspace,
+		runtimeSkills: options.runtimeSkills,
+	});
 	const telemetry = options.tracing?.getTelemetry?.({
 		agentRole: role,
 		functionId: `instance-ai.subagent.${role.replace(/[^a-zA-Z0-9._-]+/g, '-')}`,

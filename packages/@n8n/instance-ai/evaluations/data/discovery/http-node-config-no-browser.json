@@ -6,16 +6,7 @@
 		"browserAvailable": true
 	},
 	"expectedToolInvocations": {
-		"noneOf": [
-			"browser-credential-setup",
-			"spawn_sub_agent:browser-credential-setup",
-			"browser_navigate",
-			"browser_snapshot",
-			"browser_screenshot",
-			"navigate_page",
-			"take_snapshot",
-			"take_screenshot"
-		]
+		"noneOf": ["browser_navigate", "browser_snapshot", "browser_screenshot"]
 	},
-	"rationale": "Negative control. A pure node-config question must NOT trigger any browser tooling — neither the helper nor direct browser tool calls. Guards against an over-eager regression that would bias every credential-adjacent question into browser mode."
+	"rationale": "Negative control. A pure node-config question must NOT trigger Computer Use browser tooling. Guards against an over-eager regression that would bias every credential-adjacent question into browser mode."
 }

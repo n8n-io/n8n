@@ -6,10 +6,10 @@ import { v4 as uuid } from 'uuid';
 
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
+import { CacheService } from '@/services/cache/cache.service';
 
 import { MFA_ENFORCE_SETTING } from './constants';
 import { TOTPService } from './totp.service';
-import { CacheService } from '@/services/cache/cache.service';
 
 export const MFA_CACHE_KEY = 'mfa:enforce';
 @Service()

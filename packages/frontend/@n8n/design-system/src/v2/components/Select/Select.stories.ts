@@ -2,10 +2,9 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref, computed } from 'vue';
 
-import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import type { SelectItem } from './Select.types';
 import Select from './Select.vue';
+import N8nIcon from '../../../components/N8nIcon/Icon.vue';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;
@@ -24,7 +23,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Items = {
+export const Default = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select },
@@ -33,9 +32,7 @@ export const Items = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px;">
 			<Select :items="args.items" v-model="value"/>
-		</div>
 		`,
 	}),
 	args: {
@@ -53,7 +50,7 @@ export const ItemsObjectArray = {
 			return { args, value };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
+		<div style="display: flex; gap: 16px; align-items: center">
 			<h3>Default </h3>
 			<Select v-bind="args" v-model="value" />
 			<h3>Disabled </h3>
@@ -80,7 +77,7 @@ export const ItemsTypes = {
 			return { args, value };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
+		<div style="display: flex; gap: 16px; align-items: center">
 			<h3>xsmall </h3>
 			<Select v-bind="args" v-model="value" size="xsmall"/>
 			<h3 style="margin-top: 15px;">small (default)</h3>
@@ -143,7 +140,7 @@ export const WithIcons = {
 			return { args, value, icon };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
+		<div style="display: flex; gap: 16px; align-items: center">
 			<Select v-bind="args" v-model="value" :icon="icon" />
 		</div>
 		`,
@@ -183,7 +180,7 @@ export const WithSlots = {
 			return { args, value, icon };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
+		<div style="display: flex; gap: 16px; align-items: center">
 			<Select v-bind="args" v-model="value" :icon="icon" >
 				<template #item-leading="{ item, ui }">
 					<N8nIcon :icon="item.icon" color="primary" v-bind="ui" />
@@ -238,7 +235,7 @@ export const Variants = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<h3>Default</h3>
 			<Select :items="args.items" v-model="value"/>
 			<h3 style="margin-top: 15px;">Ghost</h3>
@@ -265,7 +262,7 @@ export const Sizes = {
 			return { args, value, icon };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<h3>xsmall </h3>
 			<Select :items="args.items" v-model="value" size="xsmall" :icon="icon"/>
 			<h3 style="margin-top: 15px;">small (default)</h3>

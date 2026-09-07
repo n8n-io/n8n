@@ -60,6 +60,21 @@ export const SecureArtifactsSchema = z
  */
 export type ISecureArtifacts = z.output<typeof SecureArtifactsSchema>;
 
+/**
+ * What a run needs to keep verifying its token once the OAuth protected resource it was
+ * granted access to can no longer be looked up. Resource descriptors are derived from
+ * what routes the request, which stops existing when the trigger stops listening; a run
+ * outlives that, so it carries the facts with it.
+ *
+ * Holds no authorization *decision* — only its inputs, so every check stays live.
+ */
+export interface OAuthResourceGrant {
+	/** `aud` values a token issued for this resource may carry. */
+	audiences: string[];
+	/** Workflow the holder must keep `workflow:execute` on. Absent if none is required. */
+	executeAccessWorkflowId?: string;
+}
+
 const CredentialContextSchemaV1 = z.object({
 	version: z.literal(1),
 	/**
@@ -120,6 +135,42 @@ const RedactionSettingSchemaV1 = z.object({
 
 export type IRedactionSettingV1 = z.output<typeof RedactionSettingSchemaV1>;
 
+const RedactionSourceSchema = z.union([z.literal('workflow'), z.literal('instance')]);
+
+export type RedactionSource = z.output<typeof RedactionSourceSchema>;
+
+/**
+ * Per-channel redaction snapshot. Each channel records, independently, whether
+ * execution data is redacted for production and manual executions. This is the
+ * strictest-per-channel resolution of the workflow setting and the instance floor,
+ * captured at execution time.
+ *
+ * `source` records which layer raised the bar:
+ * - `'instance'` when the floor enforced redaction the workflow did not ask for.
+ * - `'workflow'` otherwise (workflow setting met or exceeded the floor, including
+ *   the floor='off' case).
+ */
+const RedactionSettingSchemaV2 = z.object({
+	version: z.literal(2),
+	production: z.boolean(),
+	manual: z.boolean(),
+	source: RedactionSourceSchema.optional(),
+});
+
+export type IRedactionSettingV2 = z.output<typeof RedactionSettingSchemaV2>;
+
+/**
+ * Redaction snapshot, versioned by shape. V1 stored a single policy enum; V2 stores
+ * independent production/manual channels. Both shapes must keep parsing so execution
+ * data persisted before the V2 migration remains readable.
+ */
+const RedactionSettingSchema = z.discriminatedUnion('version', [
+	RedactionSettingSchemaV1,
+	RedactionSettingSchemaV2,
+]);
+
+export type IRedactionSetting = z.output<typeof RedactionSettingSchema>;
+
 const ExecutionContextSchemaV1 = z.object({
 	version: z.literal(1),
 	/**
@@ -175,7 +226,17 @@ const ExecutionContextSchemaV1 = z.object({
 	 * Persisted so the correct redaction policy is applied when reading execution data,
 	 * regardless of any subsequent changes to the workflow setting.
 	 */
-	redaction: RedactionSettingSchemaV1.optional(),
+	redaction: RedactionSettingSchema.optional(),
+
+	/**
+	 * The n8n user the execution ran as. Set during dynamic credential
+	 * resolution to the n8n user a private credential resolved to (covers manual
+	 * and chat-hub runs alike). Used by the redaction layer to grant that user
+	 * access to their own data. Absent when the resolved identity is not an n8n
+	 * user (external Slack/OAuth resolvers) or when no dynamic credential
+	 * resolved, so those executions stay redacted for everyone.
+	 */
+	executedByUserId: z.string().optional(),
 });
 
 export type IExecutionContextV1 = z.output<typeof ExecutionContextSchemaV1>;
@@ -191,6 +252,36 @@ export const ExecutionContextSchema = z
  * Established at execution start and propagated to sub-workflows/error workflows
  */
 export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
+
+/**
+ * Metadata shape for the `n8n-oauth` credential-context source.
+ *
+ * `subject` (the resolved n8n user id) and `executionPath` (the execution ids the
+ * seal is valid for) turn the carrier into a verify-once "sealed" identity: when a
+ * subject is present, resolution trusts it and binds to `executionPath` instead of
+ * re-verifying the stored token. Absent `subject` = the legacy token-verify carrier;
+ * `establishedAt`/`executionPath` are optional so those legacy carriers still parse.
+ *
+ * `grant` (see {@link OAuthResourceGrant}) is carried by grant-based triggers so a run
+ * can re-verify its token after the protected resource stops resolving. It is listed
+ * here so `maybeBindExecutionId` preserves it through its parse-and-re-encrypt round-trip;
+ * the identifier validates it against its own local schema.
+ */
+export const N8NOAuthMetadataSchema = z.object({
+	source: z.literal('n8n-oauth'),
+	subject: z.string().optional(),
+	resource: z.string(),
+	establishedAt: z.number().optional(),
+	executionPath: z.array(z.string()).optional(),
+	grant: z
+		.object({
+			audiences: z.array(z.string()).min(1),
+			executeAccessWorkflowId: z.string().optional(),
+		})
+		.optional(),
+});
+
+export type IN8NOAuthMetadata = z.output<typeof N8NOAuthMetadataSchema>;
 
 /**
  * Runtime representation of execution context with decrypted credential data.

@@ -160,7 +160,7 @@ describe('csv-prompt-loader', () => {
 	});
 
 	it('should skip invalid JSON in annotations column with warning', () => {
-		const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const csvPath = writeTempCsv(
 			'bad-annotations.csv',
 			'id,prompt,annotations\nbad-1,"Create a workflow","not-json"\n',

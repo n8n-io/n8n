@@ -1,16 +1,6 @@
 import { AgentIntegrationSchema } from '../agent-integration.schema';
 
 describe('AgentIntegrationSchema', () => {
-	it('accepts a schedule integration', () => {
-		const result = AgentIntegrationSchema.safeParse({
-			type: 'schedule',
-			active: true,
-			cronExpression: '0 9 * * *',
-			wakeUpPrompt: 'Daily standup ping',
-		});
-		expect(result.success).toBe(true);
-	});
-
 	it('accepts a telegram integration with credential id', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'telegram',
@@ -20,7 +10,7 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('accepts a chat integration with credential id', () => {
+	it('accepts an existing Slack integration without messaging settings', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'slack',
 			credentialId: 'cred-123',
@@ -28,19 +18,20 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('rejects a schedule integration missing cronExpression', () => {
+	it('accepts a Slack integration that uses the Agent messaging experience', () => {
 		const result = AgentIntegrationSchema.safeParse({
-			type: 'schedule',
-			active: true,
-			wakeUpPrompt: 'hello',
+			type: 'slack',
+			credentialId: 'cred-123',
+			settings: { messagingExperience: 'agent' },
 		});
-		expect(result.success).toBe(false);
+		expect(result.success).toBe(true);
 	});
 
-	it('rejects a chat integration with the reserved type "schedule"', () => {
+	it('rejects an unknown Slack messaging experience', () => {
 		const result = AgentIntegrationSchema.safeParse({
-			type: 'schedule',
+			type: 'slack',
 			credentialId: 'cred-123',
+			settings: { messagingExperience: 'unknown' },
 		});
 		expect(result.success).toBe(false);
 	});
@@ -54,23 +45,37 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('rejects a schedule integration with extra fields', () => {
+	it('accepts a Discord integration with a session idle timeout', () => {
 		const result = AgentIntegrationSchema.safeParse({
-			type: 'schedule',
-			active: true,
-			cronExpression: '0 9 * * *',
-			wakeUpPrompt: 'go',
-			extra: 'nope',
+			type: 'discord',
+			credentialId: 'cred-123',
+			settings: { sessionIdleTimeoutMinutes: 60 },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a Linear integration without settings', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'linear',
+			credentialId: 'cred-123',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a non-positive session idle timeout', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'telegram',
+			credentialId: 'cred-123',
+			settings: { accessMode: 'public', allowedUsers: [], sessionIdleTimeoutMinutes: 0 },
 		});
 		expect(result.success).toBe(false);
 	});
 
-	it('rejects an empty cronExpression', () => {
+	it('rejects the removed schedule integration type', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'schedule',
-			active: false,
-			cronExpression: '',
-			wakeUpPrompt: 'go',
+			active: true,
+			cronExpression: '0 9 * * *',
 		});
 		expect(result.success).toBe(false);
 	});

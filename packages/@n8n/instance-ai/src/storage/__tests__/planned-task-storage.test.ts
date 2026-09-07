@@ -1,25 +1,25 @@
+import type { Mock } from 'vitest';
+
 import type { PlannedTaskGraph } from '../../types';
 import { PlannedTaskStorage } from '../planned-task-storage';
 import { patchThread, type PatchableThreadMemory } from '../thread-patch';
 import type * as ThreadPatch from '../thread-patch';
 
-jest.mock('../thread-patch', () => {
-	const actual =
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		jest.requireActual<typeof ThreadPatch>('../thread-patch');
+vi.mock('../thread-patch', async () => {
+	const actual = await vi.importActual<typeof ThreadPatch>('../thread-patch');
 
 	return {
 		...actual,
-		patchThread: jest.fn(),
+		patchThread: vi.fn(),
 	};
 });
 
-const mockedPatchThread = jest.mocked(patchThread);
-type TestMemory = PatchableThreadMemory & { getThread: jest.Mock };
+const mockedPatchThread = vi.mocked(patchThread);
+type TestMemory = PatchableThreadMemory & { getThread: Mock };
 
 function makeMemory(): TestMemory {
 	return {
-		getThread: jest.fn(),
+		getThread: vi.fn(),
 	};
 }
 
@@ -54,7 +54,7 @@ describe('PlannedTaskStorage', () => {
 	let storage: PlannedTaskStorage;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		memory = makeMemory();
 		storage = new PlannedTaskStorage(memory);
 	});
@@ -75,6 +75,29 @@ describe('PlannedTaskStorage', () => {
 			expect(checkpoint?.deps).toEqual(['build-1']);
 		});
 
+		it('round-trips a graph containing a legacy delegate task', async () => {
+			const graph = makeGraph({
+				tasks: [
+					{
+						id: 'legacy-1',
+						title: 'Legacy delegate task',
+						kind: 'delegate',
+						spec: 'Do the research',
+						deps: [],
+						status: 'planned',
+					},
+				],
+			});
+			memory.getThread.mockResolvedValue({
+				metadata: { instanceAiPlannedTasks: graph },
+			});
+
+			const loaded = await storage.get('thread-1');
+
+			expect(loaded).not.toBeNull();
+			expect(loaded?.tasks[0]?.kind).toBe('delegate');
+		});
+
 		it('returns null when the stored graph has an unknown kind', async () => {
 			memory.getThread.mockResolvedValue({
 				metadata: {
@@ -86,6 +109,29 @@ describe('PlannedTaskStorage', () => {
 								title: 'x',
 								kind: 'not-a-kind',
 								spec: '',
+								deps: [],
+								status: 'planned',
+							},
+						],
+					},
+				},
+			});
+
+			const loaded = await storage.get('thread-1');
+			expect(loaded).toBeNull();
+		});
+
+		it('returns null for legacy manage-data-tables graphs', async () => {
+			memory.getThread.mockResolvedValue({
+				metadata: {
+					instanceAiPlannedTasks: {
+						...makeGraph(),
+						tasks: [
+							{
+								id: 'tables-1',
+								title: 'Manage data tables',
+								kind: 'manage-data-tables',
+								spec: 'Import rows',
 								deps: [],
 								status: 'planned',
 							},

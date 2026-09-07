@@ -9,14 +9,14 @@ import type {
 import { IsNull, Not } from '@n8n/typeorm';
 import RudderStack from '@rudderstack/rudder-sdk-node';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import type { Invitation } from '@/interfaces';
 import { HooksService } from '@/services/hooks.service';
 import type { UserService } from '@/services/user.service';
 
-jest.mock('@rudderstack/rudder-sdk-node');
+vi.mock('@rudderstack/rudder-sdk-node');
 
 describe('HooksService', () => {
 	const mockedUser = mock<User>();
@@ -27,7 +27,7 @@ describe('HooksService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
 
-	const authMiddleware = jest.fn();
+	const authMiddleware = vi.fn();
 
 	authService.createAuthMiddleware.mockReturnValue(authMiddleware);
 
@@ -41,7 +41,7 @@ describe('HooksService', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('hooksService.inviteUsers should call userService.inviteUsers', async () => {
@@ -138,7 +138,7 @@ describe('HooksService', () => {
 
 		const req = mock<AuthenticatedRequest>();
 
-		const next = jest.fn();
+		const next = vi.fn();
 
 		// ACT
 		await hooksService.authMiddleware(req, res, next);

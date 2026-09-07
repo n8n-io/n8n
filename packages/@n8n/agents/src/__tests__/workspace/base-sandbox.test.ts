@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import { BaseSandbox } from '../../workspace/sandbox/base-sandbox';
 import type {
 	CommandResult,
@@ -40,17 +42,17 @@ class StubProcessHandle extends ProcessHandle {
 }
 
 function makeStubProcessManager(): SandboxProcessManager & {
-	spawnMock: jest.Mock;
+	spawnMock: Mock;
 } {
 	const handle = new StubProcessHandle(1);
-	const spawnMock = jest.fn().mockResolvedValue(handle);
+	const spawnMock = vi.fn().mockResolvedValue(handle);
 	return {
 		spawn: spawnMock,
-		list: jest.fn().mockResolvedValue([]),
-		get: jest.fn().mockResolvedValue(undefined),
-		kill: jest.fn().mockResolvedValue(false),
+		list: vi.fn().mockResolvedValue([]),
+		get: vi.fn().mockResolvedValue(undefined),
+		kill: vi.fn().mockResolvedValue(false),
 		spawnMock,
-	} as unknown as SandboxProcessManager & { spawnMock: jest.Mock };
+	} as unknown as SandboxProcessManager & { spawnMock: Mock };
 }
 
 class TestSandbox extends BaseSandbox {
@@ -58,9 +60,9 @@ class TestSandbox extends BaseSandbox {
 	readonly name: string;
 	readonly provider = 'test';
 
-	startFn = jest.fn().mockResolvedValue(undefined);
-	stopFn = jest.fn().mockResolvedValue(undefined);
-	destroyFn = jest.fn().mockResolvedValue(undefined);
+	startFn = vi.fn().mockResolvedValue(undefined);
+	stopFn = vi.fn().mockResolvedValue(undefined);
+	destroyFn = vi.fn().mockResolvedValue(undefined);
 
 	constructor(id: string, options?: BaseSandboxOptions) {
 		super(options);
@@ -215,7 +217,7 @@ describe('BaseSandbox', () => {
 
 	describe('lifecycle hooks', () => {
 		it('calls onStart hook after successful start', async () => {
-			const onStart = jest.fn();
+			const onStart = vi.fn();
 			const sb = new TestSandbox('1', { onStart });
 
 			await sb._start();
@@ -224,7 +226,7 @@ describe('BaseSandbox', () => {
 		});
 
 		it('does not fail when onStart hook throws', async () => {
-			const onStart = jest.fn().mockRejectedValue(new Error('hook error'));
+			const onStart = vi.fn().mockRejectedValue(new Error('hook error'));
 			const sb = new TestSandbox('1', { onStart });
 
 			await sb._start();
@@ -233,7 +235,7 @@ describe('BaseSandbox', () => {
 		});
 
 		it('calls onStop hook before stopping', async () => {
-			const onStop = jest.fn();
+			const onStop = vi.fn();
 			const sb = new TestSandbox('1', { onStop });
 			await sb._start();
 
@@ -243,7 +245,7 @@ describe('BaseSandbox', () => {
 		});
 
 		it('calls onDestroy hook before destroying', async () => {
-			const onDestroy = jest.fn();
+			const onDestroy = vi.fn();
 			const sb = new TestSandbox('1', { onDestroy });
 			await sb._start();
 
@@ -293,6 +295,28 @@ describe('BaseSandbox', () => {
 			expect((pm.spawnMock.mock.calls as unknown as string[][])[0][0]).toBe('echo hello');
 			expect(result.success).toBe(true);
 			expect(result.stdout).toBe('ok\n');
+		});
+
+		it('escapes arguments with the shared shell helper', async () => {
+			const pm = makeStubProcessManager();
+			const sb = new TestSandbox('1', { processes: pm });
+
+			await sb._start();
+			await sb.executeCommand('echo', ['--user=a@b', "it's here"]);
+
+			expect((pm.spawnMock.mock.calls as unknown as string[][])[0][0]).toBe(
+				"echo --user=a@b 'it'\\''s here'",
+			);
+		});
+
+		it('spawns the bare command when there are no arguments', async () => {
+			const pm = makeStubProcessManager();
+			const sb = new TestSandbox('1', { processes: pm });
+
+			await sb._start();
+			await sb.executeCommand('ls');
+
+			expect((pm.spawnMock.mock.calls as unknown as string[][])[0][0]).toBe('ls');
 		});
 
 		it('auto-starts sandbox before executing', async () => {

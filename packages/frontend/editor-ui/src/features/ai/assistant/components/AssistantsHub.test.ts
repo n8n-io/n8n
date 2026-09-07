@@ -8,12 +8,12 @@ import { mockedStore } from '@/__tests__/utils';
 import AssistantsHub from './AssistantsHub.vue';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { VIEWS } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from '../constants';
 
 // Mock vue-router
-const mockRoute = reactive({ name: VIEWS.WORKFLOW });
+const mockRoute = reactive({ name: VIEWS.WORKFLOW, params: {} });
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => mockRoute,

@@ -11,7 +11,6 @@ import {
 	type FocusOutsideEvent,
 } from 'reka-ui';
 import { watch } from 'vue';
-import type { CSSProperties } from 'vue';
 
 defineOptions({ name: 'N8nPopover' });
 
@@ -42,7 +41,7 @@ interface Props
 	 */
 	enableSlideIn?: boolean;
 	/**
-	 * Whether to suppress auto-focus behavior when the content includes focusable element
+	 * Whether to suppress auto-focus behavior when the popover opens or closes.
 	 */
 	suppressAutoFocus?: boolean;
 	/**
@@ -55,8 +54,14 @@ interface Props
 	width?: string;
 	/**
 	 * z-index of popover content
+	 *
+	 * Spelled out rather than reusing `CSSProperties['zIndex']`: that resolves to
+	 * csstype's `ZIndex`, which the compiler cannot name through pnpm's hashed
+	 * paths, and the declaration for this component was then silently skipped
+	 * (TS2883). `ZIndex` is `Globals | 'auto' | (number & {}) | (string & {})`, so
+	 * this accepts the same set of values.
 	 */
-	zIndex?: number | CSSProperties['zIndex'];
+	zIndex?: number | string;
 	/**
 	 * Popover max height
 	 */
@@ -103,6 +108,12 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>();
 
 function handleOpenAutoFocus(e: Event) {
+	if (props.suppressAutoFocus) {
+		e.preventDefault();
+	}
+}
+
+function handleCloseAutoFocus(e: Event) {
 	if (props.suppressAutoFocus) {
 		e.preventDefault();
 	}
@@ -155,6 +166,7 @@ watch(
 				:force-mount="forceMount"
 				:position-strategy="positionStrategy"
 				@open-auto-focus="handleOpenAutoFocus"
+				@close-auto-focus="handleCloseAutoFocus"
 				@pointer-down-outside="handleOutsideInteraction"
 				@interact-outside="handleOutsideInteraction"
 			>
@@ -254,5 +266,7 @@ watch(
 	fill: var(--background--surface);
 	stroke: var(--border-color);
 	stroke-width: 1px;
+	// Overlap the card by 1px so its outline shadow doesn't cut the arrow off.
+	transform: translateY(-1px);
 }
 </style>

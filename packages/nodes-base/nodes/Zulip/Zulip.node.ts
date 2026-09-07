@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { validateJSON, zulipApiRequest } from './GenericFunctions';
+import { toMultiOptionsCsv, validateJSON, zulipApiRequest } from './GenericFunctions';
 import { messageFields, messageOperations } from './MessageDescription';
 import type { IMessage } from './MessageInterface';
 import { streamFields, streamOperations } from './StreamDescription';
@@ -138,7 +138,7 @@ export class Zulip implements INodeType {
 				if (resource === 'message') {
 					//https://zulipchat.com/api/send-message
 					if (operation === 'sendPrivate') {
-						const to = (this.getNodeParameter('to', i) as string[]).join(',');
+						const to = toMultiOptionsCsv(this.getNodeParameter('to', i));
 						const content = this.getNodeParameter('content', i) as string;
 						const body: IMessage = {
 							type: 'private',

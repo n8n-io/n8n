@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -10,14 +10,12 @@ import type {
 
 import { BitbucketTrigger } from '../BitbucketTrigger.node';
 import * as GenericFunctions from '../GenericFunctions';
+import type { MockInstance } from 'vitest';
 
 describe('BitbucketTrigger', () => {
 	let bitbucketTrigger: BitbucketTrigger;
-	const bitbucketApiRequestSpy = jest.spyOn(GenericFunctions, 'bitbucketApiRequest');
-	const bitbucketApiRequestAllItemsSpy = jest.spyOn(
-		GenericFunctions,
-		'bitbucketApiRequestAllItems',
-	);
+	let bitbucketApiRequestSpy: MockInstance;
+	let bitbucketApiRequestAllItemsSpy: MockInstance;
 
 	const mockNode: INode = {
 		id: 'test-node-id',
@@ -29,7 +27,9 @@ describe('BitbucketTrigger', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+		bitbucketApiRequestSpy = vi.spyOn(GenericFunctions, 'bitbucketApiRequest');
+		bitbucketApiRequestAllItemsSpy = vi.spyOn(GenericFunctions, 'bitbucketApiRequestAllItems');
 		bitbucketTrigger = new BitbucketTrigger();
 	});
 
@@ -53,6 +53,8 @@ describe('BitbucketTrigger', () => {
 
 			const mockResponse = {
 				username: 'testuser',
+				account_id: '{abc12345-1234-1234-1234-abc123456789}',
+				uuid: '{abc12345-1234-1234-1234-abc123456789}',
 				display_name: 'Test User',
 			};
 
@@ -80,6 +82,37 @@ describe('BitbucketTrigger', () => {
 			});
 		});
 
+		it('should return success for scoped API tokens that return account_id without username', async () => {
+			const mockCredentials: ICredentialsDecrypted = {
+				id: 'test-cred-id',
+				name: 'Test Bitbucket Credentials',
+				type: 'bitbucketApi',
+				data: {
+					username: 'testuser',
+					appPassword: 'testpassword',
+				},
+			};
+
+			// Scoped API tokens return account_id and uuid but no username field
+			const mockResponse = {
+				account_id: '{abc12345-1234-1234-1234-abc123456789}',
+				uuid: '{abc12345-1234-1234-1234-abc123456789}',
+				display_name: 'Test User',
+			};
+
+			mockCredentialTestFunctions.helpers.request.mockResolvedValue(mockResponse);
+
+			const result = await bitbucketTrigger.methods.credentialTest.bitbucketApiTest.call(
+				mockCredentialTestFunctions,
+				mockCredentials,
+			);
+
+			expect(result).toEqual({
+				status: 'OK',
+				message: 'Authentication successful!',
+			});
+		});
+
 		it('should return error for invalid credentials', async () => {
 			const mockCredentials: ICredentialsDecrypted = {
 				id: 'test-cred-id',
@@ -91,6 +124,7 @@ describe('BitbucketTrigger', () => {
 				},
 			};
 
+			// Invalid credentials return an error response with no account_id or uuid
 			const mockResponse = {
 				error: 'Invalid credentials',
 			};

@@ -139,6 +139,7 @@ watch(selectedDetailId, (id) => {
 			:render-data="renderData"
 			:read-only="true"
 			:event-bus="eventBus"
+			:show-node-groups="false"
 			style="width: 100%; height: 100%"
 			@tidy-up="onTidyUp"
 		>

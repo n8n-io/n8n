@@ -1,3 +1,4 @@
+import { TestCaseExecutionErrorCode } from '@n8n/db';
 import type { IDataObject } from 'n8n-workflow';
 
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
@@ -38,7 +39,7 @@ export class EvaluationMetrics {
 			if (typeof metricValue === 'number') {
 				addedMetrics[metricName] = metricValue;
 			} else {
-				throw new TestCaseExecutionError('INVALID_METRICS', {
+				throw new TestCaseExecutionError(TestCaseExecutionErrorCode.INVALID_METRICS, {
 					metricName,
 					metricValue,
 				});

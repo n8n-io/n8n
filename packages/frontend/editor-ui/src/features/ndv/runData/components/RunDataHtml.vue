@@ -32,7 +32,9 @@ export default {
 </script>
 
 <template>
-	<iframe class="__html-display" :srcdoc="sanitizedHtml" />
+	<!-- Render in an isolated, script-disabled context so previewed HTML cannot
+	     execute JS or reach the parent origin even if sanitization is bypassed. -->
+	<iframe class="__html-display" :srcdoc="sanitizedHtml" sandbox="" referrerpolicy="no-referrer" />
 </template>
 
 <style lang="scss">

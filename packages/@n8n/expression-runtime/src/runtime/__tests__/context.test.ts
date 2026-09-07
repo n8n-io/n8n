@@ -1,9 +1,7 @@
 import { buildContext } from '../context';
 
 function makeRef(impl: (args: unknown[]) => unknown) {
-	return {
-		applySync: (_thisArg: unknown, args: unknown[]) => impl(args),
-	};
+	return (...args: unknown[]) => impl(args);
 }
 
 describe('buildContext proxy', () => {
@@ -24,7 +22,6 @@ describe('buildContext proxy', () => {
 		const ctx = buildContext({
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
-			callFunctionAtPath: makeRef(() => undefined),
 			callHost: makeRef(() => undefined),
 		});
 
@@ -37,7 +34,6 @@ describe('buildContext proxy', () => {
 		const ctx = buildContext({
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
-			callFunctionAtPath: makeRef(() => undefined),
 			callHost: makeRef(() => undefined),
 		});
 
@@ -54,7 +50,6 @@ describe('buildContext proxy', () => {
 		const ctx = buildContext({
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
-			callFunctionAtPath: makeRef(() => undefined),
 			callHost: makeRef(() => undefined),
 		});
 

@@ -27,7 +27,7 @@ function createCtx(nodes: Map<string, GraphNode> = new Map()): PluginContext {
 }
 
 const VALID_CONDITIONS = {
-	options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+	options: { caseSensitive: false, leftValue: '', typeValidation: 'strict' },
 	conditions: [
 		{
 			leftValue: '={{ $json.field }}',

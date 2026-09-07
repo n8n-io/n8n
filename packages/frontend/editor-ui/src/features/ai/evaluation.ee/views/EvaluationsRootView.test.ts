@@ -10,14 +10,32 @@ import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import type { TestRunRecord } from '../evaluation.api';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
+
+// ---- Evaluations experiment flag mock (default off → preserves existing tests) ----
+const mockIsWizardSidepanelEnabled = ref(false);
+vi.mock('@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment', () => ({
+	useEvaluationsWizardSidepanelExperiment: () => ({
+		isFeatureEnabled: computed(() => mockIsWizardSidepanelEnabled.value),
+	}),
+}));
+
+// ---- Evaluations license composable mock (default licensed) ----
+const mockIsLicensed = ref(true);
+vi.mock('../composables/useEvaluationsLicense', () => ({
+	useEvaluationsLicense: () => ({
+		isLicensed: computed(() => mockIsLicensed.value),
+		isResolved: computed(() => true),
+		ensureLicenseLoaded: vi.fn().mockResolvedValue(undefined),
+	}),
+}));
 
 const { showError } = vi.hoisted(() => ({
 	showError: vi.fn(),
@@ -32,7 +50,7 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({
@@ -41,7 +59,7 @@ vi.mock('@/app/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError,
 		showMessage: vi.fn(),
@@ -111,6 +129,8 @@ describe('EvaluationsRootView', () => {
 		mockEvaluationTriggerExists.value = false;
 		mockEvaluationSetOutputsNodeExist.value = false;
 		mockEvaluationSetMetricsNodeExist.value = false;
+		mockIsWizardSidepanelEnabled.value = false;
+		mockIsLicensed.value = true;
 
 		mockedStore(useWorkflowsStore).isWorkflowSaved = { [mockWorkflow.id]: true };
 
@@ -457,6 +477,31 @@ describe('EvaluationsRootView', () => {
 					quota_reached: true,
 				});
 			});
+		});
+	});
+
+	describe('wizard-experiment branch (isEvaluationsWizardSidepanelEnabled = true)', () => {
+		beforeEach(() => {
+			mockIsWizardSidepanelEnabled.value = true;
+			const usageStore = mockedStore(useUsageStore);
+			const evaluationStore = mockedStore(useEvaluationStore);
+			usageStore.getLicenseInfo.mockResolvedValue(undefined);
+			evaluationStore.fetchTestRuns.mockResolvedValue([]);
+			evaluationStore.testRunsById = {};
+		});
+
+		it('renders paywall (evaluations-unlicensed) when unlicensed and no test runs', async () => {
+			mockIsLicensed.value = false;
+			const { findByTestId } = renderComponent({ props: { workflowId: mockWorkflow.id } });
+			await flushPromises();
+			await findByTestId('evaluations-unlicensed');
+		});
+
+		it('renders empty state (evaluations-empty-state) when licensed and no test runs', async () => {
+			mockIsLicensed.value = true;
+			const { findByTestId } = renderComponent({ props: { workflowId: mockWorkflow.id } });
+			await flushPromises();
+			await findByTestId('evaluations-empty-state');
 		});
 	});
 });

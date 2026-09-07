@@ -294,6 +294,8 @@ export function createMockEnterpriseSettings(
 		customRoles: false,
 		personalSpacePolicy: false,
 		dataRedaction: false,
+		otelCustomSpanAttributes: false,
+		workflowReviews: false,
 		...overrides, // Override with any passed properties
 	};
 }

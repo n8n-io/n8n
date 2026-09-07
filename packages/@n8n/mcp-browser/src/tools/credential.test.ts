@@ -1,3 +1,5 @@
+import type { Mocked, MockedFunction } from 'vitest';
+
 import type { SecretsBuffer, ToolContext } from '../types';
 import { createCredentialTools } from './credential';
 import { createMockConnection, findTool, structuredOf } from './test-helpers';
@@ -6,16 +8,16 @@ import { createMockConnection, findTool, structuredOf } from './test-helpers';
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeBuffer(): jest.Mocked<SecretsBuffer> & { _store: Map<string, Map<string, string>> } {
+function makeBuffer(): Mocked<SecretsBuffer> & { _store: Map<string, Map<string, string>> } {
 	const store = new Map<string, Map<string, string>>();
 	return {
 		_store: store,
-		capture: jest.fn((key: string, field: string, value: string) => {
+		capture: vi.fn((key: string, field: string, value: string) => {
 			if (!store.has(key)) store.set(key, new Map());
 			store.get(key)!.set(field, value);
 		}),
-		getFields: jest.fn((key: string) => store.get(key)),
-		clear: jest.fn((key: string) => {
+		getFields: vi.fn((key: string) => store.get(key)),
+		clear: vi.fn((key: string) => {
 			store.delete(key);
 		}),
 	};
@@ -257,6 +259,94 @@ describe('browser_capture_secret', () => {
 
 			expect(result.isError).toBe(true);
 		});
+
+		it('refuses to buffer a value that is itself a redaction marker', async () => {
+			mockProbe(htmlWithPasswordInput('[REDACTED:secret:1] trailing'));
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		// A match that only exists once `textContent` runs sibling text together is
+		// never shown to the model, so its marker can only have been guessed.
+		it('refuses to buffer a value that only exists in concatenated markup', async () => {
+			// Split across siblings, so the key exists only once `textContent`
+			// concatenates them — never in the text the model reads.
+			mockProbe(
+				`<html><body><section><span>AQ.</span><span>${'AbCdEfGhIj'.repeat(3)}Ab</span></section></body></html>`,
+			);
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:google_api_key:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		it('refuses to buffer an empty value', async () => {
+			mockConn.adapter.getElementValue.mockResolvedValue('');
+
+			const result = await getTool().execute(
+				{ credentialsKey: 'k1', field: 'apiKey', element: { ref: 'e42' } },
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		// Expansion gives up inside an undelimitable run, and the match it falls
+		// back to may be partial — that must fail, not be stored.
+		it('refuses to buffer a value whose token could not be delimited', async () => {
+			const key = `AQ.${'Ab8RN6Jr7xQfP2mKdW9tZsLyVc4hEuNgT3iBoXaQwMzRkJvSpH'}`;
+			const run = 'x'.repeat(600);
+			mockProbe(`<html><body><p>${run}${key}${run}</p></body></html>`);
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:google_api_key:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		// A fixed-length pattern matches only the first N characters of a longer
+		// token; extraction must not inherit that boundary.
+		it('captures the whole token when a provider pattern matched only its prefix', async () => {
+			const key = `AIza${'SyC7mQ2xR9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1Bc'}`;
+			mockProbe(`<html><body><p>Your key is ${key}</p></body></html>`);
+
+			await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:google_api_key:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(buffer.capture).toHaveBeenCalledWith('k1', 'apiKey', key);
+		});
 	});
 });
 
@@ -267,7 +357,7 @@ describe('browser_capture_secret', () => {
 describe('browser_create_credential', () => {
 	let mockConn: ReturnType<typeof createMockConnection>;
 	let buffer: ReturnType<typeof makeBuffer>;
-	let createCredential: jest.MockedFunction<
+	let createCredential: MockedFunction<
 		(p: {
 			name: string;
 			type: string;
@@ -282,7 +372,7 @@ describe('browser_create_credential', () => {
 		// Pre-populate buffer with some captured secrets
 		buffer.capture('k1', 'clientId', 'client-id-value');
 		buffer.capture('k1', 'clientSecret', 'client-secret-value');
-		createCredential = jest.fn().mockResolvedValue({ credentialId: 'cred-123' });
+		createCredential = vi.fn().mockResolvedValue({ credentialId: 'cred-123' });
 	});
 
 	const getTool = () =>
@@ -390,6 +480,24 @@ describe('browser_create_credential', () => {
 			expect(createCredential).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'My Cred', type: 'googleApi', projectId: 'proj-1' }),
 			);
+		});
+	});
+
+	describe('getAffectedResources', () => {
+		it('reports the credentials resource and names the credential in the description', async () => {
+			const resources = await getTool().getAffectedResources(
+				{ credentialsKey: 'k1', type: 'googleApi', name: 'My Cred' },
+				ctx(),
+			);
+
+			expect(resources).toEqual([
+				{
+					toolGroup: 'browser',
+					kind: 'credential-write',
+					resource: 'credentials',
+					description: 'Create credential "My Cred" (googleApi)',
+				},
+			]);
 		});
 	});
 

@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // @ts-check
-import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readdirSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { generateMigrationIndexes } from './generate-migration-index.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -63,43 +65,6 @@ export class ${className} implements ReversibleMigration {
 `;
 }
 
-function indexFilesForFolder(folder) {
-	if (folder === 'common') return ['postgresdb', 'sqlite'];
-	if (folder === 'postgresdb') return ['postgresdb'];
-	if (folder === 'sqlite') return ['sqlite'];
-	return [];
-}
-
-function insertIntoIndex(indexPath, className, importPath) {
-	const original = readFileSync(indexPath, 'utf8');
-
-	if (original.includes(`{ ${className} }`)) {
-		fail(`${relative(PKG_ROOT, indexPath)} already references ${className}`);
-	}
-
-	const importLine = `import { ${className} } from '${importPath}';`;
-	const lines = original.split('\n');
-
-	let lastImportIdx = -1;
-	for (let i = 0; i < lines.length; i++) {
-		if (lines[i].startsWith('import ')) lastImportIdx = i;
-	}
-	if (lastImportIdx === -1) fail(`could not find import block in ${indexPath}`);
-	lines.splice(lastImportIdx + 1, 0, importLine);
-
-	let arrayCloseIdx = -1;
-	for (let i = lines.length - 1; i >= 0; i--) {
-		if (lines[i].trim() === '];') {
-			arrayCloseIdx = i;
-			break;
-		}
-	}
-	if (arrayCloseIdx === -1) fail(`could not find array close in ${indexPath}`);
-	lines.splice(arrayCloseIdx, 0, `\t${className},`);
-
-	writeFileSync(indexPath, lines.join('\n'));
-}
-
 function main() {
 	const args = parseArgs(process.argv.slice(2));
 
@@ -127,19 +92,11 @@ function main() {
 	if (existsSync(targetFile)) fail(`${relative(PKG_ROOT, targetFile)} already exists`);
 
 	writeFileSync(targetFile, migrationTemplate(className));
-
-	const importPath = args.folder === 'common' ? `../common/${fileBase}` : `./${fileBase}`;
-	for (const indexFolder of indexFilesForFolder(args.folder)) {
-		insertIntoIndex(join(MIGRATIONS_DIR, indexFolder, 'index.ts'), className, importPath);
-	}
+	generateMigrationIndexes();
 
 	console.log(`created ${relative(PKG_ROOT, targetFile)}`);
 	console.log(`timestamp ${timestamp} (${source})`);
-	console.log(
-		`registered ${className} in ${indexFilesForFolder(args.folder)
-			.map((f) => `${f}/index.ts`)
-			.join(', ')}`,
-	);
+	console.log('regenerated src/migrations/{sqlite,postgresdb}/index.ts');
 }
 
 main();

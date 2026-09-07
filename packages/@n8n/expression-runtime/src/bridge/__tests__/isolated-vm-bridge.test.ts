@@ -21,7 +21,7 @@ describe('IsolatedVmBridge', () => {
 			await bridge.initialize();
 			await bridge.dispose();
 
-			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('[IsolatedVmBridge]'));
+			expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('[IsolatedVmBridge]'));
 			expect(consoleSpy).not.toHaveBeenCalled();
 		});
 	});

@@ -1,7 +1,7 @@
-import { mock } from 'jest-mock-extended';
 import { CompactEncrypt, generateKeyPair } from 'jose';
 import type { CryptoKey } from 'jose';
 import { UnexpectedError, UserError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { UrlService } from '@/services/url.service';
 

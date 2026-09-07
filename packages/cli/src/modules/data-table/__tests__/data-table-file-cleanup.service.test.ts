@@ -1,16 +1,17 @@
 import type { GlobalConfig } from '@n8n/config';
-import type { InstanceSettings } from 'n8n-core';
 import { promises as fs } from 'fs';
+import type { InstanceSettings } from 'n8n-core';
 import path from 'path';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
-import { mock } from 'jest-mock-extended';
 
-jest.mock('fs', () => ({
+vi.mock('fs', async () => ({
 	promises: {
-		unlink: jest.fn(),
-		readdir: jest.fn(),
-		stat: jest.fn(),
+		unlink: vi.fn(),
+		readdir: vi.fn(),
+		stat: vi.fn(),
 	},
 }));
 
@@ -30,12 +31,12 @@ describe('DataTableFileCleanupService', () => {
 	const service = new DataTableFileCleanupService(globalConfig, instanceSettings);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.spyOn(console, 'error').mockImplementation(() => {});
+		vi.clearAllMocks();
+		vi.spyOn(console, 'error').mockImplementation(() => {});
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('deleteFile', () => {
@@ -43,7 +44,7 @@ describe('DataTableFileCleanupService', () => {
 			const fileId = 'test-file-123';
 			const expectedPath = path.join(uploadDir, fileId);
 
-			(fs.unlink as jest.Mock).mockResolvedValue(undefined);
+			(fs.unlink as Mock).mockResolvedValue(undefined);
 
 			await service.deleteFile(fileId);
 
@@ -56,7 +57,7 @@ describe('DataTableFileCleanupService', () => {
 			const error = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
 			error.code = 'ENOENT';
 
-			(fs.unlink as jest.Mock).mockRejectedValue(error);
+			(fs.unlink as Mock).mockRejectedValue(error);
 
 			await expect(service.deleteFile(fileId)).resolves.toBeUndefined();
 		});
@@ -66,7 +67,7 @@ describe('DataTableFileCleanupService', () => {
 			const error = new Error('Permission denied') as NodeJS.ErrnoException;
 			error.code = 'EPERM';
 
-			(fs.unlink as jest.Mock).mockRejectedValue(error);
+			(fs.unlink as Mock).mockRejectedValue(error);
 
 			await expect(service.deleteFile(fileId)).rejects.toThrow('Permission denied');
 		});
@@ -82,17 +83,17 @@ describe('DataTableFileCleanupService', () => {
 
 	describe('start and shutdown', () => {
 		it('should start cleanup interval on main', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 
 			await service.start();
 
 			expect(service['cleanupInterval']).toBeDefined();
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should skip cleanup interval on worker', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 
 			const workerSettings = mock<InstanceSettings>({ instanceType: 'worker' });
 			const workerService = new DataTableFileCleanupService(globalConfig, workerSettings);
@@ -101,11 +102,11 @@ describe('DataTableFileCleanupService', () => {
 
 			expect(workerService['cleanupInterval']).toBeUndefined();
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should clear interval on shutdown', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 
 			await service.start();
 			expect(service['cleanupInterval']).toBeDefined();
@@ -114,7 +115,7 @@ describe('DataTableFileCleanupService', () => {
 
 			expect(service['cleanupInterval']).toBeUndefined();
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should not error on shutdown if interval was never started', async () => {
@@ -123,14 +124,18 @@ describe('DataTableFileCleanupService', () => {
 	});
 
 	describe('cleanupOrphanedFiles', () => {
-		const flushPromises = async () => await new Promise(jest.requireActual('timers').setImmediate);
+		const flushPromises = async () => {
+			const { setImmediate: realSetImmediate } =
+				await vi.importActual<typeof import('timers')>('timers');
+			await new Promise(realSetImmediate);
+		};
 
 		beforeEach(() => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should delete files older than 2 minutes', async () => {
@@ -138,16 +143,16 @@ describe('DataTableFileCleanupService', () => {
 			const oldFile1 = 'old-file-1.csv';
 			const oldFile2 = 'old-file-2.csv';
 
-			(fs.readdir as jest.Mock).mockResolvedValue([oldFile1, oldFile2]);
-			(fs.stat as jest.Mock).mockResolvedValue({
+			(fs.readdir as Mock).mockResolvedValue([oldFile1, oldFile2]);
+			(fs.stat as Mock).mockResolvedValue({
 				mtimeMs: now - 3 * 60 * 1000, // 3 minutes ago
 			});
-			(fs.unlink as jest.Mock).mockResolvedValue(undefined);
+			(fs.unlink as Mock).mockResolvedValue(undefined);
 
 			await service.start();
 
 			// Trigger cleanup and let promises resolve
-			jest.advanceTimersByTime(60 * 1000);
+			vi.advanceTimersByTime(60 * 1000);
 			await flushPromises();
 
 			expect(fs.readdir).toHaveBeenCalledWith(uploadDir);
@@ -160,13 +165,13 @@ describe('DataTableFileCleanupService', () => {
 			const now = Date.now();
 			const newFile = 'new-file.csv';
 
-			(fs.readdir as jest.Mock).mockResolvedValue([newFile]);
-			(fs.stat as jest.Mock).mockResolvedValue({
+			(fs.readdir as Mock).mockResolvedValue([newFile]);
+			(fs.stat as Mock).mockResolvedValue({
 				mtimeMs: now - 1 * 60 * 1000, // 1 minute ago
 			});
 
 			await service.start();
-			jest.advanceTimersByTime(60 * 1000); // Trigger cleanup
+			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
 			await flushPromises();
 
 			expect(fs.readdir).toHaveBeenCalled();
@@ -179,18 +184,18 @@ describe('DataTableFileCleanupService', () => {
 			const oldFile = 'old-file.csv';
 			const newFile = 'new-file.csv';
 
-			(fs.readdir as jest.Mock).mockResolvedValue([oldFile, newFile]);
-			(fs.stat as jest.Mock)
+			(fs.readdir as Mock).mockResolvedValue([oldFile, newFile]);
+			(fs.stat as Mock)
 				.mockResolvedValueOnce({
 					mtimeMs: now - 3 * 60 * 1000, // 3 minutes ago (old)
 				})
 				.mockResolvedValueOnce({
 					mtimeMs: now - 1 * 60 * 1000, // 1 minute ago (new)
 				});
-			(fs.unlink as jest.Mock).mockResolvedValue(undefined);
+			(fs.unlink as Mock).mockResolvedValue(undefined);
 
 			await service.start();
-			jest.advanceTimersByTime(60 * 1000); // Trigger cleanup
+			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
 			await flushPromises();
 
 			expect(fs.unlink).toHaveBeenCalledTimes(1);
@@ -199,10 +204,10 @@ describe('DataTableFileCleanupService', () => {
 		});
 
 		it('should handle empty upload directory', async () => {
-			(fs.readdir as jest.Mock).mockResolvedValue([]);
+			(fs.readdir as Mock).mockResolvedValue([]);
 
 			await service.start();
-			jest.advanceTimersByTime(60 * 1000); // Trigger cleanup
+			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
 			await flushPromises();
 
 			expect(fs.readdir).toHaveBeenCalled();
@@ -213,10 +218,10 @@ describe('DataTableFileCleanupService', () => {
 		it('should ignore ENOENT error if upload directory does not exist', async () => {
 			const error = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
 			error.code = 'ENOENT';
-			(fs.readdir as jest.Mock).mockRejectedValue(error);
+			(fs.readdir as Mock).mockRejectedValue(error);
 
 			await service.start();
-			jest.advanceTimersByTime(60 * 1000); // Trigger cleanup
+			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
 			await flushPromises();
 
 			expect(fs.readdir).toHaveBeenCalled();
@@ -225,10 +230,10 @@ describe('DataTableFileCleanupService', () => {
 
 		it('should log error for non-ENOENT readdir errors', async () => {
 			const error = new Error('Permission denied');
-			(fs.readdir as jest.Mock).mockRejectedValue(error);
+			(fs.readdir as Mock).mockRejectedValue(error);
 
 			await service.start();
-			jest.advanceTimersByTime(60 * 1000); // Trigger cleanup
+			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
 			await flushPromises();
 
 			expect(console.error).toHaveBeenCalledWith('Error cleaning up orphaned CSV files:', error);
@@ -238,16 +243,16 @@ describe('DataTableFileCleanupService', () => {
 			const file1 = 'file1.csv';
 			const file2 = 'file2.csv';
 
-			(fs.readdir as jest.Mock).mockResolvedValue([file1, file2]);
-			(fs.stat as jest.Mock)
+			(fs.readdir as Mock).mockResolvedValue([file1, file2]);
+			(fs.stat as Mock)
 				.mockRejectedValueOnce(new Error('Stat failed for file1'))
 				.mockResolvedValueOnce({
 					mtimeMs: Date.now() - 3 * 60 * 1000, // file2 is old
 				});
-			(fs.unlink as jest.Mock).mockResolvedValue(undefined);
+			(fs.unlink as Mock).mockResolvedValue(undefined);
 
 			await service.start();
-			jest.advanceTimersByTime(60 * 1000); // Trigger cleanup
+			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
 			await flushPromises();
 
 			// Should still delete file2 even though file1 failed
@@ -260,16 +265,16 @@ describe('DataTableFileCleanupService', () => {
 			const file1 = 'file1.csv';
 			const file2 = 'file2.csv';
 
-			(fs.readdir as jest.Mock).mockResolvedValue([file1, file2]);
-			(fs.stat as jest.Mock).mockResolvedValue({
+			(fs.readdir as Mock).mockResolvedValue([file1, file2]);
+			(fs.stat as Mock).mockResolvedValue({
 				mtimeMs: now - 3 * 60 * 1000, // Both files are old
 			});
-			(fs.unlink as jest.Mock)
+			(fs.unlink as Mock)
 				.mockRejectedValueOnce(new Error('Unlink failed for file1'))
 				.mockResolvedValueOnce(undefined);
 
 			await service.start();
-			jest.advanceTimersByTime(60 * 1000); // Trigger cleanup
+			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
 			await flushPromises();
 
 			// Should attempt to delete both files
@@ -280,26 +285,26 @@ describe('DataTableFileCleanupService', () => {
 
 		it('should run cleanup every 60 seconds', async () => {
 			const now = Date.now();
-			(fs.readdir as jest.Mock).mockResolvedValue(['old-file.csv']);
-			(fs.stat as jest.Mock).mockResolvedValue({
+			(fs.readdir as Mock).mockResolvedValue(['old-file.csv']);
+			(fs.stat as Mock).mockResolvedValue({
 				mtimeMs: now - 3 * 60 * 1000,
 			});
-			(fs.unlink as jest.Mock).mockResolvedValue(undefined);
+			(fs.unlink as Mock).mockResolvedValue(undefined);
 
 			await service.start();
 
 			// First cleanup
-			jest.advanceTimersByTime(60 * 1000);
+			vi.advanceTimersByTime(60 * 1000);
 			await flushPromises();
 			expect(fs.readdir).toHaveBeenCalledTimes(1);
 
 			// Second cleanup
-			jest.advanceTimersByTime(60 * 1000);
+			vi.advanceTimersByTime(60 * 1000);
 			await flushPromises();
 			expect(fs.readdir).toHaveBeenCalledTimes(2);
 
 			// Third cleanup
-			jest.advanceTimersByTime(60 * 1000);
+			vi.advanceTimersByTime(60 * 1000);
 			await flushPromises();
 			expect(fs.readdir).toHaveBeenCalledTimes(3);
 

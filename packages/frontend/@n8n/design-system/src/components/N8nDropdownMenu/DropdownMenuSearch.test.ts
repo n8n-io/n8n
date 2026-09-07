@@ -62,32 +62,7 @@ describe('N8nDropdownMenuSearch', () => {
 	});
 
 	describe('keyboard events', () => {
-		it('should emit key:escape on Escape key', async () => {
-			const wrapper = render(DropdownMenuSearch);
-
-			const input = wrapper.container.querySelector('input')!;
-			await userEvent.click(input);
-			await userEvent.keyboard('{Escape}');
-
-			await waitFor(() => {
-				expect(wrapper.emitted('key:escape')).toBeTruthy();
-			});
-		});
-
-		it('should emit key:navigate down on Tab key', async () => {
-			const wrapper = render(DropdownMenuSearch);
-
-			const input = wrapper.container.querySelector('input')!;
-			await userEvent.click(input);
-			await userEvent.keyboard('{Tab}');
-
-			await waitFor(() => {
-				expect(wrapper.emitted('key:navigate')).toBeTruthy();
-				expect(wrapper.emitted('key:navigate')?.[0]).toEqual(['down']);
-			});
-		});
-
-		it('should emit key:navigate down on ArrowDown key', async () => {
+		it('should emit keydown events', async () => {
 			const wrapper = render(DropdownMenuSearch);
 
 			const input = wrapper.container.querySelector('input')!;
@@ -95,105 +70,24 @@ describe('N8nDropdownMenuSearch', () => {
 			await userEvent.keyboard('{ArrowDown}');
 
 			await waitFor(() => {
-				expect(wrapper.emitted('key:navigate')).toBeTruthy();
-				expect(wrapper.emitted('key:navigate')?.[0]).toEqual(['down']);
+				const emits = wrapper.emitted('keydown') as Array<[KeyboardEvent]> | undefined;
+				expect(emits).toBeTruthy();
+				expect(emits?.[0]?.[0]).toBeInstanceOf(KeyboardEvent);
+				expect(emits?.[0]?.[0].key).toBe('ArrowDown');
 			});
 		});
 
-		it('should emit key:navigate up on ArrowUp key', async () => {
+		it('should still allow printable characters to update the input', async () => {
 			const wrapper = render(DropdownMenuSearch);
 
 			const input = wrapper.container.querySelector('input')!;
-			await userEvent.click(input);
-			await userEvent.keyboard('{ArrowUp}');
+			await userEvent.type(input, 'a');
 
 			await waitFor(() => {
-				expect(wrapper.emitted('key:navigate')).toBeTruthy();
-				expect(wrapper.emitted('key:navigate')?.[0]).toEqual(['up']);
-			});
-		});
-
-		it('should emit key:enter on Enter key', async () => {
-			const wrapper = render(DropdownMenuSearch);
-
-			const input = wrapper.container.querySelector('input')!;
-			await userEvent.click(input);
-			await userEvent.keyboard('{Enter}');
-
-			await waitFor(() => {
-				expect(wrapper.emitted('key:enter')).toBeTruthy();
-			});
-		});
-
-		it('should emit key:arrow-right when cursor is at end of input', async () => {
-			const wrapper = render(DropdownMenuSearch, {
-				props: {
-					modelValue: 'text',
-				},
-			});
-
-			const input = wrapper.container.querySelector('input')!;
-			await userEvent.click(input);
-			// Move cursor to end
-			input.setSelectionRange(4, 4);
-			await userEvent.keyboard('{ArrowRight}');
-
-			await waitFor(() => {
-				expect(wrapper.emitted('key:arrow-right')).toBeTruthy();
-			});
-		});
-
-		it('should not emit key:arrow-right when cursor is not at end', async () => {
-			const wrapper = render(DropdownMenuSearch, {
-				props: {
-					modelValue: 'text',
-				},
-			});
-
-			const input = wrapper.container.querySelector('input')!;
-			await userEvent.click(input);
-			// Move cursor to beginning
-			input.setSelectionRange(0, 0);
-			await userEvent.keyboard('{ArrowRight}');
-
-			await waitFor(() => {
-				expect(wrapper.emitted('key:arrow-right')).toBeFalsy();
-			});
-		});
-
-		it('should emit key:arrow-left when cursor is at start of input', async () => {
-			const wrapper = render(DropdownMenuSearch, {
-				props: {
-					modelValue: 'text',
-				},
-			});
-
-			const input = wrapper.container.querySelector('input')!;
-			await userEvent.click(input);
-			// Move cursor to start
-			input.setSelectionRange(0, 0);
-			await userEvent.keyboard('{ArrowLeft}');
-
-			await waitFor(() => {
-				expect(wrapper.emitted('key:arrow-left')).toBeTruthy();
-			});
-		});
-
-		it('should not emit key:arrow-left when cursor is not at start', async () => {
-			const wrapper = render(DropdownMenuSearch, {
-				props: {
-					modelValue: 'text',
-				},
-			});
-
-			const input = wrapper.container.querySelector('input')!;
-			await userEvent.click(input);
-			// Move cursor to end
-			input.setSelectionRange(4, 4);
-			await userEvent.keyboard('{ArrowLeft}');
-
-			await waitFor(() => {
-				expect(wrapper.emitted('key:arrow-left')).toBeFalsy();
+				const keydownEmits = wrapper.emitted('keydown') as Array<[KeyboardEvent]> | undefined;
+				expect(input).toHaveValue('a');
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['a']);
+				expect(keydownEmits?.[0]?.[0].key).toBe('a');
 			});
 		});
 	});

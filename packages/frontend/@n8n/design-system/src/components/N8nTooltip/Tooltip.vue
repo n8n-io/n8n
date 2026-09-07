@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import {
+	TooltipContent,
+	TooltipPortal,
 	TooltipProvider,
 	TooltipRoot,
 	TooltipTrigger,
-	TooltipContent,
-	TooltipPortal,
 } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useAttrs, watch } from 'vue';
 
 import type { N8nTooltipProps } from './Tooltip.types';
 import { useInjectTooltipAppendTo } from '../../composables/useTooltipAppendTo';
@@ -15,9 +15,13 @@ import N8nButton from '../N8nButton';
 
 defineOptions({
 	name: 'N8nTooltip',
+	inheritAttrs: false,
 });
 
+const attrs = useAttrs();
+
 const props = withDefaults(defineProps<N8nTooltipProps>(), {
+	asChild: false,
 	placement: 'top',
 	showAfter: 0,
 	enterable: true,
@@ -82,7 +86,15 @@ const handleOpenChange = (open: boolean) => {
 			:disable-hoverable-content="disableHoverableContent"
 			@update:open="handleOpenChange"
 		>
-			<TooltipTrigger as="span" :class="{ [$style.disabledTrigger]: disabled }">
+			<TooltipTrigger
+				v-if="asChild"
+				as-child
+				v-bind="attrs"
+				:class="{ [$style.disabledTrigger]: disabled && !asChild }"
+			>
+				<slot />
+			</TooltipTrigger>
+			<TooltipTrigger v-else as="span" :class="{ [$style.disabledTrigger]: disabled }">
 				<slot />
 			</TooltipTrigger>
 			<TooltipPortal :to="teleported ? appendTo : undefined" :disabled="!teleported">
@@ -135,7 +147,7 @@ const handleOpenChange = (open: boolean) => {
 
 // Global styles for teleported tooltip content
 :global(.n8n-tooltip) {
-	z-index: var.$index-popper;
+	z-index: var.$index-tooltip;
 	max-width: 180px;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	min-height: var(--height--sm);
@@ -147,7 +159,7 @@ const handleOpenChange = (open: boolean) => {
 	background: var(--color--neutral-black);
 	color: var(--color--neutral-100);
 	box-shadow: var(--shadow--sm);
-	word-wrap: break-word;
+	overflow-wrap: anywhere;
 	display: flex;
 	align-items: center;
 	justify-content: center;

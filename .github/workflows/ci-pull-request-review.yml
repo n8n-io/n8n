@@ -36,7 +36,7 @@ jobs:
             design-system:
               packages/frontend/@n8n/design-system/**
               packages/frontend/@n8n/storybook/**
-              .github/workflows/test-visual-chromatic.yml
+              .github/workflows/release-chromatic.yml
 
   chromatic:
     name: Chromatic
@@ -47,7 +47,7 @@ jobs:
     if: >-
       needs.filter.outputs.design_system == 'true' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    uses: ./.github/workflows/test-visual-chromatic.yml
+    uses: ./.github/workflows/release-chromatic.yml
     with:
       ref: ${{ needs.filter.outputs.commit_sha }}
     secrets: inherit

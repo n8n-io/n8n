@@ -8,10 +8,10 @@ import MCPConnectWorkflowsModal from '@/features/ai/mcpAccess/modals/MCPConnectW
 import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { type Mock } from 'vitest';
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({
@@ -51,7 +51,7 @@ const ModalStub = defineComponent({
 
 const initialState = {
 	ui: {
-		modalsById: {
+		modalStateById: {
 			[MCP_CONNECT_WORKFLOWS_MODAL_KEY]: {
 				open: true,
 			},
@@ -177,7 +177,7 @@ describe('MCPConnectWorkflowsModal', () => {
 	});
 
 	describe('Save action', () => {
-		it('should call onEnableMcpAccess with selected workflow id when save is clicked', async () => {
+		it('should call onEnableMcpAccess with selected workflow ids when save is clicked', async () => {
 			const workflows = [createWorkflow({ id: 'wf-1', name: 'Test Workflow' })];
 			mcpStore.getMcpEligibleWorkflows.mockResolvedValue({
 				count: 1,
@@ -215,7 +215,7 @@ describe('MCPConnectWorkflowsModal', () => {
 			await userEvent.click(getByTestId('mcp-connect-workflows-save-button'));
 
 			await waitFor(() => {
-				expect(mockOnEnableMcpAccess).toHaveBeenCalledWith('wf-1');
+				expect(mockOnEnableMcpAccess).toHaveBeenCalledWith(['wf-1']);
 			});
 		});
 
@@ -258,7 +258,8 @@ describe('MCPConnectWorkflowsModal', () => {
 
 			await waitFor(() => {
 				expect(telemetry.track).toHaveBeenCalledWith('User selected workflow from list', {
-					workflowId: 'wf-1',
+					workflowIds: ['wf-1'],
+					count: 1,
 				});
 			});
 		});

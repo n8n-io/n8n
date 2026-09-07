@@ -70,7 +70,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 	/**
 	 * Link this background task to a running checkpoint in the planned-task
 	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
-	 * research, data-table, delegate) from inside a
+	 * delegate) from inside a
 	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
 	 * net defers failing the checkpoint while any child with this id is still
 	 * running, and the settlement path re-emits the checkpoint follow-up when
@@ -122,7 +122,15 @@ export class BackgroundTaskManager {
 	 */
 	private readonly byRoleAndWorkflowId = new Map<string, string>();
 
-	constructor(private readonly maxConcurrentPerThread = 5) {}
+	constructor(
+		private readonly maxConcurrentPerThread = 5,
+		/**
+		 * Ceiling on sub-agents running across every thread on this process. Guards the
+		 * fan-out the per-thread limit misses: a handful of runs each spawning their full
+		 * complement. `-1` means unlimited, matching the execution concurrency limits.
+		 */
+		private readonly maxConcurrentTotal = -1,
+	) {}
 
 	private workflowKey(role: string, workflowId: string): string {
 		return `${role}:${workflowId}`;
@@ -165,11 +173,20 @@ export class BackgroundTaskManager {
 		);
 	}
 
+	/** Sub-agents running across every thread on this process. */
+	runningTaskCount(): number {
+		let count = 0;
+		for (const task of this.tasks.values()) {
+			if (task.status === 'running') count++;
+		}
+		return count;
+	}
+
 	/**
 	 * Return all running background tasks on this thread that were spawned
 	 * under the given checkpoint task id. Used by the checkpoint safety net to
-	 * defer failing a checkpoint while a detached patch/research/data-table
-	 * sub-agent it just launched is still in-flight.
+	 * defer failing a checkpoint while a detached patch sub-agent it just
+	 * launched is still in-flight.
 	 */
 	getRunningTasksByParentCheckpoint(
 		threadId: string,
@@ -231,6 +248,7 @@ export class BackgroundTaskManager {
 		const cancelled: ManagedBackgroundTask[] = [];
 		for (const [taskId, task] of this.tasks) {
 			task.abortController.abort();
+			task.status = 'cancelled';
 			cancelled.push(task);
 			this.tasks.delete(taskId);
 			this.releaseDedupeIndices(task);
@@ -276,6 +294,13 @@ export class BackgroundTaskManager {
 		if (runningCount >= this.maxConcurrentPerThread) {
 			options.onLimitReached?.(
 				`Cannot start background task: limit of ${this.maxConcurrentPerThread} concurrent tasks reached. Wait for existing tasks to complete.`,
+			);
+			return { status: 'limit-reached' };
+		}
+
+		if (this.maxConcurrentTotal !== -1 && this.runningTaskCount() >= this.maxConcurrentTotal) {
+			options.onLimitReached?.(
+				`Cannot start background task: this n8n instance is at its limit of ${this.maxConcurrentTotal} concurrent tasks. Wait for existing tasks to complete.`,
 			);
 			return { status: 'limit-reached' };
 		}

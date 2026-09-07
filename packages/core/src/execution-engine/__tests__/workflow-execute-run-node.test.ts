@@ -6,62 +6,68 @@
  * via test coverage reports and mutation testing.
  */
 
+// Vitest mocks invoked via `new` reject arrow functions ("is not a constructor").
+// Wrap arrow implementations so the mock returns the same instance the test built.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ctor = <T extends object, A extends any[]>(impl: (...args: A) => T) =>
+	function (this: T, ...args: A) {
+		return impl(...args);
+	};
+
 // Mock all external dependencies first, before any imports
-jest.mock('@n8n/config', () => ({
-	...jest.requireActual('@n8n/config'),
-	GlobalConfig: jest.fn().mockImplementation(() => ({
+vi.mock('@n8n/config', async (importActual) => ({
+	...(await importActual()),
+	GlobalConfig: vi.fn().mockImplementation(() => ({
 		sentry: { backendDsn: '' },
 	})),
 }));
 
-jest.mock('@n8n/di', () => ({
+vi.mock('@n8n/di', () => ({
 	Container: {
-		get: jest.fn(),
+		get: vi.fn(),
 	},
 	Service: () => (target: unknown) => target,
 }));
 
-jest.mock('@/errors/error-reporter', () => ({
+vi.mock('@/errors/error-reporter', () => ({
 	ErrorReporter() {
 		return {
-			error: jest.fn(),
+			error: vi.fn(),
 		};
 	},
 }));
 
-jest.mock('../node-execution-context', () => {
-	const actual = jest.requireActual('../node-execution-context');
+vi.mock('../node-execution-context', async (importActual) => {
 	return {
-		...actual,
-		ExecuteContext: jest.fn().mockImplementation(() => ({
-			hints: [],
-		})),
-		PollContext: jest.fn().mockImplementation(() => ({})),
+		...(await importActual()),
+		ExecuteContext: vi.fn().mockImplementation(function (this: { hints: unknown[] }) {
+			this.hints = [];
+		}),
+		PollContext: vi.fn().mockImplementation(function () {}),
 	};
 });
 
-jest.mock('../triggers-and-pollers', () => ({
-	TriggersAndPollers: jest.fn(),
+vi.mock('../triggers-and-pollers', () => ({
+	TriggersAndPollers: vi.fn(),
 }));
 
-jest.mock('../routing-node', () => ({
-	RoutingNode: jest.fn().mockImplementation(() => ({
-		runNode: jest.fn().mockResolvedValue([[{ json: { routed: 'result' } }]]),
-	})),
+vi.mock('../routing-node', () => ({
+	RoutingNode: vi.fn().mockImplementation(function (this: { runNode: Mock }) {
+		this.runNode = vi.fn().mockResolvedValue([[{ json: { routed: 'result' } }]]);
+	}),
 }));
 
-jest.mock('@/node-execute-functions', () => ({
-	getExecuteTriggerFunctions: jest.fn(),
+vi.mock('@/node-execute-functions', () => ({
+	getExecuteTriggerFunctions: vi.fn(),
 }));
 
-jest.mock('../../utils/convert-binary-data.ts', () => ({
-	convertBinaryData: jest.fn(),
+vi.mock('../../utils/convert-binary-data.ts', () => ({
+	convertBinaryData: vi.fn(),
 }));
 
 // Now import the real classes
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type {
 	ExecutionBaseError,
 	IExecuteData,
@@ -72,33 +78,41 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, Node, createRunExecutionData } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	Node,
+	createRunExecutionData,
+	UnexpectedError,
+} from 'n8n-workflow';
+import type { Mock, Mocked, MockedClass } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ExecuteContext, PollContext } from '../node-execution-context';
 import { RoutingNode } from '../routing-node';
 import { TriggersAndPollers } from '../triggers-and-pollers';
 import { WorkflowExecute } from '../workflow-execute';
 
-const mockContainer = Container as jest.Mocked<typeof Container>;
-const mockExecuteContext = ExecuteContext as jest.MockedClass<typeof ExecuteContext>;
-const mockPollContext = PollContext as jest.MockedClass<typeof PollContext>;
-const mockRoutingNode = RoutingNode as jest.MockedClass<typeof RoutingNode>;
+const mockContainer = Container as Mocked<typeof Container>;
+const mockExecuteContext = ExecuteContext as MockedClass<typeof ExecuteContext>;
+const mockPollContext = PollContext as MockedClass<typeof PollContext>;
+const mockRoutingNode = RoutingNode as MockedClass<typeof RoutingNode>;
 
 describe('WorkflowExecute.runNode - Real Implementation', () => {
 	let workflowExecute: WorkflowExecute;
-	let mockWorkflow: jest.Mocked<Workflow>;
-	let mockAdditionalData: jest.Mocked<IWorkflowExecuteAdditionalData>;
+	let mockWorkflow: Mocked<Workflow>;
+	let mockAdditionalData: Mocked<IWorkflowExecuteAdditionalData>;
 	let mockRunExecutionData: IRunExecutionData;
 	let mockNode: INode;
-	let mockNodeType: jest.Mocked<INodeType>;
+	let mockNodeType: Mocked<INodeType>;
 	let mockExecutionData: IExecuteData;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Setup Container mock for different dependencies
 		const mockTriggersAndPollersInstance = {
-			runTrigger: jest.fn(),
+			runTriggerFunction: vi.fn(),
 		};
 		const mockGlobalConfigInstance = {
 			sentry: { backendDsn: '' },
@@ -144,7 +158,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 		mockWorkflow = mock<Workflow>({
 			nodeTypes: {
-				getByNameAndVersion: jest.fn().mockReturnValue(mockNodeType),
+				getByNameAndVersion: vi.fn().mockReturnValue(mockNodeType),
 			},
 			settings: {
 				executionOrder: 'v1',
@@ -222,6 +236,55 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			);
 
 			expect(result).toEqual({ data: [inputData] });
+		});
+
+		it('should forward only the first output branch for a multi-output disabled node without forwardAllOutputs', async () => {
+			// A user-disabled node (e.g. Merge) must keep the existing passthrough
+			// behaviour: only the first main input is forwarded.
+			const disabledNode = { ...mockNode, disabled: true };
+			const branches = [[{ json: { branch: 0 } }], [{ json: { branch: 1 } }]];
+			const executionData = {
+				...mockExecutionData,
+				node: disabledNode,
+				data: { main: branches },
+			};
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				executionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(result).toEqual({ data: [branches[0]] });
+		});
+
+		it('should forward all output branches for a resumed waiting-webhook node (forwardAllOutputs)', async () => {
+			// Regression test for the waiting-webhook resume path: the resuming node
+			// is flagged disabled and its data.main holds the full set of output
+			// branches returned by webhook(). All branches must be forwarded, not
+			// just output 0. See https://github.com/n8n-io/n8n/issues/12823
+			const disabledNode = { ...mockNode, disabled: true };
+			const outputBranches = [[], [{ json: { action: 'Decline' } }], []];
+			const executionData = {
+				...mockExecutionData,
+				node: disabledNode,
+				data: { main: outputBranches },
+				metadata: { forwardAllOutputs: true },
+			};
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				executionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(result).toEqual({ data: outputBranches });
 		});
 	});
 
@@ -342,7 +405,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 	describe('execute node type handling', () => {
 		it('should execute custom operation when available', async () => {
 			const mockData = [[{ json: { result: 'custom operation result' } }]];
-			const mockCustomOperation = jest.fn().mockResolvedValue(mockData);
+			const mockCustomOperation = vi.fn().mockResolvedValue(mockData);
 
 			// Create a node with parameters that match the custom operation
 			const customOpNode = {
@@ -364,7 +427,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				execute: undefined, // Make sure execute is not defined so custom operation is used
 			};
 
-			mockWorkflow.nodeTypes.getByNameAndVersion = jest.fn().mockReturnValue(customOpNodeType);
+			mockWorkflow.nodeTypes.getByNameAndVersion = vi.fn().mockReturnValue(customOpNodeType);
 
 			const customOpExecutionData = {
 				...mockExecutionData,
@@ -372,7 +435,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			};
 
 			const mockContextInstance = { hints: [] };
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -390,12 +455,14 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('should execute node with execute method and return data with hints', async () => {
 			const mockData = [[{ json: { result: 'test' } }]];
 			const mockHints = [{ message: 'Test hint' }];
-			mockNodeType.execute = jest.fn().mockResolvedValue(mockData);
+			mockNodeType.execute = vi.fn().mockResolvedValue(mockData);
 
 			const mockContextInstance = {
 				hints: mockHints,
 			};
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -414,7 +481,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockData = [[{ json: { result: 'test' } }]];
 			// Create a mock that extends Node to trigger instanceof Node check
 			const nodeInstance = Object.create(Node.prototype);
-			nodeInstance.execute = jest.fn().mockResolvedValue(mockData);
+			nodeInstance.execute = vi.fn().mockResolvedValue(mockData);
 			nodeInstance.description = {
 				displayName: 'Node Instance',
 				name: 'node-instance',
@@ -425,13 +492,15 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				properties: [],
 				requestDefaults: undefined,
 			};
-			(mockWorkflow.nodeTypes.getByNameAndVersion as jest.Mock).mockReturnValue(
+			(mockWorkflow.nodeTypes.getByNameAndVersion as Mock).mockReturnValue(
 				nodeInstance as INodeType,
 			);
 
 			const mockContextInstance = { hints: [] };
 			const mockSubNodeExecutionResults = undefined;
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -455,7 +524,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				data: { main: [] }, // No input data
 			};
 
-			mockNodeType.execute = jest.fn();
+			mockNodeType.execute = vi.fn();
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -472,10 +541,10 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 		it('should handle close functions and their errors', async () => {
 			const mockData = [[{ json: { result: 'test' } }]];
-			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
-			const closeFunction2 = jest.fn().mockRejectedValue(new Error('Close error'));
+			const closeFunction1 = vi.fn().mockResolvedValue(undefined);
+			const closeFunction2 = vi.fn().mockRejectedValue(new Error('Close error'));
 
-			mockNodeType.execute = jest.fn().mockResolvedValue(mockData);
+			mockNodeType.execute = vi.fn().mockResolvedValue(mockData);
 
 			const mockContextInstance = {
 				hints: [],
@@ -483,22 +552,24 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			// Mock ExecuteContext constructor to capture closeFunctions array
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					// Add close functions to the array passed in
-					closeFunctions.push(closeFunction1, closeFunction2);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						// Add close functions to the array passed in
+						closeFunctions.push(closeFunction1, closeFunction2);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await expect(
@@ -516,12 +587,12 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(closeFunction2).toHaveBeenCalled();
 		});
 
-		it('should throw ApplicationError when close function throws non-Error object', async () => {
+		it('should throw UnexpectedError when close function throws non-Error object', async () => {
 			const mockData = [[{ json: { result: 'test' } }]];
-			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
-			const closeFunction2 = jest.fn().mockRejectedValue('String error'); // Non-Error object to trigger line 1247
+			const closeFunction1 = vi.fn().mockResolvedValue(undefined);
+			const closeFunction2 = vi.fn().mockRejectedValue('String error'); // Non-Error object to trigger line 1247
 
-			mockNodeType.execute = jest.fn().mockResolvedValue(mockData);
+			mockNodeType.execute = vi.fn().mockResolvedValue(mockData);
 
 			const mockContextInstance = {
 				hints: [],
@@ -529,34 +600,37 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			// Mock ExecuteContext constructor to capture closeFunctions array
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					// Add close functions to the array passed in
-					closeFunctions.push(closeFunction1, closeFunction2);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						// Add close functions to the array passed in
+						closeFunctions.push(closeFunction1, closeFunction2);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
-			await expect(
-				workflowExecute.runNode(
-					mockWorkflow,
-					mockExecutionData,
-					mockRunExecutionData,
-					0,
-					mockAdditionalData,
-					'manual',
-				),
-			).rejects.toThrow("Error on execution node's close function(s)");
+			const promise = workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			await expect(promise).rejects.toThrow(UnexpectedError);
+			await expect(promise).rejects.toThrow("Error on execution node's close function(s)");
 
 			expect(closeFunction1).toHaveBeenCalled();
 			expect(closeFunction2).toHaveBeenCalled();
@@ -564,31 +638,33 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 		it('should call close functions when execute returns an EngineRequest', async () => {
 			const engineRequest = { actions: [{ type: 'test' }], metadata: {} };
-			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
-			const closeFunction2 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction1 = vi.fn().mockResolvedValue(undefined);
+			const closeFunction2 = vi.fn().mockResolvedValue(undefined);
 
-			mockNodeType.execute = jest.fn().mockResolvedValue(engineRequest);
+			mockNodeType.execute = vi.fn().mockResolvedValue(engineRequest);
 
 			const mockContextInstance = {
 				hints: [],
 			};
 
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1, closeFunction2);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1, closeFunction2);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			const result = await workflowExecute.runNode(
@@ -606,31 +682,33 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		});
 
 		it('should call close functions when execute throws an error', async () => {
-			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
-			const closeFunction2 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction1 = vi.fn().mockResolvedValue(undefined);
+			const closeFunction2 = vi.fn().mockResolvedValue(undefined);
 
-			mockNodeType.execute = jest.fn().mockRejectedValue(new Error('Execution failed'));
+			mockNodeType.execute = vi.fn().mockRejectedValue(new Error('Execution failed'));
 
 			const mockContextInstance = {
 				hints: [],
 			};
 
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1, closeFunction2);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1, closeFunction2);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await expect(
@@ -650,32 +728,34 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 		it('should call all close functions via Promise.allSettled even when some fail', async () => {
 			const mockData = [[{ json: { result: 'test' } }]];
-			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
-			const closeFunction2 = jest.fn().mockRejectedValue(new Error('Close error 1'));
-			const closeFunction3 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction1 = vi.fn().mockResolvedValue(undefined);
+			const closeFunction2 = vi.fn().mockRejectedValue(new Error('Close error 1'));
+			const closeFunction3 = vi.fn().mockResolvedValue(undefined);
 
-			mockNodeType.execute = jest.fn().mockResolvedValue(mockData);
+			mockNodeType.execute = vi.fn().mockResolvedValue(mockData);
 
 			const mockContextInstance = {
 				hints: [],
 			};
 
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1, closeFunction2, closeFunction3);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1, closeFunction2, closeFunction3);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await expect(
@@ -696,30 +776,32 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 		it('should throw close function error when EngineRequest is returned', async () => {
 			const engineRequest = { actions: [{ type: 'test' }], metadata: {} };
-			const closeFunction1 = jest.fn().mockRejectedValue(new Error('Close error on EngineRequest'));
+			const closeFunction1 = vi.fn().mockRejectedValue(new Error('Close error on EngineRequest'));
 
-			mockNodeType.execute = jest.fn().mockResolvedValue(engineRequest);
+			mockNodeType.execute = vi.fn().mockResolvedValue(engineRequest);
 
 			const mockContextInstance = {
 				hints: [],
 			};
 
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await expect(
@@ -738,9 +820,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 		it('should call close functions after custom operation completes', async () => {
 			const mockData = [[{ json: { result: 'custom operation result' } }]];
-			const mockCustomOperation = jest.fn().mockResolvedValue(mockData);
-			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
-			const closeFunction2 = jest.fn().mockResolvedValue(undefined);
+			const mockCustomOperation = vi.fn().mockResolvedValue(mockData);
+			const closeFunction1 = vi.fn().mockResolvedValue(undefined);
+			const closeFunction2 = vi.fn().mockResolvedValue(undefined);
 
 			const customOpNode = {
 				...mockNode,
@@ -760,7 +842,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				execute: undefined,
 			};
 
-			mockWorkflow.nodeTypes.getByNameAndVersion = jest.fn().mockReturnValue(customOpNodeType);
+			mockWorkflow.nodeTypes.getByNameAndVersion = vi.fn().mockReturnValue(customOpNodeType);
 
 			const customOpExecutionData = {
 				...mockExecutionData,
@@ -769,21 +851,23 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			const mockContextInstance = { hints: [] };
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1, closeFunction2);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1, closeFunction2);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			const result = await workflowExecute.runNode(
@@ -802,30 +886,32 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		});
 
 		it('should not mask execution error with close function error', async () => {
-			const closeFunction1 = jest.fn().mockRejectedValue(new Error('Close error'));
+			const closeFunction1 = vi.fn().mockRejectedValue(new Error('Close error'));
 
-			mockNodeType.execute = jest.fn().mockRejectedValue(new Error('Execution failed'));
+			mockNodeType.execute = vi.fn().mockRejectedValue(new Error('Execution failed'));
 
 			const mockContextInstance = {
 				hints: [],
 			};
 
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await expect(
@@ -846,11 +932,13 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 	describe('poll node type handling', () => {
 		it('should execute poll function in manual mode', async () => {
 			const mockData = [[{ json: { polled: 'data' } }]];
-			mockNodeType.poll = jest.fn().mockResolvedValue(mockData);
+			mockNodeType.poll = vi.fn().mockResolvedValue(mockData);
 			mockNodeType.execute = undefined;
 
 			const mockContextInstance = {};
-			mockPollContext.mockImplementation(() => mockContextInstance as unknown as PollContext);
+			mockPollContext.mockImplementation(function () {
+				return mockContextInstance as unknown as PollContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -873,7 +961,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		});
 
 		it('should pass through input data for poll nodes in non-manual mode', async () => {
-			mockNodeType.poll = jest.fn();
+			mockNodeType.poll = vi.fn();
 			mockNodeType.execute = undefined;
 
 			const result = await workflowExecute.runNode(
@@ -897,13 +985,13 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				manualTriggerResponse: Promise.resolve(mockTriggerData),
 			};
 
-			mockNodeType.trigger = jest.fn();
+			mockNodeType.trigger = vi.fn();
 			mockNodeType.execute = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: jest.fn().mockResolvedValue(mockTriggerResponse),
+				runTriggerFunction: vi.fn().mockResolvedValue(mockTriggerResponse),
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -927,18 +1015,18 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(result).toEqual({ data: mockTriggerData });
 		});
 
 		it('should return null data when trigger response is undefined in manual mode', async () => {
-			mockNodeType.trigger = jest.fn();
+			mockNodeType.trigger = vi.fn();
 			mockNodeType.execute = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: jest.fn().mockResolvedValue(undefined), // Return undefined to trigger line 1277
+				runTriggerFunction: vi.fn().mockResolvedValue(undefined), // Return undefined to trigger line 1277
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -962,24 +1050,24 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(result).toEqual({ data: null });
 		});
 
 		it('should return null data and closeFunction when trigger response is empty in manual mode', async () => {
-			const mockCloseFunction = jest.fn();
+			const mockCloseFunction = vi.fn();
 			const mockTriggerResponse = {
 				manualTriggerResponse: Promise.resolve([]), // Empty response to trigger line 1301
 				closeFunction: mockCloseFunction,
 			};
 
-			mockNodeType.trigger = jest.fn();
+			mockNodeType.trigger = vi.fn();
 			mockNodeType.execute = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: jest.fn().mockResolvedValue(mockTriggerResponse),
+				runTriggerFunction: vi.fn().mockResolvedValue(mockTriggerResponse),
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -1003,27 +1091,27 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(result).toEqual({ data: null, closeFunction: mockCloseFunction });
 		});
 
 		it('should call manualTriggerFunction when defined in trigger response', async () => {
 			const mockTriggerData = [[{ json: { triggered: 'data' } }]];
-			const mockManualTriggerFunction = jest.fn().mockResolvedValue(undefined);
-			const mockCloseFunction = jest.fn();
+			const mockManualTriggerFunction = vi.fn().mockResolvedValue(undefined);
+			const mockCloseFunction = vi.fn();
 			const mockTriggerResponse = {
 				manualTriggerResponse: Promise.resolve(mockTriggerData),
 				manualTriggerFunction: mockManualTriggerFunction, // This will trigger line 1294
 				closeFunction: mockCloseFunction,
 			};
 
-			mockNodeType.trigger = jest.fn();
+			mockNodeType.trigger = vi.fn();
 			mockNodeType.execute = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: jest.fn().mockResolvedValue(mockTriggerResponse),
+				runTriggerFunction: vi.fn().mockResolvedValue(mockTriggerResponse),
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -1047,13 +1135,13 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(mockManualTriggerFunction).toHaveBeenCalled(); // Verify line 1294 was executed
 			expect(result).toEqual({ data: mockTriggerData, closeFunction: mockCloseFunction });
 		});
 
 		it('should pass through input data for trigger nodes in non-manual mode', async () => {
-			mockNodeType.trigger = jest.fn();
+			mockNodeType.trigger = vi.fn();
 			mockNodeType.execute = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.webhook = undefined;
@@ -1073,7 +1161,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 	describe('webhook node type handling', () => {
 		it('should pass through input data for non-declarative webhook nodes', async () => {
-			mockNodeType.webhook = jest.fn();
+			mockNodeType.webhook = vi.fn();
 			mockNodeType.execute = undefined;
 			mockNodeType.supplyData = undefined;
 			mockNodeType.poll = undefined;
@@ -1094,7 +1182,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 		it('should execute declarative webhook nodes through routing node', async () => {
 			const mockData = [[{ json: { webhook: 'result' } }]];
-			mockNodeType.webhook = jest.fn();
+			mockNodeType.webhook = vi.fn();
 			mockNodeType.execute = undefined;
 			mockNodeType.supplyData = undefined;
 			mockNodeType.poll = undefined;
@@ -1102,12 +1190,16 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.description.requestDefaults = {}; // Declarative node
 
 			const mockRoutingNodeInstance = {
-				runNode: jest.fn().mockResolvedValue(mockData),
+				runNode: vi.fn().mockResolvedValue(mockData),
 			};
-			mockRoutingNode.mockImplementation(() => mockRoutingNodeInstance as unknown as RoutingNode);
+			mockRoutingNode.mockImplementation(function () {
+				return mockRoutingNodeInstance as unknown as RoutingNode;
+			});
 
 			const mockContextInstance = {};
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -1135,12 +1227,16 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.webhook = undefined;
 
 			const mockRoutingNodeInstance = {
-				runNode: jest.fn().mockResolvedValue(mockData),
+				runNode: vi.fn().mockResolvedValue(mockData),
 			};
-			mockRoutingNode.mockImplementation(() => mockRoutingNodeInstance as unknown as RoutingNode);
+			mockRoutingNode.mockImplementation(function () {
+				return mockRoutingNodeInstance as unknown as RoutingNode;
+			});
 
 			const mockContextInstance = {};
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -1160,7 +1256,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 	describe('supplyData node handling', () => {
 		it('should throw a clear error when a supplyData node has no execute method', async () => {
 			mockNodeType.execute = undefined;
-			mockNodeType.supplyData = jest.fn();
+			mockNodeType.supplyData = vi.fn();
 			mockNodeType.poll = undefined;
 			mockNodeType.trigger = undefined;
 			mockNodeType.webhook = undefined;
@@ -1198,26 +1294,28 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			let capturedInputData: ITaskDataConnections | undefined;
 
-			mockNodeType.execute = jest.fn().mockResolvedValue([[{ json: { result: 'executeOnce' } }]]);
+			mockNodeType.execute = vi.fn().mockResolvedValue([[{ json: { result: 'executeOnce' } }]]);
 
 			const mockContextInstance = { hints: [] };
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					inputData,
-					_executionData,
-					_closeFunctions,
-				) => {
-					// Capture the inputData that was passed to ExecuteContext
-					capturedInputData = inputData;
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						inputData,
+						_executionData,
+						_closeFunctions,
+					) => {
+						// Capture the inputData that was passed to ExecuteContext
+						capturedInputData = inputData;
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await workflowExecute.runNode(
@@ -1259,10 +1357,12 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				data: { main: inputData },
 			};
 
-			mockNodeType.execute = jest.fn().mockResolvedValue([[{ json: { result: 'test' } }]]);
+			mockNodeType.execute = vi.fn().mockResolvedValue([[{ json: { result: 'test' } }]]);
 
 			const mockContextInstance = { hints: [] };
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -1289,7 +1389,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				data: { main: inputData },
 			};
 
-			mockNodeType.execute = jest.fn().mockResolvedValue([[{ json: { result: 'test' } }]]);
+			mockNodeType.execute = vi.fn().mockResolvedValue([[{ json: { result: 'test' } }]]);
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -1306,10 +1406,10 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 	});
 
 	describe('customTelemetryTags', () => {
-		let getParameterValue: jest.Mock;
+		let getParameterValue: Mock;
 
 		beforeEach(() => {
-			getParameterValue = jest.fn();
+			getParameterValue = vi.fn();
 			mockWorkflow.expression = {
 				getParameterValue,
 			} as unknown as Workflow['expression'];
@@ -1318,9 +1418,11 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockAdditionalData.formWaitingBaseUrl = 'https://n8n.local/form-waiting';
 			mockAdditionalData.variables = {};
 
-			mockNodeType.execute = jest.fn().mockResolvedValue([[{ json: {} }]]);
+			mockNodeType.execute = vi.fn().mockResolvedValue([[{ json: {} }]]);
 			const mockContextInstance = { hints: [] };
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 		});
 
 		const makeTelemetryExecutionData = (overrides: Partial<IExecuteData> = {}): IExecuteData => ({
@@ -1500,13 +1602,13 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			};
 			getParameterValue.mockReturnValue('prod');
 
-			mockNodeType.trigger = jest.fn();
+			mockNodeType.trigger = vi.fn();
 			mockNodeType.execute = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: jest.fn().mockResolvedValue({
+				runTriggerFunction: vi.fn().mockResolvedValue({
 					manualTriggerResponse: Promise.resolve([[{ json: { triggered: 'data' } }]]),
 				}),
 			};
@@ -1531,7 +1633,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			};
 			getParameterValue.mockReturnValue('staging');
 
-			mockNodeType.poll = jest.fn();
+			mockNodeType.poll = vi.fn();
 			mockNodeType.execute = undefined;
 
 			const executionData = makeTelemetryExecutionData({ node });
@@ -1550,7 +1652,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 		it('writes tracing when execution uses a custom operation instead of execute()', async () => {
 			const mockData = [[{ json: { result: 'custom operation result' } }]];
-			const mockCustomOperation = jest.fn().mockResolvedValue(mockData);
+			const mockCustomOperation = vi.fn().mockResolvedValue(mockData);
 
 			const customOpNode: INode = {
 				...mockNode,
@@ -1573,7 +1675,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				execute: undefined,
 			};
 
-			mockWorkflow.nodeTypes.getByNameAndVersion = jest.fn().mockReturnValue(customOpNodeType);
+			mockWorkflow.nodeTypes.getByNameAndVersion = vi.fn().mockReturnValue(customOpNodeType);
 
 			getParameterValue.mockImplementation((value: string) =>
 				value === '={{ $json.env }}' ? 'prod' : value,

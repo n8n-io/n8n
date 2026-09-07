@@ -12,6 +12,11 @@ ruleTester.run('valid-peer-dependencies', ValidPeerDependenciesRule, {
 			code: '{ "name": "n8n-nodes-example", "peerDependencies": { "n8n-workflow": "*" } }',
 		},
 		{
+			name: 'n8n-workflow and scoped @n8n/ai-node-sdk',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "peerDependencies": { "n8n-workflow": "*", "@n8n/ai-node-sdk": "*" } }',
+		},
+		{
 			name: 'n8n-workflow and ai-node-sdk',
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "peerDependencies": { "n8n-workflow": "*", "ai-node-sdk": "*" } }',

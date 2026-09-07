@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
+import type { MetricScale } from '@n8n/api-types';
 import { N8nCard } from '@n8n/design-system';
 import type { TestCaseExecutionRecord } from '../../evaluation.api';
 import {
@@ -18,6 +19,9 @@ const props = defineProps<{
 	testCase: TestCaseExecutionRecord;
 	index: number;
 	metricSources?: Record<string, MetricSource>;
+	// Per-metric scale from the run this case belongs to — same map for every
+	// case, so scores format scale-correctly (a 1–5 metric → 100%, not 5%).
+	metricScales?: Record<string, MetricScale>;
 }>();
 
 const emit = defineEmits<{
@@ -62,6 +66,7 @@ const rows = computed(() => {
 			name,
 			value: normalizeMetricValue(props.testCase.metrics?.[name]),
 			category: source?.category,
+			scale: props.metricScales?.[name],
 			sourceNodeName: source?.nodeName,
 		};
 	});
@@ -105,6 +110,7 @@ const rows = computed(() => {
 					:name="row.name"
 					:value="row.value"
 					:category="row.category"
+					:scale="row.scale"
 					:source-node-name="row.sourceNodeName"
 				/>
 			</div>

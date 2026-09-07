@@ -396,6 +396,32 @@ describe('WorkflowPreview', () => {
 		});
 	});
 
+	describe('canOpenNDV prop', () => {
+		it('should include canOpenNDV=false in iframe src when canOpenNDV prop is false', () => {
+			const { container } = renderComponent({
+				pinia,
+				props: {
+					canOpenNDV: false,
+				},
+			});
+
+			const iframe = container.querySelector('iframe');
+			expect(iframe?.getAttribute('src')).toContain('canOpenNDV=false');
+		});
+
+		it('should not include canOpenNDV param when canOpenNDV prop is true', () => {
+			const { container } = renderComponent({
+				pinia,
+				props: {
+					canOpenNDV: true,
+				},
+			});
+
+			const iframe = container.querySelector('iframe');
+			expect(iframe?.getAttribute('src')).not.toContain('canOpenNDV');
+		});
+	});
+
 	describe('ready event', () => {
 		it('should emit ready event when iframe sends n8nReady command', async () => {
 			const { emitted } = renderComponent({

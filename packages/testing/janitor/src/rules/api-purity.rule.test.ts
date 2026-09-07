@@ -19,7 +19,7 @@ test('creates workflow', async ({ n8n, api }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -36,7 +36,7 @@ test('gets workflow', async ({ request }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].message).toContain('request.get');
@@ -54,7 +54,7 @@ test('creates workflow', async ({ request }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].suggestion).toContain('api');
@@ -72,7 +72,7 @@ test('fetches data', async () => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].message).toContain('fetch');
@@ -92,7 +92,7 @@ test('multiple API calls', async ({ request }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(3);
 	});
@@ -109,7 +109,7 @@ export class WorkflowComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 	});
@@ -127,7 +127,7 @@ test('test', async ({ request }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].line).toBe(6);

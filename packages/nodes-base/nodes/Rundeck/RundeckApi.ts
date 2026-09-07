@@ -10,6 +10,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 export interface RundeckCredentials {
 	url: string;
 	token: string;
+	sslCertificateValidation?: 'default' | 'enabled' | 'disabled';
 }
 
 export class RundeckApi {
@@ -21,6 +22,17 @@ export class RundeckApi {
 		this.executeFunctions = executeFunctions;
 	}
 
+	private shouldValidateCertificates(): boolean {
+		switch (this.credentials?.sslCertificateValidation) {
+			case 'enabled':
+				return true;
+			case 'disabled':
+				return false;
+			default:
+				return this.executeFunctions.getNode().typeVersion >= 1.1;
+		}
+	}
+
 	protected async request(
 		method: IHttpRequestMethods,
 		endpoint: string,
@@ -30,7 +42,7 @@ export class RundeckApi {
 		const credentialType = 'rundeckApi';
 
 		const options: IRequestOptions = {
-			rejectUnauthorized: false,
+			rejectUnauthorized: this.shouldValidateCertificates(),
 			method,
 			qs: query,
 			uri: (this.credentials?.url as string) + endpoint,

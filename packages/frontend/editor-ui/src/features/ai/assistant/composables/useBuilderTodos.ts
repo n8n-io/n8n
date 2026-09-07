@@ -8,7 +8,7 @@ import {
 	formatPlaceholderPath,
 	isPlaceholderValue,
 	type PlaceholderDetail,
-} from '@n8n/utils';
+} from '@n8n/utils/placeholder';
 
 export {
 	extractPlaceholderLabels,

@@ -6,14 +6,18 @@ const table = {
 
 export class AddAttachmentsToChatHubMessages1761773155024 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
-		await addColumns(table.messages, [
-			column('attachments').json.comment(
-				'File attachments for the message (if any), stored as JSON. Files are stored as base64-encoded data URLs.',
-			),
-		]);
+		await addColumns(
+			table.messages,
+			[
+				column('attachments').json.comment(
+					'File attachments for the message (if any), stored as JSON. Files are stored as base64-encoded data URLs.',
+				),
+			],
+			{ recreatesOnSqlite: true },
+		);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns(table.messages, ['attachments']);
+		await dropColumns(table.messages, ['attachments'], { recreatesOnSqlite: true });
 	}
 }

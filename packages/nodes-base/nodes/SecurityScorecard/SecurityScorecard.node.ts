@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { companyFields, companyOperations } from './descriptions/CompanyDescription';
 import { industryFields, industryOperations } from './descriptions/IndustryDescription';
@@ -17,7 +17,7 @@ import {
 } from './descriptions/PortfolioCompanyDescription';
 import { portfolioFields, portfolioOperations } from './descriptions/PortfolioDescription';
 import { reportFields, reportOperations } from './descriptions/ReportDescription';
-import { scorecardApiRequest, simplify } from './GenericFunctions';
+import { resolveReportDownloadUrl, scorecardApiRequest, simplify } from './GenericFunctions';
 
 export class SecurityScorecard implements INodeType {
 	description: INodeTypeDescription = {
@@ -215,7 +215,18 @@ export class SecurityScorecard implements INodeType {
 
 			if (resource === 'report') {
 				if (operation === 'download') {
-					const reportUrl = this.getNodeParameter('url', i) as string;
+					const reportUrlInput = this.getNodeParameter('url', i) as string;
+					let reportUrl: string;
+
+					try {
+						reportUrl = resolveReportDownloadUrl(reportUrlInput);
+					} catch (error) {
+						throw new NodeOperationError(
+							this.getNode(),
+							error instanceof Error ? error.message : 'Invalid report URL',
+							{ itemIndex: i },
+						);
+					}
 
 					const response = await scorecardApiRequest.call(this, 'GET', '', {}, {}, reportUrl, {
 						encoding: null,

@@ -106,7 +106,7 @@ export function createEvalDataAgentTool(context: OrchestrationContext) {
 			}
 
 			const log = (level: 'info' | 'warn' | 'error', msg: string) => {
-				domain.logger?.[level]?.(`[eval-data] ${msg}`);
+				domain.logger[level]?.(`[eval-data] ${msg}`);
 			};
 			const j = (v: unknown) => JSON.stringify(v);
 
@@ -157,6 +157,7 @@ export function createEvalDataAgentTool(context: OrchestrationContext) {
 					columns: target.inputColumns,
 					rowCount: GENERATE_ROW_COUNT,
 					targetAgentNodeName: target.targetAgentNodeName,
+					logger: domain.logger,
 					...(historyRows.length > 0 ? { realExamples: historyRows } : {}),
 				});
 				source = 'synthetic';

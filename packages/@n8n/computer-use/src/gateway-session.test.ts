@@ -1,3 +1,5 @@
+import type { Mocked } from 'vitest';
+
 import * as config from './config';
 import type { ToolGroup } from './config';
 import { GatewaySession, buildDefaultPermissions } from './gateway-session';
@@ -12,17 +14,15 @@ function makeStore(
 		allow: Record<string, string[]>;
 		deny: Record<string, string[]>;
 	}> = {},
-): jest.Mocked<
-	Pick<SettingsStore, 'getResourcePermissions' | 'alwaysAllow' | 'alwaysDeny' | 'flush'>
-> {
+): Mocked<Pick<SettingsStore, 'getResourcePermissions' | 'alwaysAllow' | 'alwaysDeny' | 'flush'>> {
 	return {
-		getResourcePermissions: jest.fn((toolGroup: ToolGroup) => ({
+		getResourcePermissions: vi.fn((toolGroup: ToolGroup) => ({
 			allow: overrides.allow?.[toolGroup] ?? [],
 			deny: overrides.deny?.[toolGroup] ?? [],
 		})),
-		alwaysAllow: jest.fn(),
-		alwaysDeny: jest.fn(),
-		flush: jest.fn().mockResolvedValue(undefined),
+		alwaysAllow: vi.fn(),
+		alwaysDeny: vi.fn(),
+		flush: vi.fn().mockResolvedValue(undefined),
 	};
 }
 
@@ -215,6 +215,65 @@ describe('GatewaySession', () => {
 				store as unknown as SettingsStore,
 			);
 			expect(session.check('shell', 'npm')).toBe('ask');
+		});
+
+		describe('credential creation', () => {
+			it('asks when only the browser group mode would allow it', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('ask');
+				// The group mode still covers ordinary domains.
+				expect(session.check('browser', 'example.com', 'host')).toBe('allow');
+			});
+
+			it('treats a host named "credentials" as a domain, not a credential write', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials', 'host')).toBe('allow');
+			});
+
+			it('applies the group mode when no kind is given', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials')).toBe('allow');
+			});
+
+			it('honours an explicit session approval for the credentials resource', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				session.allowForSession('browser', 'credentials');
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('allow');
+			});
+
+			it('honours an explicit persistent approval for the credentials resource', () => {
+				const store = makeStore({ allow: { browser: ['credentials'] } });
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('allow');
+			});
+
+			it('still denies when the credentials resource is on the deny list', () => {
+				const store = makeStore({ deny: { browser: ['credentials'] } });
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('deny');
+			});
 		});
 
 		describe('settings self-protection', () => {

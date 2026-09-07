@@ -1,8 +1,15 @@
 ## Summary
 
 <!--
-Describe what the PR does and how to test.
+Describe what the PR does.
 Photos and videos are recommended.
+-->
+
+## How to test
+
+<!--
+Describe all steps needed to test the changes.
+Include an example workflow if the changes affect Workflow builder, execution or a Node, that can be tested with a workflow.
 -->
 
 ## Related Linear tickets, Github issues, and Community forum posts

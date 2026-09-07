@@ -1,5 +1,5 @@
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { convertNodeToAiTool, createAiTools } from '../ai-tools';
 
@@ -136,6 +136,39 @@ describe('ai-tools', () => {
 			expect(result.description.properties[2]).toEqual(operationProp);
 		});
 
+		it('should keep waiting operations available for workflow tool nodes', () => {
+			// sendAndWait/dispatchAndWait work in persistent workflow executions, so
+			// tool variants must keep them. They are blocked for the agents product
+			// at execution time instead (see EphemeralNodeExecutor).
+			fullNodeWrapper.description.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: 'Send', value: 'post' },
+						{ name: 'Send and Wait', value: SEND_AND_WAIT_OPERATION },
+						{ name: 'Dispatch and Wait', value: 'dispatchAndWait' },
+					],
+					default: SEND_AND_WAIT_OPERATION,
+				},
+			];
+
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			const operationProperty = result.description.properties.find(
+				(property) => property.name === 'operation',
+			);
+
+			expect(operationProperty).toMatchObject({
+				options: [
+					{ name: 'Send', value: 'post' },
+					{ name: 'Send and Wait', value: SEND_AND_WAIT_OPERATION },
+					{ name: 'Dispatch and Wait', value: 'dispatchAndWait' },
+				],
+				default: SEND_AND_WAIT_OPERATION,
+			});
+		});
+
 		it('should handle nodes with both resource and operation properties', () => {
 			const resourceProp: INodeProperties = {
 				displayName: 'Resource',
@@ -211,6 +244,31 @@ describe('ai-tools', () => {
 					primaryDocumentation: [{ url: 'https://example.com' }],
 				},
 			});
+		});
+
+		it('should preserve codex alias so tool variants stay searchable by alias', () => {
+			fullNodeWrapper.description.codex = {
+				categories: ['Existing'],
+				subcategories: {
+					Existing: ['Category'],
+				},
+				alias: ['scrape', 'crawl'],
+			};
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).toEqual({
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Other Tools'],
+				},
+				resources: {},
+				alias: ['scrape', 'crawl'],
+			});
+		});
+
+		it('should not add an alias key when the source node has none', () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).not.toHaveProperty('alias');
 		});
 
 		it('should handle nodes with very long names', () => {

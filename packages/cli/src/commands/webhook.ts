@@ -25,6 +25,10 @@ export class Webhook extends BaseCommand {
 
 	override needsCommunityPackages = true;
 
+	override needsExpressionEngine = true;
+
+	override seedsInstanceIdentity = true;
+
 	/**
 	 * Stops n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
@@ -70,7 +74,6 @@ export class Webhook extends BaseCommand {
 		await super.init();
 		Container.get(DeprecationService).warn();
 
-		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
 
@@ -98,7 +101,7 @@ export class Webhook extends BaseCommand {
 	}
 
 	async run() {
-		const { ScalingService } = await import('@/scaling/scaling.service');
+		const { ScalingService } = await import('@/scaling/scaling.service.js');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
 		this.server.markAsReady();

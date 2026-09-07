@@ -1,14 +1,15 @@
-import { mock } from 'jest-mock-extended';
-import type { IWebhookFunctions, INodeType } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+import type { ILoadOptionsFunctions, IWebhookFunctions, INodeType } from 'n8n-workflow';
 
 import { SlackTrigger } from '../SlackTrigger.node';
+import * as GenericFunctions from '../V2/GenericFunctions';
 
 // Mock the helper functions
-jest.mock('../SlackTriggerHelpers', () => ({
-	verifySignature: jest.fn().mockResolvedValue(true),
-	getChannelInfo: jest.fn().mockResolvedValue({ id: 'C123', name: 'test-channel' }),
-	getUserInfo: jest.fn().mockResolvedValue({ id: 'U123', name: 'test-user' }),
-	downloadFile: jest.fn().mockResolvedValue(Buffer.from('test file content')),
+vi.mock('../SlackTriggerHelpers', () => ({
+	verifySignature: vi.fn().mockResolvedValue(true),
+	getChannelInfo: vi.fn().mockResolvedValue({ id: 'C123', name: 'test-channel' }),
+	getUserInfo: vi.fn().mockResolvedValue({ id: 'U123', name: 'test-user' }),
+	downloadFile: vi.fn().mockResolvedValue(Buffer.from('test file content')),
 }));
 
 describe('SlackTrigger Node', () => {
@@ -16,13 +17,13 @@ describe('SlackTrigger Node', () => {
 	let mockWebhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		slackTrigger = new SlackTrigger();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
 
 		// Mock helpers
 		mockWebhookFunctions.helpers = {
-			prepareBinaryData: jest.fn().mockResolvedValue({
+			prepareBinaryData: vi.fn().mockResolvedValue({
 				data: 'binary-data',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
@@ -50,10 +51,10 @@ describe('SlackTrigger Node', () => {
 		);
 
 		mockWebhookFunctions.getResponseObject.mockReturnValue({
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
-			json: jest.fn().mockReturnThis(),
-			end: jest.fn(),
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			end: vi.fn(),
 		} as any);
 	});
 
@@ -705,6 +706,29 @@ describe('SlackTrigger Node', () => {
 			expect(mockWebhookFunctions.getResponseObject().json).toHaveBeenCalledWith({
 				challenge: 'test_challenge_123',
 			});
+		});
+	});
+
+	describe('loadOptions - getUsers', () => {
+		it('should label users with real name and handle, falling back to the handle alone', async () => {
+			const mockLoadOptionsFunctions = mock<ILoadOptionsFunctions>();
+			vi.spyOn(GenericFunctions, 'slackApiRequestAllItems').mockResolvedValue([
+				{ id: 'U111111111', name: 'john.doe', real_name: 'John Doe' },
+				{ id: 'U222222222', name: 'jane.smith', real_name: 'Jane Smith' },
+				// no real_name, e.g. a bot or an unconfigured account
+				{ id: 'U333333333', name: 'alertbot' },
+			]);
+
+			const result =
+				await slackTrigger.methods!.loadOptions!.getUsers.call(mockLoadOptionsFunctions);
+
+			// as [label, value] tuples, to keep the assertion clear of `{ name, value }`
+			// literals that n8n-nodes-base/node-param-display-name-miscased reads as node params
+			expect(result.map((o) => [o.name, o.value])).toEqual([
+				['alertbot', 'U333333333'],
+				['Jane Smith (@jane.smith)', 'U222222222'],
+				['John Doe (@john.doe)', 'U111111111'],
+			]);
 		});
 	});
 });

@@ -167,6 +167,10 @@ const MODEL_METADATA_REGISTRY: Partial<
 			inputModalities: ['text', 'image'],
 			priority: 80,
 		},
+		'claude-opus-4-7': {
+			inputModalities: ['text', 'image'],
+			priority: 110,
+		},
 		'claude-opus-4-6': {
 			inputModalities: ['text', 'image'],
 			priority: 100,

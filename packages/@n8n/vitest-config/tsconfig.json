@@ -1,10 +1,9 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"extends": "@n8n/typescript-config/tsconfig.common.go.json",
 	"compilerOptions": {
 		"types": ["node"],
 		"module": "ESNext",
-		"moduleResolution": "bundler",
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"moduleResolution": "bundler"
 	},
 	"include": ["**/*.ts"],
 	"exclude": ["dist"]

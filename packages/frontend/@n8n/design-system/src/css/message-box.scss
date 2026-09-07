@@ -1,4 +1,5 @@
 @use 'mixins/mixins';
+@use 'mixins/motion';
 @use './common/var';
 @use 'common/popup';
 @use 'input';
@@ -46,9 +47,11 @@
 
 	@include mixins.e(title) {
 		padding-left: 0;
+		padding-right: var(--spacing--lg);
+		overflow-wrap: anywhere;
 		margin-bottom: 0;
 		font-size: var.$messagebox-font-size;
-		line-height: 1;
+		line-height: var(--line-height--md);
 		color: var.$messagebox-title-color;
 	}
 
@@ -143,6 +146,10 @@
 			line-height: var(--line-height--lg);
 		}
 
+		& .el-message-box__message__structured {
+			margin-bottom: var(--spacing--xs);
+		}
+
 		& .el-message-box__message__structured p {
 			margin-bottom: var(--spacing--sm);
 		}
@@ -152,7 +159,7 @@
 		color: var(--color--danger);
 		font-size: var.$messagebox-error-font-size;
 		min-height: 18px;
-		margin-top: 2px;
+		margin-top: var(--spacing--2xs);
 	}
 
 	@include mixins.e(btns) {
@@ -317,31 +324,15 @@
 }
 
 .msgbox-fade-enter-active {
-	animation: msgbox-fade-in 0.3s;
+	--animation--fade-in-down--duration: 0.3s;
+	--animation--fade-in-down--translate: 20px;
+
+	@include motion.fade-in-down;
 }
 
 .msgbox-fade-leave-active {
-	animation: msgbox-fade-out 0.3s;
-}
+	--animation--fade-out-up--duration: 0.3s;
+	--animation--fade-out-up--translate: 20px;
 
-@keyframes msgbox-fade-in {
-	0% {
-		transform: translate3d(0, -20px, 0);
-		opacity: 0;
-	}
-	100% {
-		transform: translate3d(0, 0, 0);
-		opacity: 1;
-	}
-}
-
-@keyframes msgbox-fade-out {
-	0% {
-		transform: translate3d(0, 0, 0);
-		opacity: 1;
-	}
-	100% {
-		transform: translate3d(0, -20px, 0);
-		opacity: 0;
-	}
+	@include motion.fade-out-up;
 }

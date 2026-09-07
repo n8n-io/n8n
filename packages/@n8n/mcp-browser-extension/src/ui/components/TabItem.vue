@@ -32,23 +32,26 @@ function hideFavicon(event: Event): void {
 
 <template>
 	<li :class="['tab-item', { 'tab-item--selectable': selectable }]" @click="handleClick">
-		<N8nCheckbox
-			v-if="selectable"
-			:model-value="selected"
-			@click.stop
-			@update:model-value="handleClick"
-		/>
-		<img
-			v-if="tab.favIconUrl"
-			:src="tab.favIconUrl"
-			alt=""
-			class="tab-favicon"
-			@error="hideFavicon"
-		/>
+		<span class="tab-marker">
+			<img
+				v-if="tab.favIconUrl"
+				:src="tab.favIconUrl"
+				alt=""
+				class="tab-favicon"
+				@error="hideFavicon"
+			/>
+		</span>
 		<div class="tab-info">
 			<div class="tab-title">{{ tab.title ?? 'Untitled' }}</div>
 			<div class="tab-url">{{ tab.url ?? '' }}</div>
 		</div>
+		<N8nCheckbox
+			v-if="selectable"
+			class="tab-checkbox"
+			:model-value="selected"
+			@click.stop
+			@update:model-value="handleClick"
+		/>
 	</li>
 </template>
 
@@ -56,10 +59,9 @@ function hideFavicon(event: Event): void {
 .tab-item {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--xs);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--xs) 0;
 	border-radius: var(--radius--lg);
-	border: var(--border-width) var(--border-style) transparent;
 }
 
 .tab-item--selectable {
@@ -70,9 +72,15 @@ function hideFavicon(event: Event): void {
 	}
 }
 
+.tab-marker {
+	flex: 0 0 var(--row-marker-size);
+	display: flex;
+	justify-content: center;
+}
+
 .tab-favicon {
-	width: 16px;
-	height: 16px;
+	width: 24px;
+	height: 24px;
 	border-radius: var(--radius--sm);
 }
 
@@ -94,5 +102,10 @@ function hideFavicon(event: Event): void {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.tab-checkbox {
+	flex-shrink: 0;
+	margin: 0;
 }
 </style>

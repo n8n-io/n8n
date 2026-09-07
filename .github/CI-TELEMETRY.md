@@ -49,6 +49,7 @@ return 'blacksmith';
 | Telemetry | Source | Metrics |
 |-----------|--------|---------|
 | Playwright perf/benchmark | `packages/testing/playwright/reporters/metrics-reporter.ts` | Any metric attached via `attachMetric()` |
+| Accessibility buckets | `packages/testing/playwright/reporters/a11y-reporter.ts` | Per-bucket axe score, violated rules, violating elements |
 | Build stats | `.github/scripts/send-build-stats.mjs` | Per-package build duration, cache hit/miss, run total |
 | Docker stats | `.github/scripts/send-docker-stats.mjs` | Image size per platform, docker build duration |
 | Container stack | `packages/testing/containers/telemetry.ts` | E2E stack startup times per service |
@@ -101,9 +102,10 @@ GROUP BY 1, 2 ORDER BY 1;
 ```javascript
 import { sendMetrics, metric } from './send-metrics.mjs';
 
-await sendMetrics([
+// Fire-and-forget — best-effort telemetry, must never block CI.
+sendMetrics([
   metric('my-metric', 42.0, 'ms', { context: 'value' }),
-]);
+]).catch((err) => console.warn(`[metrics] send failed: ${err.message}`));
 ```
 
 **From a Playwright test:**

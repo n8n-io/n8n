@@ -1,20 +1,26 @@
 import {
 	BreakingChangeInstanceRuleResult,
 	BreakingChangeLightReportResult,
+	BreakingChangeReportQueryDto,
 	BreakingChangeReportResult,
-	BreakingChangeVersion,
 	BreakingChangeWorkflowRuleResult,
+	WorkflowMigrationResult,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController, GlobalScope, Query, Post, Param } from '@n8n/decorators';
+import { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
 import { BreakingChangeService } from './breaking-changes.service';
 
 @RestController('/breaking-changes')
 export class BreakingChangesController {
-	constructor(private readonly service: BreakingChangeService) {}
+	constructor(
+		private readonly service: BreakingChangeService,
+		private readonly migrationService: BreakingChangeMigrationService,
+	) {}
 
 	private getLightDetectionResults(
 		report: BreakingChangeReportResult['report'],
@@ -34,7 +40,9 @@ export class BreakingChangesController {
 	@Get('/report')
 	@GlobalScope('breakingChanges:list')
 	async getDetectionReport(
-		@Query query: { version?: BreakingChangeVersion },
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
 		const report = await this.service.getDetectionResults(query.version ?? 'v2');
 		return {
@@ -46,7 +54,9 @@ export class BreakingChangesController {
 	@Post('/report/refresh')
 	@GlobalScope('breakingChanges:list')
 	async refreshCache(
-		@Query query: { version?: BreakingChangeVersion },
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
 		const report = await this.service.refreshDetectionResults(query.version ?? 'v2');
 		return {
@@ -70,5 +80,20 @@ export class BreakingChangesController {
 			throw new NotFoundError(`Breaking change rule with ID '${ruleId}' not found.`);
 		}
 		return result;
+	}
+
+	/**
+	 * Apply the rule's automated migration to a single workflow, saving the
+	 * rewritten workflow as a new version.
+	 */
+	@Post('/report/:ruleId/workflows/:workflowId/migrate')
+	@GlobalScope('breakingChanges:migrate')
+	async migrateWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('ruleId') ruleId: string,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowMigrationResult> {
+		return await this.migrationService.migrateWorkflow(ruleId, workflowId, req.user);
 	}
 }

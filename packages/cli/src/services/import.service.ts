@@ -1,47 +1,58 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import type { TagEntity, ICredentialsDb } from '@n8n/db';
+import type { TagEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	Project,
 	WorkflowEntity,
 	SharedWorkflow,
+	SharedWorkflowRepository,
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
+	UserRepository,
 	WorkflowHistory,
-	WorkflowPublishHistory,
-	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
-import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import {
-	ensureError,
-	type INode,
-	type INodeCredentialsDetails,
-	type IWorkflowBase,
-} from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
+import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
-
-import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers';
-import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import { Cipher } from 'n8n-core';
-import { decompressFolder } from '@/utils/compression.util';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
-import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
+import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import {
 	normalizeUserRowValueForDatabase,
 	quoteIdentifier,
 	toTableName,
 } from '@/modules/data-table/utils/sql-utils';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { decompressFolder } from '@/utils/compression.util';
+import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
+import {
+	replaceInvalidCredentials,
+	validateWorkflowStructure,
+	sanitizeNodeGroupDescriptions,
+} from '@/workflow-helpers';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
+
+/**
+ * One workflow the content-import policy blocked. It was skipped — the rest of the batch still
+ * imports, so a single bad workflow cannot cost an operator a whole restore.
+ */
+export interface WorkflowImportViolations {
+	workflowId: string | null;
+	name: string;
+	violations: PolicyViolation[];
+}
 
 @Service()
 export class ImportService {
@@ -72,24 +83,34 @@ export class ImportService {
 		private readonly tagRepository: TagRepository,
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
 		private readonly dataTableDDLService: DataTableDDLService,
+		private readonly userRepository: UserRepository,
+		private readonly workflowService: WorkflowService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	async initRecords() {
-		this.dbCredentials = await this.credentialsRepository.find();
+		this.dbCredentials = await this.credentialsRepository.find({
+			where: { usageScope: 'project' },
+		});
 		this.dbTags = await this.tagRepository.find();
 	}
 
 	async importWorkflows(
 		workflows: IWorkflowWithVersionMetadata[],
 		projectId: string,
-		{ activeState = 'false' }: { activeState?: 'false' | 'fromJson' } = {},
-	) {
+		userId: string,
+		{ activeState = 'false' }: { activeState?: 'false' | 'fromJson' },
+	): Promise<{ violations: WorkflowImportViolations[] }> {
 		await this.initRecords();
+
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
 
 		const { manager: dbManager } = this.credentialsRepository;
 
@@ -97,6 +118,8 @@ export class ImportService {
 		const workflowIds = workflows.map((w) => w.id).filter((id) => !!id);
 		const existingWorkflowIds = new Set<string>();
 		const activeVersionIdByWorkflow = new Map<string, string>();
+
+		let existingOwnerProjects = new Map<string, Project>();
 
 		if (workflowIds.length > 0) {
 			const existingWorkflows = await dbManager.find(WorkflowEntity, {
@@ -110,7 +133,22 @@ export class ImportService {
 					activeVersionIdByWorkflow.set(id, activeVersionId);
 				}
 			}
+
+			// An existing workflow's policy scope is its own project, not `projectId` — that
+			// param is where a brand-new workflow lands, and re-importing never moves ownership.
+			// Skipped when nothing would read it — a feature that is merely absent must not cost
+			// an extra query.
+			if (this.policyEnforcementService.hasChecksFor('contentImport')) {
+				existingOwnerProjects =
+					await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+			}
 		}
+
+		const violations: WorkflowImportViolations[] = [];
+		const admitted: Array<{
+			workflow: IWorkflowWithVersionMetadata;
+			cleared: PolicyCleared<'contentImport'>;
+		}> = [];
 
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
@@ -124,20 +162,53 @@ export class ImportService {
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
 			validateWorkflowStructure(workflow);
 
-			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
-			// Only remove if the workflow already exists in the database and is active
+			for (const warning of sanitizeNodeGroupDescriptions(workflow)) {
+				this.logger.warn(`Workflow "${workflow.name}": ${warning}`);
+			}
+
+			// Use the workflow's own project when it already has one — re-importing never moves it.
+			const policyProjectId = workflow.id
+				? (existingOwnerProjects.get(workflow.id)?.id ?? projectId)
+				: projectId;
+
+			let cleared: PolicyCleared<'contentImport'>;
+			try {
+				cleared = await this.policyEnforcementService.enforceContentImport({
+					workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
+					projectId: policyProjectId,
+					transport: 'cli',
+				});
+			} catch (error) {
+				// A blocked workflow is skipped, not fatal — the operator gets the rest of the batch.
+				// A check that broke is not scoped to one workflow, so it fails the whole import
+				// rather than silently skipping every workflow in turn.
+				if (!(error instanceof PolicyViolationError)) throw error;
+
+				violations.push({
+					workflowId: workflow.id ?? null,
+					name: workflow.name,
+					violations: error.violations,
+				});
+				continue;
+			}
+
+			admitted.push({ workflow, cleared });
+		}
+
+		// Nothing is deactivated until the whole batch is admitted: admission can abort the import,
+		// and a workflow stopped by then would stay stopped with nothing imported in its place.
+		// Still before the transaction, to prevent orphaned trigger listeners.
+		for (const { workflow } of admitted) {
 			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
-				await this.activeWorkflowManager.remove(workflow.id);
+				await this.workflowService.deactivateWorkflow(user, workflow.id, { source: 'import' });
 			}
 		}
 
 		const insertedWorkflows: IWorkflowWithVersionMetadata[] = [];
 		const workflowsToActivate: Array<{ workflowId: string; versionId: string }> = [];
-		await dbManager.transaction(async (tx) => {
-			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
-
+		await this.workflowRepository.runInTransaction({}, async (tx, ctx) => {
 			// Upsert all workflows
-			for (const workflow of workflows) {
+			for (const { workflow, cleared } of admitted) {
 				// Always generate a new versionId on import to ensure proper history ordering
 				workflow.versionId = uuid();
 
@@ -158,15 +229,13 @@ export class ImportService {
 				workflow.active = false;
 				workflow.activeVersionId = null;
 
-				const workflowToUpsert = workflow as QueryDeepPartialEntity<WorkflowEntity>;
-				const upsertResult = await tx.upsert(WorkflowEntity, workflowToUpsert, ['id']);
-				const workflowId = upsertResult.identifiers.at(0)?.id as string;
+				// Each workflow carries its own clearance: one token per subject, so a batch cannot
+				// have one cleared workflow vouch for another.
+				const workflowId = await this.workflowRepository.upsertImportedContent(workflow, {
+					...ctx,
+					policyCleared: cleared,
+				});
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
-
-				// Only add publish history if workflow was previously active
-				if (oldActiveVersionId) {
-					workflowsNeedingPublishHistory.push({ workflowId, versionId: oldActiveVersionId });
-				}
 
 				if (shouldActivate) {
 					workflowsToActivate.push({ workflowId, versionId: versionIdToActivate });
@@ -210,20 +279,14 @@ export class ImportService {
 					description: versionMetadata?.description ?? null,
 				});
 			}
-
-			// Add publish history records for workflows that were deactivated
-			for (const { workflowId, versionId } of workflowsNeedingPublishHistory) {
-				await tx.insert(WorkflowPublishHistory, {
-					workflowId,
-					versionId,
-					event: 'deactivated',
-					userId: null,
-				});
-			}
 		});
 
-		for (const { workflowId, versionId } of workflowsToActivate) {
-			await this.activateWorkflow(workflowId, versionId);
+		const orderedWorkflowsToActivate = this.sortWorkflowsForActivation(
+			insertedWorkflows,
+			workflowsToActivate,
+		);
+		for (const { workflowId, versionId } of orderedWorkflowsToActivate) {
+			await this.activateWorkflow(workflowId, versionId, user);
 		}
 
 		// Directly update the index for the important workflows, since they don't generate
@@ -231,30 +294,104 @@ export class ImportService {
 		for (const workflow of insertedWorkflows) {
 			await this.workflowIndexService.updateIndexForDraft(workflow);
 		}
+
+		return { violations };
 	}
 
-	private async activateWorkflow(workflowId: string, versionIdToActivate: string): Promise<void> {
-		let didActivate = false;
-		try {
-			await this.workflowRepository.update(
-				{ id: workflowId },
-				{ activeVersionId: versionIdToActivate },
-			);
-			await this.workflowRepository.updateActiveState(workflowId, true);
-			await this.activeWorkflowManager.add(workflowId, 'activate');
-			didActivate = true;
-		} catch (e) {
-			const error = ensureError(e);
-			this.logger.error(`Failed to activate workflow ${workflowId}`, { error });
-		} finally {
-			if (didActivate) {
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId,
-					versionId: versionIdToActivate,
-					event: 'activated',
-					userId: null,
-				});
+	/**
+	 * Sorts workflows to activate in dependency order so that subworkflows are activated
+	 * before the workflows that call them. Uses Kahn's topological sort algorithm.
+	 */
+	private sortWorkflowsForActivation(
+		allImportedWorkflows: IWorkflowWithVersionMetadata[],
+		toActivate: Array<{ workflowId: string; versionId: string }>,
+	): Array<{ workflowId: string; versionId: string }> {
+		if (toActivate.length <= 1) return toActivate;
+
+		const nodesByWorkflowId = new Map(allImportedWorkflows.map((w) => [w.id, w.nodes]));
+		const activateIds = new Set(toActivate.map((w) => w.workflowId));
+
+		// Fast path: skip the full graph build if no workflow in the batch references
+		// another batch workflow via an active executeWorkflow node.
+		const hasCrossReference = toActivate.some(({ workflowId }) =>
+			(nodesByWorkflowId.get(workflowId) ?? []).some(
+				(node) =>
+					!node.disabled &&
+					node.type === 'n8n-nodes-base.executeWorkflow' &&
+					activateIds.has(this.extractSubworkflowId(node) ?? ''),
+			),
+		);
+		if (!hasCrossReference) return toActivate;
+
+		const toActivateByWorkflowId = new Map(toActivate.map((w) => [w.workflowId, w]));
+		// callee id → set of caller ids that depend on it being activated first
+		const dependents = new Map<string, Set<string>>(
+			toActivate.map(({ workflowId }) => [workflowId, new Set()]),
+		);
+		// caller id → how many of its subworkflow dependencies in this batch are not yet activated
+		const unresolvedDepsCount = new Map<string, number>(
+			toActivate.map(({ workflowId }) => [workflowId, 0]),
+		);
+
+		for (const { workflowId } of toActivate) {
+			for (const node of nodesByWorkflowId.get(workflowId) ?? []) {
+				if (node.disabled || node.type !== 'n8n-nodes-base.executeWorkflow') continue;
+				const calleeId = this.extractSubworkflowId(node);
+				if (!calleeId || !activateIds.has(calleeId) || calleeId === workflowId) continue;
+				dependents.get(calleeId)!.add(workflowId);
+				unresolvedDepsCount.set(workflowId, unresolvedDepsCount.get(workflowId)! + 1);
 			}
+		}
+
+		const queue = toActivate.filter((w) => unresolvedDepsCount.get(w.workflowId) === 0);
+		const result: Array<{ workflowId: string; versionId: string }> = [];
+
+		while (queue.length > 0) {
+			const item = queue.shift()!;
+			result.push(item);
+			for (const callerId of dependents.get(item.workflowId)!) {
+				const remaining = unresolvedDepsCount.get(callerId)! - 1;
+				unresolvedDepsCount.set(callerId, remaining);
+				if (remaining === 0) queue.push(toActivateByWorkflowId.get(callerId)!);
+			}
+		}
+
+		if (result.length < toActivate.length) {
+			// Any workflow still with unresolvedDepsCount > 0 was never enqueued by the
+			// sort — it's part of a cycle (its dependency also waits on it). Append these
+			// so they still get activated rather than being silently dropped.
+			const cycleWorkflows = toActivate.filter(
+				(w) => Number(unresolvedDepsCount.get(w.workflowId)) > 0,
+			);
+			this.logger.warn(
+				`Detected circular subworkflow references among workflows: [${cycleWorkflows.map((w) => w.workflowId).join(', ')}]. Activating them in original order.`,
+			);
+			result.push(...cycleWorkflows);
+		}
+
+		return result;
+	}
+
+	private extractSubworkflowId(node: INode): string | undefined {
+		const source = node.parameters?.['source'];
+		if (source === 'parameter' || source === 'localFile' || source === 'url') return undefined;
+		const wfId = node.parameters?.['workflowId'];
+		const rawId = typeof wfId === 'string' ? wfId : (wfId as { value?: unknown } | null)?.value;
+		return typeof rawId === 'string' && !rawId.startsWith('=') ? rawId : undefined;
+	}
+
+	private async activateWorkflow(
+		workflowId: string,
+		versionIdToActivate: string,
+		user: User,
+	): Promise<void> {
+		try {
+			await this.workflowService.activateWorkflow(user, workflowId, {
+				versionId: versionIdToActivate,
+				source: 'import',
+			});
+		} catch (e) {
+			this.logger.error(`Failed to activate workflow ${workflowId}`, { error: ensureError(e) });
 		}
 	}
 
@@ -410,7 +547,7 @@ export class ImportService {
 		customEncryptionKey?: string,
 	): Promise<Array<Record<string, unknown>>> {
 		const content = await readFile(filePath, 'utf8');
-		const entities: Record<string, unknown>[] = [];
+		const entities: Array<Record<string, unknown>> = [];
 		const entitySchema = z.record(z.string(), z.unknown());
 
 		for (const block of content.split('\n')) {

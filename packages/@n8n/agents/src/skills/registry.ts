@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
 import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'fs';
 import { basename, dirname, join, posix, relative } from 'path';
@@ -26,6 +27,10 @@ export class InvalidRuntimeSkillError extends Error {
 	}
 }
 
+export interface LoadRuntimeSkillSourceFromDirectoryOptions {
+	exclude?: string[];
+}
+
 export function createRuntimeSkillSource(skills: RuntimeSkill[]): RuntimeSkillSource {
 	const normalizedSkills = normalizeRuntimeSkills(skills);
 	const skillsById = new Map(normalizedSkills.map((skill) => [skill.id, skill]));
@@ -50,8 +55,45 @@ export function createRuntimeSkillRegistry(skills: RuntimeSkill[]): RuntimeSkill
 	};
 }
 
-export function loadRuntimeSkillSourceFromDirectory(rootDir: string): RuntimeSkillSource {
-	const skills = loadRuntimeSkillsFromDirectory(rootDir);
+/**
+ * Hide skills from an already-loaded source. Recomputes `skillsHash` so
+ * manifests/prebaked bundles keyed on it can't match a differently-filtered
+ * catalog, and wraps the loaders so hidden skills are unavailable rather than
+ * just absent from the registry.
+ */
+export function filterRuntimeSkillSource(
+	source: RuntimeSkillSource,
+	excludeSkillIds: string[],
+): RuntimeSkillSource {
+	const excluded = new Set(excludeSkillIds);
+	const skills = source.registry.skills.filter((skill) => !excluded.has(skill.id));
+	const { loadFile } = source;
+
+	return {
+		...source,
+		registry: {
+			...source.registry,
+			skillsHash: hashRegistry(skills),
+			skills,
+		},
+		loadSkill: async (skillId) => (excluded.has(skillId) ? null : await source.loadSkill(skillId)),
+		...(loadFile
+			? {
+					loadFile: async (skillId: string, filePath: string) =>
+						excluded.has(skillId) ? null : await loadFile(skillId, filePath),
+				}
+			: {}),
+	};
+}
+
+export function loadRuntimeSkillSourceFromDirectory(
+	rootDir: string,
+	options: LoadRuntimeSkillSourceFromDirectoryOptions = {},
+): RuntimeSkillSource {
+	const excludedSkillIds = new Set(options.exclude ?? []);
+	const skills = loadRuntimeSkillsFromDirectory(rootDir).filter(
+		(skill) => !excludedSkillIds.has(skill.id),
+	);
 	const source = createRuntimeSkillSource(skills);
 	const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
 
@@ -189,18 +231,13 @@ function toRegistryEntry(skill: RuntimeSkill): RuntimeSkillRegistryEntry {
 }
 
 function hashSkill(skill: RuntimeSkill): string {
+	// Keep hashes tied to skill content, not where or how that content was loaded.
 	return hashJson({
 		id: skill.id,
 		name: skill.name,
 		description: skill.description,
 		instructions: skill.instructions,
 		recommendedTools: skill.recommendedTools,
-		sourceName: skill.sourceName,
-		path: skill.path,
-		sourcePath: skill.sourcePath,
-		directory: skill.directory,
-		sourceDirectory: skill.sourceDirectory,
-		category: skill.category,
 		allowedTools: skill.allowedTools,
 		interface: skill.interface,
 		policy: skill.policy,
@@ -401,8 +438,15 @@ function normalizeLinkedFilePath(filePath: string): string | null {
 function hashRegistry(skills: RuntimeSkillRegistryEntry[]): string {
 	return hashJson({
 		schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-		skills,
+		skills: skills.map(toRegistryHashEntry),
 	});
+}
+
+function toRegistryHashEntry(skill: RuntimeSkillRegistryEntry) {
+	return {
+		id: skill.id,
+		hash: skill.hash,
+	};
 }
 
 function hashJson(value: unknown): string {
@@ -437,8 +481,4 @@ function stableRecord<T extends object>(value: T): T {
 
 function toPosixPath(path: string): string {
 	return path.replaceAll('\\', '/');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

@@ -1,4 +1,3 @@
-import { mock, mockDeep } from 'jest-mock-extended';
 import get from 'lodash/get';
 import {
 	type ILoadOptionsFunctions,
@@ -9,6 +8,8 @@ import {
 	type IPairedItemData,
 	NodeOperationError,
 } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as utils from '../GenericFunctions';
 import { Supabase } from '../Supabase.node';
@@ -16,14 +17,14 @@ import { Supabase } from '../Supabase.node';
 describe('Test Supabase Node', () => {
 	const node = new Supabase();
 	const input = [{ json: {} }];
-	const mockRequestWithAuthentication = jest.fn().mockResolvedValue([]);
-	const mockGetCredentials = jest.fn().mockResolvedValue({
+	const mockRequestWithAuthentication = vi.fn().mockResolvedValue([]);
+	const mockGetCredentials = vi.fn().mockResolvedValue({
 		host: 'https://api.supabase.io',
 		serviceRole: 'service_role',
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const createMockExecuteFunction = (
@@ -62,9 +63,101 @@ describe('Test Supabase Node', () => {
 		return fakeExecuteFunction;
 	};
 
+	// getNodeParameter is only ever asked for these two names on the loadOptions path
+	const createMockLoadOptionsFunction = (
+		schema?: string,
+		getCredentials: typeof mockGetCredentials = mockGetCredentials,
+	) => {
+		const context = mockDeep<ILoadOptionsFunctions>({
+			getCredentials,
+			helpers: {
+				requestWithAuthentication: mockRequestWithAuthentication,
+			},
+		});
+		context.getNodeParameter.mockImplementation((name: string) =>
+			name === 'useCustomSchema' ? schema !== undefined : schema,
+		);
+		return context;
+	};
+
+	describe('filter query builders', () => {
+		it('should leave plain filter components unchanged', () => {
+			expect(utils.buildOrQuery({ keyName: 'active', condition: 'is', keyValue: 'null' })).toBe(
+				'active.is.null',
+			);
+			expect(
+				utils.buildOrQuery({
+					keyName: 'description',
+					condition: 'fullText',
+					searchFunction: 'fts',
+					keyValue: 'search terms',
+				}),
+			).toBe('description.fts.search terms');
+		});
+
+		it('should quote components containing reserved characters', () => {
+			expect(
+				utils.buildOrQuery({
+					keyName: 'profile.name',
+					condition: 'eq',
+					keyValue: 'Doe,Jane',
+				}),
+			).toBe('"profile.name".eq."Doe,Jane"');
+		});
+
+		it('should escape quotes and backslashes in quoted components', () => {
+			expect(utils.buildOrQuery({ keyName: 'name', condition: 'eq', keyValue: 'a"b\\c' })).toBe(
+				'name.eq."a\\"b\\\\c"',
+			);
+		});
+
+		it('should quote query parameter names but not values', () => {
+			expect(
+				utils.buildQuery(new Map(), {
+					keyName: 'profile.name',
+					condition: 'eq',
+					keyValue: 'Doe,Jane',
+				}),
+			).toEqual(new Map([['"profile.name"', 'eq.Doe,Jane']]));
+			expect(
+				utils.buildGetQuery(new Map(), { keyName: 'profile.name', keyValue: 'Doe,Jane' }),
+			).toEqual(new Map([['"profile.name"', 'eq.Doe,Jane']]));
+		});
+
+		it.each(['&', '?', '='])('should quote query parameter names containing %s', (character) => {
+			const keyName = `column${character}name`;
+			const expectedKey = `"${keyName}"`;
+
+			expect(utils.buildQuery(new Map(), { keyName, condition: 'eq', keyValue: 'value' })).toEqual(
+				new Map([[expectedKey, 'eq.value']]),
+			);
+			expect(utils.buildGetQuery(new Map(), { keyName, keyValue: 'value' })).toEqual(
+				new Map([[expectedKey, 'eq.value']]),
+			);
+		});
+
+		it.each([
+			{
+				filter: { keyName: 'name', condition: 'contains', keyValue: 'Jane' },
+				errorType: 'filter condition',
+			},
+			{
+				filter: {
+					keyName: 'name',
+					condition: 'fullText',
+					searchFunction: 'plain',
+					keyValue: 'Jane',
+				},
+				errorType: 'search function',
+			},
+		])('should reject an unsupported $errorType', ({ filter, errorType }) => {
+			expect(() => utils.buildOrQuery(filter)).toThrow(`Unsupported ${errorType}`);
+		});
+	});
+
 	describe('getAll pagination', () => {
 		it('should make exactly one request when limit is less than 1000', async () => {
-			const supabaseApiRequest = jest
+			const supabaseApiRequest = vi
 				.spyOn(utils, 'supabaseApiRequest')
 				.mockResolvedValueOnce(Array.from({ length: 50 }, (_, i) => ({ id: i })));
 
@@ -86,7 +179,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should make exactly one request when limit equals 1000', async () => {
-			const supabaseApiRequest = jest
+			const supabaseApiRequest = vi
 				.spyOn(utils, 'supabaseApiRequest')
 				.mockResolvedValueOnce(Array.from({ length: 1000 }, (_, i) => ({ id: i })));
 
@@ -109,7 +202,7 @@ describe('Test Supabase Node', () => {
 
 		it('should paginate and request only remaining rows on the last page when limit > 1000', async () => {
 			const capturedQs: IDataObject[] = [];
-			const supabaseApiRequest = jest
+			const supabaseApiRequest = vi
 				.spyOn(utils, 'supabaseApiRequest')
 				.mockImplementation(async (_method, _endpoint, _body, qs) => {
 					capturedQs.push({ ...qs });
@@ -139,7 +232,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should include order parameter in the request when orderBy is set', async () => {
-			const supabaseApiRequest = jest.spyOn(utils, 'supabaseApiRequest').mockResolvedValueOnce([]);
+			const supabaseApiRequest = vi.spyOn(utils, 'supabaseApiRequest').mockResolvedValueOnce([]);
 
 			const fakeExecuteFunction = createMockExecuteFunction({
 				resource: 'row',
@@ -166,7 +259,7 @@ describe('Test Supabase Node', () => {
 	});
 
 	it('should allow filtering on the same field multiple times', async () => {
-		const supabaseApiRequest = jest
+		const supabaseApiRequest = vi
 			.spyOn(utils, 'supabaseApiRequest')
 			.mockImplementation(async () => {
 				return [];
@@ -202,7 +295,7 @@ describe('Test Supabase Node', () => {
 			'/my_table',
 			{},
 			{
-				and: '(created_at.gt.2025-01-02 08:03:43.952051+00,created_at.lt.2025-01-02 08:07:36.102231+00)',
+				and: '(created_at.gt."2025-01-02 08:03:43.952051+00",created_at.lt."2025-01-02 08:07:36.102231+00")',
 				offset: 0,
 			},
 			undefined,
@@ -304,7 +397,7 @@ describe('Test Supabase Node', () => {
 			},
 		});
 
-		fakeExecuteFunction.helpers.requestWithAuthentication = jest.fn().mockRejectedValue({
+		fakeExecuteFunction.helpers.requestWithAuthentication = vi.fn().mockRejectedValue({
 			description: 'Something when wrong',
 			message: 'error',
 		});
@@ -317,19 +410,19 @@ describe('Test Supabase Node', () => {
 
 	describe('getSchemaHeader function', () => {
 		const mockExecuteContext = {
-			getNodeParameter: jest.fn(),
+			getNodeParameter: vi.fn(),
 		} as unknown as IExecuteFunctions;
 
 		const mockLoadOptionsContext = {
-			getNodeParameter: jest.fn(),
+			getNodeParameter: vi.fn(),
 		} as unknown as any;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should return empty object when useCustomSchema is false for execute context', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock).mockReturnValueOnce(false);
+			(mockExecuteContext.getNodeParameter as Mock).mockReturnValueOnce(false);
 
 			const result = utils.getSchemaHeader(mockExecuteContext, 'GET', 'execute');
 
@@ -338,7 +431,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return empty object when useCustomSchema is false for loadOptions context', () => {
-			(mockLoadOptionsContext.getNodeParameter as jest.Mock).mockReturnValueOnce(false);
+			(mockLoadOptionsContext.getNodeParameter as Mock).mockReturnValueOnce(false);
 
 			const result = utils.getSchemaHeader(mockLoadOptionsContext, 'GET', 'loadOptions');
 
@@ -350,7 +443,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Accept-Profile header for GET method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('custom_schema');
 
@@ -362,7 +455,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Accept-Profile header for HEAD method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('test_schema');
 
@@ -372,7 +465,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Content-Profile header for POST method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('custom_schema');
 
@@ -382,7 +475,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Content-Profile header for PATCH method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('custom_schema');
 
@@ -392,7 +485,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Content-Profile header for PUT method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('custom_schema');
 
@@ -402,7 +495,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Content-Profile header for DELETE method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('custom_schema');
 
@@ -412,7 +505,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should use different parameter calls for loadOptions context', () => {
-			(mockLoadOptionsContext.getNodeParameter as jest.Mock)
+			(mockLoadOptionsContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('load_options_schema');
 
@@ -427,7 +520,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should default to public schema when schema parameter is not provided', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('public');
 
@@ -441,13 +534,7 @@ describe('Test Supabase Node', () => {
 	describe('loadOptions', () => {
 		describe('getTables', () => {
 			it('should return the tables and skip RPCs', async () => {
-				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getCredentials: mockGetCredentials,
-					helpers: {
-						requestWithAuthentication: mockRequestWithAuthentication,
-					},
-				});
-				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				const mockLoadOptionsFunctions = createMockLoadOptionsFunction();
 				mockRequestWithAuthentication.mockResolvedValue({
 					paths: {
 						'/': {
@@ -471,13 +558,7 @@ describe('Test Supabase Node', () => {
 
 		describe('getTableColumns', () => {
 			it('should return table columns with their types', async () => {
-				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getCredentials: mockGetCredentials,
-					helpers: {
-						requestWithAuthentication: mockRequestWithAuthentication,
-					},
-				});
-				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				const mockLoadOptionsFunctions = createMockLoadOptionsFunction();
 				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
 				mockRequestWithAuthentication.mockResolvedValue({
 					definitions: {
@@ -502,13 +583,7 @@ describe('Test Supabase Node', () => {
 			});
 
 			it('should return empty array when table definition has no properties', async () => {
-				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getCredentials: mockGetCredentials,
-					helpers: {
-						requestWithAuthentication: mockRequestWithAuthentication,
-					},
-				});
-				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				const mockLoadOptionsFunctions = createMockLoadOptionsFunction();
 				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
 				mockRequestWithAuthentication.mockResolvedValue({
 					definitions: {
@@ -520,6 +595,95 @@ describe('Test Supabase Node', () => {
 					await node.methods.loadOptions.getTableColumns.call(mockLoadOptionsFunctions);
 
 				expect(columns).toEqual([]);
+			});
+
+			it('should fetch the schema document once for concurrent calls sharing a schema', async () => {
+				const createColumnsContext = (schema?: string) => {
+					const context = createMockLoadOptionsFunction(schema);
+					context.getCurrentNodeParameter.mockReturnValue('users');
+					return context;
+				};
+
+				mockRequestWithAuthentication.mockResolvedValue({
+					definitions: {
+						users: {
+							properties: {
+								id: { type: 'integer' },
+								email: { type: 'string' },
+							},
+						},
+					},
+				});
+
+				const publicSchemaColumns = await Promise.all(
+					Array.from(
+						{ length: 25 },
+						async () => await node.methods.loadOptions.getTableColumns.call(createColumnsContext()),
+					),
+				);
+
+				for (const columns of publicSchemaColumns) {
+					expect(columns).toEqual([
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-miscased-id
+						{ name: 'id - (integer)', value: 'id' },
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						{ name: 'email - (string)', value: 'email' },
+					]);
+				}
+				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
+
+				await Promise.all(
+					Array.from(
+						{ length: 5 },
+						async () =>
+							await node.methods.loadOptions.getTableColumns.call(
+								createColumnsContext('analytics'),
+							),
+					),
+				);
+
+				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			});
+
+			it('should not share a request between callers whose credentials differ', async () => {
+				const createColumnsContext = (serviceRole: string) => {
+					const context = createMockLoadOptionsFunction(
+						undefined,
+						vi.fn().mockResolvedValue({ host: 'https://api.supabase.io', serviceRole }),
+					);
+					context.getCurrentNodeParameter.mockReturnValue('users');
+					return context;
+				};
+				mockRequestWithAuthentication.mockResolvedValue({ definitions: { users: {} } });
+
+				await Promise.all([
+					node.methods.loadOptions.getTableColumns.call(createColumnsContext('role-a')),
+					node.methods.loadOptions.getTableColumns.call(createColumnsContext('role-b')),
+				]);
+
+				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			});
+
+			it('should issue a fresh request after a shared request fails', async () => {
+				const createColumnsContext = () => {
+					const context = createMockLoadOptionsFunction();
+					context.getCurrentNodeParameter.mockReturnValue('users');
+					return context;
+				};
+				mockRequestWithAuthentication.mockRejectedValueOnce(new Error('schema unavailable'));
+
+				await expect(
+					Promise.all([
+						node.methods.loadOptions.getTableColumns.call(createColumnsContext()),
+						node.methods.loadOptions.getTableColumns.call(createColumnsContext()),
+					]),
+				).rejects.toThrow();
+				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
+
+				mockRequestWithAuthentication.mockResolvedValue({ definitions: { users: {} } });
+				await node.methods.loadOptions.getTableColumns.call(createColumnsContext());
+
+				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(2);
 			});
 		});
 	});

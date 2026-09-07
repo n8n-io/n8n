@@ -1,5 +1,6 @@
 delete:
   x-eov-operation-id: deleteVariable
+  x-required-scope: variable:delete
   x-eov-operation-handler: v1/handlers/variables/variables.handler
   tags:
     - Variables
@@ -17,6 +18,7 @@ delete:
 
 put:
   x-eov-operation-id: updateVariable
+  x-required-scope: variable:update
   x-eov-operation-handler: v1/handlers/variables/variables.handler
   tags:
     - Variables

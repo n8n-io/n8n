@@ -11,7 +11,8 @@ import type { ParseAndValidateResult } from '../../types';
 import { FinalResponseHandler } from '../final-response-handler';
 
 describe('FinalResponseHandler', () => {
-	const mockParseAndValidate = jest.fn<Promise<ParseAndValidateResult>, [string, WorkflowJSON?]>();
+	const mockParseAndValidate =
+		vi.fn<(...args: [string, WorkflowJSON?]) => Promise<ParseAndValidateResult>>();
 
 	const createHandler = () =>
 		new FinalResponseHandler({
@@ -19,7 +20,7 @@ describe('FinalResponseHandler', () => {
 		});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('process', () => {

@@ -19,7 +19,7 @@ test('my test', async ({ page }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].message).toContain('Direct page instantiation');
@@ -40,7 +40,7 @@ test('my test', async ({ page }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(2);
 	});
@@ -55,7 +55,7 @@ test('my test', async ({ page }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].suggestion).toContain('n8n.canvas');
@@ -74,7 +74,7 @@ test('my test', async () => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -101,7 +101,7 @@ test('my test', async ({ page }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(2);
 		expect(violations[0].suggestion).toContain('n8n.settingsPersonal');
@@ -119,7 +119,7 @@ test('my test', async () => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -139,7 +139,7 @@ test('my test', async ({ page }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].message).toContain('CanvasPage');

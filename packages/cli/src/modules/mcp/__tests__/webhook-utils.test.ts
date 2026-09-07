@@ -5,13 +5,21 @@ import type {
 	INode,
 	INodeCredentials,
 	INodeParameters,
+	INodeType,
+	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
-
-import { buildWebhookPath, getWebhookDetails } from '../tools/webhook-utils';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+
+import { getTriggerDetails, getWebhookDetails } from '../tools/webhook-utils';
 
 const mockCredentialsService = (
 	impl: (id: string) => ICredentialDataDecryptedObject | Promise<ICredentialDataDecryptedObject>,
@@ -26,6 +34,7 @@ const mockCredentialsService = (
 				isManaged: false,
 				isGlobal: false,
 				isResolvable: false,
+				usageScope: 'project',
 				resolverId: null,
 				resolvableAllowFallback: false,
 				id,
@@ -60,28 +69,49 @@ const createUser = (overrides: Partial<User> = {}): User => {
 	return u;
 };
 
-describe('buildWebhookPath', () => {
-	it('joins clean segment and path', () => {
-		expect(buildWebhookPath('webhook', 'hook')).toBe('/webhook/hook');
-	});
-
-	it('strips leading and trailing slashes from segment', () => {
-		expect(buildWebhookPath('/custom/hooks/', 'test')).toBe('/custom/hooks/test');
-	});
-
-	it('handles empty segment', () => {
-		expect(buildWebhookPath('', 'path')).toBe('/path');
-	});
-
-	it('retains trailing slash when node path is empty', () => {
-		expect(buildWebhookPath('webhook', '')).toBe('/webhook/');
-	});
-});
+// Mirrors the Webhook node type, whose webhook description sets a static `isFullPath: true`
+const nodeTypes = mock<INodeTypes>();
+nodeTypes.getByNameAndVersion.mockReturnValue(
+	mock<INodeType>({
+		description: {
+			webhooks: [
+				{
+					name: 'default',
+					httpMethod: '={{$parameter["httpMethod"] || "GET"}}',
+					isFullPath: true,
+					responseMode: '={{$parameter["responseMode"]}}',
+					path: '={{$parameter["path"]}}',
+				},
+			],
+		},
+	}),
+);
 
 describe('getWebhookDetails', () => {
 	const user = createUser();
 	const baseUrl = 'https://example.com';
+	const workflowId = 'wf-1';
 	const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+	it('returns the URL without the webhookId segment for a standard webhook node', async () => {
+		// Real webhook nodes always carry a webhookId; the URL must not include it (MCP-49)
+		const node = createWebhookNode({
+			webhookId: '3dd18038-ce87-4004-a6e8-5d4a3216066d',
+			parameters: { path: 'codex-basic-webhook-test', httpMethod: 'POST' },
+		});
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			mockCredentialsService(() => ({})),
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+		expect(res).toContain('Production URL: https://example.com/webhook/codex-basic-webhook-test');
+		expect(res).toContain('Test URL: https://example.com/webhook-test/codex-basic-webhook-test');
+		expect(res).not.toContain('3dd18038-ce87-4004-a6e8-5d4a3216066d');
+	});
 
 	it('describes a basic webhook without auth', async () => {
 		const node = createWebhookNode({
@@ -93,12 +123,13 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			nodeTypes,
 			endpoints,
+			workflowId,
 		);
 		expect(res).toContain('Node name: My Webhook');
-		expect(res).toContain('Base URL: https://example.com');
-		expect(res).toContain('Production path: /webhook/hook');
-		expect(res).toContain('Test path: /webhook-test/hook');
+		expect(res).toContain('Production URL: https://example.com/webhook/wf-1/my%20webhook/hook');
+		expect(res).toContain('Test URL: https://example.com/webhook-test/wf-1/my%20webhook/hook');
 		expect(res).toContain('HTTP Method: POST');
 		expect(res).toContain('respond immediately');
 		expect(res).toContain('No credentials required');
@@ -111,10 +142,28 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			nodeTypes,
 			endpoints,
+			workflowId,
 		);
-		expect(res).toContain('Production path: /webhook/test');
-		expect(res).toContain('Test path: /webhook-test/test');
+		expect(res).toContain('Production URL: https://example.com/webhook/wf-1/webhook/test');
+		expect(res).toContain('Test URL: https://example.com/webhook-test/wf-1/webhook/test');
+	});
+
+	it('uses a separate test base URL when provided', async () => {
+		const node = createWebhookNode({ parameters: { path: 'hook' } });
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			mockCredentialsService(() => ({})),
+			nodeTypes,
+			endpoints,
+			workflowId,
+			'https://editor.example.com',
+		);
+		expect(res).toContain('Production URL: https://example.com/webhook/wf-1/webhook/hook');
+		expect(res).toContain('Test URL: https://editor.example.com/webhook-test/wf-1/webhook/hook');
 	});
 
 	it('describes basicAuth requirement', async () => {
@@ -124,7 +173,9 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			nodeTypes,
 			endpoints,
+			workflowId,
 		);
 		expect(res).toContain('basic authentication');
 	});
@@ -138,7 +189,15 @@ describe('getWebhookDetails', () => {
 			expect(id).toBe('cred-1');
 			return { name: 'X-API-Key', value: 'secret' };
 		});
-		const res = await getWebhookDetails(user, [node], baseUrl, credsService, endpoints);
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			credsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
 		expect(res).toContain('requires a header with name "X-API-Key"');
 	});
 
@@ -151,7 +210,15 @@ describe('getWebhookDetails', () => {
 			expect(id).toBe('cred-2');
 			return { secret: 'super-secret', keyType: 'passphrase' };
 		});
-		const res = await getWebhookDetails(user, [node], baseUrl, credsService, endpoints);
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			credsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
 		expect(res).toContain('requires a JWT secret');
 	});
 
@@ -164,7 +231,15 @@ describe('getWebhookDetails', () => {
 			expect(id).toBe('cred-3');
 			return { keyType: 'pemKey', privateKey: 'priv', publicKey: 'pub' };
 		});
-		const res = await getWebhookDetails(user, [node], baseUrl, credsService, endpoints);
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			credsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
 		expect(res).toContain('requires JWT private and public keys');
 	});
 
@@ -175,7 +250,9 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			nodeTypes,
 			endpoints,
+			workflowId,
 		);
 		expect(res).toContain('respond using "Respond to Webhook" node');
 	});
@@ -189,7 +266,9 @@ describe('getWebhookDetails', () => {
 			[nodeAll],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			nodeTypes,
 			endpoints,
+			workflowId,
 		);
 		expect(resAll).toContain('Returns all the entries of the last node');
 
@@ -201,7 +280,9 @@ describe('getWebhookDetails', () => {
 			[nodeBin],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			nodeTypes,
 			endpoints,
+			workflowId,
 		);
 		expect(resBin).toContain('Returns the binary data of the first entry of the last node');
 
@@ -213,7 +294,9 @@ describe('getWebhookDetails', () => {
 			[nodeNo],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			nodeTypes,
 			endpoints,
+			workflowId,
 		);
 		expect(resNo).toContain('Returns without a body');
 
@@ -223,8 +306,100 @@ describe('getWebhookDetails', () => {
 			[nodeDefault],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			nodeTypes,
 			endpoints,
+			workflowId,
 		);
 		expect(resDefault).toContain('Returns the JSON data of the first entry of the last node');
+	});
+});
+
+describe('getTriggerDetails', () => {
+	const user = createUser();
+	const baseUrl = 'https://example.com';
+	const workflowId = 'wf-1';
+	const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+	const credentialsService = mockCredentialsService(() => ({}));
+
+	const createTriggerNode = (overrides: Partial<INode> = {}): INode => ({
+		id: '1',
+		name: 'Gmail Trigger',
+		type: 'n8n-nodes-base.gmailTrigger',
+		typeVersion: 1.4,
+		position: [0, 0],
+		parameters: {},
+		...overrides,
+	});
+
+	it('reports manual-only when the workflow has no triggers at all', async () => {
+		const res = await getTriggerDetails(
+			user,
+			[],
+			[],
+			baseUrl,
+			credentialsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+		expect(res).toBe(
+			'This workflow has no production triggers (Schedule, Webhook, Form, or Chat). It can only be executed in manual mode.',
+		);
+	});
+
+	it('clarifies when the workflow has triggers that MCP cannot execute directly', async () => {
+		const res = await getTriggerDetails(
+			user,
+			[],
+			[createTriggerNode()],
+			baseUrl,
+			credentialsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+		expect(res).toContain('not supported for direct execution through MCP: Gmail Trigger');
+		expect(res).toContain('cannot be executed through MCP');
+		expect(res).not.toContain('no production triggers');
+		expect(res).not.toContain('manual mode');
+	});
+
+	it('documents triggerNodeName and the execute_workflow payload for each trigger type', async () => {
+		const webhook = createWebhookNode({ name: 'Webhook' });
+		const chat = createTriggerNode({
+			name: 'Chat Trigger',
+			type: CHAT_TRIGGER_NODE_TYPE,
+		});
+		const form = createTriggerNode({
+			name: 'Form Trigger',
+			type: FORM_TRIGGER_NODE_TYPE,
+			parameters: { formFields: { values: [{ fieldLabel: 'email' }] } },
+		});
+		const schedule = createTriggerNode({
+			name: 'Schedule Trigger',
+			type: SCHEDULE_TRIGGER_NODE_TYPE,
+		});
+
+		const res = await getTriggerDetails(
+			user,
+			[webhook, chat, form, schedule],
+			[],
+			baseUrl,
+			credentialsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+
+		expect(res).toContain(
+			'{ triggerNodeName: "<node name>", inputs: { webhookData: { headers?, query?, body? } } }',
+		);
+		expect(res).toContain('{ triggerNodeName: "<node name>", inputs: { chatInput: "<message>" } }');
+		expect(res).toContain(
+			'{ triggerNodeName: "<node name>", inputs: { formData: { FIELD_NAME: VALUE } } }',
+		);
+		expect(res).not.toContain('formData: Array<');
+		expect(res).toContain('{ triggerNodeName: "<node name>" }');
+		expect(res).toContain('do not take inputs');
 	});
 });

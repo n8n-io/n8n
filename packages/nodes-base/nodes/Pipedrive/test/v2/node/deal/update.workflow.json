@@ -18,6 +18,7 @@
 				"updateFields": {
 					"title": "Updated Deal",
 					"value": 7500,
+					"user_id": 25455458,
 					"expected_close_date": "2026-04-13T00:00:00.000Z"
 				}
 			},

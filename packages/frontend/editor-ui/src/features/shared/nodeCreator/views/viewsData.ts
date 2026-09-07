@@ -62,7 +62,7 @@ import {
 	XML_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -72,7 +72,7 @@ import { useI18n } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
 import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
-import { getAiTemplatesCallout } from '../nodeCreator.utils';
+import { getAiTemplatesCallout, getSendAndWaitNodes } from '../nodeCreator.utils';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -180,18 +180,8 @@ function getMessageAnAgentNode(
 	const node = nodeTypesStore.getNodeType(MESSAGE_AN_AGENT_NODE_TYPE);
 	if (!node) return [];
 
-	const view = getNodeView(node);
-	return [
-		{
-			...view,
-			properties: {
-				...view.properties,
-				tag: {
-					preview: true,
-				},
-			},
-		},
-	];
+	// The early-preview tag is attached centrally in `applyNodeTags`.
+	return [getNodeView(node)];
 }
 
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
@@ -208,18 +198,18 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
 	const messageAnAgentNode = getMessageAnAgentNode(nodeTypesStore, settingsStore);
 
-	const websiteCategoryURLParams = templatesStore.websiteTemplateRepositoryParameters;
-	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
+	const websiteCategoryURLParams = new URLSearchParams(
+		templatesStore.websiteTemplateRepositoryParameters,
+	);
+	websiteCategoryURLParams.set('utm_user_role', 'AdvancedAI');
 	const aiTemplatesURL = templatesStore.constructTemplateRepositoryURL(
 		websiteCategoryURLParams,
 		TEMPLATE_CATEGORY_AI,
 	);
 
-	const askAiEnabled = settingsStore.isAskAiEnabled;
-	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
-	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
-
-	const callouts: NodeViewItem[] = [getAiTemplatesCallout(aiTemplatesURL)];
+	const callouts: NodeViewItem[] = settingsStore.isCanvasOnly
+		? []
+		: [getAiTemplatesCallout(aiTemplatesURL)];
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
@@ -232,7 +222,6 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 			...messageAnAgentNode,
 			...agentNodes,
 			...chainNodes,
-			...transformNode,
 			...evaluationNode,
 			{
 				key: AI_OTHERS_NODE_CREATOR_VIEW,
@@ -522,12 +511,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		DATETIME_NODE_TYPE,
 		AI_TRANSFORM_NODE_TYPE,
 	];
-
-	const getSendAndWaitNodes = (nodes: SimplifiedNodeType[]) => {
-		return (nodes ?? [])
-			.filter((node) => node.codex?.categories?.includes(HUMAN_IN_THE_LOOP_CATEGORY))
-			.map((node) => node.name);
-	};
 
 	const view: NodeView = {
 		value: REGULAR_NODE_CREATOR_VIEW,

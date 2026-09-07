@@ -1,4 +1,5 @@
 export type DependencyType =
+	| 'agentUsage'
 	| 'credentialId'
 	| 'dataTableId'
 	| 'errorWorkflow'
@@ -12,7 +13,7 @@ export interface ResolvedDependency {
 	type: DependencyType;
 	id: string;
 	name: string;
-	/** Project ID — included for data tables so the frontend can build a direct link */
+	/** Project ID — included for agents and data tables so the frontend can build a direct link */
 	projectId?: string;
 }
 

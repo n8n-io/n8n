@@ -1,7 +1,8 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import type { Socket } from 'node:net';
 import request from 'supertest';
+import { mock } from 'vitest-mock-extended';
 import type { Server as WSServer, WebSocket } from 'ws';
 
 import type { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
@@ -12,12 +13,13 @@ import type { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-
 describe('TaskBrokerServer', () => {
 	const createServer = (overrides?: {
 		authController?: TaskBrokerAuthController;
+		logger?: Logger;
 	}) => {
 		const authController = overrides?.authController ?? mock<TaskBrokerAuthController>();
 		const taskBrokerWsServer = mock<TaskBrokerWsServer>();
 
 		const server = new TaskBrokerServer(
-			mock(),
+			overrides?.logger ?? mock<Logger>(),
 			mock<GlobalConfig>({
 				taskRunners: { path: '/runners', authToken: 'token' },
 				endpoints: { health: '/health' },
@@ -200,6 +202,68 @@ describe('TaskBrokerServer', () => {
 			expect(wsServerMock.handleUpgrade).toHaveBeenCalled();
 			expect(taskBrokerWsServer.add).toHaveBeenCalledWith('runner1', mockWs);
 			expect(socket.destroy).not.toHaveBeenCalled();
+		});
+
+		describe('runner ID', () => {
+			const upgradeWith = async (
+				reportedRunnerId: string,
+				boundRunnerId?: string,
+				logger = mock<Logger>(),
+			) => {
+				const authController = mock<TaskBrokerAuthController>();
+				authController.validateUpgradeRequest.mockResolvedValue({
+					isValid: true,
+					statusCode: 200,
+					boundRunnerId,
+				});
+
+				const { server, taskBrokerWsServer } = createServer({ authController, logger });
+				const mockWs = mock<WebSocket>();
+				const wsServerMock = mock<WSServer>();
+				wsServerMock.handleUpgrade.mockImplementation(
+					(_req: unknown, _socket: unknown, _head: unknown, cb: (ws: WebSocket) => void) => {
+						cb(mockWs);
+					},
+				);
+
+				// @ts-expect-error Private property
+				server.wsServer = wsServerMock;
+
+				// @ts-expect-error Private property
+				await server.handleUpgradeRequest(
+					mock<TaskBrokerServerInitRequest>({
+						url: `/runners/_ws?id=${reportedRunnerId}`,
+						headers: { authorization: 'Bearer valid-token' },
+					}),
+					createSocket(),
+					Buffer.from(''),
+				);
+
+				return { taskBrokerWsServer, mockWs, logger };
+			};
+
+			it('should register under the ID bound to the grant token', async () => {
+				const { taskBrokerWsServer, mockWs } = await upgradeWith('assigned-1', 'assigned-1');
+
+				expect(taskBrokerWsServer.add).toHaveBeenCalledWith('assigned-1', mockWs);
+			});
+
+			it('should prefer the bound ID over a self-assigned one and warn', async () => {
+				const { taskBrokerWsServer, mockWs, logger } = await upgradeWith(
+					'self-assigned',
+					'assigned-1',
+				);
+
+				expect(taskBrokerWsServer.add).toHaveBeenCalledWith('assigned-1', mockWs);
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('N8N_RUNNERS_ID'));
+			});
+
+			it('should fall back to the reported ID when the token binds none', async () => {
+				const { taskBrokerWsServer, mockWs, logger } = await upgradeWith('external-1', undefined);
+
+				expect(taskBrokerWsServer.add).toHaveBeenCalledWith('external-1', mockWs);
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

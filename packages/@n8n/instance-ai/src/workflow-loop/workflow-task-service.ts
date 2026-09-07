@@ -8,6 +8,14 @@ import type {
 } from './workflow-loop-state';
 import type { WorkflowLoopStorage } from '../storage/workflow-loop-storage';
 
+function lastAttemptTimeMs(
+	item: NonNullable<Awaited<ReturnType<WorkflowLoopStorage['listWorkItems']>>>[number],
+): number {
+	const timestamp = item.attempts.at(-1)?.createdAt;
+	const timeMs = Date.parse(timestamp ?? '');
+	return Number.isFinite(timeMs) ? timeMs : 0;
+}
+
 export class WorkflowTaskCoordinator implements WorkflowTaskService {
 	private readonly runtime: WorkflowLoopRuntime;
 
@@ -29,6 +37,18 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 	async getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined> {
 		const item = await this.storage.getWorkItem(this.threadId, workItemId);
 		return item?.lastBuildOutcome ?? undefined;
+	}
+
+	async getLatestBuildOutcomeForWorkflow(
+		workflowId: string,
+	): Promise<WorkflowBuildOutcome | undefined> {
+		const items = await this.storage.listWorkItems(this.threadId);
+		const matches = items
+			.filter((item) => item.lastBuildOutcome?.workflowId === workflowId)
+			.filter((item) => item.lastBuildOutcome?.submitted)
+			.sort((a, b) => lastAttemptTimeMs(b) - lastAttemptTimeMs(a));
+
+		return matches[0]?.lastBuildOutcome;
 	}
 
 	async getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined> {

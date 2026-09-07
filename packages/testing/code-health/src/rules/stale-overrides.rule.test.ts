@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -20,10 +21,16 @@ interface PackageOpts {
 	overrides?: Record<string, string>;
 }
 
-function writeRootPackageJson(dir: string, opts: PackageOpts = {}): void {
-	const body: Record<string, unknown> = { name: 'root', private: true };
-	if (opts.overrides) body.pnpm = { overrides: opts.overrides };
-	writeFile(dir, 'package.json', JSON.stringify(body, null, 2));
+/** Appends an `overrides:` block to the workspace manifest written by {@link writeWorkspace}. */
+function writeOverrides(dir: string, opts: PackageOpts = {}): void {
+	if (!opts.overrides) return;
+	const lines = ['overrides:'];
+	for (const [key, target] of Object.entries(opts.overrides)) {
+		lines.push(`  ${quoteIfNeeded(key)}: ${quoteIfNeeded(target)}`);
+	}
+	const workspacePath = path.join(dir, 'pnpm-workspace.yaml');
+	const existing = fs.existsSync(workspacePath) ? fs.readFileSync(workspacePath, 'utf-8') : '';
+	fs.writeFileSync(workspacePath, `${existing}${lines.join('\n')}\n`);
 }
 
 function writeWorkspace(dir: string, body: string): void {
@@ -108,7 +115,7 @@ describe('StaleOverridesRule', () => {
 
 	it('flags override that duplicates a catalog entry', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog:\n  lodash: 4.18.1\n');
-		writeRootPackageJson(tmpDir, { overrides: { lodash: '4.18.1' } });
+		writeOverrides(tmpDir, { overrides: { lodash: '4.18.1' } });
 		writeLock(tmpDir, { packages: ['lodash@4.18.1'] });
 
 		const violations = rule.analyze(context());
@@ -123,7 +130,7 @@ describe('StaleOverridesRule', () => {
 			tmpDir,
 			'packages:\n  - packages/*\ncatalogs:\n  sentry:\n    "@sentry/node": ^10.0.0\n',
 		);
-		writeRootPackageJson(tmpDir, { overrides: { '@sentry/node': '^10.0.0' } });
+		writeOverrides(tmpDir, { overrides: { '@sentry/node': '^10.0.0' } });
 		writeLock(tmpDir, { packages: ['@sentry/node@10.0.0'] });
 
 		const violations = rule.analyze(context());
@@ -135,7 +142,7 @@ describe('StaleOverridesRule', () => {
 
 	it('does not flag overrides whose target is already a catalog reference', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog:\n  typescript: 5.9.2\n');
-		writeRootPackageJson(tmpDir, { overrides: { typescript: 'catalog:' } });
+		writeOverrides(tmpDir, { overrides: { typescript: 'catalog:' } });
 		writeLock(tmpDir, { packages: ['typescript@5.9.2'] });
 
 		const violations = rule.analyze(context());
@@ -145,7 +152,7 @@ describe('StaleOverridesRule', () => {
 
 	it('flags orphan override when package is absent from lockfile', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog: {}\n');
-		writeRootPackageJson(tmpDir, { overrides: { 'gone-from-graph': '1.0.0' } });
+		writeOverrides(tmpDir, { overrides: { 'gone-from-graph': '1.0.0' } });
 		writeLock(tmpDir, { packages: ['something-else@1.0.0'] });
 
 		const violations = rule.analyze(context());
@@ -157,7 +164,7 @@ describe('StaleOverridesRule', () => {
 
 	it('does not flag empty-npm-package substitutions as orphans', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog: {}\n');
-		writeRootPackageJson(tmpDir, {
+		writeOverrides(tmpDir, {
 			overrides: { sharp: 'npm:empty-npm-package@1.0.0' },
 		});
 		writeLock(tmpDir, { packages: ['something-else@1.0.0'] });
@@ -169,7 +176,7 @@ describe('StaleOverridesRule', () => {
 
 	it('parses descendant override keys and flags when parent is missing', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog: {}\n');
-		writeRootPackageJson(tmpDir, {
+		writeOverrides(tmpDir, {
 			overrides: { 'missing-parent>@sentry/node': '10.0.0' },
 		});
 		writeLock(tmpDir, { packages: ['@sentry/node@10.0.0'] });
@@ -182,7 +189,7 @@ describe('StaleOverridesRule', () => {
 
 	it('does not flag descendant override when parent is present', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog: {}\n');
-		writeRootPackageJson(tmpDir, {
+		writeOverrides(tmpDir, {
 			overrides: { '@n8n/typeorm>@sentry/node': '10.0.0' },
 		});
 		writeLock(tmpDir, {
@@ -196,7 +203,7 @@ describe('StaleOverridesRule', () => {
 
 	it('parses bracketed selector keys without flagging them as orphans', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog: {}\n');
-		writeRootPackageJson(tmpDir, { overrides: { 'undici@5': '^6.24.0' } });
+		writeOverrides(tmpDir, { overrides: { 'undici@5': '^6.24.0' } });
 		writeLock(tmpDir, { packages: ['undici@6.24.0'] });
 
 		const violations = rule.analyze(context());
@@ -206,7 +213,7 @@ describe('StaleOverridesRule', () => {
 
 	it('flags redundant pin when every declared range in node_modules matches the pinned version', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog: {}\n');
-		writeRootPackageJson(tmpDir, { overrides: { chokidar: '4.0.3' } });
+		writeOverrides(tmpDir, { overrides: { chokidar: '4.0.3' } });
 		writeLock(tmpDir, {
 			packages: ['chokidar@4.0.3'],
 			requestedRanges: { chokidar: '4.0.3' },
@@ -221,7 +228,7 @@ describe('StaleOverridesRule', () => {
 
 	it('does not flag redundant pin when a transitive declares a wider range', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog: {}\n');
-		writeRootPackageJson(tmpDir, { overrides: { zod: '3.25.67' } });
+		writeOverrides(tmpDir, { overrides: { zod: '3.25.67' } });
 		writeLock(tmpDir, {
 			packages: ['zod@3.25.67'],
 			requestedRanges: { zod: '3.25.67' },
@@ -238,7 +245,7 @@ describe('StaleOverridesRule', () => {
 
 	it('does not flag redundant pin when node_modules is absent', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog: {}\n');
-		writeRootPackageJson(tmpDir, { overrides: { chokidar: '4.0.3' } });
+		writeOverrides(tmpDir, { overrides: { chokidar: '4.0.3' } });
 		writeLock(tmpDir, {
 			packages: ['chokidar@4.0.3'],
 			requestedRanges: { chokidar: '4.0.3' },
@@ -252,7 +259,7 @@ describe('StaleOverridesRule', () => {
 
 	it('does not flag redundant pin when range uses semver operator', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog: {}\n');
-		writeRootPackageJson(tmpDir, { overrides: { axios: '^1.16.0' } });
+		writeOverrides(tmpDir, { overrides: { axios: '^1.16.0' } });
 		writeLock(tmpDir, {
 			packages: ['axios@1.16.0'],
 			requestedRanges: { axios: '^1.16.0' },
@@ -267,7 +274,7 @@ describe('StaleOverridesRule', () => {
 
 	it('does not flag redundant pin when multiple versions are resolved', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog: {}\n');
-		writeRootPackageJson(tmpDir, { overrides: { 'shared-lib': '1.0.0' } });
+		writeOverrides(tmpDir, { overrides: { 'shared-lib': '1.0.0' } });
 		writeLock(tmpDir, {
 			packages: ['shared-lib@1.0.0', 'shared-lib@2.0.0'],
 			requestedRanges: { 'shared-lib': '1.0.0' },
@@ -282,7 +289,7 @@ describe('StaleOverridesRule', () => {
 
 	it('returns no violations when there are no overrides', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog: {}\n');
-		writeRootPackageJson(tmpDir, {});
+		writeOverrides(tmpDir, {});
 		writeLock(tmpDir, { packages: ['lodash@4.18.1'] });
 
 		const violations = rule.analyze(context());
@@ -290,9 +297,80 @@ describe('StaleOverridesRule', () => {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('reports the line number of the override key in package.json', () => {
+	it('flags a versioned-selector override that duplicates a named catalog entry', () => {
+		// Regression: a dependency autofix pinned `undici@<=6.27.0` to a concrete
+		// version that the undici-v6 catalog already governs. The version selector
+		// on the key must not hide the duplication.
+		writeWorkspace(
+			tmpDir,
+			'packages:\n  - packages/*\ncatalogs:\n  undici-v6:\n    undici: ^6.27.0\n',
+		);
+		writeOverrides(tmpDir, { overrides: { 'undici@<=6.27.0': '6.27.0' } });
+		writeLock(tmpDir, { packages: ['undici@6.27.0'] });
+
+		const violations = rule.analyze(context());
+
+		const dup = violations.find((v) => v.message.includes('duplicates a catalog entry'));
+		expect(dup).toBeDefined();
+		expect(dup?.message).toContain('undici');
+		expect(dup?.message).toContain('"catalog:undici-v6"');
+	});
+
+	it('flags a scoped versioned-selector override that duplicates a default catalog entry', () => {
+		// Regression: a dependency autofix pinned `@tiptap/core@<=3.27.0` to a
+		// concrete version while the default catalog already pins @tiptap/core.
+		writeWorkspace(tmpDir, "packages:\n  - packages/*\ncatalog:\n  '@tiptap/core': 3.22.5\n");
+		writeOverrides(tmpDir, { overrides: { '@tiptap/core@<=3.27.0': '3.27.0' } });
+		writeLock(tmpDir, { packages: ['@tiptap/core@3.27.0'] });
+
+		const violations = rule.analyze(context());
+
+		const dup = violations.find((v) => v.message.includes('duplicates a catalog entry'));
+		expect(dup).toBeDefined();
+		expect(dup?.message).toContain('@tiptap/core');
+		expect(dup?.message).toContain('"catalog:"');
+	});
+
+	it('detects catalog duplication regardless of any version selector on the key', () => {
+		// Metamorphic invariant: appending a version selector to an override key
+		// (`pkg` -> `pkg@<=1.2.3`) must not change whether the override is
+		// recognised as duplicating a catalog entry — the selector is irrelevant
+		// to "does this package duplicate a catalog entry". This is the exact
+		// class of override that slipped through as a concrete-version pin.
+		const pkgArb = fc.constantFrom(
+			'undici',
+			'lodash',
+			'chokidar',
+			'@tiptap/core',
+			'@sentry/node',
+			'@scope/pkg',
+		);
+		// `>` is pnpm's reserved parent>child separator, so realistic version
+		// selectors on an override key use `<=` / `<` / `^` / `~` / exact forms.
+		const selectorArb = fc.constantFrom('<=6.27.0', '<7.0.0', '^3.0.0', '~2.1.0', '5', '6.0.0');
+
+		const hasCatalogDuplicate = (overrideKey: string, pkg: string): boolean => {
+			const workspace = `packages:\n  - packages/*\ncatalog:\n  '${pkg}': 1.0.0\n`;
+			writeWorkspace(tmpDir, workspace);
+			writeOverrides(tmpDir, { overrides: { [overrideKey]: '1.0.0' } });
+			writeLock(tmpDir, { packages: [`${pkg}@1.0.0`] });
+			return rule.analyze(context()).some((v) => v.message.includes('duplicates a catalog entry'));
+		};
+
+		fc.assert(
+			fc.property(pkgArb, selectorArb, (pkg, selector) => {
+				const bare = hasCatalogDuplicate(pkg, pkg);
+				const withSelector = hasCatalogDuplicate(`${pkg}@${selector}`, pkg);
+
+				expect(bare).toBe(true);
+				expect(withSelector).toBe(bare);
+			}),
+		);
+	});
+
+	it('reports the line number of the override key in the workspace manifest', () => {
 		writeWorkspace(tmpDir, 'packages:\n  - packages/*\ncatalog:\n  lodash: 4.18.1\n');
-		writeRootPackageJson(tmpDir, { overrides: { lodash: '4.18.1' } });
+		writeOverrides(tmpDir, { overrides: { lodash: '4.18.1' } });
 		writeLock(tmpDir, { packages: ['lodash@4.18.1'] });
 
 		const violations = rule.analyze(context());

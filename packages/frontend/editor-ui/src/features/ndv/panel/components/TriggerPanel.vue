@@ -15,7 +15,7 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -24,7 +24,7 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { isTriggerPanelObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import {
@@ -54,8 +54,8 @@ const emit = defineEmits<{
 const workflowId = useInjectWorkflowId();
 const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const ndvStore = injectNDVStore();
 
 const router = useRouter();
@@ -171,11 +171,11 @@ const isListeningForEvents = computed(() => {
 		return false;
 	}
 
-	if (!workflowsStore.executionWaitingForWebhook) {
+	if (!workflowExecutionStateStore.value.executionWaitingForWebhook) {
 		return false;
 	}
 
-	const executedNode = workflowsStore.executedNode;
+	const executedNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 	const isCurrentNodeExecuted = executedNode === props.nodeName;
 	const isChildNodeExecuted = executedNode
 		? (workflowDocumentStore?.value?.getParentNodes(executedNode).includes(props.nodeName) ?? false)
@@ -184,10 +184,10 @@ const isListeningForEvents = computed(() => {
 	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;
 });
 
-const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+const workflowRunning = computed(() => workflowExecutionStateStore.value.isWorkflowRunning);
 
 const isActivelyPolling = computed(() => {
-	const triggeredNode = workflowsStore.executedNode;
+	const triggeredNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 
 	return workflowRunning.value && isPollingNode.value && props.nodeName === triggeredNode;
 });
@@ -361,7 +361,7 @@ const onLinkClick = (e: MouseEvent) => {
 				pane: 'input',
 				type: 'open-executions-log',
 			});
-			ndvStore.unsetActiveNodeName();
+			ndvStore.value.unsetActiveNodeName();
 			void router.push({
 				name: VIEWS.EXECUTIONS,
 			});

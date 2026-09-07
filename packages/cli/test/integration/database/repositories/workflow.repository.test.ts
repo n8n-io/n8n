@@ -11,6 +11,7 @@ import {
 import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 
 import { createTestRun } from '../../shared/db/evaluation';
@@ -40,7 +41,7 @@ function expectWorkflowsMatch(
 	const oldSorted = [...oldWorkflows].sort((a, b) => a.id.localeCompare(b.id));
 	const newSorted = [...newWorkflows].sort((a, b) => a.id.localeCompare(b.id));
 
-	// Jest's toEqual does deep recursive comparison of all fields
+	// Vitest's toEqual does deep recursive comparison of all fields
 	expect(newSorted).toEqual(oldSorted);
 }
 
@@ -445,11 +446,11 @@ describe('WorkflowRepository', () => {
 			const workflowRepository = Container.get(WorkflowRepository);
 			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
 
-			// Workflow 1: No dependencies
-			const workflow1 = await createWorkflow({ versionCounter: 5 });
+			// Workflow 1: No dependencies (empty nodes so no auto-added dependencies)
+			const workflow1 = await createWorkflow({ versionCounter: 5, nodes: [] });
 
 			// Workflow 2: Has dependencies but with outdated version
-			const workflow2 = await createWorkflow({ versionCounter: 10 });
+			const workflow2 = await createWorkflow({ versionCounter: 10, nodes: [] });
 			const dependencies2 = new WorkflowDependencies(workflow2.id, 7);
 			dependencies2.add({
 				dependencyType: 'credentialId',
@@ -459,7 +460,7 @@ describe('WorkflowRepository', () => {
 			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow2.id, dependencies2);
 
 			// Workflow 3: Has up-to-date dependencies
-			const workflow3 = await createWorkflow({ versionCounter: 15 });
+			const workflow3 = await createWorkflow({ versionCounter: 15, nodes: [] });
 			const dependencies3 = new WorkflowDependencies(workflow3.id, 15);
 			dependencies3.add({
 				dependencyType: 'nodeType',
@@ -489,9 +490,9 @@ describe('WorkflowRepository', () => {
 			//
 			const workflowRepository = Container.get(WorkflowRepository);
 
-			// Create 5 workflows with no dependencies
+			// Create 5 workflows with no dependencies (empty nodes so no auto-added dependencies)
 			for (let i = 0; i < 5; i++) {
-				await createWorkflow({ versionCounter: 1 });
+				await createWorkflow({ versionCounter: 1, nodes: [] });
 			}
 
 			//
@@ -505,6 +506,192 @@ describe('WorkflowRepository', () => {
 			// ASSERT
 			//
 			expect(workflowsNeedingIndexing).toHaveLength(batchSize);
+		});
+	});
+
+	describe('findWorkflowsWithNodeType', () => {
+		it('should return workflows that have the specified node type in workflow_dependency', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			// Workflow 1: Has chat trigger node type
+			const workflow1 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node1',
+						type: 'n8n-nodes-base.chatTrigger',
+						name: 'Chat',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			// Workflow 2: Has HTTP request node type (different)
+			const workflow2 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node2',
+						type: 'n8n-nodes-base.httpRequest',
+						name: 'HTTP',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			// Workflow 3: Also has chat trigger node type
+			const workflow3 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node3',
+						type: 'n8n-nodes-base.chatTrigger',
+						name: 'Chat 2',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(2);
+			const workflowIds = workflows.map((w) => w.id);
+			expect(workflowIds).toContain(workflow1.id);
+			expect(workflowIds).toContain(workflow3.id);
+			expect(workflowIds).not.toContain(workflow2.id);
+		});
+
+		it('should return workflows matching any of the specified node types', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			// Workflow 1: Has chat trigger
+			const workflow1 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node1',
+						type: 'n8n-nodes-base.chatTrigger',
+						name: 'Chat',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			// Workflow 2: Has webhook trigger
+			const workflow2 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node2',
+						type: 'n8n-nodes-base.webhook',
+						name: 'Webhook',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			// Workflow 3: Has neither (just set node)
+			const workflow3 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node3',
+						type: 'n8n-nodes-base.set',
+						name: 'Set',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+				'n8n-nodes-base.webhook',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(2);
+			const workflowIds = workflows.map((w) => w.id);
+			expect(workflowIds).toContain(workflow1.id);
+			expect(workflowIds).toContain(workflow2.id);
+			expect(workflowIds).not.toContain(workflow3.id);
+		});
+
+		it('should return empty array when no workflows match', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			await createWorkflow({
+				nodes: [
+					{
+						id: 'node1',
+						type: 'n8n-nodes-base.httpRequest',
+						name: 'HTTP',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(0);
+		});
+
+		it('should return empty array when workflow_dependency table is empty', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			// Create workflow with no nodes, so no dependencies are added
+			await createWorkflow({ nodes: [] });
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(0);
 		});
 	});
 
@@ -566,7 +753,7 @@ describe('WorkflowRepository', () => {
 
 		it('should fetch workflows using subquery for standard user with roles', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
 
 			const member = await createMember();
@@ -603,7 +790,7 @@ describe('WorkflowRepository', () => {
 
 		it('should handle personal project filtering correctly', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const owner = await createOwner();
@@ -630,7 +817,7 @@ describe('WorkflowRepository', () => {
 
 		it('should handle onlySharedWithMe filter correctly', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const member = await createMember();
@@ -654,7 +841,7 @@ describe('WorkflowRepository', () => {
 
 		it('should apply filters correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const owner = await createOwner();
@@ -685,7 +872,7 @@ describe('WorkflowRepository', () => {
 
 		it('should handle pagination correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const owner = await createOwner();
@@ -755,9 +942,9 @@ describe('WorkflowRepository', () => {
 
 		it('should fetch both workflows and folders using subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createFolder } = await import('../../shared/db/folders');
+			const { createFolder } = await import('../../shared/db/folders.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -785,9 +972,9 @@ describe('WorkflowRepository', () => {
 
 		it('should handle complex filtering in union query with subquery', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createFolder } = await import('../../shared/db/folders');
+			const { createFolder } = await import('../../shared/db/folders.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -836,10 +1023,10 @@ describe('WorkflowRepository', () => {
 
 		it('should return identical results for standard user with both approaches', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { RoleService } = await import('@/services/role.service.js');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -881,9 +1068,9 @@ describe('WorkflowRepository', () => {
 
 		it('should return identical results for personal project with both approaches', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -922,9 +1109,9 @@ describe('WorkflowRepository', () => {
 
 		it('should return identical results with filters and pagination', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -974,10 +1161,10 @@ describe('WorkflowRepository', () => {
 
 		it('should correctly filter workflows by project when workflows belong to multiple projects', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { RoleService } = await import('@/services/role.service.js');
 
 			const member = await createMember();
 
@@ -1056,10 +1243,10 @@ describe('WorkflowRepository', () => {
 
 		it('should correctly isolate workflows by user - each user sees only their workflows', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { RoleService } = await import('@/services/role.service.js');
 
 			// Create two separate users
 			const userA = await createMember();

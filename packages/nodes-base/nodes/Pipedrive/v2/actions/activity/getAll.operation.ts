@@ -152,8 +152,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				qs.type = (filters.type as string[]).join(',');
 			}
 
+			// Pipedrive v2 activities filter param was renamed from `user_id` to `owner_id`;
+			// keep the UI field key as `user_id` for backward compatibility with saved workflows.
 			if (filters.user_id) {
-				qs.user_id = filters.user_id;
+				qs.owner_id = filters.user_id;
 			}
 
 			if (filters.done !== undefined) {

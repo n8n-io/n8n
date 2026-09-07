@@ -2,25 +2,26 @@ import type { IWebhookFunctions } from 'n8n-workflow';
 
 import { TwilioTrigger } from '../TwilioTrigger.node';
 import { verifySignature } from '../TwilioTriggerHelpers';
+import type { Mock, Mocked } from 'vitest';
 
-jest.mock('../TwilioTriggerHelpers');
+vi.mock('../TwilioTriggerHelpers');
 
 describe('TwilioTrigger', () => {
 	let trigger: TwilioTrigger;
 	let mockWebhookFunctions: Pick<
-		jest.Mocked<IWebhookFunctions>,
+		Mocked<IWebhookFunctions>,
 		'getBodyData' | 'getResponseObject' | 'helpers'
 	>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		trigger = new TwilioTrigger();
 
 		mockWebhookFunctions = {
-			getBodyData: jest.fn(),
-			getResponseObject: jest.fn(),
+			getBodyData: vi.fn(),
+			getResponseObject: vi.fn(),
 			helpers: {
-				returnJsonArray: jest.fn((data) => data),
+				returnJsonArray: vi.fn((data) => data),
 			} as any,
 		};
 	});
@@ -31,7 +32,7 @@ describe('TwilioTrigger', () => {
 				{ specversion: '1.0', type: 'com.twilio.messaging.inbound-message.received' },
 			];
 
-			(verifySignature as jest.Mock).mockResolvedValue(true);
+			(verifySignature as Mock).mockResolvedValue(true);
 			mockWebhookFunctions.getBodyData.mockReturnValue(bodyData as any);
 
 			const result = await trigger.webhook.call(
@@ -45,12 +46,12 @@ describe('TwilioTrigger', () => {
 
 		it('should return 401 when signature verification fails', async () => {
 			const mockResponse = {
-				status: jest.fn().mockReturnThis(),
-				send: jest.fn().mockReturnThis(),
-				end: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn().mockReturnThis(),
+				end: vi.fn(),
 			};
 
-			(verifySignature as jest.Mock).mockResolvedValue(false);
+			(verifySignature as Mock).mockResolvedValue(false);
 			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse as any);
 
 			const result = await trigger.webhook.call(
@@ -70,7 +71,7 @@ describe('TwilioTrigger', () => {
 				{ specversion: '1.0', type: 'com.twilio.voice.insights.call-summary.complete' },
 			];
 
-			(verifySignature as jest.Mock).mockResolvedValue(true);
+			(verifySignature as Mock).mockResolvedValue(true);
 			mockWebhookFunctions.getBodyData.mockReturnValue(bodyData as any);
 
 			const result = await trigger.webhook.call(

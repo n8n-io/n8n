@@ -1,16 +1,18 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 
 import { verifySignature } from '../CustomerIoTriggerHelpers';
+import type { Mock } from 'vitest';
+import type * as _importType0 from 'crypto';
 
-jest.mock('crypto', () => ({
-	...jest.requireActual('crypto'),
-	createHmac: jest.fn().mockReturnValue({
-		update: jest.fn().mockReturnThis(),
-		digest: jest
+vi.mock('crypto', async () => ({
+	...(await vi.importActual<typeof _importType0>('crypto')),
+	createHmac: vi.fn().mockReturnValue({
+		update: vi.fn().mockReturnThis(),
+		digest: vi
 			.fn()
 			.mockReturnValue('a2114d57b48eac39b9ad189dd8316235a7b4a8d21a10bd27519666489c69b503'),
 	}),
-	timingSafeEqual: jest.fn(),
+	timingSafeEqual: vi.fn(),
 }));
 
 describe('CustomerIoTriggerHelpers', () => {
@@ -21,20 +23,20 @@ describe('CustomerIoTriggerHelpers', () => {
 	const testSignature = 'a2114d57b48eac39b9ad189dd8316235a7b4a8d21a10bd27519666489c69b503';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Mock Date.now() to return a fixed timestamp within the replay window
 		const fixedDate = new Date(parseInt(testTimestamp, 10) * 1000);
-		jest.spyOn(Date, 'now').mockImplementation(() => fixedDate.getTime());
+		vi.spyOn(Date, 'now').mockImplementation(() => fixedDate.getTime());
 
 		mockWebhookFunctions = {
-			getCredentials: jest.fn(),
-			getRequestObject: jest.fn(),
-			getNode: jest.fn().mockReturnValue({ name: 'Customer.io Trigger' }),
+			getCredentials: vi.fn(),
+			getRequestObject: vi.fn(),
+			getNode: vi.fn().mockReturnValue({ name: 'Customer.io Trigger' }),
 		};
 
 		mockWebhookFunctions.getRequestObject.mockReturnValue({
-			header: jest.fn().mockImplementation((header) => {
+			header: vi.fn().mockImplementation((header) => {
 				if (header === 'x-cio-signature') return testSignature;
 				if (header === 'x-cio-timestamp') return testTimestamp;
 				return null;
@@ -68,7 +70,7 @@ describe('CustomerIoTriggerHelpers', () => {
 				webhookSigningKey: testSigningKey,
 			});
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
+			(timingSafeEqual as Mock).mockReturnValue(true);
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
@@ -82,7 +84,7 @@ describe('CustomerIoTriggerHelpers', () => {
 				webhookSigningKey: testSigningKey,
 			});
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(false);
+			(timingSafeEqual as Mock).mockReturnValue(false);
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
@@ -97,7 +99,7 @@ describe('CustomerIoTriggerHelpers', () => {
 			});
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
+				header: vi.fn().mockImplementation((header) => {
 					if (header === 'x-cio-timestamp') return testTimestamp;
 					return null;
 				}),
@@ -115,7 +117,7 @@ describe('CustomerIoTriggerHelpers', () => {
 			});
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
+				header: vi.fn().mockImplementation((header) => {
 					if (header === 'x-cio-signature') return testSignature;
 					return null;
 				}),
@@ -133,7 +135,7 @@ describe('CustomerIoTriggerHelpers', () => {
 			});
 
 			const futureDate = new Date((parseInt(testTimestamp, 10) + 301) * 1000);
-			jest.spyOn(Date, 'now').mockImplementation(() => futureDate.getTime());
+			vi.spyOn(Date, 'now').mockImplementation(() => futureDate.getTime());
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
@@ -145,7 +147,7 @@ describe('CustomerIoTriggerHelpers', () => {
 				webhookSigningKey: testSigningKey,
 			});
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
+			(timingSafeEqual as Mock).mockReturnValue(true);
 
 			await verifySignature.call(mockWebhookFunctions);
 
@@ -161,7 +163,7 @@ describe('CustomerIoTriggerHelpers', () => {
 
 			const rawBuffer = Buffer.from(testBody);
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
+				header: vi.fn().mockImplementation((header) => {
 					if (header === 'x-cio-signature') return testSignature;
 					if (header === 'x-cio-timestamp') return testTimestamp;
 					return null;
@@ -169,7 +171,7 @@ describe('CustomerIoTriggerHelpers', () => {
 				rawBody: rawBuffer,
 			});
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
+			(timingSafeEqual as Mock).mockReturnValue(true);
 
 			await verifySignature.call(mockWebhookFunctions);
 

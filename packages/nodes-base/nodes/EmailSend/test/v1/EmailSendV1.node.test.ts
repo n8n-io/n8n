@@ -2,16 +2,17 @@ import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
 
 import { EmailSendV1 } from '../../v1/EmailSendV1.node';
 import { prepareBinariesDataList } from '../../../../utils/binary';
+import type { Mock, Mocked } from 'vitest';
 
-const transporter = { sendMail: jest.fn() };
+const transporter = { sendMail: vi.fn() };
 
-jest.mock('nodemailer', () => ({
-	createTransport: jest.fn(() => transporter),
+vi.mock('nodemailer', () => ({
+	createTransport: vi.fn(() => transporter),
 }));
 
 describe('Test EmailSendV1', () => {
 	let emailSendV1: EmailSendV1;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 
 	beforeEach(() => {
 		emailSendV1 = new EmailSendV1({
@@ -29,16 +30,16 @@ describe('Test EmailSendV1', () => {
 		} as any);
 
 		mockExecuteFunctions = {
-			getInputData: jest.fn(),
-			getCredentials: jest.fn(),
-			getNodeParameter: jest.fn(),
+			getInputData: vi.fn(),
+			getCredentials: vi.fn(),
+			getNodeParameter: vi.fn(),
 			helpers: {
-				assertBinaryData: jest.fn(),
-				getBinaryDataBuffer: jest.fn(),
+				assertBinaryData: vi.fn(),
+				getBinaryDataBuffer: vi.fn(),
 			},
-			continueOnFail: jest.fn(() => false),
-		} as unknown as jest.Mocked<IExecuteFunctions>;
-		jest.clearAllMocks();
+			continueOnFail: vi.fn(() => false),
+		} as unknown as Mocked<IExecuteFunctions>;
+		vi.clearAllMocks();
 	});
 
 	describe('comma-separated attachment strings', () => {
@@ -72,13 +73,13 @@ describe('Test EmailSendV1', () => {
 				.mockReturnValueOnce('file1, file2, file3')
 				.mockReturnValueOnce({});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string) => {
 					return Buffer.from(items[itemIndex].binary![propertyName].data);
 				},
@@ -128,13 +129,13 @@ describe('Test EmailSendV1', () => {
 				.mockReturnValueOnce('file1,file2')
 				.mockReturnValueOnce({});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string) => {
 					return Buffer.from(items[itemIndex].binary![propertyName].data);
 				},
@@ -183,13 +184,13 @@ describe('Test EmailSendV1', () => {
 				.mockReturnValueOnce('  file1  ,  file2  ')
 				.mockReturnValueOnce({});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string) => {
 					return Buffer.from(items[itemIndex].binary![propertyName].data);
 				},
@@ -241,13 +242,13 @@ describe('Test EmailSendV1', () => {
 				.mockReturnValueOnce('singleFile')
 				.mockReturnValueOnce({});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string) => {
 					return Buffer.from(items[itemIndex].binary![propertyName].data);
 				},
@@ -295,13 +296,13 @@ describe('Test EmailSendV1', () => {
 				.mockReturnValueOnce('file1, file2')
 				.mockReturnValueOnce({});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string) => {
 					return Buffer.from(items[itemIndex].binary![propertyName].data);
 				},
@@ -375,7 +376,7 @@ describe('Test EmailSendV1', () => {
 				.mockReturnValueOnce({});
 
 			// Mock helpers to handle IBinaryData objects directly
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string | IBinaryData) => {
 					// If propertyName is already an IBinaryData object, return it
 					if (typeof propertyName === 'object') {
@@ -386,7 +387,7 @@ describe('Test EmailSendV1', () => {
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string | IBinaryData) => {
 					// If propertyName is already an IBinaryData object, use it directly
 					const binaryData =
@@ -442,7 +443,7 @@ describe('Test EmailSendV1', () => {
 				.mockReturnValueOnce({});
 
 			// Mock helpers to handle IBinaryData objects directly
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string | IBinaryData) => {
 					// If propertyName is already an IBinaryData object, return it
 					if (typeof propertyName === 'object') {
@@ -453,7 +454,7 @@ describe('Test EmailSendV1', () => {
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string | IBinaryData) => {
 					// If propertyName is already an IBinaryData object, use it directly
 					const binaryData =
@@ -512,6 +513,47 @@ describe('Test EmailSendV1', () => {
 			expect(transporter.sendMail).toHaveBeenCalledWith(
 				expect.not.objectContaining({
 					attachments: expect.anything(),
+				}),
+			);
+		});
+	});
+
+	describe('message parameters', () => {
+		it('should serialize object message values before sending', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+				secure: false,
+			});
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('cc@example.com')
+				.mockReturnValueOnce('bcc@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce({ path: 'message.txt' })
+				.mockReturnValueOnce({ href: 'https://example.test/message' })
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({ replyTo: 'reply@example.com' });
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await emailSendV1.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					from: 'from@example.com',
+					to: 'to@example.com',
+					cc: 'cc@example.com',
+					bcc: 'bcc@example.com',
+					subject: 'Test Subject',
+					text: '{"path":"message.txt"}',
+					html: '{"href":"https://example.test/message"}',
+					replyTo: 'reply@example.com',
+					disableFileAccess: true,
+					disableUrlAccess: true,
 				}),
 			);
 		});

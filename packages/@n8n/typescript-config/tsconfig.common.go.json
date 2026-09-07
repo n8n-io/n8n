@@ -1,0 +1,26 @@
+{
+	"compilerOptions": {
+		"noUncheckedSideEffectImports": false,
+		"strict": true,
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"target": "es2021",
+		"lib": ["es2021", "es2022.error", "es2022.object", "dom"],
+		"removeComments": true,
+		"useUnknownInCatchVariables": true,
+		"forceConsistentCasingInFileNames": true,
+		"noImplicitAny": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"strictNullChecks": true,
+		"preserveConstEnums": true,
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"incremental": true,
+		"declaration": false,
+		"sourceMap": true,
+		"skipLibCheck": true,
+		"tsBuildInfoFile": "${configDir}/dist/typecheck.tsbuildinfo"
+	}
+}

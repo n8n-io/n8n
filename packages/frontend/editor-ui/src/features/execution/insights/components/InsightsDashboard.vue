@@ -8,9 +8,11 @@ import { useAvailableProjectSearch } from '@/features/collaboration/projects/pro
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
-import { getLocalTimeZone, today } from '@internationalized/date';
+import { getLocalTimeZone, parseDate, today } from '@internationalized/date';
 import type { InsightsSummaryType } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client/utils';
 import {
 	computed,
 	defineAsyncComponent,
@@ -24,6 +26,7 @@ import { useRoute } from 'vue-router';
 import { INSIGHT_TYPES } from '../insights.constants';
 import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
+import InsightsDateRangeAlert from './InsightsDateRangeAlert.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 const InsightsPaywall = defineAsyncComponent(
@@ -60,6 +63,7 @@ const props = defineProps<{
 
 const route = useRoute();
 const i18n = useI18n();
+const toast = useToast();
 
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
@@ -114,11 +118,21 @@ const minimumValue = shallowRef(
 	maxDate.copy().subtract({ days: timeRangeMappings[maxLicensedDate] }),
 );
 
+function getDefaultRangeStart(): DateValue {
+	const sevenDaysAgo = maxDate.copy().subtract({ days: 7 });
+	if (insightsStore.earliestDataDate) {
+		const earliestDate = parseDate(insightsStore.earliestDataDate.substring(0, 10));
+		// If data only starts within the last 7 days, begin from first data point
+		return earliestDate.compare(sevenDaysAgo) > 0 ? earliestDate : sevenDaysAgo;
+	}
+	return sevenDaysAgo;
+}
+
 const range = shallowRef<{
 	start: DateValue;
 	end: DateValue;
 }>({
-	start: maxDate.copy().subtract({ days: 7 }),
+	start: getDefaultRangeStart(),
 	end: maxDate.copy(),
 });
 
@@ -156,32 +170,46 @@ const fetchPaginatedTableData = ({
 	});
 };
 
+let latestFetchId = 0;
+
 watch(
 	() => [props.insightType, selectedProject.value, range.value],
-	() => {
+	async () => {
+		const fetchId = ++latestFetchId;
+
 		sortTableBy.value = [{ id: props.insightType, desc: true }];
 
 		const { startDate, endDate } = getFilteredRange();
+		const projectId = selectedProject.value?.id;
 
 		if (insightsStore.isSummaryEnabled) {
-			void insightsStore.summary.execute(0, {
-				startDate,
-				endDate,
-				projectId: selectedProject.value?.id,
-			});
+			void insightsStore.summary.execute(0, { startDate, endDate, projectId });
 		}
 
-		void insightsStore.charts.execute(0, {
-			startDate,
-			endDate,
-			projectId: selectedProject.value?.id,
-		});
+		const chartsPromise = insightsStore.charts.execute(0, { startDate, endDate, projectId });
 
 		if (insightsStore.isDashboardEnabled) {
 			fetchPaginatedTableData({
 				sortBy: sortTableBy.value,
-				projectId: selectedProject.value?.id,
+				projectId,
 			});
+		}
+
+		await chartsPromise;
+
+		// A newer selection/range change has superseded this request.
+		if (fetchId !== latestFetchId) {
+			return;
+		}
+
+		// Callers may receive HTTP 403 if they have no `workflow:read` permission for a project.
+		// Revert to "All projects" instead of leaving the dashboard stuck on an all-zero, misleading state.
+		const chartsError = insightsStore.charts.error;
+		if (projectId && chartsError instanceof ResponseError && chartsError.httpStatusCode === 403) {
+			toast.showError(chartsError, i18n.baseText('insights.dashboard.error.forbidden.title'), {
+				message: i18n.baseText('insights.dashboard.error.forbidden.message'),
+			});
+			selectedProject.value = null;
 		}
 	},
 	{
@@ -235,6 +263,14 @@ onBeforeMount(async () => {
 					:presets
 				/>
 			</div>
+
+			<InsightsDateRangeAlert
+				:key="range.start.toString()"
+				class="mt-s"
+				:earliest-data-date="insightsStore.earliestDataDate"
+				:range-start="range.start"
+				:range-end="range.end"
+			/>
 
 			<InsightsSummary
 				v-if="insightsStore.isSummaryEnabled"

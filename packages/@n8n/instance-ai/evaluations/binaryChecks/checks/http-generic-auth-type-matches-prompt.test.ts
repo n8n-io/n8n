@@ -6,6 +6,7 @@ function workflowWithHttpRequest(parameters: Record<string, unknown>): WorkflowR
 		id: 'wf-1',
 		name: 'HTTP auth test',
 		active: false,
+		versionId: 'test-version',
 		nodes: [
 			{
 				name: 'Manual Trigger',
@@ -94,7 +95,7 @@ describe('httpGenericAuthTypeMatchesPrompt', () => {
 		expect(result).toEqual({ pass: true });
 	});
 
-	it('ignores HTTP Request nodes that do not use generic credential type', async () => {
+	it('reports N/A for HTTP Request nodes that do not use generic credential type', async () => {
 		const workflow = workflowWithHttpRequest({
 			authentication: 'predefinedCredentialType',
 			nodeCredentialType: 'githubApi',
@@ -104,14 +105,15 @@ describe('httpGenericAuthTypeMatchesPrompt', () => {
 			prompt: 'Call the GitHub API using a Bearer token',
 		});
 
-		expect(result).toEqual({ pass: true });
+		expect(result).toEqual({ pass: true, applicable: false });
 	});
 
-	it('ignores non-HTTP-Request nodes', async () => {
+	it('reports N/A when no HTTP-Request node uses generic credential type', async () => {
 		const workflow: WorkflowResponse = {
 			id: 'wf-2',
 			name: 'Slack only',
 			active: false,
+			versionId: 'test-version',
 			nodes: [
 				{
 					name: 'Manual Trigger',
@@ -134,6 +136,6 @@ describe('httpGenericAuthTypeMatchesPrompt', () => {
 			prompt: 'Send a Bearer-authenticated message',
 		});
 
-		expect(result).toEqual({ pass: true });
+		expect(result).toEqual({ pass: true, applicable: false });
 	});
 });

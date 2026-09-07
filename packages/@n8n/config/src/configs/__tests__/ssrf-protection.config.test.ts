@@ -35,6 +35,11 @@ describe('SsrfProtectionConfig', () => {
 			expect(Container.get(SsrfProtectionConfig).allowedHostnames).toEqual([]);
 		});
 
+		test('blockedHostnames is empty array', () => {
+			process.env = {};
+			expect(Container.get(SsrfProtectionConfig).blockedHostnames).toEqual([]);
+		});
+
 		test('dnsCacheMaxSize is 1048576', () => {
 			process.env = {};
 			expect(Container.get(SsrfProtectionConfig).dnsCacheMaxSize).toBe(1048576);
@@ -123,6 +128,21 @@ describe('SsrfProtectionConfig', () => {
 		test('is empty when env var is empty string', () => {
 			process.env = { N8N_SSRF_ALLOWED_HOSTNAMES: '' };
 			expect(Container.get(SsrfProtectionConfig).allowedHostnames).toEqual([]);
+		});
+	});
+
+	describe('N8N_SSRF_BLOCKED_HOSTNAMES', () => {
+		test('parses comma-separated patterns', () => {
+			process.env = { N8N_SSRF_BLOCKED_HOSTNAMES: '*.tracker.example,exfil.example.com' };
+			expect(Container.get(SsrfProtectionConfig).blockedHostnames).toEqual([
+				'*.tracker.example',
+				'exfil.example.com',
+			]);
+		});
+
+		test('is empty when env var is empty string', () => {
+			process.env = { N8N_SSRF_BLOCKED_HOSTNAMES: '' };
+			expect(Container.get(SsrfProtectionConfig).blockedHostnames).toEqual([]);
 		});
 	});
 

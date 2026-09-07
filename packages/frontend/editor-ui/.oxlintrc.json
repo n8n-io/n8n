@@ -36,7 +36,6 @@
 		"dist/**",
 		"eslint.config.mjs",
 		"tsup.config.ts",
-		"jest.config.js",
 		"vitest.config.ts",
 		"**/*.test.ts"
 	],

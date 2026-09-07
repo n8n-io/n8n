@@ -1,25 +1,25 @@
+import type { Mock } from 'vitest';
+
 import type { IterationEntry } from '../iteration-log';
 import { ThreadIterationLogStorage } from '../thread-iteration-log-storage';
 import { patchThread, type PatchableThreadMemory } from '../thread-patch';
 import type * as ThreadPatch from '../thread-patch';
 
-jest.mock('../thread-patch', () => {
-	const actual =
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		jest.requireActual<typeof ThreadPatch>('../thread-patch');
+vi.mock('../thread-patch', async () => {
+	const actual = await vi.importActual<typeof ThreadPatch>('../thread-patch');
 
 	return {
 		...actual,
-		patchThread: jest.fn(),
+		patchThread: vi.fn(),
 	};
 });
 
-const mockedPatchThread = jest.mocked(patchThread);
-type TestMemory = PatchableThreadMemory & { getThread: jest.Mock };
+const mockedPatchThread = vi.mocked(patchThread);
+type TestMemory = PatchableThreadMemory & { getThread: Mock };
 
 function makeMemory(): TestMemory {
 	return {
-		getThread: jest.fn(),
+		getThread: vi.fn(),
 	};
 }
 
@@ -37,7 +37,7 @@ describe('ThreadIterationLogStorage', () => {
 	let storage: ThreadIterationLogStorage;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		memory = makeMemory();
 		storage = new ThreadIterationLogStorage(memory);
 	});
@@ -99,7 +99,7 @@ describe('ThreadIterationLogStorage', () => {
 	describe('getForTask', () => {
 		it('returns entries for a specific task key', async () => {
 			const entry = makeEntry();
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				id: 'thread-1',
 				title: 'Test',
 				metadata: {
@@ -115,7 +115,7 @@ describe('ThreadIterationLogStorage', () => {
 		});
 
 		it('returns empty array when thread has no log', async () => {
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				id: 'thread-1',
 				title: 'Test',
 				metadata: {},
@@ -129,14 +129,14 @@ describe('ThreadIterationLogStorage', () => {
 		});
 
 		it('returns empty array when thread not found', async () => {
-			jest.mocked(memory.getThread).mockResolvedValue(null);
+			vi.mocked(memory.getThread).mockResolvedValue(null);
 
 			const result = await storage.getForTask('unknown', 'task-key');
 			expect(result).toEqual([]);
 		});
 
 		it('returns empty array when task key does not exist', async () => {
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				id: 'thread-1',
 				title: 'Test',
 				metadata: {

@@ -27,9 +27,9 @@ describe('Azure Cosmos DB', () => {
 				},
 			};
 
-			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
+			const mockRequestWithAuthentication = vi.fn().mockReturnValue(mockResponse);
 
-			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
+			const mockGetCredentials = vi.fn(async (type: string, _itemIndex?: number) => {
 				if (type === 'microsoftAzureCosmosDbSharedKeyApi') {
 					return credentials.microsoftAzureCosmosDbSharedKeyApi;
 				}
@@ -87,9 +87,9 @@ describe('Azure Cosmos DB', () => {
 				},
 			};
 
-			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
+			const mockRequestWithAuthentication = vi.fn().mockReturnValue(mockResponse);
 
-			const mockGetCurrentNodeParameter = jest.fn(
+			const mockGetCurrentNodeParameter = vi.fn(
 				(parameterName, options: IGetNodeParameterOptions) => {
 					if (parameterName === 'container' && options.extractValue) {
 						return 'Container1';
@@ -98,7 +98,7 @@ describe('Azure Cosmos DB', () => {
 				},
 			);
 
-			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
+			const mockGetCredentials = vi.fn(async (type: string, _itemIndex?: number) => {
 				if (type === 'microsoftAzureCosmosDbSharedKeyApi') {
 					return credentials.microsoftAzureCosmosDbSharedKeyApi;
 				}

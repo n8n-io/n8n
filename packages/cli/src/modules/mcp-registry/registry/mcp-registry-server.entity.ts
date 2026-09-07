@@ -1,5 +1,5 @@
 import { datetimeColumnType, JsonColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
 export type McpRegistryServerData = {
 	name: string;
@@ -25,15 +25,27 @@ export type McpRegistryServerData = {
 	}>;
 	websiteUrl?: string;
 	tags?: string[];
+	extendsCredential?: {
+		extends: string;
+		authUrl?: string | null;
+		accessTokenUrl?: string | null;
+		scope?: string | null;
+		authQueryParameters?: string | null;
+		grantType?: 'authorizationCode' | 'clientCredentials' | 'pkce' | null;
+		authentication?: 'body' | 'header' | null;
+		useDynamicClientRegistration?: boolean | null;
+		serverUrl?: string | null;
+	};
+	usesCredentials?: Array<{
+		credentialType: string;
+		name: string;
+		value: string;
+	}>;
 };
 
 @Entity('mcp_registry_server')
 export class McpRegistryServerEntity extends WithTimestamps {
-	@PrimaryColumn('int')
-	id: number;
-
-	@Index({ unique: true })
-	@Column('varchar')
+	@PrimaryColumn('varchar')
 	slug: string;
 
 	@Column('varchar')

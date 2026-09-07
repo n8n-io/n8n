@@ -1,5 +1,6 @@
 import type { Settings, SettingsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { mockCipher } from '@test/mocking';
 
@@ -9,7 +10,7 @@ import type { ExternalSecretsSettings } from '../types';
 
 describe('SettingsStore', () => {
 	let store: ExternalSecretsSettingsStore;
-	let settingsRepo: jest.Mocked<SettingsRepository>;
+	let settingsRepo: Mocked<SettingsRepository>;
 	let cipher: ReturnType<typeof mockCipher>;
 
 	const mockSettings: ExternalSecretsSettings = {
@@ -78,7 +79,7 @@ describe('SettingsStore', () => {
 			const encryptedValue = JSON.stringify(mockSettings);
 			settingsRepo.findByKey.mockResolvedValue(mock<Settings>({ value: encryptedValue }));
 
-			const decryptSpy = jest.spyOn(cipher, 'decryptV2');
+			const decryptSpy = vi.spyOn(cipher, 'decryptV2');
 
 			await store.load();
 
@@ -87,7 +88,7 @@ describe('SettingsStore', () => {
 
 		it('should throw error when decryption fails', async () => {
 			settingsRepo.findByKey.mockResolvedValue(mock<Settings>({ value: 'invalid-data' }));
-			jest.spyOn(cipher, 'decryptV2').mockResolvedValue('invalid-json');
+			vi.spyOn(cipher, 'decryptV2').mockResolvedValue('invalid-json');
 
 			await expect(store.load()).rejects.toThrow(
 				'External Secrets Settings could not be decrypted',
@@ -172,7 +173,7 @@ describe('SettingsStore', () => {
 		});
 
 		it('should encrypt settings before saving', async () => {
-			const encryptSpy = jest.spyOn(cipher, 'encryptV2');
+			const encryptSpy = vi.spyOn(cipher, 'encryptV2');
 
 			await store.save(mockSettings);
 

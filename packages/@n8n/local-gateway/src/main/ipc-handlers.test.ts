@@ -1,10 +1,13 @@
 type HandlerFn = (...args: unknown[]) => unknown;
 
-const mockHandle = jest.fn();
-const mockConfigure = jest.fn();
-const registeredHandlers = new Map<string, HandlerFn>();
+const mockHandle = vi.fn();
+const mockConfigure = vi.fn();
+// Hoisted so the `electron` mock factory (hoisted above imports) can register handlers into it.
+const { registeredHandlers } = vi.hoisted(() => ({
+	registeredHandlers: new Map<string, HandlerFn>(),
+}));
 
-jest.mock('electron', () => ({
+vi.mock('electron', () => ({
 	ipcMain: {
 		handle: (channel: string, handler: HandlerFn) => {
 			registeredHandlers.set(channel, handler);
@@ -13,15 +16,15 @@ jest.mock('electron', () => ({
 	},
 }));
 
-jest.mock('@n8n/computer-use/logger', () => ({
+vi.mock('@n8n/computer-use/logger', () => ({
 	configure: (options: { level?: string }) => {
 		mockConfigure(options);
 	},
 	logger: {
-		debug: jest.fn(),
-		info: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
 	},
 }));
 
@@ -39,22 +42,22 @@ function getRegisteredHandler(channel: string): HandlerFn {
 
 describe('registerIpcHandlers', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		registeredHandlers.clear();
 	});
 
 	it('invokes disconnect gateway callback on IPC gateway:disconnect', async () => {
 		const controller = {
-			disconnect: jest.fn().mockResolvedValue(undefined),
-			getSnapshot: jest.fn(),
+			disconnect: vi.fn().mockResolvedValue(undefined),
+			getSnapshot: vi.fn(),
 		};
 		const settingsStore = {
-			get: jest.fn(),
-			set: jest.fn(),
-			toGatewayConfig: jest.fn(),
+			get: vi.fn(),
+			set: vi.fn(),
+			toGatewayConfig: vi.fn(),
 		};
 
-		const disconnectGateway = jest.fn().mockResolvedValue(undefined);
+		const disconnectGateway = vi.fn().mockResolvedValue(undefined);
 		registerIpcHandlers(controller as never, settingsStore as never, disconnectGateway);
 		const disconnectHandler = getRegisteredHandler('gateway:disconnect');
 
@@ -76,18 +79,18 @@ describe('registerIpcHandlers', () => {
 			logLevel: 'info' as const,
 		};
 		const controller = {
-			disconnect: jest.fn(),
-			getSnapshot: jest.fn(),
+			disconnect: vi.fn(),
+			getSnapshot: vi.fn(),
 		};
 		const settingsStore = {
-			get: jest.fn().mockReturnValue(appSettings),
-			set: jest.fn(),
-			toGatewayConfig: jest.fn(),
+			get: vi.fn().mockReturnValue(appSettings),
+			set: vi.fn(),
+			toGatewayConfig: vi.fn(),
 		};
 		registerIpcHandlers(
 			controller as never,
 			settingsStore as never,
-			jest.fn().mockResolvedValue(undefined),
+			vi.fn().mockResolvedValue(undefined),
 		);
 
 		const result = getRegisteredHandler('settings:get')();
@@ -102,17 +105,17 @@ describe('registerIpcHandlers', () => {
 			lastError: null,
 		};
 		const controller = {
-			disconnect: jest.fn(),
-			getSnapshot: jest.fn().mockReturnValue(snapshot),
+			disconnect: vi.fn(),
+			getSnapshot: vi.fn().mockReturnValue(snapshot),
 		};
 		registerIpcHandlers(
 			controller as never,
 			{
-				get: jest.fn(),
-				set: jest.fn(),
-				toGatewayConfig: jest.fn(),
+				get: vi.fn(),
+				set: vi.fn(),
+				toGatewayConfig: vi.fn(),
 			} as never,
-			jest.fn().mockResolvedValue(undefined),
+			vi.fn().mockResolvedValue(undefined),
 		);
 
 		const result = getRegisteredHandler('daemon:status')();
@@ -122,20 +125,20 @@ describe('registerIpcHandlers', () => {
 
 	it('settings:set returns ok false when set throws', async () => {
 		const controller = {
-			disconnect: jest.fn(),
-			getSnapshot: jest.fn(),
+			disconnect: vi.fn(),
+			getSnapshot: vi.fn(),
 		};
 		const settingsStore = {
-			get: jest.fn(),
-			set: jest.fn().mockImplementation(() => {
+			get: vi.fn(),
+			set: vi.fn().mockImplementation(() => {
 				throw new Error('persist failed');
 			}),
-			toGatewayConfig: jest.fn(),
+			toGatewayConfig: vi.fn(),
 		};
 		registerIpcHandlers(
 			controller as never,
 			settingsStore as never,
-			jest.fn().mockResolvedValue(undefined),
+			vi.fn().mockResolvedValue(undefined),
 		);
 
 		const result = await getRegisteredHandler('settings:set')(undefined, {
@@ -148,15 +151,15 @@ describe('registerIpcHandlers', () => {
 
 	it('settings:set updates log level without invoking disconnect', async () => {
 		const controller = {
-			disconnect: jest.fn(),
-			getSnapshot: jest.fn(),
+			disconnect: vi.fn(),
+			getSnapshot: vi.fn(),
 		};
 		const settingsStore = {
-			get: jest.fn(),
-			set: jest.fn(),
-			toGatewayConfig: jest.fn(),
+			get: vi.fn(),
+			set: vi.fn(),
+			toGatewayConfig: vi.fn(),
 		};
-		const disconnectGateway = jest.fn();
+		const disconnectGateway = vi.fn();
 
 		registerIpcHandlers(controller as never, settingsStore as never, disconnectGateway);
 		const settingsSetHandler = getRegisteredHandler('settings:set');
@@ -170,18 +173,18 @@ describe('registerIpcHandlers', () => {
 
 	it('settings:set persists capability toggles', async () => {
 		const controller = {
-			disconnect: jest.fn(),
-			getSnapshot: jest.fn(),
+			disconnect: vi.fn(),
+			getSnapshot: vi.fn(),
 		};
 		const settingsStore = {
-			get: jest.fn(),
-			set: jest.fn(),
-			toGatewayConfig: jest.fn(),
+			get: vi.fn(),
+			set: vi.fn(),
+			toGatewayConfig: vi.fn(),
 		};
 		registerIpcHandlers(
 			controller as never,
 			settingsStore as never,
-			jest.fn().mockResolvedValue(undefined),
+			vi.fn().mockResolvedValue(undefined),
 		);
 
 		const result = await getRegisteredHandler('settings:set')(undefined, {

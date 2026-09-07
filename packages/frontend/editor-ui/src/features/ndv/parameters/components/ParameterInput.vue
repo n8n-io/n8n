@@ -25,7 +25,7 @@ import {
 	resolveRelativePath,
 } from 'n8n-workflow';
 
-import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system';
 
 import type { CodeNodeLanguageOption } from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -41,6 +41,7 @@ import ResourceLocator from './ResourceLocator/ResourceLocator.vue';
 import SqlEditor from '@/features/shared/editors/components/SqlEditor/SqlEditor.vue';
 import TextEdit from './TextEdit.vue';
 import WorkflowSelectorParameterInput from './WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
+import AgentSelectorParameterInput from './AgentSelectorParameterInput/AgentSelectorParameterInput.vue';
 
 import {
 	formatAsExpression,
@@ -51,6 +52,7 @@ import {
 	shouldSkipParamValidation,
 } from '@/features/ndv/shared/ndv.utils';
 import { hasExpressionMapping, isValueExpression } from '@/app/utils/nodeTypesUtils';
+import { useParameterInputContribution } from '@/features/ndv/parameters/composables/useParameterInputContribution';
 
 import {
 	AI_TRANSFORM_NODE_TYPE,
@@ -59,23 +61,24 @@ import {
 	CUSTOM_API_CALL_KEY,
 	DEBOUNCE_TIME,
 	ExpressionLocalResolveContextSymbol,
-	getDebounceTime,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
+	ToolConfigCredentialSelectedKey,
 } from '@/app/constants';
 
-import { useDebounce } from '@/app/composables/useDebounce';
+import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -117,6 +120,11 @@ import {
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
+// Upper bound for rows derived from a value's line count. Keeps a code editor's
+// rows-based min-height ((rows + 1) * 1.3em) within its max-height (40vh) so the
+// editor scrolls instead of overflowing the NDV boundary.
+const MAX_AUTO_DETECTED_ROWS = 10;
+
 type Props = {
 	parameter: INodeProperties;
 	path: string;
@@ -140,12 +148,13 @@ type Props = {
 	errorHighlight?: boolean;
 	isForCredential?: boolean;
 	canBeOverridden?: boolean;
+	externalIssues?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	hint: undefined,
-	inputSize: undefined,
+	inputSize: 'small',
 	eventSource: undefined,
 	documentationUrl: undefined,
 	isReadOnly: false,
@@ -153,6 +162,7 @@ const props = withDefaults(defineProps<Props>(), {
 	eventBus: () => createEventBus(),
 	additionalExpressionData: () => ({}),
 	label: () => ({ size: 'small' }),
+	externalIssues: () => [],
 });
 
 const emit = defineEmits<{
@@ -172,10 +182,11 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = injectNDVStore();
+const ndvStore = injectNDVStoreIfProvided();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
+const aiGateway = useAiGateway();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
@@ -185,6 +196,7 @@ const builderStore = useBuilderStore();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const onToolConfigCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
 
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
@@ -237,7 +249,7 @@ const node = computed(() => {
 	const contextNode =
 		expressionLocalResolveCtx?.value &&
 		workflowDocumentStore.value.getNodeByName(expressionLocalResolveCtx.value.nodeName);
-	return contextNode ?? ndvStore.activeNode ?? undefined;
+	return contextNode ?? ndvStore.value?.activeNode ?? undefined;
 });
 const nodeType = computed(
 	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
@@ -257,6 +269,22 @@ const isModelValueExpression = computed(() => isValueExpression(props.parameter,
 
 const isResourceLocatorParameter = computed<boolean>(() => {
 	return isResourceLocatorParameterType(props.parameter.type);
+});
+
+const parameterType = computed(() => props.parameter.type);
+const { contributedComponent, capabilities: contributedCapabilities } =
+	useParameterInputContribution(parameterType);
+
+/**
+ * A contributed input that owns expression rendering replaces every built-in
+ * branch. One that does not yields to the expression editor first, exactly as a
+ * built-in non-resource-locator type does.
+ */
+const showContributedComponent = computed<boolean>(() => {
+	if (!contributedComponent.value) return false;
+	if (contributedCapabilities.value.ownsExpressionRendering) return true;
+
+	return !isModelValueExpression.value && !props.forceShowExpression;
 });
 
 const isSecretParameter = computed<boolean>(() => {
@@ -313,7 +341,26 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	return getParameterDisplayableOptions(safeOptions, ndvStore.activeNode);
+	const displayableOptions = getParameterDisplayableOptions(
+		safeOptions,
+		ndvStore.value?.activeNode ?? null,
+	);
+
+	// Hide resource/operation options the AI gateway can't run. Keep the current
+	// value so pre-existing (now-unsupported) selections still render alongside
+	// the unsupported-action notice instead of showing a blank dropdown.
+	const paramName = props.parameter.name;
+	if (paramName !== 'resource' && paramName !== 'operation') return displayableOptions;
+	if (shortPath.value !== paramName) return displayableOptions;
+
+	const currentValue = isResourceLocatorValue(props.modelValue)
+		? props.modelValue.value
+		: props.modelValue;
+	return displayableOptions.filter(
+		(option) =>
+			option.value === currentValue ||
+			aiGateway.isActionOptionVisible(node.value ?? null, paramName, String(option.value)),
+	);
 });
 
 const modelValueString = computed<string>(() => {
@@ -358,10 +405,12 @@ const editorRows = computed(() => {
 	if (configuredRows !== undefined) return configuredRows;
 
 	// Auto-detect: when the stored value contains newlines, use a textarea
-	// so newlines are preserved natively without pipe substitution
+	// so newlines are preserved natively without pipe substitution.
+	// Cap the derived rows so code editors (e.g. sqlEditor) don't grow a
+	// min-height that exceeds their max-height and overflow the NDV boundary.
 	const value = props.modelValue;
 	if (props.parameter.type === 'string' && typeof value === 'string' && value.includes('\n')) {
-		return Math.max(2, value.split('\n').length);
+		return Math.min(MAX_AUTO_DETECTED_ROWS, Math.max(2, value.split('\n').length));
 	}
 
 	return undefined;
@@ -372,6 +421,14 @@ const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefin
 });
 const editorIsReadOnly = computed<boolean>(() => {
 	return getTypeOption('editorIsReadOnly') ?? false;
+});
+
+/**
+ * Custom mapping needed until DS-579 is complete.
+ * This aligns the height sizes of N8nInput with those of N8nSelect.
+ */
+const parameterInputSize = computed<InputSize>(() => {
+	return props.inputSize === 'small' ? 'medium' : props.inputSize;
 });
 
 const editorLanguage = computed<CodeNodeLanguageOption>(() => {
@@ -477,7 +534,7 @@ const expressionDisplayValue = computed(() => {
 
 const dependentParametersValues = computedAsync(async () => {
 	// Reference dependencies to ensure reactivity tracking
-	void ndvStore.activeNode?.parameters;
+	void ndvStore.value?.activeNode?.parameters;
 	void props.parameter;
 	void props.path;
 
@@ -509,12 +566,16 @@ const dependentParametersValues = computedAsync(async () => {
 }, null);
 
 const getStringInputType = computed(() => {
+	const rows = editorRows.value;
+	const isMultiline = rows !== undefined && rows > 1;
+
 	if (getTypeOption('password') === true) {
-		return 'password';
+		// A multiline masked field must be a textarea: a single-line
+		// <input type="password"> strips newlines and corrupts pasted keys.
+		return isMultiline ? 'textarea' : 'password';
 	}
 
-	const rows = editorRows.value;
-	if (rows !== undefined && rows > 1) {
+	if (isMultiline) {
 		return 'textarea';
 	}
 
@@ -525,11 +586,17 @@ const getStringInputType = computed(() => {
 	return 'text';
 });
 
+// A password field rendered as a textarea (multiline secret) still needs to be
+// visually masked and kept out of PostHog capture.
+const isMaskedTextarea = computed(
+	() => getStringInputType.value === 'textarea' && getTypeOption('password') === true,
+);
+
 const getIssues = computed<string[]>(() => {
 	const validationError = jsonValidationError.value;
 
 	if (validationError) {
-		return [validationError];
+		return [validationError, ...props.externalIssues];
 	}
 
 	if (props.hideIssues || !node.value) {
@@ -609,10 +676,10 @@ const getIssues = computed<string[]>(() => {
 	}
 
 	if (issues?.parameters?.[props.parameter.name] !== undefined) {
-		return issues.parameters[props.parameter.name];
+		return [...issues.parameters[props.parameter.name], ...props.externalIssues];
 	}
 
-	return [];
+	return props.externalIssues;
 });
 
 const displayTitle = computed<string>(() => {
@@ -703,7 +770,9 @@ const remoteParameterOptionsKeys = computed<string[]>(() => {
 });
 
 const shouldRedactValue = computed<boolean>(() => {
-	return getStringInputType.value === 'password' || props.isForCredential;
+	// Keyed off the field being a password (not the rendered control type) so a
+	// multiline masked field stays redacted even outside credential contexts.
+	return getTypeOption('password') === true || props.isForCredential;
 });
 
 const isCodeNode = computed(
@@ -715,12 +784,12 @@ const isHtmlNode = computed(() => !!node.value && node.value.type === HTML_NODE_
 const isInputTypeString = computed(() => props.parameter.type === 'string');
 const isInputTypeNumber = computed(() => props.parameter.type === 'number');
 
-const isInputDataEmpty = computed(() => ndvStore.isInputPanelEmpty);
+const isInputDataEmpty = computed(() => ndvStore.value?.isInputPanelEmpty ?? true);
 const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression === true ||
 		props.isReadOnly ||
-		isResourceLocatorParameter.value ||
+		contributedCapabilities.value.disableDrop ||
 		isModelValueExpression.value,
 );
 const showDragnDropTip = computed(
@@ -729,9 +798,9 @@ const showDragnDropTip = computed(
 		(isInputTypeString.value || isInputTypeNumber.value) &&
 		!isModelValueExpression.value &&
 		!isDropDisabled.value &&
-		(!ndvStore.hasInputData || !isInputDataEmpty.value) &&
-		!ndvStore.isMappingOnboarded &&
-		ndvStore.isInputParentOfActiveNode &&
+		(!(ndvStore.value?.hasInputData ?? false) || !isInputDataEmpty.value) &&
+		!(ndvStore.value?.isMappingOnboarded ?? true) &&
+		(ndvStore.value?.isInputParentOfActiveNode ?? false) &&
 		!props.isForCredential,
 );
 
@@ -750,6 +819,10 @@ function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
 }
 
+function isOptionDisabled(option: INodePropertyOptions) {
+	return 'disabled' in option && option.disabled === true;
+}
+
 function credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 	// Update the values on the node
 	workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
@@ -760,6 +833,9 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 		// Update the issues
 		nodeHelpers.updateNodeCredentialIssues(updateNode);
 	}
+
+	// Tool-config hosts keep a separate local draft; sync credentials onto it.
+	onToolConfigCredentialSelected?.(updateInformation);
 
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 }
@@ -775,14 +851,14 @@ function getPlaceholder(): string {
 
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).placeholder(props.parameter)
-		: i18n.nodeText(ndvStore.activeNode?.type).placeholder(props.parameter, props.path);
+		: i18n.nodeText(ndvStore.value?.activeNode?.type).placeholder(props.parameter, props.path);
 }
 
 function getOptionsOptionDisplayName(option: INodePropertyOptions): string {
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).optionsOptionDisplayName(props.parameter, option)
 		: i18n
-				.nodeText(ndvStore.activeNode?.type)
+				.nodeText(ndvStore.value?.activeNode?.type)
 				.optionsOptionDisplayName(props.parameter, option, props.path);
 }
 
@@ -790,7 +866,7 @@ function getOptionsOptionDescription(option: INodePropertyOptions): string {
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).optionsOptionDescription(props.parameter, option)
 		: i18n
-				.nodeText(ndvStore.activeNode?.type)
+				.nodeText(ndvStore.value?.activeNode?.type)
 				.optionsOptionDescription(props.parameter, option, props.path);
 }
 
@@ -872,7 +948,7 @@ function trackExpressionEditOpen() {
 			parameter_field_type: props.parameter.type,
 			new_expression: !isModelValueExpression.value,
 			workflow_id: workflowDocumentStore.value.workflowId,
-			push_ref: ndvStore.pushRef,
+			push_ref: ndvStore.value?.pushRef ?? '',
 			source: props.eventSource ?? 'ndv',
 		});
 	}
@@ -1081,7 +1157,7 @@ function valueChanged(untypedValue: unknown) {
 			node_type: node.value?.type,
 			resource: node.value?.parameters.resource,
 			is_custom: value === CUSTOM_API_CALL_KEY,
-			push_ref: ndvStore.pushRef,
+			push_ref: ndvStore.value?.pushRef ?? '',
 			parameter: props.parameter.name,
 			value: value as string,
 		});
@@ -1170,9 +1246,9 @@ function onJsonPasswordFieldChange(value: string) {
 	onUpdateTextInputDebounced(value);
 }
 
-function onUpdateTextInput(value: string) {
+function onUpdateTextInput(value: string | number) {
 	valueChanged(value);
-	onTextInputChange(value);
+	onTextInputChange(typeof value === 'string' ? value : String(value));
 }
 
 const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
@@ -1328,18 +1404,29 @@ onBeforeUnmount(() => {
 
 watch(
 	() => node.value?.credentials,
-	(_newCredentials, oldCredentials) => {
-		if (hasRemoteMethod.value && node.value) {
-			void loadRemoteParameterOptions();
-			// Reset options value when credentials change (not on initial load or first assignment)
-			const hadCredentials = oldCredentials !== undefined && Object.keys(oldCredentials).length > 0;
-			if (hadCredentials && props.parameter.type === 'options') {
-				emit('update', {
-					node: node.value.name,
-					name: props.path,
-					value: props.parameter.default ?? '',
-				});
-			}
+	async (newCredentials, oldCredentials) => {
+		if (!hasRemoteMethod.value || !node.value) return;
+		await loadRemoteParameterOptions();
+		// Credentials changed again while loading — a newer run will validate the fresh results.
+		if (!node.value || node.value.credentials !== newCredentials) return;
+		const hadCredentials = oldCredentials !== undefined && Object.keys(oldCredentials).length > 0;
+		if (
+			!hadCredentials ||
+			props.parameter.type !== 'options' ||
+			isModelValueExpression.value ||
+			remoteParameterOptionsLoading.value
+		) {
+			return;
+		}
+		const stillValid = remoteParameterOptions.value.some(
+			(option) => option.value === props.modelValue,
+		);
+		if (!stillValid) {
+			emit('update', {
+				node: node.value.name,
+				name: props.path,
+				value: props.parameter.default ?? '',
+			});
 		}
 	},
 	{ immediate: true },
@@ -1427,6 +1514,7 @@ onUpdated(async () => {
 			:event-source="eventSource || 'ndv'"
 			:is-read-only="isReadOnly"
 			:redact-values="shouldRedactValue"
+			:additional-expression-data="additionalExpressionData"
 			@close-dialog="closeExpressionEditDialog"
 			@update:model-value="expressionUpdated"
 		/>
@@ -1450,8 +1538,30 @@ onUpdated(async () => {
 			:style="parameterInputWrapperStyle"
 			:data-parameter-path="path"
 		>
+			<component
+				:is="contributedComponent"
+				v-if="showContributedComponent"
+				:parameter="parameter"
+				:model-value="modelValue"
+				:path="path"
+				:node="node"
+				:display-title="displayTitle"
+				:is-read-only="isReadOnly"
+				:is-value-expression="isModelValueExpression"
+				:expression-display-value="expressionDisplayValue"
+				:expression-computed-value="expressionEvaluated"
+				:dependent-parameters-values="dependentParametersValues"
+				:parameter-issues="getIssues"
+				:droppable="droppable ?? false"
+				:event-bus="eventBus"
+				@update:model-value="valueChangedDebounced"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
 			<ResourceLocator
-				v-if="parameter.type === 'resourceLocator'"
+				v-else-if="parameter.type === 'resourceLocator'"
 				ref="resourceLocator"
 				:parameter="parameter"
 				:model-value="modelValueResourceLocator"
@@ -1487,6 +1597,22 @@ onUpdated(async () => {
 				:parameter-issues="getIssues"
 				:is-read-only="isReadOnly"
 				@update:model-value="valueChangedDebounced"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
+			<AgentSelectorParameterInput
+				v-else-if="parameter.type === 'agentSelector'"
+				ref="resourceLocator"
+				:parameter="parameter"
+				:model-value="modelValueResourceLocator"
+				:expression-display-value="expressionDisplayValue"
+				:is-value-expression="isModelValueExpression"
+				:path="path"
+				:parameter-issues="getIssues"
+				:is-read-only="isReadOnly"
+				@update:model-value="valueChanged"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1534,7 +1660,7 @@ onUpdated(async () => {
 					:model-value="codeEditDialogVisible"
 					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
-						.nodeText(ndvStore.activeNode?.type)
+						.nodeText(ndvStore?.activeNode?.type)
 						.inputLabelDisplayName(parameter, path)}`"
 					:before-close="closeCodeEditDialog"
 					data-test-id="code-editor-fullscreen"
@@ -1769,8 +1895,9 @@ onUpdated(async () => {
 					ref="inputField"
 					v-model="tempValue"
 					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
-					:size="inputSize"
+					:size="parameterInputSize"
 					:type="getStringInputType"
+					:masked="isMaskedTextarea"
 					:rows="editorRows"
 					:disabled="
 						isReadOnly ||
@@ -1826,7 +1953,7 @@ onUpdated(async () => {
 				/>
 				<N8nInput
 					v-model="tempValue"
-					:size="inputSize"
+					:size="parameterInputSize"
 					type="text"
 					:disabled="isReadOnly"
 					:title="displayTitle"
@@ -1871,7 +1998,7 @@ onUpdated(async () => {
 				v-else-if="parameter.type === 'number'"
 				ref="inputField"
 				:size="inputSize"
-				:model-value="displayValue"
+				:model-value="typeof displayValue === 'number' ? displayValue : undefined"
 				:controls="false"
 				:max="getTypeOption('maxValue')"
 				:min="getTypeOption('minValue')"
@@ -1927,6 +2054,7 @@ onUpdated(async () => {
 					v-for="option in parameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
+					:disabled="isOptionDisabled(option)"
 					:label="getOptionsOptionDisplayName(option)"
 					data-test-id="parameter-input-item"
 				>
@@ -1940,7 +2068,7 @@ onUpdated(async () => {
 						<div
 							v-if="option.description"
 							v-n8n-html="getOptionsOptionDescription(option)"
-							class="option-description"
+							class="option-description option-description--clamped"
 						></div>
 					</div>
 				</N8nOption>
@@ -1966,6 +2094,7 @@ onUpdated(async () => {
 					v-for="option in parameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
+					:disabled="isOptionDisabled(option)"
 					:label="getOptionsOptionDisplayName(option)"
 				>
 					<div class="list-option">
@@ -1973,7 +2102,7 @@ onUpdated(async () => {
 						<div
 							v-if="option.description"
 							v-n8n-html="getOptionsOptionDescription(option)"
-							class="option-description"
+							class="option-description option-description--clamped"
 						></div>
 					</div>
 				</N8nOption>
@@ -1981,7 +2110,7 @@ onUpdated(async () => {
 
 			<N8nInput
 				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled && droppable"
-				:size="inputSize"
+				:size="parameterInputSize"
 				:disabled="isReadOnly"
 				:title="displayTitle"
 				class="switch-droppable-input"
@@ -1998,7 +2127,7 @@ onUpdated(async () => {
 
 			<N8nInput
 				v-else-if="parameter.type === 'boolean' && droppable"
-				:size="inputSize"
+				:size="parameterInputSize"
 				:model-value="JSON.stringify(displayValue)"
 				:disabled="isReadOnly"
 				:title="displayTitle"
@@ -2166,6 +2295,14 @@ onUpdated(async () => {
 		font-weight: var(--font-weight--regular);
 		line-height: var(--line-height--xl);
 		color: $custom-font-very-light;
+	}
+
+	.option-description--clamped {
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		text-overflow: ellipsis;
 	}
 }
 

@@ -1,10 +1,11 @@
 import type { Dirent, Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
+import type { Mock } from 'vitest';
 
 import { textOf } from '../test-utils';
 import { getFileTreeTool } from './get-file-tree';
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 const CONTEXT = { dir: '/base' };
 
@@ -24,11 +25,11 @@ function dirent(name: string, isDir: boolean): Dirent {
 }
 
 function mockStat(size = 100): void {
-	jest.mocked(fs.stat).mockResolvedValue({ size } as unknown as Stats);
+	vi.mocked(fs.stat).mockResolvedValue({ size } as unknown as Stats);
 }
 
 function mockReaddir(...batches: Dirent[][]): void {
-	const mock = fs.readdir as jest.Mock;
+	const mock = fs.readdir as Mock;
 	for (const batch of batches) {
 		mock.mockResolvedValueOnce(batch);
 	}
@@ -36,8 +37,8 @@ function mockReaddir(...batches: Dirent[][]): void {
 
 describe('getFileTreeTool', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
-		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+		vi.resetAllMocks();
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
 			if (p === '/base') return await Promise.resolve('/base');
 			throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
 		});

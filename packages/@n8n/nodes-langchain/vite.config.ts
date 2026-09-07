@@ -12,7 +12,10 @@ export default mergeConfig(
 			alias: {
 				'@utils': path.resolve(__dirname, './utils'),
 				'@nodes-testing': path.resolve(__dirname, '../../core/nodes-testing'),
-				'n8n-workflow': path.resolve(__dirname, '../../workflow/dist/cjs/index.js'),
+				// Pin n8n-workflow to its CJS build so the single module instance is shared
+				// across CJS-required workspace deps and ESM-imported test code.
+				// `require.resolve` follows the `require` export condition (the CJS dist).
+				'n8n-workflow': require.resolve('n8n-workflow'),
 			},
 		},
 	}),

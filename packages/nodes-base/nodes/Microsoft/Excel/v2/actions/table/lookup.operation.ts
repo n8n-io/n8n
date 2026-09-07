@@ -9,6 +9,7 @@ import { NodeApiError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
 import { microsoftApiRequestAllItemsSkip } from '../../transport';
 import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
 
@@ -95,6 +96,7 @@ export async function execute(
 				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`,
 				{},
 				{},
+				i,
 			);
 
 			qs.$select = 'name';
@@ -106,6 +108,7 @@ export async function execute(
 				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
 				{},
 				qs,
+				i,
 			);
 			columns = columns.map((column: IDataObject) => column.name);
 
@@ -155,7 +158,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

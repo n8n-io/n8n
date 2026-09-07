@@ -64,8 +64,34 @@ describe('Test MicrosoftTeamsV2, channelMessage => getAll', () => {
 			],
 		});
 
+	nock('https://graph.microsoft.com')
+		.get('/beta/teams/1111-2222-3333/channels/42:aaabbbccc.tacv2/messages')
+		.query({ $top: 1 })
+		.reply(200, {
+			'@odata.nextLink':
+				'https://graph.microsoft.com/beta/teams/1111-2222-3333/channels/42:aaabbbccc.tacv2/messages?$skiptoken=abc',
+			value: [
+				{
+					id: '1698130964682',
+					messageType: 'message',
+					body: {
+						contentType: 'html',
+						content: '<div>First message</div>',
+					},
+				},
+				{
+					id: '1698130964683',
+					messageType: 'message',
+					body: {
+						contentType: 'html',
+						content: '<div>Second message</div>',
+					},
+				},
+			],
+		});
+
 	new NodeTestHarness().setupTests({
 		credentials,
-		workflowFiles: ['getAll.workflow.json'],
+		workflowFiles: ['getAll.workflow.json', 'getAll.limit.workflow.json'],
 	});
 });

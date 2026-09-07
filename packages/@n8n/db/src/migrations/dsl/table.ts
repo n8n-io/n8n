@@ -5,24 +5,32 @@ import LazyPromise from 'p-lazy';
 
 import { Column } from './column';
 
+function buildEnumCheck(
+	columnName: string,
+	values: string[],
+	prefix: string,
+	tableName: string,
+	driver: Driver,
+): TableCheck {
+	const checkName = `CHK_${prefix}${tableName}_${columnName}`;
+	const escapedColumnName = driver.escape(columnName);
+	const escapedValues = values.map((v) => `'${v.replace(/'/g, "''")}'`).join(', ');
+	const expression = `${escapedColumnName} IN (${escapedValues})`;
+	return new TableCheck({ name: checkName, expression });
+}
+
 function buildEnumChecks(
 	columns: Column[],
 	prefix: string,
 	tableName: string,
 	driver: Driver,
 ): TableCheck[] {
-	const checks: TableCheck[] = [];
-	for (const column of columns) {
-		const enumCheck = column.getEnumCheck();
-		if (enumCheck) {
-			const checkName = `CHK_${prefix}${tableName}_${enumCheck.columnName}`;
-			const escapedColumnName = driver.escape(enumCheck.columnName);
-			const escapedValues = enumCheck.values.map((v) => `'${v.replace(/'/g, "''")}'`).join(', ');
-			const expression = `${escapedColumnName} IN (${escapedValues})`;
-			checks.push(new TableCheck({ name: checkName, expression }));
-		}
-	}
-	return checks;
+	return columns
+		.map((column) => column.getEnumCheck())
+		.filter((enumCheck) => enumCheck !== undefined)
+		.map((enumCheck) =>
+			buildEnumCheck(enumCheck.columnName, enumCheck.values, prefix, tableName, driver),
+		);
 }
 
 abstract class TableOperation<R = void> extends LazyPromise<R> {
@@ -144,6 +152,7 @@ export class DropTable extends TableOperation {
 	}
 }
 
+/** SQLite: TypeORM recreates the table internally — beware CASCADE FK data loss. */
 export class AddColumns extends TableOperation {
 	constructor(
 		tableName: string,
@@ -171,6 +180,7 @@ export class AddColumns extends TableOperation {
 	}
 }
 
+/** SQLite: TypeORM recreates the table internally — beware CASCADE FK data loss. */
 export class DropColumns extends TableOperation {
 	constructor(
 		tableName: string,
@@ -225,6 +235,7 @@ export class DropForeignKey extends ForeignKeyOperation {
 	}
 }
 
+/** SQLite: TypeORM recreates the table internally via changeColumn — beware CASCADE FK data loss. */
 class ModifyNotNull extends TableOperation {
 	constructor(
 		tableName: string,
@@ -284,5 +295,26 @@ export class DropEnumCheck extends TableOperation {
 		const fullTableName = `${prefix}${tableName}`;
 		const checkName = `CHK_${prefix}${tableName}_${columnName}`;
 		return await queryRunner.dropCheckConstraint(fullTableName, checkName);
+	}
+}
+
+export class AddEnumCheck extends TableOperation {
+	constructor(
+		tableName: string,
+		protected columnName: string,
+		protected values: string[],
+		prefix: string,
+		queryRunner: QueryRunner,
+	) {
+		super(tableName, prefix, queryRunner);
+	}
+
+	async execute(queryRunner: QueryRunner) {
+		const { tableName, prefix, columnName, values } = this;
+		const { driver } = queryRunner.connection;
+		const fullTableName = `${prefix}${tableName}`;
+		return await queryRunner.createCheckConstraints(fullTableName, [
+			buildEnumCheck(columnName, values, prefix, tableName, driver),
+		]);
 	}
 }

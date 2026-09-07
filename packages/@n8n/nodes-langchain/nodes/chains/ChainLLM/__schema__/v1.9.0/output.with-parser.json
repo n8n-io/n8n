@@ -1,0 +1,12 @@
+{
+	"type": "object",
+	"required": ["output"],
+	"properties": {
+		"output": {
+			"type": "object",
+			"description": "A parsed JSON object matching the attached output parser's schema — NOT a JSON-encoded string, and its fields must NOT appear at the top level next to `output`",
+			"additionalProperties": true
+		}
+	},
+	"version": 1
+}

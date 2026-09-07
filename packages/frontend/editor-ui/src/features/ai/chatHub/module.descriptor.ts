@@ -1,4 +1,4 @@
-import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import {
 	CHAT_VIEW,
 	CHAT_CONVERSATION_VIEW,
@@ -66,7 +66,7 @@ export const ChatModule: FrontendModuleDescription = {
 		},
 		{
 			key: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
-			component: async () => await import('./components/CredentialSelectorModal.vue'),
+			component: async () => await import('../components/CredentialSelectorModal.vue'),
 			initialState: {
 				open: false,
 				data: {

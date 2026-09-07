@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE,
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
@@ -21,7 +21,7 @@ import {
 	CHAT_VIEW,
 	MOBILE_MEDIA_QUERY,
 } from '@/features/ai/chatHub/constants';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	type ChatHubLLMProvider,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
@@ -48,10 +48,10 @@ import {
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ChatGreetings from './components/ChatGreetings.vue';
 import { useChatSession } from './composables/useChatSession';
 import ChatArtifactViewer from './components/ChatArtifactViewer.vue';
@@ -59,7 +59,7 @@ import DynamicCredentialsDrawer from './components/DynamicCredentialsDrawer.vue'
 import { useChatArtifacts } from './composables/useChatArtifacts';
 import { useChatInputFocus } from './composables/useChatInputFocus';
 import { useDynamicCredentialsStatus } from './composables/useDynamicCredentialsStatus';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 
 const router = useRouter();
 const route = useRoute();
@@ -241,9 +241,9 @@ const { credentialsByProvider, selectCredential } = useChatCredentials(
 );
 
 // Dynamic credentials
-const { isEnabled: dynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: privateCredentialsEnabled } = usePrivateCredentials();
 const dynamicCredsWorkflowId = computed(() =>
-	selectedModel.value?.model.provider === 'n8n' && dynamicCredentialsEnabled.value
+	selectedModel.value?.model.provider === 'n8n' && privateCredentialsEnabled.value
 		? selectedModel.value.model.workflowId
 		: null,
 );

@@ -48,10 +48,8 @@ test.describe(
 			await memberN8n.chatHubChat.getChatInput().fill('Hello');
 			await memberN8n.chatHubChat.getSendButton().click();
 
-			await expect(memberN8n.chatHubChat.getChatMessages().nth(0)).toContainText('Hello');
-			await expect(memberN8n.chatHubChat.getChatMessages().nth(1)).toContainText(
-				'Hello! How can I help you today?',
-			);
+			await expect(memberN8n.chatHubChat.getChatMessages().nth(0)).toContainText('Hello'); // user-typed, assert exact
+			await memberN8n.chatHubChat.expectReplyAt(1); // assistant reply streamed in (content is non-deterministic)
 			await memberN8n.page.close();
 		});
 
@@ -68,9 +66,12 @@ test.describe(
 
 			// Anthropic: configure default credential
 			await n8n.chatHubSettings.providerModal.getCredentialPicker().click();
-			await n8n.chatHubSettings.providerModal
-				.getVisiblePopoverOption(anthropicCredential.name)
-				.click();
+			const credentialOption = n8n.chatHubSettings.providerModal.getVisiblePopoverOption(
+				anthropicCredential.name,
+			);
+			await credentialOption.click();
+			await n8n.page.keyboard.press('Escape');
+			await expect(credentialOption).toBeHidden();
 
 			// Anthropic: enable limit models toggle
 			await n8n.chatHubSettings.providerModal.getLimitModelsToggle().click();

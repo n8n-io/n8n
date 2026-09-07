@@ -1,9 +1,7 @@
-const EMPTY_SLUG_FALLBACK = 'workflow';
-
 /**
  * Generates a filesystem-safe slug from an entity name
  */
-export function generateSlug(name: string): string {
+export function generateSlug(name: string, fallback: string): string {
 	let slug = name;
 	slug = slug
 		.toLowerCase()
@@ -18,5 +16,5 @@ export function generateSlug(name: string): string {
 		// Remove any - at the start or end of the slug
 		.replace(/^-|-$/g, '');
 
-	return slug || EMPTY_SLUG_FALLBACK;
+	return slug || fallback;
 }

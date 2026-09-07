@@ -194,6 +194,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const updateFields = this.getNodeParameter('updateFields', i);
 			addFieldsToBody(body, updateFields);
 
+			// Pipedrive v2 deals API renamed `user_id` to `owner_id`; remap so the existing
+			// `user_id` parameter (kept for backward compatibility with saved workflows) is accepted.
+			if (body.user_id !== undefined) {
+				body.owner_id = body.user_id;
+				delete body.user_id;
+			}
+
 			// Clear label when set to 'null' string
 			if (body.label === 'null') {
 				body.label = null;

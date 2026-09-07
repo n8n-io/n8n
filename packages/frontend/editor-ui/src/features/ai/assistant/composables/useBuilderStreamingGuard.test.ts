@@ -3,6 +3,16 @@ import { confirmIfBuilderStreaming } from './useBuilderStreamingGuard';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 const confirmMock = vi.fn();
 
 vi.mock('@/app/composables/useMessage', () => ({

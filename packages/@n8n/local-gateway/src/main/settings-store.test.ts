@@ -1,40 +1,47 @@
-jest.mock('node:os', () => {
-	/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access -- jest.requireActual is untyped */
-	const actual = jest.requireActual('node:os');
+vi.mock('node:os', async () => {
+	const actual = await vi.importActual<typeof nodeOs>('node:os');
 	return {
 		...actual,
-		homedir: jest.fn((): string => '/mock/home'),
+		homedir: vi.fn((): string => '/mock/home'),
 	};
-	/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access */
 });
 
-jest.mock('electron', () => ({
+vi.mock('electron', () => ({
 	app: {
-		getPath: jest.fn((name: string) => (name === 'userData' ? '/mock/userData' : `/mock/${name}`)),
+		getPath: vi.fn((name: string) => (name === 'userData' ? '/mock/userData' : `/mock/${name}`)),
 	},
 }));
 
-jest.mock('@n8n/computer-use/logger', () => ({
+vi.mock('@n8n/computer-use/logger', () => ({
 	logger: {
-		debug: jest.fn(),
-		warn: jest.fn(),
+		debug: vi.fn(),
+		warn: vi.fn(),
 	},
 }));
 
-jest.mock('electron-store');
+// Explicit factory rather than an auto-mock: auto-mocking imports the real `electron-store`,
+// which transitively loads the real `electron` runtime. The test drives the constructor via
+// `MockStore.mockImplementation` below.
+vi.mock('electron-store', () => ({
+	default: vi.fn(),
+}));
 
 import { app } from 'electron';
 import Store from 'electron-store';
+import type * as nodeOs from 'node:os';
 import * as path from 'node:path';
+import type { MockedClass } from 'vitest';
 
 import { SettingsStore } from './settings-store';
 
-const MockStore = Store as jest.MockedClass<typeof Store>;
+const MockStore = Store as MockedClass<typeof Store>;
 
 describe('SettingsStore (Electron)', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
-		MockStore.mockImplementation((opts?: { defaults?: Record<string, unknown> }) => {
+		vi.clearAllMocks();
+		// `new Store(...)` in source: the implementation must be constructable, so use a
+		// regular function rather than an arrow (Vitest does `new impl()`).
+		MockStore.mockImplementation(function (opts?: { defaults?: Record<string, unknown> }) {
 			const data: Record<string, unknown> = { ...(opts?.defaults ?? {}) };
 			return {
 				get: (key: string) => data[key],

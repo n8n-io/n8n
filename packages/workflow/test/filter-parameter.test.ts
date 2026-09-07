@@ -2,7 +2,11 @@ import merge from 'lodash/merge';
 import { DateTime } from 'luxon';
 
 import type { FilterConditionValue, FilterValue } from '../src/interfaces';
-import { arrayContainsValue, executeFilter } from '../src/node-parameters/filter-parameter';
+import {
+	arrayContainsValue,
+	executeFilter,
+	executeFilterConditionAsync,
+} from '../src/node-parameters/filter-parameter';
 
 type DeepPartial<T> = {
 	[P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
@@ -580,6 +584,40 @@ describe('FilterParameter', () => {
 						}),
 					);
 					expect(result).toBe(expected);
+				});
+
+				it('should use the provided async regex tester for regex operations', async () => {
+					const regexTest = vi.fn(async () => true);
+					const result = await executeFilterConditionAsync(
+						{
+							id: '1',
+							leftValue: 'input',
+							rightValue: '/pattern/i',
+							operator: { operation: 'regex', type: 'string' },
+						},
+						filterFactory().options,
+						regexTest,
+					);
+
+					expect(result).toBe(true);
+					expect(regexTest).toHaveBeenCalledWith('pattern', 'input', 'i');
+				});
+
+				it('should reuse string normalization for async regex operations', async () => {
+					const regexTest = vi.fn(async () => false);
+					const result = await executeFilterConditionAsync(
+						{
+							id: '1',
+							leftValue: 'INPUT',
+							rightValue: 'pattern',
+							operator: { operation: 'notRegex', type: 'string' },
+						},
+						filterFactory().options,
+						regexTest,
+					);
+
+					expect(result).toBe(true);
+					expect(regexTest).toHaveBeenCalledWith('pattern', 'input', '');
 				});
 			});
 

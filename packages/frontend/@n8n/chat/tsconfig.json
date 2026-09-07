@@ -1,8 +1,8 @@
 {
 	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
-		"rootDir": "src",
-		"outDir": "dist",
+		"noEmit": true,
+		"rootDirs": [".", "../design-system/src"],
 		"target": "esnext",
 		"module": "esnext",
 		"moduleResolution": "bundler",
@@ -11,7 +11,7 @@
 		"incremental": false,
 		"allowSyntheticDefaultImports": true,
 		"resolveJsonModule": true,
-		"types": ["vitest/globals"],
+		"types": ["vitest/globals", "vitest/browser", "@testing-library/vue"],
 		"paths": {
 			"@n8n/chat/*": ["./src/*"],
 			"@n8n/design-system*": ["../design-system/src*"]

@@ -1,11 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { resolveMcpRegistryConnection } from '../../mcp-registry-connection';
+import { McpRegistryNodeLoader } from '../../mcp-registry-node-loader';
+import { MCP_REGISTRY_PACKAGE_NAME } from '../../node-description-transform';
 import type { McpRegistryApiClient, McpRegistryServerMetadata } from '../mcp-registry-api.client';
 import type { McpRegistryServerEntity } from '../mcp-registry-server.entity';
 import type { McpRegistryServerRepository } from '../mcp-registry-server.repository';
@@ -21,21 +24,19 @@ function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 
 type CreateServiceOptions = {
 	storedServers?: McpRegistryServer[] | null;
-	isLeader?: boolean;
 	instanceType?: 'main' | 'worker';
 };
 
 function createService(options: CreateServiceOptions = {}) {
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const repository = mock<McpRegistryServerRepository>();
 	const apiClient = mock<McpRegistryApiClient>();
 	const instanceSettings = mock<InstanceSettings>({
-		isLeader: options.isLeader ?? false,
 		instanceType: options.instanceType ?? 'main',
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({ loaders: {} });
-	const push = mock<Push>({ broadcast: jest.fn() });
-	const publisher = mock<Publisher>({ publishCommand: jest.fn().mockResolvedValue(undefined) });
+	const push = mock<Push>({ broadcast: vi.fn() });
+	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
 
 	if (options.storedServers === null) {
 		repository.find.mockResolvedValue([]);
@@ -45,6 +46,10 @@ function createService(options: CreateServiceOptions = {}) {
 		const entities = servers.map(toMockEntity);
 		repository.find.mockResolvedValue(entities);
 		repository.findBy.mockImplementation(async (where) => {
+			if (Array.isArray(where)) {
+				const slugs = new Set(where.map((condition) => condition.slug));
+				return entities.filter((e) => slugs.has(e.slug));
+			}
 			if (where && 'status' in where) {
 				return entities.filter((e) => e.status === where.status);
 			}
@@ -59,7 +64,7 @@ function createService(options: CreateServiceOptions = {}) {
 	}
 
 	apiClient.fetchServersMetadata.mockResolvedValue([]);
-	apiClient.fetchServersByIds.mockResolvedValue([]);
+	apiClient.fetchServersBySlugs.mockResolvedValue([]);
 	apiClient.fetchAllServers.mockResolvedValue([notionMockServer, linearMockServer]);
 	repository.upsert.mockResolvedValue({} as never);
 
@@ -79,13 +84,13 @@ function createService(options: CreateServiceOptions = {}) {
 		apiClient,
 		push,
 		publisher,
+		loadNodesAndCredentials,
 	};
 }
 
 describe('McpRegistryService', () => {
 	afterEach(() => {
-		jest.useRealTimers();
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('getAll / get', () => {
@@ -131,45 +136,72 @@ describe('McpRegistryService', () => {
 			expect(notion).toEqual(notionMockServer);
 			expect(missing).toBeUndefined();
 		});
+
+		it('returns empty array for getBySlugs when input is empty', async () => {
+			const { service, repository } = createService();
+
+			const servers = await service.getBySlugs([]);
+
+			expect(servers).toEqual([]);
+			expect(repository.findBy).not.toHaveBeenCalled();
+		});
+
+		it('returns mapped servers for getBySlugs', async () => {
+			const { service, repository } = createService();
+
+			const servers = await service.getBySlugs(['notion', 'linear']);
+
+			expect(repository.findBy).toHaveBeenCalledWith([{ slug: 'notion' }, { slug: 'linear' }]);
+			expect(servers).toEqual([notionMockServer, linearMockServer]);
+		});
+
+		it('maps resolveBySlugs into the same shape as search', async () => {
+			const { service } = createService();
+
+			const resolved = await service.resolveBySlugs(['notion']);
+			const searched = await service.search(['notion']);
+
+			expect(resolved).toEqual(searched);
+		});
+
+		it('omits unknown slugs from resolveBySlugs', async () => {
+			const { service } = createService({ storedServers: [notionMockServer, linearMockServer] });
+
+			const results = await service.resolveBySlugs(['notion', 'made-up']);
+
+			expect(results.map((result) => result.slug)).toEqual(['notion']);
+		});
+
+		it('omits deprecated servers from resolveBySlugs, as search does', async () => {
+			const { service } = createService({
+				storedServers: [notionMockServer, { ...linearMockServer, status: 'deprecated' }],
+			});
+
+			const results = await service.resolveBySlugs(['notion', 'linear']);
+
+			expect(results.map((result) => result.slug)).toEqual(['notion']);
+		});
 	});
 
 	describe('refresh flow', () => {
-		it('init does not start periodic refresh on followers', async () => {
-			jest.useFakeTimers();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
-			const { service, apiClient } = createService({ isLeader: false });
+		it('init loads the persisted registry without calling the API', async () => {
+			const { service, apiClient } = createService();
 
 			await service.init();
 
-			expect(setIntervalSpy).not.toHaveBeenCalled();
 			expect(apiClient.fetchServersMetadata).not.toHaveBeenCalled();
+			expect(apiClient.fetchAllServers).not.toHaveBeenCalled();
 		});
 
-		it('init starts periodic refresh and kicks off startup refresh on leaders', async () => {
-			jest.useFakeTimers();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
-			const { service, apiClient } = createService({ isLeader: true });
-
-			await service.init();
-			await Promise.resolve();
-
-			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-			expect(apiClient.fetchServersMetadata).toHaveBeenCalledTimes(1);
-
-			service.shutdown();
-		});
-
-		it('onLeaderTakeover skips write + notifications when metadata is unchanged', async () => {
-			jest.useFakeTimers();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+		it('refreshFromApi skips write + notifications when metadata is unchanged', async () => {
 			const metadata: McpRegistryServerMetadata[] = [
 				{
-					id: notionMockServer.id,
+					slug: notionMockServer.slug,
 					version: notionMockServer.version,
 					updatedAt: notionMockServer.updatedAt,
 				},
 				{
-					id: linearMockServer.id,
+					slug: linearMockServer.slug,
 					version: linearMockServer.version,
 					updatedAt: linearMockServer.updatedAt,
 				},
@@ -177,18 +209,47 @@ describe('McpRegistryService', () => {
 			const { service, apiClient, repository, push, publisher } = createService();
 			apiClient.fetchServersMetadata.mockResolvedValue(metadata);
 
-			await service.onLeaderTakeover();
+			await service.refreshFromApi();
 
-			expect(apiClient.fetchServersByIds).not.toHaveBeenCalled();
+			expect(apiClient.fetchServersBySlugs).not.toHaveBeenCalled();
 			expect(repository.upsert).not.toHaveBeenCalled();
 			expect(push.broadcast).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
-			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-
-			service.shutdown();
 		});
 
-		it('onLeaderTakeover fetches only changed servers and publishes reload', async () => {
+		it('refreshFromApi deprecates servers missing from metadata', async () => {
+			const metadata: McpRegistryServerMetadata[] = [
+				{
+					slug: notionMockServer.slug,
+					version: notionMockServer.version,
+					updatedAt: notionMockServer.updatedAt,
+				},
+			];
+			const { service, apiClient, repository, push, publisher } = createService({
+				storedServers: [notionMockServer, linearMockServer],
+			});
+			apiClient.fetchServersMetadata.mockResolvedValue(metadata);
+
+			await service.refreshFromApi();
+
+			expect(apiClient.fetchServersBySlugs).not.toHaveBeenCalled();
+			expect(repository.upsert).toHaveBeenCalledTimes(1);
+			const upsertEntities = repository.upsert.mock.calls[0][0];
+			expect(upsertEntities).toEqual([
+				{
+					...toEntity({
+						...linearMockServer,
+						status: 'deprecated',
+					}),
+					registryUpdatedAt: expect.any(Date),
+				},
+			]);
+			expect(repository.upsert.mock.calls[0][1]).toEqual(['slug']);
+			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
+		});
+
+		it('refreshFromApi fetches only changed servers and publishes reload', async () => {
 			const staleNotion: McpRegistryServer = {
 				...notionMockServer,
 				version: '1.1.0',
@@ -196,12 +257,12 @@ describe('McpRegistryService', () => {
 			};
 			const metadata: McpRegistryServerMetadata[] = [
 				{
-					id: notionMockServer.id,
+					slug: notionMockServer.slug,
 					version: notionMockServer.version,
 					updatedAt: notionMockServer.updatedAt,
 				},
 				{
-					id: linearMockServer.id,
+					slug: linearMockServer.slug,
 					version: linearMockServer.version,
 					updatedAt: linearMockServer.updatedAt,
 				},
@@ -210,31 +271,74 @@ describe('McpRegistryService', () => {
 				storedServers: [staleNotion, linearMockServer],
 			});
 			apiClient.fetchServersMetadata.mockResolvedValue(metadata);
-			apiClient.fetchServersByIds.mockResolvedValue([notionMockServer]);
+			apiClient.fetchServersBySlugs.mockResolvedValue([notionMockServer]);
 
-			await service.onLeaderTakeover();
+			await service.refreshFromApi();
 
 			expect(apiClient.fetchAllServers).not.toHaveBeenCalled();
-			expect(apiClient.fetchServersByIds).toHaveBeenCalledWith([notionMockServer.id]);
+			expect(apiClient.fetchServersBySlugs).toHaveBeenCalledWith(
+				[notionMockServer.slug],
+				undefined,
+			);
 			expect(repository.upsert).toHaveBeenCalledTimes(1);
 			const upsertEntities = repository.upsert.mock.calls[0][0];
 			expect(upsertEntities).toEqual([notionMockServer].map(toEntity));
 			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
 			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
-
-			service.shutdown();
 		});
 
-		it('onLeaderTakeover fetches all servers when no data is persisted', async () => {
+		it('refreshFromApi fetches all servers when no data is persisted', async () => {
 			const { service, apiClient, repository } = createService({ storedServers: null });
 
-			await service.onLeaderTakeover();
+			await service.refreshFromApi();
 
 			expect(apiClient.fetchAllServers).toHaveBeenCalledTimes(1);
 			expect(apiClient.fetchServersMetadata).not.toHaveBeenCalled();
 			expect(repository.upsert).toHaveBeenCalledTimes(1);
+		});
 
-			service.shutdown();
+		it('refreshFromApi stops before the write when the signal aborts during the fetch', async () => {
+			const { service, apiClient, repository, push } = createService({ storedServers: null });
+			const controller = new AbortController();
+			apiClient.fetchAllServers.mockImplementation(async () => {
+				controller.abort();
+				return [notionMockServer];
+			});
+
+			await expect(service.refreshFromApi(controller.signal)).rejects.toThrow();
+
+			expect(apiClient.fetchAllServers).toHaveBeenCalledWith(controller.signal);
+			expect(repository.upsert).not.toHaveBeenCalled();
+			expect(push.broadcast).not.toHaveBeenCalled();
+		});
+
+		it('refreshFromApi rethrows an API failure and writes nothing', async () => {
+			const { service, apiClient, repository, push } = createService();
+			apiClient.fetchServersMetadata.mockRejectedValue(new Error('api down'));
+
+			await expect(service.refreshFromApi()).rejects.toThrow('api down');
+
+			expect(repository.upsert).not.toHaveBeenCalled();
+			expect(push.broadcast).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getConnection', () => {
+		it('returns the connection from the registry node loader', async () => {
+			const { service, loadNodesAndCredentials } = createService();
+			const connection = resolveMcpRegistryConnection(notionMockServer);
+			const loader = Object.create(McpRegistryNodeLoader.prototype) as McpRegistryNodeLoader;
+			loader.getConnection = vi.fn().mockReturnValue(connection);
+			loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME] = loader;
+
+			await expect(service.getConnection('@n8n/mcp-registry.notion')).resolves.toEqual(connection);
+			expect(loader.getConnection).toHaveBeenCalledWith('@n8n/mcp-registry.notion');
+		});
+
+		it('returns undefined when the registry loader is not registered', async () => {
+			const { service } = createService();
+
+			await expect(service.getConnection('@n8n/mcp-registry.notion')).resolves.toBeUndefined();
 		});
 	});
 

@@ -27,7 +27,8 @@ interface CliArgs {
 	trials: number;
 	passThreshold: number;
 	timeoutMs: number;
-	maxSteps: number;
+	/** Optional iteration cap; unset uses the SDK default. */
+	maxSteps?: number;
 	modelId: string;
 	concurrency: number;
 	nodesJsonPath?: string;
@@ -85,7 +86,6 @@ function parseArgs(argv: string[]): CliArgs {
 		trials: 3,
 		passThreshold: 2 / 3,
 		timeoutMs: 60_000,
-		maxSteps: 5,
 		modelId: DEFAULT_MODEL,
 		concurrency: 3,
 		failOnZeroPass: false,
@@ -273,7 +273,11 @@ async function main(): Promise<void> {
 	await runLocalMode(args);
 }
 
-main().catch((error) => {
-	console.error('Fatal error:', error);
-	process.exit(1);
-});
+main()
+	.then(() => {
+		process.stdout.write('', () => process.exit(process.exitCode ?? 0));
+	})
+	.catch((error) => {
+		console.error('Fatal error:', error);
+		process.exit(1);
+	});

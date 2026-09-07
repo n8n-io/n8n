@@ -2,6 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { StructuredToolInterface } from '@langchain/core/tools';
 import { NodeTypeParser } from '@n8n/ai-utilities/node-catalog';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import type { PlanOutput } from '../../../types/planning';
 import type { ChatPayload } from '../../../workflow-builder-agent';
@@ -16,7 +17,7 @@ function createMockLlm() {
 	const mockBoundLlm = {};
 
 	const llm = {
-		bindTools: jest.fn((tools: unknown[]) => {
+		bindTools: vi.fn((tools: unknown[]) => {
 			boundTools.push(tools);
 			return mockBoundLlm;
 		}),
@@ -86,8 +87,8 @@ describe('ChatSetupHandler', () => {
 				llm,
 				tools,
 				enableTextEditorConfig: false,
-				parseAndValidate: jest.fn(),
-				getErrorContext: jest.fn(),
+				parseAndValidate: vi.fn(),
+				getErrorContext: vi.fn(),
 			});
 
 			const payload: ChatPayload = {
@@ -98,9 +99,7 @@ describe('ChatSetupHandler', () => {
 
 			await handler.execute({ payload });
 
-			const firstCallArgs = (llm.bindTools as jest.Mock).mock.calls[0] as [
-				Array<{ name?: string }>,
-			];
+			const firstCallArgs = (llm.bindTools as Mock).mock.calls[0] as [Array<{ name?: string }>];
 			const toolNames = firstCallArgs[0]
 				.filter((t): t is { name: string } => 'name' in t)
 				.map((t) => t.name);
@@ -115,8 +114,8 @@ describe('ChatSetupHandler', () => {
 				llm,
 				tools,
 				enableTextEditorConfig: false,
-				parseAndValidate: jest.fn(),
-				getErrorContext: jest.fn(),
+				parseAndValidate: vi.fn(),
+				getErrorContext: vi.fn(),
 			});
 
 			const payload: ChatPayload = {
@@ -126,9 +125,7 @@ describe('ChatSetupHandler', () => {
 
 			await handler.execute({ payload });
 
-			const firstCallArgs = (llm.bindTools as jest.Mock).mock.calls[0] as [
-				Array<{ name?: string }>,
-			];
+			const firstCallArgs = (llm.bindTools as Mock).mock.calls[0] as [Array<{ name?: string }>];
 			const toolNames = firstCallArgs[0]
 				.filter((t): t is { name: string } => 'name' in t)
 				.map((t) => t.name);
@@ -143,8 +140,8 @@ describe('ChatSetupHandler', () => {
 				llm,
 				tools,
 				enableTextEditorConfig: false,
-				parseAndValidate: jest.fn(),
-				getErrorContext: jest.fn(),
+				parseAndValidate: vi.fn(),
+				getErrorContext: vi.fn(),
 			});
 
 			const payload: ChatPayload = {
@@ -155,9 +152,7 @@ describe('ChatSetupHandler', () => {
 
 			await handler.execute({ payload });
 
-			const firstCallArgs = (llm.bindTools as jest.Mock).mock.calls[0] as [
-				Array<{ name?: string }>,
-			];
+			const firstCallArgs = (llm.bindTools as Mock).mock.calls[0] as [Array<{ name?: string }>];
 			const toolNames = firstCallArgs[0]
 				.filter((t): t is { name: string } => 'name' in t)
 				.map((t) => t.name);
@@ -172,7 +167,7 @@ describe('ChatSetupHandler', () => {
 		it('uses nodeTypeParser to look up each suggestedNode', async () => {
 			const { llm } = createMockLlm();
 			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNodeType, mockSlackNodeType]);
-			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getLeanNodeType');
+			const getNodeTypeSpy = vi.spyOn(nodeTypeParser, 'getLeanNodeType');
 
 			const tools = [
 				createMockTool('search_nodes'),
@@ -184,8 +179,8 @@ describe('ChatSetupHandler', () => {
 				llm,
 				tools,
 				enableTextEditorConfig: false,
-				parseAndValidate: jest.fn(),
-				getErrorContext: jest.fn(),
+				parseAndValidate: vi.fn(),
+				getErrorContext: vi.fn(),
 				nodeTypeParser,
 			});
 
@@ -207,7 +202,7 @@ describe('ChatSetupHandler', () => {
 		it('does NOT look up nodes when planOutput is absent', async () => {
 			const { llm } = createMockLlm();
 			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNodeType, mockSlackNodeType]);
-			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getLeanNodeType');
+			const getNodeTypeSpy = vi.spyOn(nodeTypeParser, 'getLeanNodeType');
 
 			const tools = [
 				createMockTool('search_nodes'),
@@ -219,8 +214,8 @@ describe('ChatSetupHandler', () => {
 				llm,
 				tools,
 				enableTextEditorConfig: false,
-				parseAndValidate: jest.fn(),
-				getErrorContext: jest.fn(),
+				parseAndValidate: vi.fn(),
+				getErrorContext: vi.fn(),
 				nodeTypeParser,
 			});
 
@@ -237,7 +232,7 @@ describe('ChatSetupHandler', () => {
 		it('does NOT look up nodes when plan has no suggestedNodes', async () => {
 			const { llm } = createMockLlm();
 			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNodeType]);
-			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getLeanNodeType');
+			const getNodeTypeSpy = vi.spyOn(nodeTypeParser, 'getLeanNodeType');
 
 			const tools = [
 				createMockTool('search_nodes'),
@@ -249,8 +244,8 @@ describe('ChatSetupHandler', () => {
 				llm,
 				tools,
 				enableTextEditorConfig: false,
-				parseAndValidate: jest.fn(),
-				getErrorContext: jest.fn(),
+				parseAndValidate: vi.fn(),
+				getErrorContext: vi.fn(),
 				nodeTypeParser,
 			});
 
@@ -278,7 +273,7 @@ describe('ChatSetupHandler', () => {
 				mockSlackNodeType,
 				mockSetNodeType,
 			]);
-			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getLeanNodeType');
+			const getNodeTypeSpy = vi.spyOn(nodeTypeParser, 'getLeanNodeType');
 
 			const tools = [
 				createMockTool('search_nodes'),
@@ -290,8 +285,8 @@ describe('ChatSetupHandler', () => {
 				llm,
 				tools,
 				enableTextEditorConfig: false,
-				parseAndValidate: jest.fn(),
-				getErrorContext: jest.fn(),
+				parseAndValidate: vi.fn(),
+				getErrorContext: vi.fn(),
 				nodeTypeParser,
 			});
 
@@ -343,8 +338,8 @@ describe('ChatSetupHandler', () => {
 				llm,
 				tools,
 				enableTextEditorConfig: false,
-				parseAndValidate: jest.fn(),
-				getErrorContext: jest.fn(),
+				parseAndValidate: vi.fn(),
+				getErrorContext: vi.fn(),
 				nodeTypeParser,
 			});
 

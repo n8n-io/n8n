@@ -23,14 +23,16 @@
  * - Page instantiation in page object files (for composition)
  * - Page instantiation in composables (if they need to create pages)
  */
+
+import { AstRule } from '@n8n/rules-engine/ast';
+import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 
-import { BaseRule } from './base-rule.js';
-import { getConfig } from '../config.js';
+import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
 import { truncateText } from '../utils/ast-helpers.js';
 
-export class NoDirectPageInstantiationRule extends BaseRule {
+export class NoDirectPageInstantiationRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'no-direct-page-instantiation';
 	readonly name = 'No Direct Page Instantiation';
 	readonly description =
@@ -42,7 +44,15 @@ export class NoDirectPageInstantiationRule extends BaseRule {
 		return config.patterns.tests;
 	}
 
-	analyze(_project: Project, files: SourceFile[]): Violation[] {
+	protected projectConfig(): AstProjectConfig {
+		return { packages: ['.'], spec: { globs: this.getTargetGlobs() } };
+	}
+
+	analyze(context: { rootDir: string }): Violation[] {
+		return this.projects(context).flatMap(({ project }) => this.analyzeProject(project));
+	}
+
+	analyzeProject(project: Project, files: SourceFile[] = project.getSourceFiles()): Violation[] {
 		const violations: Violation[] = [];
 
 		for (const file of files) {
@@ -53,7 +63,7 @@ export class NoDirectPageInstantiationRule extends BaseRule {
 				const className = expr.getText();
 
 				if (this.isPageInstantiation(className)) {
-					if (this.isAllowed(className)) {
+					if (ruleAllows(this.id, className)) {
 						continue;
 					}
 
@@ -62,7 +72,7 @@ export class NoDirectPageInstantiationRule extends BaseRule {
 					const truncated = truncateText(newExpr.getText(), 60);
 
 					violations.push(
-						this.createViolation(
+						this.fileViolation(
 							file,
 							startLine,
 							startColumn,

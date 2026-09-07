@@ -28,7 +28,12 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
-		baseText: (key: string) => key,
+		baseText: (key: string, opts?: { interpolate?: Record<string, string> }) => {
+			if (key === 'instanceAi.workflowSetup.configureNode' && opts?.interpolate?.name) {
+				return `Configure '${opts.interpolate.name}'`;
+			}
+			return key;
+		},
 	}),
 }));
 
@@ -110,7 +115,7 @@ describe('WorkflowSetupGroupCard', () => {
 
 		const { getByText, getAllByTestId } = renderComponent({ props: { group } });
 
-		expect(getByText('Agent')).toBeInTheDocument();
+		expect(getByText("Configure 'Agent'")).toBeInTheDocument();
 		const icons = getAllByTestId('node-icon');
 		expect(icons[0].getAttribute('data-node-type')).toBe('agentType');
 	});

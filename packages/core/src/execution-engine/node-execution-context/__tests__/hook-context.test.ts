@@ -1,5 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
-import { mock } from 'jest-mock-extended';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -14,6 +13,7 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowExpression,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { HookContext } from '../hook-context';
 
@@ -76,7 +76,7 @@ describe('HookContext', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		expression.getParameterValue.mockImplementation((value) => value);
 		expression.getSimpleParameterValue.mockImplementation((_, value) => value);
@@ -93,11 +93,29 @@ describe('HookContext', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials =
 				await hookContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
 
 			expect(credentials).toEqual({ secret: 'token' });
+		});
+
+		it('should surface the node to the credentials helper', async () => {
+			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
+
+			await hookContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				expect.anything(),
+				testCredentialType,
+				mode,
+				expect.objectContaining({ node }),
+				false,
+				undefined,
+			);
 		});
 	});
 
@@ -133,7 +151,7 @@ describe('HookContext', () => {
 				activation,
 			);
 
-			expect(() => hookContextWithoutWebhookData.getWebhookName()).toThrow(ApplicationError);
+			expect(() => hookContextWithoutWebhookData.getWebhookName()).toThrow(UnexpectedError);
 		});
 	});
 

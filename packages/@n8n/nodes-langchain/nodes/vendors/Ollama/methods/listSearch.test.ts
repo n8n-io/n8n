@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import * as transport from '../transport';
@@ -6,10 +7,11 @@ import { modelSearch } from './listSearch';
 
 describe('Ollama List Search Methods', () => {
 	const loadOptionsFunctionsMock = mockDeep<ILoadOptionsFunctions>();
-	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
+	let apiRequestMock: MockInstance;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		apiRequestMock = vi.spyOn(transport, 'apiRequest');
 	});
 
 	describe('modelSearch', () => {

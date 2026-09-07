@@ -1,35 +1,61 @@
-import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
+import type {
+	InstanceAiCredentialDestinationDecision,
+	InstanceAiThreadStatusResponse,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiTraceContext, ModelConfig } from '../types';
+import type { InstanceAiTraceContext, ModelConfig, OrchestrationContext } from '../types';
 import type {
 	InstanceAiLivenessPolicy,
 	InstanceAiLivenessSurface,
 	InstanceAiLivenessTimeoutReason,
 } from './liveness-policy';
+import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
+import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
 
 export interface ActiveRunState {
 	runId: string;
+	threadId: string;
 	abortController: AbortController;
+	/** Prevents an older finalizer from clearing a newer executor for the same thread. */
+	executionToken?: symbol;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
 	modelId?: ModelConfig;
 	startedAt?: number;
 	lastActivityAt?: number;
+	/** Owner of the run, resolved at entry so concurrency can be counted per user. */
+	userId?: string;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	agentRunId: string;
 	agent: unknown;
+	/** The orchestration context the agent's tools closed over. Stored so a
+	 *  resume can rebind `tracing` to the new resume trace — spans emitted
+	 *  through the suspended turn's shut-down runtime export nothing. */
+	orchestrationContext?: OrchestrationContext;
 	threadId: string;
 	user: TUser;
 	toolCallId: string;
+	toolName?: string;
+	suspendPayload?: Record<string, unknown>;
 	requestId: string;
 	createdAt: number;
 	/** Set when the suspended run was a planned-task checkpoint follow-up.
 	 *  Preserved across suspend/resume so the resumed run's finalizer can
 	 *  run the deadlock fallback and reschedule. */
 	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
+	/** Set when the suspended run was a planned build-workflow follow-up. */
+	plannedBuild?: {
+		isPlannedBuildFollowUp: true;
+		buildTaskId: string;
+		workItemId: string;
+		isSupportingWorkflowTask?: boolean;
+		savedOutcome?: WorkflowBuildOutcome;
+	};
+	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
+	runHandoff?: OrchestratorRunHandoffState;
 }
 
 /**
@@ -46,6 +72,8 @@ export interface ConfirmationData {
 	domainAccessAction?: string;
 	action?: 'apply' | 'test-trigger';
 	nodeParameters?: Record<string, Record<string, unknown>>;
+	/** Workflow-setup cards the user actively skipped, by node name. */
+	skippedNodes?: string[];
 	testTriggerNode?: string;
 	answers?: Array<{
 		questionId: string;
@@ -55,6 +83,14 @@ export interface ConfirmationData {
 	}>;
 	/** User's resource-access decision (e.g. 'allowForSession'). */
 	resourceDecision?: string;
+	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
+	denied?: boolean;
+	/** `'session'` means the user chose "always allow": the resuming tool should
+	 *  persist a thread-level grant so the same action isn't re-asked. */
+	scope?: 'once' | 'session';
+	autoSetup?: { credentialType: string; attemptId?: string };
+	credentialDestination?: InstanceAiCredentialDestinationDecision;
+	connectedSlugs?: string[];
 }
 
 export interface PendingConfirmation {
@@ -111,6 +147,13 @@ export class RunStateRegistry<TUser = unknown> {
 	/** IANA time zone captured at initial-run entry and reused by follow-up runs. */
 	private readonly threadTimeZones = new Map<string, string>();
 
+	/**
+	 * Resolves a user id from the opaque `TUser` the registry is parameterised over.
+	 * Required rather than optional: per-user concurrency counting depends on it, and a
+	 * missing extractor would silently report every user as holding zero runs.
+	 */
+	constructor(private readonly getUserId: (user: TUser) => string) {}
+
 	startRun(options: StartRunOptions<TUser>): StartedRunState {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
@@ -119,10 +162,12 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.activeRuns.set(options.threadId, {
 			runId,
+			threadId: options.threadId,
 			abortController,
 			messageGroupId,
 			startedAt: now,
 			lastActivityAt: now,
+			userId: this.getUserId(options.user),
 		});
 		this.threadUsers.set(options.threadId, options.user);
 
@@ -135,23 +180,41 @@ export class RunStateRegistry<TUser = unknown> {
 			}
 		}
 
-		this.threadMessageGroupId.set(options.threadId, messageGroupId);
-		if (!this.runIdsByMessageGroup.has(messageGroupId)) {
-			this.runIdsByMessageGroup.set(messageGroupId, []);
-		}
-		const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
-		if (groupRunIds) groupRunIds.push(runId);
+		this.indexRunInGroup(options.threadId, messageGroupId, runId);
 
-		return { runId, abortController, messageGroupId };
+		return { runId, threadId: options.threadId, abortController, messageGroupId };
+	}
+
+	/**
+	 * Seed the message-group indexes for a run: map the thread to its current
+	 * group and record the run under that group. Idempotent.
+	 *
+	 * Called on `startRun` and re-applied on `suspendRun`/`activateSuspendedRun`
+	 * so a run resumed after a restart (where these maps start empty) repopulates
+	 * the group association the SSE bootstrap relies on.
+	 */
+	private indexRunInGroup(threadId: string, messageGroupId: string, runId: string): void {
+		this.threadMessageGroupId.set(threadId, messageGroupId);
+		let groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
+		if (!groupRunIds) {
+			groupRunIds = [];
+			this.runIdsByMessageGroup.set(messageGroupId, groupRunIds);
+		}
+		if (!groupRunIds.includes(runId)) groupRunIds.push(runId);
 	}
 
 	getThreadStatus(
 		threadId: string,
 		backgroundTasks: BackgroundTaskStatusSnapshot[],
 	): InstanceAiThreadStatusResponse {
+		const activeRun = this.activeRuns.get(threadId);
+		const suspendedRun = this.suspendedRuns.get(threadId);
+		const liveRun = activeRun ?? suspendedRun;
+
 		return {
-			hasActiveRun: this.activeRuns.has(threadId),
-			isSuspended: this.suspendedRuns.has(threadId),
+			hasActiveRun: activeRun !== undefined,
+			isSuspended: suspendedRun !== undefined,
+			...(liveRun ? { runId: liveRun.runId } : {}),
 			backgroundTasks: backgroundTasks
 				.filter((task) => task.threadId === threadId)
 				.map((task) => ({
@@ -205,6 +268,46 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.activeRuns.get(threadId)?.runId;
 	}
 
+	/**
+	 * Runs holding a slot on this process, which is what the instance cap admits against.
+	 *
+	 * Includes a run parked on an inline approval card, which stays in `activeRuns`.
+	 * Excludes a suspended run, which leaves `activeRuns` but keeps its agent in memory.
+	 * So this bounds concurrent execution, not resident memory.
+	 */
+	activeRunCount(): number {
+		return this.activeRuns.size;
+	}
+
+	/**
+	 * Number of runs this user currently has executing, across all their threads.
+	 *
+	 * Excludes everything parked on a human, because none of it is spending anything and
+	 * counting it would lock a user out for the whole confirmation timeout after a few
+	 * abandoned cards. That means two things, not one:
+	 *
+	 *  - suspended runs, which have left `activeRuns` entirely; and
+	 *  - runs blocked in `waitForConfirmation`, which stay in `activeRuns` while an inline
+	 *    approval card is open. `sweepTimedOut` skips these for the same reason.
+	 *
+	 * {@link activeRunCount} differs on the second case only. An inline-parked run is still
+	 * in `activeRuns`, so it holds a slot there. A suspended run holds a slot in neither,
+	 * although it still retains its agent -- see {@link activeRunCount}.
+	 *
+	 * The scan is linear in concurrently-executing runs. That stays small in practice
+	 * regardless of the caps -- each run costs ~12-20MB, so a process cannot hold many --
+	 * and it is negligible next to the model call that follows.
+	 */
+	activeRunCountForUser(userId: string): number {
+		let count = 0;
+		for (const [threadId, run] of this.activeRuns) {
+			if (run.userId !== userId) continue;
+			if (this.hasPendingConfirmationForThread(threadId)) continue;
+			count++;
+		}
+		return count;
+	}
+
 	getActiveRun(threadId: string): ActiveRunState | undefined {
 		return this.activeRuns.get(threadId);
 	}
@@ -219,11 +322,13 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.activeRuns.set(threadId, {
 			...activeRun,
+			threadId,
 			tracing,
 		});
 	}
 
-	clearActiveRun(threadId: string): void {
+	clearActiveRun(threadId: string, executionToken?: symbol): void {
+		if (this.activeRuns.get(threadId)?.executionToken !== executionToken) return;
 		this.activeRuns.delete(threadId);
 	}
 
@@ -240,7 +345,14 @@ export class RunStateRegistry<TUser = unknown> {
 		this.activeRuns.delete(threadId);
 		state.startedAt = state.startedAt ?? activeRun?.startedAt ?? state.createdAt;
 		state.lastActivityAt = state.lastActivityAt ?? state.createdAt;
+		state.userId = state.userId ?? activeRun?.userId;
 		this.suspendedRuns.set(threadId, state);
+
+		// Re-seed group indexes: on a restart-resumed orphan these maps start
+		// empty, so without this the SSE bootstrap loses the group association.
+		if (state.messageGroupId) {
+			this.indexRunInGroup(threadId, state.messageGroupId, state.runId);
+		}
 	}
 
 	findSuspendedByRequestId(requestId: string): SuspendedRunState<TUser> | undefined {
@@ -258,7 +370,10 @@ export class RunStateRegistry<TUser = unknown> {
 		return suspended;
 	}
 
-	activateSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
+	activateSuspendedRun(
+		threadId: string,
+		executionToken?: symbol,
+	): SuspendedRunState<TUser> | undefined {
 		const suspended = this.suspendedRuns.get(threadId);
 		if (!suspended) return undefined;
 
@@ -266,13 +381,21 @@ export class RunStateRegistry<TUser = unknown> {
 		const now = Date.now();
 		this.activeRuns.set(threadId, {
 			runId: suspended.runId,
+			threadId,
 			abortController: suspended.abortController,
+			executionToken,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,
 			modelId: suspended.modelId,
 			startedAt: suspended.startedAt ?? suspended.createdAt,
 			lastActivityAt: now,
+			userId: suspended.userId ?? this.getUserId(suspended.user),
 		});
+
+		// Re-seed group indexes for the reactivated run (empty after a restart).
+		if (suspended.messageGroupId) {
+			this.indexRunInGroup(threadId, suspended.messageGroupId, suspended.runId);
+		}
 		return suspended;
 	}
 
@@ -522,16 +645,36 @@ export class RunStateRegistry<TUser = unknown> {
 		return { ...(active ? { active } : {}), ...(suspended ? { suspended } : {}) };
 	}
 
-	shutdown(cancelledConfirmation: ConfirmationData = { approved: false }): {
+	/**
+	 * Process-wide teardown. Returns the in-flight runs so the service can
+	 * abort them and persist terminal snapshots where appropriate.
+	 *
+	 * Pending confirmations are intentionally NOT resolved — auto-resolving an
+	 * inline HITL (`waitForConfirmation(...)`) with `{ approved: false }`
+	 * causes the awaiting agent tool to run to completion as "denied" before
+	 * the process exits, which then mutates the snapshot tree mid-shutdown
+	 * and clobbers the plan/ask card the user would otherwise see on reload.
+	 * Letting the Promises dangle is safe: the process is exiting, the
+	 * abortController for each active run is aborted next, and the
+	 * `instance_ai_pending_confirmations` row survives so the user can still
+	 * see the confirmation card (and get a clear "lost on restart" error if
+	 * they click confirm — see `handleOrphanedConfirmation`).
+	 *
+	 * `pendingThreadIds` is returned so the service can skip the
+	 * publish-run-finish + terminal-snapshot treatment for runs that are
+	 * only sitting in `activeRuns` because they're waiting on an inline
+	 * confirmation Promise.
+	 */
+	shutdown(): {
 		activeRuns: ActiveRunState[];
 		suspendedRuns: Array<SuspendedRunState<TUser>>;
+		pendingThreadIds: string[];
 	} {
 		const activeRuns = [...this.activeRuns.values()];
 		const suspendedRuns = [...this.suspendedRuns.values()];
-
-		for (const pending of this.pendingConfirmations.values()) {
-			pending.resolve(cancelledConfirmation);
-		}
+		const pendingThreadIds = [
+			...new Set([...this.pendingConfirmations.values()].map((p) => p.threadId)),
+		];
 
 		this.activeRuns.clear();
 		this.suspendedRuns.clear();
@@ -541,6 +684,6 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();
 
-		return { activeRuns, suspendedRuns };
+		return { activeRuns, suspendedRuns, pendingThreadIds };
 	}
 }

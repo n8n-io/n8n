@@ -63,6 +63,7 @@ ${colors.yellow}Options:${colors.reset}
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
+  --network <name>  Docker network name (default: auto-generated)
   --env KEY=VALUE   Set environment variables
   --plan <plan>     Use performance plan preset (${Object.keys(BASE_PERFORMANCE_PLANS).join(', ')})
   --help, -h        Show this help
@@ -154,6 +155,7 @@ async function main() {
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
+			network: { type: 'string' },
 			env: { type: 'string', multiple: true },
 			plan: { type: 'string' },
 		},
@@ -199,6 +201,7 @@ async function main() {
 			(servicesOnly
 				? `n8n-svc-${Math.random().toString(36).substring(7)}`
 				: `n8n-stack-${Math.random().toString(36).substring(7)}`),
+		networkName: values.network,
 	};
 
 	// Handle queue mode (mains > 1 or workers > 0)
@@ -273,6 +276,7 @@ async function main() {
 			const stack = await createServiceStack({
 				services,
 				projectName: config.projectName,
+				networkName: config.networkName,
 			});
 
 			const envVars = writeDevEnvFile(stack, services);

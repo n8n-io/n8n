@@ -1,13 +1,14 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { FieldValueOption, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import { ExecuteWorkflowTrigger } from './ExecuteWorkflowTrigger.node';
 import { WORKFLOW_INPUTS } from '../../../utils/workflowInputsResourceMapping/constants';
 import { getFieldEntries } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../utils/workflowInputsResourceMapping/GenericFunctions', () => ({
-	getFieldEntries: jest.fn(),
-	getWorkflowInputData: jest.fn(),
+vi.mock('../../../utils/workflowInputsResourceMapping/GenericFunctions', () => ({
+	getFieldEntries: vi.fn(),
+	getWorkflowInputData: vi.fn(),
 }));
 
 describe('ExecuteWorkflowTrigger', () => {
@@ -19,7 +20,7 @@ describe('ExecuteWorkflowTrigger', () => {
 	const executeFns = mock<IExecuteFunctions>({
 		getInputData: () => mockInputData,
 		getNode: () => mockNode,
-		getNodeParameter: jest.fn(),
+		getNodeParameter: vi.fn(),
 	});
 
 	it('should return its input data on V1 or V1.1 passthrough', async () => {
@@ -42,7 +43,7 @@ describe('ExecuteWorkflowTrigger', () => {
 				{ name: 'foo', type: 'string' },
 			],
 		};
-		const getFieldEntriesMock = (getFieldEntries as jest.Mock).mockReturnValue(mockNewParams);
+		const getFieldEntriesMock = (getFieldEntries as Mock).mockReturnValue(mockNewParams);
 
 		const result = await new ExecuteWorkflowTrigger().execute.call(executeFns);
 		const expected = [

@@ -24,6 +24,7 @@
 		"composite": true,
 		"declarationMap": true,
 		"sourceMap": true,
+		"tsBuildInfoFile": "${configDir}/dist/typecheck.tsbuildinfo",
 
 		"lib": ["es2022", "dom", "dom.iterable"]
 	}
