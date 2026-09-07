@@ -8,7 +8,6 @@ import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
-import ProgressiveModeSelector from './ProgressiveModeSelector.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	base64EncodedSize,
@@ -627,12 +626,6 @@ const resizable = computed(() => {
 				<InstanceAiInputMenu
 					:disabled="isBusy || isGatedBySetup"
 					@attach-files="chatInputRef?.openFilePicker()"
-				/>
-				<ProgressiveModeSelector
-					v-if="props.isWorkflowBuilderAvailable"
-					:model-value="instanceAiStore.progressiveMode ? 'progressive' : 'default'"
-					:disabled="isBusy || isGatedBySetup"
-					@update:model-value="instanceAiStore.setProgressiveMode($event === 'progressive')"
 				/>
 			</template>
 		</ChatInputBase>

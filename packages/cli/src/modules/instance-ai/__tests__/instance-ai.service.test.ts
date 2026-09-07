@@ -1441,6 +1441,23 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 		expect(service.executeRun).toHaveBeenCalled();
 	});
 
+	it('records each request mode for later internal runs', () => {
+		const service = createStartRunService();
+		service.startRun(
+			fakeUser,
+			'thread-a',
+			'build',
+			undefined,
+			undefined,
+			'UTC',
+			undefined,
+			'progressive',
+		);
+		expect(service.runState.setBuildMode).toHaveBeenLastCalledWith('thread-a', 'progressive');
+		service.startRun(fakeUser, 'thread-a', 'continue');
+		expect(service.runState.setBuildMode).toHaveBeenLastCalledWith('thread-a', undefined);
+	});
+
 	it('passes handoff context into executeRun', () => {
 		const service = createStartRunService();
 		const context = {

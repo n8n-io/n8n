@@ -254,6 +254,13 @@ describe('domain tool construction', () => {
 		expect(orchestrationTools.has('delegate')).toBe(false);
 	});
 
+	it('omits task planning from the progressive tool registry', () => {
+		const context = makeContext({ buildMode: 'progressive' });
+		const tools = createOrchestrationTools(context as never);
+		expect(tools.has('create-tasks')).toBe(false);
+		expect(tools.has('task-control')).toBe(true);
+	});
+
 	it('registers build-agent only when a builder delegate is present on the domain context', () => {
 		const withoutDelegate = createOrchestrationTools(
 			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,

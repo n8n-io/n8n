@@ -143,7 +143,12 @@ export const OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT = createExperiment(
 	'108_open_workflow_in_assistant',
 );
 
+export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
+	'111_instance_ai_progressive_building',
+);
+
 export const EXPERIMENTS_TO_TRACK = [
+	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,

@@ -72,6 +72,20 @@ describe('RunStateRegistry', () => {
 		mockedNanoid.mockImplementation(() => `id-${++nanoidCounter}`);
 	});
 
+	it('retains mode across internal runs and clears it on a control request', () => {
+		registry.setBuildMode('thread-1', 'progressive');
+		registry.startRun({ threadId: 'thread-1', user: { id: 'user-1', name: 'Alice' } });
+		expect(registry.getBuildMode('thread-1')).toBe('progressive');
+		registry.setBuildMode('thread-1', undefined);
+		expect(registry.getBuildMode('thread-1')).toBeUndefined();
+	});
+
+	it('removes retained mode when a thread is cleared', () => {
+		registry.setBuildMode('thread-1', 'progressive');
+		registry.clearThread('thread-1');
+		expect(registry.getBuildMode('thread-1')).toBeUndefined();
+	});
+
 	// ── startRun ──────────────────────────────────────────────────────────────
 
 	describe('startRun', () => {

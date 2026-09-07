@@ -14,7 +14,7 @@ import {
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { getSystemPrompt } from './system-prompt';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
-import { hasRuntimeSkills } from '../skills/runtime-skills';
+import { getProgressiveBuildingInstructions, hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import { createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
@@ -214,7 +214,7 @@ export async function createInstanceAgent(
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
 		projectId: context.projectId,
-		progressiveBuilding: context.buildMode === 'progressive',
+		progressiveBuildingInstructions: await getProgressiveBuildingInstructions(context.buildMode),
 		// Presence of the service IS the experiment gate — the host only wires it
 		// for flagged-in users on project-bound runs.
 		conversationHistoryEnabled: Boolean(context.conversationHistoryService),

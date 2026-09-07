@@ -23,9 +23,8 @@ interface SystemPromptOptions {
 	projectId?: string;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
-	/** When true, the progressive-building section is rendered. */
-	progressiveBuilding?: boolean;
 	conversationHistoryEnabled?: boolean;
+	progressiveBuildingInstructions?: string;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -105,27 +104,6 @@ This conversation is scoped to a single n8n project, named by the \`<project-con
 If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in. **Check the project they name against the project you are in BEFORE you build, not after** — from \`<project-context>\` when the turn carries it, otherwise from \`workspace(action="list-projects")\`. Building in this project and mentioning the mismatch afterwards leaves them a workflow they did not ask for, in a project they did not choose.`;
 }
 
-/**
- * Rendered as a presence flag only — same prompt-cache rule as
- * `getProjectScopeSection`: never interpolate per-thread values. The full loop
- * lives in the `progressive-building` skill; this section carries only the
- * rules that must hold before the model loads it.
- */
-function getProgressiveBuildingSection(enabled?: boolean): string {
-	if (!enabled) return '';
-	return `
-## Progressive Building Mode
-
-Progressive building mode is active. Before any workflow build, load the skill the request routes to (usually \`workflow-builder\`) first, then load \`progressive-building\` last — after the other skills and before calling \`build-workflow\` — so its scoping rules are the final instructions you read before building. Follow it for the whole build loop. Until it is loaded, these rules already apply:
-
-- Build the smallest end-to-end working slice first, then extend in increments gated on real successful executions. Chunk by credentials, not node count: one trigger and at most 2 credential-using services per increment (counting the trigger's own credential), regardless of whether those credentials are already connected. Placeholders, node parameters, and the AI model on n8n managed credits never count.
-- The cap is internal: never mention it or credential counts to the user. Describe the slice as a working first version and name what comes next.
-- Acknowledge the full scope the user named before narrowing. Clarifying questions must narrow the first slice, never widen it. Never ask multi-select questions listing services or triggers to include; when three or more services are named with no clear centre, a single-select "which should the first version start with?" is the right question.
-- The message that accompanies a setup card is what the user reads next to it — earlier text in the turn is folded away. It must restate the full request, say this is a working first version, and name what comes next.
-- Planning is disabled: never call \`create-tasks\` or batch multiple workflows into an upfront task graph — additional workflows are later increments, gated like any other.
-- A precise, complete specification from the user is built as specified — don't slice it artificially.`;
-}
-
 function getConversationRecallSection(): string {
 	return `
 ## Past Conversations
@@ -186,16 +164,15 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		branchReadOnly,
 		projectId,
 		workspaceRoot,
-		progressiveBuilding,
 		conversationHistoryEnabled,
+		progressiveBuildingInstructions,
 	} = options;
 
 	return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\` / \`load_tool\`).
 
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
-${getProjectScopeSection(projectId)}
-${getProgressiveBuildingSection(progressiveBuilding)}
+${getProjectScopeSection(projectId)}${progressiveBuildingInstructions ? `\n${progressiveBuildingInstructions}` : ''}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}

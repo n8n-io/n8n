@@ -1459,12 +1459,6 @@ export class InstanceAiService {
 		return runId;
 	}
 
-	/** Narrow the registry's raw string back into the build-mode enum. */
-	private getThreadBuildMode(threadId: string): InstanceAiBuildMode | undefined {
-		const raw = this.runState.getBuildMode(threadId);
-		return raw === 'progressive' ? raw : undefined;
-	}
-
 	/** Get the current messageGroupId for a thread (used by SSE sync). */
 	getMessageGroupId(threadId: string): string | undefined {
 		return this.runState.getMessageGroupId(threadId);
@@ -2454,7 +2448,7 @@ export class InstanceAiService {
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
 			: undefined;
 		// Sticky per thread (set on user runs, reused by follow-up runs) — see startRun.
-		const buildMode = this.getThreadBuildMode(threadId);
+		const buildMode = this.runState.getBuildMode(threadId);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,

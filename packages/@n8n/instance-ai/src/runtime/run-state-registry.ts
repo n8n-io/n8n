@@ -1,4 +1,5 @@
 import type {
+	InstanceAiBuildMode,
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
@@ -148,7 +149,7 @@ export class RunStateRegistry<TUser = unknown> {
 	private readonly threadTimeZones = new Map<string, string>();
 
 	/** Build mode captured at user-run entry and reused by follow-up runs. */
-	private readonly threadBuildModes = new Map<string, string>();
+	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
 	/**
 	 * Resolves a user id from the opaque `TUser` the registry is parameterised over.
 	 * Required rather than optional: per-user concurrency counting depends on it, and a
@@ -489,17 +490,13 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadTimeZones.get(threadId);
 	}
 
-	/**
-	 * Record the thread's build mode from a user-initiated run. `undefined`
-	 * clears it — the latest user message wins, so a thread whose user toggled
-	 * the mode off doesn't keep a stale value for follow-up runs.
-	 */
-	setBuildMode(threadId: string, buildMode: string | undefined): void {
+	/** Retain the request mode for internal follow-ups. An omitted mode clears it. */
+	setBuildMode(threadId: string, buildMode: InstanceAiBuildMode | undefined): void {
 		if (buildMode === undefined) this.threadBuildModes.delete(threadId);
 		else this.threadBuildModes.set(threadId, buildMode);
 	}
 
-	getBuildMode(threadId: string): string | undefined {
+	getBuildMode(threadId: string): InstanceAiBuildMode | undefined {
 		return this.threadBuildModes.get(threadId);
 	}
 

@@ -17,6 +17,7 @@ import type { UserProxyAgent } from '../utils/user-proxy/agent';
 import {
 	confirmationDecisionSchema,
 	userTurnDecisionSchema,
+	userTurnWithoutExecutionSchema,
 	type Decision,
 	type ProxyDecisionMode,
 } from '../utils/user-proxy/tools';
@@ -1835,6 +1836,36 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 // ---------------------------------------------------------------------------
 
 describe('UserProxyLlm.decideFollowUp', () => {
+	it('shows saved workflow IDs and names for user executions', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'declare_done' });
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'Build a contact log' }],
+			allowUserExecution: true,
+			agent,
+		});
+		proxy.ingestEvents([
+			{
+				timestamp: 0,
+				type: 'tool-result',
+				data: {
+					payload: {
+						toolCallId: 'build',
+						toolName: 'build-workflow',
+						result: {
+							success: true,
+							workflowId: 'wf-primary',
+							workflowName: 'Contact log',
+						},
+					},
+				},
+			},
+		]);
+		await proxy.decideFollowUp();
+		expect(agent.prompts[0]).toContain('wf-primary');
+		expect(agent.prompts[0]).toContain('Contact log');
+	});
+
 	it('returns done immediately when messageBudget is 0 without invoking the agent', async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
@@ -1992,6 +2023,16 @@ describe('UserProxyLlm.decideFollowUp', () => {
 // ---------------------------------------------------------------------------
 
 describe('mode-scoped decision schemas', () => {
+	it('excludes user executions unless the case enables them', () => {
+		const decision = {
+			action: 'send_follow_up_message',
+			message: 'I ran it',
+			runWorkflowId: 'workflow',
+		};
+		expect(userTurnWithoutExecutionSchema.safeParse(decision).success).toBe(false);
+		expect(userTurnDecisionSchema.safeParse(decision).success).toBe(true);
+	});
+
 	it('user-turn schema does not offer confirmation actions', () => {
 		expect(
 			userTurnDecisionSchema.safeParse({

@@ -6,35 +6,23 @@ import {
 } from '../skill-gates';
 
 describe('disabledInstanceAiSkillIds', () => {
-	it('hides the config-evals skill when the flag is off', () => {
-		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: false, progressiveBuildingEnabled: false }),
-		).toEqual([CONFIG_EVALS_SKILL_ID, PROGRESSIVE_BUILDING_SKILL_ID]);
-	});
+	it.each([true, false])(
+		'keeps the host-injected policy out of the catalog (progressive=%s)',
+		(enabled) => {
+			const disabled = disabledInstanceAiSkillIds({
+				configEvalsEnabled: true,
+				progressiveBuildingEnabled: enabled,
+			});
+			expect(disabled).toContain(PROGRESSIVE_BUILDING_SKILL_ID);
+			expect(disabled.includes(PLANNING_SKILL_ID)).toBe(enabled);
+		},
+	);
 
-	it('hides the progressive-building skill when the mode is off', () => {
-		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: true, progressiveBuildingEnabled: false }),
-		).toEqual([PROGRESSIVE_BUILDING_SKILL_ID]);
-	});
-
-	it('hides the planning skill while progressive building is on — planned tasks bypass the execution gate', () => {
-		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: true, progressiveBuildingEnabled: true }),
-		).toEqual([PLANNING_SKILL_ID]);
-	});
-
-	it('never hides planning and progressive-building at the same time', () => {
-		for (const configEvalsEnabled of [true, false]) {
-			for (const progressiveBuildingEnabled of [true, false]) {
-				const disabled = disabledInstanceAiSkillIds({
-					configEvalsEnabled,
-					progressiveBuildingEnabled,
-				});
-				expect(
-					disabled.includes(PLANNING_SKILL_ID) && disabled.includes(PROGRESSIVE_BUILDING_SKILL_ID),
-				).toBe(false);
-			}
-		}
+	it.each([true, false])('preserves the evaluation skill gate (enabled=%s)', (enabled) => {
+		const disabled = disabledInstanceAiSkillIds({
+			configEvalsEnabled: enabled,
+			progressiveBuildingEnabled: false,
+		});
+		expect(disabled.includes(CONFIG_EVALS_SKILL_ID)).toBe(!enabled);
 	});
 });

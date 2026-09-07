@@ -5,7 +5,7 @@
 /** Skill folder id gated by the `088_config_evaluations` flag. */
 export const CONFIG_EVALS_SKILL_ID = 'config-evals';
 
-/** Skill folder id gated by the thread's progressive build mode. */
+/** Injected into treatment agents by the host, so it needs no load_skill entry. */
 export const PROGRESSIVE_BUILDING_SKILL_ID = 'progressive-building';
 
 /** Skill folder id hidden while progressive building is active: planned tasks
@@ -20,9 +20,8 @@ export interface InstanceAiSkillFlags {
 
 /** Skill ids to hide from a user's catalog given their resolved flags. */
 export function disabledInstanceAiSkillIds(flags: InstanceAiSkillFlags): string[] {
-	const disabled: string[] = [];
+	const disabled: string[] = [PROGRESSIVE_BUILDING_SKILL_ID];
 	if (!flags.configEvalsEnabled) disabled.push(CONFIG_EVALS_SKILL_ID);
-	if (!flags.progressiveBuildingEnabled) disabled.push(PROGRESSIVE_BUILDING_SKILL_ID);
-	else disabled.push(PLANNING_SKILL_ID);
+	if (flags.progressiveBuildingEnabled) disabled.push(PLANNING_SKILL_ID);
 	return disabled;
 }

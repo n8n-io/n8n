@@ -18,7 +18,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
-import { lastSavedWorkflowIdFromEvents } from '../outcome/event-parser';
+import { lastSavedWorkflowIdFromEvents, savedWorkflowsFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
@@ -288,27 +288,20 @@ export type NextMessageDecision =
 			 * its own setup or credential work happens to advance the checksum.
 			 */
 			renameWorkflowTo?: string;
-			/**
-			 * The user-proxy asked for the last saved workflow to be executed through
-			 * the server's mocked executor at this turn boundary, driven by a stage
-			 * direction ("the user runs it themselves"). The execution persists as a
-			 * real DB record, so the agent can list and inspect it as evidence of a
-			 * user-run test — the moment progressive building gates increments on.
-			 */
-			runWorkflowNow?: boolean;
+			/** A normal user run, performed before delivering the next message. */
+			runWorkflowId?: string;
 	  }
 	| { kind: 'done' };
 
 export interface MultiTurnConfig extends WaitConfig {
 	nextMessageDecider: () => Promise<NextMessageDecision>;
+	/** Restore the case's declared input rows before a normal user execution. */
+	beforeUserExecution?: () => Promise<void>;
+	allowUserExecution?: boolean;
 	/** Sent with every follow-up message — the mode is per-message on the wire
 	 *  and the backend keeps "latest message wins", so a follow-up that omitted
 	 *  it would silently clear the thread's mode. */
 	buildMode?: InstanceAiBuildMode;
-	/** External-service steering for a `runWorkflowNow` mid-run execution —
-	 *  same free-text contract as a scenario's `dataSetup`. Defaults to the
-	 *  case's first execution scenario when present. */
-	midRunDataSetup?: string;
 }
 
 export async function runMultiTurnConversation(config: MultiTurnConfig): Promise<void> {
@@ -337,9 +330,12 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 
 		// Before the follow-up is delivered, so a "I just ran it" message is true
 		// by the time the agent reads it and inspects the executions list.
-		if (decision.runWorkflowNow === true) {
-			await applyMidRunMockExecution(config);
+		if (decision.runWorkflowId !== undefined) {
+			if (!config.allowUserExecution) throw new Error('User executions are disabled for this case');
+			await applyUserExecution(config, decision.runWorkflowId);
 		}
+
+		if (Date.now() - config.startTime >= config.timeoutMs) return;
 
 		config.logger.verbose(
 			`[multi-turn] Sending follow-up: ${decision.message.slice(0, 80)}${decision.message.length > 80 ? '...' : ''}`,
@@ -418,43 +414,51 @@ async function applyExternalRename(config: MultiTurnConfig, rename: string): Pro
 	}
 }
 
-/** Mocked runs execute the full workflow with LLM-generated service responses;
- *  minutes are normal (see `executeWithLlmMock`), so give it its own budget
- *  instead of the client default. Bounded by the case timeout either way. */
-const MID_RUN_EXECUTION_TIMEOUT_MS = 240_000;
-
-/**
- * Executes the workflow this run last saved through the server's mocked
- * executor, from outside the conversation — the side effect behind a
- * `runWorkflowNow` stage direction. The run persists as a real DB execution,
- * so the agent's `executions` tool can list and inspect it as evidence of a
- * user-run test — the moment progressive building gates increments on. A
- * failure is logged, not thrown: the proxy's message is delivered either way,
- * and the agent's honest handling of a missing/failed run is itself gradeable.
- */
-async function applyMidRunMockExecution(config: MultiTurnConfig): Promise<void> {
-	const workflowId = lastSavedWorkflowIdFromEvents(config.events);
-	if (workflowId === undefined) {
-		config.logger.warn(
-			'[mid-run-execute] Skipped: this run has saved no workflow yet, so there is nothing to execute',
-		);
-		return;
+/** Use the normal execution route so the agent can inspect user-run evidence. */
+async function applyUserExecution(config: MultiTurnConfig, workflowId: string): Promise<void> {
+	if (!savedWorkflowsFromEvents(config.events).some((workflow) => workflow.id === workflowId)) {
+		throw new Error(`User-run workflow ${workflowId} was not saved in this conversation`);
 	}
+	const remainingMs = () => {
+		const remaining = config.timeoutMs - (Date.now() - config.startTime);
+		if (remaining <= 0) throw new Error('Case timed out before the user execution completed');
+		return remaining;
+	};
+	remainingMs();
+	await config.beforeUserExecution?.();
+	const workflow = await config.client.getWorkflow(workflowId, remainingMs());
+	if (Object.keys(workflow.pinData ?? {}).length > 0) {
+		throw new Error('User-run evals require a workflow without pinned data');
+	}
+	if (workflow.nodes.some((node) => Object.keys(node.credentials ?? {}).length > 0)) {
+		throw new Error('User-run evals require a workflow without credentials');
+	}
+	const trigger = workflow.nodes.find((node) =>
+		['n8n-nodes-base.manualTrigger', 'n8n-nodes-base.scheduleTrigger'].includes(node.type),
+	);
+	if (!trigger) throw new Error('User-run evals require a manual or schedule trigger');
 
+	const { executionId } = await config.client.executeWorkflow(
+		workflowId,
+		trigger.name,
+		remainingMs(),
+	);
 	try {
-		const result = await config.client.executeWithLlmMock(
-			workflowId,
-			config.midRunDataSetup,
-			MID_RUN_EXECUTION_TIMEOUT_MS,
-		);
-		config.logger.info(
-			`[mid-run-execute] Executed ${workflowId} via mocked executor: success=${String(result.success)} executionId=${result.executionId}${result.errors.length > 0 ? ` errors=${result.errors.join('; ').slice(0, 200)}` : ''}`,
-		);
-	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
-		config.logger.warn(
-			`[mid-run-execute] Execution of ${workflowId} failed: ${message} — the agent will find no successful run to inspect`,
-		);
+		while (true) {
+			const execution = await config.client.getExecution(executionId, remainingMs());
+			if (!['new', 'running', 'waiting'].includes(execution.status)) {
+				config.logger.info(
+					`[user-run] Executed ${workflowId}: status=${execution.status} executionId=${executionId}`,
+				);
+				return;
+			}
+			await delay(Math.min(POLL_INTERVAL_MS, remainingMs()));
+		}
+	} catch (error) {
+		await config.client.stopExecution(executionId).catch(() => {
+			config.logger.warn(`[user-run] Could not stop execution ${executionId}`);
+		});
+		throw error;
 	}
 }
 

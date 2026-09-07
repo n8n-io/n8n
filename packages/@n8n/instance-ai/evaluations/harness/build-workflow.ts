@@ -55,6 +55,7 @@ import {
 	buildSeededTablesNote,
 	dedupeScenarioSeedTables,
 	evictLeftoverSeedTables,
+	reseedScenarioTables,
 	uniquifyScenarioTableNames,
 } from './seed-tables';
 import type { CheckOutcome } from '../binaryChecks/types';
@@ -112,8 +113,8 @@ interface MultiTurnDriverConfig {
 	messageBudget?: number;
 	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
 	buildMode?: InstanceAiBuildMode;
-	/** External-service steering for `runWorkflowNow` mid-run executions. */
-	midRunDataSetup?: string;
+	allowUserExecution?: boolean;
+	beforeUserExecution?: () => Promise<void>;
 	events: CapturedEvent[];
 	approvedRequests: Set<string>;
 	startTime: number;
@@ -170,6 +171,7 @@ async function driveMultiTurnConversation(
 	const proxy = new UserProxyLlm({
 		conversation: proxyConversation,
 		messageBudget: config.messageBudget,
+		allowUserExecution: config.allowUserExecution,
 		logger: config.logger,
 		...(config.allowlistedCredentialIds !== undefined
 			? {
@@ -216,7 +218,8 @@ async function driveMultiTurnConversation(
 		nextMessageDecider,
 		proxyResponses: config.proxyResponses,
 		buildMode: config.buildMode,
-		midRunDataSetup: config.midRunDataSetup,
+		allowUserExecution: config.allowUserExecution,
+		beforeUserExecution: config.beforeUserExecution,
 	});
 
 	return { ...proxy.getDecisionStats() };
@@ -443,9 +446,9 @@ export interface BuildWorkflowConfig {
 	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
-	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent →
-	 *  progressive, mirroring the product default). */
+	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent → default). */
 	buildMode?: WorkflowTestCase['buildMode'];
+	allowUserExecution?: boolean;
 	/** Credentials this build should see (created for real, view pinned to them). */
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
@@ -491,18 +494,12 @@ export interface BuildWorkflowConfig {
 	caseIdentity?: { fileSlug: string; iteration: number };
 }
 
-/** Wire value for a case's build mode. Evals default to progressive so the
- *  full suite exercises the progressive loop the product defaults to; a case
- *  opts back into the classic single-pass flow with `buildMode: 'default'`. */
+/** A case override takes precedence over the suite mode. Unset means control. */
 export function resolveEvalBuildMode(
 	buildMode: WorkflowTestCase['buildMode'],
 ): InstanceAiBuildMode | undefined {
-	if (buildMode === 'default') return undefined;
-	if (buildMode === 'progressive') return 'progressive';
-	// Unpinned: suite default. `N8N_EVAL_BUILD_MODE=default` flips the whole
-	// unpinned suite to the classic flow — for A/B comparison runs only; a
-	// case-pinned buildMode above always wins.
-	return process.env.N8N_EVAL_BUILD_MODE === 'default' ? undefined : 'progressive';
+	const mode = buildMode ?? process.env.N8N_EVAL_BUILD_MODE;
+	return mode === 'progressive' ? 'progressive' : undefined;
 }
 
 /** A case needs a workflow iff something judges one: execution scenarios or
@@ -979,10 +976,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				conversation,
 				messageBudget: config.messageBudget,
 				buildMode: resolveEvalBuildMode(config.buildMode),
-				// The mid-run mock execution steers external services the same way a
-				// scenario does; the first declared scenario is the case's canonical
-				// world, so reuse its dataSetup when one exists.
-				midRunDataSetup: config.executionScenarios?.[0]?.dataSetup,
+				allowUserExecution: config.allowUserExecution,
+				beforeUserExecution: async () => {
+					const scenario = config.executionScenarios?.[0];
+					if (scenario) {
+						await reseedScenarioTables(client, scenario, threadId, scenarioTableIdsByName, logger);
+					}
+				},
 				events,
 				approvedRequests,
 				startTime,

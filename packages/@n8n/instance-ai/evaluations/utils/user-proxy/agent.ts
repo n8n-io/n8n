@@ -4,6 +4,7 @@ import {
 	confirmationDecisionSchema,
 	USER_TURN_TOOL_DESCRIPTIONS,
 	userTurnDecisionSchema,
+	userTurnWithoutExecutionSchema,
 	type Decision,
 	type ProxyDecisionMode,
 } from './tools';
@@ -13,6 +14,7 @@ import type { EvalLogger } from '../../harness/logger';
 export interface UserProxyAgentConfig {
 	modelId?: string;
 	logger?: EvalLogger;
+	allowUserExecution?: boolean;
 }
 
 export interface UserProxyAgent {
@@ -24,7 +26,12 @@ export function createUserProxyAgent(config: UserProxyAgentConfig = {}): UserPro
 		async decide(userPrompt: string, mode: ProxyDecisionMode): Promise<Decision | undefined> {
 			// The schema handed to the model is the action menu for this moment in
 			// the conversation — actions that cannot function now are not offered.
-			const schema = mode === 'user-turn' ? userTurnDecisionSchema : confirmationDecisionSchema;
+			const schema =
+				mode === 'user-turn'
+					? config.allowUserExecution
+						? userTurnDecisionSchema
+						: userTurnWithoutExecutionSchema
+					: confirmationDecisionSchema;
 			const toolDescriptions =
 				mode === 'user-turn' ? USER_TURN_TOOL_DESCRIPTIONS : CONFIRMATION_TOOL_DESCRIPTIONS;
 			const agent = createEvalAgent('eval-user-proxy', {

@@ -1,4 +1,6 @@
 import { loadRuntimeSkillSourceFromDirectory, type RuntimeSkillSource } from '@n8n/agents';
+import type { InstanceAiBuildMode } from '@n8n/api-types';
+import { UnexpectedError } from 'n8n-workflow';
 import { resolve } from 'node:path';
 
 import { isAgentFeatureEnabled } from '@/utils/agent-feature-enabled';
@@ -13,6 +15,15 @@ export function loadInstanceAiRuntimeSkillSource(): RuntimeSkillSource {
 		exclude: isAgentFeatureEnabled() ? [] : [...AGENTS_MODULE_RUNTIME_SKILLS],
 	});
 	return cachedRuntimeSkillSource;
+}
+
+export async function getProgressiveBuildingInstructions(
+	mode: InstanceAiBuildMode | undefined,
+): Promise<string | undefined> {
+	if (mode !== 'progressive') return undefined;
+	const skill = await loadInstanceAiRuntimeSkillSource().loadSkill('progressive-building');
+	if (!skill) throw new UnexpectedError('Progressive building instructions are missing');
+	return skill.instructions;
 }
 
 export function hasRuntimeSkills(

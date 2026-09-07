@@ -60,6 +60,12 @@ export interface ToLangTracerOptions {
  *  already holds, and such a case is barred from suites anyway. Returns a
  *  human-readable reason, else null. */
 export function unsupportedPushReason(testCase: EvalTestCaseInput): string | null {
+	if (testCase.buildMode !== undefined) {
+		return 'pins buildMode, which the current LangTracer write/export contract does not carry. Keep the case on disk until that contract supports the mode.';
+	}
+	if (testCase.allowUserExecution) {
+		return 'enables user execution, which the current LangTracer write/export contract does not carry.';
+	}
 	const seed = testCase.seed;
 	switch (seed?.mode) {
 		case undefined:
