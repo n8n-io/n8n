@@ -335,6 +335,15 @@ export class PostgresTrigger implements INodeType {
 				}
 			} finally {
 				connection.client.removeListener('notification', onNotification);
+				try {
+					// Direct connections are only returned to the pool by done(), the same way the
+					// setup-failure path above releases them.
+					await connection.done();
+				} catch {
+					// Already released - by an earlier cleanup, or automatically by pg-promise when the
+					// connection was lost. done() throws in that state, and that must not mask the
+					// cleanup error we may be unwinding from.
+				}
 			}
 		};
 

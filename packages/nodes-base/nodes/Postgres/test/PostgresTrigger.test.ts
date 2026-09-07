@@ -207,6 +207,25 @@ describe('PostgresTrigger.trigger (Table Row Change Events mode)', () => {
 		await expect(new PostgresTrigger().trigger.call(fns)).rejects.toThrow();
 		expect(connection.done).toHaveBeenCalled();
 	});
+
+	it('releases the connection when the trigger is closed', async () => {
+		const { connection, fns } = setup();
+		const response = await new PostgresTrigger().trigger.call(fns);
+
+		await response.closeFunction?.();
+
+		expect(connection.done).toHaveBeenCalled();
+	});
+
+	it('does not surface a release failure when the connection is already gone', async () => {
+		const { connection, fns } = setup();
+		// pg-promise throws from done() once the connection context is gone — because it was
+		// released by an earlier cleanup or dropped automatically when the connection was lost.
+		connection.done.mockRejectedValue(new Error('Cannot invoke done() on a disconnected client'));
+		const response = await new PostgresTrigger().trigger.call(fns);
+
+		await expect(response.closeFunction?.()).resolves.toBeUndefined();
+	});
 });
 
 describe('PostgresTrigger.trigger (Advanced mode)', () => {
