@@ -79,6 +79,18 @@ describe('GET /projects/:projectId/apps', () => {
 	});
 });
 
+describe('GET /projects/:projectId/apps/data-workflows', () => {
+	// Regression test: this route must be registered before GET /:appId, or
+	// Express matches 'data-workflows' as an appId and 404s looking for that app.
+	test('lists data workflows without being shadowed by GET /:appId', async () => {
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/data-workflows`)
+			.expect(200);
+
+		expect(response.body.data).toEqual([]);
+	});
+});
+
 describe('App pages', () => {
 	test('creates a page and a nested child page under it', async () => {
 		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');

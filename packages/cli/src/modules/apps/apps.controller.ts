@@ -82,6 +82,13 @@ export class AppsController {
 		return await this.appsService.listApps(req.params.projectId);
 	}
 
+	/** Workflows a page can set as its `dataWorkflowId` — same trigger-compatible list agents pick tools from. */
+	@Get('/data-workflows')
+	@ProjectScope('app:read')
+	async listDataWorkflows(req: AuthenticatedRequest<{ projectId: string }>, _res: Response) {
+		return await this.attachableWorkflowsService.list(req.user, req.params.projectId);
+	}
+
 	@Get('/:appId')
 	@ProjectScope('app:read')
 	async getApp(
@@ -117,13 +124,6 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		await this.appsService.deleteApp(appId);
-	}
-
-	/** Workflows a page can set as its `dataWorkflowId` — same trigger-compatible list agents pick tools from. */
-	@Get('/data-workflows')
-	@ProjectScope('app:read')
-	async listDataWorkflows(req: AuthenticatedRequest<{ projectId: string }>, _res: Response) {
-		return await this.attachableWorkflowsService.list(req.user, req.params.projectId);
 	}
 
 	@Post('/:appId/pages')
