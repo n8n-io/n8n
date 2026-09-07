@@ -97,6 +97,7 @@ describe('execution start (integration)', () => {
 		const { executionId } = await startExecution.start({
 			workflowId: 'wf-1',
 			graph,
+			workflow: {},
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: generateId(),
 			callerContext: {},
@@ -144,6 +145,7 @@ describe('execution start (integration)', () => {
 			status: 'queued',
 			mode: 'production',
 			graph,
+			workflow: {},
 			triggerOutputs: null,
 			callerContext: {},
 		});
