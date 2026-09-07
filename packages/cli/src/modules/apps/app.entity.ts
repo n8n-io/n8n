@@ -2,7 +2,7 @@ import { Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 @Entity()
-@Index(['namespace', 'projectId'], { unique: true })
+@Index(['namespace'], { unique: true })
 export class App extends WithTimestampsAndStringId {
 	constructor() {
 		super();

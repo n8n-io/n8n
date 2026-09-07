@@ -35,7 +35,7 @@ CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) N
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_app_namespace_projectId | CREATE UNIQUE INDEX "IDX_app_namespace_projectId" ON "app" ("namespace", "projectId")  |
+| IDX_app_namespace | CREATE UNIQUE INDEX "IDX_app_namespace" ON "app" ("namespace")  |
 | sqlite_autoindex_app_1 | PRIMARY KEY (id) |
 
 ## Relations

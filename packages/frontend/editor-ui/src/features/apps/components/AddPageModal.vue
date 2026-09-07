@@ -2,7 +2,7 @@
 import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import Modal from '@/app/components/Modal.vue';
@@ -22,6 +22,16 @@ const toast = useToast();
 const router = useRouter();
 const uiStore = useUIStore();
 const appsStore = useAppsStore();
+
+// Only a top-level page can be the index page, so a sub-page is told it needs
+// a route of its own rather than being offered a blank one the API rejects.
+const routeHint = computed(() =>
+	i18n.baseText(
+		props.data.parentPageId
+			? 'apps.page.add.input.route.subPage.hint'
+			: 'apps.page.add.input.route.hint',
+	),
+);
 
 const route = ref('');
 const isCreating = ref(false);
@@ -75,7 +85,7 @@ onMounted(() => {
 					/>
 				</N8nInputLabel>
 				<N8nText color="text-light" size="small">
-					{{ i18n.baseText('apps.page.add.input.route.hint') }}
+					{{ routeHint }}
 				</N8nText>
 			</div>
 		</template>

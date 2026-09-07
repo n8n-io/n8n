@@ -11,12 +11,17 @@ export class AppRepository extends Repository<App> {
 	}
 
 	async createApp(projectId: string, name: string, namespace: string) {
-		if (await this.existsBy({ projectId, namespace })) {
+		if (await this.existsBy({ namespace })) {
 			throw new AppNamespaceConflictError(namespace);
 		}
 
 		const app = this.create({ projectId, name, namespace });
 		return await this.save(app);
+	}
+
+	/** Namespaces are unique instance-wide: an App is served at `/apps/<namespace>`, which carries no project. */
+	async findByNamespace(namespace: string) {
+		return await this.findOneBy({ namespace });
 	}
 
 	async findManyByProjectId(projectId: string) {
@@ -27,7 +32,7 @@ export class AppRepository extends Repository<App> {
 		if (
 			updates.namespace !== undefined &&
 			updates.namespace !== app.namespace &&
-			(await this.existsBy({ projectId: app.projectId, namespace: updates.namespace }))
+			(await this.existsBy({ namespace: updates.namespace }))
 		) {
 			throw new AppNamespaceConflictError(updates.namespace);
 		}

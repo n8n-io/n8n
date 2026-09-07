@@ -5,6 +5,7 @@ import { BackendModule } from '@n8n/decorators';
 export class AppsModule implements ModuleInterface {
 	async init() {
 		await import('./apps.controller.js');
+		await import('./serving/app-serving.controller.js');
 	}
 
 	async entities() {
