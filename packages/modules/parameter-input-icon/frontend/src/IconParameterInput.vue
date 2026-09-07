@@ -29,11 +29,16 @@ const emit = defineEmits<Pick<ParameterInputEmits, 'update:modelValue' | 'focus'
 const i18n = useI18n();
 
 /**
- * The picked value, held until the shell's value returns. The shell debounces
- * `update:modelValue` by 100 ms before the store round-trip puts it back on
- * `modelValue`, and `N8nIconPicker` renders from the prop rather than from its own
- * local state (it sees a bound value plus a listener, so `defineModel` does not
- * update locally). Without this the button would show the previous icon for 100 ms.
+ * The picked value, held until the shell's value returns. `N8nIconPicker` renders from
+ * the prop rather than from its own local state (it sees a bound value plus a listener,
+ * so `defineModel` does not update locally), so the trigger shows the previous icon for
+ * as long as `modelValue` takes to come back.
+ *
+ * The shell debounces `update:modelValue` on the **leading** edge — `useDebounce` passes
+ * `{ leading: true }` when `trailing` is omitted — so a single pick reaches the store in
+ * the same tick and needs no hold. What needs it is a second pick inside the 100 ms
+ * window: lodash defers that one to the trailing edge, and without the hold the trigger
+ * would show the first icon until it lands.
  */
 const pendingValue = ref<IconOrEmoji>();
 

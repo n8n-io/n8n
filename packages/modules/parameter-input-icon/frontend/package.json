@@ -1,5 +1,5 @@
 {
-  "name": "@n8n/frontend-module-icon-parameter",
+  "name": "@n8n/frontend-module-parameter-input-icon",
   "version": "0.1.0",
   "type": "module",
   "main": "src/index.ts",

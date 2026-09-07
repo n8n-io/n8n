@@ -1313,6 +1313,34 @@ async function optionSelected(command: string) {
 	}
 }
 
+/**
+ * `parameterInput.mount` hands an external hook the input that draws the field. A
+ * module-contributed input resolves its chunk after this component mounts, so
+ * `inputField` is still empty in `onMounted` — waiting for it keeps the payload the
+ * hook got while the input was a branch in this file. The flag holds it to one call per
+ * field, and the built-in branches keep firing from `onMounted` as before.
+ *
+ * A chunk that never resolves leaves the hook unfired. `defineAsyncComponent` forwards
+ * the ref to the resolved component only, not to the loading or the error one, and a
+ * field drawn by `ParameterInputLoadError` has no input to hand over.
+ */
+let hasRunMountHook = false;
+
+function runParameterInputMountHook() {
+	if (hasRunMountHook) return;
+	hasRunMountHook = true;
+
+	void externalHooks.run('parameterInput.mount', {
+		parameter: props.parameter,
+
+		inputFieldRef: inputField.value as InstanceType<typeof N8nInput>,
+	});
+}
+
+watch(inputField, (value) => {
+	if (value && showContributedComponent.value) runParameterInputMountHook();
+});
+
 onMounted(() => {
 	props.eventBus.on('optionSelected', optionSelected);
 
@@ -1338,11 +1366,9 @@ onMounted(() => {
 		}
 	}
 
-	void externalHooks.run('parameterInput.mount', {
-		parameter: props.parameter,
-
-		inputFieldRef: inputField.value as InstanceType<typeof N8nInput>,
-	});
+	if (!showContributedComponent.value) {
+		runParameterInputMountHook();
+	}
 });
 
 const { height } = useElementSize(wrapper);
