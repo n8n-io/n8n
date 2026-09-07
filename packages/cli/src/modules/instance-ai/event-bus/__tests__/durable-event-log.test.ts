@@ -1,13 +1,13 @@
+import type { InstanceAiEvent, InstanceAiSetupItem } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { InstanceAiEvent } from '@n8n/api-types';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 
+import type { InstanceAiEventLogRepository } from '../../repositories/instance-ai-event-log.repository';
 import { DurableEventLog, type DrainedEvent } from '../durable-event-log';
 import { DurableLogMetrics } from '../durable-log-metrics';
-import type { InstanceAiEventLogRepository } from '../../repositories/instance-ai-event-log.repository';
 
 const THREAD = 'thread-1';
 const RUN = 'run-1';
@@ -118,7 +118,17 @@ class FakeRepo {
 	}
 
 	async getSetupItemsSnapshots(_threadId: string) {
-		return this.rows.flatMap(({ event }) => (event.type === 'setup-items' ? [event.payload] : []));
+		const latest = new Map<string, InstanceAiSetupItem[]>();
+		for (const { event } of [...this.rows].sort((a, b) => a.seq - b.seq)) {
+			if (event.type !== 'setup-items') continue;
+			const { workflowId, items } = event.payload;
+			latest.delete(workflowId);
+			latest.set(
+				workflowId,
+				items.filter((item): item is InstanceAiSetupItem => item !== null),
+			);
+		}
+		return [...latest].map(([workflowId, items]) => ({ workflowId, items }));
 	}
 }
 
@@ -185,6 +195,25 @@ describe('DurableEventLog', () => {
 	it('waits for an in-flight append before reading setup snapshots', async () => {
 		const repo = new FakeRepo();
 		const { log } = buildLog(repo);
+		await publishAll(log, [
+			{
+				type: 'setup-items',
+				runId: RUN,
+				agentId: AGENT,
+				payload: {
+					workflowId: 'wf-1',
+					items: [
+						{ id: 'wf-1:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+					],
+				},
+			},
+			{
+				type: 'setup-items',
+				runId: RUN,
+				agentId: AGENT,
+				payload: { workflowId: 'wf-2', items: [] },
+			},
+		]);
 		let releaseAppend!: () => void;
 		repo.gateNextAppend = new Promise((resolve) => {
 			releaseAppend = resolve;
@@ -212,7 +241,10 @@ describe('DurableEventLog', () => {
 		expect(read).not.toHaveBeenCalled();
 		releaseAppend();
 
-		await expect(snapshots).resolves.toEqual([{ workflowId: 'wf-1', items: [] }]);
+		await expect(snapshots).resolves.toEqual([
+			{ workflowId: 'wf-2', items: [] },
+			{ workflowId: 'wf-1', items: [] },
+		]);
 	});
 
 	it('coalesces a segment into one text-block flushed immediately before the next structural fact', async () => {

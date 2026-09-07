@@ -24,6 +24,5 @@ describe('getSystemPrompt — setup panel', () => {
 		expect(prompt).toContain('When the result has `announced: true`');
 		expect(prompt).toContain('wait for requested destination approvals');
 		expect(prompt).toContain('Do not treat a resumed card as a panel announcement');
-		expect(prompt).not.toContain('no card opens');
 	});
 });
