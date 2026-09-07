@@ -178,6 +178,7 @@ describe('Posthog store', () => {
 				expect.objectContaining({
 					bootstrap: {
 						distinctID: `${CURRENT_INSTANCE_ID}#${CURRENT_USER_ID}`,
+						isIdentifiedID: true,
 						featureFlags: flags,
 						featureFlagPayloads: payloads,
 					},
