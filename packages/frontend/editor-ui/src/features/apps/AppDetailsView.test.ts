@@ -1,0 +1,219 @@
+import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
+import { createMemoryHistory, createRouter } from 'vue-router';
+import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
+
+import AppDetailsView from './AppDetailsView.vue';
+import { useAppsStore } from './apps.store';
+import { APP_DETAILS, APP_PAGE_DETAILS, PROJECT_APPS } from './apps.constants';
+import type { App } from './apps.types';
+
+const openAppArtifactThread = vi.hoisted(() => vi.fn());
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
+}));
+
+vi.mock('@/app/composables/useDocumentTitle', () => ({
+	useDocumentTitle: () => ({ set: vi.fn() }),
+}));
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
+	useInstanceAiAvailable: () => ({ value: true }),
+	useInstanceAiReady: () => ({ value: true }),
+}));
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
+	useInstanceAiHandoff: () => ({ openAppArtifactThread }),
+}));
+
+const router = createRouter({
+	history: createMemoryHistory(),
+	routes: [
+		{ path: '/projects/:projectId/apps', name: PROJECT_APPS, component: { template: '<div />' } },
+		{
+			path: '/projects/:projectId/apps/:appId',
+			name: APP_DETAILS,
+			component: { template: '<div />' },
+		},
+		{
+			path: '/projects/:projectId/apps/:appId/pages/:pageId',
+			name: APP_PAGE_DETAILS,
+			component: { template: '<div />' },
+		},
+	],
+});
+
+const renderComponent = createComponentRenderer(AppDetailsView, {
+	global: {
+		plugins: [router],
+		stubs: {
+			PageViewLayout: { template: '<div data-test-id="page-view-layout"><slot /></div>' },
+			AppBreadcrumbs: { template: '<nav data-test-id="app-breadcrumbs" />' },
+		},
+	},
+});
+
+function makeApp(overrides: Partial<App> = {}): App {
+	return {
+		id: 'app-1',
+		name: 'Greeter',
+		namespace: 'greeter',
+		theme: null,
+		projectId: 'proj-1',
+		activeVersionId: null,
+		createdAt: '2026-04-01T00:00:00.000Z',
+		updatedAt: '2026-04-01T00:00:00.000Z',
+		...overrides,
+	};
+}
+
+describe('AppDetailsView', () => {
+	let appsStore: ReturnType<typeof mockedStore<typeof useAppsStore>>;
+
+	beforeEach(async () => {
+		createTestingPinia();
+		openAppArtifactThread.mockReset();
+		await router.push('/projects/proj-1/apps/app-1');
+		await router.isReady();
+
+		appsStore = mockedStore(useAppsStore);
+		appsStore.pages = [];
+		appsStore.fetchPages.mockResolvedValue(undefined);
+	});
+
+	async function renderApp(app: App, props: Record<string, unknown> = {}) {
+		appsStore.getApp.mockResolvedValue(app);
+		const rendered = renderComponent({ props: { projectId: 'proj-1', appId: app.id, ...props } });
+		await waitAllPromises();
+		return rendered;
+	}
+
+	it('opens on Build when the app has no version yet', async () => {
+		const { getByTestId, queryByTestId } = await renderApp(makeApp());
+
+		expect(getByTestId('app-builder-build')).toBeInTheDocument();
+		expect(getByTestId('app-builder-tabs')).toBeInTheDocument();
+		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
+	});
+
+	it('opens on Preview and shows the active version in the iframe', async () => {
+		const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
+
+		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
+		expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+			'src',
+			'/apps/greeter/?v=v-7',
+		);
+	});
+
+	it('switches between Build and Preview from the mode control', async () => {
+		const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
+
+		await userEvent.click(getByTestId('radio-button-build'));
+		expect(getByTestId('app-builder-build')).toBeInTheDocument();
+		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('radio-button-preview'));
+		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
+	});
+
+	it('shows the empty preview with a way into the assistant before the first build', async () => {
+		const { getByTestId, queryByTestId } = await renderApp(makeApp());
+
+		await userEvent.click(getByTestId('radio-button-preview'));
+
+		expect(getByTestId('app-preview-empty')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-app-preview-iframe')).not.toBeInTheDocument();
+		expect(getByTestId('app-preview-refresh')).toHaveAttribute('aria-disabled', 'true');
+
+		await userEvent.click(getByTestId('app-preview-empty-open-in-assistant'));
+		expect(openAppArtifactThread).toHaveBeenCalledWith(
+			{ type: 'app', appId: 'app-1', projectId: 'proj-1', name: 'Greeter' },
+			{ source: 'app_builder_page', origin: 'internal', sourceContext: { appId: 'app-1' } },
+		);
+	});
+
+	it('narrows the frame to a phone width on the mobile toggle', async () => {
+		const { getByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
+
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveStyle({ width: '100%' });
+
+		await userEvent.click(getByTestId('app-preview-device-mobile'));
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveStyle({ width: '390px' });
+
+		await userEvent.click(getByTestId('app-preview-device-desktop'));
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveStyle({ width: '100%' });
+	});
+
+	it('reloads the iframe on refresh', async () => {
+		const { getByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
+
+		await userEvent.click(getByTestId('app-preview-refresh'));
+
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+			'src',
+			'/apps/greeter/?v=v-7&r=1',
+		);
+	});
+
+	it('links and copies the served app URL', async () => {
+		const { getByTestId } = await renderApp(makeApp());
+
+		expect(getByTestId('app-open')).toHaveAttribute(
+			'href',
+			`${window.location.origin}/apps/greeter/`,
+		);
+		expect(getByTestId('app-open')).toHaveAttribute('target', '_blank');
+		expect(getByTestId('app-url')).toHaveTextContent(`${window.location.origin}/apps/greeter/`);
+	});
+
+	it('hands the app off to the assistant from the toolbar', async () => {
+		const { getByTestId } = await renderApp(makeApp());
+
+		await userEvent.click(getByTestId('app-open-in-assistant'));
+
+		expect(openAppArtifactThread).toHaveBeenCalledWith(
+			{ type: 'app', appId: 'app-1', projectId: 'proj-1', name: 'Greeter' },
+			{ source: 'app_builder_page', origin: 'internal', sourceContext: { appId: 'app-1' } },
+		);
+	});
+
+	it('drops the page chrome and navigation actions in artifact mode', async () => {
+		const { getByTestId, queryByTestId } = await renderApp(makeApp(), { artifactMode: true });
+
+		expect(queryByTestId('page-view-layout')).not.toBeInTheDocument();
+		expect(queryByTestId('app-breadcrumbs')).not.toBeInTheDocument();
+		expect(queryByTestId('app-delete')).not.toBeInTheDocument();
+		expect(queryByTestId('app-open-in-assistant')).not.toBeInTheDocument();
+		expect(getByTestId('app-builder-mode')).toBeInTheDocument();
+		expect(getByTestId('app-open')).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('radio-button-preview'));
+		expect(getByTestId('app-preview-empty')).toBeInTheDocument();
+		expect(queryByTestId('app-preview-empty-open-in-assistant')).not.toBeInTheDocument();
+	});
+
+	it('prefers the thread build over the stored version and switches to Preview on the first build', async () => {
+		const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
+			artifactMode: true,
+		});
+
+		expect(getByTestId('app-builder-build')).toBeInTheDocument();
+
+		await rerender({
+			projectId: 'proj-1',
+			appId: 'app-1',
+			artifactMode: true,
+			artifactVersionId: 'v-1',
+		});
+
+		expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+			'src',
+			'/apps/greeter/?v=v-1',
+		);
+	});
+});
