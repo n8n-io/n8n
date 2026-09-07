@@ -38,6 +38,8 @@ export class AgentDependencyIndexListener {
 	 * Any workflow change invalidates the cached runtimes of the agents that depend on it.
 	 * `workflow-deleted` is not subscribed: the FK cascade removes the index rows
 	 * before the event fires. Deleting requires archiving first, which is covered.
+	 * With the publication service, a runtime rebuilt after the request event but before
+	 * the leader applies it can stay stale until its TTL expires or the agent is saved.
 	 */
 	private subscribeToWorkflowEvents(): void {
 		const invalidate = async ({ workflowId }: { workflowId: string }) => {
@@ -52,7 +54,6 @@ export class AgentDependencyIndexListener {
 		this.eventService.on('workflow-deactivated', invalidate);
 		this.eventService.on('workflow-archived', invalidate);
 		this.eventService.on('workflow-unarchived', invalidate);
-		this.eventService.on('workflow-published-version-changed', invalidate);
 	}
 
 	private async run(action: string, operation: () => Promise<void>): Promise<void> {

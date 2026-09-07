@@ -34,7 +34,6 @@ describe('AgentDependencyIndexListener', () => {
 		'workflow-deactivated',
 		'workflow-archived',
 		'workflow-unarchived',
-		'workflow-published-version-changed',
 	] as const;
 
 	const emitWorkflowEvent = (eventName: (typeof workflowEvents)[number]) => {
