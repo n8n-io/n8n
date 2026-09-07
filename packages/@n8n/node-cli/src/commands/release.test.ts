@@ -147,6 +147,7 @@ describe('release command', () => {
 			expect(content).toContain('pnpm install');
 			expect(content).toContain('pnpm run release');
 			expect(content).not.toContain('{{packageManager');
+			expect(content).toContain('NPM_TOKEN: ${{ secrets.NPM_TOKEN }}');
 			expect(result.getLogMessages('success')).toEqual(
 				expect.arrayContaining([expect.stringContaining('publish.yml')]),
 			);
