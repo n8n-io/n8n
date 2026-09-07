@@ -23,6 +23,7 @@ import { SplitOut } from 'n8n-nodes-base/nodes/Transform/SplitOut/SplitOut.node'
 import type { IDataObject, INodeType, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import request from 'supertest';
+import { v7 as uuidv7 } from 'uuid';
 import { vi } from 'vitest';
 
 import { createEngineStepDataLoader } from '../engine-step-data-loader';
@@ -345,7 +346,18 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		const response = await request(runtime.app)
 			.post('/api/workflow-executions')
 			.set('Authorization', `Bearer ${mintIdentityToken(authSecret, caller)}`)
-			.send({ workflowId: 'wf-m1', graph, triggerOutputs, mode })
+			// The caller mints the execution id; the engine never mints one.
+			.send({
+				workflowId: 'wf-m1',
+				graph,
+				// Opaque to the engine, and no acceptance case reads it back.
+				workflow: {},
+				triggerOutputs,
+				mode,
+				executionId: uuidv7(),
+				// the v1 mode of an unattended run is `trigger`
+				callerContext: { hostMode: mode === 'manual' ? 'manual' : 'trigger' },
+			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
 

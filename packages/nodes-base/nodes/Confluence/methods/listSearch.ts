@@ -5,8 +5,10 @@ import type {
 	INodeListSearchResult,
 } from 'n8n-workflow';
 
+import { searchAtlassianSites } from '@utils/atlassian';
+
 import { extractNextCursor, resolveSpaceKey } from '../actions/common';
-import { confluenceApiRequest } from '../transport';
+import { confluenceApiRequest, getConfluenceCredentialName } from '../transport';
 
 interface SearchPage {
 	entries: IDataObject[];
@@ -62,6 +64,13 @@ async function searchByName(
 	}
 
 	return { results, paginationToken: cursor };
+}
+
+export async function getSites(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await searchAtlassianSites.call(this, getConfluenceCredentialName(this), filter);
 }
 
 export async function searchSpaces(

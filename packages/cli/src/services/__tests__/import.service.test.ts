@@ -5,6 +5,7 @@ import type {
 	SharedWorkflowRepository,
 	TagRepository,
 	UserRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
@@ -55,6 +56,7 @@ describe('ImportService', () => {
 	let mockWorkflowService: WorkflowService;
 	let mockPolicyEnforcementService: PolicyEnforcementService;
 	let mockSharedWorkflowRepository: SharedWorkflowRepository;
+	let mockWorkflowRepository: WorkflowRepository;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -71,10 +73,9 @@ describe('ImportService', () => {
 		mockWorkflowService = mock<WorkflowService>();
 		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
 		mockPolicyEnforcementService.hasChecksFor = vi.fn().mockReturnValue(true);
-		mockPolicyEnforcementService.evaluateContentImport = vi
-			.fn()
-			.mockResolvedValue({ violations: [] });
+		mockPolicyEnforcementService.enforceContentImport = vi.fn().mockResolvedValue(mock());
 		mockSharedWorkflowRepository = mock<SharedWorkflowRepository>();
+		mockWorkflowRepository = mock<WorkflowRepository>();
 		mockSharedWorkflowRepository.findOwnerProjectsByWorkflowIds = vi
 			.fn()
 			.mockResolvedValue(new Map());
@@ -133,6 +134,7 @@ describe('ImportService', () => {
 			mockWorkflowService,
 			mockPolicyEnforcementService,
 			mockSharedWorkflowRepository,
+			mockWorkflowRepository,
 		);
 	});
 

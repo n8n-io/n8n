@@ -138,7 +138,7 @@ const itemsWithKeywords: ComboboxItemType[] = [
 	{ label: 'United States', value: 'us', keywords: ['USA', 'America', 'US'] },
 ];
 
-const storyContainerStyle = 'padding: 40px; max-width: 400px';
+const storyContainerStyle = 'max-width: 400px';
 
 const meta = {
 	title: 'Experimental/Combobox',

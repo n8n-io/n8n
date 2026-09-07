@@ -220,6 +220,36 @@ describe('AgentPublishService', () => {
 		expect(agent.activeVersionId).toBeNull();
 	});
 
+	it('names unpublished workflow tools when rejecting the publish', async () => {
+		const { service, agentRepository, agentHistoryRepository, agentValidationService } =
+			makeService();
+		const agent = makeAgent();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
+			status: 'invalid',
+			issues: [
+				{
+					code: 'incompatible_reference',
+					path: 'tools.0.workflowId',
+					capability: { kind: 'tool', toolType: 'workflow', id: 'Lookup' },
+					reason: 'not_published',
+				},
+				{
+					code: 'incompatible_reference',
+					path: 'tools.1.workflowId',
+					capability: { kind: 'tool', toolType: 'workflow', id: 'Notify' },
+					reason: 'not_published',
+				},
+			],
+		});
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+			'Cannot publish agent: workflow "Lookup" is not published; workflow "Notify" is not published. Publish these workflows first.',
+		);
+		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBeNull();
+	});
+
 	describe('channel startup preflight', () => {
 		const telegram = { type: 'telegram', credentialId: 'cred-1' } as const;
 

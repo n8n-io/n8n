@@ -308,6 +308,43 @@ progress indicator from this data.
 }
 ```
 
+### `setup-items`
+
+The setup panel checklist for a workflow (service-keyed items, kinds
+`credential | parameters`). Each event carries the FULL current list for its
+`workflowId` and replaces the previous snapshot — removal is implicit, an
+empty `items` list clears the workflow's checklist. Items carry no status:
+done-ness is always derived client-side. Durable; the reducer folds the
+latest snapshot per `workflowId` onto the ROOT agent node regardless of the
+emitting agent, so it survives refresh via `GET /messages`.
+
+Emitted only while the setup panel flag is on, through the host-wired
+`setupItemsEmitter` on the domain context. `build-workflow` replaces the
+snapshot on every successful save (open credential slots fanned out to their
+nodes, slots already bound to a stored credential, and nodes with unresolved
+parameters); `credentials(action="setup")` re-analyses the saved workflow and
+merges the result, with the announced `reason`/`setupHint` applied, into the
+last snapshot. The emitter drops a snapshot whose content did not change.
+
+```json
+{
+  "type": "setup-items",
+  "runId": "run_abc123",
+  "agentId": "agent-001",
+  "payload": {
+    "workflowId": "wf-1",
+    "items": [
+      {
+        "id": "wf-1:credential:slackApi",
+        "kind": "credential",
+        "credentialType": "slackApi",
+        "nodeBindings": [{"nodeName": "Send message"}]
+      }
+    ]
+  }
+}
+```
+
 ### `status`
 
 A transient status message. Empty string clears the indicator.
@@ -560,16 +597,16 @@ replaying all SSE events.
 
 1. **Persisted messages** — `@n8n/agents` persists tool invocations, reasoning, and
    text in its message format. The backend parses these into rich
-   `InstanceAiMessage[]` objects with tool calls and flat agent trees.
+   `InstanceAiMessage[]` objects.
 
-2. **Agent trees** — with the durable log enabled, history folds event-log rows
-   through `buildAgentTreeFromEvents()` when it reads a page. Stored snapshots
-   remain as the non-durable path and as a fallback for older history. The
-   backend updates snapshots when runs and background tasks settle.
+2. **Agent trees** — history folds event-log rows through
+   `buildAgentTreeFromEvents()` when it reads a page. The log is the only tree
+   source: a message whose run left no log rows renders from its own
+   text/reasoning content without a tree.
 
 3. **SSE cursor** — the messages response includes `nextEventId`. The frontend
    sets its SSE cursor to `nextEventId - 1` so the SSE connection only receives
-   events that arrived after the historical snapshot. This prevents duplicate
+   events that arrived after the historical messages. This prevents duplicate
    messages on refresh.
 
 ### Frontend Flow
@@ -602,6 +639,7 @@ creating duplicate messages.
 | `agent-completed` | `role`, `result` | Sub-agent finished |
 | `confirmation-request` | `requestId`, `toolCallId`, `severity`, `message`, ... | HITL approval gate |
 | `tasks-update` | `tasks` | Task checklist created/updated |
+| `setup-items` | `workflowId`, `items` | Setup panel snapshot for a workflow (full list, last wins) |
 | `status` | `message` | Transient status indicator |
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |
 | `thread-title-updated` | `title` | Thread title changed |

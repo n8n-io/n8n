@@ -47,7 +47,7 @@ export class WordpressOAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden',
-			default: 'header',
+			default: 'body',
 		},
 		{
 			displayName: 'WordPress.com Site',

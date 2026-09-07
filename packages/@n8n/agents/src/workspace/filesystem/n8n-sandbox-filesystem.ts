@@ -1,7 +1,7 @@
 import { SandboxServiceError } from '@n8n/sandbox-client';
 import { dirname } from 'node:path/posix';
 
-import { BaseFilesystem } from './base-filesystem';
+import { BaseFilesystem, type BaseFilesystemOptions } from './base-filesystem';
 import { raceWithAbort } from '../../sdk/abort';
 import type { N8nSandboxServiceSandbox } from '../sandbox/n8n-sandbox-sandbox';
 import type {
@@ -34,8 +34,11 @@ export class N8nSandboxFilesystem extends BaseFilesystem {
 
 	status: ProviderStatus = 'pending';
 
-	constructor(private readonly sandbox: N8nSandboxServiceSandbox) {
-		super();
+	constructor(
+		private readonly sandbox: N8nSandboxServiceSandbox,
+		options?: BaseFilesystemOptions,
+	) {
+		super(options);
 		this.id = `n8n-sandbox-fs-${sandbox.id}`;
 	}
 

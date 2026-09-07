@@ -980,6 +980,29 @@ describe('McpAgentToolsService', () => {
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
 
+		it('names unpublished workflow tools in the validation error', async () => {
+			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+				status: 'invalid',
+				issues: [
+					{
+						code: 'incompatible_reference',
+						reason: 'not_published',
+						path: 'tools.0.workflowId',
+						capability: { kind: 'tool', toolType: 'workflow', id: 'Lookup', index: 0 },
+					},
+				],
+			} as never);
+
+			const result = await callTool('publish_agent', { agentId: 'agent-1' });
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error:
+					'Agent is not runnable: tools.0.workflowId (workflow "Lookup" is not published; publish it first with publish_workflow)',
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
 		it('publishes a valid agent', async () => {
 			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 				status: 'valid',
@@ -1642,6 +1665,40 @@ describe('McpAgentToolsService', () => {
 			expect(result.isError).toBe(true);
 			expect(result.structuredContent).toMatchObject({
 				error: 'Credential not found or not accessible',
+			});
+			expect(listMcpServerToolsMock).not.toHaveBeenCalled();
+		});
+
+		it('accepts a templated registry URL and passes it through for resolution', async () => {
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
+			listMcpServerToolsMock.mockResolvedValue([{ name: 'genie_ask', description: 'Ask' }]);
+			const templatedUrl = '={{$self["host"]}}/api/2.0/mcp/genie';
+
+			const result = await callTool('verify_agent_mcp_server', {
+				...input,
+				url: templatedUrl,
+				metadata: { nodeTypeName: '@n8n/mcp-registry.databricksGenie' },
+			});
+
+			expect(listMcpServerToolsMock).toHaveBeenCalledWith(
+				expect.objectContaining({ url: templatedUrl }),
+				expect.objectContaining({ projectId: 'project-1' }),
+			);
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				tools: [{ name: 'genie_ask', description: 'Ask' }],
+			});
+		});
+
+		it('rejects a templated URL with no registry node to resolve it', async () => {
+			const result = await callTool('verify_agent_mcp_server', {
+				...input,
+				url: '={{$self["host"]}}/api/2.0/mcp/genie',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: 'A templated server URL needs metadata.nodeTypeName so the registry can resolve it',
 			});
 			expect(listMcpServerToolsMock).not.toHaveBeenCalled();
 		});

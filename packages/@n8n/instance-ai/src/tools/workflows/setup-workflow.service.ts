@@ -28,6 +28,7 @@ import {
 	N8N_CONNECT_DISPLAY_NAME,
 	assignCredentialToNode,
 	extractServiceHost,
+	extractServiceOrigin,
 	isAiGatewayManagedCredential,
 	resolveCredentialForApply,
 	serviceHostsMatch,
@@ -735,10 +736,11 @@ async function buildRequestForCredentialType(
 			typeof existingOnNode?.id === 'string' && existingOnNode.id !== ''
 				? existingOnNode.id
 				: undefined;
-		// A slot routed to fresh creation is never settled: its current binding is
-		// the credential the user is replacing. An id the resume just applied
-		// resolves even when the list view lags it (scoped discovery, e.g. eval
-		// allowlist pins) — the apply already resolved it before binding.
+		// A preferNewCredentials request un-settles a node that already has a working
+		// credential, so setup shows the card to change it instead of reporting
+		// "No nodes require setup". Otherwise, an id the resume just applied resolves
+		// even when the list view lags it (scoped discovery, e.g. eval allowlist
+		// pins) — the apply already resolved it before binding.
 		const isSettled =
 			!prefersNewCredential &&
 			(isAiGatewayManagedCredential(existingOnNode) ||
@@ -877,13 +879,15 @@ export function applyCredentialHints(
 			hints.find((h) => h.nodeName === request.node.name) ?? hints.find((h) => !h.nodeName);
 		if (!hint) continue;
 		const { nodeName: _nodeName, ...setupHint } = hint;
-		// Service identity is derived from the node being set up (falling back
-		// to the recipe's own test endpoint), never model-supplied. It is
-		// stamped into the created credential so setup surfaces only offer it
-		// to same-service nodes later.
-		const serviceHost =
-			extractServiceHost(request.node.parameters?.url) ?? extractServiceHost(setupHint.testUrl);
-		request.setupHint = { ...setupHint, ...(serviceHost ? { serviceHost } : {}) };
+		// The workflow node is the authority for service identity. The recipe's
+		// own destinations cannot establish or replace it.
+		const serviceHost = extractServiceHost(request.node.parameters?.url);
+		const serviceOrigin = extractServiceOrigin(request.node.parameters?.url);
+		request.setupHint = {
+			...setupHint,
+			...(serviceHost ? { serviceHost } : {}),
+			...(serviceOrigin ? { serviceOrigin } : {}),
+		};
 	}
 }
 
@@ -1180,6 +1184,10 @@ async function trackCredentialAssignment(
 		credential_type: opts.credType,
 		node_type: opts.nodeType,
 		workflow_id: opts.workflowId,
+		// The join key back to `User created credentials`; n8n Connect slots have no
+		// stored credential of the user's own.
+		credential_id: isGateway ? null : opts.credential.id,
+		thread_id: context.threadId ?? null,
 		credential_kind: isGateway ? 'n8n_connect' : 'own',
 		source,
 	});
