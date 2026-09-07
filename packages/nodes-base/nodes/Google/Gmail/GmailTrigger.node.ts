@@ -491,9 +491,9 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			const givenUp = setAside.filter(([, attempts]) => attempts >= MAX_PENDING_FETCH_ATTEMPTS);
 
 			if (shouldLimitMessages && retryable.length > 0) {
-				// Bounded per tick, and the untried tail moves to the front, so a long
-				// list cannot spend the whole poll on doomed requests or starve its own
-				// later entries.
+				// Bounded per tick. Ids this poll did not reach come first, then the
+				// untried tail, so a long list cannot spend the whole poll on doomed
+				// requests or starve its own later entries.
 				const retryNow = retryable.slice(0, maxResults);
 				const retryLater = retryable.slice(maxResults);
 				const stillFailing: Array<[string, number]> = [];
@@ -535,8 +535,9 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			}
 
 			// Process pending messages from a previous poll next. These are IDs a scan
-			// found but no poll fetched: beyond the maxResults budget, or left over when
-			// a fetch failed mid-poll.
+			// found but no poll fetched: beyond the maxResults budget, past the time
+			// budget of the poll that scanned them, or left over when a fetch failed
+			// mid-poll.
 			const pendingIds = nodeStaticData.pendingMessageIds ?? [];
 			if (shouldLimitMessages && pendingIds.length > 0 && budget > 0) {
 				const fetchQs = buildFetchQs();
@@ -567,6 +568,11 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 					// advance. A failed id leaves the queue for the set-aside list, which
 					// is written once the loop ends.
 					nodeStaticData.pendingMessageIds = pendingIds.slice(index + 1);
+					// Checked after the fetch, and after the trim above, so every poll
+					// handles at least one id and the id it just delivered leaves the queue.
+					// A break above the trim re-delivers it: this drain does not filter
+					// against the boundary set.
+					if (Date.now() >= pollDeadline) break;
 				}
 
 				if (newlyFailed.length > 0) {
@@ -574,10 +580,16 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				}
 			}
 
-			// While queued ids remain, do not scan: the queue write after a scan replaces
-			// the whole queue, so scanning now would drop the ids this poll could not
-			// reach.
-			if (shouldLimitMessages && (nodeStaticData.pendingMessageIds?.length ?? 0) > 0) {
+			// While queued ids remain — or fetching them used up this poll's budget —
+			// do not scan: the queue write after a scan replaces the whole queue, so
+			// scanning now would drop the ids this poll could not reach. The budget
+			// clause needs a fetch of its own, so a spent budget alone never keeps a
+			// poll from scanning — only a queue that still holds ids does.
+			if (
+				shouldLimitMessages &&
+				((nodeStaticData.pendingMessageIds?.length ?? 0) > 0 ||
+					(allFetchedMessages.length > 0 && Date.now() >= pollDeadline))
+			) {
 				await simplifyResponseData();
 
 				// This path returns before the state update at the end of poll(), so it
@@ -614,6 +626,9 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			let messages: ListMessage[] = [];
 			let pageToken: string | undefined;
 			let pagesScanned = 0;
+			// The deadline sits in the loop condition: the do-while always scans page
+			// one, so an already-spent budget still makes progress (mirrors the fetch
+			// loops).
 			do {
 				const messagesResponse: MessageListResponse = await googleApiRequest.call(
 					this,
@@ -625,10 +640,15 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				messages.push(...(messagesResponse.messages ?? []));
 				pageToken = messagesResponse.nextPageToken;
 				pagesScanned++;
-			} while (shouldLimitMessages && pageToken && pagesScanned < MAX_SCAN_PAGES);
-			// A leftover token means the cap stopped the scan short. Gmail returns
-			// newest first, so the remainder is older mail; a cursor moved past it
-			// would never reach it again.
+			} while (
+				shouldLimitMessages &&
+				pageToken &&
+				pagesScanned < MAX_SCAN_PAGES &&
+				Date.now() < pollDeadline
+			);
+			// A leftover token means the time budget or the cap stopped the scan short.
+			// Gmail returns newest first, so the remainder is older mail; a cursor moved
+			// past it would never reach it again.
 			windowFullyScanned = !pageToken;
 
 			// Pagination can repeat an id across pages when the mailbox shifts
@@ -699,7 +719,8 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				}
 			}
 
-			// Take only what fits in the remaining budget, store the rest as pending.
+			// Take only what fits in the remaining maxResults budget, store the rest
+			// as pending.
 			let messagesToProcess = messages;
 			let beyondBudgetIds: string[] = [];
 			if (shouldLimitMessages && messages.length > budget) {
