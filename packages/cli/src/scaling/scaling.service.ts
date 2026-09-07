@@ -34,6 +34,14 @@ import type {
 } from './scaling.types';
 import { decodeRelayedWebhookResponse, WebhookResponseRelay } from './webhook-response-relay';
 
+const DRAIN_POLL_INTERVAL_MS = 500;
+
+/** Share of the time left at the drain deadline that the cancellation write may use. */
+const CANCEL_WRITE_BUDGET_SHARE = 0.5;
+
+/** Ceiling for the cancellation write, so a long shutdown window does not stall on it. */
+const MAX_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
+
 @Service()
 export class ScalingService {
 	/** Bull queues keyed by queue name. Pool queues are created lazily. */
@@ -226,19 +234,83 @@ export class ScalingService {
 	private async stopWorker() {
 		await this.pauseAllQueues();
 
+		const shutdownWindowMs =
+			this.globalConfig.generic.gracefulShutdownTimeout * Time.seconds.toMilliseconds;
+
+		// The budget bounds only the in-process wait. The queued-job wait stays
+		// unbounded, so a long queued execution still runs to completion.
+		const drainTimeoutMs = shutdownWindowMs * 0.8;
+
+		const start = Date.now();
+
+		const hasQueuedJobsToDrain = () => this.getRunningJobsCount() !== 0;
+		const hasInProcessExecutionsToDrain = () =>
+			this.activeExecutions.getRunningExecutionIds().length !== 0;
+		const isWithinDrainBudget = () => Date.now() - start < drainTimeoutMs;
+
 		let count = 0;
 
-		while (this.getRunningJobsCount() !== 0) {
-			if (count++ % 4 === 0) {
-				const summaries = this.jobProcessor.getRunningJobsSummary();
-				const executionIds = summaries.map((summary) => summary.executionId);
-				this.logger.info(
-					`Waiting for ${executionIds.length} active executions to finish... (execution IDs: ${executionIds.join(', ')})`,
-					{ executionIds },
+		while (hasQueuedJobsToDrain() || (hasInProcessExecutionsToDrain() && isWithinDrainBudget())) {
+			if (count++ % 4 === 0) this.logExecutionsToDrain();
+
+			// Cap the last sleep at what is left of the budget, so the tick cannot
+			// overshoot it and leave no time to cancel before the force-exit timer.
+			const remainingBudgetMs = drainTimeoutMs - (Date.now() - start);
+			const sleepMs = hasQueuedJobsToDrain()
+				? DRAIN_POLL_INTERVAL_MS
+				: Math.max(1, Math.min(DRAIN_POLL_INTERVAL_MS, remainingBudgetMs));
+
+			await sleep(sleepMs);
+		}
+
+		// Cancel the stragglers rather than leave them to run. The task runner stops
+		// next, so they cannot make progress.
+		if (drainTimeoutMs > 0 && hasInProcessExecutionsToDrain() && !isWithinDrainBudget()) {
+			const elapsed = Math.round((Date.now() - start) / Time.seconds.toMilliseconds);
+
+			this.logger.warn(
+				`Drain timeout reached after ${elapsed}s, shutting down with executions still active...`,
+			);
+			this.logExecutionsToDrain();
+
+			// The force-exit timer is armed at the full window, so the write gets a share of
+			// what is left of it. The rest stays for the shutdown hooks that run after this one.
+			const remainingWindowMs = Math.max(0, shutdownWindowMs - (Date.now() - start));
+			const writeDeadlineMs = Math.min(
+				MAX_CANCEL_WRITE_TIMEOUT_MS,
+				Math.round(remainingWindowMs * CANCEL_WRITE_BUDGET_SHARE),
+			);
+
+			const cancelledExecutionIds =
+				await this.activeExecutions.cancelRunningExecutions(writeDeadlineMs);
+
+			if (cancelledExecutionIds.length > 0) {
+				this.logger.warn(
+					`Cancelled ${cancelledExecutionIds.length} in-process executions that could not finish before shutdown (execution IDs: ${cancelledExecutionIds.join(', ')})`,
+					{ executionIds: cancelledExecutionIds },
 				);
 			}
+		}
+	}
 
-			await sleep(500);
+	private logExecutionsToDrain() {
+		const summaries = this.jobProcessor.getRunningJobsSummary();
+		const executionIds = summaries.map((summary) => summary.executionId);
+
+		if (executionIds.length > 0) {
+			this.logger.info(
+				`Waiting for ${executionIds.length} active executions to finish... (execution IDs: ${executionIds.join(', ')})`,
+				{ executionIds },
+			);
+		}
+
+		const inProcessExecutionIds = this.activeExecutions.getRunningExecutionIds();
+
+		if (inProcessExecutionIds.length > 0) {
+			this.logger.info(
+				`Waiting for ${inProcessExecutionIds.length} in-process executions to finish... (execution IDs: ${inProcessExecutionIds.join(', ')})`,
+				{ executionIds: inProcessExecutionIds },
+			);
 		}
 	}
 

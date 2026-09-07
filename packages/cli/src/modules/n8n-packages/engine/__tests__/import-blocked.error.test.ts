@@ -33,6 +33,16 @@ const variableUnresolved: BlockingIssue = {
 	usedByWorkflows: ['w1'],
 };
 
+const workflowLineageConflict: BlockingIssue = {
+	type: 'workflow-lineage-conflict',
+	sourceWorkflowId: 'source-1',
+	projectId: 'project-1',
+	existingWorkflows: [
+		{ id: 'workflow-1', name: 'First', isArchived: false },
+		{ id: 'workflow-2', name: 'Second', isArchived: false },
+	],
+};
+
 const tagUnresolved = (
 	kind: 'rename-drift' | 'name-collision' | 'invalid-name',
 ): BlockingIssue => ({
@@ -51,6 +61,11 @@ describe('toImportBlockedError', () => {
 
 	it('maps a project-conflict to 409 Conflict', () => {
 		const error = toImportBlockedError([projectConflict]);
+		expect(error).toBeInstanceOf(ConflictError);
+	});
+
+	it('maps a workflow-lineage-conflict to 409 Conflict', () => {
+		const error = toImportBlockedError([workflowLineageConflict]);
 		expect(error).toBeInstanceOf(ConflictError);
 	});
 

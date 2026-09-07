@@ -46,9 +46,10 @@ export function getDatabricksTokenProvider(
 }
 
 // Partner User-Agent for Databricks traffic attribution (PWAF telemetry spec).
+// Unversioned by agreement with Databricks.
 // Set here, not via ChatOpenAI's `defaultHeaders`, so it also wins over the
 // OpenAI SDK's own User-Agent - Headers.set() overwrites case-insensitively.
-export const CHAT_MODEL_USER_AGENT = 'n8n_DatabricksChatModel/1.0';
+export const CHAT_MODEL_USER_AGENT = 'n8n_DatabricksNode';
 
 /**
  * Mints Databricks service-principal tokens on demand. Concurrent callers

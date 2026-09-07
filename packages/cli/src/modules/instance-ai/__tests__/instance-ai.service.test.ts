@@ -873,15 +873,14 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getSandboxStatus: Mock;
 				isLocalGatewayDisabledForUser: Mock;
 				getPermissions: Mock;
+				isInstanceAiSetupPanelEnabled: Mock;
 			};
 			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
 			aiService: { isProxyEnabled: Mock };
 			adapterService: {
 				createContext: Mock;
 				getNodeDefinitionDirs: Mock;
-				isConfigEvalsEnabled: Mock;
-				isMcpConnectionsEnabled: Mock;
-				isNodeUsageEnabled: Mock;
+				resolveExperimentGates: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
@@ -921,15 +920,19 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			})),
 			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
+			isInstanceAiSetupPanelEnabled: vi.fn(() => false),
 		};
 		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };
 		service.adapterService = {
 			createContext: vi.fn(() => ({})),
 			getNodeDefinitionDirs: vi.fn(() => []),
-			isConfigEvalsEnabled: vi.fn().mockResolvedValue(true),
-			isMcpConnectionsEnabled: vi.fn().mockResolvedValue(false),
-			isNodeUsageEnabled: vi.fn().mockResolvedValue(false),
+			resolveExperimentGates: vi.fn().mockResolvedValue({
+				configEvalsEnabled: true,
+				mcpConnectionsEnabled: false,
+				conversationHistoryEnabled: false,
+				nodeUsageEnabled: false,
+			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
 		service.modelService = {
