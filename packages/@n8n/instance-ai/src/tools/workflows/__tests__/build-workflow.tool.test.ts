@@ -1743,7 +1743,26 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
-	it('reports planned build outcomes without source artifact metadata', async () => {
+	it('reports planned multi-trigger outcomes with empty progress and no source artifact', async () => {
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				...structuredClone(generatedWorkflow),
+				nodes: [
+					...structuredClone(generatedWorkflow.nodes),
+					{
+						id: 'schedule-1',
+						name: 'Schedule',
+						type: 'n8n-nodes-base.scheduleTrigger',
+						typeVersion: 1,
+						position: [0, 100],
+						parameters: {},
+					},
+				],
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
 		const reportBuildOutcome = vi.fn<
 			(outcome: WorkflowBuildOutcome) => Promise<{ type: 'verify'; workflowId: string }>
 		>(async () => await Promise.resolve({ type: 'verify', workflowId: 'wf-1' }));
@@ -1784,6 +1803,7 @@ describe('createBuildWorkflowTool', () => {
 			owner: { type: 'planned', taskId: 'task-1' },
 			plannedTaskId: 'task-1',
 			sourceFilePath: filePath,
+			verificationProgress: {},
 		});
 		expect(storedOutcome).not.toHaveProperty('sourceArtifact');
 

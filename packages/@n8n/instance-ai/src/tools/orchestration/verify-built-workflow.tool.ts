@@ -10,7 +10,11 @@ import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
-import { analyzeVerificationResult, buildNodePreviews } from './verification/analyze-result';
+import {
+	analyzeVerificationResult,
+	buildNodePreviews,
+	getTriggerMainFlowScope,
+} from './verification/analyze-result';
 import {
 	handleMissingSimulationPlan,
 	persistVerificationOutcome,
@@ -179,18 +183,26 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 			const { prepared } = preparedResult;
 
-			const chatModelRecovery = await target.domainContext.workflowService
+			const workflow = await target.domainContext.workflowService
 				.getAsWorkflowJSON(workflowId)
-				.then(
-					async (workflow) =>
-						await collectChatModelRecoveryContext(
-							target.domainContext,
-							workflow.nodes ?? [],
-							workflow.connections,
-						),
-				)
 				.catch(() => undefined);
+			const chatModelRecovery = workflow
+				? await collectChatModelRecoveryContext(
+						target.domainContext,
+						workflow.nodes ?? [],
+						workflow.connections,
+					).catch(() => undefined)
+				: undefined;
 			const chatModelRelatedNodeNames = chatModelRecovery?.relatedNodeNames;
+			const selectedTriggerNodeName = buildOutcome.triggerNodes?.some(
+				(trigger) => trigger.nodeName === resolvedInput.triggerNodeName,
+			)
+				? resolvedInput.triggerNodeName
+				: undefined;
+			const verificationScope =
+				buildOutcome.verificationProgress && selectedTriggerNodeName && workflow
+					? getTriggerMainFlowScope(workflow.connections, selectedTriggerNodeName)
+					: undefined;
 
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
@@ -209,6 +221,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						runId: context.runId,
 						chatModelRelatedNodeNames,
 						chatModelRecovery,
+						verificationScope,
 					})
 				: await (async () => {
 						const runResult = await target.domainContext.executionService.run(
@@ -234,6 +247,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 								runId: context.runId,
 								chatModelRelatedNodeNames,
 								chatModelRecovery,
+								verificationScope,
 							}),
 						};
 					})();
@@ -245,6 +259,8 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				workflowId,
 				result,
 				analysis,
+				buildOutcome,
+				scopedTriggerNodeName: verificationScope ? selectedTriggerNodeName : undefined,
 				verifyAttempts: (buildOutcome.verifyAttempts ?? 0) + 1,
 			});
 

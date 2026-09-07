@@ -1,0 +1,21 @@
+{
+	"description": "INS-1309 regression. A reusable workflow has two independent trigger branches with no shared downstream nodes. Verification must scope each pass to its selected trigger, preserve the first pass as progress, and finish only after the second pass. Build-only: the process expectations inspect the post-build verification calls and their results.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build one reusable maintenance workflow with two separate paths. A webhook starts an on-demand cleanup path that copies the incoming `jobId`, sets `mode` to `cleanup`, and adds a processed timestamp. A daily schedule at 06:00 starts an audit path that sets `mode` to `audit`, adds the audit date, and adds a processed timestamp. Keep the paths separate. Please build and test it."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["build", "behaviour", "verification", "multi-trigger", "webhook", "schedule"],
+	"datasets": ["ins-1309"],
+	"processExpectations": [
+		"After the build, the assistant called `verify-built-workflow` once for the webhook trigger and once for the schedule trigger. Each call named its target through `triggerNodeName`.",
+		"The result for one selected trigger did not treat nodes that belong only to the other trigger branch as an automatic-verification coverage gap.",
+		"The first successful trigger pass remained recorded as progress while the assistant verified the other trigger. The assistant reported the workflow as verified only after both independent branches passed."
+	],
+	"outcomeExpectations": [
+		"One reusable workflow contains a webhook trigger for cleanup and a daily 06:00 schedule trigger for audit.",
+		"The webhook and schedule triggers lead to separate downstream paths. The cleanup path carries `jobId` and sets `mode` to `cleanup`. The audit path sets `mode` to `audit` and adds an audit date. Both paths add a processed timestamp."
+	]
+}

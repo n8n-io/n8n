@@ -41,7 +41,8 @@ obligation is `ready_to_verify` or `verifying`, call `verify-built-workflow`. Do
 **not** call `workflows(action="setup")` in this turn and do **not** declare the
 workflow finished if `outcome.setupRequirement.status === "required"` — setup is
 routed automatically as a separate `<workflow-setup-required>` step after
-verification.
+verification. For a multi-trigger outcome, verify every trigger that does not
+yet have a recorded successful verification. Make all of these calls in this turn.
 
 ## Setup follow-up
 
@@ -250,13 +251,15 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
   entry in `triggerNodes`. Naming no trigger verifies only the auto-detected
   one. An unresolvable name is rejected outright, so a rejected call means the
   name is wrong — re-read `triggerNodes`, never fall back to editing.
-- Each pass covers its own trigger's branch, so its `nodesNotReached` will list
-  the other triggers' nodes. That is expected, not a defect: coverage is the
-  **union** across passes. Only treat a node as unverified once no pass reached
-  it.
+- Each pass reports `nodesNotReached` only for its selected trigger's main-flow
+  branch. Coverage is the **union** across successful passes. Run every trigger
+  before you report a workflow coverage gap. Different triggers can select
+  different outputs of a shared Switch or If node.
+- A failed rerun removes that trigger's earlier coverage. Verify that trigger
+  again before you claim that the workflow is verified.
 - Report per-trigger coverage — name each trigger and whether its branch ran.
   Claim the workflow is verified only when every trigger's branch has a
-  successful pass.
+  successful pass and their combined coverage includes every planned node.
 - When the user asked for a live run, pass `triggerNodeName` to
   `executions(action="run")` the same way — one run per trigger — and report
   each branch's result.

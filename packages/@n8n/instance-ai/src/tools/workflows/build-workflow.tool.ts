@@ -1193,6 +1193,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						nodeSimulationPlan,
 						simulationFixtures,
 						waitGateScripts,
+						verificationProgress:
+							triggerNodes.length > 1 && executionIntent !== 'one-off' ? {} : undefined,
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,

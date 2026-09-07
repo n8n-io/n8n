@@ -167,6 +167,8 @@ export const workflowVerificationEvidenceSchema = z.object({
 	evidence: z
 		.object({
 			nodesExecuted: z.array(z.string()).optional(),
+			/** Trigger whose main-flow scope was used for this evidence. */
+			triggerNodeName: z.string().optional(),
 			/**
 			 * Plan nodes the execution never reached (e.g. a lookup returned zero
 			 * items and stopped the chain). Non-empty means partial coverage —
@@ -183,6 +185,8 @@ export const workflowVerificationEvidenceSchema = z.object({
 });
 
 export type WorkflowVerificationEvidence = z.infer<typeof workflowVerificationEvidenceSchema>;
+
+export const workflowVerificationProgressSchema = z.record(z.string(), z.array(z.string()));
 
 export const workflowVerificationReadinessSchema = z.discriminatedUnion('status', [
 	z.object({ status: z.literal('ready') }),
@@ -373,6 +377,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	remediation: remediationMetadataSchema.optional(),
 	/** Count of verify-built-workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
 	verifyAttempts: z.number().int().min(0).optional(),
+	/** Successful node coverage by trigger. A failed rerun removes that trigger's entry. */
+	verificationProgress: workflowVerificationProgressSchema.optional(),
 	/**
 	 * Structured verification record from the most recent `verify-built-workflow`
 	 * tool call. This is tool evidence, not builder prose, so downstream checks may

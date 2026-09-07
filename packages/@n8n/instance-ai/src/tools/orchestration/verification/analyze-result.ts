@@ -1,5 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { isPlaceholderValue } from '@n8n/utils/placeholder';
+import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { getChildNodes, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ExecutionRunResult, VerificationNodePreview } from './types';
 import {
@@ -422,6 +424,16 @@ export interface VerificationAnalysis {
 	nodeErrors: ExecutionNodeError[];
 }
 
+export function getTriggerMainFlowScope(
+	connections: WorkflowJSON['connections'],
+	triggerNodeName: string,
+): Set<string> {
+	return new Set([
+		triggerNodeName,
+		...getChildNodes(toEngineConnections(connections), triggerNodeName, NodeConnectionTypes.Main),
+	]);
+}
+
 export function analyzeVerificationResult(args: {
 	result: ExecutionRunResult;
 	buildOutcome: WorkflowBuildOutcome;
@@ -440,6 +452,8 @@ export function analyzeVerificationResult(args: {
 	chatModelRecovery?: ChatModelRecoveryOptions;
 	/** Trigger this pass started from, when the caller named one. */
 	triggerNodeName?: string;
+	/** Main-flow nodes that belong to the selected trigger. */
+	verificationScope?: ReadonlySet<string>;
 }): VerificationAnalysis {
 	const {
 		result,
@@ -451,6 +465,7 @@ export function analyzeVerificationResult(args: {
 		chatModelRelatedNodeNames,
 		chatModelRecovery,
 		triggerNodeName,
+		verificationScope,
 	} = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
@@ -472,6 +487,7 @@ export function analyzeVerificationResult(args: {
 	];
 	const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
 		.map((verdict) => verdict.nodeName)
+		.filter((name) => !verificationScope || verificationScope.has(name))
 		.filter((name) => !reachedNames.has(name));
 	const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 	const hasOutput = result.data ? Object.keys(result.data).length > 0 : false;

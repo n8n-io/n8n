@@ -1,0 +1,21 @@
+{
+	"description": "INS-1309 regression. A reusable workflow has a webhook trigger and a schedule trigger that converge on one normalization step. The assistant must verify both trigger paths before it reports that the workflow is verified. Build-only: the process expectations inspect the post-build verification calls and their results.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build one reusable workflow for our event intake. It must accept an event from a webhook and also run a daily catch-up at 09:00. Label webhook events as `webhook` and scheduled events as `scheduled`. Both paths must then add a processed timestamp and produce the same normalized event shape. Please build and test it."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["build", "behaviour", "verification", "multi-trigger", "webhook", "schedule"],
+	"datasets": ["ins-1309"],
+	"processExpectations": [
+		"After the build, the assistant called `verify-built-workflow` once for each trigger in the workflow. Each call named its target through `triggerNodeName`.",
+		"A successful verification of the first trigger did not settle the verification obligation. The assistant continued to the remaining trigger before it treated the reusable workflow as verified.",
+		"The assistant reported the full workflow as verified only after successful evidence covered both trigger paths. Its final response identified the verification result for each trigger."
+	],
+	"outcomeExpectations": [
+		"One reusable workflow contains both a webhook trigger and a daily schedule trigger set for 09:00.",
+		"The webhook and schedule paths assign different source labels and converge on shared normalization that adds a processed timestamp and produces one consistent event shape."
+	]
+}

@@ -9,6 +9,7 @@ import type {
 	WorkflowTaskService,
 } from '../../../types';
 import { createRemediation, MAX_VERIFY_ATTEMPTS } from '../../../workflow-loop/remediation';
+import { deriveWorkflowVerificationObligationFromOutcome } from '../../../workflow-loop/verification-obligation';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
 
@@ -1499,6 +1500,260 @@ describe('verify-built-workflow tool — stale mocked-credential plan', () => {
 });
 
 describe('verify-built-workflow tool — trigger selection', () => {
+	type TriggerInput = { workItemId: string; workflowId: string; triggerNodeName?: string };
+
+	const triggerNodes = [
+		{ nodeName: 'Trigger A', nodeType: 'n8n-nodes-base.webhook' },
+		{ nodeName: 'Trigger B', nodeType: 'n8n-nodes-base.scheduleTrigger' },
+	];
+	const executeVerdict = (nodeName: string) => ({
+		nodeName,
+		verdict: 'execute' as const,
+		reason: 'Reads data',
+		confidence: 'high' as const,
+		source: 'deterministic' as const,
+	});
+	const workflowConnections = {
+		'Trigger A': { main: [[{ node: 'Step A', type: 'main', index: 0 }]] },
+		'Trigger B': { main: [[{ node: 'Step B', type: 'main', index: 0 }]] },
+	};
+	const triggerAInput = { workItemId: 'wi-1', workflowId: 'wf-1', triggerNodeName: 'Trigger A' };
+	const makeTrackedOutcome = (overrides: Partial<WorkflowBuildOutcome> = {}) =>
+		makeBuildOutcome({
+			triggerNodes,
+			verificationProgress: {},
+			nodeSimulationPlan: [executeVerdict('Step A'), executeVerdict('Step B')],
+			...overrides,
+		});
+
+	function makeSequenceContext(
+		initialOutcome: WorkflowBuildOutcome,
+		connections: Record<string, unknown> = workflowConnections,
+	) {
+		let outcome = initialOutcome;
+		const { ctx, updateBuildOutcome } = makeContext(
+			outcome,
+			{ status: 'success' },
+			{ workflowConnections: connections },
+		);
+		vi.mocked(ctx.workflowTaskService.getBuildOutcome).mockImplementation(async () => {
+			await Promise.resolve();
+			return outcome;
+		});
+		updateBuildOutcome.mockImplementation(async (_id, update) => {
+			outcome = { ...outcome, ...update };
+			await Promise.resolve();
+		});
+		return { ctx, getOutcome: () => outcome };
+	}
+
+	it.each(['Trigger A', undefined])(
+		'requires a successful retry after a previously verified trigger fails (%s)',
+		async (failedTriggerName) => {
+			const { ctx, getOutcome } = makeSequenceContext(makeTrackedOutcome());
+			const run = ctx.domainContext.executionService.run;
+			const successfulA: ExecutionRunResult = {
+				executionId: 'exec-a',
+				status: 'success',
+				executedNodeNames: ['Trigger A', 'Step A'],
+			};
+			const successfulB: ExecutionRunResult = {
+				executionId: 'exec-b',
+				status: 'success',
+				executedNodeNames: ['Trigger B', 'Step B'],
+			};
+			const triggerBInput = { ...triggerAInput, triggerNodeName: 'Trigger B' };
+
+			run.mockResolvedValueOnce(successfulA).mockResolvedValueOnce(successfulB);
+			await runTool(ctx, triggerAInput);
+			await runTool(ctx, triggerBInput);
+			expect(deriveWorkflowVerificationObligationFromOutcome('thread-1', getOutcome()).status).toBe(
+				'verified',
+			);
+
+			run.mockResolvedValueOnce({ ...successfulA, status: 'error', error: 'Step A failed' });
+			await runTool(ctx, { ...triggerAInput, triggerNodeName: failedTriggerName });
+			expect(deriveWorkflowVerificationObligationFromOutcome('thread-1', getOutcome()).status).toBe(
+				'ready_to_verify',
+			);
+
+			run.mockResolvedValueOnce(successfulB);
+			await runTool(ctx, triggerBInput);
+			expect(deriveWorkflowVerificationObligationFromOutcome('thread-1', getOutcome()).status).toBe(
+				'ready_to_verify',
+			);
+
+			run.mockResolvedValueOnce({ ...successfulA, executedNodeNames: ['Trigger A'] });
+			await runTool(ctx, triggerAInput);
+			const incompleteRetry = deriveWorkflowVerificationObligationFromOutcome(
+				'thread-1',
+				getOutcome(),
+			);
+			expect(incompleteRetry.status).toBe('not_verifiable');
+			expect(incompleteRetry.blockingReason).toContain('Step A');
+			expect(incompleteRetry.blockingReason).not.toContain('Step B');
+
+			run.mockResolvedValueOnce(successfulA);
+			await runTool(ctx, triggerAInput);
+			expect(deriveWorkflowVerificationObligationFromOutcome('thread-1', getOutcome()).status).toBe(
+				'verified',
+			);
+		},
+	);
+
+	it('combines successful trigger runs through different Switch outputs', async () => {
+		const { ctx, getOutcome } = makeSequenceContext(
+			makeTrackedOutcome({
+				nodeSimulationPlan: ['Switch', 'Step A', 'Step B'].map(executeVerdict),
+			}),
+			{
+				'Trigger A': { main: [[{ node: 'Switch', type: 'main', index: 0 }]] },
+				'Trigger B': { main: [[{ node: 'Switch', type: 'main', index: 0 }]] },
+				Switch: {
+					main: [
+						[{ node: 'Step A', type: 'main', index: 0 }],
+						[{ node: 'Step B', type: 'main', index: 0 }],
+					],
+				},
+			},
+		);
+		ctx.domainContext.executionService.run
+			.mockResolvedValueOnce({
+				executionId: 'exec-a',
+				status: 'success',
+				executedNodeNames: ['Trigger A', 'Switch', 'Step A'],
+			})
+			.mockResolvedValueOnce({
+				executionId: 'exec-b',
+				status: 'success',
+				executedNodeNames: ['Trigger B', 'Switch', 'Step B'],
+			});
+
+		await runTool(ctx, triggerAInput);
+		expect(deriveWorkflowVerificationObligationFromOutcome('thread-1', getOutcome()).status).toBe(
+			'ready_to_verify',
+		);
+
+		await runTool(ctx, { ...triggerAInput, triggerNodeName: 'Trigger B' });
+		expect(deriveWorkflowVerificationObligationFromOutcome('thread-1', getOutcome()).status).toBe(
+			'verified',
+		);
+	});
+
+	it('records a fully covered pass without counting the other trigger branch as a gap', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeTrackedOutcome(),
+			{
+				executionId: 'exec-a',
+				status: 'success',
+				executedNodeNames: ['Trigger A', 'Step A'],
+			},
+			{ workflowConnections },
+		);
+
+		const result = await runTool(ctx, triggerAInput);
+
+		expect(result.nodesNotReached).toBeUndefined();
+		expect(updateBuildOutcome.mock.calls[0][1].verificationProgress).toEqual({
+			'Trigger A': ['Trigger A', 'Step A'],
+		});
+		expect(updateBuildOutcome.mock.calls[0][1].verification?.evidence?.triggerNodeName).toBe(
+			'Trigger A',
+		);
+	});
+
+	it('keeps evidence unscoped when the workflow graph cannot be loaded', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeTrackedOutcome({ nodeSimulationPlan: [executeVerdict('Step A')] }),
+			{
+				executionId: 'exec-a',
+				status: 'success',
+				executedNodeNames: ['Trigger A', 'Step A'],
+			},
+			{ workflowConnections },
+		);
+		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockRejectedValueOnce(
+			new Error('workflow unavailable'),
+		);
+
+		const result = await runTool(ctx, triggerAInput);
+
+		expect(result.nodesNotReached).toBeUndefined();
+		expect(updateBuildOutcome.mock.calls[0][1].verificationProgress).toBeUndefined();
+		expect(updateBuildOutcome.mock.calls[0][1].verification?.evidence).not.toHaveProperty(
+			'triggerNodeName',
+		);
+	});
+
+	it('merges a later trigger pass with prior successful coverage', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeTrackedOutcome({
+				verificationProgress: {
+					'Trigger A': ['Trigger A', 'Step A'],
+				},
+			}),
+			{
+				executionId: 'exec-b',
+				status: 'success',
+				executedNodeNames: ['Trigger B', 'Step B'],
+			},
+			{ workflowConnections },
+		);
+
+		await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			triggerNodeName: 'Trigger B',
+		});
+
+		expect(updateBuildOutcome.mock.calls[0][1].verificationProgress).toEqual({
+			'Trigger A': ['Trigger A', 'Step A'],
+			'Trigger B': ['Trigger B', 'Step B'],
+		});
+	});
+
+	const withoutTrigger = { workItemId: 'wi-1', workflowId: 'wf-1' };
+	const completeRun: ExecutionRunResult = {
+		executionId: 'exec-a',
+		status: 'success',
+		executedNodeNames: ['Trigger A', 'Step A'],
+	};
+	const invalidPasses: Array<[string, ExecutionRunResult, TriggerInput]> = [
+		[
+			'a failed execution',
+			{ ...completeRun, status: 'error', error: 'Step A failed' },
+			triggerAInput,
+		],
+		['a missing execution ID', { ...completeRun, executionId: undefined }, triggerAInput],
+		[
+			'a trigger that was not reached',
+			{ ...completeRun, executedNodeNames: ['Step A'] },
+			triggerAInput,
+		],
+		['a pass without a named trigger', completeRun, withoutTrigger],
+		[
+			'a trigger outside the build outcome',
+			{ ...completeRun, executedNodeNames: ['Unknown Trigger'] },
+			{ ...withoutTrigger, triggerNodeName: 'Unknown Trigger' },
+		],
+	];
+	it.each(invalidPasses)(
+		'does not record %s as a successful trigger pass',
+		async (_name, runResult, input) => {
+			const { ctx, updateBuildOutcome } = makeContext(
+				makeTrackedOutcome({ nodeSimulationPlan: [executeVerdict('Step A')] }),
+				runResult,
+				{ workflowConnections },
+			);
+
+			await runTool(ctx, input);
+
+			expect(Object.keys(updateBuildOutcome.mock.calls[0][1].verificationProgress ?? {})).toEqual(
+				[],
+			);
+		},
+	);
+
 	it('starts verification from the named trigger', async () => {
 		const { ctx } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-monthly',

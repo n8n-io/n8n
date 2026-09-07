@@ -11,7 +11,10 @@ import type {
 } from './types';
 import type { OrchestrationContext } from '../../../types';
 import { createRemediation } from '../../../workflow-loop/remediation';
-import type { RemediationMetadata } from '../../../workflow-loop/workflow-loop-state';
+import type {
+	RemediationMetadata,
+	WorkflowBuildOutcome,
+} from '../../../workflow-loop/workflow-loop-state';
 
 /**
  * Handle the no-simulation-plan case: refuse to run because destructive nodes
@@ -88,15 +91,50 @@ export async function persistVerificationOutcome(args: {
 	workflowId: string;
 	result: ExecutionRunResult;
 	analysis: VerificationAnalysis;
+	buildOutcome: WorkflowBuildOutcome;
+	scopedTriggerNodeName?: string;
 	/** Running count of verify runs for this build, used to enforce MAX_VERIFY_ATTEMPTS. */
 	verifyAttempts: number;
 }): Promise<void> {
-	const { input, context, workflowTaskService, workflowId, result, analysis, verifyAttempts } =
-		args;
+	const {
+		input,
+		context,
+		workflowTaskService,
+		workflowId,
+		result,
+		analysis,
+		buildOutcome,
+		scopedTriggerNodeName,
+		verifyAttempts,
+	} = args;
 	try {
 		const executedForEvidence = namesOrDataKeys(analysis.reachedNames, result.data);
+		const priorProgress = buildOutcome.verificationProgress;
+		let verificationProgress: WorkflowBuildOutcome['verificationProgress'];
+		if (priorProgress && scopedTriggerNodeName) {
+			const triggerPassed =
+				analysis.success &&
+				!!result.executionId &&
+				analysis.reachedNames.has(scopedTriggerNodeName);
+			if (triggerPassed) {
+				const priorNodes = Object.hasOwn(priorProgress, scopedTriggerNodeName)
+					? priorProgress[scopedTriggerNodeName]
+					: [];
+				verificationProgress = {
+					...priorProgress,
+					[scopedTriggerNodeName]: [...new Set([...priorNodes, ...analysis.reachedNames])],
+				};
+			} else {
+				verificationProgress = { ...priorProgress };
+				delete verificationProgress[scopedTriggerNodeName];
+			}
+		} else if (priorProgress && !analysis.success) {
+			// An unscoped failure cannot identify which trigger's evidence is stale.
+			verificationProgress = {};
+		}
 		await workflowTaskService.updateBuildOutcome(input.workItemId, {
 			verifyAttempts,
+			...(verificationProgress ? { verificationProgress } : {}),
 			verification: {
 				attempted: true,
 				success: analysis.success,
@@ -104,6 +142,7 @@ export async function persistVerificationOutcome(args: {
 				status: result.status,
 				failureSignature: analysis.success ? undefined : analysis.errorMessage,
 				evidence: {
+					...(scopedTriggerNodeName ? { triggerNodeName: scopedTriggerNodeName } : {}),
 					nodesExecuted:
 						executedForEvidence && executedForEvidence.length > 0 ? executedForEvidence : undefined,
 					nodesNotReached:
