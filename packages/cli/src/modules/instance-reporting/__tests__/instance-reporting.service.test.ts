@@ -392,6 +392,18 @@ describe('InstanceReportingService', () => {
 
 			expect(reportRepository.markSkipped).toHaveBeenCalledTimes(1);
 		});
+
+		test('skips an exhausted row without attempting again', async () => {
+			const { service, reportRepository, http } = makeHarness();
+			// A crash between the failure record and the skip leaves this row pending.
+			reportRepository.findTodaysPending.mockResolvedValue(makeReport({ attempts: 3 }));
+
+			await expect(service.sendReport()).resolves.toBeUndefined();
+
+			expect(http.request).not.toHaveBeenCalled();
+			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
+			expect(reportRepository.markSkipped).toHaveBeenCalledWith(BATCH_ID);
+		});
 	});
 
 	describe('msUntilRetryAllowed', () => {

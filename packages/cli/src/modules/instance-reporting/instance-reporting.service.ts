@@ -97,6 +97,14 @@ export class InstanceReportingService {
 		const now = new Date();
 		let report = await this.reportRepository.findTodaysPending(now);
 
+		// A crash between recording a failure and skipping the report leaves an
+		// exhausted row pending, so the budget is re-checked before sending rather
+		// than only after. Settling it here also ends the day for the scheduler.
+		if (report && report.attempts >= MAX_ATTEMPTS) {
+			await this.skip(report.id, report.attempts);
+			return;
+		}
+
 		if (!report) {
 			const days = await this.missedDays(now);
 			if (days.length === 0) return;
@@ -144,11 +152,7 @@ export class InstanceReportingService {
 
 			// `recordFailure` incremented the count, so the in-memory row is one behind.
 			if (report.attempts + 1 >= MAX_ATTEMPTS) {
-				await this.reportRepository.markSkipped(report.id);
-				this.logger.error('Giving up on the instance report after repeated delivery failures', {
-					batchId: report.id,
-					attempts: report.attempts + 1,
-				});
+				await this.skip(report.id, report.attempts + 1);
 			}
 
 			throw error;
@@ -156,6 +160,15 @@ export class InstanceReportingService {
 
 		await this.reportRepository.markDelivered(report.id, new Date());
 		this.logger.debug('Sent instance report', { batchId: report.id });
+	}
+
+	/** Stop trying to deliver this report; the next one covers its days again. */
+	private async skip(id: string, attempts: number): Promise<void> {
+		await this.reportRepository.markSkipped(id);
+		this.logger.error('Giving up on the instance report after repeated delivery failures', {
+			batchId: id,
+			attempts,
+		});
 	}
 
 	/**
