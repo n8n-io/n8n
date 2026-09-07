@@ -276,6 +276,26 @@ describe('FrontendService', () => {
 			);
 		});
 
+		it('should report the group node feature as off when the instance disables it', async () => {
+			globalConfig.workflows.groupNodeEnabled = false;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.groupNode).toEqual({ enabled: false });
+		});
+
+		it('should report the group node feature as on when the instance enables it', async () => {
+			// The editor reads this to gate the group-node model; without it the
+			// feature can never turn on, whatever the rollout flag says.
+			globalConfig.workflows.groupNodeEnabled = true;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.groupNode).toEqual({ enabled: true });
+		});
+
 		it('should expose excluded node types from NODES_EXCLUDE', async () => {
 			globalConfig.nodes.exclude = ['n8n-nodes-base.executeWorkflow'];
 			const { service } = createMockService();
