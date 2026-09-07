@@ -352,6 +352,12 @@ export const optionsProperty: INodeProperties = {
 			name: 'onlyRunIf',
 			type: 'string',
 			default: '',
+			// Deprecated in favor of the expressionless `triggerConditions` (Webhook >= 2.2)
+			displayOptions: {
+				hide: {
+					'@version': [{ _cnd: { gte: 2.2 } }],
+				},
+			},
 			placeholder: "{{ $json.body.campaign_id === 'user-research-invite' }}",
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 			description:
