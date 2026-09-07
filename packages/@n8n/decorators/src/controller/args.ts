@@ -21,9 +21,12 @@ export const Body = ArgDecorator({ type: 'body' });
 export const Query = ArgDecorator({ type: 'query' });
 
 /**
- * Injects a request parameter into the handler. An optional Zod schema validates the value before
- * the handler runs and reaches the generated OpenAPI spec, the channel `@Query` and `@Body` get
- * from their DTO.
+ * Injects a request parameter into the handler.
+ *
+ * `schema` applies to public API routes only: `PublicApiControllerRegistry` parses the segment
+ * against it and returns a 400 on failure, and the generator publishes it in the OpenAPI spec.
+ * This is the channel `@Query` and `@Body` get from their DTO. `ControllerRegistry` ignores it
+ * and injects the raw segment, so a schema on an internal route validates nothing.
  */
 export const Param = (key: string, schema?: ZodTypeAny) =>
 	ArgDecorator({ type: 'param', key, ...(schema && { schema }) });
