@@ -8,7 +8,6 @@ import {
 	type User,
 	PROJECT_ADMIN_ROLE,
 	GLOBAL_ADMIN_ROLE,
-	PROJECT_CHAT_USER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
@@ -124,7 +123,7 @@ describe('dataTableAggregate', () => {
 				name: 'dataTable1',
 				columns: [],
 			});
-			projectRelationRepository.find.mockResolvedValueOnce([]);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValueOnce([]);
 
 			// ACT
 			const result = await dataTableAggregateService.getManyAndCount(currentUser, {
@@ -252,18 +251,9 @@ describe('dataTableAggregate', () => {
 				columns: [],
 			});
 
-			projectRelationRepository.find.mockResolvedValueOnce([
-				{
-					userId: currentUser.id,
-					projectId: project1.id,
-					role: PROJECT_CHAT_USER_ROLE,
-					user: currentUser,
-					project: project1,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-					setUpdateDate: vi.fn(),
-				},
-			]);
+			// project:chatUser doesn't grant dataTable:listProject, so the repository
+			// wouldn't return this project as accessible for that scope.
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValueOnce([]);
 
 			const result = await dataTableAggregateService.getManyAndCount(currentUser, {
 				filter: { projectId: project1.id },
