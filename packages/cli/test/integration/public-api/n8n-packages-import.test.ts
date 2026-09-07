@@ -242,6 +242,7 @@ describe('POST /n8n-packages/import', () => {
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					isArchived: false,
 					publishing: { state: 'unchanged' },
 					status: 'created',
 				},

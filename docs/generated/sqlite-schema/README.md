@@ -88,6 +88,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
 | [instance_credential_assignment](instance_credential_assignment.md) | 4 |  | table |
+| [instance_monitoring_report](instance_monitoring_report.md) | 9 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
@@ -99,6 +100,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [poller_state](poller_state.md) | 7 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
 | [project](project.md) | 9 |  | table |
+| [project_pool_settings](project_pool_settings.md) | 4 |  | table |
 | [project_relation](project_relation.md) | 5 |  | table |
 | [project_secrets_provider_access](project_secrets_provider_access.md) | 5 |  | table |
 | [role](role.md) | 7 |  | table |
@@ -279,6 +281,7 @@ erDiagram
 "poller_state" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "processed_data" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project" }o--o| "user" : "FOREIGN KEY (creatorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"project_pool_settings" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_relation" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "project_relation" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_relation" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1170,6 +1173,17 @@ erDiagram
   varchar_128_ credentialUseId PK
   datetime_3_ updatedAt
 }
+"instance_monitoring_report" {
+  INTEGER attempts
+  datetime_3_ createdAt
+  TEXT dataPoints
+  datetime_3_ deliveredAt
+  varchar id PK
+  datetime_3_ lastAttemptAt
+  TEXT lastError
+  varchar_64_ status
+  datetime_3_ updatedAt
+}
 "instance_version_history" {
   datetime_3_ createdAt
   INTEGER id
@@ -1264,6 +1278,12 @@ erDiagram
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
+  datetime_3_ updatedAt
+}
+"project_pool_settings" {
+  datetime_3_ createdAt
+  varchar_63_ defaultPool
+  varchar_36_ projectId PK
   datetime_3_ updatedAt
 }
 "project_relation" {

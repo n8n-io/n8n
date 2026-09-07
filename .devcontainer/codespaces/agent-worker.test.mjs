@@ -5,7 +5,13 @@ import { PassThrough } from 'node:stream';
 import { test } from 'node:test';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-import { openCodeEnvironment, runOpenCode, startSlackProgress } from './agent-worker.mjs';
+import {
+	openCodeConfig,
+	openCodeEnvironment,
+	pollOnce,
+	runOpenCode,
+	startSlackProgress,
+} from './agent-worker.mjs';
 
 const turn = {
 	turnId: 'turn-1',
@@ -59,6 +65,67 @@ function completedChild(lines) {
 	});
 	return child;
 }
+
+test('backs off idle polls and resets when work arrives', async () => {
+	let interval = 3000;
+	const waits = [];
+	const turns = [null, null, null, null, null, { turnId: '1' }, { turnId: '2' }];
+	const handled = [];
+	for (let attempt = 0; attempt < 5; attempt++) {
+		interval = await pollOnce(interval, {
+			dequeueTurn: async () => turns.shift(),
+			handleTurn: async (turn) => handled.push(turn.turnId),
+			wait: async (delay) => waits.push(delay),
+		});
+	}
+	assert.deepEqual(waits, [3000, 6000, 12_000, 24_000, 30_000]);
+	assert.equal(interval, 30_000);
+
+	interval = await pollOnce(interval, {
+		dequeueTurn: async () => turns.shift(),
+		handleTurn: async (turn) => handled.push(turn.turnId),
+		wait: async (delay) => waits.push(delay),
+	});
+	interval = await pollOnce(interval, {
+		dequeueTurn: async () => turns.shift(),
+		handleTurn: async (turn) => handled.push(turn.turnId),
+		wait: async (delay) => waits.push(delay),
+	});
+	assert.equal(interval, 3000);
+	assert.deepEqual(handled, ['1', '2']);
+	assert.equal(waits.length, 5);
+});
+
+test('backs off after a dequeue error', async () => {
+	const waits = [];
+	const errors = [];
+	const interval = await pollOnce(3000, {
+		dequeueTurn: async () => {
+			throw new Error('unavailable');
+		},
+		wait: async (delay) => waits.push(delay),
+		logError: (error) => errors.push(error),
+	});
+	assert.equal(interval, 6000);
+	assert.deepEqual(waits, [3000]);
+	assert.deepEqual(errors, ['poll error: unavailable']);
+});
+
+test('resets the interval before handling work', async () => {
+	const waits = [];
+	const errors = [];
+	const interval = await pollOnce(30_000, {
+		dequeueTurn: async () => ({ turnId: '1' }),
+		handleTurn: async () => {
+			throw new Error('failed');
+		},
+		wait: async (delay) => waits.push(delay),
+		logError: (error) => errors.push(error),
+	});
+	assert.equal(interval, 6000);
+	assert.deepEqual(waits, [3000]);
+	assert.deepEqual(errors, ['poll error: failed']);
+});
 
 test('streams tool progress but excludes reasoning', async () => {
 	const slack = slackRecorder();
@@ -279,4 +346,33 @@ test('keeps broker credentials out of the OpenCode process', () => {
 		OPENROUTER_API_KEY: 'openrouter',
 		GITHUB_TOKEN: 'github',
 	});
+});
+
+test('configures Flaky MCP without serializing its token', () => {
+	const token = 'flaky-secret';
+	const environment = openCodeEnvironment({
+		FLAKY_MCP_URL: 'https://example.com/mcp',
+		FLAKY_MCP_TOKEN: token,
+		OPENROUTER_API_KEY: 'openrouter',
+	});
+
+	assert.deepEqual(JSON.parse(environment.OPENCODE_CONFIG_CONTENT), {
+		provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
+		mcp: {
+			flaky: {
+				type: 'remote',
+				url: 'https://example.com/mcp',
+				enabled: true,
+				oauth: false,
+				headers: { Authorization: 'Bearer {env:FLAKY_MCP_TOKEN}' },
+			},
+		},
+	});
+	assert.equal(environment.FLAKY_MCP_TOKEN, token);
+	assert.equal(environment.OPENCODE_CONFIG_CONTENT.includes(token), false);
+});
+
+test('omits Flaky MCP when either setting is missing', () => {
+	assert.equal(openCodeConfig({ FLAKY_MCP_URL: 'https://example.com/mcp' }).mcp, undefined);
+	assert.equal(openCodeConfig({ FLAKY_MCP_TOKEN: 'flaky-secret' }).mcp, undefined);
 });

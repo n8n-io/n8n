@@ -88,6 +88,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_workflow_snapshots](public.instance_ai_workflow_snapshots.md) | 7 |  | BASE TABLE |
 | [public.instance_credential_assignment](public.instance_credential_assignment.md) | 4 |  | BASE TABLE |
+| [public.instance_monitoring_report](public.instance_monitoring_report.md) | 9 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
@@ -99,6 +100,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.poller_state](public.poller_state.md) | 7 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
 | [public.project](public.project.md) | 9 |  | BASE TABLE |
+| [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
 | [public.role](public.role.md) | 7 |  | BASE TABLE |
@@ -296,6 +298,7 @@ erDiagram
 "public.poller_state" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.processed_data" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.project" }o--o| "public.user" : "FOREIGN KEY (#quot;creatorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.project_pool_settings" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug)"
@@ -1183,6 +1186,17 @@ erDiagram
   varchar_128_ credentialUseId
   timestamp_3__with_time_zone updatedAt
 }
+"public.instance_monitoring_report" {
+  integer attempts
+  timestamp_3__with_time_zone createdAt
+  json dataPoints
+  timestamp_3__with_time_zone deliveredAt
+  uuid id
+  timestamp_3__with_time_zone lastAttemptAt
+  text lastError
+  varchar_64_ status
+  timestamp_3__with_time_zone updatedAt
+}
 "public.instance_version_history" {
   timestamp_3__with_time_zone createdAt
   integer id
@@ -1277,6 +1291,12 @@ erDiagram
   varchar_36_ id
   varchar_255_ name
   varchar_36_ type
+  timestamp_3__with_time_zone updatedAt
+}
+"public.project_pool_settings" {
+  timestamp_3__with_time_zone createdAt
+  varchar_63_ defaultPool
+  varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.project_relation" {

@@ -81,6 +81,7 @@ describe('FrontendService', () => {
 		},
 		aiAssistant: { baseUrl: '' },
 		aiGateway: { enabled: false },
+		queue: { workerPool: { enabled: false } },
 	});
 
 	const instanceSettings = mock<InstanceSettings>({
@@ -168,6 +169,7 @@ describe('FrontendService', () => {
 		isOidcLicensed: vi.fn().mockReturnValue(false),
 		isMFAEnforcementLicensed: vi.fn().mockReturnValue(false),
 		isOtelCustomSpanAttributesLicensed: vi.fn().mockReturnValue(false),
+		isWorkerPoolsLicensed: vi.fn().mockReturnValue(false),
 		getMaxWorkflowsWithEvaluations: vi.fn().mockReturnValue(0),
 	});
 
@@ -528,6 +530,36 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.enterprise.otelCustomSpanAttributes).toBe(true);
+		});
+
+		it('should enable worker pools when both the config flag and the license are on', async () => {
+			globalConfig.queue = { workerPool: { enabled: true } } as GlobalConfig['queue'];
+			licenseState.isWorkerPoolsLicensed.mockReturnValue(true);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.workerPools.enabled).toBe(true);
+		});
+
+		it('should keep worker pools disabled when the config flag is on but the feature is not licensed', async () => {
+			globalConfig.queue = { workerPool: { enabled: true } } as GlobalConfig['queue'];
+			licenseState.isWorkerPoolsLicensed.mockReturnValue(false);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.workerPools.enabled).toBe(false);
+		});
+
+		it('should keep worker pools disabled when licensed but the config flag is off', async () => {
+			globalConfig.queue = { workerPool: { enabled: false } } as GlobalConfig['queue'];
+			licenseState.isWorkerPoolsLicensed.mockReturnValue(true);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.workerPools.enabled).toBe(false);
 		});
 
 		it('should surface useWorkflowPublicationService from workflows config', async () => {

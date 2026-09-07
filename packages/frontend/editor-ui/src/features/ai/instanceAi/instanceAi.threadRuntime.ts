@@ -23,6 +23,7 @@ import {
 	type InstanceAiSetupItem,
 	type TaskList,
 	type AgentRunState,
+	type InstanceAiRunLimitReason,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { redactTelemetryProperties } from '@n8n/telemetry';
@@ -1235,6 +1236,19 @@ export function createThreadRuntime(
 				toast.showError(
 					new Error('Agent is still working on your previous message'),
 					'Cannot send message',
+				);
+			} else if (status === 429) {
+				// A concurrency cap refused the run. The two reasons need opposite advice, so
+				// key the copy off `meta.reason` rather than the status alone: an instance
+				// limit is transient and worth retrying, a per-user limit is not.
+				const reason =
+					error instanceof ResponseError
+						? (error.meta?.reason as InstanceAiRunLimitReason | undefined)
+						: undefined;
+				const scope = reason === 'user_run_limit' ? 'userLimit' : 'instanceLimit';
+				toast.showError(
+					new Error(i18n.baseText(`instanceAi.send.${scope}.message`)),
+					i18n.baseText(`instanceAi.send.${scope}.title`),
 				);
 			} else if (status === 400) {
 				const serverMessage = error instanceof ResponseError && error.message ? error.message : '';

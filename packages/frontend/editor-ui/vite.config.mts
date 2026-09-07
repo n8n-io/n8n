@@ -207,6 +207,7 @@ export default defineConfig({
 		// Deleted maps then cause no 404 in devtools.
 		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : release ? 'hidden' : false,
 		target,
+		cssTarget: target,
 	},
 	optimizeDeps: {
 		exclude: ['wa-sqlite'],

@@ -215,8 +215,12 @@ export {
 	agentBuilderTargetMetadata,
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
+	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
+	threadAuthorizesAgentAdoption,
+	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
+export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
@@ -516,6 +520,7 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 	() => loadRunStateRegistry().RunStateRegistry,
 );
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
+export { createSetupItemsEmitter } from './tools/workflows/setup-items';
 export type { RunDebugRecord } from './debug/run-debug-buffer';
 export {
 	RunDebugBuffer,
@@ -633,6 +638,7 @@ export type {
 	DataTableFilterInput,
 	InstanceAiEvaluationConfigService,
 	InstanceAiMcpService,
+	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
@@ -706,7 +712,19 @@ export type {
 	BuilderTurnStream,
 	BuilderOpenSuspension,
 	SessionWorkflowRef,
+	InstanceAiConversationHistoryReader,
+	ConversationHistoryMatchSource,
+	ConversationHistoryExcerpt,
+	ConversationHistorySearchHit,
+	ConversationHistorySearchResult,
+	ConversationHistoryMessage,
+	ConversationHistoryMessagesResult,
 } from './types';
+export {
+	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,
+	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
+} from './types';
+export { ASK_USER_TOOL_ID } from './tools/tool-ids';
 export type {
 	OrchestratorRunHandoffReason,
 	OrchestratorRunHandoffState,

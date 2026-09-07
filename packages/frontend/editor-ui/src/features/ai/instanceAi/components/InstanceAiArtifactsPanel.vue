@@ -141,8 +141,11 @@ function openArtifactLabel(name: string) {
 	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
 }
 
-function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry {
+function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry | undefined {
 	const key = handoffContextKey(context);
+
+	// A control signal, not user-added context — no sidebar entry.
+	if (context.source === 'setup-panel-execute') return undefined;
 
 	if (context.source === 'agent-preview') {
 		return {
@@ -173,10 +176,10 @@ const contextEntries = computed<ContextEntry[]>(() => {
 	// Pending handoff (preview "Send to Assistant") lives on the composer until
 	// the first send — include it so the sidebar matches the input chip.
 	const pending = pendingComposerContext?.value;
-	if (pending) {
-		const key = handoffContextKey(pending);
-		seen.add(key);
-		entries.push(contextEntryFor(pending));
+	const pendingEntry = pending ? contextEntryFor(pending) : undefined;
+	if (pendingEntry) {
+		seen.add(pendingEntry.key);
+		entries.push(pendingEntry);
 	}
 
 	for (const message of [...thread.messages].reverse()) {
@@ -184,8 +187,10 @@ const contextEntries = computed<ContextEntry[]>(() => {
 
 		const key = handoffContextKey(message.context);
 		if (seen.has(key) || dismissedKeys.has(key)) continue;
+		const entry = contextEntryFor(message.context);
+		if (!entry) continue;
 		seen.add(key);
-		entries.push(contextEntryFor(message.context));
+		entries.push(entry);
 	}
 
 	return entries;
