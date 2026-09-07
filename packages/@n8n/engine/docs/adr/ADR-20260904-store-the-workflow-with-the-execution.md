@@ -1,28 +1,35 @@
 # Store the workflow revision that ran with the execution
 
 Date: 2026-09-04
+
 Status: Active
+
 Decision Owner: Catalysts
 
 ## Context
 
-Before a workflow is sent for execution to engine v2, it is transformed to a minimal "run graph": disabled and unreachable nodes are removed, presentational items (e.g. notes, positions) are removed & format is transformed from engine v1 to engine v2. In contrast, UI needs "display projection" of a workflow (`id`, `name`, `nodes`, `connections`, `settings` and `nodeGroups`) to render it and attach the run data to the nodes.
+In engine v1, we store the full workflow definition that is executed in the `execution_entity` table. That definition includes everything that is needed to render the workflow in the UI.
 
-Engine v2 keeps no execution row on the control plane (CP), and data plane (DP) keeps only the "run graph" instead of full workflow definition. Currently there is no way to get the "display projection" of a "run graph".
+In engine v2, executions are stored in the data plane (DP). The control plane (CP) owns the workflow definitions. Only the minimal executable graph ("run graph") is sent from CP to DP, which means disabled nodes, node positions, etc. are removed. This means a workflow can't be fully rendered in the UI just from the "run graph".
+
+We have to decide between 1) keeping a single copy of the data in the CP or 2) duplicate it into the data plane.
 
 
 ## Decision
 
-CP sends the display projection with the start request, together with the graph. DP stores it with the execution, immutable, and reports it on the execution read.
+We keep an immutable, opaque snapshot of the workflow in the data plane, along the execution itself. The snapshot is sent as part of the start execution request.
 
-The display projection is opaque to DP. The engine stores it and reports it. It never reads a field out of it. This is the same treatment a step's config gets.
+By making it an immutable, opaque snapshot we don't take "ownership" of the underlying data. And by keeping it alongside the execution, we reduce the amount of complicated cross-plane access.
 
-Display projections are not deduplicated. That is a future optimization if needed.
+This moves in the direction of a generic "opaque metadata attached by the caller, to be used later by the caller".
+
+We believe we can mitigate possible performance concerns through content addressing.
+
 
 ## Alternatives Considered
 
-- **Rebuild the workflow from the graph.**
-  The graph is lossy. It drops certain fields mentioned in the Context, so it would not be possible to render it properly.
+- **Rebuild the workflow from the run graph.**
+  The graph is lossy and can't represent the original workflow.
 - **Send a workflow version ID to the DP.**
   Each workflow's edit history is already stored in the `workflow_history` table with a unique ID. However:
   - History table is missing workflow's `settings`

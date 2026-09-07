@@ -27,11 +27,6 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		await this.repo.insert(execution as InsertValues);
 	}
 
-	/**
-	 * Names its columns rather than returning the entity: this runs once per
-	 * orchestration event, and the row also carries the workflow document, which
-	 * the execution path never reads.
-	 */
 	async loadExecution(id: string): Promise<ExecutionRecord> {
 		const row: ExecutionRecord | undefined = await this.repo
 			.createQueryBuilder('execution')
