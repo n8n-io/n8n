@@ -401,6 +401,34 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
+	describe('openAppPreview', () => {
+		test('exposes the active app namespace and version and clears other state', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			const entry: ResourceEntry = {
+				type: 'app',
+				id: 'app-1',
+				name: 'Greeter',
+				projectId: 'project-1',
+				namespace: 'greeter',
+				versionId: 'v-1',
+			};
+			ctx.thread.producedArtifacts = new Map([...ctx.thread.producedArtifacts, ['app-1', entry]]);
+			ctx.openWorkflowPreview('wf-1');
+
+			expect(ctx.openAppPreview('app-1', 'project-1')).toBe(true);
+
+			expect(ctx.activeAppId.value).toBe('app-1');
+			expect(ctx.activeAppProjectId.value).toBe('project-1');
+			expect(ctx.activeAppNamespace.value).toBe('greeter');
+			expect(ctx.activeAppVersionId.value).toBe('v-1');
+			expect(ctx.activeAppBuilding.value).toBe(false);
+			expect(ctx.activeWorkflowId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(ctx.openAppPreview('app-1', 'project-1')).toBe(false);
+		});
+	});
+
 	describe('thread switch (route.params.threadId change)', () => {
 		test('keeps the active preview on thread switch', async () => {
 			const ctx = setup();

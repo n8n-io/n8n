@@ -312,6 +312,23 @@ export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string):
 	return false;
 }
 
+/**
+ * Whether an `apps build` call for `appId` is in flight somewhere in this agent
+ * tree. Apps have no builder sub-agent, so the in-flight tool call is the only
+ * signal; `create` is excluded because the app id does not exist until it returns.
+ */
+export function isAgentBuildingApp(node: InstanceAiAgentNode, appId: string): boolean {
+	for (const tc of node.toolCalls) {
+		if (!tc.isLoading || tc.toolName !== 'apps') continue;
+		const args = tc.args as { action?: string; appId?: string } | undefined;
+		if (args?.action === 'build' && args.appId === appId) return true;
+	}
+	for (const child of node.children) {
+		if (isAgentBuildingApp(child, appId)) return true;
+	}
+	return false;
+}
+
 const DATA_TABLE_PREVIEW_ACTIONS = new Set([
 	'schema',
 	'query',

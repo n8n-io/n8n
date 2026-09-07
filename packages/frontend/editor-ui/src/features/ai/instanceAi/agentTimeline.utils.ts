@@ -289,7 +289,7 @@ export function isStreamingTimelineEntry(
 }
 
 export interface ArtifactInfo {
-	type: 'workflow' | 'data-table' | 'agent';
+	type: 'workflow' | 'data-table' | 'agent' | 'app';
 	resourceId: string;
 	name: string;
 	projectId?: string;
@@ -297,7 +297,7 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
-/** Extract all artifacts (workflows, data tables, and agents) from a node's tool calls. */
+/** Extract all artifacts (workflows, data tables, agents, and apps) from a node's tool calls. */
 export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	if (node.status !== 'completed') return [];
 
@@ -344,6 +344,29 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 				name,
 				completedAt: tc.completedAt,
 			});
+			continue;
+		}
+
+		// App artifacts: apps create → { app: { id, name, projectId } }, apps build → { appId, name, projectId }
+		if (tc.toolName === 'apps') {
+			const created = result.app && typeof result.app === 'object' ? result.app : undefined;
+			const source = (created ?? result) as Record<string, unknown>;
+			const appId =
+				typeof source.appId === 'string'
+					? source.appId
+					: typeof source.id === 'string'
+						? source.id
+						: undefined;
+			if (appId && !seenIds.has(appId)) {
+				seenIds.add(appId);
+				artifacts.push({
+					type: 'app',
+					resourceId: appId,
+					name: typeof source.name === 'string' ? source.name : 'Untitled',
+					projectId: typeof source.projectId === 'string' ? source.projectId : undefined,
+					completedAt: tc.completedAt,
+				});
+			}
 			continue;
 		}
 

@@ -6,12 +6,18 @@ import type {
 } from '@n8n/api-types';
 
 export type ResourceEntry = {
-	type: 'workflow' | 'credential' | 'data-table' | 'agent';
+	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'app';
 	id: string;
 	name: string;
 	createdAt?: string;
 	updatedAt?: string;
 	projectId?: string;
+	/** App artifacts: URL slug the app is served under (`/apps/<namespace>/`). */
+	namespace?: string;
+	/** App artifacts: id of the latest built version; absent until the first `apps build`. */
+	versionId?: string;
+	/** App artifacts: absolute URL of the latest build. */
+	url?: string;
 	/**
 	 * Set to true when the run-finish reap archived this workflow — a
 	 * stepping-stone the agent created but never promoted to the main
@@ -85,6 +91,9 @@ function recordProduced(
 				createdAt: entry.createdAt ?? existing.createdAt,
 				updatedAt: entry.updatedAt ?? existing.updatedAt,
 				projectId: entry.projectId ?? existing.projectId,
+				namespace: entry.namespace ?? existing.namespace,
+				versionId: entry.versionId ?? existing.versionId,
+				url: entry.url ?? existing.url,
 			}
 		: entry;
 	col.produced.set(entry.id, merged);
@@ -128,6 +137,7 @@ const ARTIFACT_TOOLS = new Set([
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
+	'apps',
 ]);
 const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
 function entryFromAgentBuilderTarget(
@@ -227,6 +237,39 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			id: result.agentId,
 			name: optionalString(result.agentName) ?? existing?.name ?? 'Untitled',
 		});
+	}
+
+	// --- Apps ----------------------------------------------------------------
+	// apps action=create: { app: { id, name, namespace, projectId, createdAt } }.
+	// apps action=build: { appId, name, namespace, projectId, versionId, url }.
+	// `{ error }` / `{ denied }` results carry neither shape and register nothing.
+	if (tc.toolName === 'apps') {
+		if (result.app && typeof result.app === 'object') {
+			const obj = result.app as Record<string, unknown>;
+			if (typeof obj.id === 'string') {
+				const existing = col.produced.get(obj.id);
+				recordProduced(col, {
+					type: 'app',
+					id: obj.id,
+					name: optionalString(obj.name) ?? existing?.name ?? 'Untitled',
+					projectId: optionalString(obj.projectId),
+					namespace: optionalString(obj.namespace),
+					createdAt: optionalString(obj.createdAt),
+				});
+			}
+		}
+		if (typeof result.appId === 'string' && typeof result.versionId === 'string') {
+			const existing = col.produced.get(result.appId);
+			recordProduced(col, {
+				type: 'app',
+				id: result.appId,
+				name: optionalString(result.name) ?? existing?.name ?? 'Untitled',
+				projectId: optionalString(result.projectId),
+				namespace: optionalString(result.namespace),
+				versionId: result.versionId,
+				url: optionalString(result.url),
+			});
+		}
 	}
 
 	// --- Credentials -----------------------------------------------------

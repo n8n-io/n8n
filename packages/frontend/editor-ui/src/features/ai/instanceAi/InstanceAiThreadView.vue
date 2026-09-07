@@ -101,6 +101,7 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -306,6 +307,7 @@ const activeAgentPreviewSessionId = computed(() => {
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openAppPreview', preview.openAppPreview);
 provide('pendingComposerContext', pendingComposerContext);
 provide('dismissPendingComposerContext', dismissPendingComposerContext);
 
@@ -1429,6 +1431,20 @@ async function dismissComposerContextChip() {
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
+							/>
+							<InstanceAiAppPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.activeAppId.value &&
+									preview.activeAppProjectId.value &&
+									preview.activeAppNamespace.value
+								"
+								:class="$style.previewSlot"
+								:app-id="preview.activeAppId.value"
+								:project-id="preview.activeAppProjectId.value"
+								:namespace="preview.activeAppNamespace.value"
+								:version-id="preview.activeAppVersionId.value ?? undefined"
+								:building="preview.activeAppBuilding.value"
 							/>
 						</div>
 					</TabsRoot>
