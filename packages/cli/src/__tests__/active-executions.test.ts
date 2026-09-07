@@ -584,6 +584,25 @@ describe('ActiveExecutions', () => {
 		});
 	});
 
+	describe('getPostExecutePromiseWithRunId', () => {
+		test('returns the promise and runId from the same entry atomically', async () => {
+			const executionId = await activeExecutions.add(executionData);
+			const runId = activeExecutions.getRunId(executionId);
+			const { promise, runId: capturedRunId } =
+				activeExecutions.getPostExecutePromiseWithRunId(executionId);
+
+			expect(capturedRunId).toBe(runId);
+			await expect(Promise.race([promise, Promise.resolve('pending')])).resolves.toBe('pending');
+
+			activeExecutions.finalizeExecution(executionId, fullRunData, runId);
+			await expect(promise).resolves.toEqual(fullRunData);
+		});
+
+		test('throws when the execution does not exist', () => {
+			expect(() => activeExecutions.getPostExecutePromiseWithRunId(FAKE_EXECUTION_ID)).toThrow();
+		});
+	});
+
 	describe('sendChunk', () => {
 		test('should send chunk to response', async () => {
 			executionData.httpResponse = mock<Response>();

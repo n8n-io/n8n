@@ -219,11 +219,8 @@ export class WaitTracker {
 		const { parentExecution } = fullExecutionData.data;
 		if (shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void this.resumeParentExecution(
-				parentExecution,
-				this.activeExecutions.getPostExecutePromise(executionId),
-				{ executionId, workflowId },
-			);
+			const { promise, runId } = this.activeExecutions.getPostExecutePromiseWithRunId(executionId);
+			void this.resumeParentExecution(parentExecution, promise, { executionId, workflowId }, runId);
 		}
 	}
 
@@ -257,12 +254,19 @@ export class WaitTracker {
 		parentExecution: RelatedExecution,
 		executePromise: Promise<IRun | undefined>,
 		childExecution?: RelatedExecution,
+		/**
+		 * Identity of the child run that owns `executePromise`, captured atomically
+		 * with the promise via `getPostExecutePromiseWithRunId`. Required for the DB
+		 * fallback finalize so a later replacement's runId is not used by mistake.
+		 */
+		childRunId?: string,
 	): Promise<void> {
 		try {
 			const subworkflowResults = await this.awaitChildRunOrLoadFromDb(
 				childExecution?.executionId,
 				executePromise,
 				parentExecution.executionId,
+				childRunId,
 			);
 			if (!subworkflowResults) return;
 			if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
@@ -349,14 +353,16 @@ export class WaitTracker {
 	/**
 	 * Wait for the child's in-memory `postExecutePromise`, or load a terminal run
 	 * from the DB if that promise never settles (queue-mode completion loss).
-	 * On the DB fallback, identity-checks `finalizeExecution` so the child's
-	 * ActiveExecutions entry (and its capacity reservation) are released.
+	 * On the DB fallback, identity-checks `finalizeExecution` with `childRunId`
+	 * (captured with the promise) so the child's capacity is released without
+	 * resolving a replacement run that may already own this execution id.
 	 * Returns `undefined` when the deadline elapses with no terminal child.
 	 */
 	private async awaitChildRunOrLoadFromDb(
 		childExecutionId: string | undefined,
 		executePromise: Promise<IRun | undefined>,
 		parentExecutionId: string,
+		childRunId?: string,
 	): Promise<IRun | undefined> {
 		if (!childExecutionId) {
 			return await executePromise;
@@ -406,12 +412,10 @@ export class WaitTracker {
 				if (child && isTerminalExecutionStatus(child.status) && child.data) {
 					const run = executionResponseToRun(child);
 					// The in-memory promise never settled, so neither did the capacity-releasing
-					// `.finally` on the child's ActiveExecutions entry. Settle it with an
-					// identity-checked finalize so we release capacity and clear the map without
-					// touching a resumed entry that may already own this id.
-					if (this.activeExecutions.has(childExecutionId)) {
-						const runId = this.activeExecutions.getRunId(childExecutionId);
-						this.activeExecutions.finalizeExecution(childExecutionId, run, runId);
+					// `.finally` on that run. Finalize with the runId captured alongside the
+					// promise — a live `getRunId` could return a replacement's identity.
+					if (childRunId !== undefined) {
+						this.activeExecutions.finalizeExecution(childExecutionId, run, childRunId);
 					}
 					this.logger.warn(
 						'Child execution finished in DB but post-execute promise did not settle; resuming parent from DB',

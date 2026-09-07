@@ -234,9 +234,9 @@ describe('WaitTracker', () => {
 					.calledWith(parentExecution.id)
 					.mockResolvedValue(parentExecution);
 				const postExecutePromise = createDeferredPromise<IRun | undefined>();
-				activeExecutions.getPostExecutePromise
+				activeExecutions.getPostExecutePromiseWithRunId
 					.calledWith(execution.id)
-					.mockReturnValue(postExecutePromise.promise);
+					.mockReturnValue({ promise: postExecutePromise.promise, runId: 'child-run-id' });
 
 				return { parentExecution, subworkflowResults, postExecutePromise };
 			};
@@ -406,9 +406,9 @@ describe('WaitTracker', () => {
 				// Mock updateExistingExecution to always succeed
 				executionPersistence.updateExistingExecution.mockResolvedValue(true);
 				const subExecutionPromise = createDeferredPromise<IRun | undefined>();
-				activeExecutions.getPostExecutePromise
+				activeExecutions.getPostExecutePromiseWithRunId
 					.calledWith(execution.id)
-					.mockReturnValue(subExecutionPromise.promise);
+					.mockReturnValue({ promise: subExecutionPromise.promise, runId: 'child-run-id' });
 
 				// ACT 1
 				await waitTracker.startExecution(execution.id);
@@ -506,9 +506,9 @@ describe('WaitTracker', () => {
 				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
 
 				const postExecutePromise = createDeferredPromise<IRun | undefined>();
-				activeExecutions.getPostExecutePromise
+				activeExecutions.getPostExecutePromiseWithRunId
 					.calledWith(childExecution.id)
-					.mockReturnValue(postExecutePromise.promise);
+					.mockReturnValue({ promise: postExecutePromise.promise, runId: 'child-run-id' });
 
 				// ACT
 				await waitTracker.startExecution(childExecution.id);
@@ -632,9 +632,9 @@ describe('WaitTracker', () => {
 						new Error('connection terminated unexpectedly'),
 					);
 					const postExecutePromise = createDeferredPromise<IRun | undefined>();
-					activeExecutions.getPostExecutePromise
+					activeExecutions.getPostExecutePromiseWithRunId
 						.calledWith(execution.id)
-						.mockReturnValue(postExecutePromise.promise);
+						.mockReturnValue({ promise: postExecutePromise.promise, runId: 'child-run-id' });
 
 					await waitTracker.startExecution(execution.id);
 					postExecutePromise.resolve(subworkflowResults);
@@ -962,9 +962,9 @@ describe('WaitTracker', () => {
 							id === parentExecution.id ? parentExecution : execution,
 						);
 						const postExecutePromise = createDeferredPromise<IRun | undefined>();
-						activeExecutions.getPostExecutePromise
+						activeExecutions.getPostExecutePromiseWithRunId
 							.calledWith(execution.id)
-							.mockReturnValue(postExecutePromise.promise);
+							.mockReturnValue({ promise: postExecutePromise.promise, runId: 'child-run-id' });
 
 						await waitTracker.startExecution(execution.id);
 						postExecutePromise.resolve(subworkflowResults);
@@ -1062,12 +1062,16 @@ describe('WaitTracker', () => {
 					});
 
 					// Promise never resolves — simulates a lost Bull job.finished() signal.
+					// Capture run identity with the promise; a later getRunId could return a
+					// replacement's id, so finalize must use the captured one.
 					const postExecutePromise = createDeferredPromise<IRun | undefined>();
-					activeExecutions.getPostExecutePromise
-						.calledWith(execution.id)
-						.mockReturnValue(postExecutePromise.promise);
+					activeExecutions.getPostExecutePromiseWithRunId.calledWith(execution.id).mockReturnValue({
+						promise: postExecutePromise.promise,
+						runId: 'original-child-run-id',
+					});
+					// If read live, this would be the wrong (replacement) identity.
+					activeExecutions.getRunId.mockReturnValue('replacement-run-id');
 					activeExecutions.has.mockReturnValue(true);
-					activeExecutions.getRunId.mockReturnValue('child-run-id');
 
 					await waitTracker.startExecution(execution.id);
 					await vi.advanceTimersByTimeAsync(1000);
@@ -1079,8 +1083,9 @@ describe('WaitTracker', () => {
 							status: 'success',
 							data: childRunData,
 						}),
-						'child-run-id',
+						'original-child-run-id',
 					);
+					expect(activeExecutions.getRunId).not.toHaveBeenCalled();
 					expect(logger.warn).toHaveBeenCalledWith(
 						'Child execution finished in DB but post-execute promise did not settle; resuming parent from DB',
 						expect.objectContaining({

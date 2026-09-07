@@ -338,10 +338,27 @@ export class ActiveExecutions {
 	}
 
 	/**
+	 * Returns the post-execute promise for `executionId` together with the `runId`
+	 * of the run that owns it, read from the same entry. Callers that later need to
+	 * identity-check `finalizeExecution` (e.g. after a DB fallback) must use this
+	 * `runId` — a later `getRunId` can return a replacement's identity.
+	 */
+	getPostExecutePromiseWithRunId(executionId: string): {
+		promise: Promise<IRun | undefined>;
+		runId: string;
+	} {
+		const execution = this.getExecutionOrFail(executionId);
+		return {
+			promise: execution.postExecutePromise.promise,
+			runId: execution.runId,
+		};
+	}
+
+	/**
 	 * Returns a promise which will resolve with the data of the execution with the given id
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
-		return await this.getExecutionOrFail(executionId).postExecutePromise.promise;
+		return await this.getPostExecutePromiseWithRunId(executionId).promise;
 	}
 
 	/**
