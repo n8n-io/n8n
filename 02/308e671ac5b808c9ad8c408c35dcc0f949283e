@@ -1,0 +1,93 @@
+packages/cli/src/events/maps/relay.event-map.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 27-31,1293-1338
+  s_a37fc6c52c4513::t_7c52667f46df60 1339-1340
+packages/cli/src/eventbus/event-message-classes/event-message-audit.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 23,38-43
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policy.service.test.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1-439
+packages/nodes-base/utils/microsoft/odata.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1-2
+packages/cli/src/modules/type-availability-policies/policy-evaluator.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 26-28,30
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/get.test.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 31
+packages/cli/src/modules/type-availability-policies/type-availability-policies.module.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 6-9
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/get.operation.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1,6,8,35,37-39,41
+packages/cli/src/__tests__/chat-shell.template.test.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 144,162-163,502-511,523-524,529,547,579-586,663-673
+  s_a37fc6c52c4513::t_88607e14cc5ee3 674
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/helpers.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1-25
+packages/cli/test/integration/shared/types.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 60-61,78-79
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 164-168
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policies.module.test.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1,14,17-26
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/create.workflow.json
+  s_a37fc6c52c4513::t_b1a62e54c87325 17-18,28,75,77,109-110
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policy-instance.controller.test.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1-41
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/byId.validation.test.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1-79
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/create.test.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 8,21,42,44,49
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/get.validation.test.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 3,5,22,28,35,56-57,59,78-79,132-135
+.github/workflows/ci-pull-requests.yml
+  s_a37fc6c52c4513::t_b1a62e54c87325 30,168-184,355
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 417-422
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 4,10-13,36-63,120-125,828-895
+  s_a37fc6c52c4513::t_8ee188fd9e8198 896-898
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy.repository.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 40-44
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/index.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 7,20
+packages/nodes-base/utils/microsoft/transport.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 140-151
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/shared.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1-69
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/meetingLocator.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 3-5,31,36-38
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/create.operation.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 5-11,180-182,209,212
+packages/cli/src/modules/type-availability-policies/type-availability-policy.service.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1-484
+.github/workflows/test-db-reusable.yml
+  s_a37fc6c52c4513::t_b1a62e54c87325 14-18,51
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/shared.test.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1-97
+packages/frontend/@n8n/design-system/src/styleguide/motion.mdx
+  s_a37fc6c52c4513::t_b1a62e54c87325 3,66-70
+  s_a37fc6c52c4513::t_c2316adc031a77 71
+packages/cli/test/integration/policy/type-availability-policy-instance.controller.test.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1-279
+packages/cli/src/modules/type-availability-policies/type-availability-policy-instance.controller.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 1-158
+packages/frontend/@n8n/design-system/src/styleguide/components/MotionPlayground.vue
+  s_a37fc6c52c4513::t_b1a62e54c87325 1-291
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/index.ts
+  s_a37fc6c52c4513::t_b1a62e54c87325 5,12
+packages/cli/templates/chat-shell.handlebars
+  s_a37fc6c52c4513::t_b1a62e54c87325 429-434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "02308e671ac5b808c9ad8c408c35dcc0f949283e",
+  "prompts": {},
+  "sessions": {
+    "s_a37fc6c52c4513": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c39771d8-4c5d-4b56-ab4c-a2c8cb8676cd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
