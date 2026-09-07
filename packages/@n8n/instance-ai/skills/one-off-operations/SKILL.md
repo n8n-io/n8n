@@ -50,9 +50,10 @@ treat the request as reusable** and follow the normal build flow — a reusable
 workflow that runs once is harmless; a one-off flow applied to an automation
 skips verification the user would have wanted.
 
-A one-off that touches external systems is still workflow-anchored (you cannot
-write to external services directly) — the intent changes the *post-build
-flow*, not the anchor.
+Use an available, suitable direct tool for an authorized one-off action.
+Inspect its result before reporting success. Use the workflow flow below when
+no suitable direct tool is available or the user requests a reusable workflow.
+Do not claim that direct external writes are impossible.
 
 ## The one-off flow
 

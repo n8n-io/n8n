@@ -2,8 +2,8 @@
 name: n8n-docs-assistant
 description: >-
   Answers n8n product, setup, credential, node, hosting, API, and usage
-  questions from current n8n docs. Load n8n-docs via load_tool before calling it
-  (search "n8n docs" if not visible). Use when the user asks how to configure,
+  questions from current n8n docs. Call n8n-docs directly when visible; load it
+  only when deferred (search "n8n docs" if needed). Use when the user asks how to configure,
   set up, troubleshoot, or understand n8n behavior, especially credential setup
   questions opened from the credential modal.
 recommended_tools:
@@ -17,8 +17,9 @@ recommended_tools:
 Use this skill when the user asks how to configure, set up, troubleshoot, or
 understand n8n behavior and the answer should come from current n8n docs.
 
-Before calling `n8n-docs`, load it via `load_tool` (search "n8n docs" if it is
-not visible).
+Call `n8n-docs` directly when it is visible. Otherwise use `load_tool`
+(search "n8n docs" if needed). Read the relevant result before giving
+provider-specific setup instructions.
 
 ## Default Procedure
 
