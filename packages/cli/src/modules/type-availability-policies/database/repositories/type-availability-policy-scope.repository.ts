@@ -1,6 +1,13 @@
-import { BaseRepository, TransactionRunner, chunkIds, type OperationContext } from '@n8n/db';
+import {
+	BaseRepository,
+	TransactionRunner,
+	chunkIds,
+	generateNanoId,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull } from '@n8n/typeorm';
+import { DataSource, In, IsNull, type EntityManager } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { PolicyAction } from '../../policy-rule.types';
 import { TypeAvailabilityPolicyScope } from '../entities/type-availability-policy-scope.entity';
@@ -19,6 +26,16 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	}
 
 	/**
+	 * `SELECT ... FOR UPDATE`, Postgres only. SQLite has a single writer, so a write
+	 * transaction already serialises against every other one and no row lock is needed.
+	 */
+	private forUpdateLock(manager: EntityManager) {
+		return manager.connection.options.type === 'postgres'
+			? { lock: { mode: 'pessimistic_write' as const } }
+			: {};
+	}
+
+	/**
 	 * `projectId: null` looks up the instance scope. At most one row can match either way —
 	 * the two partial unique indexes guarantee it.
 	 *
@@ -26,7 +43,8 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	 * it, this is a plain read: on Postgres, two concurrent writers can both read the same
 	 * version, both pass the check, and the second commit silently overwrites the first. The
 	 * row lock makes the second writer wait for the first to commit, then re-read the bumped
-	 * version and correctly fail the check.
+	 * version and correctly fail the check. A row that does not exist yet cannot be locked —
+	 * first writes go through `createScopeIfAbsent` for that reason.
 	 */
 	async findScopeByKindAndProject(
 		kind: string,
@@ -37,9 +55,7 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		const manager = this.managerFor(ctx);
 		return await manager.findOne(TypeAvailabilityPolicyScope, {
 			where: { kind, projectId: projectId ?? IsNull() },
-			...(forUpdate && manager.connection.options.type === 'postgres'
-				? { lock: { mode: 'pessimistic_write' as const } }
-				: {}),
+			...(forUpdate ? this.forUpdateLock(manager) : {}),
 		});
 	}
 
@@ -52,10 +68,40 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		const manager = this.managerFor(ctx);
 		return await manager.findOne(TypeAvailabilityPolicyScope, {
 			where: { id },
-			...(forUpdate && manager.connection.options.type === 'postgres'
-				? { lock: { mode: 'pessimistic_write' as const } }
-				: {}),
+			...(forUpdate ? this.forUpdateLock(manager) : {}),
 		});
+	}
+
+	/**
+	 * Locks every named scope row, in id order, and returns the ids that exist.
+	 *
+	 * Every write path that touches both a scope and a policy document must lock the scope
+	 * first: `setEffectivePolicy` locks its scope and then updates the document, so a path
+	 * that locked the document first and then bumped scopes would deadlock against it on
+	 * Postgres. Sorting keeps two callers that overlap on several scopes from deadlocking on
+	 * each other the same way: the input is sorted so the batches lock in order, and each
+	 * batch is `ORDER BY id` because Postgres locks the rows in the order the statement
+	 * returns them, not in the order of the `IN` list.
+	 *
+	 * Must run inside a transaction — a row lock outside one is meaningless, and Postgres
+	 * rejects it.
+	 */
+	async lockScopesByIds(ids: string[], ctx: OperationContext): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const manager = this.managerFor(ctx);
+		const found: string[] = [];
+		for (const batch of chunkIds([...ids].sort())) {
+			const rows = await manager.find(TypeAvailabilityPolicyScope, {
+				select: { id: true },
+				where: { id: In(batch) },
+				order: { id: 'ASC' },
+				...this.forUpdateLock(manager),
+			});
+			found.push(...rows.map((row) => row.id));
+		}
+
+		return found;
 	}
 
 	async createScope(
@@ -65,6 +111,41 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		const scope = this.create({ ...input, version: 1 });
 
 		return await this.managerFor(ctx).save(TypeAvailabilityPolicyScope, scope);
+	}
+
+	/**
+	 * Inserts the scope row if `(kind, projectId)` has none yet, then reads back whichever row
+	 * exists. `created: false` means a concurrent first write got there first.
+	 *
+	 * A plain "read null, then insert" lets two first writes both pass the version check and
+	 * the loser hit the unique index with a raw driver error. Insert-or-ignore turns the
+	 * loser's insert into a no-op instead — on Postgres it waits for the winner's commit, so
+	 * the locked read-back returns the winner's row and the caller can report a conflict.
+	 *
+	 * Joins the caller's transaction when `ctx` carries one, so the read-back lock is held
+	 * for the rest of the caller's work; opens one otherwise, since the lock needs it.
+	 */
+	async createScopeIfAbsent(
+		input: NewPolicyScope,
+		ctx: OperationContext,
+	): Promise<{ scope: TypeAvailabilityPolicyScope; created: boolean }> {
+		return await this.runInTransaction(ctx, async (tx, txCtx) => {
+			const id = generateNanoId();
+			await tx
+				.createQueryBuilder()
+				.insert()
+				.into(TypeAvailabilityPolicyScope)
+				.values(this.create({ ...input, id, version: 1 }))
+				.orIgnore()
+				.execute();
+
+			const scope = await this.findScopeByKindAndProject(input.kind, input.projectId, txCtx, true);
+			if (!scope) {
+				throw new UnexpectedError('Policy scope is missing right after insert-or-ignore');
+			}
+
+			return { scope, created: scope.id === id };
+		});
 	}
 
 	/**

@@ -247,6 +247,54 @@ describe('type availability policy repositories', () => {
 			expect((await scopeRepo.findScopeById(instanceScope.id, ROOT))?.version).toBe(2);
 			expect((await scopeRepo.findScopeById(projectScope.id, ROOT))?.version).toBe(2);
 		});
+
+		it('creates the scope when absent and reports it as created', async () => {
+			const { scope, created } = await scopeRepo.createScopeIfAbsent(
+				{ kind: KIND, projectId: null, defaultAction: 'deny', updatedBy: 'user-1' },
+				ROOT,
+			);
+
+			expect(created).toBe(true);
+			expect(scope.version).toBe(1);
+			expect(scope.defaultAction).toBe('deny');
+			expect((await scopeRepo.findScopeByKindAndProject(KIND, null, ROOT))?.id).toBe(scope.id);
+		});
+
+		it('returns the existing scope untouched, not created, when one already exists', async () => {
+			const existing = await createInstanceScope();
+
+			const { scope, created } = await scopeRepo.createScopeIfAbsent(
+				{ kind: KIND, projectId: null, defaultAction: 'deny', updatedBy: 'user-2' },
+				ROOT,
+			);
+
+			expect(created).toBe(false);
+			expect(scope.id).toBe(existing.id);
+			expect(scope.defaultAction).toBe('allow');
+			expect(scope.updatedBy).toBe('user-1');
+		});
+
+		it('locks only the scopes that exist and returns their ids', async () => {
+			const project = await createTeamProject();
+			const instanceScope = await createInstanceScope();
+			const projectScope = await scopeRepo.createScope(
+				{ kind: KIND, projectId: project.id, defaultAction: 'allow', updatedBy: 'user-1' },
+				ROOT,
+			);
+
+			const locked = await transactionRunner.run(ROOT, async (ctx) => {
+				return await scopeRepo.lockScopesByIds(
+					[projectScope.id, 'does-not-exist', instanceScope.id],
+					ctx,
+				);
+			});
+
+			expect(locked).toEqual([instanceScope.id, projectScope.id].sort());
+		});
+
+		it('locks nothing and returns an empty list for an empty input', async () => {
+			expect(await scopeRepo.lockScopesByIds([], ROOT)).toEqual([]);
+		});
 	});
 
 	describe('TypeAvailabilityPolicyAttachmentRepository', () => {
