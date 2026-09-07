@@ -26,6 +26,43 @@ Reproduce with `packages/@n8n/agents/spike-validate-sandbox-build.mjs` and
 requirements (a running local sandbox stack + a running n8n instance with a
 webhook-triggered workflow).
 
+## Hot reload: investigated further, refines (doesn't confirm) plan.md Phase 7
+
+plan.md's Phase 7 said live HMR needs new background-process + port-exposure
+infrastructure "bigger than Elias's research assumed." Pushed on this
+further, against the real sandbox API (not just the client library):
+
+- **Background execution turns out to already work at the raw HTTP API
+  level.** `POST /sandboxes/:id/executions` returns immediately with an
+  `exec_id` while the command keeps running server-side — confirmed with a
+  real `npm run dev` (Vite) that stayed alive, and its output/status stayed
+  queryable via `GET .../executions/:execId` afterward. The client library
+  (`@n8n/agents`'s `SandboxProcessManager`) just doesn't expose this yet; the
+  server already can. This is a smaller gap than Phase 7 assumed.
+- **Port exposure is still genuinely missing** — no `/ports`, `/proxy`, or
+  `/expose` endpoint exists on the sandbox-service API today, confirming that
+  part of Phase 7.
+- **As a spike-only hack** (`spike-tcp-relay.mjs`, `spike-scaffold-devserver.mjs`
+  — throwaway, NOT a design for the real feature), reached into the sandbox's
+  container via `docker exec <runner-dind> nc <sandbox-ip> <port>`, relayed
+  through a local Node TCP server, and loaded Vite's dev server directly in a
+  real browser through it — proving the network path is achievable in
+  principle, ahead of Phase 7 building it properly.
+- **Vite's WebSocket HMR channel connected successfully** through that hacky
+  relay (`[vite] connected.` in the console) — so a raw byte-level relay
+  doesn't break the HMR protocol itself.
+- **But live updates didn't actually push to the browser** — even after
+  confirming (via direct in-sandbox requests) that Vite's dev server *did*
+  pick up and re-transform an edited file, the connected browser tab never
+  received an HMR update, and a hard reload sometimes still showed stale
+  content one edit behind. Tried the standard fix for container filesystems
+  not firing inotify events (`server.watch.usePolling: true`) — didn't
+  resolve it either. This looks like a real, separate issue (possibly in how
+  this specific sandbox image's filesystem/writes interact with a watcher, or
+  a caching quirk introduced by the spike's own relay hack) that needs actual
+  debugging time, not more spike-level poking — flagged as an open risk for
+  whoever picks up Phase 7, not resolved here.
+
 ## What's real, committable code (not just validation scripts)
 
 - `packages/@n8n/instance-ai/src/tools/apps.tool.ts` — `create`/`publish`
