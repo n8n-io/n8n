@@ -227,6 +227,61 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			});
 		});
 
+		it('should return a class instance with luxon marker keys as plain data', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ function Marker(){ this.__isDateTime = true; this.__isoString = "2024-01-15T00:00:00.000Z"; this.__zone = "UTC"; } return new Marker(); })() }}',
+				data,
+				caller,
+			);
+
+			expect(result).not.toBeInstanceOf(DateTime);
+			expect(result).toEqual({
+				__isDateTime: true,
+				__isoString: '2024-01-15T00:00:00.000Z',
+				__zone: 'UTC',
+			});
+		});
+
+		it('should return an object with luxon marker keys inside a Map as plain data', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ new Map([["k", { __isDateTime: true, __isoString: "2024-01-15T00:00:00.000Z", __zone: "UTC" }]]) }}',
+				data,
+				caller,
+			);
+
+			expect(result).toBeInstanceOf(Map);
+			const entry = (result as Map<string, unknown>).get('k');
+			expect(entry).not.toBeInstanceOf(DateTime);
+			expect(entry).toEqual({
+				__isDateTime: true,
+				__isoString: '2024-01-15T00:00:00.000Z',
+				__zone: 'UTC',
+			});
+		});
+
+		it('should return an object with luxon marker keys inside a Set as plain data', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ new Set([{ __isDateTime: true, __isoString: "2024-01-15T00:00:00.000Z", __zone: "UTC" }]) }}',
+				data,
+				caller,
+			);
+
+			expect(result).toBeInstanceOf(Set);
+			const [entry] = [...(result as Set<unknown>)];
+			expect(entry).not.toBeInstanceOf(DateTime);
+			expect(entry).toEqual({
+				__isDateTime: true,
+				__isoString: '2024-01-15T00:00:00.000Z',
+				__zone: 'UTC',
+			});
+		});
+
 		it('should preserve Date objects (structured-cloneable)', () => {
 			const data = { $json: {} };
 			const result = evaluator.evaluate('{{ new Date(2024, 0, 15) }}', data, caller);

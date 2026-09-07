@@ -877,7 +877,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		var prepared = original(value);
 		return wrapSpecialValues(prepared);
 	};
-	function wrapSpecialValues(v) {
+	function wrapSpecialValues(v, inCollection) {
 		if (v === null || v === undefined) return v;
 		// Functions and Promises must not leave the sandbox as results.
 		// isolated-vm's structured clone rejects them; match its error.
@@ -900,7 +900,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			var errKeys = Object.keys(v);
 			for (var ei = 0; ei < errKeys.length; ei++) {
 				if (errKeys[ei] !== 'name' && errKeys[ei] !== 'message' && errKeys[ei] !== 'stack') {
-					errExtra[errKeys[ei]] = wrapSpecialValues(v[errKeys[ei]]);
+					errExtra[errKeys[ei]] = wrapSpecialValues(v[errKeys[ei]], inCollection);
 				}
 			}
 			return { __isErrorValue: true, __name: v.name || 'Error', __message: v.message || '', __extra: errExtra };
@@ -908,23 +908,25 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (v instanceof Map) {
 			var entries = [];
 			v.forEach(function(val, key) {
-				entries.push([wrapSpecialValues(key), wrapSpecialValues(val)]);
+				entries.push([wrapSpecialValues(key, true), wrapSpecialValues(val, true)]);
 			});
 			return { __isMap: true, __entries: entries };
 		}
 		if (v instanceof Set) {
 			var values = [];
 			v.forEach(function(val) {
-				values.push(wrapSpecialValues(val));
+				values.push(wrapSpecialValues(val, true));
 			});
 			return { __isSet: true, __values: values };
 		}
-		if (Array.isArray(v)) return v.map(wrapSpecialValues);
+		if (Array.isArray(v)) return v.map(function(item) { return wrapSpecialValues(item, inCollection); });
 		// Error sentinels are already in transfer shape — leave them intact.
 		if (v.__isError) return v;
-		if (v.__isDateTime === true || v.__isDuration === true || v.__isInterval === true) return v;
-		if (v.__isLuxonEscaped === true) {
-			return { __isLuxonEscaped: true, __value: wrapSpecialValues(v.__value) };
+		if (!inCollection) {
+			if (v.__isDateTime === true || v.__isDuration === true || v.__isInterval === true) return v;
+			if (v.__isLuxonEscaped === true) {
+				return { __isLuxonEscaped: true, __value: wrapSpecialValues(v.__value) };
+			}
 		}
 		var result = {};
 		var keys = Object.keys(v);
@@ -937,7 +939,15 @@ export class QuickJsBridge implements RuntimeBridge {
 			) {
 				collides = true;
 			}
-			result[key] = wrapSpecialValues(v[key]);
+			if (
+				inCollection && (
+					key === '__isDateTime' || key === '__isDuration' ||
+					key === '__isInterval' || key === '__isLuxonEscaped'
+				)
+			) {
+				collides = true;
+			}
+			result[key] = wrapSpecialValues(v[key], inCollection);
 		}
 		// User objects whose keys collide with transfer markers are escaped so
 		// the host returns them as plain data (as isolated-vm does) instead of
