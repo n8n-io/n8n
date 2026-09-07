@@ -1,4 +1,4 @@
-import type { ExecutionMode, StepSlots } from '../execution';
+import type { CallerContext, ExecutionMode, StepSlots } from '../execution';
 import type { GraphNode } from '../graph';
 import type { LifecycleEventCallback } from '../lifecycle-events';
 
@@ -31,6 +31,8 @@ export interface StepExecutionContext {
 	workflowId: string;
 	mode: ExecutionMode;
 	iteration: number;
+	/** Supplied by the host at start. Opaque to the engine, which only forwards it. */
+	callerContext: CallerContext;
 }
 
 /** A single step handed to an executor. */

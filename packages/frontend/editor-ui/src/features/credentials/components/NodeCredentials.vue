@@ -73,6 +73,21 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
+// Nodes that let the user pick their own predefined credential type via a
+// parameter ("Authentication" → "Predefined Credential Type") rather than
+// declaring a fixed credential in their node type. Gateway credits mints a
+// managed credential for a specific, known provider — it can't stand in for
+// an arbitrary user-chosen one, so these nodes never offer it. Includes the
+// AI-Agent-tool variants ("Tool" suffix) generated from the same node types.
+const AI_GATEWAY_UNSUPPORTED_NODE_TYPES: readonly string[] = [
+	'n8n-nodes-base.httpRequest',
+	'n8n-nodes-base.httpRequestTool',
+	'@n8n/n8n-nodes-langchain.toolHttpRequest',
+	'n8n-nodes-base.graphql',
+	'n8n-nodes-base.graphqlTool',
+];
+
 type Props = {
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;
@@ -396,7 +411,8 @@ watch(
 
 		if (
 			aiGateway.isEnabled.value &&
-			!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+			(AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type) ||
+				!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion))
 		) {
 			for (const { type } of types) {
 				if (selected.value[type.name]?.__aiGatewayManaged) {
@@ -429,6 +445,7 @@ watch(
 					resolveGatewayActivation(type.name) !== undefined;
 				if (
 					gatewaySupported &&
+					!AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type) &&
 					aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
 					isCurrentActionSupported.value
 				) {
@@ -825,6 +842,7 @@ function resolveGatewayActivation(credentialType: string) {
 
 function showAiGatewaySelector(credentialType: string): boolean {
 	if (!aiGateway.isEnabled.value) return false;
+	if (AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type)) return false;
 	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
 	// Shown type supported → toggle directly; otherwise fall back to a sibling.
