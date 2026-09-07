@@ -2657,6 +2657,8 @@
 	"parameterInput.formatHtml": "Format HTML",
 	"parameterInput.issues": "Issues",
 	"parameterInput.loadingOptions": "Loading options...",
+	"parameterInput.loadFailed": "This field could not be loaded",
+	"parameterInput.loadFailed.reload": "Reload",
 	"parameterInput.loadOptionsErrorService": "Error fetching options from {service}",
 	"parameterInput.loadOptionsError": "Error fetching options",
 	"parameterInput.loadOptionsCredentialsRequired": "Set up credential to see options",

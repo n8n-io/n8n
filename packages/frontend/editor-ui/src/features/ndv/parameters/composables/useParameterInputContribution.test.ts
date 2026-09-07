@@ -1,10 +1,17 @@
-import { ref } from 'vue';
+import { defineComponent, h, ref } from 'vue';
+import { render, waitFor } from '@testing-library/vue';
+import type { Component } from 'vue';
 import type { NodePropertyTypes } from 'n8n-workflow';
 import { parameterInputRegistry } from '@n8n/frontend-module-sdk';
 
 import { useParameterInputContribution } from './useParameterInputContribution';
 
 const stubComponent = { render: () => null };
+
+/** Mounts a resolved contribution, which is the only way the async wrapper runs. */
+function renderResolved(component: Component) {
+	return render(defineComponent(() => () => h(component)));
+}
 
 describe('useParameterInputContribution', () => {
 	beforeEach(() => {
@@ -48,6 +55,60 @@ describe('useParameterInputContribution', () => {
 
 		type.value = 'string';
 		expect(contributedComponent.value).toBe(stubComponent);
+	});
+
+	describe('a chunk that fails to load', () => {
+		beforeEach(() => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('retries once, then renders the error state instead of an empty field', async () => {
+			const loader = vi.fn(async () => await Promise.reject(new Error('chunk 404')));
+			parameterInputRegistry.register({ type: 'string', component: loader });
+
+			const { contributedComponent } = useParameterInputContribution(
+				ref<NodePropertyTypes>('string'),
+			);
+			const { getByTestId } = renderResolved(contributedComponent.value!);
+
+			await waitFor(() => expect(getByTestId('parameter-input-load-error')).toBeVisible());
+			expect(loader).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not leave the load rejection uncaught', async () => {
+			const onUnhandled = vi.fn();
+			window.addEventListener('unhandledrejection', onUnhandled);
+			const loader = async () => await Promise.reject(new Error('chunk 404'));
+			parameterInputRegistry.register({ type: 'string', component: loader });
+
+			const { contributedComponent } = useParameterInputContribution(
+				ref<NodePropertyTypes>('string'),
+			);
+			const { getByTestId } = renderResolved(contributedComponent.value!);
+
+			await waitFor(() => expect(getByTestId('parameter-input-load-error')).toBeVisible());
+			expect(onUnhandled).not.toHaveBeenCalled();
+			window.removeEventListener('unhandledrejection', onUnhandled);
+		});
+
+		it('recovers when a retry succeeds', async () => {
+			const loader = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('dropped request'))
+				.mockResolvedValue({ render: () => h('div', { 'data-test-id': 'contributed' }) });
+			parameterInputRegistry.register({ type: 'string', component: loader });
+
+			const { contributedComponent } = useParameterInputContribution(
+				ref<NodePropertyTypes>('string'),
+			);
+			const { getByTestId } = renderResolved(contributedComponent.value!);
+
+			await waitFor(() => expect(getByTestId('contributed')).toBeVisible());
+		});
 	});
 
 	describe('capabilities', () => {
