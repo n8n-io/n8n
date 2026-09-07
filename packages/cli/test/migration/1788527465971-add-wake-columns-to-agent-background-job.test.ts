@@ -40,10 +40,9 @@ describe('AddWakeColumnsToAgentBackgroundJob migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
-	async function seedLegacyJob(): Promise<string> {
+	async function seedAgent(): Promise<string> {
 		const projectId = randomUUID();
 		const agentId = randomUUID();
-		const jobId = randomUUID();
 		const now = new Date();
 		await withContext(async ({ escape, runQuery }) => {
 			await runQuery(
@@ -57,11 +56,35 @@ describe('AddWakeColumnsToAgentBackgroundJob migration', () => {
 				 VALUES (:agentId, 'Agent', :projectId, '[]', '{}', '{}', :now, :now)`,
 				{ agentId, projectId, now },
 			);
+		});
+		return agentId;
+	}
+
+	/** A row in the pre-migration shape, without parent identity. */
+	async function seedLegacyJob(agentId: string): Promise<string> {
+		const jobId = randomUUID();
+		const now = new Date();
+		await withContext(async ({ escape, runQuery }) => {
 			await runQuery(
 				`INSERT INTO ${escape.tableName('agent_background_job')}
 				   ("id", "kind", "status", "parentAgentId", "parentThreadId", "title", "subAgentId", "childThreadId", "settledAt", "createdAt", "updatedAt")
 				 VALUES (:jobId, 'subagent', 'completed', :agentId, 'thread-1', 'Research', :subAgentId, 'child-thread-1', :now, :now, :now)`,
 				{ jobId, agentId, subAgentId: randomUUID(), now },
+			);
+		});
+		return jobId;
+	}
+
+	/** A row in the post-migration shape, with parent identity. */
+	async function seedJob(agentId: string, parentResourceId = 'draft-chat:user-1'): Promise<string> {
+		const jobId = randomUUID();
+		const now = new Date();
+		await withContext(async ({ escape, runQuery }) => {
+			await runQuery(
+				`INSERT INTO ${escape.tableName('agent_background_job')}
+				   ("id", "kind", "status", "parentAgentId", "parentThreadId", "parentResourceId", "parentPrincipalHash", "title", "subAgentId", "childThreadId", "settledAt", "createdAt", "updatedAt")
+				 VALUES (:jobId, 'subagent', 'completed', :agentId, 'thread-1', :parentResourceId, 'principal-hash', 'Research', :subAgentId, 'child-thread-1', :now, :now, :now)`,
+				{ jobId, agentId, parentResourceId, subAgentId: randomUUID(), now },
 			);
 		});
 		return jobId;
@@ -73,7 +96,11 @@ describe('AddWakeColumnsToAgentBackgroundJob migration', () => {
 				await context.queryRunner.query(
 					`PRAGMA table_info(${context.escape.tableName('agent_background_job')})`,
 				);
-			return rows;
+			return rows.map((row) => ({
+				name: row.name,
+				nullable: row.notnull === 0,
+				width: row.type,
+			}));
 		}
 		const rows: Array<{
 			column_name: string;
@@ -83,118 +110,98 @@ describe('AddWakeColumnsToAgentBackgroundJob migration', () => {
 			' SELECT column_name, is_nullable, character_maximum_length FROM information_schema.columns WHERE table_name = $1',
 			[`${context.tablePrefix}agent_background_job`],
 		);
-		return rows;
+		return rows.map((row) => ({
+			name: row.column_name,
+			nullable: row.is_nullable === 'YES',
+			width: row.character_maximum_length,
+		}));
 	}
 
-	it('adds nullable columns and preserves legacy rows', async () => {
-		const jobId = await seedLegacyJob();
+	async function countJobs(context: TestMigrationContext): Promise<number> {
+		const rows = await context.runQuery<Array<{ count: number | string }>>(
+			`SELECT COUNT(*) AS "count" FROM ${context.escape.tableName('agent_background_job')}`,
+		);
+		return Number(rows[0]?.count ?? 0);
+	}
+
+	it('adds the columns and removes rows that carry no parent identity', async () => {
+		const agentId = await seedAgent();
+		await seedLegacyJob(agentId);
 		await runSingleMigration(MIGRATION_NAME);
 		dataSource = Container.get(DataSource);
 
 		await withContext(async (context) => {
-			const columns = await columnMetadata(context);
-			for (const name of COLUMNS) {
-				const column = columns.find((entry) =>
-					context.isSqlite
-						? Reflect.get(entry, 'name') === name
-						: Reflect.get(entry, 'column_name') === name,
-				);
-				expect(column).toBeDefined();
-				if (!column) throw new Error(`Missing ${name} column`);
-				expect(
-					context.isSqlite ? Reflect.get(column, 'notnull') : Reflect.get(column, 'is_nullable'),
-				).toBe(context.isSqlite ? 0 : 'YES');
-			}
+			expect(await countJobs(context)).toBe(0);
 
-			// Declared widths must match the entity; SQLite does not enforce them.
-			const width = (name: string) => {
-				const column = columns.find((entry) =>
-					context.isSqlite
-						? Reflect.get(entry, 'name') === name
-						: Reflect.get(entry, 'column_name') === name,
-				);
-				return context.isSqlite
-					? Reflect.get(column ?? {}, 'type')
-					: Reflect.get(column ?? {}, 'character_maximum_length');
-			};
-			expect(width('parentResourceId')).toBe(context.isSqlite ? 'varchar(255)' : 255);
-			expect(width('parentPrincipalHash')).toBe(context.isSqlite ? 'varchar(64)' : 64);
+			const columns = await columnMetadata(context);
+			const byName = new Map(columns.map((column) => [column.name, column]));
+			for (const name of COLUMNS) expect(byName.has(name)).toBe(true);
+
+			expect(byName.get('notifiedAt')?.nullable).toBe(true);
+			expect(byName.get('parentResourceId')).toMatchObject({
+				nullable: false,
+				width: context.isSqlite ? 'varchar(255)' : 255,
+			});
+			expect(byName.get('parentPrincipalHash')).toMatchObject({
+				nullable: false,
+				width: context.isSqlite ? 'varchar(64)' : 64,
+			});
 
 			// The table is recreated on SQLite; the partial unique index that keeps
 			// one tracker per workflow execution must survive.
-			const indexDefinitions = context.isSqlite
+			const indexDefinitions: string[] = context.isSqlite
 				? (
-						await context.queryRunner.query(
+						(await context.queryRunner.query(
 							`SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ${context.escape.tableName('agent_background_job')}`,
-						)
-					).map((row: { sql: string | null }) => row.sql ?? '')
+						)) as Array<{ sql: string | null }>
+					).map((row) => row.sql ?? '')
 				: (
-						await context.queryRunner.query(
+						(await context.queryRunner.query(
 							'SELECT indexdef FROM pg_indexes WHERE tablename = $1',
 							[`${context.tablePrefix}agent_background_job`],
-						)
-					).map((row: { indexdef: string }) => row.indexdef);
+						)) as Array<{ indexdef: string }>
+					).map((row) => row.indexdef);
 			expect(
 				indexDefinitions.some(
-					(definition: string) =>
+					(definition) =>
 						/UNIQUE/i.test(definition) &&
 						definition.includes('childExecutionId') &&
 						/IS NOT NULL/i.test(definition),
 				),
 			).toBe(true);
-
-			const rows = await context.runQuery<
-				Array<{
-					notifiedAt: Date | null;
-					parentResourceId: string | null;
-					parentPrincipalHash: string | null;
-				}>
-			>(
-				`SELECT "notifiedAt", "parentResourceId", "parentPrincipalHash"
-				 FROM ${context.escape.tableName('agent_background_job')} WHERE "id" = :jobId`,
-				{ jobId },
-			);
-			expect(rows).toEqual([
-				{ notifiedAt: null, parentResourceId: null, parentPrincipalHash: null },
-			]);
 		});
 	});
 
-	it('accepts a 255-character resource id', async () => {
-		const jobId = await seedLegacyJob();
+	it('accepts a 255-character resource id and rejects a missing identity', async () => {
+		const agentId = await seedAgent();
 		await runSingleMigration(MIGRATION_NAME);
 		dataSource = Container.get(DataSource);
-		const resourceId = 'r'.repeat(255);
 
+		const jobId = await seedJob(agentId, 'r'.repeat(255));
 		await withContext(async ({ escape, runQuery }) => {
-			await runQuery(
-				`UPDATE ${escape.tableName('agent_background_job')} SET "parentResourceId" = :resourceId WHERE "id" = :jobId`,
-				{ resourceId, jobId },
-			);
 			const rows = await runQuery<Array<{ parentResourceId: string }>>(
 				`SELECT "parentResourceId" FROM ${escape.tableName('agent_background_job')} WHERE "id" = :jobId`,
 				{ jobId },
 			);
 			expect(rows[0]?.parentResourceId).toHaveLength(255);
 		});
+
+		await expect(seedLegacyJob(agentId)).rejects.toThrow();
 	});
 
 	it('drops the columns and preserves existing jobs', async () => {
-		const jobId = await seedLegacyJob();
+		const agentId = await seedAgent();
 		await runSingleMigration(MIGRATION_NAME);
+		dataSource = Container.get(DataSource);
+		const jobId = await seedJob(agentId);
+
 		await undoLastSingleMigration();
 		dataSource = Container.get(DataSource);
 
 		await withContext(async (context) => {
 			const columns = await columnMetadata(context);
 			for (const name of COLUMNS) {
-				expect(
-					columns.some((entry) =>
-						context.isSqlite
-							? Reflect.get(entry, 'name') === name
-							: Reflect.get(entry, 'column_name') === name,
-					),
-				).toBe(false);
+				expect(columns.some((column) => column.name === name)).toBe(false);
 			}
 			const rows = await context.runQuery<Array<{ id: string }>>(
 				`SELECT "id" FROM ${context.escape.tableName('agent_background_job')} WHERE "id" = :jobId`,

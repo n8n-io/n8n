@@ -87,16 +87,12 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		return await this.findOneBy({ id });
 	}
 
+	/** Settled rows the parent thread has not consumed yet, oldest first. */
 	async findWakeableUnconsumedSettled(parentThreadId: string): Promise<AgentBackgroundJob[]> {
-		return await this.createQueryBuilder('job')
-			.where('job.parentThreadId = :parentThreadId', { parentThreadId })
-			.andWhere('job.settledAt IS NOT NULL')
-			.andWhere('job.notifiedAt IS NULL')
-			.andWhere('job.parentResourceId IS NOT NULL')
-			.andWhere('job.parentPrincipalHash IS NOT NULL')
-			.orderBy('job.settledAt', 'ASC')
-			.addOrderBy('job.createdAt', 'ASC')
-			.getMany();
+		return await this.find({
+			where: { parentThreadId, settledAt: Not(IsNull()), notifiedAt: IsNull() },
+			order: { settledAt: 'ASC', createdAt: 'ASC' },
+		});
 	}
 
 	async markMailConsumed(parentThreadId: string, ids: string[]): Promise<number> {
@@ -114,14 +110,12 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		return result.affected ?? 0;
 	}
 
-	/** Threads with pending mail that has enough identity to run automatically. */
+	/** Threads with settled rows their parent has not consumed yet. */
 	async findThreadsWithUnconsumedMail(): Promise<string[]> {
 		const rows = await this.createQueryBuilder('job')
 			.select('DISTINCT job.parentThreadId', 'parentThreadId')
 			.where('job.settledAt IS NOT NULL')
 			.andWhere('job.notifiedAt IS NULL')
-			.andWhere('job.parentResourceId IS NOT NULL')
-			.andWhere('job.parentPrincipalHash IS NOT NULL')
 			.getRawMany<{ parentThreadId: string }>();
 
 		return rows.map(({ parentThreadId }) => parentThreadId);

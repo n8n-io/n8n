@@ -59,21 +59,22 @@ describe('AgentBackgroundJobRepository', () => {
 		});
 	}
 
-	it('returns all pending rows but wakes only rows with parent identity', async () => {
-		await insertJob({ id: uuid(), parentThreadId: 'thread-1' });
+	it('returns unconsumed settled rows of one thread, oldest settlement first', async () => {
+		const olderId = uuid();
+		const newerId = uuid();
+		await insertJob({ id: newerId, parentThreadId: 'thread-1', settledAt: new Date() });
 		await insertJob({
-			id: uuid(),
+			id: olderId,
 			parentThreadId: 'thread-1',
-			parentResourceId: null,
-			parentPrincipalHash: null,
+			settledAt: new Date(Date.now() - 60_000),
 		});
+		await insertJob({ id: uuid(), parentThreadId: 'thread-1', notifiedAt: new Date() });
+		await insertJob({ id: uuid(), parentThreadId: 'thread-1', status: 'running', settledAt: null });
+		await insertJob({ id: uuid(), parentThreadId: 'thread-2' });
 
-		const pending = await repository.count({ where: { parentThreadId: 'thread-1' } });
-		const wakeable = await repository.findWakeableUnconsumedSettled('thread-1');
+		const pending = await repository.findWakeableUnconsumedSettled('thread-1');
 
-		expect(pending).toBe(2);
-		expect(wakeable).toHaveLength(1);
-		expect(wakeable[0]?.parentResourceId).toBe('draft-chat:user-1');
+		expect(pending.map((job) => job.id)).toEqual([olderId, newerId]);
 	});
 
 	it('consumes only selected settled rows from the requested thread', async () => {
@@ -107,17 +108,12 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(foreign?.notifiedAt).toBeNull();
 	});
 
-	it('returns each wakeable thread once and accepts a 255-character resource id', async () => {
+	it('returns each thread with unconsumed mail once and accepts a 255-character resource id', async () => {
 		const resourceId = 'r'.repeat(255);
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', parentResourceId: resourceId });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', parentResourceId: resourceId });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-2', parentResourceId: resourceId });
-		await insertJob({
-			id: uuid(),
-			parentThreadId: 'legacy-thread',
-			parentResourceId: null,
-			parentPrincipalHash: null,
-		});
+		await insertJob({ id: uuid(), parentThreadId: 'consumed-thread', notifiedAt: new Date() });
 
 		const threadIds = await repository.findThreadsWithUnconsumedMail();
 		expect(threadIds.sort()).toEqual(['thread-1', 'thread-2']);

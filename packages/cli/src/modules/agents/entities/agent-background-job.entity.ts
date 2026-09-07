@@ -33,13 +33,13 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128 })
 	parentThreadId: string;
 
-	/** Memory resource of the parent run. NULL on rows created before wake delivery. */
-	@Column({ type: 'varchar', length: 255, nullable: true })
-	parentResourceId: string | null;
+	/** Memory resource of the parent run. */
+	@Column({ type: 'varchar', length: 255 })
+	parentResourceId: string;
 
-	/** Sandbox principal of the parent run. NULL on rows created before wake delivery. */
-	@Column({ type: 'varchar', length: 64, nullable: true })
-	parentPrincipalHash: string | null;
+	/** Sandbox principal of the parent run. */
+	@Column({ type: 'varchar', length: 64 })
+	parentPrincipalHash: string;
 
 	/** Task name or workflow name, echoed in status-check listings. */
 	@Column({ type: 'varchar', length: 255 })
