@@ -211,7 +211,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:1',
 				toolFilter: { mode: 'allow', tools: ['issues'] },
 				fetch: expect.any(Function),
-				metadata: { serverSlug: 'linear', userId: user.id },
+				metadata: { connectionId: '1', serverSlug: 'linear', userId: user.id },
 			}),
 		);
 		expect(result[1]).toEqual(
@@ -222,7 +222,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:2',
 				toolFilter: undefined,
 				fetch: expect.any(Function),
-				metadata: { serverSlug: 'linear', userId: user.id },
+				metadata: { connectionId: '2', serverSlug: 'linear', userId: user.id },
 			}),
 		);
 		expect(result[2]).toEqual(
@@ -233,7 +233,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:3',
 				toolFilter: undefined,
 				fetch: expect.any(Function),
-				metadata: { serverSlug: 'notion', userId: user.id },
+				metadata: { connectionId: '3', serverSlug: 'notion', userId: user.id },
 			}),
 		);
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
@@ -311,6 +311,30 @@ describe('InstanceAiMcpRegistryService', () => {
 
 		expect(servers).toEqual([]);
 		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+	});
+
+	it('skips connections whose server URL is a template', async () => {
+		// This path decrypts the credential without resolving expressions, so the
+		// template would stay unresolved. The row is dropped instead of offered.
+		const { service, connectionRepository, mcpRegistryService, logger } = createService();
+		connectionRepository.findBy.mockResolvedValue([
+			{ id: '3', userId: user.id, serverSlug: 'genie', credentialId: credential.id },
+		] as InstanceAiMcpRegistryConnection[]);
+		mcpRegistryService.getBySlugs.mockResolvedValue([
+			makeRegistryServer('genie', {
+				remotes: [
+					{ type: 'streamable-http-templated', url: '={{$self["host"]}}/api/2.0/mcp/genie' },
+				],
+			}),
+		]);
+
+		const result = await service.getRegistryMcpServers(user);
+
+		expect(result).toEqual([]);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipping MCP registry connection with a templated server URL',
+			expect.objectContaining({ connectionId: '3', serverSlug: 'genie' }),
+		);
 	});
 
 	it('adds auth header and retries once with refreshed OAuth token after 401', async () => {
@@ -866,6 +890,26 @@ describe('InstanceAiMcpRegistryService', () => {
 			);
 		});
 
+		it('refuses a server whose URL is a template', async () => {
+			// This path cannot resolve the template, so the connection would persist
+			// and read as connected while `getRegistryMcpServers` skips it.
+			const { service, connectionRepository, mcpRegistryService, credentialsFinderService } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(
+				makeRegistryServer('genie', {
+					remotes: [
+						{ type: 'streamable-http-templated', url: '={{$self["host"]}}/api/2.0/mcp/genie' },
+					],
+				}),
+			);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'genie', credentialId: 'cred-1' }),
+			).rejects.toBeInstanceOf(BadRequestError);
+			expect(connectionRepository.save).not.toHaveBeenCalled();
+		});
+
 		it('throws NotFoundError when the server slug is unknown', async () => {
 			const { service, mcpRegistryService, eventService } = createService();
 			mcpRegistryService.get.mockResolvedValue(undefined);
@@ -921,6 +965,27 @@ describe('InstanceAiMcpRegistryService', () => {
 			const uniqueErr = new QueryFailedError('insert', [], new Error('uniq'));
 			(uniqueErr as unknown as { driverError: { code: string } }).driverError = {
 				code: 'SQLITE_CONSTRAINT_UNIQUE',
+			};
+			connectionRepository.save.mockRejectedValue(uniqueErr);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
+			).rejects.toBeInstanceOf(ConflictError);
+		});
+
+		it('translates unique-index violations reported under the base SQLite code into ConflictError', async () => {
+			const { service, connectionRepository, mcpRegistryService, credentialsFinderService } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			connectionRepository.create.mockImplementation((entity) => entity as never);
+			const uniqueErr = new QueryFailedError(
+				'insert',
+				[],
+				new Error('SQLITE_CONSTRAINT: UNIQUE constraint failed: connection.serverSlug'),
+			);
+			(uniqueErr as unknown as { driverError: { code: string } }).driverError = {
+				code: 'SQLITE_CONSTRAINT',
 			};
 			connectionRepository.save.mockRejectedValue(uniqueErr);
 

@@ -14,9 +14,13 @@ import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpProtectedResource } from './mcp-protected-resource';
-import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
+import {
+	USER_CONNECTED_TO_MCP_EVENT,
+	UNAUTHORIZED_ERROR_MESSAGE,
+	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
+} from './mcp.constants';
 import type { McpAuthenticatedRequest } from './mcp.types';
-import { getClientInfo, getProtocolVersion } from './mcp.utils';
+import { getClientInfo, getProtocolVersion, isConnectionHandshake } from './mcp.utils';
 
 /**
  * MCP Server Middleware Service
@@ -58,6 +62,28 @@ export class McpServerMiddlewareService {
 		}
 
 		return await this.mcpServerApiKeyService.verifyApiKey(token);
+	}
+
+	/**
+	 * Express middleware hiding the MCP server while instance MCP access is off.
+	 * Answers 404 instead of an authentication challenge, so OAuth-aware clients
+	 * don't send their users through a login for a server that isn't there.
+	 */
+	getEnabledMiddleware() {
+		return async (req: Request, res: Response, next: NextFunction) => {
+			if (await this.mcpProtectedResource.isAvailable()) {
+				next();
+				return;
+			}
+
+			// Handshakes only — HEAD/GET probes of a hidden server aren't
+			// connection attempts worth tracking.
+			if (isConnectionHandshake(req.body)) {
+				this.trackFailedConnection(req, MCP_ACCESS_DISABLED_ERROR_MESSAGE, 404);
+			}
+
+			res.status(404).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
+		};
 	}
 
 	/**
@@ -122,7 +148,7 @@ export class McpServerMiddlewareService {
 	}
 
 	private responseWithUnauthorized(res: Response, req: Request, context?: TelemetryAuthContext) {
-		this.trackUnauthorizedEvent(req, context);
+		this.trackFailedConnection(req, UNAUTHORIZED_ERROR_MESSAGE, 401, context);
 		// RFC 6750 Section 3 / RFC 9728 Section 5.1: include the WWW-Authenticate
 		// header on 401s, advertising the protected-resource metadata URL so
 		// clients discover it directly instead of guessing the well-known path.
@@ -133,13 +159,18 @@ export class McpServerMiddlewareService {
 		});
 	}
 
-	private trackUnauthorizedEvent(req: Request, context?: TelemetryAuthContext) {
+	// `httpStatus` is a literal, not res.statusCode: tracked before the response is written.
+	private trackFailedConnection(
+		req: Request,
+		error: string,
+		httpStatus: number,
+		context?: TelemetryAuthContext,
+	) {
 		const clientInfo = getClientInfo(req);
 		const payload = {
 			mcp_connection_status: 'error',
-			error: UNAUTHORIZED_ERROR_MESSAGE,
-			// Literal, not res.statusCode: tracked before the 401 is written.
-			http_status: 401,
+			error,
+			http_status: httpStatus,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
 			protocol_version: getProtocolVersion(req),

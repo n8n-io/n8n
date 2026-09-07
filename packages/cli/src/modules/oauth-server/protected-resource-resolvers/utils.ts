@@ -24,6 +24,12 @@ export const WEBHOOK_TRIGGER_SCOPES: string[] = [];
 /** Scopes advertised for per-workflow Chat trigger resources. Empty, like the other triggers. */
 export const CHAT_TRIGGER_SCOPES: string[] = [];
 
+/** Consent-screen presentation hints for per-workflow Chat trigger resources. */
+export const CHAT_TRIGGER_CONSENT_HINTS: ConsentUiHints = {
+	icon: 'node:chat-trigger',
+	consentType: 'chat',
+};
+
 /**
  * A chat trigger is an OAuth protected resource only in the shape the hosted page can actually
  * serve: enabled, published publicly, on the n8n-hosted page rather than the embedded widget, and

@@ -10,6 +10,11 @@ export interface StartExecutionRequest {
 	/** Trigger step's output slots, one entry per output. */
 	triggerOutputs?: TriggerOutputs | null;
 	mode?: ExecutionMode;
+	/**
+	 * Caller-minted, so the caller can record state against the run before it
+	 * starts. The engine never mints one.
+	 */
+	executionId: string;
 }
 
 export interface StartExecutionResult {
@@ -34,7 +39,12 @@ export class StartExecutionService {
 			throw new AdmittanceRejectedError(decision.reason);
 		}
 
-		const { id } = await this.executionStore.createExecution({
+		// The caller's id is authoritative: it already has a session registered
+		// against it, so the store never gets to rename the run.
+		const { executionId } = request;
+
+		await this.executionStore.createExecution({
+			id: executionId,
 			workflowId: request.workflowId,
 			// admitted; a worker flips this to 'running' when it starts
 			status: 'queued',
@@ -48,9 +58,9 @@ export class StartExecutionService {
 		// reconciliation sweep (not yet built) re-dispatches it.
 		await this.workQueue.publish({
 			type: 'execution:enqueued',
-			executionId: id,
+			executionId,
 		});
 
-		return { executionId: id };
+		return { executionId };
 	}
 }

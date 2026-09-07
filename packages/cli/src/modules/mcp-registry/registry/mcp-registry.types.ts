@@ -24,6 +24,10 @@ export const mcpRegistryExtendsCredentialSchema = z.object({
 	authentication: z.enum(['body', 'header']).nullish(),
 	useDynamicClientRegistration: z.boolean().nullish(),
 	serverUrl: z.string().nullish(),
+	// Lets a row that fixes `scope` also hide the parent's "Custom Scopes"
+	// toggle (and its dependent notice/enabledScopes fields), which would
+	// otherwise render with no effect once `scope` is overridden.
+	customScopes: z.boolean().nullish(),
 });
 
 export type McpRegistryExtendsCredential = z.infer<typeof mcpRegistryExtendsCredentialSchema>;
@@ -86,7 +90,7 @@ const mcpRegistryServerBaseSchema = z.object({
 		.transform((value) => value ?? undefined),
 	remotes: z.array(
 		z.object({
-			type: z.enum(['streamable-http', 'sse']),
+			type: z.enum(['streamable-http', 'sse', 'streamable-http-templated']),
 			url: z.string(),
 		}),
 	),

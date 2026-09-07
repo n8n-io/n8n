@@ -12,6 +12,7 @@ import {
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '../../database';
+import { generateId } from '../../database/generate-id';
 import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
 import { noopLifecycleEventPublisher } from '../../lifecycle-events';
@@ -101,7 +102,7 @@ describe('step execution (integration)', () => {
 		const response = await request(runtime.app)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({ workflowId, graph: workflowGraph, triggerOutputs })
+			.send({ workflowId, graph: workflowGraph, triggerOutputs, executionId: generateId() })
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
 		await finished;
@@ -381,7 +382,9 @@ describe('step execution (integration)', () => {
 			noopLifecycleEventPublisher,
 		);
 
-		const { id: executionId } = await executionStore.createExecution({
+		const executionId = generateId();
+		await executionStore.createExecution({
+			id: executionId,
 			workflowId: 'wf-2',
 			status: 'running',
 			mode: 'production',

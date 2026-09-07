@@ -3,7 +3,7 @@ post:
   x-required-scope: execution:retry
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
-    - Execution
+    - Executions
   summary: Retry an execution
   description: Retry an execution from your instance.
   parameters:

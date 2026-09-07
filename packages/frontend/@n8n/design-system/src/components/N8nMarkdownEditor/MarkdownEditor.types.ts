@@ -1,7 +1,7 @@
 import type { Editor, Extension, EditorOptions } from '@tiptap/core';
 
 export type MarkdownEditorVariant = 'ghost' | 'contained';
-export type MarkdownEditorToolbarMode = 'never' | 'hover' | 'always';
+export type MarkdownEditorToolbarMode = 'never' | 'hover' | 'always' | 'floating';
 
 export type N8nMarkdownEditorProps = {
 	modelValue: string;

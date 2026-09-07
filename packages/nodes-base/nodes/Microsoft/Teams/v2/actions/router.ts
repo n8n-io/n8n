@@ -11,6 +11,7 @@ import * as channel from './channel';
 import * as channelMessage from './channelMessage';
 import * as chatMessage from './chatMessage';
 import type { MicrosoftTeamsType } from './node.type';
+import * as onlineMeeting from './onlineMeeting';
 import * as task from './task';
 import { configureWaitTillDate } from '../../../../../utils/sendAndWait/configureWaitTillDate.util';
 
@@ -68,6 +69,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						this,
 						i,
 						instanceId,
+					);
+					break;
+				case 'onlineMeeting':
+					responseData = await onlineMeeting[microsoftTeamsTypeData.operation].execute.call(
+						this,
+						i,
 					);
 					break;
 				case 'task':

@@ -24,7 +24,6 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DirectoryLoader } from 'n8n-core';
 import { Cipher, UnrecognizedNodeTypeError } from 'n8n-core';
@@ -236,13 +235,6 @@ const sendChatMessage = async (workflow: WorkflowEntity, chatSessionId: string) 
 		.post(`/${webhookTestEndpoint}/${workflow.id}/${chatSessionId}`)
 		.send({ action: 'sendMessage', chatInput: 'hello', sessionId: chatSessionId });
 
-const lastExecutionFor = async (workflowId: string) =>
-	await Container.get(ExecutionRepository).findOne({
-		where: { workflowId },
-		order: { createdAt: 'DESC' },
-		relations: ['executionData'],
-	});
-
 beforeAll(async () => {
 	await initNodeTypes(loadNodesFromDist([HTTP_REQUEST]));
 	registerChatTrigger();
@@ -320,13 +312,17 @@ describe('chat trigger test run with end-user credentials', () => {
 		const vendorScope = mockVendorCall();
 
 		await startListening(workflow, chatSessionId);
-		await sendChatMessage(workflow, chatSessionId);
+		const response = await sendChatMessage(workflow, chatSessionId);
 
-		const execution = await lastExecutionFor(workflow.id);
-		const runError = JSON.stringify(execution?.executionData?.data ?? '');
-
-		expect(runError).toContain('is not connected for you');
-		expect(runError).not.toContain('Unable to sign without access token');
+		// The message-send gate now rejects before the run ever reaches the HTTP Request
+		// node, so the builder gets a structured "not connected" response instead of a run
+		// that dies signing the request with no token.
+		expect(response.statusCode).toBe(428);
+		expect(response.body).toMatchObject({
+			status: 'credential_connections_required',
+			readyToExecute: false,
+			credentials: [expect.objectContaining({ credentialId, credentialStatus: 'missing' })],
+		});
 		expect(vendorScope.isDone()).toBe(false);
 	});
 

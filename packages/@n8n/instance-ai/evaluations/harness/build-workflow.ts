@@ -43,6 +43,7 @@ import {
 import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
+import { executePriorRuns } from './prior-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -262,6 +263,11 @@ export interface BuildResult {
 	/** Transport-level failure (network error, or the lane unreachable right
 	 *  after failing — e.g. timed out against a dead lane). Routed to `framework_issue`. */
 	transportFailure?: boolean;
+	/** Set when a `seed.priorRuns` staging run produced no execution record, so the
+	 *  history the case grades against does not exist. Unlike the other infra flags this
+	 *  one applies even when the BUILD SUCCEEDED, which is exactly the case that would
+	 *  otherwise be scored as an agent failure. */
+	priorRunFailed?: string;
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
@@ -518,6 +524,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let builtDataTableIds: string[] = [];
 	let seededTranscript: TranscriptTurn[] = [];
 	let seedingFailed = false;
+	let priorRunFailed: string | undefined;
 	// Seed-declared workflow id -> the workflow as actually restored (fresh id and
 	// name). Lets an authored `attach` reference survive the per-run remap.
 	let seedWorkflowsBySeedId = new Map<string, { id: string; name: string }>();
@@ -815,6 +822,39 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
+			// Run AFTER the seeding try/catch, so a prior-run problem is not reported as
+			// "Seeding failed" — the artifacts did land, it is the pre-turn history that did
+			// not. Before the live turn, so the agent's first look already sees it.
+			if (config.seed?.mode === 'inline' && config.seed.priorRuns?.length) {
+				// A throw here (an id the seed never created) is an authoring/harness fault.
+				// Without the flag the outer catch returns a plain failed build and the case
+				// is recorded as `build_failure` / `builder_issue` — a builder red for
+				// something the builder had no part in.
+				try {
+					const outcomes = await executePriorRuns({
+						client,
+						priorRuns: config.seed.priorRuns,
+						// Already maps authored seed id → the restored workflow, and it is built
+						// from `remapped`, which the server pins its ids to.
+						seedWorkflows: seedWorkflowsBySeedId,
+						logger,
+						laneTag: config.laneTag,
+					});
+					// A staged run that never produced an execution record leaves the case's
+					// premise missing, so the graded turn answers a question the instance cannot
+					// support. Recorded rather than thrown: the build itself is fine, and the
+					// case is routed to infra instead of scored.
+					const missing = outcomes.filter((outcome) => !outcome.ran);
+					if (missing.length > 0) {
+						priorRunFailed = missing
+							.map((outcome) => `${outcome.workflow}: ${outcome.errors.join('; ') || 'unknown'}`)
+							.join(' | ');
+					}
+				} catch (error: unknown) {
+					seedingFailed = true;
+					throw error;
+				}
+			}
 		}
 
 		// TRUST-311 follow-up: create the case's execution-scenario data tables EMPTY
@@ -1041,6 +1081,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					transcript,
 					credentialViewPinned,
 					seedingFailed,
+					...(priorRunFailed ? { priorRunFailed } : {}),
 					credentialSetup: await credentialSetupFacts(),
 				};
 			}
@@ -1061,6 +1102,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				transcript,
 				credentialViewPinned,
 				seedingFailed,
+				...(priorRunFailed ? { priorRunFailed } : {}),
 				credentialSetup: await credentialSetupFacts(),
 			};
 		}
@@ -1086,6 +1128,11 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// per-scenario rows are seeded in runScenario via seededScenarioTableIdsByName.
 		return {
 			success: true,
+			// Carried on the SUCCESS path too. A staged run that never landed is the one
+			// infra signal that outlives a healthy build, and that is exactly the case
+			// `case-pipeline` has to catch — the graded turn answered a question the
+			// instance cannot support.
+			...(priorRunFailed ? { priorRunFailed } : {}),
 			workflowId: outcome.workflowsCreated[0].id,
 			workflowJsons: outcome.workflowJsons,
 			buildTrace,
@@ -1121,6 +1168,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			threadId,
 			credentialViewPinned,
 			seedingFailed,
+			...(priorRunFailed ? { priorRunFailed } : {}),
 			laneBootFailed,
 			credentialSetup: await credentialSetupFacts(),
 		};

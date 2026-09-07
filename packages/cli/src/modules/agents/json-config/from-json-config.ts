@@ -622,6 +622,7 @@ async function resolveModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
+		config.modelDeploymentName,
 	);
 }
 

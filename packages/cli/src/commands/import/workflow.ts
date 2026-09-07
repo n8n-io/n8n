@@ -158,13 +158,15 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			{ activeState: flags.activeState },
 		);
 
-		this.logContentImportViolations(violations);
+		this.logSkippedWorkflows(violations);
 
-		this.reportSuccess(workflows.length);
+		const importedCount = workflows.length - violations.length;
+
+		this.reportSuccess(importedCount);
 
 		Container.get(EventService).emit('server-cli-import', {
 			activeState: flags.activeState,
-			workflowCount: workflows.length,
+			workflowCount: importedCount,
 			separate: flags.separate,
 		});
 	}
@@ -222,20 +224,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		this.logger.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
 	}
 
-	private logContentImportViolations(violations: WorkflowImportViolations[]) {
-		for (const { name, contentImportPolicy } of violations) {
-			if (contentImportPolicy.violations.length) {
-				this.logger.warn(
-					`Workflow "${name}" has ${contentImportPolicy.violations.length} content-import policy violation(s)`,
-					{ violations: contentImportPolicy.violations },
-				);
-			}
-			if (contentImportPolicy.checkErrors.length) {
-				this.logger.warn(
-					`Workflow "${name}" has ${contentImportPolicy.checkErrors.length} content-import policy check(s) that failed to run`,
-					{ checkErrors: contentImportPolicy.checkErrors },
-				);
-			}
+	private logSkippedWorkflows(skipped: WorkflowImportViolations[]) {
+		for (const { name, violations } of skipped) {
+			this.logger.warn(
+				`Skipped workflow "${name}": ${violations.length} content-import policy violation(s)`,
+				{ violations },
+			);
 		}
 	}
 

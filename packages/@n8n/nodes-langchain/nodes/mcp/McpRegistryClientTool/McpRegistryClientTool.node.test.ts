@@ -422,6 +422,7 @@ describe('McpRegistryClientTool', () => {
 						endpointHostname: 'mcp.notion.com',
 						transport: 'httpStreamable',
 						credentialBindings: [{ credentialType: 'someServiceMcpOAuth2Api', selector: 'oAuth2' }],
+						isTemplated: false,
 					},
 					credentialType: 'someServiceMcpOAuth2Api',
 					credentialData: { oauthTokenData: { access_token: 'token' } },

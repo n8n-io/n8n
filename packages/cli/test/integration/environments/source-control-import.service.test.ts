@@ -44,7 +44,8 @@ import { SourceControlContextFactory } from '@/modules/source-control.ee/source-
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
-import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
@@ -101,7 +102,12 @@ describe('SourceControlImportService', () => {
 		sourceControlScopedService = Container.get(SourceControlScopedService);
 		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
 		mockPolicyEnforcementService.hasChecksFor.mockReturnValue(true);
-		mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
+		// The repository verifies the token, so it has to be a real one. With no backend
+		// registered the real service clears everything, which is what a default pull does.
+		mockPolicyEnforcementService.enforceContentImport.mockImplementation(
+			async (context) =>
+				await Container.get(PolicyEnforcementService).enforceContentImport(context),
+		);
 		service = new SourceControlImportService(
 			mock(),
 			mock(),
@@ -2024,11 +2030,10 @@ describe('SourceControlImportService', () => {
 
 		describe('content-import policy', () => {
 			beforeEach(() => {
-				mockPolicyEnforcementService.evaluateContentImport.mockClear();
-				mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
+				mockPolicyEnforcementService.enforceContentImport.mockClear();
 			});
 
-			it('evaluates content-import policy once per imported workflow, with the resolved target project', async () => {
+			it('enforces content-import policy once per imported workflow, with the resolved target project', async () => {
 				const importingUser = await getGlobalOwner();
 				const importingUserProject = await getPersonalProject(importingUser);
 
@@ -2040,23 +2045,23 @@ describe('SourceControlImportService', () => {
 					importingUser.id,
 				);
 
-				expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledTimes(1);
-				expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledWith({
+				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(1);
+				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
 					workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
 					projectId: importingUserProject.id,
 				});
 			});
 
-			it('does not fail the pull when a violation is returned, and attaches it to the result', async () => {
+			it('skips a blocked workflow, attaches the reason, and persists nothing', async () => {
 				const importingUser = await getGlobalOwner();
 				const violation = {
 					kind: 'node-type-unavailable',
 					checkId: 'test.check',
 					message: 'not allowed',
 				};
-				mockPolicyEnforcementService.evaluateContentImport.mockResolvedValueOnce({
-					violations: [violation],
-				});
+				mockPolicyEnforcementService.enforceContentImport.mockRejectedValueOnce(
+					new PolicyViolationError([violation]),
+				);
 
 				const workflow = makeWorkflowImport();
 				const file = putWorkflowFile(workflow.id, workflow);
@@ -2067,36 +2072,37 @@ describe('SourceControlImportService', () => {
 				);
 
 				expect(result).toEqual([
-					expect.objectContaining({
+					{
 						id: workflow.id,
+						name: file,
 						contentImportPolicy: { violations: [violation], checkErrors: [] },
-					}),
+					},
 				]);
-				// The pull completes regardless of the violation.
 				await expect(
 					workflowRepository.findOne({ where: { id: workflow.id } }),
-				).resolves.toBeTruthy();
+				).resolves.toBeNull();
 			});
 
-			it('does not fail the pull when evaluateContentImport throws', async () => {
+			// A check that cannot answer is an infrastructure fault, not a property of one workflow.
+			it('fails the pull when the policy layer errors', async () => {
 				const importingUser = await getGlobalOwner();
-				mockPolicyEnforcementService.evaluateContentImport.mockRejectedValueOnce(
+				mockPolicyEnforcementService.enforceContentImport.mockRejectedValueOnce(
 					new Error('backend unavailable'),
 				);
 
 				const workflow = makeWorkflowImport();
 				const file = putWorkflowFile(workflow.id, workflow);
 
-				const result = await service.importWorkflowFromWorkFolder(
-					[mock<SourceControlledFile>({ id: workflow.id, file })],
-					importingUser.id,
-				);
+				await expect(
+					service.importWorkflowFromWorkFolder(
+						[mock<SourceControlledFile>({ id: workflow.id, file })],
+						importingUser.id,
+					),
+				).rejects.toThrow('backend unavailable');
 
-				expect(result).toEqual([expect.objectContaining({ id: workflow.id })]);
-				expect(result[0]).not.toHaveProperty('contentImportPolicy');
 				await expect(
 					workflowRepository.findOne({ where: { id: workflow.id } }),
-				).resolves.toBeTruthy();
+				).resolves.toBeNull();
 			});
 		});
 	});

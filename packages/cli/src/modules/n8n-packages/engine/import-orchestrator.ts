@@ -60,6 +60,7 @@ import type {
 	ImportWorkflowProperties,
 	MissingNodeTypeMode,
 	PackageImportBindings,
+	PackageImportSource,
 	RemovedFolderSummary,
 	RemovedWorkflowSummary,
 	ResolvedImportFolderProperties,
@@ -81,6 +82,7 @@ export interface ImportOrchestrationInput {
 	projectPendingCreation?: boolean;
 	/** Sub-workflow dependency graph from the manifest, used to order the import. */
 	subWorkflowRequirements?: PackageWorkflowRequirement[];
+	importSource?: PackageImportSource;
 }
 
 /**
@@ -227,6 +229,7 @@ export class ImportOrchestrator {
 			packageFolderIds,
 			subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
 			projectPendingCreation: input.projectPendingCreation,
+			importSource: input.importSource,
 		});
 
 		// Which folders end up empty depends on which workflows survive, so this follows the plan above

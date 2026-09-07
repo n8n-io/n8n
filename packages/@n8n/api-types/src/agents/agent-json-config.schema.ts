@@ -218,7 +218,7 @@ export const McpAuthenticationSchemaTypes = z.enum([
 	'mcpOAuth2Api',
 ]);
 
-export const McpOAuth2CredentialTypeSchema = z.string().regex(/OAuth2(?:Api)?$/);
+export const McpOAuth2CredentialTypeSchema = z.string().regex(/^(?:oAuth2Api|.*OAuth2(?:Api)?)$/);
 
 /**
  * Configuration for a single MCP (Model Context Protocol) server attached to
@@ -240,6 +240,7 @@ export const McpServerConfigSchema = z
 			.enum(['sse', 'streamableHttp'])
 			.default('streamableHttp')
 			.describe('Transport protocol'),
+		// todo: make McpOAuth2CredentialTypeSchema an object?
 		authentication: z
 			.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
 			.default('none')
@@ -445,6 +446,15 @@ export const AgentJsonConfigBaseSchema = z.object({
 	name: z.string().min(1).max(128),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
+	/**
+	 * Azure OpenAI classic deployments are user-named in Azure and surfaced in
+	 * the deployment-based URL path. The catalog model id (e.g. `gpt-4o`) is not
+	 * the deployment id, so the agent flow must capture the user's deployment
+	 * name separately. Only meaningful for the `azure-openai` provider with a
+	 * classic endpoint; ignored by Foundry and other providers. An empty
+	 * string is a deliberate clear of a previously stored value.
+	 */
+	modelDeploymentName: z.string().trim().optional(),
 	instructions: z.string(),
 	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),

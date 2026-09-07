@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { setActivePinia, createPinia } from 'pinia';
 import { defineComponent, h, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
@@ -225,6 +226,7 @@ const renderComponent = createComponentRenderer(InstanceAiInput, {
 
 describe('InstanceAiInput', () => {
 	beforeEach(() => {
+		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		telemetryTrack.mockReset();
 	});

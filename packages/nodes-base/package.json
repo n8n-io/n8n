@@ -51,6 +51,7 @@
       "dist/credentials/AsanaApi.credentials.js",
       "dist/credentials/AsanaOAuth2Api.credentials.js",
       "dist/credentials/AtlassianOAuth2Api.credentials.js",
+      "dist/credentials/AtlassianServiceAccountApi.credentials.js",
       "dist/credentials/Auth0ManagementApi.credentials.js",
       "dist/credentials/AutopilotApi.credentials.js",
       "dist/credentials/Aws.credentials.js",

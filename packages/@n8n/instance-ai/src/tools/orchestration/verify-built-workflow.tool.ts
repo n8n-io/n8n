@@ -78,7 +78,15 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 		.record(z.array(z.record(z.unknown())))
 		.optional()
 		.describe(
-			'Optional per-run output fixtures keyed by node name. Only nodes already classified as simulated in the build outcome may be overridden. Use this for alternate deterministic scenarios, not raw trigger input.',
+			'Optional per-run output fixtures keyed by node name. Only nodes already classified as simulated in the build outcome may be overridden. Use this for alternate deterministic scenarios, not raw trigger input. ' +
+				'An empty array is rejected unless the node is also listed in `allowZeroItemFixtures`.',
+		),
+	allowZeroItemFixtures: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Node names whose `fixtureOverrides` entry may be an empty array. Zero items stop every node below, so the run reports success while verifying nothing. ' +
+				'List a node here only when the empty branch is what you are verifying, and say so in your report.',
 		),
 });
 
@@ -162,7 +170,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				});
 			}
 
-			const preparedResult = prepareVerificationRun(buildOutcome, resolvedInput.fixtureOverrides);
+			const preparedResult = prepareVerificationRun(buildOutcome, resolvedInput);
 			if (preparedResult.kind === 'blocked') {
 				return {
 					...preparedResult.result,

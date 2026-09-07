@@ -11,6 +11,7 @@ import type {
 	RemovedWorkflowSummary,
 	ImportBindingMap,
 	ImportCredentialSummary,
+	ImportDataTableSummary,
 	ImportedFolderSummary,
 	ImportedProjectSummary,
 	ImportedWorkflowSummary,
@@ -68,6 +69,7 @@ export function buildImportResult(input: {
 	projects: ImportedProjectSummary[];
 	bindings: PackageImportBindings;
 	credentials: ImportCredentialSummary;
+	dataTables: ImportDataTableSummary;
 	variables: ImportVariableSummary;
 	tags: ImportTagSummary;
 }): ImportResult {
@@ -80,6 +82,7 @@ export function buildImportResult(input: {
 		projects: input.projects,
 		bindings: serializeBindings(input.bindings),
 		credentials: input.credentials,
+		dataTables: input.dataTables,
 		variables: input.variables,
 		tags: input.tags,
 	};

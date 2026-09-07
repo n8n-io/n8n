@@ -1,6 +1,6 @@
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { SharedWorkflowRepository, WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import type { PolicyCheckResult, PolicyViolation, RegisteredPolicyCheck } from '@n8n/decorators';
 import { PolicyCheck, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -176,6 +176,25 @@ describe('with the same check reporting nothing', () => {
 		await expect(workflowRepository.findOneByOrFail({ id: data.id })).resolves.toMatchObject({
 			name: editorPayload.name,
 		});
+	});
+
+	// The workflow row now goes through the token-gated repository method while its co-writers
+	// stay on the transaction manager — all three rows still have to land together.
+	test('editor create persists the owner row and the first history version', async () => {
+		const response = await editorAgent.post('/workflows').send(editorPayload);
+
+		expect(response.statusCode).toBe(200);
+		const { data } = response.body as { data: { id: string } };
+
+		await expect(
+			Container.get(SharedWorkflowRepository).countBy({
+				workflowId: data.id,
+				role: 'workflow:owner',
+			}),
+		).resolves.toBe(1);
+		await expect(
+			Container.get(WorkflowHistoryRepository).countBy({ workflowId: data.id }),
+		).resolves.toBe(1);
 	});
 
 	test('public API create succeeds', async () => {
