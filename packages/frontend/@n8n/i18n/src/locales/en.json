@@ -5165,6 +5165,7 @@
 	"apps.builder.codeComingSoon": "Source files show here soon",
 	"apps.builder.empty.title": "Nothing to preview yet",
 	"apps.builder.empty.description": "Ask the assistant to build this app. Each build shows here as soon as it's done.",
+	"apps.builder.empty.descriptionNoAssistant": "Build this app to see it here.",
 	"apps.pages": "Pages",
 	"apps.page.subPageCount": "{count} sub-page | {count} sub-pages",
 	"apps.page.subPages": "Sub-pages",

@@ -8,6 +8,7 @@ import {
 	N8nText,
 	N8nToggle,
 	N8nToggleGroup,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -225,7 +226,12 @@ watch(versionId, (next, previous) => {
 				</div>
 			</div>
 
-			<div v-if="mode === 'preview'" :class="$style.preview" data-test-id="app-builder-preview">
+			<!-- The default mode depends on the fetched active version, so neither block renders before it. -->
+			<div
+				v-if="app && mode === 'preview'"
+				:class="$style.preview"
+				data-test-id="app-builder-preview"
+			>
 				<div :class="$style.previewBar">
 					<N8nToggleGroup
 						:model-value="device"
@@ -255,16 +261,17 @@ watch(versionId, (next, previous) => {
 							</N8nToggle>
 						</template>
 					</N8nToggleGroup>
-					<N8nIconButton
-						icon="refresh-cw"
-						variant="ghost"
-						size="small"
-						:disabled="!versionId"
-						:aria-label="i18n.baseText('apps.builder.refresh')"
-						:title="i18n.baseText('apps.builder.refresh')"
-						data-test-id="app-preview-refresh"
-						@click="previewFrame?.refresh()"
-					/>
+					<N8nTooltip :content="i18n.baseText('apps.builder.refresh')">
+						<N8nIconButton
+							icon="refresh-cw"
+							variant="ghost"
+							size="small"
+							:disabled="!versionId"
+							:aria-label="i18n.baseText('apps.builder.refresh')"
+							data-test-id="app-preview-refresh"
+							@click="previewFrame?.refresh()"
+						/>
+					</N8nTooltip>
 				</div>
 				<AppPreviewFrame
 					v-if="app && versionId"
@@ -274,11 +281,15 @@ watch(versionId, (next, previous) => {
 					:width="PREVIEW_WIDTHS[device]"
 				/>
 				<div v-else-if="!loading" :class="$style.emptyState" data-test-id="app-preview-empty">
-					<N8nText tag="h3" size="medium" bold>{{
+					<N8nText tag="h2" size="medium" bold>{{
 						i18n.baseText('apps.builder.empty.title')
 					}}</N8nText>
 					<N8nText color="text-light">{{
-						i18n.baseText('apps.builder.empty.description')
+						i18n.baseText(
+							instanceAiAvailable
+								? 'apps.builder.empty.description'
+								: 'apps.builder.empty.descriptionNoAssistant',
+						)
 					}}</N8nText>
 					<N8nButton
 						v-if="!props.artifactMode && instanceAiAvailable"
@@ -292,7 +303,7 @@ watch(versionId, (next, previous) => {
 				</div>
 			</div>
 
-			<div v-else :class="$style.build" data-test-id="app-builder-build">
+			<div v-else-if="app" :class="$style.build" data-test-id="app-builder-build">
 				<N8nTabs
 					v-model="buildTab"
 					:options="buildTabOptions"

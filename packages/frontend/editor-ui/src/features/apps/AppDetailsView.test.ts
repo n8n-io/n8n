@@ -10,6 +10,7 @@ import { APP_DETAILS, APP_PAGE_DETAILS, PROJECT_APPS } from './apps.constants';
 import type { App } from './apps.types';
 
 const openAppArtifactThread = vi.hoisted(() => vi.fn());
+const instanceAiAvailable = vi.hoisted(() => ({ value: true }));
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
@@ -19,10 +20,13 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: vi.fn() }),
 }));
 
-vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
-	useInstanceAiAvailable: () => ({ value: true }),
-	useInstanceAiReady: () => ({ value: true }),
-}));
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', async () => {
+	const { computed } = await import('vue');
+	return {
+		useInstanceAiAvailable: () => computed(() => instanceAiAvailable.value),
+		useInstanceAiReady: () => computed(() => instanceAiAvailable.value),
+	};
+});
 
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
 	useInstanceAiHandoff: () => ({ openAppArtifactThread }),
@@ -75,6 +79,7 @@ describe('AppDetailsView', () => {
 	beforeEach(async () => {
 		createTestingPinia();
 		openAppArtifactThread.mockReset();
+		instanceAiAvailable.value = true;
 		await router.push('/projects/proj-1/apps/app-1');
 		await router.isReady();
 
@@ -109,6 +114,24 @@ describe('AppDetailsView', () => {
 		);
 	});
 
+	it('renders neither Build nor Preview until the app has loaded', async () => {
+		let resolveApp: (app: App) => void = () => {};
+		appsStore.getApp.mockReturnValue(new Promise<App>((resolve) => (resolveApp = resolve)));
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { projectId: 'proj-1', appId: 'app-1' },
+		});
+		await waitAllPromises();
+
+		expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
+
+		resolveApp(makeApp({ activeVersionId: 'v-7' }));
+		await waitAllPromises();
+
+		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
+		expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+	});
+
 	it('switches between Build and Preview from the mode control', async () => {
 		const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
 
@@ -134,6 +157,17 @@ describe('AppDetailsView', () => {
 			{ type: 'app', appId: 'app-1', projectId: 'proj-1', name: 'Greeter' },
 			{ source: 'app_builder_page', origin: 'internal', sourceContext: { appId: 'app-1' } },
 		);
+	});
+
+	it('tells the user to build the app themselves when the assistant is unavailable', async () => {
+		instanceAiAvailable.value = false;
+		const { getByTestId, queryByTestId } = await renderApp(makeApp());
+
+		await userEvent.click(getByTestId('radio-button-preview'));
+
+		expect(getByTestId('app-preview-empty')).toHaveTextContent('Build this app to see it here.');
+		expect(queryByTestId('app-preview-empty-open-in-assistant')).not.toBeInTheDocument();
+		expect(queryByTestId('app-open-in-assistant')).not.toBeInTheDocument();
 	});
 
 	it('narrows the frame to a phone width on the mobile toggle', async () => {

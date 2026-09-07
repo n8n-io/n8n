@@ -2,6 +2,7 @@
 import { watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import AppDetailsView from '@/features/apps/AppDetailsView.vue';
 import { getAppBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useThread, useInstanceAiStore } from '../instanceAi.store';
@@ -19,6 +20,7 @@ const props = defineProps<{
 const thread = useThread();
 const instanceAiStore = useInstanceAiStore();
 const i18n = useI18n();
+const toast = useToast();
 
 // Showing an app binds the thread to it, so a later visit reopens this tab and
 // the agent keeps building the same app.
@@ -29,13 +31,17 @@ async function syncAppTarget() {
 	if (target?.appId === props.appId && target.projectId === props.projectId) return;
 
 	const name = thread.producedArtifacts.get(props.appId)?.name;
-	await instanceAiStore.updateThreadMetadata(thread.id, {
-		[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
-			appId: props.appId,
-			projectId: props.projectId,
-			...(name ? { name } : {}),
-		},
-	});
+	try {
+		await instanceAiStore.updateThreadMetadata(thread.id, {
+			[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
+				appId: props.appId,
+				projectId: props.projectId,
+				...(name ? { name } : {}),
+			},
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
+	}
 }
 
 watch(() => props.appId, syncAppTarget, { immediate: true });

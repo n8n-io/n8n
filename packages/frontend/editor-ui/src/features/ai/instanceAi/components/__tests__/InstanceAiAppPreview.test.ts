@@ -16,6 +16,11 @@ const updateThreadMetadataMock = vi.fn(
 	},
 );
 
+const showError = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
+}));
+
 vi.mock('../../instanceAi.store', () => ({
 	useThread: () => threadState,
 	useInstanceAiStore: () => ({
@@ -47,6 +52,7 @@ describe('InstanceAiAppPreview', () => {
 	beforeEach(() => {
 		metadataState.value = undefined;
 		updateThreadMetadataMock.mockClear();
+		showError.mockClear();
 	});
 
 	it('hosts the app details view in artifact mode with the built version', () => {
@@ -77,6 +83,16 @@ describe('InstanceAiAppPreview', () => {
 		await flushPromises();
 
 		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
+	});
+
+	it('toasts instead of throwing when binding the thread fails', async () => {
+		const failure = new Error('offline');
+		updateThreadMetadataMock.mockRejectedValueOnce(failure);
+
+		mountPreview();
+		await flushPromises();
+
+		expect(showError).toHaveBeenCalledWith(failure, 'Something went wrong');
 	});
 
 	it('shows the building indicator while an apps build call is in flight', () => {
