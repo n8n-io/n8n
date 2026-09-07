@@ -978,6 +978,152 @@ describe('WaitTracker', () => {
 						expect(logger.error).not.toHaveBeenCalled();
 					},
 				);
+
+				it('resumes the parent from DB when the child post-execute promise never settles', async () => {
+					// CAT-4359: in queue mode `postExecutePromise` only settles after Bull's
+					// `job.finished()`. A lost completion leaves it pending forever even when the
+					// child row is already terminal — recover by loading the run from the DB.
+					const executeData: IExecuteData = {
+						node: mock<INode>({ name: 'Execute Sub Workflow' }),
+						data: { main: [[{ json: { data: 'Parent input data' }, pairedItem: { item: 0 } }]] },
+						source: { main: [{ previousNode: 'Manual Trigger' }] },
+						metadata: { waitingChildExecutionIds: [execution.id] },
+					};
+					const parentExecution: IExecutionResponse = {
+						id: 'parent_execution_id',
+						finished: false,
+						status: 'waiting',
+						waitTill: WAIT_INDEFINITELY,
+						workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] }),
+						customData: {},
+						annotation: { tags: [] },
+						createdAt: new Date(),
+						startedAt: new Date(),
+						mode: 'manual',
+						workflowId: 'parent_workflow_id',
+						storedAt: 'db',
+						data: createRunExecutionData({ executionData: { nodeExecutionStack: [executeData] } }),
+					};
+
+					execution.data.parentExecution = {
+						executionId: parentExecution.id,
+						workflowId: parentExecution.workflowData.id,
+						shouldResume: true,
+					};
+
+					const finalNodeName = 'Final Node';
+					const childRunData = createRunExecutionData({
+						resultData: {
+							runData: {
+								[finalNodeName]: [
+									{
+										startTime: new Date().getTime(),
+										executionTime: 5,
+										executionIndex: 0,
+										source: [{ previousNode: 'Wait Node' }],
+										data: { main: [[{ json: { data: 'Recovered from DB' } }]] },
+									},
+								],
+							},
+							lastNodeExecuted: finalNodeName,
+						},
+					});
+
+					const terminalChild: IExecutionResponse = {
+						...execution,
+						id: execution.id,
+						finished: true,
+						status: 'success',
+						waitTill: undefined,
+						data: childRunData,
+						workflowData: execution.workflowData,
+						storedAt: 'db',
+						mode: 'manual',
+						startedAt: new Date(),
+						createdAt: new Date(),
+						customData: {},
+						annotation: { tags: [] },
+						workflowId: execution.workflowData.id,
+					};
+
+					workflowRunner.run.mockReset();
+					workflowRunner.run.mockResolvedValue(execution.id);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+					let childReads = 0;
+					executionPersistence.findSingleExecution.mockImplementation(async (id) => {
+						if (id === parentExecution.id) return parentExecution;
+						if (id === execution.id) {
+							childReads += 1;
+							// First read is startExecution (child still waiting); later polls see it done.
+							return childReads === 1 ? execution : terminalChild;
+						}
+						return undefined;
+					});
+
+					// Promise never resolves — simulates a lost Bull job.finished() signal.
+					const postExecutePromise = createDeferredPromise<IRun | undefined>();
+					activeExecutions.getPostExecutePromise
+						.calledWith(execution.id)
+						.mockReturnValue(postExecutePromise.promise);
+
+					await waitTracker.startExecution(execution.id);
+					await vi.advanceTimersByTimeAsync(1000);
+					await vi.advanceTimersByTimeAsync(1000);
+
+					expect(logger.warn).toHaveBeenCalledWith(
+						'Child execution finished in DB but post-execute promise did not settle; resuming parent from DB',
+						expect.objectContaining({
+							parentExecutionId: parentExecution.id,
+							childExecutionId: execution.id,
+							childStatus: 'success',
+						}),
+					);
+					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+						parentExecution.id,
+						expect.objectContaining({
+							data: expect.objectContaining({
+								executionData: expect.objectContaining({
+									nodeExecutionStack: [
+										expect.objectContaining({
+											data: { main: [[{ json: { data: 'Recovered from DB' } }]] },
+										}),
+									],
+								}),
+							}),
+						}),
+					);
+					expect(workflowRunner.run).toHaveBeenCalledTimes(2); // child + parent claim
+					expect(logger.error).not.toHaveBeenCalled();
+				});
+
+				it('logs an error and does not claim the parent when the child never finishes', async () => {
+					const { parentExecution, postExecutePromise } = setupParentExecutionTest(true);
+					workflowRunner.run.mockReset();
+					workflowRunner.run.mockResolvedValue(execution.id);
+
+					executionPersistence.findSingleExecution.mockImplementation(async (id) => {
+						if (id === parentExecution.id) return parentExecution;
+						// Child stays non-terminal for every poll (and for startExecution).
+						return execution;
+					});
+
+					await waitTracker.startExecution(execution.id);
+					// Never resolve postExecutePromise. Advance past the 5-minute child settle budget.
+					await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1000);
+
+					expect(logger.error).toHaveBeenCalledWith(
+						'Timed out waiting for child execution to complete before resuming parent',
+						expect.objectContaining({
+							parentExecutionId: parentExecution.id,
+							childExecutionId: execution.id,
+						}),
+					);
+					expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+					expect(workflowRunner.run).toHaveBeenCalledTimes(1); // child only
+					// Keep the dangling promise from leaking into later tests.
+					postExecutePromise.resolve(undefined);
+				});
 			});
 		});
 	});
