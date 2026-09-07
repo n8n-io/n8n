@@ -12,7 +12,11 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { LmChatDatabricks } from '../LmChatDatabricks.node';
-import { createDatabricksFetch, getDatabricksTokenProvider } from '../token-provider';
+import {
+	CHAT_MODEL_USER_AGENT,
+	createDatabricksFetch,
+	getDatabricksTokenProvider,
+} from '../token-provider';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
@@ -329,6 +333,15 @@ describe('LmChatDatabricks', () => {
 
 			const [, requestOptions] = httpRequestWithAuthentication.mock.calls[0];
 			expect(requestOptions.url).toBe('https://my.databricks.com/api/2.0/serving-endpoints');
+		});
+
+		it('should send the partner User-Agent on the endpoints listing request', async () => {
+			setupSearchContext('https://my.databricks.com', endpointsResponse);
+
+			await node.methods.listSearch.searchModels.call(mockContext);
+
+			const [, requestOptions] = httpRequestWithAuthentication.mock.calls[0];
+			expect(requestOptions.headers).toMatchObject({ 'User-Agent': CHAT_MODEL_USER_AGENT });
 		});
 	});
 });

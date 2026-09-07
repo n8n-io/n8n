@@ -6,23 +6,24 @@ import type {
 	ConnectedMcpService,
 	InstanceAiContext,
 	InstanceAiMcpService,
+	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 } from '../types';
 import { createMcpServersTool } from './mcp-servers.tool';
 
-const notion: McpRegistryServerSummary = {
+const notion: McpRegistryConnectServerSummary = {
 	slug: 'notion',
 	title: 'Notion',
 	description: 'Work with Notion pages and databases',
-	credentialType: 'notionMcpOAuth2Api',
+	usesCredentials: [{ credentialType: 'notionMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 	tools: ['create_page', 'search_pages'],
 };
 
-const linear: McpRegistryServerSummary = {
+const linear: McpRegistryConnectServerSummary = {
 	slug: 'linear',
 	title: 'Linear',
 	description: 'Track issues in Linear',
-	credentialType: 'linearMcpOAuth2Api',
+	usesCredentials: [{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 	tools: ['create_issue'],
 };
 
@@ -40,18 +41,24 @@ function withConnections(...slugs: string[]): Partial<InstanceAiMcpService> {
 	return { listConnections: vi.fn().mockResolvedValue(slugs.map((slug) => ({ slug }))) };
 }
 
-function makeServers(count: number): McpRegistryServerSummary[] {
+function makeServers(count: number): McpRegistryConnectServerSummary[] {
 	return Array.from({ length: count }, (_, index) => ({
 		slug: `server-${index}`,
 		title: `Server ${index}`,
 		description: 'An API service',
-		credentialType: `server${index}McpOAuth2Api`,
+		usesCredentials: [
+			{
+				credentialType: `server${index}McpOAuth2Api`,
+				name: 'OAuth2',
+				value: 'oAuth2',
+			},
+		],
 		tools: [`tool_${index}`],
 	}));
 }
 
 function makeService(
-	servers: McpRegistryServerSummary[],
+	servers: McpRegistryConnectServerSummary[],
 	overrides: Partial<InstanceAiMcpService> = {},
 ): InstanceAiMcpService {
 	return {
@@ -67,7 +74,7 @@ function makeService(
 }
 
 interface SearchOutput {
-	results: Array<Omit<McpRegistryServerSummary, 'credentialType'>>;
+	results: McpRegistryServerSummary[];
 	hint?: string;
 }
 
@@ -79,11 +86,18 @@ interface ConnectOutput {
 interface SuspendPayload {
 	requestId: string;
 	message: string;
-	mcpConnectRequest: { servers: Array<{ serverSlug: string; title: string; tagline?: string }> };
+	mcpConnectRequest: {
+		servers: Array<{
+			serverSlug: string;
+			title: string;
+			tagline?: string;
+			usesCredentials: McpRegistryConnectServerSummary['usesCredentials'];
+		}>;
+	};
 }
 
 async function search(
-	servers: McpRegistryServerSummary[],
+	servers: McpRegistryConnectServerSummary[],
 	queries: string[] = ['anything'],
 ): Promise<SearchOutput> {
 	const tool = createMcpServersTool(makeContext(makeService(servers)));
@@ -412,7 +426,7 @@ describe('mcp-servers tool', () => {
 					{
 						serverSlug: 'notion',
 						title: 'Notion',
-						credentialType: 'notionMcpOAuth2Api',
+						usesCredentials: notion.usesCredentials,
 						tagline: 'Work with Notion pages and databases',
 					},
 				],

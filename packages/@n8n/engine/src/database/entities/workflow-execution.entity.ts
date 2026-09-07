@@ -8,6 +8,7 @@ import {
 } from '@n8n/typeorm';
 
 import type {
+	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
 	TriggerOutputs,
@@ -35,6 +36,10 @@ export class WorkflowExecution {
 
 	@Column('jsonb', { name: 'trigger_outputs', nullable: true })
 	triggerOutputs!: TriggerOutputs | null;
+
+	/** Caller-supplied, opaque to the engine. See `CallerContext`. */
+	@Column('jsonb', { name: 'caller_context', default: () => "'{}'" })
+	callerContext!: CallerContext;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

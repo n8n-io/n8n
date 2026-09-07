@@ -25,6 +25,8 @@ import {
 	InstanceAiBuilderDelegateAdapterService,
 } from '../instance-ai-builder-delegate.adapter';
 import type { AgentConfigService } from '../agent-config.service';
+import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from '../agent-capabilities';
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { N8nMemory, N8nMemoryImpl } from '../integrations/n8n-memory';
@@ -38,6 +40,7 @@ function setup() {
 	const agentConfig = mock<AgentConfigService>();
 	const agentSkills = mock<AgentSkillsService>();
 	const credentialService = mock<InstanceAiCredentialService>();
+	const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
 
 	const service = new InstanceAiBuilderDelegateAdapterService(
 		agentsService,
@@ -46,6 +49,7 @@ function setup() {
 		agentThreadRepository,
 		agentConfig,
 		agentSkills,
+		agentIntegrationPersistenceService,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -62,6 +66,7 @@ function setup() {
 		agentThreadRepository,
 		agentConfig,
 		agentSkills,
+		agentIntegrationPersistenceService,
 		credentialProvider,
 		credentialService,
 	};
@@ -520,6 +525,43 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			await expect(delegate.listAgents()).rejects.toThrow(ForbiddenError);
 			expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+				projectId: 'project-1',
+			});
+		});
+	});
+
+	describe('listAgentCapabilities', () => {
+		it('returns channels from the registry plus the module agent capabilities and limitations', async () => {
+			const { delegate, agentIntegrationPersistenceService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			const channels = [
+				{
+					type: 'slack',
+					label: 'Slack',
+					icon: 'slack',
+					credentialTypes: ['slackApi'],
+					capabilities: ['send messages'],
+					useIntegrationWhen: ['the agent should reply in Slack'],
+					useNodeToolWhen: ['only operating on Slack data'],
+				},
+			];
+			agentIntegrationPersistenceService.listChatIntegrations.mockReturnValue(channels);
+
+			await expect(delegate.listAgentCapabilities()).resolves.toEqual({
+				channels,
+				agentCapabilities: [...AGENT_CAPABILITIES],
+				limitations: [...AGENT_LIMITATIONS],
+			});
+			expect(agentIntegrationPersistenceService.listChatIntegrations).toHaveBeenCalledWith();
+		});
+
+		it('rejects when the user lacks agent:read scope', async () => {
+			const { delegate, agentIntegrationPersistenceService, user } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			await expect(delegate.listAgentCapabilities()).rejects.toThrow(ForbiddenError);
+			expect(agentIntegrationPersistenceService.listChatIntegrations).not.toHaveBeenCalled();
 			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
 				projectId: 'project-1',
 			});

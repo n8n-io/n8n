@@ -1,8 +1,8 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getFullApiResponse } from '@n8n/rest-api-client';
+import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 
-import { listAgents, listAgentsPage } from '../composables/useAgentApi';
+import { getChatMessages, listAgents, listAgentsPage } from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -71,6 +71,20 @@ describe('useAgentApi', () => {
 				'GET',
 				'/projects/project-1/agents/v2',
 				{ skip: 1, take: 250 },
+			);
+		});
+	});
+
+	describe('getChatMessages', () => {
+		it('percent-encodes the thread id so a rotated session id survives as a URL, not a fragment', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ messages: [] });
+
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'agent-1:chat:bot-1-2#1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/project-1/agents/v2/agent-1/chat/agent-1%3Achat%3Abot-1-2%231/messages',
 			);
 		});
 	});
