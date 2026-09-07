@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_540fd25d19a415::t_29649c597c6fdc 210-214,216-223,250-255,427-429
+  s_540fd25d19a415::t_e0c0791aa248cd 86,92-93,376
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  s_540fd25d19a415::t_71dfbcd9bd417f 578
+  s_540fd25d19a415::t_faa339249eb949 464-466,482,509-577,579-581
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a8dac344001cd85b92c269e383e9761b0770b02d",
+  "prompts": {},
+  "sessions": {
+    "s_540fd25d19a415": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61e5f24f-b000-415e-9d80-2ad29a2a5224",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+packages/cli/eslint.config.mjs
+  ai_agent 398
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  ai_agent 2-3,8-14,16-23,35
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  ai_agent 6,15,19,22-27,30-32,34,37,46,51-52,54,56,62,64-66
+packages/cli/src/modules/token-exchange/token-exchange.module.ts
+  ai_agent 42-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f71c83792e8926834573e1799152e93e0d33b4e3",
+  "prompts": {}
+}

@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/token-provider.test.ts
+  s_ce50212601c4e2::t_d8179ddd81f433 251-264
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/token-provider.ts
+  s_ce50212601c4e2::t_cdead97900b69a 79-83,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "36de61fa1865cf94ca010430841754384eb69b75",
+  "prompts": {},
+  "sessions": {
+    "s_ce50212601c4e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86c869b0-1b19-48e1-8ca4-8fdc897bc0ba",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

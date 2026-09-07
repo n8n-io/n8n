@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/executions.test.ts
+  s_176da1aff184f0::t_e846db83f90f24 647
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fb2964c5eea230fef46dc04408357a31913d4fa7",
+  "prompts": {},
+  "sessions": {
+    "s_176da1aff184f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c8cc965-adbd-49e9-a63e-907c657a03a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,67 @@
+packages/cli/src/modules/encryption-key-manager/encryption-bootstrap.service.ts
+  s_176da1aff184f0::t_40c20a226c4710 3,7,21-36,41-43
+packages/cli/src/modules/encryption-key-manager/key-manager.service.ts
+  s_176da1aff184f0::t_40c20a226c4710 84-86,95
+packages/cli/src/modules/encryption-key-manager/key-rotation-flag.ts
+  s_176da1aff184f0::t_40c20a226c4710 1-12
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_176da1aff184f0::t_40c20a226c4710 220-258
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_176da1aff184f0::t_40c20a226c4710 261-276
+.agents/review-rules/security/outbound-requests.md
+  s_176da1aff184f0::t_40c20a226c4710 1-15
+.agents/review-rules/README.md
+  s_176da1aff184f0::t_40c20a226c4710 16,62-64
+packages/core/src/instance-settings/__tests__/instance-settings.test.ts
+  s_176da1aff184f0::t_40c20a226c4710 377-386
+.agents/review-rules/backend/license-enforcement.md
+  s_176da1aff184f0::t_40c20a226c4710 1-14
+packages/@n8n/db/src/repositories/deployment-key.repository.ts
+  s_176da1aff184f0::t_40c20a226c4710 5,22-25,29-51
+.agents/review-rules/security/credentials-and-secrets.md
+  s_176da1aff184f0::t_40c20a226c4710 7,9-11,13
+.agents/review-rules/security/node-input-safety.md
+  s_176da1aff184f0::t_40c20a226c4710 8,10,16,21-22,25,29,31-33
+packages/cli/src/modules/encryption-key-manager/__tests__/encryption-bootstrap.service.integration.test.ts
+  s_176da1aff184f0::t_40c20a226c4710 15,64-91
+.agents/review-rules/security/rendering-untrusted-content.md
+  s_176da1aff184f0::t_40c20a226c4710 1-15
+packages/cli/src/scaling/scaling.service.ts
+  s_176da1aff184f0::t_40c20a226c4710 189-190,192-193
+packages/cli/src/scaling/job-processor.ts
+  s_176da1aff184f0::t_40c20a226c4710 332-339
+packages/testing/containers/services/sandbox.ts
+  s_176da1aff184f0::t_40c20a226c4710 22-31,163-203,205-210,215-237,239-264,280-281
+packages/core/src/instance-settings/instance-settings.ts
+  s_176da1aff184f0::t_40c20a226c4710 72-81,123
+packages/cli/src/modules/encryption-key-manager/__tests__/encryption-bootstrap.service.test.ts
+  s_176da1aff184f0::t_40c20a226c4710 17-20,23-27,61-68,82-103
+.agents/review-rules/security/code-execution-and-sandboxing.md
+  s_176da1aff184f0::t_40c20a226c4710 3-5,9-14,16-17
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_176da1aff184f0::t_40c20a226c4710 23
+packages/cli/src/modules/encryption-key-manager/encryption-key-manager.module.ts
+  s_176da1aff184f0::t_40c20a226c4710 9-18,20-22
+packages/cli/src/modules/encryption-key-manager/__tests__/key-manager.service.test.ts
+  s_176da1aff184f0::t_40c20a226c4710 163,166,173-176
+.agents/review-rules/security/auth-and-access-control.md
+  s_176da1aff184f0::t_40c20a226c4710 1,7,11,13-18
+cubic.yaml
+  s_176da1aff184f0::t_40c20a226c4710 107,109-110,119,124,127-129,137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f0560215778ff96f3be80020d818343d148e5c1",
+  "prompts": {},
+  "sessions": {
+    "s_176da1aff184f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c8cc965-adbd-49e9-a63e-907c657a03a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

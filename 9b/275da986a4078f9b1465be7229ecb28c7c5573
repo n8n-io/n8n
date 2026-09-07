@@ -1,0 +1,1203 @@
+packages/cli/src/modules/type-availability-policies/dto/put-instance-policy.dto.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-12
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 7,9-15,21,75,152-246,275-288,295,429-450
+  s_b0e06f9d9140a8::t_7e3c13dde26938 451-452
+packages/cli/test/integration/scheduling/scheduler-materialize.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 16-17,48-50,52-53,64,384,388,403,408,416-417,440-462,465-466
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 200-203
+packages/cli/src/modules/agents/__tests__/agent-knowledge-mirror.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 200-212
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 11,180
+packages/@n8n/api-types/src/dto/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 185-188,376
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-agent.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 502-504
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 123-135
+  s_b0e06f9d9140a8::t_a7aa8a7a1bf213 118-122
+packages/@n8n/nodes-langchain/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 22-33,40,48-58,65-67
+packages/cli/src/commands/import/__tests__/workflow.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 82,91,96,99,104,108
+packages/cli/src/metrics/prometheus/__tests__/scheduler-metrics.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 127-129,169-171,326-333,358
+packages/@n8n/scheduler/src/core/provisioning/provisioner.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-5,11-22,27-29,31-39,48,52-54,64,70,82-110
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8-12,20-24,536-576,816-818,834-836,855-1018,1660-1679
+  s_b0e06f9d9140a8::t_9d568d1478351a 1680
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-credential-references.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5,60-61,65
+packages/cli/src/modules/chat-hub/chat-hub.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 477,536,632,692,777,834,915,988,1059,1100,1144,1186
+scripts/mutation-health/mutate.test.mjs
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,3-7,14-16,21-23,25,363-655
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5,8,12,15,18,220-247,252,499-541
+packages/nodes-base/eslint.config.mjs
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6,14-19,203
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 137-147,153-155,158,642,648,655-659,662-757
+packages/@n8n/ai-utilities/src/utils/refreshing-auth-fetch.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 47-49,58-60,64,80-83
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,17,40,54,75-80,88,90,327-347
+  s_b0e06f9d9140a8::t_d029c0d45e616e 348-349
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 12,14,58-59,73-75,96,348-364,590-594
+  s_b0e06f9d9140a8::t_89e732a65ab379 595-596
+packages/workflow/src/nodes-api-version.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-54
+packages/cli/src/utils/__tests__/form-trigger-completion-template.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-46
+packages/core/src/nodes-loader/types.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/shell.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 39-56,61-62,65-77,102-108,113,115-116,135-166,172-204
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-workflow.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,10,40,74,85-104,106-109,112-215,1294,1318,1343,1368
+packages/nodes-base/nodes/Databricks/actions/files/deleteDirectory.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,21
+packages/nodes-base/credentials/test/AtlassianServiceAccountApi.credentials.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-165
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 16,19-20,59,84,89-97,107-110,112-114,128,142,152,172,174,189,191,209,211,223,225,241,243,254,256,267,269,299,301,317,319,333,350,373,437,489,505,521,541,571,579,591,615,668,693,709,738,784,794,886,888,900,902,918,921,932-933,935,937,942-953,955,957-961,965-972,975-976,979,981-988,990,993-1014,1016
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2-9,13-39,67-69
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 13,203,246-254,413
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/listIndexes.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,10
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteVolume.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,18
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-4,9-10,24-26,126-128,137-138,141-143,147-151,170-174,206,242,245-256,261-262,265,267,270-461,508-510,512,514-515,517-518,520-521,524-533,536-556
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listFunctions.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,20
+packages/cli/src/errors/response-errors/workflow-publish-blocked.error.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,5,13
+packages/@n8n/scheduler/src/core/recurrence/resolve.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5,24
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 131,134
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/templates.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 9-26,72,77-82,108-133,247-266,292,300
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,104-138
+packages/@n8n/scheduler/src/core/lifecycle/options.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 22-24,37-39,68,73
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-unsafe-connection-type-cast.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-125
+packages/@n8n/permissions/src/utilities/__tests__/get-resource-permissions.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 25,121
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4-5,12-13,33-41,46-50,60,68-95,116-119,126-139,155-156,166-215
+packages/nodes-base/nodes/Databricks/actions/genie/startConversation.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,10
+packages/@n8n/db/src/entities/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 42-44,134-136
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.deviations.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 27,58,69,78
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 45-48,51,173-310
+  s_b0e06f9d9140a8::t_86be510a2c9495 311
+packages/nodes-base/nodes/Databricks/actions/genie/getMessage.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,12
+packages/@n8n/scheduler/src/core/materializer/owner-key.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-39
+packages/@n8n/nodes-langchain/nodes/llms/LMOllama/test/LmOllama.node.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 75,96,115
+.github/scripts/quality/cubic-config.schema.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8,25,66,71,83,88,162,274,277,280
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 16,97,116-122,143-145
+packages/cli/src/modules/community-packages/__tests__/community-packages.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6,1238-1322
+  s_b0e06f9d9140a8::t_f288e5606d9ff1 1323
+packages/cli/src/modules/mcp/tools/publish-workflow.tool.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,48-49
+packages/cli/src/public-api/v1/handlers/workflows/__tests__/workflow-publish-blocked.openapi.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 41-55
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 320-338
+packages/nodes-base/nodes/Databricks/actions/files/listDirectory.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,29
+packages/nodes-base/nodes/Jira/UserDescription.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 50-63
+packages/cli/test/integration/database/repositories/poller-state.repository.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 270-271,279-283,287,320
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createFunction.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,29
+packages/core/src/nodes-loader/__tests__/scan-directory-for-packages.fs.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,22,29,32-35,89-121
+packages/@n8n/scheduler/src/core/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 34,57-63,70,75-95
+.boundaries-baseline.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2
+packages/@n8n/scheduler/src/core/factory.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 11-14,28-35,89-101,164-167,187,192,219-240,516-621,686-695,736
+  s_b0e06f9d9140a8::t_8b6f1eab124a53 10,737
+packages/@n8n/instance-ai/src/utils/__tests__/model-config-id.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-66
+packages/@n8n/scheduler/src/core/provisioning/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4
+packages/@n8n/api-types/src/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 404
+packages/nodes-base/credentials/DatabricksOAuth2Api.credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-4,177
+packages/nodes-base/credentials/JiraSoftwareServerApi.credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 53
+packages/cli/test/integration/scheduling/system-job.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,12-16,18,58-60,62-65,76,89,106,109-111,134-136
+packages/@n8n/scheduler/src/core/recurrence/kinds/cron.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6,127
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/ToolWorkflowV2.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 12,326-337,409-413,421-534
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-486
+packages/cli/src/utils/__tests__/auth-fetch.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 197-215
+packages/cli/src/modules/agents/json-config/credential-field-mapping.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 46-47,53-57
+packages/cli/src/modules/type-availability-policies/policy-shadow-lint.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-81
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6-7,66,69-70,1019,1022-1023
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteFunction.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,15
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/pendingDraftAttachment.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-19
+packages/nodes-base/nodes/Confluence/methods/listSearch.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8,73
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 625
+packages/cli/src/modules/community-packages/__tests__/community-packages.integration.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6,8-12,16,268-332
+  s_b0e06f9d9140a8::t_1ea24da79d9d63 333
+packages/cli/templates/chat-shell.handlebars
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-772
+packages/@n8n/scheduler/src/core/reconciliation/options.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-27
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 226-228,240,258
+packages/cli/src/modules/oauth-jwe/oauth-jwe-key.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,214
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.integration.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,10-11,43,122,167-245
+  s_b0e06f9d9140a8::t_fcf6fcf02ca8bb 246
+.github/test-metrics/e2e-impact-map.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1
+packages/cli/templates/form-trigger.handlebars
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 696
+packages/nodes-base/credentials/MicrosoftEntraServicePrincipalApi.credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 13-17
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/reconcile.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-800
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1043
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 44,93
+packages/nodes-base/nodes/Databricks/actions/files/deleteFile.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,21
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-credential-reuse.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 22,101-130,197-219
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.pendingAttachments.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-72
+packages/nodes-base/package.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 54
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/api-key.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 16-17,19-20,32-53
+  s_b0e06f9d9140a8::t_f22358c8ac6a60 54
+packages/@n8n/instance-ai/src/tools/data-tables.tool.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 29,41,93-104,139-144,152,161-169,261,278,345-367,373-378,381,389-401,403-405,408-409,757-759
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 300-302
+packages/frontend/@n8n/design-system/src/styleguide/components/PrimitivesColorTable.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,5-6,8,22,24,26-31,33-34,36-64,66-67,70-89,94,100,102-106,108,112-114,129-130,156,160-162,166-212,214-230,238-240,244,250,252-253,259-280,284,287-299,302,305-307,310-315,333-348
+packages/cli/src/workflows/workflow.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 20,46,50,64,67,81-83,124-125,405-406,422,719-726,743-777,783,843-844,916,920-931,949-960,1491-1505
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 14,56-63,66,68,73,76-79,93,100-101,175-179,198-200,216,231,248,254,269,289,306,321,329,376,394,413-420,458-465,503-510,524-531,546-553,563-570,588-595,612-627,644-659,757,866,882,887,897,905,913-914,922-923,935,937,956
+packages/cli/test/integration/public-api/executions.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 960-968,979-998,1019-1027,1088-1099
+  s_b0e06f9d9140a8::t_76aad2f489f468 1100-1101
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiMessage.nodesAttachment.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-58
+packages/cli/src/scheduling/scheduled-job-owner-registry.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-16
+.github/workflows/test-e2e-reusable.yml
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 181-183,201-211
+  s_b0e06f9d9140a8::t_4e3d21881860ef 212-213
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/token-provider.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-123
+packages/testing/playwright/pages/components/CodeNodeEditor.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 7-10,20
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 18,84-88,388-393,397-400,431-432
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 20-21,24,80-81,366-379,444-446
+packages/testing/containers/test-containers.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 48-50
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/sharedGuard.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-24
+.agents/review-rules/security/auth-and-access-control.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,7,11,13-18
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 15-20,46,55-63,69-70
+  s_b0e06f9d9140a8::t_2abaee26bb8f39 71
+packages/frontend/@n8n/design-system/src/styleguide/type.mdx
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,3,5,13-15,23-25
+packages/nodes-base/nodes/Jira/__test__/node.methods.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2-3,84-108
+  s_b0e06f9d9140a8::t_3daa6ce781bfd2 109-110
+packages/testing/playwright/composables/journeys/admin-views-executions-list.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6,103-111,115,120-124
+packages/cli/src/modules/type-availability-policies/dto/replace-attachments.dto.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-50
+packages/@n8n/permissions/src/constants.ee.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 27
+packages/cli/src/modules/type-availability-policies/dto/policy-rule.schema.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-42
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-4,41,81-96,113-114,120-167
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 68,135-137,174
+packages/cli/src/modules/community-packages/community-packages.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 9-17,260-263,265-273,275-277,313,315-333,340
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 73,302-305,435
+.github/workflows/util-publish-api-schema.yml
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 9,13-14
+packages/@n8n/client-oauth2/src/client-oauth2.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 55-57,59
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/CanvasSelectionToolbar.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 12,44,49,61-67,69-78,154-162
+  s_b0e06f9d9140a8::t_1b146399c59bd6 163-164
+packages/cli/src/services/tag.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,175
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 264,278
+packages/@n8n/scheduler/src/core/reconciliation/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-9
+.agents/review-rules/README.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 16,62-64
+packages/cli/src/controllers/ai.controller.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 204-210
+packages/nodes-base/nodes/Databricks/test/Databricks.node.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 72-75,196-216
+  s_b0e06f9d9140a8::t_4f8b95e66b25c7 217-218
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6,10,63,70-72,172-186
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 152-211
+packages/@n8n/instance-ai/src/utils/model-config-id.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-41
+packages/@n8n/db/src/migrations/common/1784000000051-BackfillInstanceAiEventLog.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 41-43
+packages/cli/src/modules/encryption-key-manager/key-manager.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 84-86,95
+packages/cli/test/integration/scheduling/scheduler-trigger-handler.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 24-25,122
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/createIndex.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,28
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/getIndex.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,10
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/connect-panel.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-64
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8,24
+docker/get-n8n-compose.yml
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 13,27,52
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/buildNodesAttachment.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-225
+packages/testing/playwright/reporters/a11y-reporter.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-139
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 10,20,22,45,77-87,93,98
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createTable.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,37
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 41,673-701,884,918
+packages/frontend/@n8n/design-system/src/styleguide/components/ShadowExamples.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-53
+packages/@n8n/ai-utilities/src/utils/follow-redirects.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6-12,16-17,20-21,33,38,64-69
+  s_b0e06f9d9140a8::t_2e6336e53d68d6 70
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-job-registrar.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 13,34-36,40,48,51-52,58-59,81-86,98-99,243-249,294-295,303-304,316,318
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-credential-reuse.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5,61-62,66
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v1/ToolWorkflowV1.node.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 30,128,138-142
+  s_b0e06f9d9140a8::t_8db7f123eac5b9 143
+packages/cli/test/integration/policy/content-import.policy.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-382
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 192-195
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 364-412
+packages/@n8n/api-types/src/dto/workflows/workflow-publish-forbidden-error-public.dto.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-13
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 29,69
+packages/cli/src/__tests__/chat-shell.template.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-327
+packages/cli/src/modules/agents/utils/__tests__/extract-agent-credential-ids.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 81-93
+packages/cli/src/scheduling/workflow-scheduled-job-owner.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-31
+packages/@n8n/api-types/src/dto/executions/execution-tags-public.dto.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-7
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-emoji-in-options.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6,96-97,101
+packages/cli/eslint.config.mjs
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 220
+.github/workflows/util-sync-master-to-3x.yml
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 72,76-77
+packages/cli/src/auth/auth.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 10
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,229
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/GenericFunctions.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 10,12,14-28,121-131,136,149,159-163,167,179-181,183-188,191-210,223-299,319-320,323-324,327,331
+packages/@n8n/scheduler/src/core/recurrence/kinds/one-off.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,42
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 23,211-218
+  s_b0e06f9d9140a8::t_bb408e950985bf 219-220
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 172-180,188,193-247
+  s_b0e06f9d9140a8::t_6c5dd498ce438a 248
+packages/@n8n/config/test/config.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 487-492
+packages/@n8n/instance-ai/evaluations/build-expectations/assertion-judge.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 79-86
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 33,67,73,163-166,471-482
+  s_b0e06f9d9140a8::t_6437bd630b7eba 483-484
+packages/cli/src/modules/type-availability-policies/__tests__/policy-shadow-lint.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-102
+.gitignore
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 49
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listTables.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,20
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 50-52,66,106-112,232-236,574-578,622-648,673-690,990-995,1151-1155,1615-1618,1908,1940,1983
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 13-14,499-504
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 19,66-67,1346-1351
+packages/nodes-base/credentials/test/DatabricksApi.credentials.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-15
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createCatalog.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,19
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,16,45-51,203-228
+  s_b0e06f9d9140a8::t_f05630865e6970 229-230
+packages/@n8n/scheduler/src/core/recurrence/field.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,14-15,17,24
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,5,127-128,130-131,146-168
+  s_b0e06f9d9140a8::t_033df56c6c4cb9 169-170
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-terminal-outcome.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 103,143,204,207,223-226,232-240,244-257,260-261,264-266,270-273,277,280-283,285,288-291,324,341,355-372,379
+packages/cli/src/modules/instance-ai/instance-ai-terminal-outcome.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,107,322,343,345,354-355,357,385-392,396-397,400-401,410-415,442,444,446,452-455,461,463,466-477
+packages/frontend/@n8n/design-system/src/styleguide/shadow.mdx
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,3-5,11,26-29,41-42,45-46,49-50,53-54,56-58,60-62,64
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,14,38,43-76,85,118-148
+  s_b0e06f9d9140a8::t_987f0d0602b934 149
+packages/cli/src/modules/encryption-key-manager/__tests__/key-manager.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 163,166,173-176
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 38-39,55,661-668,747-748,882-883,893-904
+packages/cli/src/modules/instance-ai/tracing/instance-ai-tracing.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 27,71,79,90,115,123,493
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 154-161
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.service.ee.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 7,15,171
+pnpm-workspace.yaml
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 364
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 364-420
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-unsafe-connection-type-cast.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-306
+packages/@n8n/nodes-langchain/package.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 127
+packages/@n8n/api-types/src/dto/workflows/workflow-tags-public.dto.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,7-9
+packages/cli/src/metrics/prometheus/scheduler-metrics.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 42-44,127-141,164-166,304-309
+  s_b0e06f9d9140a8::t_f67ec3f527e3d3 310-311
+packages/cli/src/modules/agents/workflow-agent-stream.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 82,120-128
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 13,106-107,290-298
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.refineTitle.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 210,218
+packages/nodes-base/credentials/test/DatabricksOAuth2Api.credentials.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,8-12
+  s_b0e06f9d9140a8::t_9253b7388839a1 13
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/databricks.svg
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-19
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listCatalogs.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,9
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 204,3404,4077,4146
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-best-practices.tool.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 19-20,23,25
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,5,7-8,49,57,84
+packages/cli/package.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 245
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 114,150-181
+  s_b0e06f9d9140a8::t_50e5a31091b748 182-183
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createVolume.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4-9,40
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 75
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 292
+packages/cli/src/modules/type-availability-policies/dto/__tests__/policy-selector.schema.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-27
+packages/cli/src/webhooks/webhook-request-sanitizer.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5-6,20-21,23-25,36-37
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/updateCatalog.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,16
+packages/cli/src/services/oauth2-flow-proxy.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2-6,8-13,17-20,32,37,40-46
+  s_b0e06f9d9140a8::t_84714af2da7192 47
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 39,42,125-126,493-494,1276-1277,1986-1987,2054-2056,2059,2082-2084,2089-2093,2122-2123,2141,2154,2165,2174-2205,2220,2259,2271,2376-2377,2545-2546,2725-2726,2827-2828
+packages/cli/src/modules/encryption-key-manager/encryption-bootstrap.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,7,21-36,41-43
+  s_b0e06f9d9140a8::t_fb0b81ff93e61b 44
+packages/nodes-base/credentials/common/token-request.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 32-41
+packages/cli/src/modules/instance-ai/message-parser.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,7,77,88,140-142,159-160,167-168,249-251,253,302-304,320-323
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-emoji-in-options.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 19-39,99-154
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getFunction.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,15
+.github/workflows/ci-master.yml
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 49-50
+scripts/mutation-health/README.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 112-129
+packages/@n8n/workflow-sdk/src/validation/validate-workflow-builder.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-2
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/__tests__/CanvasSelectionToolbar.nodeContext.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-46
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/types.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 16-61
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-tracing.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 22,57,70,72,84,88,316,335
+packages/nodes-base/credentials/test/WordpressOAuth2Api.credentials.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 17-23
+packages/cli/src/modules/chat-hub/chat-hub-title.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 88,118
+packages/nodes-base/nodes/Databricks/actions/genie/getSpace.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,10
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 23-24,43-48,62-63,186-189,268-281
+packages/nodes-base/credentials/AtlassianServiceAccountApi.credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-140
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 12,26,55,105-108,117-120,168-173,251-263
+  s_b0e06f9d9140a8::t_cc2526ff5a5452 264-265
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAllReplies.workflow.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-123
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 427,446,453,456,477,497-502,520-521,523-525,530-534
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 220-258
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 422,464
+packages/nodes-base/nodes/Databricks/test/files-download.workflow.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-63
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 22,263-267
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 622-624
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-credential-references.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 22,101-130,187-191,194-232
+packages/cli/src/errors/response-errors/workflow-publish-forbidden.error.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-26
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5,49-72,74,81-84,120-145,210-214,254,329-331,338-339,531,560
+packages/nodes-base/nodes/Databricks/actions/genie/getQueryResults.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,13
+packages/cli/src/errors/http-error-serializers.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 37
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 12-16,19-20,111,114,173,192-194,303,310-314,318,328,330,334-336,352,356-367,369-370,373-395,599-610
+  s_b0e06f9d9140a8::t_b81c93600ab4c7 611
+packages/@n8n/decorators/src/policy-check/policy-cleared.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 49
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getVolume.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,18
+packages/@n8n/nodes-langchain/nodes/mcp/shared/runtime.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 52
+packages/nodes-base/nodes/Databricks/actions/files/downloadFile.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5-10,30
+packages/cli/src/constants.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 90-99
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,250,253,314,327-328,437,439
+packages/testing/playwright/AGENTS.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 200-230
+packages/core/src/nodes-loader/scan-directory-for-packages.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,38-41,43-59
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/no-unsafe-connection-type-cast.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-58
+packages/cli/src/services/import.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 13,15,35,47-50,54,92,148-151,170,173-176,178-185,189,191,194-200,208,210,231-236
+packages/@n8n/scheduler/src/observability/metrics.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 40-41,57
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAllReplies.limit.workflow.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-103
+packages/@n8n/scheduler/src/observability/attributes.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 29-33
+packages/@n8n/ai-utilities/src/__tests__/utils/follow-redirects.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 58-87,175-207
+  s_b0e06f9d9140a8::t_306004e935dfb3 208
+packages/@n8n/instance-ai/src/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 190-191
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.workflow.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-129
+packages/cli/src/modules/agents/tools/knowledge/search-knowledge.tool.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/types.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 43-48,95-99
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/constants.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-15
+packages/nodes-base/nodes/Form/test/utils.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 994-995,1058-1059
+packages/cli/src/modules/type-availability-policies/dto/update-policy-document.dto.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-8
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 485-494,904-908
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 106-108,112,114-118,121,123-126,131,139-141
+cubic.yaml
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 107,109-110,119,124,127-129,137
+packages/cli/src/modules/type-availability-policies/dto/policy-selector.schema.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-13
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 446-454
+packages/cli/src/utils/auth-fetch.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 63-65
+packages/frontend/@n8n/design-system/src/styleguide/components/NamedTokensColorTable.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-248
+packages/nodes-base/nodes/Databricks/Databricks.node.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 25,34
+packages/cli/src/modules/oauth-server/__tests__/oauth-flow.service.api.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 20,192-207,295-401
+  s_b0e06f9d9140a8::t_6a9465d550a42f 402-403
+packages/cli/src/commands/import/workflow.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 161,163-165,169,227-232
+.agents/review-rules/backend/license-enforcement.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-14
+packages/cli/src/modules/chat-hub/chat-hub-agent.repository.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,3,8-10
+packages/cli/src/modules/chat-hub/chat-hub-workflow.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 16,53,97,122,129-131,133-146,148,150-152,154-162,164,166-169,171-196,208,211-213,215-223,225-242,244,246-249,251-264,1260,1271,1286,1303,1320,1323-1332,1334-1351,1355-1381,1390,1447,1453-1480,1731,1869-1884,1886,1888-1891,1893-1913
+packages/cli/src/scheduling/__tests__/workflow-scheduled-job-owner.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-49
+packages/cli/src/modules/encryption-key-manager/key-rotation-flag.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-12
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 903-906
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 21,40,107,137-143,175,245,263-268
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAllReplies.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-78
+packages/nodes-base/nodes/Databricks/eslint-user-agent-restriction.mjs
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-52
+packages/frontend/@n8n/design-system/src/styleguide/colour.mdx
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,6,22-24
+packages/@n8n/instance-ai/docs/architecture.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 197,225-227
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteCatalog.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,15
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 47,108-112,1367-1369,1733-1735,1954-1960,2001,2063-2065,2089,2385-2419,2465,3231-3233,3501-3503
+packages/nodes-base/utils/atlassian.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5,102-144
+  s_b0e06f9d9140a8::t_7ef299c73d9710 145
+packages/@n8n/scheduler/src/core/provisioning/__tests__/provisioner.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,22-31,40,42-46,48-51,53,66,69,71-74,77-145
+packages/cli/src/modules/instance-ai/__tests__/message-parser.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 95-96,122,148,151,160-163,167,169-171,174,176-181,185,189,192-194,197,199-200,202,205-206,208,210-213,216,218-223,227,231-232,235-236,239-250,253,256-259,265-268,271,273,275,277,281-283,286,292,296,299-300,306-308,311,313-317,319,328-336,340-344,350-351,354,359-361,412-415,420-421,599-604,1015
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4-9,12-17,30-31,33,41-45,47,49-50,52-55,59-60,62-70,73-74,79-101,124,131,142-149,151-152,155-163,167-168,170-171,175-176,178-201,203,206,210,218,222-231,239,262,308,339,419,424-431
+packages/cli/templates/form-trigger-completion.handlebars
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 123
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 369
+packages/@n8n/db/src/repositories/deployment-key.repository.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5,22-25,29-51
+  s_b0e06f9d9140a8::t_32369a9611e684 52-53
+packages/@n8n/scheduler/src/core/errors.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 27-38,73-139
+packages/nodes-base/credentials/DatabricksApi.credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8-9,39-42,57
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/get.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-48
+.agents/review-rules/security/code-execution-and-sandboxing.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-5,9-14,16-17
+packages/@n8n/scheduler/src/core/materializer/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 21
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 274-277,290
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1975-2064
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 53,61-83,128-129,131-133,225,415-416,430-431,462-463,466-467,571-574,578-592,607,626,671-672,676,684-703,730-742
+  s_b0e06f9d9140a8::t_36c0eb96086b1d 743
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/connect-panel.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-140
+packages/@n8n/permissions/src/scope-information.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 61-64
+packages/@n8n/api-types/src/dto/workflows/__tests__/workflow-publish-forbidden-error-public.dto.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-34
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1737-1786
+packages/@n8n/api-types/src/dto/tag/tag-public.dto.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,7-10
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 21,40,2356-2441
+  s_b0e06f9d9140a8::t_a7b45c73153b98 2442
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useIsNodeContextEnabled.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-13
+packages/cli/src/workflows/publication/format-node-failures.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-4
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 7
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 17,187-189,240-242
+packages/cli/test/integration/scheduling/scheduled-repositories.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 18-19,67,71,74-75,93,619-664
+  s_b0e06f9d9140a8::t_7d7c3357f59b32 665
+packages/cli/test/integration/scheduling/poll-trigger-job-registrar.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 16-17,100
+packages/cli/src/workflows/triggers/__tests__/non-webhook-trigger-registrar.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6,92,201,212-306
+.devcontainer/codespaces/docker-compose.yml
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 30
+packages/cli/src/modules/encryption-key-manager/__tests__/encryption-bootstrap.service.integration.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 15,64-92
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 918-933
+  s_b0e06f9d9140a8::t_5db534031c707d 913-917
+packages/@n8n/instance-ai/docs/configuration.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 214
+packages/frontend/@n8n/design-system/src/styleguide/components/TypeExamples.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-213
+packages/cli/src/controllers/e2e.controller.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 34,104,206,270-272,306-309,322-325
+packages/testing/playwright/playwright.config.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 146-148,155-157
+packages/cli/src/services/__tests__/import.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8,59,76,78,137
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/N8nOAuth2TokenCredential.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 55-63,65-67
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/getAllReplies.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-66
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/ToolWorkflow.node.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,15-16,311-362
+packages/frontend/editor-ui/src/features/ai/assistant/assistant.api.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 87
+packages/nodes-base/nodes/Jira/Jira.node.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 16-17,90-98,114-117,129-158,202-204,1364-1369,1440-1445
+packages/@n8n/db/src/migrations/common/1788359043381-GeneralizeScheduledJobOwner.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-204
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,6-7,10,30-35,42-53,66,80,87,89-90
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsAzureOpenAi.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,101-150
+packages/testing/performance/README.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 30,32
+packages/workflow/test/nodes-api-version.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-49
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 295-302,1058-1059
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 368
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 337,353,355
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-50
+packages/nodes-base/nodes/Databricks/constants.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-17
+packages/testing/playwright/fixtures/a11y.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,39-56,86-87,90-98,109,119-158,167-184,189-192
+packages/cli/src/modules/instance-ai/observability.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-2,39-48
+  s_b0e06f9d9140a8::t_e6fbace64167ee 49
+packages/@n8n/telemetry/src/events/workflow.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6-15
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 230-285,691-716
+  s_b0e06f9d9140a8::t_e6e0bd6d2b2673 717
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 176,190,261-263,266,278-283,825,895,1432,1488,1852-1854,1863-1864,1870-1871,2285-2286,2652,3690-3692,3694-3695,3701-3707,4255,5627,5960,6630
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 7-12,27,286-317,348-354
+  s_b0e06f9d9140a8::t_3df946af00837c 6
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 592,594-597,601
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/GenericFunctions.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 7,299,302,309-312,329,336,342-348,352,356,359-365,384,389,392,399-403,405-409,411,417,425,429-533,543,549-678,701-704,707,721-736,748
+packages/cli/src/events/maps/instance-ai.event-map.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 39-41
+packages/cli/src/modules/chat-hub/chat-message.repository.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 7,9,18,22,24
+.agents/review-rules/security/credentials-and-secrets.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 7,9-11,13
+packages/cli/test/integration/scheduling/scheduled-job-owner-teardown.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-233
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 249-254,294
+packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 28-32,821-880,882-884
+  s_b0e06f9d9140a8::t_ed8b4c6ebaf711 881
+packages/cli/src/scheduling/schedule-columns.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-85
+packages/cli/test/integration/scheduling/durable-scheduler-lifecycle.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 14,81
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 12,97-99,120,328-331,335,358,373-376,392,394
+packages/@n8n/api-types/src/__tests__/workflow-publish-blocked-details.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 21-38
+packages/@n8n/instance-ai/src/tools/__tests__/data-tables.tool.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 205-228,283-399
+  s_b0e06f9d9140a8::t_4dd627b31a1a02 400
+packages/@n8n/scheduler/src/core/scheduler.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,54-59
+packages/@n8n/instance-ai/src/types.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 709
+packages/@n8n/scheduler/src/core/recurrence/kinds/interval.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,51
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 31,35,40,44,47,950-958,964-965,969-983,985-999,1066-1068
+packages/@n8n/instance-ai/docs/memory.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 29-30
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 132-148
+packages/cli/test/integration/scheduling/scheduler-retention.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 10-11,46-48,50-51,62
+packages/workflow/src/interfaces.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 158-177,956-957,964-965,1558-1565,3792-3795
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/NodesAttachmentChips.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-291
+packages/@n8n/db/src/migrations/common/1788336311704-DropInstanceAiRunSnapshotsTable.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-44
+packages/nodes-base/nodes/Databricks/actions/databricksSql/executeQuery.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6,34-42,44-46,64,109-114
+packages/cli/src/scheduling/__tests__/scheduled-job-owner-registry.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-15
+.github/workflows/docker-sbom-probe.yml
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2
+packages/cli/src/modules/type-availability-policies/dto/__tests__/replace-attachments.dto.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-66
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,95-108,140-236
+packages/cli/test/integration/scheduling/scheduler-benchmarks.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 15-16,175,178-179
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 145,334,667,960-982,985-987
+packages/cli/test/integration/scheduling/scheduled-job-owner-reconciliation.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-405
+packages/cli/src/modules/mcp/__tests__/get-workflow-best-practices.tool.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 51-81
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/queryIndex.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,58
+packages/testing/playwright/fixtures/a11y.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6,9-11,15,17-19,80-168
+packages/core/src/instance-settings/instance-settings.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 72-81,123
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 114-115,637,639
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listVolumes.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,20
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/ChatTrigger.node.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 11,20,510-513,558-561,583-587,615-622,649,686-687,716-718,730-731,735-781,790-919
+packages/cli/src/modules/instance-ai/__tests__/observability.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,3,52-77
+  s_b0e06f9d9140a8::t_115e295c12f59d 78
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/owner.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-72
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 45
+packages/cli/src/modules/encryption-key-manager/encryption-key-manager.module.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 9-18,20-22
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,6,17,22,144-205,257-263
+  s_b0e06f9d9140a8::t_6f5a82861df22a 264-265
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,169-173,175-179,190-218,224-235
+  s_b0e06f9d9140a8::t_193bef01deaee2 236
+packages/nodes-base/nodes/Databricks/actions/files/createDirectory.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,21
+packages/nodes-base/nodes/Databricks/actions/files/getFileInfo.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,21
+packages/@n8n/backend-network/src/ssrf/passthrough-egress-filter.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 16-17
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStep/AiActivityStep.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 167-168
+packages/nodes-base/nodes/Jira/__test__/Jira.node.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-9,37-72,292-342,346,348,350-354,356-360,365-388,392-418
+packages/cli/src/modules/chat-hub/chat-session.repository.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1,3,10-12
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,15-16,19,35-38,71-72,76-89,92-94,99-100,103,105,116,120-123,132,137-150,176-177,187,199-200,210,214,227-228,243-244,252,265-266,274-289,297,338-339,342,344,351,356-459
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/get.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-49
+packages/cli/test/migration/1788359043381-generalize-scheduled-job-owner.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-387
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/N8nOAuth2TokenCredential.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 134-149
+packages/cli/test/integration/public-api/workflow-update-republish-scope.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-304
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/oauth2.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 36-38
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/buildNodesAttachment.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-170
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteTable.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,15
+packages/@n8n/constants/src/community-nodes.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2-16
+packages/@n8n/nodes-langchain/credentials/AzureOpenAiApi.credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 11-22,37,45-55,62-64
+packages/cli/src/modules/agents/agent-knowledge-mirror.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 26,45,318,340,382,384
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.workflowLink.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-85
+packages/frontend/@n8n/design-system/src/styleguide/utils/cssTokenSource.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-38
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 81,129,220,326-329,462,494-496,507,547,731,735-738,742,748-751,754,756,781-782
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/templates.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 640-644,661-701,727-732
+  s_b0e06f9d9140a8::t_de08bb2305c15a 733-734
+packages/cli/src/scaling/job-processor.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 332-339
+packages/@n8n/ai-utilities/src/__tests__/utils/refreshing-auth-fetch.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 36,39,60,67-108,239,256,258
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/token-provider.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-409
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 55
+.agents/review-rules/security/node-input-safety.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8,10,16,21-22,25,29,31-33
+packages/cli/test/integration/scheduling/scheduler-execute.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 10-11,62-64,66-67,78
+scripts/mutation-health/mutate.mjs
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 50,455-456,462-525,537-538,544,553-676,698,704-733,754-758
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 23
+packages/cli/test/integration/scheduling/shared/job-factory.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,16-18,20-21,32,60-73
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/databricks.dark.svg
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-19
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 16,27-28,48-49,62
+packages/workflow/package.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 73
+packages/nodes-base/nodes/Databricks/actions/files/uploadFile.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,25
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInput.attachments.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-113
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/shell.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,8,11,13,95-106,109-110,122,124,137,141,156,160,172,176,181-186,188,196-199,201,210-223,238-331
+packages/cli/src/modules/type-availability-policies/dto/__tests__/policy-rule.schema.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-60
+packages/@n8n/scheduler/src/core/materializer/__tests__/owner-key.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-100
+packages/cli/src/modules/agents/utils/extract-agent-credential-ids.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 50-88
+packages/nodes-base/nodes/Databricks/actions/genie/executeMessageQuery.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,13
+packages/testing/playwright/reporters/a11y-reporter.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-159
+.github/workflows/test-bench-reusable.yml
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2
+packages/@n8n/eslint-plugin-community-nodes/src/utils/ast-utils.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 71-137
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 20
+packages/cli/src/services/ai.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 68
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/useAddNodesToChat.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-146
+packages/frontend/editor-ui/src/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 174
+packages/cli/src/modules/encryption-key-manager/__tests__/encryption-bootstrap.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 17-20,23-27,61-68,82-104
+packages/cli/test/integration/import.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 22,29-30,68-73,87,497-499,501-503,506,512-513,517,523,531-534,544,547,550-573,590,600-607,610-612,614-615,618-626,628-630,632
+packages/nodes-base/nodes/Databricks/actions/genie/createMessage.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,11
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getCatalog.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,15
+packages/nodes-base/nodes/Databricks/test/helpers.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-114
+packages/testing/playwright/tests/e2e/journeys/admin-views-executions-list.spec.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 10-15
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2074,2521,3225,4502,4520,6977,7482-7486,7695-7697
+packages/nodes-base/nodes/Databricks/test/Databricks.oauth2.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-37
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 222-223,322-360,383-506
+  s_b0e06f9d9140a8::t_9565efa1610bd1 507-508
+packages/workflow/src/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 261-276
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-event-log.repository.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 91-164
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/utils/WorkflowToolService.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 32-33,290,299-306
+  s_b0e06f9d9140a8::t_d9700009650ffb 307
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/get.workflow.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-124
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/test/LmChatOllama.node.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 75,96,115
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/node.type.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5
+packages/@n8n/scheduler/src/core/types/schedule.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 70-85
+packages/core/src/nodes-loader/__tests__/scan-directory-for-packages.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,36-38,47-53,117-167
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 304-326,337-344
+packages/cli/src/modules/instance-ai/suspended-run-restorer.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 174-177,180
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getTable.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-8,15
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 65-70
+packages/testing/playwright/vitest.config.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8-13
+packages/frontend/@n8n/chat/src/__tests__/Chat.spec.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 31
+.agents/review-rules/security/rendering-untrusted-content.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-15
+packages/nodes-base/credentials/JiraSoftwareServerPatApi.credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 43
+packages/nodes-base/credentials/WordpressOAuth2Api.credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 50
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AttachmentPreview.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,6,16-17,22-24,82-88,90,121
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-job-registrar.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 15,34,59-62,64-65,118,127-130,138,140
+packages/cli/src/workflows/publication/__tests__/format-node-failures.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-22
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useAddNodesToChat.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-71
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 49-65,361-363,1099
+packages/nodes-base/nodes/Jira/IssueCommentDescription.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 144,447
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 41
+packages/cli/src/modules/oauth-server/oauth-flow.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-4,7,106-111,115-116,136-181,183
+  s_b0e06f9d9140a8::t_357c134d733ca1 182,184
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 4,460,550
+.github/scripts/sync-master-to-3x.mjs
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 76
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/reply.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-112
+packages/@n8n/scheduler/src/core/reconciliation/store.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-73
+packages/frontend/@n8n/stores/src/rbac.store.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 40
+packages/@n8n/scheduler/src/core/recurrence/kinds/recurring-cron.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5,157
+packages/cli/test/integration/scheduling/durable-scheduler-effect-boundary.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 23-24,165,168-169
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/NodesAttachmentChips.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-491
+.github/scripts/github-helpers.test.mjs
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-5,21,94-130
+  s_b0e06f9d9140a8::t_8e010d0c1c35b7 131
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 175,180,219,256,401-403,410,421,429,448,456,461,463,479,484
+packages/cli/src/scaling/scaling.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 189-190,192-193
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8-9,17-18,67,304-364
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/__tests__/useContextMenu.nodeContext.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-205
+packages/nodes-base/nodes/Databricks/actions/modelServing/queryEndpoint.operation.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 5,32-37,91
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 34-43,69,124-137
+  s_b0e06f9d9140a8::t_120cdfa0a333ec 138-139
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/LmChatDatabricks.node.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-346
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 7,15-19,435-480
+  s_b0e06f9d9140a8::t_f2a466e15859d9 481-482
+packages/cli/src/modules/type-availability-policies/dto/create-policy-document.dto.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-8
+.github/scripts/github-helpers.mjs
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 251,253-254
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 488-506
+packages/@n8n/nodes-langchain/credentials/test/AzureOpenAiApi.credentials.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-73
+packages/@n8n/api-types/src/workflow-publish-blocked-details.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-13,15-27,32-44
+  s_b0e06f9d9140a8::t_1e39b742b72275 45
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useBuildingArtifactIds.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-39
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/LmChatDatabricks.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-334
+packages/@n8n/scheduler/src/core/reconciliation/owner.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-74
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 9,276,356,396-417,757-759
+packages/cli/src/modules/instance-ai/tracing/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 6
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 8,31-33,40-41,47-51,53-63,66-67,70,175-185,187-196
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOllama/test/EmbeddingsOllama.node.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 74,97,116
+packages/cli/src/modules/chat-hub/chat-hub-agent.service.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 229-231,240
+packages/@n8n/instance-ai/skills/data-table-manager/SKILL.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 103-109,122-147
+  s_b0e06f9d9140a8::t_807e7ebc383319 148
+.agents/review-rules/security/outbound-requests.md
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-15
+packages/core/src/instance-settings/__tests__/instance-settings.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 377-386
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3,54-61,86-91,113-117
+  s_b0e06f9d9140a8::t_51c91aa26aab86 118-119
+packages/frontend/editor-ui/src/features/shared/contextMenu/components/ContextMenu.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 97-103
+packages/nodes-base/credentials/JiraSoftwareCloudApi.credentials.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 51
+packages/nodes-base/nodes/Jira/IssueDescription.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 78-80,126-128,199-201,248,271-273,325,330,359-361,398-400,478-480,538-540,599,604,633-635,672-674,718-720,1169,1181,1236,1248
+packages/@n8n/db/src/repositories/__tests__/workflow-upsert-imported-content.repository.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-106
+packages/testing/containers/services/sandbox.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 22-31,163-203,205-210,215-237,239-264,280-281,350,366-368,370
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/authentication.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 15,18-23,127-295
+packages/@n8n/db/src/repositories/workflow-published-version.repository.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 2,45-58
+  s_b0e06f9d9140a8::t_a3a92c7ab70784 59-60
+packages/@n8n/constants/src/index.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 15
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/common.description.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 3-14
+packages/@n8n/db/src/migrations/sqlite/1788359043381-GeneralizeScheduledJobOwner.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-10
+packages/@n8n/constants/src/scheduler.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 120-121,142,151-175
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/api-key.handler.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 55-96
+packages/cli/test/integration/scheduling/scheduler-query-benchmarks.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 14-15,161,185,455
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/NodeChip.vue
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-191
+packages/cli/src/webhooks/__tests__/webhook-request-sanitizer.test.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 324,331-332,368-396
+  s_b0e06f9d9140a8::t_19d74378e96848 397
+packages/nodes-base/nodes/Databricks/test/unity-catalog-oauth2.workflow.json
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 1-49
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_b0e06f9d9140a8::t_b299c75bf88d8f 22-28,51-55
+docs/generated/postgres-schema/README.md
+  s_b0e06f9d9140a8::t_1674677208f58c 107,1320-1323
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_b0e06f9d9140a8::t_615d2ab3e9479d 8
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_b0e06f9d9140a8::t_17c7ba736d46a8 20-23,53-54,65,89-92
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_b0e06f9d9140a8::t_529aa39e675b78 98-101
+docs/generated/postgres-schema/public.workflow_published_version.md
+  s_b0e06f9d9140a8::t_7ee0188a198990 10
+docs/generated/sqlite-schema/README.md
+  s_b0e06f9d9140a8::t_978a397b48cc84 107,1307-1310
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_b0e06f9d9140a8::t_4b8b4cf0801b5f 19
+docs/generated/sqlite-schema/scheduled_job.md
+  s_b0e06f9d9140a8::t_7b18eb022a101e 9,31-34,46-54,63,86-89
+docs/generated/sqlite-schema/scheduled_task.md
+  s_b0e06f9d9140a8::t_a440372e287a93 97-100
+docs/generated/sqlite-schema/workflow_published_version.md
+  s_b0e06f9d9140a8::t_a98f28a6f1c8a4 21
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_b0e06f9d9140a8::t_37f506e27d980b 57
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecutionTags.generated.yml
+  s_b0e06f9d9140a8::t_6b4da8b764de20 1-18,22-30
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/updateExecutionTags.generated.yml
+  s_b0e06f9d9140a8::t_4bb541f4f240fb 1-47
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/getTags.generated.yml
+  s_b0e06f9d9140a8::t_57dd999c9649bf 28-29,32,36,40
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  s_b0e06f9d9140a8::t_5961064733104d 864-865,868,872,876
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  s_b0e06f9d9140a8::t_a05c89cd437f17 320-321,324,328,332
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  s_b0e06f9d9140a8::t_ee6755b008b565 347-348,351,355,359
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_b0e06f9d9140a8::t_08a5db07c62a0b 5,881-882,885,889,893,1110-1126
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflowTags.generated.yml
+  s_b0e06f9d9140a8::t_66ac5403ab69d5 27
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_b0e06f9d9140a8::t_daf2808bffa3e6 11-15
+packages/cli/src/public-api/v1/shared/spec/schemas/executionTagsPublicDto.generated.yml
+  s_b0e06f9d9140a8::t_622c7680a14e92 7,9-24
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  s_b0e06f9d9140a8::t_e9c99a4753b958 299-300,303,307,311
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  s_b0e06f9d9140a8::t_e7eaeac516abf4 299-300,303,307,311
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowTagsPublicDto.generated.yml
+  s_b0e06f9d9140a8::t_88f35aca8e59dc 7-8,11,15,19
+pnpm-lock.yaml
+  s_b0e06f9d9140a8::t_5337ce3a265447 759,4504-4505,7449-7451,20408-20409,34588,34593-34600,34604,34606,34610,34612,34614,34618,34620,34626-34627,34746,34759,34772,38283,41617,46254,46260,46266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9b275da986a4078f9b1465be7229ecb28c7c5573",
+  "prompts": {},
+  "sessions": {
+    "s_b0e06f9d9140a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b9d2e9f-79b9-45e5-ae63-64c961832ac6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
