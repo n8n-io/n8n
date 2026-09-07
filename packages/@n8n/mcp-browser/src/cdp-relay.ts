@@ -16,6 +16,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 
 import { getExtensionInstallInstructions } from './browser-discovery';
 import type {
+	BrowserRecording,
 	CDPCommand,
 	CDPResponse,
 	ExtensionCommands,
@@ -103,9 +104,7 @@ export class CDPRelayServer {
 	onExtensionConnect?: () => void;
 
 	/** Called after the extension submits a reviewed semantic recording. */
-	onRecordingCompleted?: (
-		recording: import('./cdp-relay-protocol').BrowserRecording,
-	) => Promise<{ threadUrl?: string }>;
+	onRecordingCompleted?: (recording: BrowserRecording) => Promise<{ threadUrl?: string }>;
 
 	private readonly connectionTimeoutMs: number;
 
