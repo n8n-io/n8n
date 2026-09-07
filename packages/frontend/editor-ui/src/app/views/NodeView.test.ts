@@ -13,6 +13,7 @@ import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
+import { VIEWS } from '../constants';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
 import { computed, defineComponent, shallowRef } from 'vue';
 
@@ -23,6 +24,7 @@ const routerMock = vi.hoisted(() => ({
 }));
 
 const routeMock = vi.hoisted(() => ({
+	name: undefined as string | undefined,
 	params: {},
 	query: {} as Record<string, string>,
 }));
@@ -48,6 +50,7 @@ describe('NodeView', () => {
 		vi.stubGlobal('localStorage', {
 			getItem: vi.fn().mockReturnValue(null),
 		});
+		routeMock.name = undefined;
 		routeMock.params = {};
 		routeMock.query = {};
 		ensureNodesAreVisible = vi.fn();
@@ -203,6 +206,29 @@ describe('NodeView', () => {
 		});
 
 		it('shows the execute workflow button when the instance is writable', async () => {
+			useSourceControlStore().preferences.branchReadOnly = false;
+
+			const { findByTestId } = renderNodeView();
+
+			expect(await findByTestId('execute-workflow-button')).toBeInTheDocument();
+		});
+
+		it('hides the execute workflow button in an executable preview when the instance is read-only', async () => {
+			routeMock.name = VIEWS.DEMO;
+			routeMock.query = { canExecute: 'true' };
+			useSourceControlStore().preferences.branchReadOnly = true;
+
+			const { queryByTestId, findByText } = renderNodeView();
+
+			await findByText(
+				"This workflow can't be edited or run manually because it's on a protected instance",
+			);
+			expect(queryByTestId('execute-workflow-button')).not.toBeInTheDocument();
+		});
+
+		it('shows the execute workflow button in an executable preview when the instance is writable', async () => {
+			routeMock.name = VIEWS.DEMO;
+			routeMock.query = { canExecute: 'true' };
 			useSourceControlStore().preferences.branchReadOnly = false;
 
 			const { findByTestId } = renderNodeView();
