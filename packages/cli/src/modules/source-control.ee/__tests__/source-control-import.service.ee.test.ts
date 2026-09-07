@@ -36,7 +36,6 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
@@ -48,6 +47,7 @@ import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
@@ -91,6 +91,7 @@ describe('SourceControlImportService', () => {
 	policyEnforcementService.enforceContentImport.mockResolvedValue(mock());
 	const dataTableSizeValidator = mock<DataTableSizeValidator>();
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
+	const workflowFinderService = mock<WorkflowFinderService>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const credentialsService = mock<CredentialsService>();
 	const transactionManager = mock<EntityManager>();
@@ -138,6 +139,7 @@ describe('SourceControlImportService', () => {
 		executionPersistence,
 		workflowPublishGuard,
 		workflowMutationHooks,
+		workflowFinderService,
 	);
 
 	const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
@@ -3042,6 +3044,9 @@ describe('SourceControlImportService', () => {
 				vi.useFakeTimers();
 				// Earlier suites install a persistent rejection that `clearAllMocks` keeps
 				workflowService.deactivateWorkflow.mockReset();
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), { id: 'wf-1', activeVersionId: 'version-1' }),
+				);
 			});
 
 			afterEach(() => {
@@ -3070,15 +3075,19 @@ describe('SourceControlImportService', () => {
 				).toBeLessThan(workflowService.delete.mock.invocationCallOrder[0]);
 			});
 
-			it('should still run the delete when the pulling user cannot unpublish the workflow', async () => {
-				// `WorkflowService.delete` already skips workflows the user cannot see, so the
-				// unpublish step must not fail the pull before it gets there.
-				workflowService.deactivateWorkflow.mockRejectedValueOnce(new NotFoundError('not yours'));
+			it('should leave the publication state alone when the pulling user cannot delete the workflow', async () => {
+				// A shared-workflow editor may unpublish but not delete. `WorkflowService.delete`
+				// skips such a workflow, so unpublishing it first would strand it unpublished.
+				workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(null);
 
 				await service.deleteWorkflowsNotInWorkfolder(user, [candidate]);
 
-				expect(workflowService.delete).toHaveBeenCalledWith(user, 'wf-1', true);
+				expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
+					'workflow:delete',
+				]);
+				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
 				expect(workflowPublishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
+				expect(workflowService.delete).toHaveBeenCalledWith(user, 'wf-1', true);
 			});
 
 			it('should fail with resource context when the unpublish does not settle in time', async () => {

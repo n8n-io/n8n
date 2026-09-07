@@ -43,6 +43,7 @@ import { SourceControlImportService } from '@/modules/source-control.ee/source-c
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { ImportService } from '@/services/import.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { createOwner } from '../shared/db/users';
@@ -168,6 +169,7 @@ describe('contentImport policy wiring', () => {
 			mock(), // executionPersistence
 			mock(), // workflowPublishGuard
 			mock(), // workflowMutationHooks
+			Container.get(WorkflowFinderService),
 		);
 
 		owner = await createOwner();

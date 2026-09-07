@@ -48,7 +48,6 @@ import path from 'path';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { IWorkflowToImport } from '@/interfaces';
 import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
@@ -68,6 +67,7 @@ import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/wor
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
@@ -175,6 +175,7 @@ export class SourceControlImportService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -1955,15 +1956,14 @@ export class SourceControlImportService {
 	 * refused for a workflow that is published or still unpublishing.
 	 */
 	private async unpublishBeforeDelete(workflowId: string, user: User) {
-		try {
-			await this.workflowService.deactivateWorkflow(user, workflowId);
-		} catch (error) {
-			// The user cannot see this workflow. `WorkflowService.delete` skips it for
-			// the same reason, so the pull must not fail earlier on the unpublish.
-			if (error instanceof NotFoundError) return;
-			throw error;
-		}
+		// Same check as `WorkflowService.delete`: a workflow the user cannot delete is
+		// skipped there, so it must keep its publication state here too.
+		const deletable = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:delete',
+		]);
+		if (!deletable) return;
 
+		await this.workflowService.deactivateWorkflow(user, workflowId);
 		await this.waitForUnpublishToSettle(workflowId);
 	}
 
