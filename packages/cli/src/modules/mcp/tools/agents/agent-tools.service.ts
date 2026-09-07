@@ -1550,7 +1550,15 @@ export class McpAgentToolsService {
 			),
 		]);
 		const errors = schema.valid ? [] : [schema.error];
-		const missing = [...new Set(configuration.issues.map((issue) => issue.path))];
+		const missing = [
+			...new Set(
+				configuration.issues.map((issue) =>
+					issue.reason === 'not_published'
+						? `${issue.path} (workflow "${issue.capability.id}" is not published; publish it first with publish_workflow)`
+						: issue.path,
+				),
+			),
+		];
 		return {
 			valid: errors.length === 0 && missing.length === 0,
 			errors,
