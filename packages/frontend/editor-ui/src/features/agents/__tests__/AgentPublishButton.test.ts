@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { ResponseError } from '@n8n/rest-api-client';
 import type { AgentResource } from '../types';
 import type { AgentVersion } from '../agent.types';
 
@@ -11,15 +10,6 @@ vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: vi.fn(),
 	unpublishAgent: vi.fn(),
 	revertAgentToPublished: vi.fn(),
-	getAgentUnpublishedDependencies: vi.fn(),
-}));
-
-vi.mock('vue-router', () => ({
-	useRouter: () => ({
-		resolve: ({ params }: { params: { workflowId: string } }) => ({
-			href: `/workflow/${params.workflowId}`,
-		}),
-	}),
 }));
 
 const agentPermissionsMock = {
@@ -136,7 +126,7 @@ const notPublishedIssue: AgentConfigValidationIssue = {
 
 function getModalCallbacks() {
 	const data = openModalWithDataMock.mock.lastCall?.[0]?.data as {
-		onConfirm: () => Promise<unknown>;
+		onConfirm: () => Promise<void> | void;
 		onCancel: () => Promise<void> | void;
 	};
 
@@ -162,10 +152,8 @@ describe('AgentPublishButton', () => {
 		});
 	}
 
-	beforeEach(async () => {
+	beforeEach(() => {
 		vi.clearAllMocks();
-		const { getAgentUnpublishedDependencies } = await import('../composables/useAgentApi');
-		vi.mocked(getAgentUnpublishedDependencies).mockResolvedValue([]);
 	});
 
 	// Button states
@@ -204,9 +192,7 @@ describe('AgentPublishButton', () => {
 		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
 		await flushPromises();
 
-		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
-			publishDependencies: false,
-		});
+		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 	});
 
@@ -224,9 +210,7 @@ describe('AgentPublishButton', () => {
 		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
 		await flushPromises();
 
-		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
-			publishDependencies: false,
-		});
+		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 	});
 
@@ -252,9 +236,7 @@ describe('AgentPublishButton', () => {
 		await wrapper.find('[data-action="publish"]').trigger('click');
 		await flushPromises();
 
-		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
-			publishDependencies: false,
-		});
+		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 	});
 
@@ -459,124 +441,28 @@ describe('AgentPublishButton', () => {
 			await flushPromises();
 
 			expect(beforePublish).toHaveBeenCalled();
-			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
-				publishDependencies: false,
-			});
+			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 			expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 		});
 
 		it('enables Publish when the only issues are unpublished workflow tools', async () => {
+			const { publishAgent } = await import('../composables/useAgentApi');
+			const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
+			vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
 			const wrapper = await renderComponent({
 				agent: createAgent({ activeVersionId: null }),
 				configValidationStatus: 'invalid',
 				configValidationIssues: [notPublishedIssue],
 			});
-
-			expect(
-				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
-			).toBeUndefined();
-			expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled')).toBe('true');
-		});
-	});
-
-	describe('unpublished workflow tools', () => {
-		const lookup = { type: 'workflow', id: 'wf-1', name: 'Lookup' } as const;
-
-		it('asks for confirmation, then publishes the agent together with its workflows', async () => {
-			const { publishAgent, getAgentUnpublishedDependencies } = await import(
-				'../composables/useAgentApi'
-			);
-			vi.mocked(getAgentUnpublishedDependencies).mockResolvedValue([lookup]);
-			const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
-			vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
-
-			const wrapper = await renderComponent({ agent: createAgent({ activeVersionId: null }) });
-			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
-			await flushPromises();
-
-			expect(openModalWithDataMock.mock.lastCall?.[0]?.data).toMatchObject({
-				items: [{ id: 'wf-1', name: 'Lookup', href: '/workflow/wf-1' }],
-			});
-			expect(publishAgent).not.toHaveBeenCalled();
-
-			await getModalCallbacks().onConfirm();
-			await flushPromises();
-
-			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
-				publishDependencies: true,
-			});
-			expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
-		});
-
-		it('lets a live agent without draft changes republish a workflow tool that lost its published version', async () => {
-			const { publishAgent, getAgentUnpublishedDependencies } = await import(
-				'../composables/useAgentApi'
-			);
-			vi.mocked(getAgentUnpublishedDependencies).mockResolvedValue([lookup]);
-			const liveAgent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
-			vi.mocked(publishAgent).mockResolvedValue(liveAgent);
-
-			const wrapper = await renderComponent({
-				agent: liveAgent,
-				configValidationStatus: 'invalid',
-				configValidationIssues: [notPublishedIssue],
-			});
 			const button = wrapper.find('[data-testid="publish-agent-button"]');
-			expect(button.text()).toContain('agents.publish.button.publish');
-			expect(button.attributes('disabled')).toBeUndefined();
-			// Nothing to revert: the draft still matches the live version.
-			expect(
-				wrapper.find('[data-action="revert-to-published"]').attributes('disabled'),
-			).toBeDefined();
 
+			expect(button.attributes('disabled')).toBeUndefined();
+			expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled')).toBe('true');
 			await button.trigger('click');
 			await flushPromises();
-			await getModalCallbacks().onConfirm();
-			await flushPromises();
 
-			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
-				publishDependencies: true,
-			});
-			expect(wrapper.emitted('published')?.[0]).toEqual([liveAgent]);
-		});
-
-		it('hands the workflows that could not be published back to the modal instead of closing it', async () => {
-			const { publishAgent, getAgentUnpublishedDependencies } = await import(
-				'../composables/useAgentApi'
-			);
-			vi.mocked(getAgentUnpublishedDependencies).mockResolvedValue([lookup]);
-			vi.mocked(publishAgent).mockRejectedValue(
-				new ResponseError('Could not publish workflows used by this agent', {
-					httpStatusCode: 400,
-					meta: { failedDependencies: [{ ...lookup, reason: 'Webhook path in use' }] },
-				}),
-			);
-
-			const wrapper = await renderComponent({ agent: createAgent({ activeVersionId: null }) });
-			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
-			await flushPromises();
-
-			await expect(getModalCallbacks().onConfirm()).resolves.toEqual({
-				message: 'agents.publish.dependencies.modal.failed',
-				failedItems: [{ id: 'wf-1', reason: 'Webhook path in use' }],
-			});
-			expect(wrapper.emitted('published')).toBeUndefined();
-		});
-
-		it('does not publish when the confirmation is cancelled', async () => {
-			const { publishAgent, getAgentUnpublishedDependencies } = await import(
-				'../composables/useAgentApi'
-			);
-			vi.mocked(getAgentUnpublishedDependencies).mockResolvedValue([lookup]);
-
-			const wrapper = await renderComponent({ agent: createAgent({ activeVersionId: null }) });
-			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
-			await flushPromises();
-			await getModalCallbacks().onCancel();
-			await flushPromises();
-
-			expect(publishAgent).not.toHaveBeenCalled();
-			expect(wrapper.emitted('published')).toBeUndefined();
+			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+			expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 		});
 	});
 

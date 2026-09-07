@@ -7,7 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import type { AgentResource } from '../types';
-import { hasBlockingIssues, isWarningIssue } from '../utils/validationIssues';
+import { hasBlockingIssues } from '../utils/validationIssues';
 import AgentValidationTooltip from './AgentValidationTooltip.vue';
 
 const props = withDefaults(
@@ -57,43 +57,38 @@ const publishState = computed((): AgentPublishState => {
 // `null` (unknown/stale, e.g. still loading or invalidated by a local edit
 // that hasn't been re-validated yet) is treated as not publishable — Publish
 // must never stay enabled against a result that predates the working copy.
-// Warning-only issues (unpublished workflow tools) don't block: the publish
-// flow publishes them after the user confirms.
 const isConfigInvalid = computed(
 	() => props.configValidationStatus === null || hasBlockingIssues(props.configValidationIssues),
 );
 const invalidConfigTooltip = computed(() =>
 	locale.baseText('agents.publish.button.invalidConfigTooltip'),
 );
-const hasUnpublishedDependencies = computed(() =>
-	props.configValidationIssues.some(isWarningIssue),
-);
 
 const buttonConfig = computed(() => {
-	if (publishState.value === 'not-published') {
-		return {
-			text: locale.baseText('agents.publish.button.publish'),
-			enabled: true,
-			showIndicator: false,
-			indicatorClass: '',
-		};
+	switch (publishState.value) {
+		case 'not-published':
+			return {
+				text: locale.baseText('agents.publish.button.publish'),
+				enabled: true,
+				showIndicator: false,
+				indicatorClass: '',
+			};
+		case 'published-with-changes':
+			return {
+				text: locale.baseText('agents.publish.button.publish'),
+				enabled: true,
+				showIndicator: true,
+				indicatorClass: 'changes',
+			};
+		case 'published-no-changes':
+		default:
+			return {
+				text: locale.baseText('agents.publish.button.published'),
+				enabled: false,
+				showIndicator: true,
+				indicatorClass: 'published',
+			};
 	}
-	// A live agent can lose a workflow tool's published version. The publish
-	// flow republishes it, so the button stays usable for that repair.
-	if (publishState.value === 'published-with-changes' || hasUnpublishedDependencies.value) {
-		return {
-			text: locale.baseText('agents.publish.button.publish'),
-			enabled: true,
-			showIndicator: true,
-			indicatorClass: 'changes',
-		};
-	}
-	return {
-		text: locale.baseText('agents.publish.button.published'),
-		enabled: false,
-		showIndicator: true,
-		indicatorClass: 'published',
-	};
 });
 
 const dropdownActions = computed(() => {
@@ -187,9 +182,7 @@ async function onDropdownSelect(action: string) {
 						}"
 					/>
 					<span
-						:class="{
-							[$style.indicatorPublishedText]: buttonConfig.indicatorClass === 'published',
-						}"
+						:class="{ [$style.indicatorPublishedText]: publishState === 'published-no-changes' }"
 					>
 						{{ buttonConfig.text }}
 					</span>

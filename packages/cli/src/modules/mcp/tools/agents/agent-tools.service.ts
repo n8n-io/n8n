@@ -170,12 +170,6 @@ const publishAgentInput = {
 		.describe(
 			'Republish a previously published version instead of the current draft. The draft is left untouched.',
 		),
-	publishDependencies: z
-		.boolean()
-		.optional()
-		.describe(
-			'Also publish workflows the Agent uses as tools that have no published version yet. Set only after the user confirmed the workflows listed in the previous publish_agent error.',
-		),
 } satisfies z.ZodRawShape;
 
 const revertAgentInput = {
@@ -761,7 +755,7 @@ export class McpAgentToolsService {
 			name: 'publish_agent',
 			config: {
 				description:
-					'Publish a valid Agent draft and activate its tasks and integrations. Pass versionId to republish a previously published version instead. Only call after the user explicitly requests or confirms publication; completing a build does not imply approval. If the Agent uses workflows that are not published yet, the call fails and lists them; confirm with the user, then call again with publishDependencies: true to publish them together with the Agent.',
+					'Publish a valid Agent draft and activate its tasks and integrations. Pass versionId to republish a previously published version instead. Only call after the user explicitly requests or confirms publication; completing a build does not imply approval.',
 				inputSchema: publishAgentInput,
 				annotations: {
 					title: 'Publish Agent',
@@ -771,15 +765,11 @@ export class McpAgentToolsService {
 					openWorldHint: true,
 				},
 			},
-			handler: async ({ agentId, versionId, publishDependencies }) =>
+			handler: async ({ agentId, versionId }) =>
 				await this.run(
 					user,
 					'publish_agent',
-					{
-						agentId,
-						...(versionId ? { versionId } : {}),
-						...(publishDependencies ? { publishDependencies } : {}),
-					},
+					{ agentId, ...(versionId ? { versionId } : {}) },
 					async () => {
 						const agent = await this.resolveAgent(user, agentId);
 						const projectId = agent.projectId;
@@ -787,19 +777,7 @@ export class McpAgentToolsService {
 						// Republishing a snapshot skips draft validation, mirroring the
 						// REST publish endpoint: the draft is not what goes live.
 						if (!versionId) {
-							const dependencies = await this.agentPublishService.listUnpublishedDependencies(
-								agentId,
-								projectId,
-							);
-							if (dependencies.length > 0 && !publishDependencies) {
-								const list = dependencies.map(({ name, id }) => `"${name}" (${id})`).join(', ');
-								throw new UserError(
-									`Agent uses workflows that are not published yet: ${list}. Confirm with the user, then call publish_agent again with publishDependencies: true.`,
-								);
-							}
-							const validation = await this.validateAgent(user, agent, {
-								allowUnpublishedDependencies: publishDependencies === true,
-							});
+							const validation = await this.validateAgent(user, agent);
 							if (!validation.valid) {
 								throw new UserError(
 									`Agent is not runnable: ${[...validation.errors, ...validation.missing].join(', ')}`,
@@ -812,7 +790,6 @@ export class McpAgentToolsService {
 							user,
 							{ by: 'mcp', trigger: 'explicit' },
 							versionId,
-							{ publishDependencies: publishDependencies === true },
 						);
 						return {
 							ok: true,
@@ -1559,11 +1536,7 @@ export class McpAgentToolsService {
 	 * the node-tool JSON-Schema checks from `validateConfig`, so validate_agent
 	 * and publish_agent cannot drift from the canonical validator.
 	 */
-	private async validateAgent(
-		user: User,
-		agent: Agent,
-		options: { allowUnpublishedDependencies?: boolean } = {},
-	) {
+	private async validateAgent(user: User, agent: Agent) {
 		const projectId = agent.projectId;
 		const config = this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
@@ -1577,11 +1550,15 @@ export class McpAgentToolsService {
 			),
 		]);
 		const errors = schema.valid ? [] : [schema.error];
-		// The publish call resolves these itself once the caller opted in.
-		const issues = options.allowUnpublishedDependencies
-			? configuration.issues.filter((issue) => issue.reason !== 'not_published')
-			: configuration.issues;
-		const missing = [...new Set(issues.map((issue) => issue.path))];
+		const missing = [
+			...new Set(
+				configuration.issues.map((issue) =>
+					issue.reason === 'not_published'
+						? `${issue.path} (workflow "${issue.capability.id}" is not published; publish it first with publish_workflow)`
+						: issue.path,
+				),
+			),
+		];
 		return {
 			valid: errors.length === 0 && missing.length === 0,
 			errors,

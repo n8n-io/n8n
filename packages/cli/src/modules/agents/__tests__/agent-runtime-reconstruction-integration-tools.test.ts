@@ -26,7 +26,6 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentConfigService } from '../agent-config.service';
@@ -307,8 +306,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
-			mock<WorkflowRepository>(),
-			mock<WorkflowService>(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(

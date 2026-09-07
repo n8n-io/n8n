@@ -49,8 +49,8 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
    validate_agent, and ask whether the user wants to publish it.
 8. Call publish_agent only when the user explicitly requested publication, activation, deployment,
    or making the Agent live, or confirms publication after the build. If publish_agent fails because
-   the Agent uses workflows that are not published yet, list those workflows to the user and call
-   publish_agent again with publishDependencies: true only after they confirm.
+   the Agent uses workflows that are not published, name those workflows to the user. Publish them
+   with publish_workflow only when the user asks, then call publish_agent again.
 9. Use update_agent_integration to configure chat integrations. Configuration never publishes the
    Agent. A configured channel stays inactive until explicit publication unless the Agent already has an active version.
 

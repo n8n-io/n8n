@@ -2023,7 +2023,7 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(vm.configValidation?.status).toBe('valid');
 	});
 
-	it('refreshes validation after a publish lands, so published workflow tools drop their warning', async () => {
+	it('allows publishing when revalidation finds only unpublished workflow tools', async () => {
 		const notPublished = {
 			code: 'incompatible_reference',
 			reason: 'not_published',
@@ -2031,20 +2031,15 @@ describe('AgentBuilderView — configuration validation', () => {
 			capability: { kind: 'tool', toolType: 'workflow', id: 'lookup' },
 		};
 		getAgentConfigValidationMock
-			.mockResolvedValueOnce({ status: 'valid', issues: [notPublished] })
-			.mockResolvedValueOnce({ status: 'valid', issues: [] });
+			.mockResolvedValueOnce({ status: 'valid', issues: [] })
+			.mockResolvedValueOnce({ status: 'invalid', issues: [notPublished] });
 
 		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as { configValidation: { issues: unknown[] } | null };
-		expect(vm.configValidation?.issues).toEqual([notPublished]);
+		const vm = wrapper.vm as unknown as {
+			refreshValidationBeforePublish: () => Promise<boolean>;
+		};
 
-		wrapper
-			.findComponent({ name: 'AgentBuilderHeader' })
-			.vm.$emit('published', makeAgentResponse({ activeVersionId: 'v1' }));
-		await flushPromises();
-
-		expect(getAgentConfigValidationMock).toHaveBeenCalledTimes(2);
-		expect(vm.configValidation?.issues).toEqual([]);
+		await expect(vm.refreshValidationBeforePublish()).resolves.toBe(true);
 	});
 
 	it('flushes pending edits and revalidates before publishing, aborting when still invalid', async () => {
