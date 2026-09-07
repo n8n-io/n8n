@@ -1,0 +1,30 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/LmChatDatabricks.node.ts
+  s_ce50212601c4e2::t_a85cf867fe0312 62
+  s_ce50212601c4e2::t_ed8b9724430e40 20-24
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/token-provider.test.ts
+  s_ce50212601c4e2::t_649e3040706896 5-9
+  s_ce50212601c4e2::t_386ca9bd679d17 266
+  s_ce50212601c4e2::t_d8179ddd81f433 255-265,267-268
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/token-provider.ts
+  s_ce50212601c4e2::t_cdead97900b69a 79-81,83,102
+  s_ce50212601c4e2::t_67f734b49b3aec 82
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/LmChatDatabricks.test.ts
+  s_ce50212601c4e2::t_d785683a88dc98 15-19
+  s_ce50212601c4e2::t_7d95e22f28ec96 337-345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "db33b5b098532fa1363c66b1ac7d01358624a112",
+  "prompts": {},
+  "sessions": {
+    "s_ce50212601c4e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86c869b0-1b19-48e1-8ca4-8fdc897bc0ba",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}
