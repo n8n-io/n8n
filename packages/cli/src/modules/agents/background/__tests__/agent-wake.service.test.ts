@@ -207,7 +207,7 @@ describe('AgentWakeService', () => {
 	});
 
 	describe('getBackgroundUpdates', () => {
-		it('does not expose legacy rows through volatile instructions', async () => {
+		it('gives no hint when the thread has no pending mail', async () => {
 			const { service, jobRepository } = setup();
 			jobRepository.findWakeableUnconsumedSettled.mockResolvedValue([]);
 

@@ -165,7 +165,7 @@ export class AgentWakeService {
 		}
 
 		const agent = await this.agentRepository.findById(first.parentAgentId);
-		if (!agent || !first.parentResourceId || !first.parentPrincipalHash) {
+		if (!agent) {
 			this.recordFailure(threadId, generation, 'Background job parent no longer exists');
 			return;
 		}
