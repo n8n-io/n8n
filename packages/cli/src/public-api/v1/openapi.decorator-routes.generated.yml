@@ -63,6 +63,11 @@ paths:
   /git-connections/{id}/pull:
     post:
       $ref: ./handlers/git-connections/spec/paths/pullGitConnectionProjects.generated.yml
+  /projects:
+    get:
+      $ref: ./handlers/projects/spec/paths/getProjects.generated.yml
+    post:
+      $ref: ./handlers/projects/spec/paths/createProject.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml

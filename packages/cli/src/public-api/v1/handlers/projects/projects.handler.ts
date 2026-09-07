@@ -1,7 +1,6 @@
 import {
 	AddUsersToProjectDto,
 	ChangeUserRoleInProject,
-	CreateProjectDto,
 	DeleteProjectDto,
 	UpdateProjectWithRelationsDto,
 } from '@n8n/api-types';
@@ -24,14 +23,11 @@ import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.serv
 import type { PaginatedRequest } from '@/public-api/types';
 import { ProjectService } from '@/services/project.service.ee';
 
-type GetAll = PaginatedRequest;
-type GetProjectUsersRequest = AuthenticatedRequest<{ projectId: string }> & GetAll;
+type GetProjectUsersRequest = AuthenticatedRequest<{ projectId: string }> & PaginatedRequest;
 
 type ProjectHandlers = {
-	createProject: PublicAPIEndpoint<AuthenticatedRequest>;
 	updateProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
 	deleteProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
-	getProjects: PublicAPIEndpoint<GetAll>;
 	getProjectUsers: PublicAPIEndpoint<GetProjectUsersRequest>;
 	addUsersToProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
 	changeUserRoleInProject: PublicAPIEndpoint<
@@ -52,24 +48,6 @@ async function assertProjectRolesNotManaged() {
 }
 
 const projectHandlers: ProjectHandlers = {
-	createProject: [
-		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:create' }),
-		async (req, res) => {
-			const payload = CreateProjectDto.safeParse(req.body);
-			if (payload.error) {
-				throw new BadRequestError(payload.error.errors[0].message);
-			}
-
-			const projectService = Container.get(ProjectService);
-
-			const project = await projectService.createTeamProject(req.user, payload.data);
-
-			const scopes = await projectService.getProjectScopesForUser(req.user, project.id);
-
-			return res.status(201).json({ ...project, role: 'project:admin', scopes });
-		},
-	],
 	updateProject: [
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
@@ -101,28 +79,6 @@ const projectHandlers: ProjectHandlers = {
 			});
 
 			return res.status(204).send();
-		},
-	],
-	getProjects: [
-		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:list' }),
-		validCursor,
-		async (req, res) => {
-			const { offset = 0, limit = 100 } = req.query;
-
-			const { projects, count } = await Container.get(ProjectService).getProjectsAndCount({
-				offset,
-				limit,
-			});
-
-			return res.json({
-				data: projects,
-				nextCursor: encodeNextCursor({
-					offset,
-					limit,
-					numberOfTotalRecords: count,
-				}),
-			});
 		},
 	],
 	getProjectUsers: [
