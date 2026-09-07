@@ -1,0 +1,21 @@
+packages/@n8n/backend-common/src/locking/__tests__/single-flight-lease.test.ts
+  s_1084be12b30fd7::t_8cdce29a2ec15d 37-64
+packages/@n8n/backend-common/src/locking/single-flight-lease.ts
+  s_1084be12b30fd7::t_8cdce29a2ec15d 24-26,36,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8b976c48ce21ee49689227e401b8e9a5a6f84566",
+  "prompts": {},
+  "sessions": {
+    "s_1084be12b30fd7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a067f0-aff3-7543-8805-a1d1f5e6c6e8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
