@@ -74,6 +74,15 @@ describe('new command', () => {
 			'export class Example implements INodeType',
 		);
 
+		await expect(tmpdir).toHaveFileContaining(
+			'n8n-nodes-my-awesome-api/.github/workflows/ci.yml',
+			'group: ci-${{ github.ref }}',
+		);
+		await expect(tmpdir).toHaveFileContaining(
+			'n8n-nodes-my-awesome-api/.github/workflows/publish.yml',
+			'NPM_TOKEN: ${{ secrets.NPM_TOKEN }}',
+		);
+
 		// Check if credentials files exist
 		try {
 			const credentialsPath = `${tmpdir}/n8n-nodes-my-awesome-api/credentials`;
