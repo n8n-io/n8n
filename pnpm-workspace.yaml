@@ -355,6 +355,7 @@ overrides:
   '@lezer/common': ^1.2.0
   '@mistralai/mistralai': ^1.10.0
   '@n8n/typeorm>@sentry/node': catalog:sentry
+  'mssql@12.7.0>tedious': 20.0.5
   '@opentelemetry/api': 'catalog:'
   '@opentelemetry/core': 2.10.0
   '@opentelemetry/propagator-jaeger': 2.10.0
