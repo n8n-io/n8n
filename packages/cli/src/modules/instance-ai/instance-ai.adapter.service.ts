@@ -1089,12 +1089,13 @@ export class InstanceAiAdapterService {
 				const rows = workflows.filter((wf): wf is WorkflowEntity => 'versionId' in wf);
 
 				// Attribution must not reveal a folder the caller could not list on its own
-				// project — the same rule `readFoldersInScope` applies to resolution. A row's
-				// owning project is the target project on a single-project listing, or its own
-				// `homeProject` otherwise. One `folder:list` check per distinct project on the
-				// page, not per row.
+				// project — the same rule `readFoldersInScope` applies to resolution. A
+				// folder always belongs to the row's own `homeProject`, never to whatever
+				// project the listing was scoped to: a workflow shared into `targetProjectId`
+				// can still have its folder in a different project the caller cannot list.
+				// One `folder:list` check per distinct project on the page, not per row.
 				const rowFolderProjectId = (wf: WorkflowEntity): string | undefined =>
-					targetProjectId ?? readHomeProject(wf)?.id;
+					readHomeProject(wf)?.id;
 				const folderProjectIds = foldersAttributed
 					? [
 							...new Set(

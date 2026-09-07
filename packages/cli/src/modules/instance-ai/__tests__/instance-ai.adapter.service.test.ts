@@ -2414,9 +2414,15 @@ describe('createWorkflowAdapter', () => {
 					{
 						...savedWorkflow,
 						id: 'wf-nested',
+						homeProject: { id: 'team-project-id', name: 'Team' },
 						parentFolder: { id: 'acme', name: 'Acme', parentFolderId: 'clients' },
 					},
-					{ ...savedWorkflow, id: 'wf-root', parentFolder: null },
+					{
+						...savedWorkflow,
+						id: 'wf-root',
+						homeProject: { id: 'team-project-id', name: 'Team' },
+						parentFolder: null,
+					},
 				],
 				count: 2,
 			});
@@ -2465,6 +2471,7 @@ describe('createWorkflowAdapter', () => {
 			const rows = Array.from({ length: 1001 }, (_, index) => ({
 				...savedWorkflow,
 				id: `wf-${index}`,
+				homeProject: { id: 'team-project-id', name: 'Team' },
 				parentFolder: { id: `f-${index}`, name: `F${index}`, parentFolderId: null },
 			}));
 			mockWorkflowService.getMany.mockResolvedValue({ workflows: rows, count: rows.length });
@@ -2659,6 +2666,29 @@ describe('createWorkflowAdapter', () => {
 				'deep',
 				'team-project-id',
 			);
+		});
+
+		it("checks folder:list against the workflow's home project, not the listing target, for a shared workflow", async () => {
+			const { adapter, mockWorkflowService, savedWorkflow } = withFolders();
+			mockWorkflowService.getMany.mockResolvedValue({
+				workflows: [
+					{
+						...savedWorkflow,
+						homeProject: { id: 'home-project-id', name: 'Home' },
+						parentFolder: { id: 'f1', name: 'Secret', parentFolderId: null },
+					},
+				],
+				count: 1,
+			});
+			// Granted on the project the caller listed, not on the workflow's actual
+			// home project, where its parentFolder actually lives.
+			mockedUserHasScopes.mockImplementation(
+				async (_user, _scopes, _globalOnly, { projectId }) => projectId === 'p2',
+			);
+
+			const result = await adapter.list({ projectId: 'p2' });
+
+			expect(result.workflows[0]).not.toHaveProperty('folder');
 		});
 
 		it('adds no folder attribution while the flag is on but folders are unlicensed', async () => {
