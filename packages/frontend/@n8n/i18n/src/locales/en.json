@@ -5165,6 +5165,7 @@
 	"apps.page.add.input.route.label": "Route",
 	"apps.page.add.input.route.placeholder": "my-page",
 	"apps.page.add.input.route.hint": "Leave blank to make this the index page — the page shown when no further path is given, e.g. the app's own home page at the top level. Use :name (e.g. :id) for a dynamic segment, such as /clients/:id.",
+	"apps.page.add.input.route.subPage.hint": "Use :name (e.g. :id) for a dynamic segment, such as /clients/:id. A sub-page needs a route of its own.",
 	"apps.page.add.error": "Error creating page",
 	"apps.page.delete.confirm.title": "Delete page",
 	"apps.page.delete.confirm.message": "Are you sure you want to delete \"{name}\"? This will also delete any sub-pages. This can't be undone.",

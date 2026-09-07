@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { AppRepository } from './app.repository';
 import { AppNotFoundError } from './errors/app-not-found.error';
 import { IndexPageCannotHaveChildrenError } from './errors/index-page-cannot-have-children.error';
+import { IndexPageMustBeTopLevelError } from './errors/index-page-must-be-top-level.error';
 import { PageNotFoundError } from './errors/page-not-found.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
 import { PageRepository } from './page.repository';
@@ -43,6 +44,7 @@ export class AppsService {
 		await this.getApp(appId);
 		const parentPageId = dto.parentPageId ?? null;
 		if (parentPageId) {
+			if (dto.route === '') throw new IndexPageMustBeTopLevelError();
 			// getPage scopes the lookup to this app, so a parentPageId belonging to
 			// another app/project is rejected the same as one that doesn't exist.
 			const parent = await this.getPage(appId, parentPageId);
@@ -70,8 +72,11 @@ export class AppsService {
 	async updatePage(appId: string, pageId: string, dto: UpdatePageDto) {
 		const page = await this.getPage(appId, pageId);
 		if (dto.route !== undefined && dto.route !== page.route) {
-			if (dto.route === '' && (await this.pageRepository.hasChildren(pageId))) {
-				throw new IndexPageCannotHaveChildrenError(pageId);
+			if (dto.route === '') {
+				if (page.parentPageId) throw new IndexPageMustBeTopLevelError();
+				if (await this.pageRepository.hasChildren(pageId)) {
+					throw new IndexPageCannotHaveChildrenError(pageId);
+				}
 			}
 			if (
 				await this.pageRepository.hasSiblingWithRoute(

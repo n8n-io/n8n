@@ -66,6 +66,18 @@ describe('POST /projects/:projectId/apps', () => {
 			.send({ name: 'Second', namespace: 'dup' })
 			.expect(409);
 	});
+
+	test('rejects a namespace another project already uses with 409', async () => {
+		const memberProject = await getPersonalProject(member);
+		await appRepository.createApp(memberProject.id, 'First', 'dup');
+
+		// A namespace is the whole public URL of an App (`/apps/dup`), which carries
+		// no project, so it has to be unique instance-wide.
+		await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps`)
+			.send({ name: 'Second', namespace: 'dup' })
+			.expect(409);
+	});
 });
 
 describe('GET /projects/:projectId/apps', () => {
@@ -130,6 +142,27 @@ describe('App pages', () => {
 		await authOwnerAgent
 			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
 			.send({ route: 'child', parentPageId: indexPage.id })
+			.expect(400);
+	});
+
+	test('rejects creating an index page under another page', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const parent = await pageRepository.createPage(app.id, null, 'parent');
+
+		await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.send({ route: '', parentPageId: parent.id })
+			.expect(400);
+	});
+
+	test('rejects turning a sub-page into an index page', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const parent = await pageRepository.createPage(app.id, null, 'parent');
+		const child = await pageRepository.createPage(app.id, parent.id, 'child');
+
+		await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${child.id}`)
+			.send({ route: '' })
 			.expect(400);
 	});
 
