@@ -3,8 +3,8 @@ import { SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InsightsPruningService } from './insights-pruning.service';
-import { intervalSchedule } from './insights-task-schedule';
 import { InsightsConfig } from './insights.config';
+import { wholeSeconds } from './whole-seconds';
 
 /**
  * Deletes insights statistics older than the configured retention period, so
@@ -14,9 +14,12 @@ import { InsightsConfig } from './insights.config';
 export class InsightsPruningTask implements SystemTask {
 	readonly name = 'insights-pruning';
 
-	readonly schedule: SystemTaskSchedule = intervalSchedule(
-		this.insightsConfig.pruneCheckIntervalHours * Time.hours.toSeconds,
-	);
+	readonly schedule: SystemTaskSchedule = {
+		kind: 'interval',
+		intervalSeconds: wholeSeconds(
+			this.insightsConfig.pruneCheckIntervalHours * Time.hours.toSeconds,
+		),
+	};
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 

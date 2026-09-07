@@ -3,8 +3,8 @@ import { SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InsightsCompactionService } from './insights-compaction.service';
-import { intervalSchedule } from './insights-task-schedule';
 import { InsightsConfig } from './insights.config';
+import { wholeSeconds } from './whole-seconds';
 
 /**
  * Rolls raw insight events up into per-period summaries, so the insights
@@ -14,9 +14,12 @@ import { InsightsConfig } from './insights.config';
 export class InsightsCompactionTask implements SystemTask {
 	readonly name = 'insights-compaction';
 
-	readonly schedule: SystemTaskSchedule = intervalSchedule(
-		this.insightsConfig.compactionIntervalMinutes * Time.minutes.toSeconds,
-	);
+	readonly schedule: SystemTaskSchedule = {
+		kind: 'interval',
+		intervalSeconds: wholeSeconds(
+			this.insightsConfig.compactionIntervalMinutes * Time.minutes.toSeconds,
+		),
+	};
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
