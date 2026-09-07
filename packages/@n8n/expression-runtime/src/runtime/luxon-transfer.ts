@@ -1,4 +1,4 @@
-import { DateTime, Duration, Interval } from 'luxon';
+import { DateTime, Duration, IANAZone, Interval } from 'luxon';
 import type { DurationLikeObject } from 'luxon';
 
 export interface InvalidLuxonSentinel {
@@ -70,11 +70,12 @@ export function dateTimeToSentinel(value: DateTime): DateTimeSentinel {
 			__invalidExplanation: value.invalidExplanation,
 		};
 	}
-	return {
+	const sentinel: DateTimeSentinel = {
 		__isDateTime: true,
 		__isoString: value.toISO() ?? '',
-		__zone: value.zone.name,
 	};
+	if (value.zone.type !== 'system') sentinel.__zone = value.zone.name;
+	return sentinel;
 }
 
 export function durationToSentinel(value: Duration): DurationSentinel {
@@ -103,34 +104,79 @@ export function intervalToSentinel(value: Interval): IntervalSentinel {
 	};
 }
 
+const DURATION_UNIT_KEYS = new Set([
+	'year',
+	'years',
+	'quarter',
+	'quarters',
+	'month',
+	'months',
+	'week',
+	'weeks',
+	'day',
+	'days',
+	'hour',
+	'hours',
+	'minute',
+	'minutes',
+	'second',
+	'seconds',
+	'millisecond',
+	'milliseconds',
+]);
+
+const FIXED_OFFSET_ZONE_NAME = /^(?:utc|gmt)(?:[+-]\d{1,2}(?::\d{2})?)?$/i;
+
+function invalidArguments(sentinel: InvalidLuxonSentinel): [string, string | undefined] {
+	const reason =
+		typeof sentinel.__invalidReason === 'string' && sentinel.__invalidReason.length > 0
+			? sentinel.__invalidReason
+			: 'unknown';
+	const explanation =
+		typeof sentinel.__invalidExplanation === 'string' ? sentinel.__invalidExplanation : undefined;
+	return [reason, explanation];
+}
+
+function acceptedZoneName(zone: unknown): string | undefined {
+	if (typeof zone !== 'string' || zone.length === 0) return undefined;
+	const lowered = zone.toLowerCase();
+	if (lowered === 'local' || lowered === 'system' || lowered === 'default') return undefined;
+	if (FIXED_OFFSET_ZONE_NAME.test(zone)) return zone;
+	return IANAZone.isValidZone(zone) ? zone : undefined;
+}
+
+function isDurationValues(value: unknown): value is DurationLikeObject {
+	if (typeof value !== 'object' || value === null || !isPlainObject(value)) return false;
+	return Object.entries(value).every(
+		([key, amount]) =>
+			DURATION_UNIT_KEYS.has(key) && typeof amount === 'number' && Number.isFinite(amount),
+	);
+}
+
 export function rebuildDateTime(sentinel: DateTimeSentinel): DateTime {
-	if (sentinel.__isoString === undefined) {
-		return DateTime.invalid(
-			sentinel.__invalidReason ?? 'unknown',
-			sentinel.__invalidExplanation ?? undefined,
-		);
+	const isoString: unknown = sentinel.__isoString;
+	if (typeof isoString !== 'string') {
+		return DateTime.invalid(...invalidArguments(sentinel));
 	}
-	return DateTime.fromISO(sentinel.__isoString, { zone: sentinel.__zone, setZone: true });
+	const zone = acceptedZoneName(sentinel.__zone);
+	return zone === undefined ? DateTime.fromISO(isoString) : DateTime.fromISO(isoString, { zone });
 }
 
 export function rebuildDuration(sentinel: DurationSentinel): Duration {
-	if (sentinel.__values === undefined) {
-		return Duration.invalid(
-			sentinel.__invalidReason ?? 'unknown',
-			sentinel.__invalidExplanation ?? undefined,
-		);
+	const values: unknown = sentinel.__values;
+	if (!isDurationValues(values)) {
+		return Duration.invalid(...invalidArguments(sentinel));
 	}
-	return Duration.fromObject(sentinel.__values);
+	return Duration.fromObject(values);
 }
 
 export function rebuildInterval(sentinel: IntervalSentinel): Interval {
-	if (sentinel.__start === undefined || sentinel.__end === undefined) {
-		return Interval.invalid(
-			sentinel.__invalidReason ?? 'unknown',
-			sentinel.__invalidExplanation ?? undefined,
-		);
+	const start: unknown = sentinel.__start;
+	const end: unknown = sentinel.__end;
+	if (!isDateTimeSentinel(start) || !isDateTimeSentinel(end)) {
+		return Interval.invalid(...invalidArguments(sentinel));
 	}
-	return Interval.fromDateTimes(rebuildDateTime(sentinel.__start), rebuildDateTime(sentinel.__end));
+	return Interval.fromDateTimes(rebuildDateTime(start), rebuildDateTime(end));
 }
 
 export function rebuildLuxonValue(
@@ -164,9 +210,13 @@ function unwrapPlainObject(value: Record<string, unknown>): Record<string, unkno
 export function unwrapLuxonSentinels(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
-	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
-	if (isLuxonEscapedObject(value)) return unwrapPlainObject(value.__value);
 	if (Array.isArray(value)) return value.map(unwrapLuxonSentinels);
 	if (!isPlainObject(value)) return value;
+	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
+	if (isLuxonEscapedObject(value)) {
+		const inner: unknown = value.__value;
+		if (typeof inner !== 'object' || inner === null || !isPlainObject(inner)) return inner;
+		return unwrapPlainObject(inner);
+	}
 	return unwrapPlainObject(value);
 }

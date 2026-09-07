@@ -127,11 +127,13 @@ function unwrapSentinels(value: unknown): unknown {
 	}
 	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
 	if (isLuxonEscapedObject(value)) {
-		const inner = value.__value;
+		const inner: unknown = value.__value;
+		if (typeof inner !== 'object' || inner === null) return inner;
 		if (isEscapedObject(inner)) return unwrapSentinels(inner);
+		if (Array.isArray(inner)) return inner.map(unwrapSentinels);
 		const unescaped: Record<string, unknown> = {};
-		for (const key of Object.keys(inner)) {
-			unescaped[key] = unwrapSentinels(inner[key]);
+		for (const [key, entry] of Object.entries(inner)) {
+			unescaped[key] = unwrapSentinels(entry);
 		}
 		return unescaped;
 	}
@@ -900,7 +902,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			var errKeys = Object.keys(v);
 			for (var ei = 0; ei < errKeys.length; ei++) {
 				if (errKeys[ei] !== 'name' && errKeys[ei] !== 'message' && errKeys[ei] !== 'stack') {
-					errExtra[errKeys[ei]] = wrapSpecialValues(v[errKeys[ei]], inCollection);
+					errExtra[errKeys[ei]] = wrapSpecialValues(v[errKeys[ei]], true);
 				}
 			}
 			return { __isErrorValue: true, __name: v.name || 'Error', __message: v.message || '', __extra: errExtra };
@@ -925,9 +927,17 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (!inCollection) {
 			if (v.__isDateTime === true || v.__isDuration === true || v.__isInterval === true) return v;
 			if (v.__isLuxonEscaped === true) {
-				return { __isLuxonEscaped: true, __value: wrapSpecialValues(v.__value) };
+				var payload = v.__value;
+				if (payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
+					return { __isLuxonEscaped: true, __value: wrapOwnKeys(payload, inCollection) };
+				}
+				return { __isLuxonEscaped: true, __value: wrapSpecialValues(payload, inCollection) };
 			}
 		}
+		return wrapOwnKeys(v, inCollection);
+	}
+
+	function wrapOwnKeys(v, inCollection) {
 		var result = {};
 		var keys = Object.keys(v);
 		var collides = false;

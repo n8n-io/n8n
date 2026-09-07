@@ -146,6 +146,27 @@ describe('test Set2, rawMode/json Mode', () => {
 
 			expect(result).toEqual({ json: { time: isoString }, pairedItem: { item: 0 } });
 		});
+
+		it('should fail when a date expression resolves to a bare ISO string', async () => {
+			const isoString = '2026-09-04T10:20:30.000+02:00';
+			const jsonOutputTemplate = '{\n  "time": {{ $now }}\n}\n';
+			const fakeExecuteFunction = createMockExecuteFunction(
+				{ jsonOutput: `=${jsonOutputTemplate}` },
+				false,
+				() => isoString,
+			);
+
+			await expect(
+				execute.call(
+					fakeExecuteFunction,
+					item,
+					0,
+					options,
+					{ jsonOutput: jsonOutputTemplate },
+					node,
+				),
+			).rejects.toThrow("The 'JSON Output' in item 0 contains invalid JSON");
+		});
 	});
 
 	describe('error handling', () => {

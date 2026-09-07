@@ -293,12 +293,44 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	});
 
 	describe('Luxon values returned to the host', () => {
-		it('should return $now as a luxon DateTime', () => {
+		it('should return $now as a valid luxon DateTime in the system zone', () => {
 			const data = { $json: {} };
 
 			const result = evaluator.evaluate('{{ $now }}', data, caller);
 
 			expect(result).toBeInstanceOf(DateTime);
+			expect((result as DateTime).isValid).toBe(true);
+			expect((result as DateTime).zone.type).toBe('system');
+			expect(Math.abs((result as DateTime).toMillis() - Date.now())).toBeLessThan(60_000);
+		});
+
+		it('should keep the name of a named zone', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ DateTime.fromISO("2024-01-15T12:00:00", { zone: "Europe/Paris" }) }}',
+				data,
+				caller,
+			);
+
+			expect(result).toBeInstanceOf(DateTime);
+			expect((result as DateTime).isValid).toBe(true);
+			expect((result as DateTime).zoneName).toBe('Europe/Paris');
+			expect((result as DateTime).toISO()).toBe('2024-01-15T12:00:00.000+01:00');
+		});
+
+		it('should apply the summer offset when arithmetic crosses a daylight saving change', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ DateTime.fromISO("2024-01-15T12:00:00", { zone: "Europe/Paris" }) }}',
+				data,
+				caller,
+			);
+
+			expect((result as DateTime).plus({ months: 6 }).toISO()).toBe(
+				'2024-07-15T12:00:00.000+02:00',
+			);
 		});
 
 		it('should return a Duration as a luxon Duration', () => {
@@ -333,6 +365,8 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			) as Record<string, unknown>;
 
 			expect(result.date).toBeInstanceOf(DateTime);
+			expect((result.date as DateTime).isValid).toBe(true);
+			expect((result.date as DateTime).toISODate()).toBe('2024-01-15');
 		});
 
 		it('should return a DateTime in an array as a luxon DateTime', () => {
@@ -345,6 +379,83 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			) as unknown[];
 
 			expect(result[0]).toBeInstanceOf(DateTime);
+			expect((result[0] as DateTime).isValid).toBe(true);
+			expect((result[0] as DateTime).toISODate()).toBe('2024-01-15');
+		});
+
+		it('should return an invalid Duration as an invalid Duration instance', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate('{{ Duration.invalid("test") }}', data, caller);
+
+			expect(result).toBeInstanceOf(Duration);
+			expect((result as Duration).isValid).toBe(false);
+			expect((result as Duration).invalidReason).toBe('test');
+		});
+
+		it('should return an invalid Interval as an invalid Interval instance', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ Interval.fromDateTimes(DateTime.fromISO("2024-01-15"), DateTime.fromISO("2024-01-01")) }}',
+				data,
+				caller,
+			);
+
+			expect(result).toBeInstanceOf(Interval);
+			expect((result as Interval).isValid).toBe(false);
+			expect((result as Interval).invalidReason).toBe('end before start');
+		});
+
+		it('should keep a luxon value next to a user key that copies a marker name', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ ({ __isDateTime: "x", real: DateTime.fromISO("2024-01-15") }) }}',
+				data,
+				caller,
+			) as Record<string, unknown>;
+
+			expect(result.__isDateTime).toBe('x');
+			expect(result.real).toBeInstanceOf(DateTime);
+			expect((result.real as DateTime).isValid).toBe(true);
+			expect((result.real as DateTime).toISODate()).toBe('2024-01-15');
+		});
+
+		it('should keep every key of a user object that copies a marker name', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ ({ __isLuxonEscaped: true, keep: 1 }) }}',
+				data,
+				caller,
+			);
+
+			expect(result).toEqual({ __isLuxonEscaped: true, keep: 1 });
+		});
+
+		it('should replace a value that contains itself with null', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ function Node(){ this.n = 1; this.self = this; } return new Node(); })() }}',
+				data,
+				caller,
+			);
+
+			expect(result).toEqual({ n: 1, self: null });
+		});
+
+		it('should keep a value that two keys of one object share', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ var shared = { v: 1 }; return { a: shared, b: shared }; })() }}',
+				data,
+				caller,
+			);
+
+			expect(result).toEqual({ a: { v: 1 }, b: { v: 1 } });
 		});
 	});
 
