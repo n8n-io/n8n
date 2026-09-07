@@ -1,0 +1,29 @@
+packages/frontend/@n8n/chat/src/components/Input.vue
+  s_33dcd8fa73fcbf::t_367b8fb5b9cd98 417,479
+packages/frontend/@n8n/chat/src/components/Button.vue
+  s_33dcd8fa73fcbf::t_ed10f7592fdaaa 32-33,52
+packages/frontend/@n8n/chat/src/components/ChatWindow.vue
+  s_33dcd8fa73fcbf::t_78082e116aab02 39-40,86
+  s_33dcd8fa73fcbf::t_367b8fb5b9cd98 29,121
+  s_33dcd8fa73fcbf::t_638293dcbcdbb5 107
+packages/frontend/@n8n/chat/src/components/ChatFile.vue
+  s_33dcd8fa73fcbf::t_70cf651b2dc730 49-57,60,63,68
+packages/frontend/@n8n/chat/src/components/MessageTyping.vue
+  s_33dcd8fa73fcbf::t_367b8fb5b9cd98 50,57,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "36b636ae3ba52d4c337989a92ed26b91f28ba4f8",
+  "prompts": {},
+  "sessions": {
+    "s_33dcd8fa73fcbf": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a07c5a-caf9-701b-a80d-63b1777e3bf2",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
