@@ -2,7 +2,7 @@ import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
 
-import { KeyManagerService } from '@/modules/encryption-key-manager/key-manager.service';
+import { KeyManagerService } from '@/encryption/key-manager.service';
 
 import { EncryptionBootstrapService } from '../encryption-bootstrap.service';
 

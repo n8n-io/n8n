@@ -7,7 +7,7 @@ import { Cipher, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { KeyManagerService } from '@/modules/encryption-key-manager/key-manager.service';
+import { KeyManagerService } from '@/encryption/key-manager.service';
 
 const makeKey = (overrides: Partial<DeploymentKey> = {}): DeploymentKey =>
 	({
