@@ -375,6 +375,7 @@ export class RoutingNode {
 					runIndex,
 					executeSingleFunctions.getExecuteData(),
 					{
+						...this.extraAdditionalKeys,
 						$credentials: credentials,
 						$response: responseData,
 						$responseItem: item.json,
@@ -394,7 +395,12 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
+				{
+					...this.extraAdditionalKeys,
+					$response: responseData,
+					$value: parameterValue,
+					$version: node.typeVersion,
+				},
 				false,
 			) as string;
 			return inputData.slice(0, parseInt(maxResults, 10));
@@ -410,7 +416,12 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
+						{
+							...this.extraAdditionalKeys,
+							$response: responseData,
+							$value: parameterValue,
+							$version: node.typeVersion,
+						},
 						false,
 					) as IDataObject,
 				},
@@ -455,6 +466,7 @@ export class RoutingNode {
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
 						{
+							...this.extraAdditionalKeys,
 							$response: responseData,
 							$responseItem: item.json,
 							$value: parameterValue,
@@ -480,7 +492,12 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
+				{
+					...this.extraAdditionalKeys,
+					$response: responseData,
+					$value: parameterValue,
+					$version: node.typeVersion,
+				},
 				false,
 			) as string;
 
@@ -636,6 +653,7 @@ export class RoutingNode {
 					let paginateRequestData: IHttpRequestOptions;
 
 					const additionalKeys = {
+						...this.extraAdditionalKeys,
 						$request: requestData.options,
 						$response: {} as IN8nHttpFullResponse,
 						$version: node.typeVersion,

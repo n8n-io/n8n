@@ -17,6 +17,23 @@ const RELAXED_ACCEPT_HEADER =
 
 type RequestHelpers = IExecuteFunctions['helpers'] | IPollFunctions['helpers'];
 
+export async function parseFeedXml(
+	feedXml: string,
+	customFields?: string,
+): Promise<Parser.Output<IDataObject>> {
+	const parserOptions: Parser.ParserOptions<IDataObject, IDataObject> = {
+		xml2js: {
+			tagNameProcessors: [sanitizeXmlName],
+			attrNameProcessors: [sanitizeXmlName],
+		},
+		...(customFields
+			? { customFields: { item: customFields.split(',').map((field) => field.trim()) } }
+			: {}),
+	};
+
+	return await new Parser(parserOptions).parseString(feedXml);
+}
+
 export async function parseFeedUrl(
 	helpers: RequestHelpers,
 	feedUrl: string,
@@ -43,21 +60,5 @@ export async function parseFeedUrl(
 	const feedXmlResponse = await helpers.httpRequest(requestOptions);
 	const feedXml = typeof feedXmlResponse === 'string' ? feedXmlResponse : String(feedXmlResponse);
 
-	const parserOptions: Parser.ParserOptions<IDataObject, IDataObject> = {
-		xml2js: {
-			tagNameProcessors: [sanitizeXmlName],
-			attrNameProcessors: [sanitizeXmlName],
-		},
-		...(options.customFields
-			? {
-					customFields: {
-						item: options.customFields.split(',').map((field) => field.trim()),
-					},
-				}
-			: {}),
-	};
-
-	const parser = new Parser(parserOptions);
-
-	return await parser.parseString(feedXml);
+	return await parseFeedXml(feedXml, options.customFields);
 }

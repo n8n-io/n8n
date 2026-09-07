@@ -13,8 +13,26 @@ import { RoutingNode } from './routing-node';
 /** Static-data key the engine keeps a declarative trigger's cursor under. */
 export const DECLARATIVE_CURSOR_KEY = 'cursor';
 
-const isAfter = (a: unknown, b: unknown, type: 'timestamp' | 'id') => {
-	if (type === 'timestamp') return new Date(String(a)).getTime() > new Date(String(b)).getTime();
+/**
+ * The `timestamp` cursor seeds itself with an ISO string and interpolates that
+ * same value into the next request, so the field has to be Date-parseable for
+ * the comparison and the query to agree. A numeric epoch field belongs to the
+ * `id` cursor, which compares numbers directly. Failing loudly here beats the
+ * silent alternative: `new Date('1757238000')` is `Invalid Date`, and `NaN`
+ * comparisons would just never emit.
+ */
+const toTime = (value: unknown, field: string) => {
+	const time = new Date(String(value)).getTime();
+	if (Number.isNaN(time)) {
+		throw new UnexpectedError(
+			`Declarative polling trigger read a non-date value from "${field}": ${JSON.stringify(value)}. The 'timestamp' cursor needs Date-parseable values; use the 'id' cursor for numeric timestamps.`,
+		);
+	}
+	return time;
+};
+
+const isAfter = (a: unknown, b: unknown, type: 'timestamp' | 'id', field: string) => {
+	if (type === 'timestamp') return toTime(a, field) > toTime(b, field);
 	if (typeof a === 'number' && typeof b === 'number') return a > b;
 	return String(a) > String(b);
 };
@@ -34,8 +52,8 @@ async function applyCursor(
 	for (const item of items) {
 		const value = item.json[field];
 		if (value === undefined || value === null) continue;
-		if (since === undefined || isAfter(value, since, type)) newItems.push(item);
-		if (highest === undefined || isAfter(value, highest, type)) highest = value;
+		if (since === undefined || isAfter(value, since, type, field)) newItems.push(item);
+		if (highest === undefined || isAfter(value, highest, type, field)) highest = value;
 	}
 	return { items: newItems, cursor: highest === undefined ? cursor : { value: highest } };
 }
@@ -68,6 +86,14 @@ export function createDeclarativePoll(
 		const isFirstRun = !isManual && cursor === undefined;
 
 		// A timestamp window has nothing to fetch before "now": seed and wait for the next tick.
+		//
+		// Caveat with durable cursors on the legacy cron path: an empty activation poll
+		// persists nothing (`poll-trigger-executor.ts`, the `!testingTrigger` gate), so
+		// this seed is discarded and the first scheduled tick seeds again. That costs one
+		// poll interval before the first emit. `poll()` cannot tell the two apart —
+		// `getActivationMode()` is fixed at registration — so closing it belongs in the
+		// executor, not here. The durable scheduler path already commits an empty poll's
+		// cursor and is unaffected.
 		if (isFirstRun && typeof trigger.cursor !== 'function' && trigger.cursor.type === 'timestamp') {
 			staticData[DECLARATIVE_CURSOR_KEY] = { value: new Date().toISOString() };
 			return null;
@@ -102,7 +128,9 @@ export function createDeclarativePoll(
 		const fetched = (await routingNode.runNode())?.[0] ?? [];
 
 		if (isManual) {
-			const items = fetched.slice(-(trigger.manual?.maxResults ?? 1));
+			// `slice(-0)` is `slice(0)`, i.e. everything, so zero and negatives need clamping.
+			const maxResults = Math.max(0, Math.trunc(trigger.manual?.maxResults ?? 1));
+			const items = maxResults === 0 ? [] : fetched.slice(-maxResults);
 			return items.length ? [items] : null;
 		}
 
