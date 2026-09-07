@@ -76,6 +76,8 @@ describe('ChatTrigger Node', () => {
 		} as unknown as Request['socket'];
 
 		mockRequest.contentType = undefined;
+		// Assigned properties survive `clearAllMocks`, so a test's query must not leak into the next.
+		mockRequest.query = {};
 		mockContext.customData = mock<IWebhookFunctions['customData']>();
 		mockContext.getTestWebhookUser = getTestWebhookUser;
 
