@@ -23,6 +23,8 @@ export default defineConfig(
 		ignores: [
 			'scripts/**/*.cjs',
 			'skills/**/*.mjs',
+			// App starter files copied into the sandbox; they build with their own tsconfig.
+			'skills/**/templates/**',
 			// Local eval scratch output — never linted, never committed.
 			'.data/**',
 			'evaluations/.data/**',
