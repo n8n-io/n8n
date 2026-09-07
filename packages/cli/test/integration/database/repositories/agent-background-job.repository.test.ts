@@ -124,6 +124,27 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(foreign?.notifiedAt).toBeNull();
 	});
 
+	it('prunes only consumed rows past the retention cutoff', async () => {
+		const old = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000);
+		const consumedId = uuid();
+		const pendingId = uuid();
+		const recentId = uuid();
+		await insertJob({
+			id: consumedId,
+			parentThreadId: 'thread-1',
+			settledAt: old,
+			notifiedAt: old,
+		});
+		await insertJob({ id: pendingId, parentThreadId: 'thread-1', settledAt: old });
+		await insertJob({ id: recentId, parentThreadId: 'thread-1', notifiedAt: new Date() });
+
+		await repository.deleteSettledBefore(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+
+		expect(await repository.findById(consumedId)).toBeNull();
+		expect(await repository.findById(pendingId)).not.toBeNull();
+		expect(await repository.findById(recentId)).not.toBeNull();
+	});
+
 	it('returns each thread with unconsumed mail once and accepts a 255-character resource id', async () => {
 		const resourceId = 'r'.repeat(255);
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', parentResourceId: resourceId });

@@ -73,6 +73,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 
 	jobRepository.findWakeableUnconsumedSettled.mockResolvedValue([makeJob()]);
 	executionRepository.existsRunningByThread.mockResolvedValue(false);
+	executionRepository.hasSuspendedRun.mockResolvedValue(false);
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 	agentRepository.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
 	userRepository.findByIdWithRole.mockResolvedValue(user as never);
@@ -316,9 +317,27 @@ describe('AgentWakeService', () => {
 		expect(running.orchestrator.executeForWake).not.toHaveBeenCalled();
 
 		const suspended = setup();
+		suspended.executionRepository.hasSuspendedRun.mockResolvedValue(true);
 		suspended.checkpointStorage.findSuspendedForThread.mockResolvedValue({} as never);
 		await suspended.service.attemptWake('thread-1');
 		expect(suspended.orchestrator.executeForWake).not.toHaveBeenCalled();
+	});
+
+	it('scans checkpoints only for threads with a suspension on record', async () => {
+		const never = setup();
+		await never.service.attemptWake('thread-1');
+		expect(never.checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+		expect(never.orchestrator.executeForWake).toHaveBeenCalledTimes(1);
+
+		// A resumed run keeps its suspended status; only a live checkpoint blocks the wake.
+		const resumed = setup();
+		resumed.executionRepository.hasSuspendedRun.mockResolvedValue(true);
+		await resumed.service.attemptWake('thread-1');
+		expect(resumed.checkpointStorage.findSuspendedForThread).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
+		expect(resumed.orchestrator.executeForWake).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not consume mail after lease loss', async () => {
@@ -346,17 +365,18 @@ describe('AgentWakeService', () => {
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 	});
 
-	it('leaves mail pending when the wake run fails', async () => {
+	it('leaves mail pending when the wake run fails and keeps the run error out of the log', async () => {
 		const { service, orchestrator, jobRepository, logger } = setup();
-		orchestrator.executeForWake.mockRejectedValue(new Error('model unavailable'));
+		orchestrator.executeForWake.mockRejectedValue(new Error('401 for token sk-secret'));
 
 		await service.attemptWake('thread-1');
 
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to deliver background job mail to its parent agent',
-			expect.objectContaining({ threadId: 'thread-1', attempt: 1 }),
+			expect.objectContaining({ threadId: 'thread-1', attempt: 1, reason: 'Wake run failed' }),
 		);
+		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('sk-secret');
 	});
 
 	describe('identity validation', () => {

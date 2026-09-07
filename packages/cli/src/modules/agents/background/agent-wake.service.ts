@@ -158,9 +158,14 @@ export class AgentWakeService {
 			return;
 		}
 
+		// Execution rows keep their suspended status after a resume, so they can
+		// only rule a thread out cheaply; the checkpoint store decides whether a
+		// suspension is live.
 		if (
 			(await this.executionRepository.existsRunningByThread(threadId)) ||
-			(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !== null
+			((await this.executionRepository.hasSuspendedRun(threadId)) &&
+				(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !==
+					null)
 		) {
 			return;
 		}
@@ -171,13 +176,23 @@ export class AgentWakeService {
 			return;
 		}
 
+		let identity: ExecuteForWakeConfig['identity'];
 		try {
-			const identity = await this.resolveIdentity(
+			identity = await this.resolveIdentity(
 				first.parentResourceId,
 				first.parentPrincipalHash,
 				agent.projectId,
 			);
+		} catch (error) {
+			this.recordFailure(
+				threadId,
+				generation,
+				error instanceof Error ? error.message : String(error),
+			);
+			return;
+		}
 
+		try {
 			this.activeWakes.add(threadId);
 			try {
 				await this.orchestrator.executeForWake({
@@ -200,13 +215,11 @@ export class AgentWakeService {
 			this.failures.delete(threadId);
 
 			if (jobs.length < pending.length) this.scheduleLocal(threadId);
-		} catch (error) {
+		} catch {
 			if (signal.aborted) return;
-			this.recordFailure(
-				threadId,
-				generation,
-				error instanceof Error ? error.message : String(error),
-			);
+			// The run's error text can carry provider or tool output. The recorded
+			// execution keeps it; the log only needs the fact.
+			this.recordFailure(threadId, generation, 'Wake run failed');
 		}
 	}
 
