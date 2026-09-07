@@ -1,3 +1,4 @@
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
@@ -9,6 +10,12 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		const entry = Container.get(ModuleMetadata).get('type-availability-policies');
 
 		expect(entry).toBeDefined();
+	});
+
+	it('is gated behind the node type policies license feature', () => {
+		const entry = Container.get(ModuleMetadata).get('type-availability-policies');
+
+		expect(entry?.licenseFlag).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
 	});
 
 	it('initializes with no side effects (empty scaffold)', async () => {

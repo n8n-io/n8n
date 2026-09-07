@@ -1,7 +1,11 @@
+import { LICENSE_FEATURES } from '@n8n/constants';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 
-@BackendModule({ name: 'type-availability-policies' })
+@BackendModule({
+	name: 'type-availability-policies',
+	licenseFlag: LICENSE_FEATURES.NODE_TYPE_POLICIES,
+})
 export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 	async init() {}
 

@@ -2,10 +2,10 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
-import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
-import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
-import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
+import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies.ee/database/repositories/type-availability-policy-attachment.repository';
+import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies.ee/database/repositories/type-availability-policy-scope.repository';
+import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies.ee/database/repositories/type-availability-policy.repository';
+import type { PolicyRule } from '@/modules/type-availability-policies.ee/policy-rule.types';
 
 const KIND = 'node-types';
 
