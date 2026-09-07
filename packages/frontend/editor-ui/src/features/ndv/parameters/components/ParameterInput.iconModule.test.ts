@@ -1,5 +1,5 @@
 /**
- * The `icon` parameter type is drawn by `@n8n/frontend-module-icon-parameter`, not by a
+ * The `icon` parameter type is drawn by `@n8n/frontend-module-parameter-input-icon`, not by a
  * branch in `ParameterInput.vue`. That puts three seams between a node parameter and its
  * picker — the registry lookup, an async component boundary, and a debounced
  * `update:modelValue` — and none of them existed while the branch was inline.
@@ -18,7 +18,7 @@
 // cases, so this file runs against the real popover.
 vi.unmock('reka-ui');
 
-import { IconParameterModule } from '@n8n/frontend-module-icon-parameter';
+import { ParameterInputIconModule } from '@n8n/frontend-module-parameter-input-icon';
 import { parameterInputRegistry } from '@n8n/frontend-module-sdk';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -128,8 +128,8 @@ const renderComponent = createComponentRenderer(ParameterInput, {
 });
 
 function registerIconModule() {
-	const contribution = IconParameterModule.parameterInputs?.[0];
-	if (!contribution) throw new Error('IconParameterModule contributes no parameter input');
+	const contribution = ParameterInputIconModule.parameterInputs?.[0];
+	if (!contribution) throw new Error('ParameterInputIconModule contributes no parameter input');
 	parameterInputRegistry.register(contribution);
 }
 
