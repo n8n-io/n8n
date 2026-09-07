@@ -15,9 +15,11 @@ import {
 	WorkflowListPublicDto,
 	WorkflowPublicDto,
 	WorkflowPublishBlockedErrorPublicDto,
+	WorkflowPublishForbiddenErrorPublicDto,
 	WorkflowPublishPublicDto,
 	WorkflowTagsPublicDto,
 	WorkflowVersionHistoryListPublicDto,
+	WorkflowVersionPublicDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -55,6 +57,7 @@ import { ResponseError } from '@/errors/response-errors/abstract/response.error'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -77,6 +80,11 @@ const UPDATE_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. re-publication blocked by an open workflow review (then `reason` and ' +
 	'`workflowReviewRequestId` are present; the update itself is still saved as a draft) or a ' +
 	'webhook path conflict.';
+
+const UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION =
+	'The update would re-publish the workflow, but the API key lacks `workflow:activate` or the ' +
+	'caller lacks `workflow:publish` on the project. The update is still saved as a draft, named ' +
+	'by `versionId`, and the published version stays live.';
 
 const PUBLISH_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. publication blocked by an open workflow review (then `reason` and ' +
@@ -156,6 +164,21 @@ function toPublicActiveVersionWithoutHistory(activeVersion: WorkflowHistory) {
 		autosaved: activeVersion.autosaved,
 		createdAt: activeVersion.createdAt.toISOString(),
 		updatedAt: activeVersion.updatedAt.toISOString(),
+	};
+}
+
+function toPublicWorkflowVersion(version: WorkflowHistory) {
+	return {
+		versionId: version.versionId,
+		workflowId: version.workflowId,
+		nodes: version.nodes,
+		connections: version.connections,
+		nodeGroups: version.nodeGroups,
+		authors: version.authors,
+		name: version.name,
+		description: version.description,
+		createdAt: version.createdAt.toISOString(),
+		updatedAt: version.updatedAt.toISOString(),
 	};
 }
 
@@ -362,10 +385,19 @@ export class WorkflowsPublicController {
 	@ApiSummary('Update a workflow')
 	@ApiDescription(
 		'Update a workflow. If the workflow is published, the updated version will be ' +
-			'automatically re-published unless `publishIfActive` is set to `false`.',
+			'automatically re-published unless `publishIfActive` is set to `false`. Because that ' +
+			're-publication puts a new version live, it additionally requires the `workflow:activate` ' +
+			'API key scope and the `workflow:publish` project permission. A caller without either can ' +
+			'still save: the new version is stored as a draft and the response is a `403` naming the ' +
+			'missing permission, leaving the published version live. Saving an unpublished workflow, ' +
+			'or saving with `publishIfActive=false`, only needs `workflow:update`.',
 	)
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, UpdatedWorkflowPublicDto)
+	@ApiErrorResponse(403, {
+		dto: WorkflowPublishForbiddenErrorPublicDto,
+		description: UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION,
+	})
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(422)
 	@ApiErrorResponse(409, {
@@ -396,6 +428,8 @@ export class WorkflowsPublicController {
 					forceSave: true, // Skip version conflict check for public API
 					publicApi: true,
 					publishIfActive: query.publishIfActive,
+					// A save can publish, so the key's publish scope has to be enforced too
+					apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
 					source: 'api',
 				},
 			);
@@ -710,6 +744,43 @@ export class WorkflowsPublicController {
 			}
 			throw error;
 		}
+	}
+
+	@Get('/:workflowId/versions/:versionId')
+	@ApiKeyScope('workflow:read')
+	@ProjectScope('workflow:read')
+	@ApiSummary('Retrieve a workflow version')
+	@ApiDescription('Retrieve a single version of a workflow from its version history.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowVersionPublicDto)
+	@ApiErrorResponse(404)
+	async getWorkflowVersion(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Param('versionId') versionId: string,
+	): Promise<WorkflowVersionPublicDto> {
+		let version: WorkflowHistory;
+		try {
+			version = await this.workflowHistoryService.getVersion(req.user, workflowId, versionId, {
+				includePublishHistory: false,
+			});
+		} catch (error) {
+			if (error instanceof SharedWorkflowNotFoundError) {
+				throw new NotFoundError('Workflow not found');
+			}
+			if (error instanceof WorkflowHistoryVersionNotFoundError) {
+				throw new NotFoundError('Version not found');
+			}
+			throw error;
+		}
+
+		this.eventService.emit('user-retrieved-workflow-version', {
+			userId: req.user.id,
+			publicApi: true,
+		});
+
+		return toPublicWorkflowVersion(version);
 	}
 
 	@Get('/:workflowId/tags')

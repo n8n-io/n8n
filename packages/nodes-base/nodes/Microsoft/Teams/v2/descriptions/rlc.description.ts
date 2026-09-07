@@ -267,3 +267,46 @@ export const memberRLC: INodeProperties = {
 		},
 	],
 };
+
+export const meetingRLC: INodeProperties = {
+	displayName: 'Meeting',
+	name: 'meetingId',
+	type: 'resourceLocator',
+	default: { mode: 'id', value: '' },
+	required: true,
+	description: 'The online meeting, by its ID or by its join URL',
+	modes: [
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi...',
+			hint: 'The ID returned when the meeting was created, not the numeric meeting ID from the invite',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[^\\/\\\\?#%]*',
+						errorMessage: "Not a valid meeting ID. To use a join URL, switch to 'By URL'",
+					},
+				},
+			],
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://teams.microsoft.com/l/meetup-join/19%3ameeting...',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '(\\s*https:\\/\\/.+\\/l\\/meetup-join\\/.+\\s*)?',
+						errorMessage:
+							"Use the meeting link that contains '/l/meetup-join/', such as the joinWebUrl returned when the meeting was created",
+					},
+				},
+			],
+		},
+	],
+};

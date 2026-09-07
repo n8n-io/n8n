@@ -219,7 +219,14 @@ export class OidcService {
 		return nonce;
 	}
 
+	assertOidcLoginEnabled(): void {
+		if (!this.oidcConfig.loginEnabled || !isOidcCurrentAuthenticationMethod()) {
+			throw new ForbiddenError('OIDC login is not enabled');
+		}
+	}
+
 	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+		this.assertOidcLoginEnabled();
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
@@ -267,6 +274,7 @@ export class OidcService {
 		storedState: string,
 		storedNonce: string,
 	): Promise<{ user: User; idToken?: string }> {
+		this.assertOidcLoginEnabled();
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 

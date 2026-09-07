@@ -201,4 +201,42 @@ describe('TelegramInteractionWebhooks', () => {
 		expect(result).toEqual({ noWebhookResponse: true });
 		expect(getWebhookExecutionData).not.toHaveBeenCalled();
 	});
+
+	it('responds 404 and does not resume when the resumed node is not a Telegram node', async () => {
+		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const req = makeReq(reference);
+		const res = makeRes();
+
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				finished: false,
+				data: { resultData: { lastNodeExecuted: 'Slack', error: undefined } },
+				workflowData: {
+					id: 'workflow-1',
+					name: 'Test Workflow',
+					active: true,
+					settings: {},
+					staticData: {},
+					connections: {},
+					nodes: [
+						{
+							name: 'Slack',
+							id: 'node-1',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							parameters: {},
+							position: [0, 0] as [number, number],
+						},
+					],
+				},
+			}),
+		);
+
+		const result = await svc.executeWebhook(req, res);
+
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(getWebhookExecutionData).not.toHaveBeenCalled();
+	});
 });

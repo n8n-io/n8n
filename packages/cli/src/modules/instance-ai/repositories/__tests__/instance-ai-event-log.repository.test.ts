@@ -88,6 +88,80 @@ describe('InstanceAiEventLogRepository', () => {
 		});
 	});
 
+	describe('findLangsmithAnchor', () => {
+		const runStartRow = (
+			seq: number,
+			runId: string,
+			payload: Record<string, unknown>,
+		): InstanceAiEventLogEntry =>
+			({
+				seq,
+				runId,
+				createdAt: new Date(`2026-07-01T10:00:0${seq}.000Z`),
+				payload: JSON.stringify({ type: 'run-start', runId, agentId: 'a1', payload }),
+			}) as InstanceAiEventLogEntry;
+
+		const repoWithRunStarts = (rows: InstanceAiEventLogEntry[]) => {
+			const repo = Object.create(
+				InstanceAiEventLogRepository.prototype,
+			) as InstanceAiEventLogRepository;
+			const find = vi.fn().mockResolvedValue(rows);
+			Object.defineProperty(repo, 'find', { value: find, configurable: true });
+			return { repo, find };
+		};
+
+		it('resolves the group anchor from a later sibling when earlier ones carry no ids', async () => {
+			const { repo, find } = repoWithRunStarts([
+				// Anchored, but a different group: must never hijack another group's turn.
+				runStartRow(1, 'run-0', {
+					messageGroupId: 'mg-other',
+					langsmithRunId: 'ls-other',
+					langsmithTraceId: 'trace-other',
+				}),
+				// The group's first sibling, unanchored — what a segment without
+				// tracing leaves behind.
+				runStartRow(2, 'run-1', { messageGroupId: 'mg-1' }),
+				runStartRow(3, 'run-2', {
+					messageGroupId: 'mg-1',
+					langsmithRunId: 'ls-run',
+					langsmithTraceId: 'ls-trace',
+				}),
+			]);
+
+			await expect(repo.findLangsmithAnchor('thread-1', 'mg-1')).resolves.toEqual({
+				langsmithRunId: 'ls-run',
+				langsmithTraceId: 'ls-trace',
+			});
+			// One row per run, not the whole log.
+			expect(find).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { threadId: 'thread-1', type: 'run-start' } }),
+			);
+		});
+
+		it('falls back to the runId for a turn with no message group', async () => {
+			const { repo } = repoWithRunStarts([
+				runStartRow(1, 'run-1', { langsmithRunId: 'ls-run', langsmithTraceId: 'ls-trace' }),
+			]);
+
+			await expect(repo.findLangsmithAnchor('thread-1', 'run-1')).resolves.toEqual({
+				langsmithRunId: 'ls-run',
+				langsmithTraceId: 'ls-trace',
+			});
+		});
+
+		it('resolves undefined for a genuinely untraced turn', async () => {
+			const { repo } = repoWithRunStarts([
+				runStartRow(1, 'run-1', { messageGroupId: 'mg-1' }),
+				runStartRow(2, 'run-2', { messageGroupId: 'mg-1' }),
+			]);
+
+			// No sibling in the group is anchored…
+			await expect(repo.findLangsmithAnchor('thread-1', 'mg-1')).resolves.toBeUndefined();
+			// …and the runId fallback must not fabricate an anchor from an id-less start.
+			await expect(repo.findLangsmithAnchor('thread-1', 'run-2')).resolves.toBeUndefined();
+		});
+	});
+
 	describe('findRunIdsInWindow', () => {
 		it('bounds the window half-open so the next page owns its first fact', async () => {
 			const repo = Object.create(

@@ -70,6 +70,7 @@
   },
   "dependencies": {
     "@codemirror/autocomplete": "catalog:",
+    "@n8n/constants": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
