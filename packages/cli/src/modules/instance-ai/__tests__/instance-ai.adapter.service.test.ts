@@ -2434,6 +2434,29 @@ describe('createWorkflowAdapter', () => {
 			expect(result.workflows[1].folder).toBeUndefined();
 		});
 
+		it('withholds folder attribution when the caller cannot list folders in the workflow project', async () => {
+			const { adapter, mockWorkflowService, mockFolderRepository, savedWorkflow } =
+				createWorkflowAdapterForTests({ folderExploration: true, foldersLicensed: true });
+			mockedUserHasScopes.mockImplementation(
+				async (_user, scopes) => !scopes.includes('folder:list'),
+			);
+			mockWorkflowService.getMany.mockResolvedValue({
+				workflows: [
+					{
+						...savedWorkflow,
+						id: 'wf-nested',
+						parentFolder: { id: 'acme', name: 'Acme', parentFolderId: 'clients' },
+					},
+				],
+				count: 1,
+			});
+
+			const result = await adapter.list();
+
+			expect(result.workflows[0].folder).toBeUndefined();
+			expect(mockFolderRepository.getFolderPathsToRoot).not.toHaveBeenCalled();
+		});
+
 		it('chunks the path lookup and merges the chunks on a large page', async () => {
 			const { adapter, mockWorkflowService, mockFolderRepository, savedWorkflow } =
 				createWorkflowAdapterForTests({ folderExploration: true, foldersLicensed: true });

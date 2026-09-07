@@ -1085,14 +1085,51 @@ export class InstanceAiAdapterService {
 
 				const rows = workflows.filter((wf): wf is WorkflowEntity => 'versionId' in wf);
 
+				// Attribution must not reveal a folder the caller could not list on its own
+				// project — the same rule `readFoldersInScope` applies to resolution. A row's
+				// owning project is the target project on a single-project listing, or its own
+				// `homeProject` otherwise. One `folder:list` check per distinct project on the
+				// page, not per row.
+				const rowFolderProjectId = (wf: WorkflowEntity): string | undefined =>
+					targetProjectId ?? readHomeProject(wf)?.id;
+				const folderProjectIds = foldersAttributed
+					? [
+							...new Set(
+								rows.flatMap((wf) => (readParentFolder(wf) ? (rowFolderProjectId(wf) ?? []) : [])),
+							),
+						]
+					: [];
+				const scopedFolderProjectIds = new Set(
+					(
+						await Promise.all(
+							folderProjectIds.map(
+								async (projectId) =>
+									[
+										projectId,
+										await userHasScopes(user, ['folder:list'], false, { projectId }),
+									] as const,
+							),
+						)
+					)
+						.filter(([, allowed]) => allowed)
+						.map(([projectId]) => projectId),
+				);
+				const canAttributeFolder = (wf: WorkflowEntity): boolean => {
+					if (!foldersAttributed) return false;
+					const projectId = rowFolderProjectId(wf);
+					return projectId !== undefined && scopedFolderProjectIds.has(projectId);
+				};
+
 				// The repository's default select already joined `parentFolder`; until now
 				// the mapping discarded it. Only the root-relative path needs a lookup,
-				// and only for the folders on this page.
+				// and only for the folders on this page the caller may see.
 				const folderPaths =
-					foldersAttributed && folderRepository
+					scopedFolderProjectIds.size > 0 && folderRepository
 						? await readFolderPaths(
 								folderRepository,
-								rows.flatMap((wf) => readParentFolder(wf)?.id ?? []),
+								rows.flatMap((wf) =>
+									canAttributeFolder(wf) ? (readParentFolder(wf)?.id ?? []) : [],
+								),
 							)
 						: new Map<string, string>();
 
@@ -1110,7 +1147,7 @@ export class InstanceAiAdapterService {
 				return {
 					workflows: rows.map((wf): WorkflowSummary => {
 						const project = attributeProjects ? readHomeProject(wf) : undefined;
-						const parent = foldersAttributed ? readParentFolder(wf) : undefined;
+						const parent = canAttributeFolder(wf) ? readParentFolder(wf) : undefined;
 						const folder: WorkflowFolderRef | undefined = parent
 							? {
 									id: parent.id,
