@@ -45,16 +45,11 @@ import type { SourceControlActionOrigin } from './types/source-control-action-or
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
-/**
- * Narrower than `PushWorkFolderRequestDto`: only `id`/`type` per file are ever read (see
- * `resolveAuthorizedFilesToPush`), so the public API can select files without echoing back
- * the full `SourceControlledFile` shape. The internal DTO is structurally assignable here.
- */
-export interface PushWorkfolderOptions {
+export type PushWorkfolderOptions = {
 	commitMessage?: string;
 	force?: boolean;
 	fileNames: Array<Pick<SourceControlledFile, 'id' | 'type'>>;
-}
+};
 
 @Service()
 export class SourceControlService {
@@ -316,14 +311,14 @@ export class SourceControlService {
 	async pushWorkfolder(
 		user: User,
 		options: PushWorkfolderOptions,
-		{ origin = 'ui' }: { origin?: SourceControlActionOrigin } = {},
+		origin: SourceControlActionOrigin = 'ui',
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
 	}> {
 		return await this.workfolderMutex(
-			async () => await this.pushWorkfolderWithoutLock(user, options, { origin }),
+			async () => await this.pushWorkfolderWithoutLock(user, options, origin),
 		);
 	}
 
@@ -382,7 +377,7 @@ export class SourceControlService {
 	private async pushWorkfolderWithoutLock(
 		user: User,
 		options: PushWorkfolderOptions,
-		{ origin = 'ui' }: { origin?: SourceControlActionOrigin } = {},
+		origin: SourceControlActionOrigin = 'ui',
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;

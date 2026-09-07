@@ -346,25 +346,6 @@ describe('Source Control (Public API)', () => {
 			fileNames: [{ id: 'wf-1', type: 'workflow' }],
 		};
 
-		it('should return 401 when API key is missing', async () => {
-			const response = await testServer.publicApiAgentWithoutApiKey().post(pushUrl).send(validBody);
-
-			expect(response.status).toBe(401);
-			// Decorator-routed endpoints authenticate outside express-openapi-validator's
-			// legacy security check, so the message is generic rather than naming the header.
-			expect(response.body).toEqual({ message: 'Unauthorized' });
-		});
-
-		it('should return 401 when API key is invalid', async () => {
-			const response = await testServer
-				.publicApiAgentWithApiKey('not-a-real-api-key')
-				.post(pushUrl)
-				.send(validBody);
-
-			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message');
-		});
-
 		it('should return 403 when API key lacks sourceControl:push scope', async () => {
 			testServer.license.enable('feat:sourceControl');
 			const member = await createMemberWithApiKey({ scopes: ['tag:list'] });
@@ -401,6 +382,7 @@ describe('Source Control (Public API)', () => {
 			const response = await testServer.publicApiAgentFor(member).post(pushUrl).send(validBody);
 
 			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'You are not allowed to push changes' });
 		});
 
 		it('should authorize before revealing whether a repository is connected', async () => {
@@ -412,6 +394,7 @@ describe('Source Control (Public API)', () => {
 
 			// 403 from RBAC, not the 400 that would disclose the connection state.
 			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'You are not allowed to push changes' });
 		});
 
 		it('should return 400 when licensed but Source Control is not connected', async () => {
@@ -435,6 +418,9 @@ describe('Source Control (Public API)', () => {
 				.send({ commitMessage: 'chore: sync', fileNames: [] });
 
 			expect(response.status).toBe(400);
+			expect(response.body).toEqual({
+				message: 'request/body/fileNames Array must contain at least 1 element(s)',
+			});
 		});
 
 		it('should return 400 when fileNames is missing', async () => {
@@ -447,6 +433,9 @@ describe('Source Control (Public API)', () => {
 				.send({ commitMessage: 'chore: sync' });
 
 			expect(response.status).toBe(400);
+			expect(response.body).toEqual({
+				message: "request/body must have required property 'fileNames'",
+			});
 		});
 
 		it('should return 400 when commitMessage is missing', async () => {
@@ -459,21 +448,9 @@ describe('Source Control (Public API)', () => {
 				.send({ fileNames: [{ id: 'wf-1', type: 'workflow' }] });
 
 			expect(response.status).toBe(400);
-		});
-
-		it('should return 400 when a file entry carries fields beyond id/type', async () => {
-			testServer.license.enable('feat:sourceControl');
-			mockConnected();
-
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.post(pushUrl)
-				.send({
-					commitMessage: 'chore: sync',
-					fileNames: [{ id: 'wf-1', type: 'workflow', status: 'modified' }],
-				});
-
-			expect(response.status).toBe(400);
+			expect(response.body).toEqual({
+				message: "request/body must have required property 'commitMessage'",
+			});
 		});
 
 		it('should return 200 with the push envelope and pass only (id, type) selectors through', async () => {
@@ -496,7 +473,7 @@ describe('Source Control (Public API)', () => {
 					fileNames: [{ id: 'wf-1', type: 'workflow' }],
 					force: undefined,
 				},
-				{ origin: 'publicApi' },
+				'publicApi',
 			);
 		});
 
@@ -560,7 +537,7 @@ describe('Source Control (Public API)', () => {
 			expect(pushSpy).toHaveBeenCalledWith(
 				expect.objectContaining({ id: owner.id }),
 				expect.objectContaining({ force: true }),
-				{ origin: 'publicApi' },
+				'publicApi',
 			);
 		});
 

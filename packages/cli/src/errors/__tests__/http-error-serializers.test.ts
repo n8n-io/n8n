@@ -1,3 +1,4 @@
+import type { SourceControlledFile } from '@n8n/api-types';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { classifyHttpError } from '@/errors/http-error-classifier';
@@ -150,14 +151,14 @@ describe('http-error-serializers', () => {
 	});
 
 	it('both serializers expose source control push conflicts on a 409', () => {
-		const conflicts = [
+		const conflicts: SourceControlledFile[] = [
 			{
 				file: 'workflows/wf-1.json',
 				id: 'wf-1',
 				name: 'My workflow',
-				type: 'workflow' as const,
-				status: 'modified' as const,
-				location: 'local' as const,
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
 				conflict: true,
 				updatedAt: '2024-01-01T00:00:00.000Z',
 			},

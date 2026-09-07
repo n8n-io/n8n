@@ -107,7 +107,7 @@ export class SourceControlPublicController {
 				fileNames: body.fileNames,
 				force: body.force,
 			},
-			{ origin: 'publicApi' },
+			'publicApi',
 		);
 
 		if (result.statusCode === 409) {
