@@ -7,6 +7,7 @@ import {
 	ProjectRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	WorkflowReviewActivityRepository,
 	WorkflowReviewLifecycleRepository,
@@ -634,7 +635,7 @@ describe('auto-close on source-control pull', () => {
 					await Container.get(PolicyEnforcementService).enforceContentImport(context),
 			}), // policyEnforcementService
 			mock(), // dataTableSizeValidator
-			mock(), // activeWorkflowManager
+			Container.get(WorkflowPublishedVersionRepository),
 			mock(), // executionPersistence
 			mock(), // workflowPublishGuard
 			Container.get(WorkflowMutationHooksProxy),

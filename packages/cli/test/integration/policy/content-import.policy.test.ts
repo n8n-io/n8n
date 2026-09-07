@@ -18,6 +18,7 @@ import {
 	SharedWorkflowRepository,
 	TagRepository,
 	UserRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
@@ -162,11 +163,11 @@ describe('contentImport policy wiring', () => {
 			mock(),
 			mock(),
 			Container.get(PolicyEnforcementService),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
+			mock(), // dataTableSizeValidator
+			Container.get(WorkflowPublishedVersionRepository),
+			mock(), // executionPersistence
+			mock(), // workflowPublishGuard
+			mock(), // workflowMutationHooks
 		);
 
 		owner = await createOwner();

@@ -28,6 +28,7 @@ import {
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
@@ -136,7 +137,7 @@ describe('SourceControlImportService', () => {
 			mock(), // redactionEnforcementService
 			mockPolicyEnforcementService,
 			mock(), // dataTableSizeValidator
-			mock(), // activeWorkflowManager
+			Container.get(WorkflowPublishedVersionRepository),
 			mock(), // executionPersistence
 			mock(), // workflowPublishGuard
 			mock(), // workflowMutationHooks
