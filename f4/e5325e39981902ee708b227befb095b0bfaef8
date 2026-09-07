@@ -1,0 +1,36 @@
+packages/cli/src/abstract-server.ts
+  s_60ce6e746ce9d3::t_4a7d78c75d109d 264-272
+  s_60ce6e746ce9d3::t_64551e764cb8f3 20
+packages/core/src/utils/hitl-callback-reference.ts
+  s_60ce6e746ce9d3::t_7d5b9b77fe7ba7 1-21,26-80
+  s_60ce6e746ce9d3::t_de1df68328b102 22-25
+packages/cli/src/webhooks/__tests__/telegram-interaction-webhooks.test.ts
+  s_60ce6e746ce9d3::t_be5fea4ecf3879 1-100,197-203
+  s_60ce6e746ce9d3::t_14bc151876d2db 104-193
+  s_60ce6e746ce9d3::t_9c86b1f3ac7c43 194-196
+  s_60ce6e746ce9d3::t_076eba0c047d79 101-103
+packages/cli/src/webhooks/telegram-interaction-webhooks.ts
+  s_60ce6e746ce9d3::t_cdb52d5036659c 1-80
+packages/nodes-base/utils/sendAndWait/interfaces.ts
+  s_60ce6e746ce9d3::t_7c76cc20c1b24d 17-33
+packages/core/src/utils/index.ts
+  s_60ce6e746ce9d3::t_3b5662da7c8f30 1
+packages/core/src/utils/__tests__/hitl-callback-reference.test.ts
+  s_60ce6e746ce9d3::t_58f88257fb4e26 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "f4e5325e39981902ee708b227befb095b0bfaef8",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

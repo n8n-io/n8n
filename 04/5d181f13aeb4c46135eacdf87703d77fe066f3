@@ -1,0 +1,21 @@
+packages/frontend/@n8n/rest-api-client/src/utils.ts
+  s_a863cae73ad295::t_58fa27cbf58db1 281-287
+packages/frontend/@n8n/rest-api-client/src/utils.test.ts
+  s_a863cae73ad295::t_129dc3e34dd545 192-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "045d181f13aeb4c46135eacdf87703d77fe066f3",
+  "prompts": {},
+  "sessions": {
+    "s_a863cae73ad295": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2c7e33b-04be-4bba-9d16-cab91a3f30cc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

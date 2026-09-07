@@ -1,0 +1,19 @@
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_44a98ba2784a12::t_1a8834667e1040 61-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb1b4b95884c635de7a085f6ad0a07e166778706",
+  "prompts": {},
+  "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

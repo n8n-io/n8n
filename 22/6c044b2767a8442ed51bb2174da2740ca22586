@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_bfe6a865a3bf73::t_e9293ef5a348ba 165-177
+packages/cli/src/modules/agents/agents.service.ts
+  s_bfe6a865a3bf73::t_774b2fa598e883 98-101,106-107
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_bfe6a865a3bf73::t_f629349d9e9545 155-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "226c044b2767a8442ed51bb2174da2740ca22586",
+  "prompts": {},
+  "sessions": {
+    "s_bfe6a865a3bf73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "430bf789-cf05-4910-9dda-8fa7dfba9d21",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_770a4f5233186c::t_6f8f13c7f7867d 129-130
+  s_770a4f5233186c::t_4f463b9329a9cd 83-85,99-102
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_770a4f5233186c::t_3f4065cbdf55c7 148
+  s_770a4f5233186c::t_284ec9cf472a9e 92-94
+  s_770a4f5233186c::t_daad33153cd570 146-147
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_770a4f5233186c::t_74e3a1bb44d6ec 163-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "62a664039ce06c4ca827108af26a82277b45e0e6",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

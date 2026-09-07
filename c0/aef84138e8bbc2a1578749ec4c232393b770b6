@@ -1,0 +1,48 @@
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_25663cc1cff559::t_6fa6baa1c94380 387
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_25663cc1cff559::t_fe810e2589f01e 339-341
+  s_25663cc1cff559::t_3100bb6e0063ec 338
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_25663cc1cff559::t_d7e3530dfa47e6 156-159
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_25663cc1cff559::t_7b55e186b71a40 681
+  s_25663cc1cff559::t_550b9e28c3e51e 750
+  s_25663cc1cff559::t_03870aed7790d7 645
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_25663cc1cff559::t_6b989ee8605cb4 77-78
+  s_25663cc1cff559::t_fe810e2589f01e 385
+  s_25663cc1cff559::t_76de3628bebf12 179,183-186,196-197,210,222
+  s_25663cc1cff559::t_56c8e3dc092a1c 206,211,391
+  s_25663cc1cff559::t_807918b22a959f 232-233,238-241,245
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_25663cc1cff559::t_017be4fa45a527 316-319
+packages/cli/src/scaling/scaling.service.ts
+  s_25663cc1cff559::t_c85dc5e7565f64 501
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_25663cc1cff559::t_53693119c633f5 584-617
+  s_25663cc1cff559::t_766a62316a2764 467,486,500,523,536,554,568,578,650,670,689,714
+  s_25663cc1cff559::t_8e7867aa827594 703-707
+  s_25663cc1cff559::t_cad288bd72a8d5 509-512,632-635,660-662,698-700
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c0aef84138e8bbc2a1578749ec4c232393b770b6",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_25663cc1cff559": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da4dc808-c5ce-4f69-a4fa-4ef4ba615417",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

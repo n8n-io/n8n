@@ -1,0 +1,68 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 1,9,21,315-319,350
+packages/nodes-base/credentials/test/Aws.signing.test.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 234-245
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 769,979-980
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/EmbeddingsAwsBedrock.test.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 4,6,131-169
+packages/nodes-base/credentials/common/aws/descriptions.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 119-146
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 93-94
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 97-154
+packages/@n8n/nodes-langchain/utils/aws/test/aws-sdk-client-credentials.test.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 30-31
+packages/nodes-base/credentials/test/Aws.credentials.test.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 188-258
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 17-18,42-46,115-119
+packages/nodes-base/credentials/common/aws/index.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 4
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 453,459-464,489
+packages/@n8n/nodes-langchain/utils/aws/createBedrockRuntimeClient.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 1-13,15-17,19-24,26-30,32-42,45
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 17,277
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 1-2,4,6-12,617-663,780-1077
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 229
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 179-205,212,217-242,245-251,258,260-264,267-303,359,385-396
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 172-177
+packages/@n8n/instance-ai/src/types.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 857
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/test/LmChatAwsBedrock.test.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 4,427-474
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/EmbeddingsAwsBedrock.node.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 2,12,106-109,112
+packages/nodes-base/credentials/common/aws/types.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 13-14
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_e3f94b9fd16cbd::t_a15ff668d734ea 248,250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3dff5ea5fda7f8bf6104580919a74865ccb23049",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e3f94b9fd16cbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dd59d7d-fa76-4956-a49d-751dbc6cde33",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

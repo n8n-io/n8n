@@ -1,0 +1,14 @@
+packages/nodes-base/nodes/Snowflake/__tests__/insert.test.ts
+  h_44f8d1c0f2f8c4 88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.11",
+  "base_commit_sha": "ad3a34ee48d78c9f3770e29e1e1422302b175d54",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

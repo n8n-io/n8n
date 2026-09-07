@@ -1,0 +1,36 @@
+packages/cli/src/modules/n8n-packages/spec/serialized/data-table.schema.ts
+  s_7d48ada9cf20b6::t_2f794ad10da100 1-6,9-10,13,21-22
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.exporter.test.ts
+  s_7d48ada9cf20b6::t_52d47b06d839c6 66-79
+  s_7d48ada9cf20b6::t_1687999c5763ab 1
+  s_7d48ada9cf20b6::t_ae10997e0f3233 42-46,266
+  s_7d48ada9cf20b6::t_cb7fef3625c68a 40-41
+  s_7d48ada9cf20b6::t_89b97d06ee5086 18,33,155,162-163,179,191,201,213,220-221,228-229
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.serializer.test.ts
+  s_7d48ada9cf20b6::t_89b97d06ee5086 7,29,39
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-data-tables.integration.test.ts
+  s_7d48ada9cf20b6::t_3858b319d6a82e 85-88
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_7d48ada9cf20b6::t_a6ade81d38df13 1
+  s_7d48ada9cf20b6::t_8f5be5dd545fff 33,41-44
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  s_7d48ada9cf20b6::t_e97d6096db85d1 42,50
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_7d48ada9cf20b6::t_00c752ae3a1905 133-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bb97391e91d3aa35644d5fb4361672cfe0d1d62d",
+  "prompts": {},
+  "sessions": {
+    "s_7d48ada9cf20b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d125bd-0770-4362-a74d-8364298b52a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

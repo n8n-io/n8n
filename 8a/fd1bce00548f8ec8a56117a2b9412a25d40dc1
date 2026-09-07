@@ -1,0 +1,28 @@
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_d6c59da3d314ab::t_7fba8b557cbe93 586-587
+packages/nodes-base/credentials/common/aws/regions.ts
+  s_d6c59da3d314ab::t_a98b3d57676c34 23-26
+  s_d6c59da3d314ab::t_cb8f5d8969424b 63-66
+  s_d6c59da3d314ab::t_fe79616dbf7d50 22,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "8afd1bce00548f8ec8a56117a2b9412a25d40dc1",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d6c59da3d314ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cfc1dd3-4d1c-479b-b981-4fc447f36768",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  h_435b1d7d3e52c0 29,32-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e5132e44436934538f0098452980cdd02e595e0f",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/stores/credentialsAppSelection.store.test.ts
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 14
+packages/frontend/editor-ui/src/experiments/personalizedTemplates/stores/personalizedTemplates.store.ts
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 1
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store.ts
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 1
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.store.ts
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 10
+packages/frontend/editor-ui/src/features/ndv/panel/components/NDVDraggablePanels.vue
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 2
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/profileOverride.ts
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 3
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store.test.ts
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 18
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 2
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/stores/credentialsAppSelection.store.ts
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 6
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvaluationsCanvasInfoCard/EvaluationsCanvasInfoCard.vue
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 13
+packages/frontend/editor-ui/src/app/components/ActivationModal.vue
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 5
+packages/frontend/editor-ui/src/app/stores/focusPanel.store.ts
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 18
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.test.ts
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 77
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 4
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.ts
+  s_97f7e7f5a2c99e::t_3b00295055fe1b 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "888d685853e951305de0aa6d06102236bad0c1ea",
+  "prompts": {},
+  "sessions": {
+    "s_97f7e7f5a2c99e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "838be7cb-0783-4a8c-8f4a-621664e76b6d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

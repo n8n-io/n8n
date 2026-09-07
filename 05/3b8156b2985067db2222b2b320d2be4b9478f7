@@ -1,0 +1,27 @@
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_8c0bb2d06aee91::t_4a24d184f58905 234
+  s_8c0bb2d06aee91::t_296a04c48de428 471
+packages/@n8n/db/src/migrations/common/1785168204000-CreateAgentChatAttachmentsTable.ts
+  s_8c0bb2d06aee91::t_4a24d184f58905 8
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_8c0bb2d06aee91::t_4a24d184f58905 226
+  s_8c0bb2d06aee91::t_296a04c48de428 453
+packages/cli/test/migration/1785168204000-create-agent-chat-attachments-table.test.ts
+  s_8c0bb2d06aee91::t_4a24d184f58905 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "053b8156b2985067db2222b2b320d2be4b9478f7",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

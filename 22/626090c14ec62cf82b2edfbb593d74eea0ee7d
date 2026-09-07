@@ -1,0 +1,40 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5d6be4e6bc70a6::t_a90a1385e0c7b9 5641
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/CollectionCard.vue
+  s_5d6be4e6bc70a6::t_433c4612ff7674 39,43-46,51-56,61-64
+  s_5d6be4e6bc70a6::t_c495043bff9eb2 171-172
+  ai_agent 47-50,57-60
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.vue
+  s_5d6be4e6bc70a6::t_63e0d2c11dff2a 20-22,27-32,37-39
+  s_5d6be4e6bc70a6::t_15d606cb0dd79a 53
+  ai_agent 23-26,33-36
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/GroupedMetricChart.test.ts
+  s_5d6be4e6bc70a6::t_47a7b45c0dbb03 51
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_d59b8b5120f1d1 108-112,115-123
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.test.ts
+  s_5d6be4e6bc70a6::t_0ad48e93f657ad 59-74
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/GroupedMetricChart.vue
+  s_5d6be4e6bc70a6::t_5da34eeb8e0b07 50-52
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.vue
+  s_5d6be4e6bc70a6::t_8ac90f476321d0 83-86,91-96,98-104
+  s_5d6be4e6bc70a6::t_a347ec3daa19c4 139
+packages/testing/playwright/pages/EvaluationComparePage.ts
+  s_5d6be4e6bc70a6::t_fc8025ec753bbc 15-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "22626090c14ec62cf82b2edfbb593d74eea0ee7d",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

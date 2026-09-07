@@ -1,0 +1,19 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_80a52e000e449a::t_0ec524aceb5eab 6961
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "be09d3ec13f12b75d40a559281c7b45891d5df6f",
+  "prompts": {},
+  "sessions": {
+    "s_80a52e000e449a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef985-3381-7473-b268-a19c1bfa27e8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

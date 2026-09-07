@@ -1,0 +1,25 @@
+pnpm-lock.yaml
+  ai_agent 2421-2422,5127-5128,14184-14185,20825-20826,27815,32259,32261,40344
+packages/nodes-base/package.json
+  s_95ac70bdf5669f::t_f9673080c8f4de 904
+pnpm-workspace.yaml
+  s_95ac70bdf5669f::t_94ec78722e4fbb 211
+packages/@n8n/node-cli/package.json
+  s_95ac70bdf5669f::t_c53c4b87660428 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ac6cc227afd9dd4b4a854fd4e818eec01c352e6e",
+  "prompts": {},
+  "sessions": {
+    "s_95ac70bdf5669f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f7c23234-2ef0-49ad-9ba6-328db96e3e74",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

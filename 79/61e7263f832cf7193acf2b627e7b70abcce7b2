@@ -1,0 +1,21 @@
+.claude/plugins/n8n/agents/autodev-test-reviewer.md
+  s_d1de77b7288458::t_e94d66a47d4029 11-12
+.claude/plugins/n8n/agents/autodev-implementer.md
+  s_d1de77b7288458::t_7bf3dd999211fe 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "7961e7263f832cf7193acf2b627e7b70abcce7b2",
+  "prompts": {},
+  "sessions": {
+    "s_d1de77b7288458": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9925897c-5b49-4cc7-ac39-22fb669dbac3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

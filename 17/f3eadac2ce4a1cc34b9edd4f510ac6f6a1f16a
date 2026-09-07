@@ -1,0 +1,14 @@
+packages/@n8n/mcp-browser/src/tools/response-envelope.test.ts
+  h_44f8d1c0f2f8c4 4-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "17f3eadac2ce4a1cc34b9edd4f510ac6f6a1f16a",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

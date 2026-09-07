@@ -1,0 +1,27 @@
+.agents/skills/qq-duty/SKILL.md
+  s_bde559d9433aea::t_f5abe355ae4e25 72-78,82-83,85-86
+  s_bde559d9433aea::t_8dffc502dee5ca 27-33,36
+  s_bde559d9433aea::t_0556e60f9fe8c9 4-5
+  s_bde559d9433aea::t_dbba62a4841ed8 111,122-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c9305d7dab80174a9758d97b41d3f23b660d248b",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bde559d9433aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e76e8fc-4aa1-4d90-a9df-864241e5b128",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

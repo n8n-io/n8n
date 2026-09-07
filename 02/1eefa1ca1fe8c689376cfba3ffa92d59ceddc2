@@ -1,0 +1,42 @@
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_04dfbe3970e19f::t_f5759b9b24fd91 360
+  s_04dfbe3970e19f::t_1f21321e0b9ba2 530
+  s_04dfbe3970e19f::t_80261f0f8a997a 11
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_04dfbe3970e19f::t_13439e77b69b34 143
+  s_04dfbe3970e19f::t_e51673afa0c78b 4
+  s_04dfbe3970e19f::t_c908cb5a6d4f13 277
+  s_04dfbe3970e19f::t_377496d6f6e8cf 223
+  s_04dfbe3970e19f::t_b10680117f1787 35
+  s_04dfbe3970e19f::t_0fbd4e2e8b6391 289
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  s_04dfbe3970e19f::t_837a92ce20ed7b 501
+  s_04dfbe3970e19f::t_caa440314f9b8c 509
+packages/@n8n/agents/src/runtime/memory/observation-log-reflector.ts
+  s_04dfbe3970e19f::t_b80ef162155d28 198
+  s_04dfbe3970e19f::t_056cf173bbe2e3 4
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_04dfbe3970e19f::t_31a884c4d4952d 417
+  s_04dfbe3970e19f::t_b00bac9a09d22b 409
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_04dfbe3970e19f::t_71ed42edca8cb9 342
+  s_04dfbe3970e19f::t_f2cd5baae99d2d 371
+  s_04dfbe3970e19f::t_28154bcb5aa560 508
+  s_04dfbe3970e19f::t_e25249ac092af4 307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "021eefa1ca1fe8c689376cfba3ffa92d59ceddc2",
+  "prompts": {},
+  "sessions": {
+    "s_04dfbe3970e19f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7a87d1f9-c84d-42fd-8504-8c74f35a7f43",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.utils.ts
+  s_f201eb7bca5bd7::t_c36ecca62444e3 433-434
+packages/frontend/editor-ui/src/app/composables/useKeybindings.test.ts
+  s_f201eb7bca5bd7::t_3c62efdd447759 88-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b368d027cc669101324902b68655db4449816ae8",
+  "prompts": {},
+  "sessions": {
+    "s_f201eb7bca5bd7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "269f2628-3ad3-4988-9c50-1b2b78345323",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

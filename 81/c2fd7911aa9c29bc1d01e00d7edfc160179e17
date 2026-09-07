@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/settings/operatorConsole/components/OperatorConsoleLogRow.test.ts
+  s_63fb8ae124025a::t_7a11c253af0dc6 45,55-58,60,62-65
+packages/frontend/editor-ui/src/features/settings/operatorConsole/components/OperatorConsoleLogRow.vue
+  s_63fb8ae124025a::t_d1de8e866d9d9a 173-180
+  s_63fb8ae124025a::t_b67e5ea45742a7 134-152,159-171,240-242,245-247,250-252,255-258,267-268
+  ai_agent 153-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "81c2fd7911aa9c29bc1d01e00d7edfc160179e17",
+  "prompts": {},
+  "sessions": {
+    "s_63fb8ae124025a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5cf8404-b5d2-4900-b9d5-47b84d4533a8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

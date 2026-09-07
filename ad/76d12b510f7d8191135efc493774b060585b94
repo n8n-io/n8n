@@ -1,0 +1,24 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_3969ea2ea64fa2::t_81d291c7d1716f 18
+  s_3969ea2ea64fa2::t_ebf743e72f9827 48
+  s_3969ea2ea64fa2::t_50b31c03f82518 43
+  s_3969ea2ea64fa2::t_2bb8f3b7bf89b5 17
+packages/cli/test/integration/shared/utils/index.ts
+  s_3969ea2ea64fa2::t_0624b0e61c50a3 127-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad76d12b510f7d8191135efc493774b060585b94",
+  "prompts": {},
+  "sessions": {
+    "s_3969ea2ea64fa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4880f48c-229a-4f13-a1b3-a8fc31beb14b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

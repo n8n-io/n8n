@@ -1,0 +1,63 @@
+packages/@n8n/agents/src/__tests__/daytona-harness-sandbox-provider.test.ts
+  s_e2504e875a073c::t_bf6aef921892c1 153-160
+  s_e2504e875a073c::t_34abe88006b975 16-17,19,41-42,69-70,72,75,78-79
+  s_e2504e875a073c::t_65abb82ee31c53 22-25,185-188
+  s_e2504e875a073c::t_2644efe79a84d4 1-15,18,20-21,26-40,43-68,71,73-74,76-77,80-152,161-184,189-243
+packages/cli/src/modules/agents/__tests__/harness-runtime-identity.test.ts
+  s_e2504e875a073c::t_1f57f90abf405d 21,50-62
+  s_e2504e875a073c::t_21ad50c06a9efa 63
+packages/cli/src/modules/agents/utils/harness-runtime-identity.ts
+  s_e2504e875a073c::t_1f57f90abf405d 19,42
+packages/cli/src/modules/agents/integrations/n8n-harness-session-cleanup.service.ts
+  s_e2504e875a073c::t_acf3fa8de4d54d 59-61
+  s_e2504e875a073c::t_52bd8a9c62891f 56-58
+  s_e2504e875a073c::t_cc30de5188f410 1,11,64-88
+packages/cli/src/modules/agents/repositories/agent-harness-session.repository.ts
+  s_e2504e875a073c::t_f964a8fe753897 28,131-137,151,163-169,184,204
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  s_e2504e875a073c::t_22006f3295216b 182-185,219-230
+packages/@n8n/agents/src/workspace/sandbox/daytona-sandbox.ts
+  s_e2504e875a073c::t_9f56d40c90218e 133-141,214-216,330-337,343
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_e2504e875a073c::t_7622e7d552febb 4
+packages/@n8n/agents/src/harness/index.ts
+  s_e2504e875a073c::t_c253e6942e8819 16-19
+  s_e2504e875a073c::t_07755f1669429c 15
+packages/cli/src/modules/agents/__tests__/n8n-harness-session-cleanup.service.test.ts
+  s_e2504e875a073c::t_d7fde3c74426e8 11,15,23,64-83
+  s_e2504e875a073c::t_d96f8a30149ece 84
+packages/cli/src/modules/agents/utils/harness-sandbox-provider.ts
+  s_e2504e875a073c::t_dcc0d92cc10975 1-15
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_e2504e875a073c::t_fd6be435cc7e10 86
+  s_e2504e875a073c::t_d031890179078e 547-548,571-576,595,609,614-635,637
+  s_e2504e875a073c::t_acf3fa8de4d54d 636
+  s_e2504e875a073c::t_a61f5cfbc95e73 549-559,561-569
+  s_e2504e875a073c::t_749c85927d8798 570
+packages/@n8n/agents/src/harness/daytona-sandbox-provider.ts
+  s_e2504e875a073c::t_acf3fa8de4d54d 13,202
+  s_e2504e875a073c::t_62ce73103297ed 194-195
+  s_e2504e875a073c::t_65abb82ee31c53 245-248
+  s_e2504e875a073c::t_b69d4a4a6e0971 180
+  s_e2504e875a073c::t_1562c9bab27dfd 10,15
+  s_e2504e875a073c::t_d201a460a0d415 128-130
+  s_e2504e875a073c::t_9127f5fdeaf241 83-85,91-93,143
+  s_e2504e875a073c::t_4f41d529ebe43f 1-9,11-12,14,16-82,86-90,94-127,131-142,144-179,181-191,196-201,203-244,249-370,372-388
+  s_e2504e875a073c::t_664df01b6ab84c 192-193,371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7c8ebcdb625b0e4bffc9c5f24c474a9d5a0c9439",
+  "prompts": {},
+  "sessions": {
+    "s_e2504e875a073c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff50f-358b-7522-8664-26ba4394dffe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

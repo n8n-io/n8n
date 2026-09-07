@@ -1,0 +1,23 @@
+packages/cli/src/modules/redaction/instance-redaction-enforcement.service.ts
+  s_380e1731f553e3::t_91532e63dd923f 36-40
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_380e1731f553e3::t_be8cdf98b6043f 773-774,781,783,792
+packages/cli/src/workflow-execute-additional-data.ts
+  s_380e1731f553e3::t_a07372f1459f07 684-686
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "5672427d7778db72dfa74ff9fb13f34c1a1c171a",
+  "prompts": {},
+  "sessions": {
+    "s_380e1731f553e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06cd51bd-5ad6-4e0d-aa9f-0702b45de1a5",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

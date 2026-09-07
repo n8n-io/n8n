@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer.ts
+  s_719b26696fb47e::t_c3c8b4e8561d9f 49-51,53
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpServer.test.ts
+  s_719b26696fb47e::t_f6be942df4c643 266,269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "b13801bcbe5956c1221c8bd8cdc96709b3f3f436",
+  "prompts": {},
+  "sessions": {
+    "s_719b26696fb47e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_719b26696fb47e",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

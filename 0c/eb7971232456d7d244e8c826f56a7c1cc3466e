@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_3969ea2ea64fa2::t_1e7cd60f8cc9dc 184
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_3969ea2ea64fa2::t_8b78d27d2a200f 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ceb7971232456d7d244e8c826f56a7c1cc3466e",
+  "prompts": {},
+  "sessions": {
+    "s_3969ea2ea64fa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4880f48c-229a-4f13-a1b3-a8fc31beb14b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/nodes-base/credentials/test/SchemaRegistryApi.credentials.test.ts
+  s_735f9a4c4c1dfb::t_3a1eb8251996e5 18,36-39,45,54,60-80,100
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_735f9a4c4c1dfb::t_73c904c26b9d38 638-659
+  s_735f9a4c4c1dfb::t_2b5f2d1d988d45 792-814
+packages/nodes-base/test/nodes/TriggerHelpers.ts
+  s_735f9a4c4c1dfb::t_97b7cbf77c51d7 115-120,124
+  s_735f9a4c4c1dfb::t_e3da16c7998b22 22
+packages/nodes-base/credentials/SchemaRegistryApi.credentials.ts
+  s_735f9a4c4c1dfb::t_0cfa3ee58f2350 85-87,94-95
+  s_735f9a4c4c1dfb::t_df06f054a598e7 88-93
+packages/nodes-base/nodes/Kafka/Kafka.node.ts
+  s_735f9a4c4c1dfb::t_4b6cad11a38687 325-342,344-346,362,364-367
+packages/nodes-base/nodes/Kafka/test/KafkaTrigger.node.test.ts
+  s_735f9a4c4c1dfb::t_371e399ef76b72 363-446
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_735f9a4c4c1dfb::t_a294d48a644867 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "52a5af9394731fcaab492bfc9c8e2f36679e15fb",
+  "prompts": {},
+  "sessions": {
+    "s_735f9a4c4c1dfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b0175ca-8a59-4a53-bf5a-f19341d35d71",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

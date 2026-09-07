@@ -1,0 +1,32 @@
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_7193dffb3f83fd::t_734670427531c4 116-120
+  s_7193dffb3f83fd::t_0d8e8f3d977ee3 52
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  ai_agent 134-139,157-162
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_7193dffb3f83fd::t_2f4072d4a8e301 144-145
+  s_7193dffb3f83fd::t_3e304dd584257b 50
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_7193dffb3f83fd::t_d0319e7373fb42 10
+  s_7193dffb3f83fd::t_49d236e8a7a5a8 19-20,27
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_7193dffb3f83fd::t_fff72f59c5a1d5 1
+  s_7193dffb3f83fd::t_c77b3c77f7d6ba 85-91
+  s_7193dffb3f83fd::t_2fe99f2072ec15 34,39-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "23f379c148cb4ceb391ca71ab584029db367e682",
+  "prompts": {},
+  "sessions": {
+    "s_7193dffb3f83fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab901c44-110d-43eb-82c5-3ad427037d7c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

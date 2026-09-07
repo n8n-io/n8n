@@ -1,0 +1,30 @@
+packages/cli/src/modules/mcp/tools/search-workflows.tool.ts
+  s_704ffd6be6c2b3::t_f4aff588cb7d68 27-32,50-52,91,93,325
+packages/testing/playwright/services/mcp-api-helper.ts
+  s_704ffd6be6c2b3::t_3fdef0efedb4da 86-90,92,104,108,967
+  s_704ffd6be6c2b3::t_21ef2cd62cfa54 81-85,91
+packages/cli/test/integration/mcp/search-workflows.tool.test.ts
+  s_704ffd6be6c2b3::t_3fdef0efedb4da 125
+  s_704ffd6be6c2b3::t_fc3d2eddc5fe0c 149-150
+packages/cli/src/modules/mcp/__tests__/search-workflows.tool.test.ts
+  s_704ffd6be6c2b3::t_32b433d4b8d737 454-487
+  s_704ffd6be6c2b3::t_3fdef0efedb4da 131,143,411-412,515
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_704ffd6be6c2b3::t_f4aff588cb7d68 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae580159319c11a1766f400ad1caa1febe72b30a",
+  "prompts": {},
+  "sessions": {
+    "s_704ffd6be6c2b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e247481-8d54-413e-99be-d5ae439d7a19",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_216f2e931cdd6a::t_7eba62deb6d86d 172-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "cc560c169e6979fe5f149d992e177734dca713dc",
+  "prompts": {},
+  "sessions": {
+    "s_216f2e931cdd6a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5ff67f3e-ef45-4122-8b16-9e2e5554fd4d",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

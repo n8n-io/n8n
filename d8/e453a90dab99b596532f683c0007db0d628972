@@ -1,0 +1,63 @@
+packages/@n8n/agents/src/runtime/__tests__/model-token-counter.test.ts
+  s_02972e2c436d8a::t_f24538b3506dfb 1,3,6-8
+  s_02972e2c436d8a::t_d64b93e81a52d8 14-15
+  s_02972e2c436d8a::t_5d55e7eba86f2f 10-11
+packages/@n8n/agents/src/runtime/memory/observation-log-renderer.ts
+  s_02972e2c436d8a::t_40c82836858b4a 1-5,49-50,52
+packages/@n8n/agents/src/runtime/memory/observation-log-reflector.ts
+  s_02972e2c436d8a::t_6cc0a468a6ca19 17-20,360
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_02972e2c436d8a::t_9a37311ef21390 862,1031,1045
+packages/@n8n/agents/src/types/sdk/observation-log.ts
+  s_02972e2c436d8a::t_b8ca5a0335a761 1,71,80-82,84,86-93,100-102
+  s_02972e2c436d8a::t_1aa19542b7dd23 73-79,85
+  s_02972e2c436d8a::t_77f8bfd81ef294 83
+  s_02972e2c436d8a::t_9e07c8901d9a62 94-99
+packages/@n8n/agents/src/runtime/__tests__/observation-log-renderer.test.ts
+  s_02972e2c436d8a::t_8985b2839f664a 79-86
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_02972e2c436d8a::t_76be4eef3da8ac 27,217-218,220,270,272-274
+  s_02972e2c436d8a::t_af35220b1463cb 222
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_02972e2c436d8a::t_1396df2252b1dc 7386,7388-7393,7427,7429,7447,7498-7500,7521,7528,7537,7539,7567
+  s_02972e2c436d8a::t_b3b74cfa32d0e7 7387
+packages/@n8n/agents/vitest.integration.setup.ts
+  s_02972e2c436d8a::t_6b66ae07063e93 127-131
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_02972e2c436d8a::t_c8038c498f9554 53,197
+packages/@n8n/ai-utilities/package.json
+  s_02972e2c436d8a::t_a94cb5f7270f26 28-30,75-78
+  s_02972e2c436d8a::t_8c7c49e67e20ac 79
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_02972e2c436d8a::t_97fce20e78dd0d 36,41,49,65,69,107
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_02972e2c436d8a::t_f89e1056a00eb3 405-406,415
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_02972e2c436d8a::t_521e9b735e763e 49,53,56,59,62,64,68-69,72,97,104,108,111,114,117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,263,266,328,335,339,342,345,348,350,354-355,358,379,382,384,397,416,419,421,434,485,489,492,495,498,500,504-505,508,529,532,534,547,579,595,624,628,631,634,637,639,643-644,647,672,679,683,686,689,692,694,698-699,702,770,777,781,784,787,790,792,796-797,800
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-indexed-entries-source-backed-with-source-thread-evidence.json
+  s_02972e2c436d8a::t_63a037bb6b502b 49,53,56,59,62,64,68-69,72,97,104,108,111,114,117,119,123-124,127,195,202,206,209,212,215,217,221-222,224,226,239,244,249,252,254,264,267,329,336,340,343,346,349,351,355-356,359,380,383,385,398
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_02972e2c436d8a::t_c394ed69089597 49,53,56,59,62,64,68-69,72,97,104,108,111,114,117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,263,266,328,335,339,342,345,348,350,354-355,358,411,415,418,421,424,426,430-431,434,459,466,470,473,476,479,481,485-486,489,557,564,567-568,571,574,576-577,579,583-584,586,588,601,606,611,614,616,626,629,691,698,702,705,708,711,713,717-718,721,742,745,747,760,779,782,784,797,848,852,855,858,861,863,867-868,870,872,895,898,900,913,945,961-962,990,994,997,1000,1003,1005,1009-1010,1013,1038,1045,1049,1052,1055,1058,1060,1064-1065,1068,1136,1143,1147,1150,1153,1156,1158,1162-1163,1166
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_02972e2c436d8a::t_99a84adfd5a189 49,53,56,59,62,64,68-69,72,97,104,108,111,114,117,119,123-124,127,195,202,205-206,209,212,214-215,217,221-222,225,238,243,248,251,253,263,266,328,335,339,342,345,348,350,354-355,357,359,412,416,419,422,425,427,431-432,435,456,459,461,474,506,522-523,551,555,558,561,564,566,570-571,574,599,606,610,613,616,619,621,625-626,629,697,704,708,711,714,717,719,723-724,727,740,745,750,753,755,765,768,830,837,841,844,847,850,852,856-857,859,861,874,879,884,887,889,899,902,953,957,960,963,966,968,972-973,976,997,1000,1002,1015,1051,1067-1068,1096,1100,1103,1106,1109,1111,1115-1116,1119,1144,1151,1155,1158,1161,1164,1166,1170-1171,1174,1242,1249,1252-1253,1256,1259,1261-1262,1264,1268-1269,1272
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_02972e2c436d8a::t_075f0233980a88 49,53,56,59,62,64,68-69,71,73,98,105,109,112,115,118,120,124-125,128,196,203,207,210,213,216,218,222-223,226,239,244,249,252,254,264,267,329,336,340,343,346,349,351,355-356,359,380,383,385,398,449,453,456,459,462,464,468-469,472,493,496,498,511,543,559-560,588,592,595,598,601,603,607-608,610,612,637,644,648,651,654,657,659,663-664,667,735,742,746,749,752,755,757,761-762,765
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-observational/records-observations-and-emits-memory-task-lifecycle-events-after-generate.json
+  s_02972e2c436d8a::t_c4060eba82ee02 28,32,35,38,41,43,47-48,50,52,77,84,88,91,94,97,99,103-104,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d8e453a90dab99b596532f683c0007db0d628972",
+  "prompts": {},
+  "sessions": {
+    "s_02972e2c436d8a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "288d4719-b01e-42e0-bcfd-9ef695c5c336",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

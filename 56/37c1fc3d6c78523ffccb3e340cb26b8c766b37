@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_f2e30eb9e84aed::t_960dcda6870d82 1-38,40-52
+  s_f2e30eb9e84aed::t_9167abc12caca0 39
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_f2e30eb9e84aed::t_027754ceda93fd 110
+  s_f2e30eb9e84aed::t_6720d394602851 1-109,111-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5637c1fc3d6c78523ffccb3e340cb26b8c766b37",
+  "prompts": {},
+  "sessions": {
+    "s_f2e30eb9e84aed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d89c397-6369-476a-9de1-470fd441b3f5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

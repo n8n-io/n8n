@@ -1,0 +1,41 @@
+packages/@n8n/mcp-browser-extension/src/relayAllowlist.ts
+  s_2a64d569f7fd95::t_fbd42f7c9b43b0 1-31
+packages/@n8n/mcp-browser-extension/src/ui/App.vue
+  s_2a64d569f7fd95::t_d6277746570058 44-75
+  s_2a64d569f7fd95::t_3c57904d4956ca 141-147
+  s_2a64d569f7fd95::t_8dd521fdc1fbc9 15-16
+packages/@n8n/mcp-browser-extension/src/background.ts
+  s_2a64d569f7fd95::t_3ef72994918954 279-284
+  s_2a64d569f7fd95::t_408f7175581f33 9
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.ts
+  s_2a64d569f7fd95::t_41de5e77080b72 61-62
+  s_2a64d569f7fd95::t_9aea56b2b13eca 4
+  s_2a64d569f7fd95::t_02c24d9e822b03 130-135
+  s_2a64d569f7fd95::t_168bb621346f79 294-295
+packages/@n8n/mcp-browser-extension/src/relayAllowlist.test.ts
+  s_2a64d569f7fd95::t_b4a4a89128f911 1-4,8-64
+  s_2a64d569f7fd95::t_e15486868376df 5-7
+packages/@n8n/mcp-browser-extension/manifest.json
+  s_2a64d569f7fd95::t_1160a5da7ec72d 12-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "2dff34da13c1c9a9031d77db5f8f26d61e1e2485",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2a64d569f7fd95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee9bcf49-2aeb-4b3f-b6cb-15acc1d3f9e1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

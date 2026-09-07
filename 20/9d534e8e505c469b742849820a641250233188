@@ -1,0 +1,39 @@
+docs/generated/sqlite-schema/README.md
+  s_44a98ba2784a12::t_218c2f022767b4 1381
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
+  s_44a98ba2784a12::t_0ddc1e80fa4fcb 42
+packages/@n8n/db/src/migrations/common/1784000000046-CreateWorkflowReviewRequestTables.ts
+  s_44a98ba2784a12::t_7ea793952b7e71 82
+docs/generated/sqlite-schema/project.md
+  s_44a98ba2784a12::t_218c2f022767b4 200
+docs/generated/sqlite-schema/workflow_review_request.md
+  s_44a98ba2784a12::t_218c2f022767b4 9,25,73
+docs/generated/sqlite-schema/workflow_review_request_authors.md
+  s_44a98ba2784a12::t_218c2f022767b4 76
+docs/generated/sqlite-schema/workflow_review_request_reviewers.md
+  s_44a98ba2784a12::t_218c2f022767b4 76
+docs/generated/sqlite-schema/workflow_review_request_workflow.md
+  s_44a98ba2784a12::t_218c2f022767b4 87
+docs/generated/sqlite-schema/user.md
+  s_44a98ba2784a12::t_218c2f022767b4 305
+packages/@n8n/db/src/entities/workflow-review-request.ee.ts
+  s_44a98ba2784a12::t_35e12953917990 54
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_44a98ba2784a12::t_449271331d7574 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "209d534e8e505c469b742849820a641250233188",
+  "prompts": {},
+  "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,96 @@
+packages/@n8n/cli/src/commands/package/import.ts
+  s_48324b1999f858::t_798d619f6f8100 85-86,91
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_48324b1999f858::t_7b7d17461a62ec 69
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_48324b1999f858::t_24f6920d364484 15-18,92-95,98-102,105-122
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_48324b1999f858::t_892e307b358074 6
+  s_48324b1999f858::t_f67ce0a0fd9d1a 1,61-74
+  s_48324b1999f858::t_5a9e24962c4d12 40-42
+  s_48324b1999f858::t_c116e7e51e2052 3,35,44,46,48,50-60,87,91,95,149,156-158,162
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_48324b1999f858::t_4094d2c8925642 1058-1063,1089-1091
+  s_48324b1999f858::t_b13b3814c219f4 618,639,726,755-760,779-784,837-842,874,909,936
+  s_48324b1999f858::t_6b8bfb8c5dab3c 29,551-552,570
+  s_48324b1999f858::t_82411fca392cc3 1025-1057,1064-1088,1092-1141
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_48324b1999f858::t_03cb3f2a8c0b88 23,49,77,104
+  s_48324b1999f858::t_935b810dd1c450 337,341,345
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_48324b1999f858::t_8908f66741a0ea 242,250,275
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_48324b1999f858::t_bba78ba4995081 14-15,45,67-71,89,127,141,154-156,158,161,177,189,218-219,223-240,285-286
+  s_48324b1999f858::t_837373e62cc337 162
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_48324b1999f858::t_762b0733f13010 94,96
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_48324b1999f858::t_3ae077dab13963 95-96,370
+packages/cli/src/modules/n8n-packages/entities/variable/variable-missing-mode.ts
+  s_48324b1999f858::t_85e348c24bddd0 12
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/variable.schema.test.ts
+  s_48324b1999f858::t_0700b511174c1b 1,28-47
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_48324b1999f858::t_a06d39aa4fc5cb 81,92,101,111,120
+packages/cli/src/modules/n8n-packages/spec/serialized/variable.schema.ts
+  s_48324b1999f858::t_4c6cabf12b2735 1,13-19
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  h_ce2c4b90496ac9 216
+  s_48324b1999f858::t_f893962d58a9ee 208-209,213-215,221-224,232-233,448-449,454,472-480,487-488
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable-importer.test.ts
+  ai_agent 467
+  s_48324b1999f858::t_ce6f3b85e16a4e 440,457,465-466,469-489,505-510,527,566,599
+  s_48324b1999f858::t_4e2da04d3823d2 33,35,383-419
+  s_48324b1999f858::t_b5553c570462d7 10
+  h_ce2c4b90496ac9 464,468
+  s_48324b1999f858::t_fec27a80111b6e 586-596
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_48324b1999f858::t_6aed1268d8fb95 81-83,86
+  s_48324b1999f858::t_c4203ef8e9887d 69,78,87
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_48324b1999f858::t_58dddbc24859a4 212
+packages/@n8n/cli/docs/commands/package.md
+  s_48324b1999f858::t_a0b3cf353edd5c 67-68,75,86
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_48324b1999f858::t_d689931d641c68 234
+  s_48324b1999f858::t_262d4547effaa6 13,233,235-239,250,259,302-310,332-334
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_48324b1999f858::t_23312ec72d6f83 21
+  s_48324b1999f858::t_4fddab26a55279 95,222-247
+  s_48324b1999f858::t_fdb2df103ac4b8 89-94,96-98
+packages/@n8n/api-types/src/dto/index.ts
+  s_48324b1999f858::t_42495db60a0bea 103
+packages/cli/src/modules/n8n-packages/entities/variable/variable-importer.ts
+  s_48324b1999f858::t_b5d5a197e52dfa 32-33,56-58,71,75-78,109,117,132,135-139,159
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_48324b1999f858::t_6cb704d3a3be6a 75,100
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_48324b1999f858::t_d65183aababee1 80-84,88
+  s_48324b1999f858::t_d85ec196f5bd09 125-130,157-162,189-194,199,216,219-224,251,310-315,342-347,387-392,425-430,460-465,652-657
+  s_48324b1999f858::t_435f899e131c0a 703-924
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_48324b1999f858::t_c367f380f81e09 596,609,617
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_48324b1999f858::t_d026ebd34922bc 238,262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "59490a0bfdebe17232954fd6983239599605c830",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_48324b1999f858": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a7e7bd09-ee4f-4ffd-82ec-3a2b9c6b6303",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

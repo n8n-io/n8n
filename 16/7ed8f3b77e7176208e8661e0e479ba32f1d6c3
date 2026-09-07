@@ -1,0 +1,53 @@
+packages/workflow/src/expression-sandboxing.ts
+  s_2aa332997f69a5::t_4d6bd99c356184 12-27
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_2aa332997f69a5::t_4d6bd99c356184 29,43,231-232,234-256,268
+  s_2aa332997f69a5::t_2c3ec6378a6fde 38,233
+packages/cli/src/utils.ts
+  s_2aa332997f69a5::t_4d6bd99c356184 2-4
+packages/cli/src/modules/agents/expression/__tests__/agent-expression-context.service.test.ts
+  s_2aa332997f69a5::t_464826d85a6451 9
+  s_2aa332997f69a5::t_4d6bd99c356184 23-25
+  s_2aa332997f69a5::t_2c3ec6378a6fde 102
+  s_2aa332997f69a5::t_b427d8f0007857 1-8,10-22,26-101,103-170,207
+  s_2aa332997f69a5::t_e4fe317f0913ab 171-206
+packages/cli/src/modules/agents/expression/agent-expression-context.ts
+  s_2aa332997f69a5::t_4d6bd99c356184 1-3,5-6,9-19,28-41
+  s_2aa332997f69a5::t_fa80f30700041d 7-8,20-27
+  s_2aa332997f69a5::t_d08e457f714697 4
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_2aa332997f69a5::t_d877b44b50d9ef 14-21,496,499-512,514-527,530-534,536-585
+  s_2aa332997f69a5::t_c809d1244b474d 434-435,438
+  s_2aa332997f69a5::t_2c3ec6378a6fde 77,488-491
+  s_2aa332997f69a5::t_5c5d640e0ad84d 497-498,513
+  s_2aa332997f69a5::t_5f6e634f9db438 437,528-529,535
+  s_dba4acf06224df::t_d914c25260cb0e 586-587
+packages/cli/src/modules/agents/expression/agent-expression-context.service.ts
+  s_2aa332997f69a5::t_4d6bd99c356184 1-78
+packages/workflow/src/interfaces.ts
+  s_2aa332997f69a5::t_4d6bd99c356184 2260-2264,2295-2296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "167ed8f3b77e7176208e8661e0e479ba32f1d6c3",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_dba4acf06224df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb3c7-3ac6-7b81-aa9b-81479fde0347",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

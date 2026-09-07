@@ -1,0 +1,75 @@
+packages/@n8n/engine/src/runtime/index.ts
+  s_de7b3b7247646c::t_58ac094d37f724 1
+  s_de7b3b7247646c::t_dd82fc424709ec 2
+packages/@n8n/engine/src/serve.ts
+  s_de7b3b7247646c::t_35ace690ab2f14 22,24
+  s_de7b3b7247646c::t_39156ba54ac154 36
+  s_de7b3b7247646c::t_761d08920a0c05 6
+  s_de7b3b7247646c::t_b0540482cd6202 5
+  s_de7b3b7247646c::t_6a46e45c22f5c9 37
+  s_de7b3b7247646c::t_e620e99bbff4c3 13-14,17-19,21
+  s_de7b3b7247646c::t_d59f2df9e1f357 11-12
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_de7b3b7247646c::t_95ab5a572660f2 35-38
+  s_de7b3b7247646c::t_bc241742d29054 9
+  s_de7b3b7247646c::t_0c415c7e8b9359 8
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_de7b3b7247646c::t_2f396ed7c0013a 45-47,56-69,71,73-77,80
+  s_de7b3b7247646c::t_1ae28b6e3b22cd 289
+  s_de7b3b7247646c::t_96f577cada8825 10
+  s_de7b3b7247646c::t_40f92396120858 16-17
+packages/@n8n/engine/AGENTS.md
+  s_de7b3b7247646c::t_b482fdd81f5433 41-44
+  s_de7b3b7247646c::t_36d69a1a1c3317 38-40,46-49
+packages/@n8n/node-engine-compatibility/src/__tests__/acceptance-fixtures.ts
+  s_de7b3b7247646c::t_6468c54db31a52 91-110,112,114-118
+  s_de7b3b7247646c::t_a1e9188c752906 134
+  s_de7b3b7247646c::t_7c409c43cca7f1 1,4
+packages/@n8n/engine/src/testing/__tests__/start-engine-server.integration.test.ts
+  s_de7b3b7247646c::t_1aef2c07693dad 4,12-13
+packages/@n8n/engine/src/database/create-stores.ts
+  s_de7b3b7247646c::t_8f4d9e61933a9d 9-10,13-15
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_de7b3b7247646c::t_05b5d05191d3d4 1,3-5,7-15,17-21,24-36,49-61,80,83-87,90-95,97-98,100-101
+  s_de7b3b7247646c::t_4c9cd5d8edca53 16
+  s_de7b3b7247646c::t_cfc825fa26fd62 22-23,62-79,81,88-89,96,99
+  s_de7b3b7247646c::t_de83cfbafb624e 6
+  s_de7b3b7247646c::t_42986a873d1636 82
+  s_de7b3b7247646c::t_7c0d64cc3f2565 2
+  s_de7b3b7247646c::t_0c211a023baa72 37-48
+packages/@n8n/engine/src/index.ts
+  s_de7b3b7247646c::t_f1b3c078a2d8f5 2
+  s_de7b3b7247646c::t_4e37365cc34968 38
+  s_de7b3b7247646c::t_e7dbc29edb5295 56
+  s_de7b3b7247646c::t_95eaff3182202c 1
+  s_de7b3b7247646c::t_654a233444e4e6 55
+packages/@n8n/engine/src/database/index.ts
+  s_de7b3b7247646c::t_90aca15c3d0c08 3
+packages/@n8n/engine/src/server/create-engine-server.ts
+  s_de7b3b7247646c::t_b959910db3d526 15
+  s_de7b3b7247646c::t_c3987867de17d6 6
+  s_de7b3b7247646c::t_64e491135c9b02 3
+  s_de7b3b7247646c::t_65a3abdf5bb51d 7
+packages/@n8n/engine/src/runtime/__tests__/create-engine-runtime.test.ts
+  s_de7b3b7247646c::t_c40bcacf59fc94 1-5,8-11,17-18,24-25,28,32,43-44,48,52,54-55
+  s_de7b3b7247646c::t_72c7ba7a8cbd7d 6-7
+  s_de7b3b7247646c::t_e7c85d0e5f14b6 12-16,19-23,26-27,29-31,33-42,45-47,49-51,53
+packages/@n8n/engine/src/testing/start-engine-server.ts
+  s_de7b3b7247646c::t_896817b65afdf6 3-4,6,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "160e9da557559c158cdb83a2fdfff4b974f5f6d0",
+  "prompts": {},
+  "sessions": {
+    "s_de7b3b7247646c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aded32c-351c-4581-b8d0-20fdf708d539",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

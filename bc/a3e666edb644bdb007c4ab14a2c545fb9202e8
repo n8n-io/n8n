@@ -1,0 +1,54 @@
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_cebe0f5823d4d7::t_4d8269f891a717 789-791
+  s_cebe0f5823d4d7::t_481f07240fd7e4 63-65,196-198,373-375
+packages/cli/src/workflows/triggers/__tests__/trigger-services.test.ts
+  s_cebe0f5823d4d7::t_7e63fd735e3c70 9,437
+  s_cebe0f5823d4d7::t_0f09a796aeeb18 141
+  s_cebe0f5823d4d7::t_fbf899e62297e5 259-265,313,315-319,364-370,376-382
+  s_cebe0f5823d4d7::t_a37f8595251930 408
+  s_cebe0f5823d4d7::t_32b42eeba32b3d 450-451,453
+  s_cebe0f5823d4d7::t_309632970cbf1d 1-8,10-140,142-258,266-312,314,320-363,371-375,383-407,409-436,438-449,452,454-485
+packages/cli/src/workflows/workflow-publication-outbox-consumer.ts
+  s_cebe0f5823d4d7::t_66d1df313e13ed 20,49,174-175,189,196,198
+packages/cli/src/active-workflow-manager.ts
+  s_cebe0f5823d4d7::t_8362c1b6b998e2 690,867,870-874,876
+  s_cebe0f5823d4d7::t_7a94c5afb0c511 877-880
+  s_cebe0f5823d4d7::t_6b08717dce796e 218
+  s_cebe0f5823d4d7::t_957bb987213e0f 138,147,152,210-215,217
+  s_cebe0f5823d4d7::t_44d7405f165081 258,262-274,875
+  s_cebe0f5823d4d7::t_6bdd931786d30a 51-52,54,85-87,148-151,259-261,275-280,283-290
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_cebe0f5823d4d7::t_9bd498dd31805e 99
+  s_cebe0f5823d4d7::t_5434ca108b464d 1-80,82-83,86,88-98,100-213
+  s_cebe0f5823d4d7::t_957bb987213e0f 81,84-85,87
+packages/cli/src/workflows/triggers/trigger-count.service.ts
+  s_cebe0f5823d4d7::t_5434ca108b464d 1-38
+packages/cli/src/workflows/triggers/live-trigger-registrar.ts
+  s_cebe0f5823d4d7::t_5434ca108b464d 1-26,30-52,54,64-100
+  s_cebe0f5823d4d7::t_1d4d6f39187a0d 53,55-63
+  s_cebe0f5823d4d7::t_4d6d03668dbc33 27-29
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_cebe0f5823d4d7::t_07caf63b6184ab 132
+  s_cebe0f5823d4d7::t_7e63fd735e3c70 9
+  s_cebe0f5823d4d7::t_5434ca108b464d 1-8,10-24,33-44,46,56,58-66,68-71,73,75-131,133-137,139-151,153-172,182-183
+  s_cebe0f5823d4d7::t_69a1d0d859f2a6 25-32,45,47-55,57,67,72,74,138,152,173-181
+packages/cli/src/workflows/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_cebe0f5823d4d7::t_89e8ffe84c5022 230-232,244-246,255-256,270-271,281-282,296,301-302,316,323,329,334,345,352,357,375-376
+  s_cebe0f5823d4d7::t_a0c564725bad9e 21,32,53,120,131-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bca3e666edb644bdb007c4ab14a2c545fb9202e8",
+  "prompts": {},
+  "sessions": {
+    "s_cebe0f5823d4d7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb7f9-01df-7a20-aa2d-c142caed6ce2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

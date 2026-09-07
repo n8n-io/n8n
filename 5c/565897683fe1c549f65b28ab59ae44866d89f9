@@ -1,0 +1,16 @@
+packages/cli/src/workflows/workflow-execution.service.ts
+  h_32d8cd6a0d6aad 208
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  h_32d8cd6a0d6aad 381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5c565897683fe1c549f65b28ab59ae44866d89f9",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

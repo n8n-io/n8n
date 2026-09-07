@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_06bc7f3c2041cd::t_b879f96c40154b 62-66,70-71,73,81,92-102,104-105,108-111,116,121,124,126
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.test.ts
+  s_06bc7f3c2041cd::t_626e2a402bbc0b 138-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dcd6bddc1290f416515a2f12ca64d9489b004bad",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_06bc7f3c2041cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "340cc0d0-3bb1-46b2-aaf6-697dfc7f4960",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

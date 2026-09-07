@@ -1,0 +1,86 @@
+packages/@n8n/api-types/src/dto/project-file/download-project-file-query.dto.ts
+  s_749e9217782dea::t_ea99a7ff573acc 8-11
+  s_749e9217782dea::t_88176bee4e3f52 1-7,12-14
+packages/frontend/editor-ui/src/features/core/projectFiles/constants.ts
+  s_749e9217782dea::t_3a97f040d5460e 19-25
+packages/@n8n/api-types/src/schemas/__tests__/binary-data.schema.test.ts
+  s_749e9217782dea::t_db1f6df2c4af9b 1-42
+packages/cli/test/integration/modules/project-files.api.test.ts
+  s_749e9217782dea::t_17bc2e375d39b5 283,286-288,290
+  s_749e9217782dea::t_8991d957d4d5a9 107
+  s_749e9217782dea::t_bd1bb60b7c2130 291,299-349
+  s_749e9217782dea::t_a7e2f0e6196f9d 278,284-285,289,351
+  s_749e9217782dea::t_5b000842aaf253 292
+  s_749e9217782dea::t_575bf7f0301b6e 350
+  s_749e9217782dea::t_b5c1b5b1ed9757 352
+packages/frontend/editor-ui/src/features/core/projectFiles/projectFiles.store.ts
+  s_749e9217782dea::t_2a01b6037dfe63 12
+  s_749e9217782dea::t_9e87311344cbdb 77-83,88-89
+packages/cli/src/modules/project-files/project-files.controller.ts
+  s_749e9217782dea::t_4e56a41bdf0fa9 227-241
+  s_749e9217782dea::t_41f384b4dfbf4e 3,7
+  s_749e9217782dea::t_710c926967c05b 9
+  s_749e9217782dea::t_fa54e8e68b0d9d 159,168-182
+  s_749e9217782dea::t_5965bd5692cb90 59
+  s_749e9217782dea::t_48b41c0959ad65 27
+packages/frontend/editor-ui/src/features/core/projectFiles/projectFiles.api.ts
+  s_749e9217782dea::t_5e63b22761b93b 68-70,76-101
+packages/frontend/editor-ui/src/features/core/projectFiles/ProjectFilesView.vue
+  s_749e9217782dea::t_13dbfdcbc8c511 395,398-404
+  s_749e9217782dea::t_a826f1bf785ff6 24
+  s_749e9217782dea::t_8eae207ba61d5b 54-55
+  s_749e9217782dea::t_89e1fa5490ba93 225-229
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_749e9217782dea::t_7d98912013bdf7 5735-5737
+packages/frontend/editor-ui/src/features/core/projectFiles/components/ProjectFilePreview.vue
+  s_749e9217782dea::t_139d0ac290ce44 1-6,8-22,24-137
+  s_749e9217782dea::t_f9c72c28694605 7
+  s_749e9217782dea::t_c5beb5cec18be2 23
+packages/frontend/editor-ui/src/features/core/projectFiles/ProjectFilesView.test.ts
+  s_749e9217782dea::t_8108d13aca30e1 4
+  s_749e9217782dea::t_79e57504ede165 183-216,222-224
+  s_749e9217782dea::t_4f72334f92df5c 217,220
+  s_749e9217782dea::t_a112b4694a7ac9 218-219,221
+packages/@n8n/api-types/src/schemas/binary-data.schema.ts
+  s_749e9217782dea::t_c11ab993a471e5 33-71
+packages/@n8n/api-types/src/dto/index.ts
+  s_749e9217782dea::t_b48dd968a5ffee 76
+packages/@n8n/config/src/configs/project-files.config.ts
+  s_749e9217782dea::t_dc9f6050a2cac0 39-47
+packages/frontend/editor-ui/src/features/core/projectFiles/components/ProjectFilesTable.vue
+  s_749e9217782dea::t_d26d68367be0d0 192-198
+  s_749e9217782dea::t_0a123422d929b0 164-186
+  s_749e9217782dea::t_174cde2d479382 37
+  s_749e9217782dea::t_b414ef4b7204c0 3,8
+  s_749e9217782dea::t_eb7295fe49c412 70
+packages/@n8n/api-types/src/index.ts
+  s_749e9217782dea::t_8de9e7456e1557 125-129
+packages/@n8n/config/test/config.test.ts
+  s_749e9217782dea::t_8eb03256b191d5 204
+packages/frontend/editor-ui/src/features/core/projectFiles/components/ProjectFilePreview.test.ts
+  s_749e9217782dea::t_a630453daf830a 1-115
+packages/frontend/editor-ui/src/features/core/projectFiles/components/ProjectFilePreviewDialog.vue
+  s_749e9217782dea::t_c94c0f14e2d9ec 1-55
+packages/testing/playwright/pages/ProjectFilesView.ts
+  s_749e9217782dea::t_e54a6b4b01dea6 41,45
+  s_749e9217782dea::t_440ac44d5e0659 53-70
+packages/testing/playwright/tests/e2e/project-files/files.spec.ts
+  s_749e9217782dea::t_2c70c2c8ebd031 73-117
+  s_749e9217782dea::t_5d72787a6a218c 18,41,59,119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a839070d2b164b70d24f27e3d30eacdee8a890cc",
+  "prompts": {},
+  "sessions": {
+    "s_749e9217782dea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9256f74-4f49-46ff-9964-3b3c3eb85678",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

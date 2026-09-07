@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-28-telegram-agent-edit-message-design.md
+  s_2df5bb80907049::t_e7f6289f51ccde 1-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d9600dab5a2e956a3c41ff2c7384549329bc4df9",
+  "prompts": {},
+  "sessions": {
+    "s_2df5bb80907049": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa973-8fa0-7ea0-97af-f07c3b2abc9e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

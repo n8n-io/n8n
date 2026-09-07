@@ -1,0 +1,30 @@
+packages/frontend/@n8n/frontend-utils/src/htmlUtils.ts
+  s_a281ba3ab3db5f::t_e9e1589dddb0da 17-18
+  s_a281ba3ab3db5f::t_f1959292e7cc38 10-15
+  s_a281ba3ab3db5f::t_eee85ed5686455 2,16,19
+  s_8ee3299331a9a9::t_8493f18ec2a3d7 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "30e93f8ba49eeb56eb3b15c048b548ccad1ec97f",
+  "prompts": {},
+  "sessions": {
+    "s_8ee3299331a9a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89fdee52-e42b-482b-9965-cb3a0d48d140",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_a281ba3ab3db5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67b33cae-86c2-4ea9-bfae-6a5872d0bc1a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

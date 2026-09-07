@@ -1,0 +1,31 @@
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.deviations.test.ts
+  s_5b6b5f8faae949::t_08e0200096c43f 261-295
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_5b6b5f8faae949::t_c00a1260aa3dc0 216-219,238,240,254-260
+packages/nodes-base/nodes/Schedule/GenericFunctions.ts
+  s_5b6b5f8faae949::t_4dbbe6f9cda3f2 57-63,125-131,190-202,262,266-267
+packages/nodes-base/nodes/Schedule/SchedulerInterface.ts
+  s_5b6b5f8faae949::t_c44f2d4955131b 9
+packages/nodes-base/nodes/Schedule/test/GenericFunctions.test.ts
+  s_5b6b5f8faae949::t_013d0e2658ac3c 18,26,80-89,339-375,712-726
+packages/nodes-base/nodes/Schedule/test/ScheduleTrigger.node.test.ts
+  s_5b6b5f8faae949::t_69f084578f9b53 8,106-128
+packages/workflow/src/interfaces.ts
+  s_5b6b5f8faae949::t_30afe6182df4c8 1030
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "eaea69fa131b1cac2d703fcea10a56b15907e1dc",
+  "prompts": {},
+  "sessions": {
+    "s_5b6b5f8faae949": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_5b6b5f8faae949",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/@n8n/agents/src/runtime/__tests__/title-generation.test.ts
+  s_e0c5b7c35e6b9d::t_ad053a2c84facf 5
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_e0c5b7c35e6b9d::t_ad053a2c84facf 2
+packages/@n8n/agents/src/runtime/agent-runtime.ts
+  s_e0c5b7c35e6b9d::t_3f1f3ae6bf4466 1094-1104,1508-1518
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_e0c5b7c35e6b9d::t_ad053a2c84facf 79-82,142-145,168-169
+packages/@n8n/agents/src/runtime/title-generation.ts
+  s_e0c5b7c35e6b9d::t_ad053a2c84facf 233,236,239,245,253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bf7699218d58ab58a99e7e76ae6d26d92e30685f",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e0c5b7c35e6b9d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7fa24b23-4337-474d-90f9-982cbceb8329",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/test/transport.test.ts
+  s_c7478e625df7e3::t_749343c8bf77b5 3-6,8-40
+  s_c7478e625df7e3::t_11e9187fa5caf3 1-2,7
+packages/nodes-base/nodes/Microsoft/SharePoint/test/MicrosoftSharePoint.node.test.ts
+  s_c7478e625df7e3::t_afdc368483bf93 22-29
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/transport/index.ts
+  s_c7478e625df7e3::t_11e9187fa5caf3 26-27
+  s_c7478e625df7e3::t_70b8aa46c65a79 19-20
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/MicrosoftSharePointV1.node.ts
+  s_c7478e625df7e3::t_4f7e68cbc0f242 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b2b5455e8f07bde3a4be278f1f377314d93f57bd",
+  "prompts": {},
+  "sessions": {
+    "s_c7478e625df7e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "279c2622-09b5-4e1a-9634-deeb884cedb9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

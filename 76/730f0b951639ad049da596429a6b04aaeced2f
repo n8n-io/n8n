@@ -1,0 +1,79 @@
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_85629be8996a13::t_0606c55d400c9e 25-33
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_85629be8996a13::t_0606c55d400c9e 105-117
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_85629be8996a13::t_744b9d10c19ca7 614,616-630
+  s_85629be8996a13::t_6d14ec11d2ddef 220-248,594,600,606,611-613,660
+  s_85629be8996a13::t_cc86f872d63711 631-643
+  s_85629be8996a13::t_7e2c02c1161446 615
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_85629be8996a13::t_3c4fde14eec88f 555-567
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_85629be8996a13::t_3c4fde14eec88f 7110
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_85629be8996a13::t_3374aa6f3e449c 1,585,590
+  s_85629be8996a13::t_58217c785bc5ad 136,157,167,546,555,562-566,583-584,586-589,591-613
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_85629be8996a13::t_6d14ec11d2ddef 115-140
+packages/@n8n/api-types/src/agents/types.ts
+  s_85629be8996a13::t_31544a259add68 215-216
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_85629be8996a13::t_a9a4f58e123978 268-277,280,282-290,306
+  s_85629be8996a13::t_ec3adb27e5305f 253-256
+  s_85629be8996a13::t_31544a259add68 179-180,204-206,227,292,294-298,300-305,307-311
+  s_85629be8996a13::t_54586b5930dbdb 278-279,281
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_85629be8996a13::t_54586b5930dbdb 16-17
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_85629be8996a13::t_0606c55d400c9e 88-90,106,114-120,136-138,154,162-168,170-181,183-188
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_85629be8996a13::t_346e3b7fe2739a 235-246
+  s_85629be8996a13::t_cc86f872d63711 247-269
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_85629be8996a13::t_e0995183e83a1a 2
+  s_85629be8996a13::t_58217c785bc5ad 67-79
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_85629be8996a13::t_58217c785bc5ad 88,210-288
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_85629be8996a13::t_31544a259add68 7,158
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_85629be8996a13::t_e0995183e83a1a 12
+  s_85629be8996a13::t_0606c55d400c9e 44,86,140,194-216,233,297,337,369,496,516
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_85629be8996a13::t_54586b5930dbdb 14,126-132,269
+  s_85629be8996a13::t_3c4fde14eec88f 194
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_85629be8996a13::t_3c4fde14eec88f 11-16,93,116-117,124-125,129,133-137,577,608,615,620-622,635-637,727,732-736,750,790,792-793,795-796,798-803,805-809,812-814
+  s_85629be8996a13::t_3a1c7151fddfb8 797
+  s_85629be8996a13::t_d01f2fbef996e3 138,236-239,241-257,656-657,811
+  s_85629be8996a13::t_150503b4e87906 791,794
+  s_85629be8996a13::t_54586b5930dbdb 213-227,454,466,804
+  s_85629be8996a13::t_aea6591771f29b 240,269-272,278-279,284-287
+  s_85629be8996a13::t_d5c072a26b4fb1 139
+  s_85629be8996a13::t_536d24a323b8a9 810
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_85629be8996a13::t_e9ccd3f818273f 72-91,355-400
+  s_85629be8996a13::t_ff52899d9beea8 262-315
+  s_85629be8996a13::t_cc86f872d63711 403-436
+  s_85629be8996a13::t_f3bab54355aaa1 978-1009
+  s_85629be8996a13::t_346e3b7fe2739a 20,28,110-112,316-354,401-402,483-597,976
+  s_85629be8996a13::t_5a9b3b32282277 437-482
+  s_85629be8996a13::t_d731c6b57de117 977
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "76730f0b951639ad049da596429a6b04aaeced2f",
+  "prompts": {},
+  "sessions": {
+    "s_85629be8996a13": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa392-cc89-7851-8dc2-697ffc4937ce",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

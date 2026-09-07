@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/BrowserUseSetupModal.test.ts
+  s_bd57bfd711b515::t_79fd70479711cb 1-89
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseSetupModal.vue
+  s_bd57bfd711b515::t_eea67a286d4696 17
+  s_bd57bfd711b515::t_311ca4efe18fbf 124
+  s_bd57bfd711b515::t_b25d6d1a58c0f4 7
+  s_bd57bfd711b515::t_2a2c0f3fb4d977 44
+  s_bd57bfd711b515::t_0cbcfb2562c290 104
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiBrowserUse.telemetry.ts
+  s_bd57bfd711b515::t_88ec8a239a716c 1-16
+packages/cli/src/modules/instance-ai/browser/instance-ai-browser-session.service.ts
+  s_bd57bfd711b515::t_8ffe1dc0019db6 69
+  s_bd57bfd711b515::t_4c7b71c8ef73a1 27
+  s_bd57bfd711b515::t_e82e5483bce017 224
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiBrowserUse.telemetry.test.ts
+  s_bd57bfd711b515::t_d1015304bb5710 1-36
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-browser-session.service.test.ts
+  s_bd57bfd711b515::t_f665ecfbeefb37 10
+  s_bd57bfd711b515::t_cf35ea28c6dd59 110
+  s_bd57bfd711b515::t_5c0e38a4bfba55 125
+  s_bd57bfd711b515::t_95856b6c5010db 276-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.4",
+  "base_commit_sha": "ca6f1bb17a6e32eeb7371471ba8dc79c1fb45787",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bd57bfd711b515": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "091db6e2-c341-41d0-afba-ce0b190c9db1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

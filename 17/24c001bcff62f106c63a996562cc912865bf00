@@ -1,0 +1,41 @@
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_d080cd0071e0f4::t_edfa1a1e23d991 226
+  s_d080cd0071e0f4::t_3db1eee9a5e270 384-387,392
+  s_d080cd0071e0f4::t_06f1e755c341f0 2-5
+packages/testing/playwright/services/mcp-oauth-api-helper.ts
+  s_d080cd0071e0f4::t_535095a791b8e0 5,7-9,12,19-24,31,33-34,36,40,42-46,51,53-55,58,62,66-68,71-72,74-79,83,85-86,89,92-94,96-97,99,102-114,117-119,122-124,127-137,139,142-143,147,150-159,162-163,165-166,168-175,178-185,188,193-199,203-204,206-219,224,228-229,233-234,236,239,242,246
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_d080cd0071e0f4::t_5a02d10e5c7efc 6-9,516,537,547,638,902
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_d080cd0071e0f4::t_996904ce73382c 133
+  s_d080cd0071e0f4::t_6506216dc09e29 119-120,122
+  s_d080cd0071e0f4::t_5d1655370b7f0a 1
+packages/testing/playwright/services/api-helper.ts
+  s_d080cd0071e0f4::t_535095a791b8e0 71,89
+packages/testing/playwright/pages/n8nPage.ts
+  s_d080cd0071e0f4::t_535095a791b8e0 31,91,172
+packages/testing/playwright/tests/e2e/mcp/mcp-oauth.spec.ts
+  s_d080cd0071e0f4::t_535095a791b8e0 1,3,6,8-12,14-16,18-19,21-23,25,27,37-41,45,55-58,60-61,63,66,68,70-71,74-83,86-94,96-117,122,124-127,130-142,144,146-148,152-161,164-166,168-175,177-178,180-181,183-189,191-193,196-198,200-205,207,209-210,212-213,215,218-228,231,234-242,244,246-256,266-268,270,274-285,287-292,294,296-298,301-304,306,311,313-328,332-333,335,337-366,368-419,421
+packages/testing/playwright/pages/OAuthConsentPage.ts
+  s_d080cd0071e0f4::t_535095a791b8e0 1-21
+packages/cli/src/modules/oauth-server/oauth-authorization-code.service.ts
+  s_d080cd0071e0f4::t_87507357e96fe6 7,65,70,127,144,153
+packages/cli/src/modules/oauth-server/__tests__/oauth-authorization-code.service.test.ts
+  s_d080cd0071e0f4::t_5a02d10e5c7efc 1,104,119,166,231,239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "1724c001bcff62f106c63a996562cc912865bf00",
+  "prompts": {},
+  "sessions": {
+    "s_d080cd0071e0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6faeb930-cf57-48d0-aa3c-235422c166e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

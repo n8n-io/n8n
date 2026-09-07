@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/app/components/WorkflowDescriptionModal.vue
+  s_23ac9e46ab1748::t_fdd22e8614c4de 83-95
+  s_23ac9e46ab1748::t_5ff47471e30c14 42
+  s_23ac9e46ab1748::t_3f2150ffd8bb49 6
+  s_23ac9e46ab1748::t_d1caad64aacefc 29-30
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts
+  s_23ac9e46ab1748::t_ebaee9766e71bf 408-412
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_23ac9e46ab1748::t_527d34edac8989 143
+  s_23ac9e46ab1748::t_cf5b88f39837f6 280,292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0d47a33ea8f2e73253bd01bc76fef3fcb1c5c8ee",
+  "prompts": {},
+  "sessions": {
+    "s_23ac9e46ab1748": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b113851a-c3ab-49d5-8c97-0a2c96719d51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

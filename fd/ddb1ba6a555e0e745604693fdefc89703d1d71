@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_8eac6e899de708::t_2807b0c889c411 112,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fdddb1ba6a555e0e745604693fdefc89703d1d71",
+  "prompts": {},
+  "sessions": {
+    "s_8eac6e899de708": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8fec-26f4-7812-bedb-8d0b2d4970a3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

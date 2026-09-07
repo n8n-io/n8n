@@ -1,0 +1,36 @@
+pnpm-lock.yaml
+  ai_agent 6789-6791
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-import.test.ts
+  s_80b46b026ad886::t_49e08b4ab76272 20-23
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-multimain.spec.ts
+  s_80b46b026ad886::t_b8833cdc609564 53
+  s_80b46b026ad886::t_7f96ab639f98ae 1-2
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-durable.spec.ts
+  s_80b46b026ad886::t_18c91fede4dd8a 1-2
+  s_80b46b026ad886::t_b8833cdc609564 53,71,74
+packages/testing/playwright/package.json
+  s_80b46b026ad886::t_735143c4cb2f0b 64
+packages/@n8n/node-cli/src/commands/dev/utils.ts
+  s_80b46b026ad886::t_985226ced6eeec 140,376,389,394
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-import.ts
+  s_80b46b026ad886::t_8f6c406dd67094 6
+  s_80b46b026ad886::t_ebc58d71ae1875 25
+packages/@n8n/node-cli/src/commands/dev/utils.test.ts
+  s_80b46b026ad886::t_985226ced6eeec 3,8,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c944d8eb3381a799adeaf347e97febe904f92303",
+  "prompts": {},
+  "sessions": {
+    "s_80b46b026ad886": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9a5a8d2-a316-4511-ab5b-1e3e5ec8b3ee",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

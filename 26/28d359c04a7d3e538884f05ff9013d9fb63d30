@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/app/__tests__/modal-key-ratchet.spec.ts
+  h_425f570cc35a09 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2628d359c04a7d3e538884f05ff9013d9fb63d30",
+  "prompts": {},
+  "humans": {
+    "h_425f570cc35a09": {
+      "author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_2aa332997f69a5::t_d6af63ef47da91 387-390,416-420
+  s_2aa332997f69a5::t_ba24bd66f4d5ad 228
+  s_2aa332997f69a5::t_0876de83a9136e 428-446,846-848,856-885,1037-1039,1051-1109
+  s_2aa332997f69a5::t_58c1196365d5c8 17,254-257,259-274,340-354,356-375,379-384,386,391-415,421-424,426
+  s_2aa332997f69a5::t_5ddd66e5450bb6 355
+  s_2aa332997f69a5::t_a717b069c575dd 376-378
+  s_2aa332997f69a5::t_fe3c4dbf61dfef 234-253,258
+  s_2aa332997f69a5::t_893bb2acf56561 28-31,385
+  s_2aa332997f69a5::t_b82a77243bd4cf 425,427
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_2aa332997f69a5::t_5825e0860f7852 4
+  s_2aa332997f69a5::t_b49dd969ab2e46 1-2
+  s_2aa332997f69a5::t_a889f336ad32e4 63-64,93-106,193-194,198,201,204,209,222,242,250,266,301,424-426,435-438,440,443,448,450-451,454-459,567
+  s_2aa332997f69a5::t_bef6c9f29d44a5 568-569,621-622
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "1de01a7756154d1b89fdfc832d4f8408443621d3",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

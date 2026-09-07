@@ -1,0 +1,46 @@
+packages/@n8n/db/src/repositories/__tests__/agent-eval-result.repository.test.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 118,120,122,124-151
+packages/cli/src/modules/agent-evals/__tests__/agent-evals.controller.test.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 1,19-21,74-76,86,91-98,132-133,229-265
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 1,137-141,144-152,171,173,185-188,192,202,208-214,216
+packages/cli/src/modules/agent-evals/agent-evals.controller.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 4,9,15-24,39,41-42,44-46,139,142-146,149,152,155-159,162,174-176,178
+packages/cli/src/modules/agent-evals/agent-eval.service.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 4,34-40,169-170,173-178,181,186,190-191
+packages/@n8n/db/src/repositories/__tests__/agent-eval-run.repository.test.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 188,190,192,194,198-235
+packages/@n8n/api-types/src/index.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 605,610
+packages/@n8n/db/src/repositories/agent-eval-run.repository.ee.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 99-114,116-118
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.integration.test.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 161,220
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-scoped-reads.integration.test.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 105-168,173-174,176-177,179-180,222
+packages/cli/src/modules/agent-evals/__tests__/agent-eval.service.test.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 36-37,98-99,139-140,188,191,333,384-397,400,402-403,412-452
+packages/@n8n/db/src/repositories/agent-eval-result.repository.ee.ts
+  s_8d717fb7cdc18c::t_e116a054defc03 37,106-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1915f445b26a9f20d3c8fe69f3b9232f346075ab",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8d717fb7cdc18c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b31327a4-b04e-4d2b-b5bc-034852a82ac9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

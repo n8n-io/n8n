@@ -1,0 +1,40 @@
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_f8cf71bf7dff8b::t_22ad9a838ca7a0 143
+  s_f8cf71bf7dff8b::t_0d929669552253 153-155
+  s_f8cf71bf7dff8b::t_f289bb351970a4 13,15,139-142,144-152,156-167
+packages/@n8n/agents/src/sdk/tool.ts
+  s_f8cf71bf7dff8b::t_93178c99991ded 5
+  s_f8cf71bf7dff8b::t_e216655f4a4ecf 37-41
+  s_f8cf71bf7dff8b::t_8040f6821bebf9 42-50,63,69,91-92
+packages/@n8n/agents/src/sdk/agent.ts
+  s_f8cf71bf7dff8b::t_3d54a9dec64a0c 869
+packages/@n8n/agents/src/runtime/agent-runtime.ts
+  s_f8cf71bf7dff8b::t_be3bda48fc5a8b 166
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_f8cf71bf7dff8b::t_68250b1ca4aa8d 21-44,49-58,62-70,72,74-76
+  s_f8cf71bf7dff8b::t_ceb52286a6281e 71
+  s_f8cf71bf7dff8b::t_60ed24df15ee4e 59-61,73,79,81,83
+  s_f8cf71bf7dff8b::t_cbbab70e97eed8 45-48
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_f8cf71bf7dff8b::t_35e83a041b7ae7 87
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_f8cf71bf7dff8b::t_b5bfcf62f22de7 2693-2751
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_f8cf71bf7dff8b::t_7a8e8cb3cca32f 70-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "0f8e4d4e985617ed6d91a40420cac61bffa8029e",
+  "prompts": {},
+  "sessions": {
+    "s_f8cf71bf7dff8b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e6989-7599-7b91-a168-c4cac09a1c33",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

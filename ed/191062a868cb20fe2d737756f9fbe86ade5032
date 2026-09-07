@@ -1,0 +1,30 @@
+packages/@n8n/api-types/src/dto/workflow-reviews/decide-workflow-review-request.dto.ts
+  s_d8b5e951456b7b::t_575d98f26bec71 1,7-11
+packages/@n8n/api-types/src/dto/workflow-reviews/workflow-review-activity.dto.ts
+  s_d8b5e951456b7b::t_2f1e3cb2abed85 23-27,29-34,36
+packages/@n8n/api-types/src/workflow-review-activity.ts
+  s_d8b5e951456b7b::t_5d181d6e086581 1
+  s_d8b5e951456b7b::t_4af7eee83785ab 25-63
+  s_d8b5e951456b7b::t_48adbc3046bb96 85-86,95-112
+packages/@n8n/api-types/src/dto/workflow-reviews/__tests__/decide-workflow-review-request.dto.test.ts
+  s_d8b5e951456b7b::t_4b3e2e5464ea19 8-15,21-30
+  s_d8b5e951456b7b::t_92dbf12b83f609 56-70
+packages/@n8n/api-types/src/index.ts
+  s_d8b5e951456b7b::t_78794d8184a558 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed191062a868cb20fe2d737756f9fbe86ade5032",
+  "prompts": {},
+  "sessions": {
+    "s_d8b5e951456b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d598e382-1f10-4e94-a256-40ec7275df71",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

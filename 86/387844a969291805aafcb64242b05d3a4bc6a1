@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_10a3eb2b15615a::t_35b63727109a9b 46-49,51
+  s_10a3eb2b15615a::t_3ef4dccc8bc2ff 145-146
+  s_10a3eb2b15615a::t_ed4fe512a8824f 50
+  s_10a3eb2b15615a::t_ea33c258a1f3ff 230-236,246-254
+  s_10a3eb2b15615a::t_8f82d7b28e549b 333-343,353-364
+  s_10a3eb2b15615a::t_48b14da75c3778 136,144
+  s_10a3eb2b15615a::t_ae140643708f28 229,245,332,352
+  s_10a3eb2b15615a::t_1bcddcde34f5c8 133-135,147
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_10a3eb2b15615a::t_0eecddf9acba41 170-172,175,180-181
+  s_10a3eb2b15615a::t_4341571da570f9 155-168
+  s_10a3eb2b15615a::t_14c4d9128ca424 169
+  s_10a3eb2b15615a::t_c32a9b823f68e6 173-174,176-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "86387844a969291805aafcb64242b05d3a4bc6a1",
+  "prompts": {},
+  "sessions": {
+    "s_10a3eb2b15615a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0c75aae5-3128-4f04-9fa2-3cb4ecf8bf79",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

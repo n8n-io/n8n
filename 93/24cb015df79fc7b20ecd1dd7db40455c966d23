@@ -1,0 +1,40 @@
+packages/@n8n/instance-ai/evaluations/__tests__/build-workflow-conversation-seed.test.ts
+  ai_agent 300-305,340-345,373-378,403-408
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-seed.test.ts
+  s_03a0908a4e52a5::t_dccee14cb2c196 689-720
+  s_03a0908a4e52a5::t_52a44698f74e8f 682-683
+packages/@n8n/instance-ai/evaluations/__tests__/event-parser.test.ts
+  s_03a0908a4e52a5::t_3d8d7154bd52ca 835
+packages/@n8n/instance-ai/evaluations/__tests__/transcript-from-events.test.ts
+  s_03a0908a4e52a5::t_52a44698f74e8f 316-317
+packages/@n8n/instance-ai/evaluations/utils/conversation-text.ts
+  ai_agent 258-259
+  s_03a0908a4e52a5::t_38666eb0ae9c02 255-257,261-265
+  s_03a0908a4e52a5::t_19d1322f0db16a 4-10
+packages/@n8n/instance-ai/evaluations/report/workflow-report.ts
+  s_03a0908a4e52a5::t_5efa51a2cd09cf 21
+  s_03a0908a4e52a5::t_1794b0768eaba2 1039-1040,1052,1055-1056
+  s_03a0908a4e52a5::t_09489620a22a71 1072-1073,1080,1082-1085
+packages/@n8n/instance-ai/evaluations/outcome/transcript-from-events.ts
+  s_03a0908a4e52a5::t_065713f47312fe 285-294,296-298,300-306
+packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts
+  s_03a0908a4e52a5::t_0451a4a3405edf 523-530
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_03a0908a4e52a5::t_545f4aa39bd94a 383-386
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9324cb015df79fc7b20ecd1dd7db40455c966d23",
+  "prompts": {},
+  "sessions": {
+    "s_03a0908a4e52a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae5a718f-9227-4093-bfce-05c59596700d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

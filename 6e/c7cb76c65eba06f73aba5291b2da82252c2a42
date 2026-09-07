@@ -1,0 +1,87 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_dd8f226d4368c9::t_6850711f0d9408 5,7,12-18,21-22,24,27,40,43,45,53-54,59-64,154-287,289,298-300,306-310,312-315,353-355,357-361,364-365,382-396,399-401,412-415,472
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_dd8f226d4368c9::t_0a0066b5578cf9 2,6-7,11-17,78-105,117-119,122-124,127-129,132-134
+  s_dd8f226d4368c9::t_0c8ecf713cce1f 40
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_dd8f226d4368c9::t_7057a72be5c205 104,112,114,118-122,137-147
+  s_dd8f226d4368c9::t_aec89a79c9dc34 7
+  s_dd8f226d4368c9::t_173bcc16309030 305,309-317,370,374-375,377
+  s_dd8f226d4368c9::t_8653bd97a130f8 376,378-382
+packages/frontend/editor-ui/src/features/agents/__tests__/AskQuestionsCard.test.ts
+  s_dd8f226d4368c9::t_3e43fd10688d53 30
+  s_dd8f226d4368c9::t_29356053070a45 105
+  s_dd8f226d4368c9::t_834c2ff848e45b 1,3-21,33-34,36-38,42-44,46-63,67-72,74-80,82-92,94-104,106-107
+  s_dd8f226d4368c9::t_15a69d9207fd8d 64-66
+  s_dd8f226d4368c9::t_3ac1fc9bde222c 93
+  s_dd8f226d4368c9::t_d63784085996a6 2
+  s_dd8f226d4368c9::t_20a4807662b1e9 22-28,31-32,35,39-41,45,73,81
+  s_dd8f226d4368c9::t_51c4b820e019c6 29
+  s_dd8f226d4368c9::t_4d3a8d1094c55c 108-113
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dd8f226d4368c9::t_a65e1e5ea88146 6722-6723
+packages/frontend/editor-ui/src/features/agents/__tests__/interactive-summary.test.ts
+  s_dd8f226d4368c9::t_2ec5d167950207 5-6,22,30,34-39,42,45-50,76-80
+  s_dd8f226d4368c9::t_1a42eae186201e 81-84
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.test.ts
+  s_dd8f226d4368c9::t_14e199c35ed26b 4,47,49-52,64,66,68-69,74-77
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_dd8f226d4368c9::t_abf99df1588203 127-131
+packages/frontend/editor-ui/src/features/agents/components/interactive/AskQuestionsCard.vue
+  s_dd8f226d4368c9::t_0104199fb4a181 1-122
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_dd8f226d4368c9::t_36d1d51b6383c3 8-9,12,26-27,32-34,88,101-104,120
+  s_dd8f226d4368c9::t_93836adf9bd368 17,19,23-25,28-31,36-38,58-67,83-87,89-95,99,106,108-110,116-119,122-124
+packages/frontend/editor-ui/src/features/agents/components/interactive/ConfigureChannelCard.vue
+  s_dd8f226d4368c9::t_a0aa26c4776fcb 1-343
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactiveSummary.ts
+  s_dd8f226d4368c9::t_c6e83acf2b98ed 5-6,20,30-50,61-65,68-72,83-85
+  s_dd8f226d4368c9::t_2a1d7c1664d318 86-87
+packages/frontend/editor-ui/src/features/agents/components/interactive/AskCredentialCard.vue
+  s_dd8f226d4368c9::t_d45482ee872f36 2-12,14,17,19-20,23,27-28,30,34,43,45-50,52-62,65-69,71-76,78-79,84-86,88,90,92-93,96-104,107-108,111-152,158-180,183-209,220-223,227,258-263,276-277,282,285
+  s_dd8f226d4368c9::t_d3391c4dac83b6 26,70
+  s_dd8f226d4368c9::t_f5a4bc28b833b3 15
+  s_dd8f226d4368c9::t_9488beb35a71a4 42,44
+  s_dd8f226d4368c9::t_c04cb05a18141a 283-284,286-287
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_dd8f226d4368c9::t_bff6d6c55af2a5 937,939-949,956-957,964,981
+  s_dd8f226d4368c9::t_eb6faf200da35f 8
+  s_dd8f226d4368c9::t_bdc289755fabd7 121-129
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_dd8f226d4368c9::t_6e406c0846712c 179,182-188,192,202-206
+  s_dd8f226d4368c9::t_dbe74653d5d58f 5,20-29
+  s_dd8f226d4368c9::t_1b1088623c1bc5 30,208-211,536,660
+packages/frontend/editor-ui/src/features/agents/__tests__/tool-call-details.spec.ts
+  s_dd8f226d4368c9::t_b26dc82d31ab96 2,75
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_dd8f226d4368c9::t_b9fc9933c6ffeb 373,376-383
+  s_dd8f226d4368c9::t_79624cc7156db6 384-386
+packages/frontend/editor-ui/src/features/agents/__tests__/AskCredentialCard.test.ts
+  s_dd8f226d4368c9::t_0396246782e8bb 9,14,83-87,91,196-199
+  s_dd8f226d4368c9::t_697392f7ba71df 178-181
+  s_dd8f226d4368c9::t_04e0925e5f85c1 92-94,104,111,141,152,159,182,184,200-204,211
+packages/frontend/editor-ui/src/features/agents/__tests__/ConfigureChannelCard.test.ts
+  s_dd8f226d4368c9::t_37b8637abee735 104
+  s_dd8f226d4368c9::t_624788f2bc914e 1-4,7-103,105-157
+  s_dd8f226d4368c9::t_4875c4ff7dba8a 5-6
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_dd8f226d4368c9::t_d1c7f3879694b2 147-224
+  s_dd8f226d4368c9::t_d2c44bc9fdfe64 3-8,14-41
+  s_dd8f226d4368c9::t_06f19a75af088b 42-43,225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "6ec7cb76c65eba06f73aba5291b2da82252c2a42",
+  "prompts": {},
+  "sessions": {
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

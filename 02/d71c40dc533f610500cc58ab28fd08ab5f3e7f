@@ -1,0 +1,29 @@
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-import-decision.test.ts
+  s_66be2eb681ad3c::t_5c9760ee3830d4 9
+  s_66be2eb681ad3c::t_e725344556d121 140
+  s_66be2eb681ad3c::t_895c6b94f4bb16 96
+  s_66be2eb681ad3c::t_ac2b176d5c8257 242
+  s_66be2eb681ad3c::t_dc9d90cef38da4 30
+  s_66be2eb681ad3c::t_70319c846dfc70 75
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_66be2eb681ad3c::t_cbdf1818c8aa88 318
+  s_66be2eb681ad3c::t_2354129c7c5b1e 210
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_66be2eb681ad3c::t_01756140a30a6e 45-46,51,62,64,70,88,95,105,114,200,205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "02d71c40dc533f610500cc58ab28fd08ab5f3e7f",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

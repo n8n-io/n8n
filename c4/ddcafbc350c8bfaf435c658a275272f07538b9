@@ -1,0 +1,22 @@
+packages/@n8n/decorators/src/controller/__tests__/api-key-scope.test.ts
+  s_ffb7dd4d4bc241::t_d2d3964de7e2f9 65-66,72-74,76-80
+  s_ffb7dd4d4bc241::t_0ac2e52eba11b7 67-71,75
+packages/@n8n/decorators/src/controller/api-key-scope.ts
+  s_ffb7dd4d4bc241::t_ed917dad8b81bf 36-43,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c4ddcafbc350c8bfaf435c658a275272f07538b9",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7dd4d4bc241": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f4938bcb-e16b-47a0-8c74-c70eb77a07a9",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

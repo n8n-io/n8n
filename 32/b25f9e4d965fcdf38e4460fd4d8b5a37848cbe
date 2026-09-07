@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_a3a1bb25f6cdb8::t_1f54d8db701db9 131,137-139
+  s_a3a1bb25f6cdb8::t_64a82634de4d08 144-148,298,992-998,1008-1012,1018-1027
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_a3a1bb25f6cdb8::t_973cc27070ea41 3,137-138,144
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_a3a1bb25f6cdb8::t_99829e26cc67a1 50,139-158
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_a3a1bb25f6cdb8::t_3e86b0068feea9 677-678,680-696,698-709
+  s_a3a1bb25f6cdb8::t_64a82634de4d08 606-632
+  s_a3a1bb25f6cdb8::t_fcc0e0a7b03a99 679,697
+  s_a3a1bb25f6cdb8::t_7c3d272fc2761b 221,228-231,1106
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_a3a1bb25f6cdb8::t_64a82634de4d08 136-144,196
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_a3a1bb25f6cdb8::t_99829e26cc67a1 14,2298-2316,2318
+  s_a3a1bb25f6cdb8::t_14436b78d2b8da 2317,2319
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_a3a1bb25f6cdb8::t_973cc27070ea41 300-301
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_a3a1bb25f6cdb8::t_7c3d272fc2761b 868-872
+  s_a3a1bb25f6cdb8::t_99829e26cc67a1 40,291-294
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_a3a1bb25f6cdb8::t_99829e26cc67a1 27-28
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_a3a1bb25f6cdb8::t_64a82634de4d08 1564-1576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "32b25f9e4d965fcdf38e4460fd4d8b5a37848cbe",
+  "prompts": {},
+  "sessions": {
+    "s_a3a1bb25f6cdb8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fec4d-56b4-7281-b272-8e642a1691f9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

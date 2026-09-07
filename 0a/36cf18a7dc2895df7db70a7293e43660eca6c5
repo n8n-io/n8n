@@ -1,0 +1,48 @@
+packages/cli/src/workflows/workflow-input-schema.service.ts
+  s_8a60b387177b0b::t_e5d66e72570e11 6
+  s_8a60b387177b0b::t_56bfe76653ff8d 1-5,7-99
+packages/workflow/src/workflow-inputs/constants.ts
+  s_8a60b387177b0b::t_e028caa2d49d17 1-35
+packages/workflow/package.json
+  s_8a60b387177b0b::t_5b635bb6307467 76,84,88-89,98
+packages/workflow/src/types/generate-schema.d.ts
+  s_8a60b387177b0b::t_2d076f4ebf023f 1-27
+packages/workflow/src/index.ts
+  s_8a60b387177b0b::t_c41860c4f5ee05 30-31
+packages/workflow/src/workflow-inputs/field-entries.ts
+  s_8a60b387177b0b::t_7de528cfbaede3 1-124
+packages/nodes-base/utils/workflowInputsResourceMapping/GenericFunctions.ts
+  s_8a60b387177b0b::t_ca971881a36387 11,13,15
+packages/core/src/execution-engine/node-execution-context/index.ts
+  s_8a60b387177b0b::t_0b6b0ea9d80b36 7
+packages/cli/src/workflows/__tests__/workflow-input-schema.service.test.ts
+  s_8a60b387177b0b::t_f0e5d079d03a36 1-8,11-17,33-34,36-40,47-70,72-92,107-178
+  s_8a60b387177b0b::t_e9f6e1afc1a738 9-10
+  s_8a60b387177b0b::t_b358465a88622c 18-19,25-27,29-32,35
+  s_8a60b387177b0b::t_ef5a3acb0a11c0 71
+  s_8a60b387177b0b::t_ac4417b5f261a1 20-24,28
+  s_8a60b387177b0b::t_f88f5b2fc10563 93-106
+  s_8a60b387177b0b::t_7a5bc3a3b9e48d 41-46
+  s_8a60b387177b0b::t_881c5c7352f84f 179-181
+  s_8a60b387177b0b::t_60824807d7e8d3 182-185
+packages/nodes-base/utils/workflowInputsResourceMapping/constants.ts
+  s_8a60b387177b0b::t_441d03bb3b4b70 1-10
+pnpm-lock.yaml
+  s_8a60b387177b0b::t_72ddab8e8b382f 7006-7008
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "0a36cf18a7dc2895df7db70a7293e43660eca6c5",
+  "prompts": {},
+  "sessions": {
+    "s_8a60b387177b0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6036dc6f-cbd9-4e33-aeb8-df572d6fed3b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

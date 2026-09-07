@@ -1,0 +1,22 @@
+packages/core/src/execution-engine/triggers-and-pollers.ts
+  s_27ba0c94221d07::t_7da0b363361506 45-51,54-56
+packages/cli/src/metrics/prometheus/poll-trigger-metrics.service.ts
+  s_27ba0c94221d07::t_a8b8b069b23e69 71-79
+  s_27ba0c94221d07::t_0a56208f6f02ac 80-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a30da66bd81bb2495427c7a317e9ad020c992c2f",
+  "prompts": {},
+  "sessions": {
+    "s_27ba0c94221d07": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e277bcb8-1b76-4dd5-9030-98030a727604",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/cli/src/services/__tests__/tag.service.test.ts
+  s_66be2eb681ad3c::t_943ad4d2e6ec78 102,104,108,115,117-128
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_66be2eb681ad3c::t_bedb291af7ce2a 222-239
+  s_66be2eb681ad3c::t_1433d8126f9b7d 835,837,840,842
+packages/cli/src/services/tag.service.ts
+  s_66be2eb681ad3c::t_d9f6dc5b039665 143-146,149-151
+packages/cli/src/modules/mcp/__tests__/update-workflow.tool.test.ts
+  s_66be2eb681ad3c::t_5ce4b60f5e3a6d 2369-2405
+  s_66be2eb681ad3c::t_3e661c38a96518 95,168,171,2335,2363,2409
+  s_66be2eb681ad3c::t_1d0b3cd54f5101 2260-2271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ab0a610ca29d2019433f7df74fa11ada2bdc6d1b",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

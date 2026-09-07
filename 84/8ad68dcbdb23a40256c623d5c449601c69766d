@@ -1,0 +1,19 @@
+.boundaries-baseline.json
+  s_dcea52ad05f3e5::t_4716d134e39392 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "848ad68dcbdb23a40256c623d5c449601c69766d",
+  "prompts": {},
+  "sessions": {
+    "s_dcea52ad05f3e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa86040e-4be6-4812-92fc-f4f87bbbe2ba",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

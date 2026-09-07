@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_10a3eb2b15615a::t_efe546da1a9a23 6,20,42-44,325-326,384
+  s_10a3eb2b15615a::t_3ef4dccc8bc2ff 127-129,135
+  s_10a3eb2b15615a::t_48b14da75c3778 131
+  s_10a3eb2b15615a::t_946be439799748 4-5,7-9,14-19,21-22,31-32,38-41,54,67,123-125,130,132-134,137-139,178-182,185-189,336-337,346-347,354-355,359,361-362,370-373,376-383,385-395,398-448,451-460,463-476,478,497,504,510-511
+  s_10a3eb2b15615a::t_54ac2a6493e689 477,479-496,498-503,505,507-509,513-524
+packages/frontend/editor-ui/src/features/agents/utils/toolIconSource.ts
+  s_10a3eb2b15615a::t_96ea36312a14b8 8
+  s_10a3eb2b15615a::t_2ee70f19397d90 1-7,9-11
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.test.ts
+  s_10a3eb2b15615a::t_b2368753fff09a 1-41,44-50,53-57,59-62,64-67,69-78,80-103,105-228
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_10a3eb2b15615a::t_496376d81542fd 1-2,4-7,12,14-15,20,27,37-38,67,69-74,76-77,79-81,83-87,89,91,94,99,107,120,124-127,130,133,146-152,155-157,159-162,165-168,171,173-174,176-178,190,195-196,198-200,219,221-222,224-225,240-242,244
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.ts
+  s_10a3eb2b15615a::t_3a7f296455d162 1-2,4-11,13-20,22-24,26-27,30-33,36-37,40-41,44-45,48-49,52-53,56-64,67-75,78-116,118-134,136-139
+  s_10a3eb2b15615a::t_5fc0080ef1aba6 140
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_10a3eb2b15615a::t_5f3d4321ac463f 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0b4f30522dd41bd9406cd6e42db8f67c5d85668e",
+  "prompts": {},
+  "sessions": {
+    "s_10a3eb2b15615a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0c75aae5-3128-4f04-9fa2-3cb4ecf8bf79",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

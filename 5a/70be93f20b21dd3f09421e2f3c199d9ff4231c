@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/execution-log/agent-execution-log-store.ts
+  s_55a4fb51b64e96::t_dba0cc598a7743 40-48
+  s_55a4fb51b64e96::t_90bbeb95b7fa98 37-38
+packages/cli/src/modules/agents/execution-log/__tests__/agent-execution-log-store.test.ts
+  s_55a4fb51b64e96::t_9127eadfacbc1b 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5a70be93f20b21dd3f09421e2f3c199d9ff4231c",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_55a4fb51b64e96": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4e71fe59-4e61-4c1f-a4e1-c8a5774572a5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

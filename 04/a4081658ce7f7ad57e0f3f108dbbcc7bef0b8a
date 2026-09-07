@@ -1,0 +1,27 @@
+packages/@n8n/engine/src/auth/index.ts
+  s_eda1948fcdabb8::t_d39f0d44ddc30a 3-11
+packages/@n8n/engine/src/auth/callback-token.ts
+  s_eda1948fcdabb8::t_d39f0d44ddc30a 1-64
+packages/@n8n/engine/src/auth/shared-secret-token.ts
+  s_eda1948fcdabb8::t_13d69ec8dfb4f1 1-72
+packages/@n8n/engine/src/auth/identity-token.ts
+  s_eda1948fcdabb8::t_463addecaa5e21 4-9,15-22,36-38,51-59
+packages/@n8n/engine/src/auth/__tests__/callback-token.test.ts
+  s_eda1948fcdabb8::t_2235dd67cfe403 1-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "04a4081658ce7f7ad57e0f3f108dbbcc7bef0b8a",
+  "prompts": {},
+  "sessions": {
+    "s_eda1948fcdabb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f08a0677-fc8d-48bd-92e6-ce1c9bc1cd53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

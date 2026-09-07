@@ -1,0 +1,19 @@
+packages/core/src/execution-engine/workflow-execute.ts
+  s_38917afc780a63::t_d5e30fb3839171 2131-2390,2701,2713
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "78936f3035e52fd3ed6835d7cbde1483a425a6fa",
+  "prompts": {},
+  "sessions": {
+    "s_38917afc780a63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e2e0d24-30d7-4d0a-a7a6-f022e6af4b83",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

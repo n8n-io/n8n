@@ -1,0 +1,60 @@
+packages/@n8n/ai-utilities/src/model-discovery/types.ts
+  s_70fb4223a7d1db::t_e1e4237bf0dbb8 1-22
+packages/cli/src/modules/agents/builder/interactive/llm-provider-defaults.ts
+  s_70fb4223a7d1db::t_cf54647e217605 13-15,62-65
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_70fb4223a7d1db::t_4676ecfad4cc0d 52,58
+  s_70fb4223a7d1db::t_093b41650eef4a 3,7,13
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_70fb4223a7d1db::t_6bc3ddbb9835e6 14-15,17
+  s_70fb4223a7d1db::t_e3621ebf9bef19 6-7,9
+  s_70fb4223a7d1db::t_16db8bad9c95dd 35-37
+  s_70fb4223a7d1db::t_a480d550457345 56,58,68-69
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_70fb4223a7d1db::t_08294236b3fa67 674,680
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_70fb4223a7d1db::t_ca6b9679fecba2 1-65
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_70fb4223a7d1db::t_8903914ececa0a 1-2,5
+  s_70fb4223a7d1db::t_93145dc22fc73a 10-12,20-25,28-29,31-37,41-44,46-54,56,62-66,70,72,75,77,81-84,87,89
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_70fb4223a7d1db::t_29dbd8d26bc053 83
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/__tests__/loadModels.test.ts
+  s_70fb4223a7d1db::t_b61ea693f45f7a 2,6-26,30,40-44,46,50,57-58,60,63,66,71,74,84,91-92,117,140,150-151,153
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/loadModels.ts
+  s_70fb4223a7d1db::t_ded3d14784314a 2,19,21-23,25-31,35-37
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/__tests__/searchModels.test.ts
+  s_70fb4223a7d1db::t_c84d72539393f8 4-37,41,45,47-54,58,66-74,80-82,86,91-93,97
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/searchModels.ts
+  s_70fb4223a7d1db::t_edcb31fbeceae8 1-3,9,12-21,25-27
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_70fb4223a7d1db::t_9c7857785b65ab 25
+  s_70fb4223a7d1db::t_560f84e8e2f69e 1
+  s_70fb4223a7d1db::t_e563ae4663bd53 5,7,9,12-15,17-18,24,29-32,39,45-46,50-52,54,56-60,62-67
+  s_70fb4223a7d1db::t_36d09af22cfb1e 68
+packages/@n8n/ai-utilities/src/model-discovery/providers.ts
+  s_70fb4223a7d1db::t_1c14c0f1318937 1-220
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/model-discovery.test.ts
+  s_70fb4223a7d1db::t_0d2acdc9cd8b79 1-227
+packages/@n8n/ai-utilities/package.json
+  s_70fb4223a7d1db::t_b27c8a0a988380 27-29
+  s_70fb4223a7d1db::t_aa250c06dc1b0e 69-73
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_70fb4223a7d1db::t_fba710065f7e02 168,192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bc04a3fa207cdfc67e340305751997a6b289da8c",
+  "prompts": {},
+  "sessions": {
+    "s_70fb4223a7d1db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf21fcf-13a0-4245-8181-bb4439b4ca9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

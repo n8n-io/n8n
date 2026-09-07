@@ -1,0 +1,14 @@
+packages/@n8n/db/src/repositories/workflow-review-activity.repository.ts
+  h_32d8cd6a0d6aad 9,18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "76bc78602355e69fdd29662884fcae5baeff3db8",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

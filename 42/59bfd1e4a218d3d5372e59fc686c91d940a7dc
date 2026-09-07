@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/workflows/templates/components/SetupWorkflowCredentialsButton.test.ts
+  s_f8cd60d4a1b6c3::t_337db87afb964e 133,147
+  s_f8cd60d4a1b6c3::t_c13991a731719e 159,173
+  s_f8cd60d4a1b6c3::t_7b30e2bb47d26e 255-304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4259bfd1e4a218d3d5372e59fc686c91d940a7dc",
+  "prompts": {},
+  "sessions": {
+    "s_f8cd60d4a1b6c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23c14491-d279-4976-ac2a-775a467aacf6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

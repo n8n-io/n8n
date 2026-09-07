@@ -1,0 +1,24 @@
+packages/cli/src/credentials-overwrites.ts
+  s_b3c126100e1212::t_5e5657c5faa5d0 166-172,176,186-189
+  s_b3c126100e1212::t_18ee1d5f501cd7 190-191
+packages/cli/src/__tests__/credentials-overwrites.test.ts
+  s_b3c126100e1212::t_60b9eed4bad240 198-261,267
+  s_b3c126100e1212::t_df0adb0818bb94 16-25,262
+  s_b3c126100e1212::t_40872097e75256 263-266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "974c09afda714a82627d7d7d3f6e01011569ebd4",
+  "prompts": {},
+  "sessions": {
+    "s_b3c126100e1212": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6215689f-cd40-4932-9953-894aebafa1bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

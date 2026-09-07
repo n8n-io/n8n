@@ -1,0 +1,23 @@
+packages/@n8n/eslint-config/src/rules/no-aws-credential-discovery-imports.ts
+  s_4c9018992022bf::t_68a79a28eebb15 55-59,61-65
+packages/@n8n/eslint-config/src/rules/no-aws-credential-discovery-imports.test.ts
+  s_4c9018992022bf::t_1d46edb4db789d 167-203
+  s_4c9018992022bf::t_27efc4550f7e69 23
+  s_4c9018992022bf::t_8eefed31a03db9 24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "6c628f26cbaa6ae90c804aa0ae161712d5ed146e",
+  "prompts": {},
+  "sessions": {
+    "s_4c9018992022bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2e73215-528d-402b-98e1-c147c0745f14",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

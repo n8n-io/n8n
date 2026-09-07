@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/experiments/trialIntroModal/components/TrialIntroModal.test.ts
+  s_93bfa2eb2d7de3::t_6d36aafd2e3932 71
+packages/frontend/@n8n/rest-api-client/src/api/cloudPlans.ts
+  s_93bfa2eb2d7de3::t_33cb9ccfe0a8b8 60,64
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.ts
+  s_93bfa2eb2d7de3::t_c131d7eeea922a 46,48
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.test.ts
+  s_93bfa2eb2d7de3::t_d2655fd0cd599f 206,212-214,223,239-241
+  s_93bfa2eb2d7de3::t_ec24a0ce85b3d3 320-322,324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e991d6899e13d659095e42d996ecdc21534e1e56",
+  "prompts": {},
+  "sessions": {
+    "s_93bfa2eb2d7de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d8eb2b-ca0b-4614-a078-4e0fa184fa9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

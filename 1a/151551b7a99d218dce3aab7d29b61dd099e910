@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/utils/agent-execution/test/buildSteps.test.ts
+  s_d12a4963d5575f::t_006aa6ad4ac66d 1432-1435
+packages/@n8n/nodes-langchain/utils/agent-execution/buildSteps.ts
+  s_d12a4963d5575f::t_6a820f7b51f318 245-246
+  s_d12a4963d5575f::t_0f1f2d2261bd1d 283-284
+  s_d12a4963d5575f::t_451bf3a2efc055 185-188,192-193,199,201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1a151551b7a99d218dce3aab7d29b61dd099e910",
+  "prompts": {},
+  "sessions": {
+    "s_d12a4963d5575f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ae10543-5fa6-4f42-afbc-1421277b0d70",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

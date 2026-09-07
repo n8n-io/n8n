@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/load-test/FINDINGS.md
+  s_7b60e47ccd00ff::t_b82349c993706a 31-36,141-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "089b99d607098c9fc04bdc9433f98bd9cdc52ef1",
+  "prompts": {},
+  "sessions": {
+    "s_7b60e47ccd00ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ca0d84-6d2f-4757-b10a-eee5514b3f2b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

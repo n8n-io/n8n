@@ -1,0 +1,19 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_da50d216d2d35b::t_56eafff4551555 365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f3206a127e42db634e1fcceaccb088c85236a5c5",
+  "prompts": {},
+  "sessions": {
+    "s_da50d216d2d35b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba8122a-2ccb-4437-8515-49cc17c28022",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

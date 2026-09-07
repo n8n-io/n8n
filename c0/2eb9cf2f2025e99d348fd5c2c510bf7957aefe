@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_015232f2db3e42::t_8ec6d63c04a572 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c02eb9cf2f2025e99d348fd5c2c510bf7957aefe",
+  "prompts": {},
+  "sessions": {
+    "s_015232f2db3e42": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff028-39c8-7de3-89b1-ce6a7855fc67",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

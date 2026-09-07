@@ -1,0 +1,35 @@
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_9710156a5211bb::t_a34424d917c4a1 40-42
+  s_9710156a5211bb::t_679609817afe0c 2295-2297
+packages/@n8n/ai-utilities/src/node-catalog/index.ts
+  s_9710156a5211bb::t_eee21706535089 64-65,69
+packages/@n8n/ai-utilities/src/node-catalog/dynamic-node-parameters.ts
+  s_9710156a5211bb::t_28cb4d5102171a 218-311
+packages/cli/src/modules/agents/builder/get-resource-locator-options.tool.ts
+  s_9710156a5211bb::t_247807bf16b1e2 241
+  s_9710156a5211bb::t_259970c5d980fb 219
+  s_9710156a5211bb::t_252e9165f568c8 5,8
+  s_9710156a5211bb::t_f52e06f49f8397 194
+  s_9710156a5211bb::t_03b83eb3f2d837 139-157
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/dynamic-node-parameters.test.ts
+  s_9710156a5211bb::t_3573f5f9a4b83d 196-237,239-282
+  s_9710156a5211bb::t_0f83169476b749 5-6,10
+packages/cli/src/modules/agents/builder/__tests__/get-resource-locator-options.tool.test.ts
+  s_9710156a5211bb::t_0a13e68063b58a 227-377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "2d2c7ac9889a2821ba6bcfdd16ac3de8706c9f93",
+  "prompts": {},
+  "sessions": {
+    "s_9710156a5211bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be9d90ae-1dbf-463b-8deb-ab8ea36b79c3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

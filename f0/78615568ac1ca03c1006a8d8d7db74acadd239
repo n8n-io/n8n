@@ -1,0 +1,42 @@
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_9d040596fc02f2::t_8070a206cd78b5 114
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_9d040596fc02f2::t_2d1f702f413d90 9
+packages/frontend/@n8n/design-system/package.json
+  s_9d040596fc02f2::t_4e359b1ff68eb1 48
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.legacy.scss
+  s_9d040596fc02f2::t_43132cf8674b07 14-18,22
+  s_9d040596fc02f2::t_1da4e9d43c4e67 39
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelLinearSetup.vue
+  s_9d040596fc02f2::t_d9f3185760f37b 3
+packages/frontend/@n8n/design-system/src/css/globalSelectorPlacement.test.ts
+  s_9d040596fc02f2::t_24d44252c58768 23-27
+  s_9d040596fc02f2::t_4e0490bf115804 1
+  s_9d040596fc02f2::t_6facd302662e53 16-22
+  s_9d040596fc02f2::t_f8a8ca8b680c0b 39
+  s_9d040596fc02f2::t_1045cb8bf2944d 2,13,28-30,37,51
+  s_9d040596fc02f2::t_c40b13404e36fd 3-12,14-15,31-35,38,40-48,52-55
+  s_9d040596fc02f2::t_84a61c5d4975e9 50
+  s_9d040596fc02f2::t_5b7b1927fe3a26 36
+  s_9d040596fc02f2::t_1102741870a6ce 49
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelTelegramSetup.vue
+  s_9d040596fc02f2::t_a809e3014f3e85 3
+pnpm-lock.yaml
+  s_9d040596fc02f2::t_d483e59b073a7e 5266-5268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f078615568ac1ca03c1006a8d8d7db74acadd239",
+  "prompts": {},
+  "sessions": {
+    "s_9d040596fc02f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2860dcb-43e6-4732-8232-7e90f576a2f4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

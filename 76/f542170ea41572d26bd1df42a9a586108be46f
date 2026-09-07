@@ -1,0 +1,19 @@
+packages/workflow/src/expression.ts
+  s_e14f7879d8d2fd::t_6871857c7595de 645-655
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "76f542170ea41572d26bd1df42a9a586108be46f",
+  "prompts": {},
+  "sessions": {
+    "s_e14f7879d8d2fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_e14f7879d8d2fd",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

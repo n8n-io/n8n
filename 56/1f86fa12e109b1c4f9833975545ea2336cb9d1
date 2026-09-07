@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/package.json
+  s_37d03c03fcebb7::t_77ae58f1c81209 5-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "561f86fa12e109b1c4f9833975545ea2336cb9d1",
+  "prompts": {},
+  "sessions": {
+    "s_37d03c03fcebb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "956a85b0-5273-4433-a406-0600c86aaf94",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

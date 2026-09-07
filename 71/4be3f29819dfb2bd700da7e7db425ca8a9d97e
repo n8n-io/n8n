@@ -1,0 +1,35 @@
+packages/nodes-base/credentials/MicrosoftServicePrincipalOAuth2Api.credentials.ts
+  5268ddb42c9aefee 1-83
+packages/nodes-base/credentials/MicrosoftSharePointServicePrincipalApi.credentials.ts
+  5268ddb42c9aefee 1-39
+packages/nodes-base/credentials/MicrosoftTeamsServicePrincipalApi.credentials.ts
+  5268ddb42c9aefee 1-20
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  5268ddb42c9aefee 81-83
+packages/nodes-base/package.json
+  5268ddb42c9aefee 246,248-249,252
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/getAll.operation.ts
+  5268ddb42c9aefee 2,57-64
+packages/nodes-base/credentials/MicrosoftOutlookServicePrincipalApi.credentials.ts
+  5268ddb42c9aefee 1-25,27-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "714be3f29819dfb2bd700da7e7db425ca8a9d97e",
+  "prompts": {
+    "5268ddb42c9aefee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "500488ab-f4a8-4f6c-8068-12774f8b8e75",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 1551,
+      "total_deletions": 49,
+      "accepted_lines": 1481,
+      "overriden_lines": 7
+    }
+  }
+}

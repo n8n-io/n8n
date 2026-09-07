@@ -1,0 +1,25 @@
+packages/cli/src/active-workflow-manager.ts
+  h_32d8cd6a0d6aad 1016-1024,1027
+  s_01044751aa0537::t_04246c2d2269dc 1015
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b5327c40672dd712cb112dd6a2c9ef5b707617a6",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_01044751aa0537": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d300cf9e-2a92-4984-b3ba-dc51389b2842",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

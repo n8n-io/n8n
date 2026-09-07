@@ -1,0 +1,24 @@
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_9710156a5211bb::t_a5ab157f832113 39
+  s_9710156a5211bb::t_e999b70b3c3e51 78-80
+  s_9710156a5211bb::t_b1fe7d43aed69e 2662-2716
+packages/cli/src/modules/agents/builder/get-resource-locator-options.tool.ts
+  s_9710156a5211bb::t_86c0ca466ce881 155
+  s_9710156a5211bb::t_a72de21c6ce9cb 197-213,219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "f16375b4ac687849a8d283ffacb72bb750d49f47",
+  "prompts": {},
+  "sessions": {
+    "s_9710156a5211bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be9d90ae-1dbf-463b-8deb-ab8ea36b79c3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

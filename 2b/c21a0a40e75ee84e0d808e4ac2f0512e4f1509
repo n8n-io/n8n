@@ -1,0 +1,47 @@
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/configure-channel.tool.test.ts
+  s_81a7b3dfd1f412::t_b97a583b1abf3a 7-12,17-19,79-90
+  s_81a7b3dfd1f412::t_af7443ad04db0a 91-92
+packages/@n8n/instance-ai/skills/agent-builder/references/integrations.md
+  s_81a7b3dfd1f412::t_93f337ec71c57c 44-46,50-52,54-55,70-71,82
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_81a7b3dfd1f412::t_0db5a60b133c2d 42,48,195,329
+packages/@n8n/instance-ai/docs/tools.md
+  s_81a7b3dfd1f412::t_0cdd0638bf4b26 716,725-729
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelSlackSetup.test.ts
+  s_81a7b3dfd1f412::t_5bd4e748bc215c 1-18,26-35,37-60
+  s_81a7b3dfd1f412::t_e7387c4654ef16 19-25,36
+packages/@n8n/instance-ai/src/tools/agent-builder/configure-channel.tool.ts
+  s_81a7b3dfd1f412::t_6ad10c7bbdb6c0 3,33,43-51,78-98
+  s_81a7b3dfd1f412::t_6ad47ef58f71a3 7-11,76
+  s_81a7b3dfd1f412::t_d071e7a89208dd 70
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiChannelSetup.test.ts
+  s_81a7b3dfd1f412::t_9fb70b31e0ffa5 138,165,182,185,188,190-194,197,202,205,208-210,219,222,224,228,232,234-236,238,242,244,247,249
+  s_81a7b3dfd1f412::t_c7bce4c59e85b7 124-129,199,204,207
+  s_81a7b3dfd1f412::t_19f992e4bce911 1-2,5,9-87,90-95,98-100,102-111,115-116,118-123,130-131,148-152,155-157,160,164,166-168,170-172,174-179
+  s_81a7b3dfd1f412::t_e5f1160c49ce8c 113,117,169
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiChannelSetup.vue
+  s_81a7b3dfd1f412::t_a7fc7aa514a214 2-13,15-20,22,33-48,50-52,54-57,60,62-126,133,146-148,150-154,157-228,230-278,293,300-314,321-349,353-385,387-459,461-494
+  s_81a7b3dfd1f412::t_20619a709d2d51 281-292,294-299
+  s_81a7b3dfd1f412::t_4d3164882fa1ba 14,21
+  s_81a7b3dfd1f412::t_792ae49d7ec796 315-320
+  s_81a7b3dfd1f412::t_440b3c7bf0ffa5 386
+  s_81a7b3dfd1f412::t_4f86a6bb9cd008 61,127-130,145,149,155-156,279-280
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_81a7b3dfd1f412::t_29ca3d2924e144 37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2bc21a0a40e75ee84e0d808e4ac2f0512e4f1509",
+  "prompts": {},
+  "sessions": {
+    "s_81a7b3dfd1f412": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f423b-0e52-7c21-be92-8fde7fd2b611",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

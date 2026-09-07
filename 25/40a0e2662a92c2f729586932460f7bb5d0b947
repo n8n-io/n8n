@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/agents/composables/agentChatMessages.ts
+  s_8dc574772799b2::t_56cc68653b4e1a 9-11,16-17
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_8dc574772799b2::t_9149fafd1f4cd1 8,117
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_8dc574772799b2::t_0dd1d402588c1f 204-243
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_8dc574772799b2::t_58668a36bf3c8b 35-36,45-93,97-105,277,286,289,296-298,322-324
+  s_8dc574772799b2::t_29de892626c04e 94-96
+  s_8dc574772799b2::t_f61258666d8c3a 320-321,325
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_8dc574772799b2::t_1e68d952ccf4a6 331-333,511
+  s_8dc574772799b2::t_65c77d97676e09 10,77-80,515-517,520
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_8dc574772799b2::t_bef1a64fb17497 22-23,28,31,358-363,405,604,613-616,619,631,668-674,682-683,686-687
+  s_8dc574772799b2::t_496e9e3c64a3fc 24,216-223,364,633
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_8dc574772799b2::t_762db2627f97f5 7,195-251,495-529
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_8dc574772799b2::t_4cc1e224dca4c1 846-927
+  s_8dc574772799b2::t_57ef15273e8349 779-845
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_8dc574772799b2::t_8259f243d9dacf 113
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_8dc574772799b2::t_69465fc6c46836 13,88-90
+  s_8dc574772799b2::t_c932fae7bc091a 2,84,86-87,91-97,112-115,123,140-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "2540a0e2662a92c2f729586932460f7bb5d0b947",
+  "prompts": {},
+  "sessions": {
+    "s_8dc574772799b2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ebad8-8ad9-7cf2-a034-cff73636a6b4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

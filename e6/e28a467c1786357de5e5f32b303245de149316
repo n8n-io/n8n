@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_181b9e3693008d::t_d85a8ff09acbd6 272,306
+packages/frontend/editor-ui/src/features/ai/components/CredentialSelectorModal.vue
+  s_181b9e3693008d::t_d85a8ff09acbd6 26,106,135
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryPanel.test.ts
+  s_181b9e3693008d::t_24cef164638cc9 168
+  s_181b9e3693008d::t_22711238496644 49,172-179
+  s_181b9e3693008d::t_6b5f0fda58f601 59-67
+  s_181b9e3693008d::t_0101b81ff2a347 180-181
+packages/frontend/editor-ui/src/features/credentials/components/CredentialPicker/CredentialPicker.vue
+  s_181b9e3693008d::t_d85a8ff09acbd6 30,126-129,136-140
+packages/frontend/editor-ui/src/features/ai/components/CredentialSelectorModal.test.ts
+  s_181b9e3693008d::t_22711238496644 1-48
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_181b9e3693008d::t_22711238496644 138-141,151,234-244,264-281
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_181b9e3693008d::t_d85a8ff09acbd6 51,60,352-355,377
+packages/frontend/editor-ui/src/features/credentials/components/CredentialPicker/CredentialPicker.test.ts
+  s_181b9e3693008d::t_22711238496644 3-5,33,43-46,123-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e6e28a467c1786357de5e5f32b303245de149316",
+  "prompts": {},
+  "sessions": {
+    "s_181b9e3693008d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7f2c-4745-7b31-8408-353b51f1200a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

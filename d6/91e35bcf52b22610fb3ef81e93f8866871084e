@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_f019419fbecb2c::t_1fcd65df6cdcef 143,350
+  s_f019419fbecb2c::t_ebc4d518543422 67-70,72,79
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/build-exported-agent-json.test.ts
+  s_f019419fbecb2c::t_e620f50fd26918 1-22,24-27,31-95
+  s_f019419fbecb2c::t_20c825e69e04f5 23,28-30
+packages/cli/src/modules/agents/__tests__/agent-config-import-repro.test.ts
+  s_f019419fbecb2c::t_715c9a298bfec0 186-188,191,199-206,223-225,229-231
+  s_f019419fbecb2c::t_4c22c6345f4d5e 210,226-228
+packages/frontend/editor-ui/src/features/agents/utils/build-exported-agent-json.ts
+  ai_agent 46,63
+  s_f019419fbecb2c::t_6c1fd0bea92c14 1-45,47-62,64-72
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f019419fbecb2c::t_862788901e4871 7277
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_f019419fbecb2c::t_fee711fe933a03 13,28,37
+  s_f019419fbecb2c::t_48fc8b8ef84d1c 1186-1204
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_f019419fbecb2c::t_5fea5d172a936e 1039-1042,1053-1054,1057
+  s_f019419fbecb2c::t_a2d4f99d319bf6 814-818,829,832-833,836-841
+  s_f019419fbecb2c::t_e330728a5afec9 928-930,942-943,946
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d691e35bcf52b22610fb3ef81e93f8866871084e",
+  "prompts": {},
+  "sessions": {
+    "s_f019419fbecb2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a42e06b0-e319-474d-a003-d3f5ee778b5f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

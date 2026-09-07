@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_9e2d31a67edd19::t_9188a41f1c7331 104-113,122
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_9e2d31a67edd19::t_d453bb481508bc 88-100
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_9e2d31a67edd19::t_05a64c24d2e604 271
+  s_9e2d31a67edd19::t_ef79e1e1c08176 71-80,84,97
+  h_7555c3ee6524cf 68
+  s_9e2d31a67edd19::t_5409ac66513c21 115-116,120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bba214c2762cfa38590034ce2d31667673bd88c3",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9e2d31a67edd19": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e8c6b2a4-44ca-4045-83a2-6b241d171ea0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

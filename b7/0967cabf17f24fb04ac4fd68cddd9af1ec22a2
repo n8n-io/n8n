@@ -1,0 +1,29 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer.ts
+  s_601386f61562ab::t_f8417045169eaa 302,304-308
+  h_32d8cd6a0d6aad 303
+packages/cli/src/scaling/scaling.service.ts
+  h_32d8cd6a0d6aad 485,492
+  ai_agent 491
+  s_601386f61562ab::t_623be59e073c2d 483-484,486-488,493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b70967cabf17f24fb04ac4fd68cddd9af1ec22a2",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_601386f61562ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e77ca6f-9f18-4274-b1fe-9d4733d3ed88",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/core/src/binary-data/blob.manager.ts
+  s_8c0bb2d06aee91::t_aff0dcb00c3302 2,80
+packages/core/src/binary-data/binary-data.service.ts
+  s_8c0bb2d06aee91::t_aff0dcb00c3302 45
+packages/cli/src/commands/base-command.ts
+  s_8c0bb2d06aee91::t_4737302ced9456 364,379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6bb55c9e84a10fa7e34cd932806cfd02799501f4",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

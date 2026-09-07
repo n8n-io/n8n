@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_2dc92388c36e82::t_3344a66f5b33fb 163,169,171
+  s_2dc92388c36e82::t_3fd90eac9f2a7b 172-174
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_2dc92388c36e82::t_729bbf156ec9f8 32-33,372
+  s_2dc92388c36e82::t_1c2b3a392b57ec 79-80,90-110,217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "33749497c03c9ce8a9ea8dd34f240aa46974512d",
+  "prompts": {},
+  "sessions": {
+    "s_2dc92388c36e82": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7034-d330-7252-8802-3103531538f9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

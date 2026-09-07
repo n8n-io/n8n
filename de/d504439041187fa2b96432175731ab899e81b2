@@ -1,0 +1,78 @@
+packages/@n8n/db/src/repositories/test-case-execution.repository.ee.ts
+  s_16a3de3184a4ea::t_0b88a0b392df36 49,54-55
+packages/@n8n/db/src/repositories/test-run.repository.ee.ts
+  s_16a3de3184a4ea::t_53ba6b6faea4df 157
+  s_16a3de3184a4ea::t_e54c7e36b76cf4 154-156,158-162
+  s_16a3de3184a4ea::t_19563d8a794227 9
+  s_16a3de3184a4ea::t_b455902a288ce2 101-105,117-119
+  s_16a3de3184a4ea::t_567429a1e23265 153
+.agents/skills/public-api/reference.md
+  s_16a3de3184a4ea::t_c3639d1ba89195 24-26
+packages/cli/src/evaluation.ee/test-runs.controller.ee.ts
+  h_ed1b2d65e81e8e 13-14
+  s_16a3de3184a4ea::t_e6088b82f6305d 116-119
+packages/cli/src/evaluation.ee/__tests__/test-runs.controller.ee.test.ts
+  s_16a3de3184a4ea::t_6e2094ab7e897c 137-140
+packages/cli/src/public-api/v1/handlers/evaluations/evaluations.handler.ts
+  s_16a3de3184a4ea::t_08dd70cd4b76ca 92-96,98
+  s_16a3de3184a4ea::t_1c807a3b684d5a 50
+  s_16a3de3184a4ea::t_e1830fa50d5d16 20,48-49,51-52,160-163
+  h_ed1b2d65e81e8e 23
+  s_16a3de3184a4ea::t_ce5c69959aae14 131
+  s_16a3de3184a4ea::t_ff670b3b17c248 68
+  s_16a3de3184a4ea::t_fff49413818139 91
+  s_16a3de3184a4ea::t_43ea9db3405353 17-19
+  s_16a3de3184a4ea::t_b8054838c3ef76 21-22
+packages/cli/src/evaluation.ee/__tests__/evaluation-test-run.service.test.ts
+  s_16a3de3184a4ea::t_b6eb142b1d3e1a 1-2,13-14,22,28-29,34,86-88,92-95,97,111-118,120-121,123-125,128-129,131,133-135
+  s_16a3de3184a4ea::t_999e337b056ee5 40-41
+  s_16a3de3184a4ea::t_5f205edbb983c1 60-62
+  s_16a3de3184a4ea::t_97fdf3e9a31d9c 3-12,15-21,23-27,30-33,35-39,42-45,47-49,51-57,59,63-64,67-70,72-84,96,98-100,102-103,106-110,119,122,126-127,130,132,136-138
+  s_16a3de3184a4ea::t_53ba6b6faea4df 66
+  s_16a3de3184a4ea::t_c2d27e4b32b9ea 89,91
+  s_16a3de3184a4ea::t_24f1871ff0921c 46
+  s_16a3de3184a4ea::t_52b1c8776f921f 58,65,71
+  s_16a3de3184a4ea::t_0c76c2d7fa8865 50
+  s_16a3de3184a4ea::t_028f6640af7c7b 85,90,101
+  s_16a3de3184a4ea::t_feec1ccd690aba 104-105
+.agents/skills/conventions/SKILL.md
+  s_16a3de3184a4ea::t_8447ce6b2b47b4 43
+.agents/skills/public-api/SKILL.md
+  s_16a3de3184a4ea::t_e4d81929498ade 46-50
+packages/@n8n/db/src/repositories/index.ts
+  s_16a3de3184a4ea::t_a0216410997741 68
+packages/cli/test/integration/test-run.repository.ee.test.ts
+  s_16a3de3184a4ea::t_9c5faa148aa534 25-43
+packages/cli/src/evaluation.ee/insights/insights-context-builder.ts
+  s_16a3de3184a4ea::t_e10e149f7e1cc4 188
+  s_16a3de3184a4ea::t_fd0c8f2794a483 246
+packages/cli/src/evaluation.ee/evaluation-test-run.service.ts
+  s_16a3de3184a4ea::t_1ffe8a8b4f5b30 9
+  s_16a3de3184a4ea::t_22b637df673f57 26
+  s_16a3de3184a4ea::t_bded74914d2ad6 5-6,10-20,22-23,25,27-31,33-35,37-39,45-51,68-69
+  s_16a3de3184a4ea::t_ef5a1c70fc0be2 32,40
+  s_16a3de3184a4ea::t_765cc90df423e4 1-2,7-8,21,41-44,52-67
+  s_16a3de3184a4ea::t_e68216fe532e62 3,24,36
+  s_16a3de3184a4ea::t_2c33a8ef928af7 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ded504439041187fa2b96432175731ab899e81b2",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_16a3de3184a4ea": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "540b3c53-a916-4d6c-9bdf-a6c4c09ecc85",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

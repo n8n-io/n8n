@@ -1,0 +1,38 @@
+packages/@n8n/workflow-sdk/src/codegen/code-generator.ts
+  s_f4f3f37a98d31a::t_746524e4ee5160 1356
+  s_f4f3f37a98d31a::t_b41d33fe430893 600
+  s_f4f3f37a98d31a::t_4950278e0e1257 59-64
+  s_f4f3f37a98d31a::t_ea583732a7aae1 124,314
+  s_f4f3f37a98d31a::t_df128f184dad8e 85
+  s_f4f3f37a98d31a::t_318ac2808a125b 442,637
+packages/@n8n/workflow-sdk/src/codegen/index.ts
+  s_f4f3f37a98d31a::t_da016633b38ae3 112,122
+  s_f4f3f37a98d31a::t_e135e0707babd7 157
+  s_f4f3f37a98d31a::t_96532d4d969554 51-52
+packages/@n8n/instance-ai/src/tools/workflows/summarize-workflow.ts
+  s_f4f3f37a98d31a::t_936cef988d394b 78-89
+packages/@n8n/workflow-sdk/src/codegen/emit-instance-ai.ts
+  s_f4f3f37a98d31a::t_3a70c237218332 25-27
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_f4f3f37a98d31a::t_ada1a749cac068 448-450
+packages/@n8n/workflow-sdk/src/codegen/index.test.ts
+  s_f4f3f37a98d31a::t_d326e5e3f1339d 39-69
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_f4f3f37a98d31a::t_e5b80cfcc58c1e 476-479
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "040910ef8a766fe27dfe5cfff1a427e92f390587",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

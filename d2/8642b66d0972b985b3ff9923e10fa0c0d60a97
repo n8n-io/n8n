@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_3f7c203a92c7cd::t_4cdcfff14a2c10 585,587-589,591-593,596-597,599-600,603-609,619,636-637,639-643,646-647,649-652,654-662,665
+  s_3f7c203a92c7cd::t_908a24ff318c21 163-165,167
+  s_3f7c203a92c7cd::t_77283fe4875c0f 10,12,16-18,28,37-41,160-162,181-182,193-200,211,221-223
+  s_3f7c203a92c7cd::t_c671235f21048b 584
+  s_3f7c203a92c7cd::t_19ffd1afdf5d0b 586,594-595,598,602,618,622-624,644-645,648,653,663-664
+  s_3f7c203a92c7cd::t_2321c1817a18b3 245,250
+  s_3f7c203a92c7cd::t_49799a48e61a85 590,601,610-617,620-621,625-635,638
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_3f7c203a92c7cd::t_24b7ab5a0d7796 178-179,181-183,185-186,188-191
+  s_3f7c203a92c7cd::t_b325ccb25c1cbb 94,104,180,184,187,192-193
+packages/@n8n/telemetry/src/events/agents.ts
+  s_3f7c203a92c7cd::t_0a397bab8c9984 536
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_3f7c203a92c7cd::t_d904066951d50e 18,445,456
+  s_3f7c203a92c7cd::t_a0221c635b3751 436,442
+  s_3f7c203a92c7cd::t_a604fa0bbd447e 5,10,13-17,23,25-26,95,97-99,108-121,437-441,443-444,446-455,457-479,731-732
+  s_3f7c203a92c7cd::t_e7dfb40567f413 736
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_3f7c203a92c7cd::t_38d1c067658c8c 340,357,414
+  s_3f7c203a92c7cd::t_8fbfd352691eff 37-38,44-45,61,333
+  s_3f7c203a92c7cd::t_254b18eef5e582 353
+  s_3f7c203a92c7cd::t_a5e75a40bd3286 332,334-339,341-352,354-356,413,415-454,456-457
+  s_3f7c203a92c7cd::t_a80ccf88c3609d 455
+  s_3f7c203a92c7cd::t_15603f28010df6 458
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3f7c203a92c7cd::t_fc5e8b5c60a82c 7477-7478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d28642b66d0972b985b3ff9923e10fa0c0d60a97",
+  "prompts": {},
+  "sessions": {
+    "s_3f7c203a92c7cd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2e06657-b349-4871-86f4-fefad9ee30ed",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

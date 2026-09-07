@@ -1,0 +1,23 @@
+packages/cli/src/controllers/security-settings.controller.ts
+  s_729d7ae0c0b1bf::t_eb992a242fc167 129-132
+  s_729d7ae0c0b1bf::t_0415d1708b380d 139,148
+  s_729d7ae0c0b1bf::t_fba246e864f7b1 103-106
+packages/cli/src/events/maps/relay.event-map.ts
+  s_729d7ae0c0b1bf::t_4cef092b225137 981-990
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "0598aecb5f948d40d4637da68ad484f0a64973d9",
+  "prompts": {},
+  "sessions": {
+    "s_729d7ae0c0b1bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f1728e2-404d-4a8d-bdcd-c2ed8b68255f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

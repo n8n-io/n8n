@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/tools/workflow-context-tool.ts
+  s_bb17b049fc2e2d::t_c50e8cab5bf8dc 96
+packages/cli/src/modules/agents/tools/agent-data-utils.ts
+  s_bb17b049fc2e2d::t_7db484650c32ae 50-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c76d675fae0614cf0e745b3eb95945cf0e2e5c2f",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/NodeCreatorNode.vue
+  s_3a323ce6ef5756::t_94198c26cdd3d2 92
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3a323ce6ef5756::t_cb251ae5969e8f 2168-2185
+packages/frontend/editor-ui/src/Interface.ts
+  s_3a323ce6ef5756::t_b204547bc60469 516,541-542
+packages/frontend/editor-ui/src/app/composables/useCalloutHelpers.test.ts
+  s_3a323ce6ef5756::t_e60f0c8753c7ee 4-7,9,182-209
+packages/frontend/editor-ui/src/app/composables/useCalloutHelpers.ts
+  s_3a323ce6ef5756::t_831c592e906351 20-21,113-125,143
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_3a323ce6ef5756::t_7d241fb250b84a 43
+packages/frontend/editor-ui/src/app/constants/nodeCreator.ts
+  s_3a323ce6ef5756::t_201cabc96a3895 35-36
+packages/frontend/editor-ui/src/app/constants/nodeTypes.ts
+  s_3a323ce6ef5756::t_04a7eb1b8d7149 52
+packages/frontend/editor-ui/src/features/ndv/runData/components/VirtualSchema.test.ts
+  s_3a323ce6ef5756::t_2c01f562115d7b 290,1337
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/NodeItem.test.ts
+  s_3a323ce6ef5756::t_cc5d6482477d5b 10,14,130-166
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/NodeItem.vue
+  s_3a323ce6ef5756::t_7800db6de8717c 17,49,195-206,279-292,381-409
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/ViewItem.vue
+  s_3a323ce6ef5756::t_c56382ada3e48a 22-28
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/NodesMode.test.ts
+  s_3a323ce6ef5756::t_128fbecd6072a5 7-11,13,15-16,19-23,68,123-213
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/NodesMode.vue
+  s_3a323ce6ef5756::t_63620b1c04132a 20-21,33,35,66-67,70-71,120-122,237-260,295-306
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.test.ts
+  s_3a323ce6ef5756::t_1526a59b60fb49 10-14,51-55,99
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useViewStacks.ts
+  s_3a323ce6ef5756::t_f0268b21d6129b 100-101,334-335
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_3a323ce6ef5756::t_20d00ad9734698 13,31,35,39,53-57,648-716
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeFavorites.store.test.ts
+  s_3a323ce6ef5756::t_1bb66584da3314 1-53
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeFavorites.store.ts
+  s_3a323ce6ef5756::t_7d87e507100a31 1-50
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.test.ts
+  s_3a323ce6ef5756::t_8ef872c76df7b1 7,9,14,16,18,23-31,82,84-85,111-175,181-187
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.ts
+  s_3a323ce6ef5756::t_436842342ec886 65-69,80-85,229,279,395-402,427,519,669-671
+packages/frontend/editor-ui/src/features/workflows/templates/utils/samples/starter/gmail.json
+  s_3a323ce6ef5756::t_adc1fd19d4a43d 1-48
+packages/frontend/editor-ui/src/features/workflows/templates/utils/samples/starter/http_request.json
+  s_3a323ce6ef5756::t_38296b0e05f7e7 1-61
+packages/frontend/editor-ui/src/features/workflows/templates/utils/samples/starter/if.json
+  s_3a323ce6ef5756::t_075c45a063b25a 1-118
+packages/frontend/editor-ui/src/features/workflows/templates/utils/samples/starter/loop.json
+  s_3a323ce6ef5756::t_03483f8eb572eb 1-121
+packages/frontend/editor-ui/src/features/workflows/templates/utils/samples/starter/slack.json
+  s_3a323ce6ef5756::t_5d8d32efe112f4 1-52
+packages/frontend/editor-ui/src/features/workflows/templates/utils/samples/starter/telegram.json
+  s_3a323ce6ef5756::t_5c21e18e7aebee 1-50
+packages/frontend/editor-ui/src/features/workflows/templates/utils/workflowSamples.ts
+  s_3a323ce6ef5756::t_3e41b79dee5dd9 7-12,41-89,155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f2fb2b6c1851cd8d2e2904cd1a3e80cac563eca0",
+  "prompts": {},
+  "sessions": {
+    "s_3a323ce6ef5756": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b280cc7-2aa7-411b-b755-f5d92f9ab557",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/@n8n/scheduler/README.md
+  s_fe9a3943d0f2e6::t_8b834fc0921468 183,194-195,197,199,205,213,216
+packages/@n8n/scheduler/src/core/materializer/__tests__/materialize.test.ts
+  s_fe9a3943d0f2e6::t_c4e5cb324fefa5 435
+  s_fe9a3943d0f2e6::t_8848a72144037a 498
+  s_fe9a3943d0f2e6::t_d92e73c68e6fa5 542
+packages/@n8n/scheduler/src/core/types/schedule.ts
+  s_fe9a3943d0f2e6::t_08b8b13c68b97a 95-97
+packages/@n8n/scheduler/src/core/materializer/coalesce-group.ts
+  s_fe9a3943d0f2e6::t_950296bd655a35 7,10-22,24-25,27,31-32,34,37-44,46-54,56,60-62,66-73
+packages/@n8n/scheduler/src/core/materializer/__tests__/coalesce-group.test.ts
+  s_fe9a3943d0f2e6::t_250d942bcaf5a1 4,44,49,51-52,64,66-68,71-73,76-77,79-81,83-85,88-89,93,97,108-110,114-115,118,121,129-130,132,135-137,147,153-154,157,170,187,195,199,205-207,209-210,213,219,232,244,250,261,272,279,281-283,286,294,306,308,313,316-317,323-324,327-328,334,339
+packages/@n8n/db/src/migrations/common/1785844235369-AddCoalesceOwnerMisfirePolicy.ts
+  s_fe9a3943d0f2e6::t_3c79a4c3cfac67 20
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_fe9a3943d0f2e6::t_61e2de62fe90ef 263
+packages/@n8n/scheduler/src/core/materializer/materialize.ts
+  s_fe9a3943d0f2e6::t_12e9ab5e8def6e 4
+  s_fe9a3943d0f2e6::t_1bb8029e192415 124
+  s_fe9a3943d0f2e6::t_750e56b139fe97 175-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f74c8625d6fb0dbb4aeeee0681af7a9d5171ad3d",
+  "prompts": {},
+  "sessions": {
+    "s_fe9a3943d0f2e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1e14d79-f852-41aa-add2-179a27fe001d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

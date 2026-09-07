@@ -1,0 +1,21 @@
+packages/frontend/@n8n/design-system/package.json
+  s_18c69891c30881::t_747d8c64785b5f 25
+pnpm-lock.yaml
+  s_18c69891c30881::t_c4d615626c852b 5214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5b644d2169e02cd1580cd57d7617a4786dd5f49c",
+  "prompts": {},
+  "sessions": {
+    "s_18c69891c30881": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_18c69891c30881",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

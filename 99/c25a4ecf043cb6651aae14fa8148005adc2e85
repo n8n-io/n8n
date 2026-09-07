@@ -1,0 +1,51 @@
+packages/@n8n/node-engine-compatibility/src/__tests__/m1-acceptance.integration.test.ts
+  s_e703c6b9d80e15::t_5265a22a05bf1a 79-107
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_e703c6b9d80e15::t_29a41840f52e57 4973-5062
+  s_e703c6b9d80e15::t_ae7c1c1f71ea65 45
+  s_e703c6b9d80e15::t_86f3d211e7af13 51
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_e703c6b9d80e15::t_45b8bdf8d46984 137-139
+  s_e703c6b9d80e15::t_9bb1773d30b6ca 1-136,140-144
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_e703c6b9d80e15::t_4531eb8818f880 274-324
+  s_e703c6b9d80e15::t_fb6ae94c33fdc4 41
+packages/cli/src/workflow-runner.ts
+  s_e703c6b9d80e15::t_49c15db819bb6e 251-256
+  s_e703c6b9d80e15::t_47df55c5ecb746 97
+  s_e703c6b9d80e15::t_2ed9bba78fbb27 55
+packages/@n8n/node-engine-compatibility/src/index.ts
+  s_e703c6b9d80e15::t_b4c05e0f035438 4
+packages/@n8n/node-engine-compatibility/src/__tests__/acceptance-fixtures.ts
+  s_e703c6b9d80e15::t_906bfb67d07fde 92-96
+  s_e703c6b9d80e15::t_066bab6c8c53dd 3
+  s_e703c6b9d80e15::t_7fc95aed8b3115 128
+packages/cli/src/services/__tests__/engine-data-plane-proxy.service.test.ts
+  s_e703c6b9d80e15::t_8945c57452024c 20-27
+packages/cli/src/services/engine-data-plane-proxy.service.ts
+  s_e703c6b9d80e15::t_b41d7c267592d1 30-32
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_e703c6b9d80e15::t_b78d9b1811bd7e 192
+  s_e703c6b9d80e15::t_88451f96dae3c3 21-24,26,28,30-31,34,37-41,50,52-59
+  s_e703c6b9d80e15::t_6600400eac193e 61-63,65,69
+  s_e703c6b9d80e15::t_f09edae3c63ff8 1-2,4-6,8-12,14-20,25,27,29,32-33,35-36,42-43,47-49,51,60,64,66-68,70-161,165-173,175-179,181-191,193-222,224-245,247-259,261-272,274-283
+  s_e703c6b9d80e15::t_67993e7b12d3fa 44-46,162-164
+  s_e703c6b9d80e15::t_7fcca3493dc14e 180
+  s_e703c6b9d80e15::t_86ae7be7e9b22c 3,7,13,174,223,246,260,273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99c25a4ecf043cb6651aae14fa8148005adc2e85",
+  "prompts": {},
+  "sessions": {
+    "s_e703c6b9d80e15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1230fa40-d101-4d2e-88b4-5f712b4cbc7e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

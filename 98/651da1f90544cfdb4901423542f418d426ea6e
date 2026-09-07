@@ -1,0 +1,45 @@
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.test.ts
+  s_983b873642c61e::t_cd53c58c954b43 159-179
+packages/nodes-base/nodes/Schedule/ScheduleTrigger.node.ts
+  h_32d8cd6a0d6aad 423
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-job-registrar.ts
+  s_983b873642c61e::t_8218981fcbb8da 160-162
+packages/@n8n/scheduler/src/core/types/schedule.ts
+  h_32d8cd6a0d6aad 15-16
+packages/@n8n/scheduler/src/core/recurrence/__tests__/next-run.property.test.ts
+  h_32d8cd6a0d6aad 48
+packages/@n8n/scheduler/src/core/recurrence/__tests__/next-run.test.ts
+  s_983b873642c61e::t_77a1e72e843a6f 70-71
+  s_983b873642c61e::t_6ea194fe548a19 46-69,72-76
+  s_983b873642c61e::t_86d4b1e9a8ed0d 2
+packages/@n8n/scheduler/src/core/recurrence/__tests__/validate.test.ts
+  s_983b873642c61e::t_598d1d5ee738b8 24,28-38
+  s_983b873642c61e::t_acbce44d9e5688 116
+packages/@n8n/scheduler/src/core/recurrence/kinds/cron.ts
+  s_983b873642c61e::t_ca13623760d900 20
+  s_983b873642c61e::t_73235ff5018b2a 10
+  h_32d8cd6a0d6aad 11-12
+  s_983b873642c61e::t_9c598756606ca9 9,13-15
+  s_983b873642c61e::t_d429cea5d32ec7 35,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "98651da1f90544cfdb4901423542f418d426ea6e",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_983b873642c61e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb5054aa-00f8-446d-967c-34f80fcd8fdc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

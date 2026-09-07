@@ -1,0 +1,50 @@
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_d7dc19b022f345::t_e29f82752cc634 253,310-331,338-345
+packages/@n8n/instance-ai/evaluations/harness/schema.ts
+  s_d7dc19b022f345::t_e29f82752cc634 162-177,195-197
+packages/@n8n/instance-ai/evaluations/run/build-orchestrator.ts
+  s_d7dc19b022f345::t_769831f9245b5e 521
+  s_d7dc19b022f345::t_e4bba067fcab94 522
+packages/@n8n/instance-ai/evaluations/__tests__/context-assertions.test.ts
+  s_d7dc19b022f345::t_15d62ee14543a5 260-269,276-283,288-296,302-358
+  s_d7dc19b022f345::t_e4bba067fcab94 270-275,284-287,297-301
+packages/@n8n/instance-ai/evaluations/__tests__/memory-verifier.test.ts
+  s_d7dc19b022f345::t_3bb6f3eabe6875 139-166,168,170-205,207-209,211-237
+  s_d7dc19b022f345::t_e4bba067fcab94 167,169,206,210
+packages/@n8n/instance-ai/evaluations/data/workflows/recalls-write-step-rules-locked-in-at-thread-start.json
+  s_d7dc19b022f345::t_8e77ce8c27ed49 2
+packages/@n8n/instance-ai/evaluations/build-expectations/collect.ts
+  s_d7dc19b022f345::t_626148cfe84b34 46-50
+packages/@n8n/instance-ai/evaluations/build-expectations/select.ts
+  s_d7dc19b022f345::t_e4bba067fcab94 7,141-144
+  s_d7dc19b022f345::t_626148cfe84b34 69,118,166-169
+packages/@n8n/instance-ai/evaluations/README.md
+  s_d7dc19b022f345::t_e4cf85c7eda010 347-383
+packages/@n8n/instance-ai/evaluations/harness/context-assertions.ts
+  s_d7dc19b022f345::t_3cf93c579c757a 3,42-44,59-70,75,77-82,85,102-105,110-111
+  s_d7dc19b022f345::t_794cedf52ebca8 90-96
+packages/@n8n/instance-ai/evaluations/build-expectations/memory-verifier.ts
+  s_d7dc19b022f345::t_478770567f8eb1 9-10,31,36-38,40-59,61-79,88,91,97,100
+packages/@n8n/instance-ai/evaluations/system-prompts/memory-expectations-verify.ts
+  s_d7dc19b022f345::t_ba33581465c27b 5,7,9-15,21-23
+packages/@n8n/instance-ai/evaluations/data/workflows/matches-instance-conventions-when-adding-a-sibling-sync.json
+  s_d7dc19b022f345::t_8e77ce8c27ed49 2,1118-1125
+packages/@n8n/instance-ai/evaluations/harness/memory-context.ts
+  s_d7dc19b022f345::t_95a0c4e47fe15a 4-5,234-265,304-313,317,321-327,331,333,335,337,347-352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "449ea18406a94b958a45cd3d7d9319eb1b059961",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

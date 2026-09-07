@@ -1,0 +1,235 @@
+packages/frontend/editor-ui/src/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 3
+packages/@n8n/agents/src/sdk/__tests__/agent-isolated-runtime.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 121-136
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 35,73
+packages/@n8n/agents/src/runtime/loop/run-output-sink.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 3,69
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 23,47-55,298,300-301,308-311,314-315,320-322,325,331-335,338,340-354,357-359,361-362,420
+packages/cli/src/executions/execution-recovery.service.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 11,13,74-81,83-87,89-101
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.detail.service.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1,22-23,66,78-79
+packages/frontend/editor-ui/src/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 6
+packages/frontend/@n8n/stores/src/users.store.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 12
+packages/frontend/editor-ui/src/app/App.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 25
+packages/@n8n/agents/src/__tests__/integration/cassettes/thinking/emits-reasoning-delta-chunks-when-reasoning-is-enabled.json
+  s_8c0bb2d06aee91::t_f638da8a620533 5,11
+packages/frontend/@n8n/frontend-constants/src/users.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 16,21-24,97,106,123
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1436-1552
+packages/frontend/editor-ui/src/features/ai/shared/components/AiThinkingBlock.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 1-238
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 40-42
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 203,259-261,275-277,288,293-305,324,338,349-350,364,398-417,423,544
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 17-42
+packages/frontend/editor-ui/src/features/ai/shared/components/AiThinkingBlock.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-69
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 24,178,186,199-204,259
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/thinking.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-28
+scripts/build-n8n.mjs
+  s_8c0bb2d06aee91::t_f638da8a620533 221-227
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 23,94,230,448-453
+packages/frontend/editor-ui/src/features/shared/contextMenu/components/ContextMenu.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 4
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsViewV2.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 23
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 550-552,554-556,559,570-575,754-756,1858
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 5,27
+packages/@n8n/agents/src/__tests__/integration/thinking.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 11,16-17,20,45-46,48-50,52-54,58-66,74
+packages/@n8n/instance-ai/evaluations/harness/scenario-execution.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 57-59,61,64,67,97-99,112,125,260,349
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 30-46,97-249
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 5,481
+packages/@n8n/instance-ai/evaluations/report/workflow-report.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1809-1816
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 4-5,9-10,44-47,49-53,170,187-189,219-220,325-328,331-332,335,339,342-344,542,545,548-554,558,560,562,567,572,575
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 307-352
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 31,62
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/both-reasoning-and-prompt-caching-work-simultaneously.json
+  s_8c0bb2d06aee91::t_f638da8a620533 5,11,80
+packages/@n8n/api-types/src/agents/reasoning.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-3
+packages/cli/src/executions/__tests__/execution-recovery.service.integration.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 9-15,25,33,36,47-49,85,92,100-116,513-559,561-624,632-636,640-642,647-657
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-inbox.service.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-353
+packages/frontend/@n8n/design-system/src/components/N8nCallout/Callout.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 8,20,30,64-67
+packages/@n8n/instance-ai/evaluations/report/run-debug-report.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 418-423
+packages/@n8n/agents/src/types/index.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 37
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 83
+.github/workflows/util-publish-api-schema.yml
+  s_8c0bb2d06aee91::t_f638da8a620533 1,4,10-11,14,18-21,24,27,30,41,43,45-47,50-53,55-59,61-62,64-67
+packages/@n8n/agents/src/__tests__/integration/cassettes/thinking/works-with-a-reasoning-model-when-reasoning-is-enabled.json
+  s_8c0bb2d06aee91::t_f638da8a620533 5,7,11,18,24-25,30,35,38,40,44,48-54
+packages/cli/src/modules/agents/builder/__tests__/format-preview-context.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 56,73
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 52,59,101
+packages/@n8n/instance-ai/evaluations/run/eval-session.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 178,201
+packages/@n8n/instance-ai/evaluations/harness/agent-execution.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 71,134
+packages/frontend/editor-ui/src/app/components/app/AppCommandBar.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 6
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 120
+packages/frontend/editor-ui/src/features/ai/shared/components/AiReasoningBlock.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 5,16
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 2-7,44
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-feature-gate.service.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-31
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 3-4,19-24,28-30,54-95,183-184,189,196-198,211-212,220,225-230,232
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 37
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 73-101
+packages/cli/src/workflows/workflow.service.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1031-1101,1103,1118,1217,1575,1597
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 17,291
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/TrialBanner.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 177
+packages/cli/src/modules/workflow-reviews.ee/workflow-review.mapper.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-3,5-7,9-16
+packages/frontend/editor-ui/src/app/components/NpsSurvey.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 11
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 137-150
+packages/frontend/editor-ui/src/features/ai/shared/thinking.utils.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-6
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 11,41-49,54,90,121,140,150,259,372
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 30,57-58,129,235,335-339,345,349
+packages/@n8n/agents/src/sdk/__tests__/agent-reasoning.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-15
+packages/@n8n/instance-ai/evaluations/cli/index.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 127
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 30-31,179-180,203-230,304-308,336,364,366,375-376,380-382,551,571,620,634-635
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/displayGroups.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 35-95,134,145,153,166,170,208-243
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 25
+packages/@n8n/agents/src/types/sdk/reasoning.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-4
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1516-1558
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 3504-3531
+packages/@n8n/api-types/src/agents/types.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 203,205
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 30,60
+packages/frontend/editor-ui/src/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 12
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.types.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 22-24
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 902-926,1008-1015,1256-1276
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 3,13-16,22-23,145-151,398-401,474-488,514-515,582-599,626-627
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 4664,4667,4672,4679,4690,4692,4695-4736,4988,4995,5005-5007
+packages/@n8n/instance-ai/evaluations/__tests__/eval-artifact-output-dir.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-186
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 126-151
+packages/@n8n/agents/src/runtime/model/__tests__/prompt-cache.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 187-190,192
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 13,327
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 36,104,820
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 226-227
+packages/frontend/editor-ui/src/features/ai/shared/components/AiReasoningBlock.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-15
+packages/frontend/editor-ui/src/features/settings/users/users.constants.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1-60
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/TrialBanner.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 55,59,120-128
+packages/@n8n/api-types/src/agents/index.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 15
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 38
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/BaseBanner.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 14,28,53
+packages/@n8n/agents/src/index.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 30
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 567,569,583
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 92-149
+packages/@n8n/agents/src/__tests__/integration/provider-options.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 11,152,155-156,159,166,172,176
+packages/cli/src/credentials/credentials.service.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 1330-1334
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8c0bb2d06aee91::t_f638da8a620533 424,7092-7096,7326-7327
+packages/@n8n/agents/src/sdk/agent.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 66,123,125-126,190-191,472-486,701,1104,1209
+packages/frontend/@n8n/design-system/src/components/N8nCallout/Callout.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 92-131
+packages/@n8n/instance-ai/evaluations/run/reporters.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 87-89,95-104,108,110
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ThinkingBlock.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 7-11,31-32,48-50,53-57,64-67,79-85,87-92,95-117
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.list.service.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 2,10,18-19,21,35,47-48
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 114-121
+packages/frontend/editor-ui/src/app/components/Modal.vue
+  s_8c0bb2d06aee91::t_f638da8a620533 7
+packages/frontend/editor-ui/src/features/settings/users/users.constants.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 3-4
+.github/WORKFLOWS.md
+  s_8c0bb2d06aee91::t_f638da8a620533 182
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_8c0bb2d06aee91::t_f638da8a620533 13-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e2a746a3278a421f2938b479548cb43928349a91",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

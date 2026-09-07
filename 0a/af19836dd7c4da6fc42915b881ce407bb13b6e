@@ -1,0 +1,54 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_339360d3808066::t_fe041ccfade515 396-433
+  s_339360d3808066::t_01c0c62a6b29cb 38
+  s_339360d3808066::t_e46232f165bb7f 331
+  s_339360d3808066::t_f649905ca13a5f 18,25,50,68
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_339360d3808066::t_65589d1c321d06 549-551
+  s_339360d3808066::t_11c2cb2884f278 124
+packages/@n8n/config/src/configs/agents.config.ts
+  s_339360d3808066::t_8cbc536dcddf91 11,22,24-28
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_339360d3808066::t_c15bd195eb79be 402,409
+  s_339360d3808066::t_7ee84ba75aa61d 393-395
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_339360d3808066::t_156c38ba349109 36
+  s_339360d3808066::t_969d464bf8232b 76-78
+  s_339360d3808066::t_968797e112f946 38
+packages/cli/src/modules/agents/tools/own-sessions.tool.ts
+  s_339360d3808066::t_98aaf87d97bfb3 154-155
+  s_339360d3808066::t_ab757a0ee9db63 22-31
+  s_339360d3808066::t_5bbe9721d181d6 126
+  s_339360d3808066::t_5068d7dbe05e3c 91-93,95-105,148-150,152
+  s_339360d3808066::t_6cda604130ae92 121-122
+  s_339360d3808066::t_262f2a7ab01103 71
+  s_339360d3808066::t_7cf27872d4073d 106-120,123-125,127-130,134,153,156-157,159-160,162-189
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_339360d3808066::t_23e77354a0806f 25
+  s_339360d3808066::t_b94a030f2f17a5 27,159,262
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_339360d3808066::t_5c879acaa93983 140,146-147
+  s_339360d3808066::t_30e46309745f47 132-133
+  s_339360d3808066::t_9ad9ed785bfcc6 148
+packages/cli/src/modules/agents/tools/__tests__/own-sessions.tool.test.ts
+  s_339360d3808066::t_be67f1f5e83b0a 53-55,61
+  s_339360d3808066::t_15e8b195dae33a 76,83,87,93-126,128-136,145,165,212,233,276
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_339360d3808066::t_1c2ded123be8ec 4-5,13,584-602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0aaf19836dd7c4da6fc42915b881ce407bb13b6e",
+  "prompts": {},
+  "sessions": {
+    "s_339360d3808066": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cc405351-a624-4aec-bcd6-63cc3c0200c1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-08-03-agent-channel-configuration-design.md
+  s_fab2dbf5ded45d::t_183e3b976fbe97 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "90d77ac124dd4fb3e43ca1f49a8f3a18cb82fade",
+  "prompts": {},
+  "sessions": {
+    "s_fab2dbf5ded45d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc83e-7c50-7f60-b884-4264bd2e1e15",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

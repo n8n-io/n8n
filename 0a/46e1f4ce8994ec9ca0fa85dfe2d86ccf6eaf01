@@ -1,0 +1,35 @@
+packages/frontend/@n8n/design-system/src/components/N8nUserStack/UserStack.stories.ts
+  s_e695c205929d2d::t_e3501c559e2fa7 23
+packages/frontend/@n8n/design-system/src/components/N8nUserStack/UserStack.vue
+  s_d983b630f7acf9::t_edc5b459549d32 94-95
+  s_d983b630f7acf9::t_c9f13949bb787a 71
+  s_d983b630f7acf9::t_6900f84787fc21 7-8,72-86,88-89,91-93,96-102,112-113,116,118,143-147
+  s_d983b630f7acf9::t_3aa8900b97b119 124-125
+  s_e695c205929d2d::t_edeaf18edd5f12 152,165-167
+  s_e695c205929d2d::t_f926e38e92bf74 87
+  s_d983b630f7acf9::t_1918951c6f517c 148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0a46e1f4ce8994ec9ca0fa85dfe2d86ccf6eaf01",
+  "prompts": {},
+  "sessions": {
+    "s_d983b630f7acf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66779c2c-77a8-4b13-af38-9c2d9c3153c1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_e695c205929d2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a387323-b330-478a-b9ff-6696c88af48d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

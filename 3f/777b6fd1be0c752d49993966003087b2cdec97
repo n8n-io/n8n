@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/components/InstanceAiPersonalizedPromptSuggestions.test.ts
+  s_3a36de5a05244c::t_0c131c69a17f7d 121-123
+  s_3a36de5a05244c::t_29b6490cb6179b 115
+  s_3a36de5a05244c::t_17a4fadcca14db 88-89,94
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/fallbackSuggestions.ts
+  s_b2770a9c4c7dcd::t_3c152ded42d97b 16-26,48
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/fallbackSuggestions.test.ts
+  s_b2770a9c4c7dcd::t_39b629e6ab7846 32,41,50,59
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b2770a9c4c7dcd::t_0a5a6a54a182bf 1244-1247
+  s_3a36de5a05244c::t_e3a6401944b733 1248
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/components/InstanceAiPersonalizedPromptSuggestions.vue
+  s_3a36de5a05244c::t_c0b639704997c7 185-190,193-196,198-204
+  s_3a36de5a05244c::t_0d0489855a27c1 279
+  s_3a36de5a05244c::t_646ddbb3ae6b77 197
+  s_3a36de5a05244c::t_af4b6f5e7880e6 191-192
+  s_3a36de5a05244c::t_b73007c1a95351 70
+  s_3a36de5a05244c::t_c468d4809ba396 125-143,162,164
+  s_3a36de5a05244c::t_1adb9a372434c9 169
+  s_3a36de5a05244c::t_531aef6578e6e1 308-309,312,317
+  s_3a36de5a05244c::t_50dfa577b450ed 2
+  s_3a36de5a05244c::t_7f77814b591302 324
+  s_3a36de5a05244c::t_df62ad24d1574f 300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "3f777b6fd1be0c752d49993966003087b2cdec97",
+  "prompts": {},
+  "sessions": {
+    "s_3a36de5a05244c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0ae55a7-9837-4657-a1d0-2ffda526096c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    },
+    "s_b2770a9c4c7dcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ee5c2-4c3c-7be2-a064-09d90bbc7259",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

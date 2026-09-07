@@ -1,0 +1,37 @@
+packages/@n8n/db/src/migrations/sqlite/1785162364000-ChangeInstalledNodeVersionType.ts
+  s_8c0bb2d06aee91::t_8a3767637e75f9 1-38
+packages/cli/src/modules/community-packages/installed-nodes.entity.ts
+  s_8c0bb2d06aee91::t_8a3767637e75f9 13
+docs/generated/postgres-schema/public.installed_packages.md
+  s_8c0bb2d06aee91::t_8a3767637e75f9 46
+packages/cli/test/migration/1785162364000-change-installed-node-version-type.test.ts
+  s_8c0bb2d06aee91::t_8a3767637e75f9 1-126
+docs/generated/postgres-schema/README.md
+  s_8c0bb2d06aee91::t_8a3767637e75f9 910
+docs/generated/sqlite-schema/installed_nodes.md
+  s_8c0bb2d06aee91::t_8a3767637e75f9 9-16,25,52
+docs/generated/sqlite-schema/installed_packages.md
+  s_8c0bb2d06aee91::t_8a3767637e75f9 54
+docs/generated/sqlite-schema/README.md
+  s_8c0bb2d06aee91::t_8a3767637e75f9 897
+docs/generated/postgres-schema/public.installed_nodes.md
+  s_8c0bb2d06aee91::t_8a3767637e75f9 7,37
+packages/@n8n/db/src/migrations/postgresdb/1785162364000-ChangeInstalledNodeVersionType.ts
+  s_8c0bb2d06aee91::t_8a3767637e75f9 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dccc22344e4aba0c1a5ac52ceaa3df9a8d38f7c5",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+packages/nodes-base/utils/templated-auth.ts
+  s_c53aeae67e70d0::t_2d946390d141b4 17,20-21
+  s_c53aeae67e70d0::t_b86e4feb209dd4 50,53,68,73
+  s_c53aeae67e70d0::t_3f6eafe4391941 12-16,18-19,22-37,43-44,55,57,59-60,63-66,77-78,81-83,89-91,97-99
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_c53aeae67e70d0::t_de88fac39f8732 69-74
+  s_c53aeae67e70d0::t_e3a5fd1081474a 163-172
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_c53aeae67e70d0::t_8d653873327aef 72
+  s_c53aeae67e70d0::t_857492c4b1e277 111-115
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_c53aeae67e70d0::t_16ed7624ac2c72 313
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.test.ts
+  s_c53aeae67e70d0::t_e5c3399679cba7 159-186
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_c53aeae67e70d0::t_d39498119bbb92 83-86
+  s_c53aeae67e70d0::t_16ed7624ac2c72 60,70,72,132
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_c53aeae67e70d0::t_78c6efd2d75618 1046
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_c53aeae67e70d0::t_51ec69dde8e954 298-300
+packages/nodes-base/utils/__tests__/templated-auth.test.ts
+  s_c53aeae67e70d0::t_b86e4feb209dd4 78
+  s_c53aeae67e70d0::t_afba2d8ca15666 98-161
+  s_c53aeae67e70d0::t_4c4b72de1fbda5 8,12
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_c53aeae67e70d0::t_b0ce4477dfe6df 17-19
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialForm.vue
+  s_c53aeae67e70d0::t_1ff60811554c01 113,118-121
+  s_c53aeae67e70d0::t_cbc56397b59e44 132-134
+  s_c53aeae67e70d0::t_18d8835a371b7a 240
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_c53aeae67e70d0::t_336a728e0c7d43 848-881,883-903,905-906
+  s_c53aeae67e70d0::t_6e5cfc81cdf782 882,904
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_c53aeae67e70d0::t_16ed7624ac2c72 122,128,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ee6af060f44b577e699495992e23371551bc8a2a",
+  "prompts": {},
+  "sessions": {
+    "s_c53aeae67e70d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52e45bea-55bb-4cdb-aca2-13e1c962acef",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

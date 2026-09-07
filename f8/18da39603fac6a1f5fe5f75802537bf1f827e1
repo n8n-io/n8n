@@ -1,0 +1,19 @@
+packages/cli/src/modules/mcp/tools/workflow-validation.utils.ts
+  s_3e0431ffe18c79::t_f4a2024fe54f70 94-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f818da39603fac6a1f5fe5f75802537bf1f827e1",
+  "prompts": {},
+  "sessions": {
+    "s_3e0431ffe18c79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "031bd27b-7b0d-4362-85fe-c09b1a7f6223",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

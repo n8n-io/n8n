@@ -1,0 +1,68 @@
+packages/cli/src/public-api/v1/handlers/projects/projects.handler.ts
+  s_a12ec848131e8c::t_ec4b07dbc847c0 181
+  s_a12ec848131e8c::t_75c1278274d11a 200
+packages/@n8n/permissions/src/constants.ee.ts
+  s_a12ec848131e8c::t_b9878d87e0af8c 102
+  s_a12ec848131e8c::t_470c9cb3436fc5 28-31
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a12ec848131e8c::t_3117ab63c0dd10 2719-2721
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_a12ec848131e8c::t_c28d1b671a5d4e 715
+  s_a12ec848131e8c::t_63f90cc9a97f14 67-71
+  s_a12ec848131e8c::t_02b4191a1f18a4 723-725
+  s_a12ec848131e8c::t_5dc84f36c5ae26 576
+  s_a12ec848131e8c::t_48e737b58a41f0 680
+  s_a12ec848131e8c::t_27bf4d9067b245 567
+  s_a12ec848131e8c::t_20c02a7c531086 661
+packages/cli/src/controllers/project.controller.ts
+  s_a12ec848131e8c::t_c8ec493cc1ec52 334
+  s_a12ec848131e8c::t_96b14ec7a66804 289
+packages/cli/test/migration/1786526297065-add-project-change-role-scope-to-api-keys.test.ts
+  s_a12ec848131e8c::t_4790c8d464370a 82-84
+  s_a12ec848131e8c::t_91985469b88aa3 1-81,85-158
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.users.userId.yml
+  s_a12ec848131e8c::t_12bd9b6f2b315a 33
+packages/@n8n/db/src/migrations/common/1786518610254-AddProjectChangeRoleScopeToCustomRoles.ts
+  s_a12ec848131e8c::t_922eecd78ff766 3-16,18-37,40-46,48-49,51,53-56,58-60
+  s_a12ec848131e8c::t_4e9465b5ae997b 1-2,17,52,57
+  s_a12ec848131e8c::t_a4016d446c3bc9 38-39,47,50
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_a12ec848131e8c::t_a789234d867a36 48
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.users.yml
+  s_a12ec848131e8c::t_cdce80f4af0b78 33
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_a12ec848131e8c::t_72e4362dd67808 10
+packages/@n8n/permissions/src/scope-information.ts
+  s_a12ec848131e8c::t_a8ca67accba141 93-96
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_a12ec848131e8c::t_8192a099359c05 368-381
+  s_a12ec848131e8c::t_689205eb55dc38 382-395
+  s_a12ec848131e8c::t_4a7081a4e66e11 237
+packages/@n8n/db/src/migrations/common/1786526297065-AddProjectChangeRoleScopeToApiKeys.ts
+  s_a12ec848131e8c::t_451d2803c4a911 1-50
+  s_a12ec848131e8c::t_3908cb6a6c6f2f 51-52
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_a12ec848131e8c::t_0dd4c6ac626a3a 34
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_a12ec848131e8c::t_7f310bfe6e65c9 109
+packages/cli/test/migration/1786518610254-add-project-change-role-scope-to-custom-roles.test.ts
+  s_a12ec848131e8c::t_676c330d06bfa7 1-306
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_a12ec848131e8c::t_35651bb7016288 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f103a11c720a8eff7ed932a919cc968657ef355e",
+  "prompts": {},
+  "sessions": {
+    "s_a12ec848131e8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3bcbb3e-c4ed-4bbf-ade5-83f26f56c15d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

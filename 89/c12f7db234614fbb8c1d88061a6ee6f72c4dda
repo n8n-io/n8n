@@ -1,0 +1,28 @@
+.claude/plugins/n8n/skills/change-story/assets/story-template.html
+  s_e7c7738802f275::t_3511dc89f0a07e 96-99
+  s_e7c7738802f275::t_55e44ffefe9a69 166
+  s_e7c7738802f275::t_42f343d699d0a3 39-41
+.claude/plugins/n8n/skills/change-story/SKILL.md
+  s_e7c7738802f275::t_c7a3c10d28fc30 175-178,183-189,191,193
+  s_e7c7738802f275::t_6bc6e62e7efe1f 253-256
+  s_e7c7738802f275::t_0a93f74754e7c9 203
+  s_e7c7738802f275::t_ef02aadaed1a33 17-21
+  s_e7c7738802f275::t_b5b5a60a1de50c 207
+  s_e7c7738802f275::t_15db588af40d28 210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "89c12f7db234614fbb8c1d88061a6ee6f72c4dda",
+  "prompts": {},
+  "sessions": {
+    "s_e7c7738802f275": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "481d6f49-a4ea-4ba7-9962-1b6597a8b9cd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

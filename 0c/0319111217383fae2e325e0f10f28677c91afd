@@ -1,0 +1,19 @@
+packages/testing/playwright/playwright-projects.ts
+  s_ada89a76285e54::t_d87aba41d1abc6 239-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0c0319111217383fae2e325e0f10f28677c91afd",
+  "prompts": {},
+  "sessions": {
+    "s_ada89a76285e54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "559ea97f-ae60-4dd2-b195-bff0516ef7ef",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

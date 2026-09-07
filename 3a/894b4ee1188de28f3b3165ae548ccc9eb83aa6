@@ -1,0 +1,20 @@
+packages/testing/playwright/pages/SecuritySettingsPage.ts
+  s_aaabdf4fe381cc::t_c689388790544a 14-15
+  s_aaabdf4fe381cc::t_43b12d5faddc0f 16-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3a894b4ee1188de28f3b3165ae548ccc9eb83aa6",
+  "prompts": {},
+  "sessions": {
+    "s_aaabdf4fe381cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "add461e2-273a-4b06-8479-f725428c479c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

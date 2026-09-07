@@ -1,0 +1,42 @@
+packages/cli/src/workflows/__tests__/catalog-run.service.test.ts
+  s_5e1597e8ea25b2::t_85df21713010d7 56
+packages/cli/src/workflows/__tests__/catalog.service.test.ts
+  s_5e1597e8ea25b2::t_15f86ddb482976 36-40,58,69,78
+packages/cli/src/workflows/workflow-input-schema.service.ts
+  s_5e1597e8ea25b2::t_f639b4793cf4ba 28-34,36
+  s_5e1597e8ea25b2::t_a844fc4e2e898f 66
+  s_5e1597e8ea25b2::t_74eb23df34d1be 76
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5e1597e8ea25b2::t_eb7f706a598cce 5010-5011,5014-5019,5022,5026
+packages/frontend/editor-ui/src/features/catalog/catalog.store.test.ts
+  s_5e1597e8ea25b2::t_0bbe3ecb09f137 5,9-15
+packages/frontend/editor-ui/src/features/catalog/CatalogView.vue
+  s_5e1597e8ea25b2::t_d294ecd8701e93 7-9,11,14,17,20,24,26,34,37-38,53-73,76-82,84-85,87-88,91,97,100-124,129-132,134,141-147,149,156-165,167-190,194-201,203-223,227,230-235,238-256,264-268,271,274-280,284-318,321,324-329,332-349
+packages/cli/src/workflows/catalog.service.ts
+  s_5e1597e8ea25b2::t_0431160c35f7ec 9
+  s_5e1597e8ea25b2::t_6cb23750961d7a 23-28
+  s_5e1597e8ea25b2::t_e543b9ce185594 103
+packages/frontend/editor-ui/src/features/catalog/catalog.types.ts
+  s_5e1597e8ea25b2::t_b525b399cae009 9-11,16
+packages/cli/src/workflows/__tests__/workflow-input-schema.service.test.ts
+  s_5e1597e8ea25b2::t_f54e7b6c72694d 183
+  s_5e1597e8ea25b2::t_3a80bb9a6a1b5c 154,167
+  s_5e1597e8ea25b2::t_d0caf8b851404d 134
+  s_5e1597e8ea25b2::t_1b8262396fc54f 83,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "19a830363cdca97e75e9e89bdded62307cef3f8d",
+  "prompts": {},
+  "sessions": {
+    "s_5e1597e8ea25b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3addddf2-b534-4e10-93c7-b150ce8b013e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

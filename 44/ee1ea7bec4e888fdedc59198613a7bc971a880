@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_794a1be4bba94d::t_8721aa4fbd2027 7-9,602-607,609,611
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44ee1ea7bec4e888fdedc59198613a7bc971a880",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

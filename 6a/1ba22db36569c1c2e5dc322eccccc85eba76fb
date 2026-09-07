@@ -1,0 +1,22 @@
+packages/cli/src/public-api/v1/__tests__/public-api-error-response.test.ts
+  s_adb1e3a4238a72::t_e5a19ed42a3f17 99-103,105-107
+packages/cli/src/errors/__tests__/http-error-classifier.test.ts
+  s_adb1e3a4238a72::t_21102f8d5e10bc 56
+  s_adb1e3a4238a72::t_a5b237e11f64ca 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6a1ba22db36569c1c2e5dc322eccccc85eba76fb",
+  "prompts": {},
+  "sessions": {
+    "s_adb1e3a4238a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b424faf-2238-446e-a30e-3a9248eee5c1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

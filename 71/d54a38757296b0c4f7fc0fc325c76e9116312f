@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/clients.utils.ts
+  s_770913b91a0329::t_5d152e890e7957 71-74,76-78
+packages/frontend/editor-ui/src/features/ai/mcpAccess/clients.utils.test.ts
+  s_770913b91a0329::t_13a1d2e567a309 26-46
+  s_770913b91a0329::t_4b0fa4ab6b47dd 3-5
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue
+  s_770913b91a0329::t_bbd908ca1fb24d 210
+  s_770913b91a0329::t_d662ebef1be4a1 72-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "71d54a38757296b0c4f7fc0fc325c76e9116312f",
+  "prompts": {},
+  "sessions": {
+    "s_770913b91a0329": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4972e6a1-3aa5-4a91-a1c2-df474874260f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

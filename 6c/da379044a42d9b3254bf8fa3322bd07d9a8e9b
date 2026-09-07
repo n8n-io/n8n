@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_e4d603eaebe2a5::t_3fddbfcfaf39ad 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "6cda379044a42d9b3254bf8fa3322bd07d9a8e9b",
+  "prompts": {},
+  "sessions": {
+    "s_e4d603eaebe2a5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e06e37f0-2a29-4ca6-85f2-e8c7b4bd5f30",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

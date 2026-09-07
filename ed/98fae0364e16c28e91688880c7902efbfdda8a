@@ -1,0 +1,57 @@
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_900835fb08b853::t_78e11cf0443092 122-125
+  s_900835fb08b853::t_738788c9e3da5e 86
+  s_900835fb08b853::t_7e9b3bcb0aad76 126
+packages/cli/templates/form-trigger.handlebars
+  s_900835fb08b853::t_abf7fbe70eec56 1114-1122
+  s_900835fb08b853::t_7812273f380482 1199
+  s_900835fb08b853::t_22821c15373bc6 738-763
+  s_900835fb08b853::t_8c15628332618e 1023
+packages/cli/templates/form-trigger-completion.handlebars
+  s_900835fb08b853::t_8c98f4be71a8b1 164-188
+  s_900835fb08b853::t_281ee8e514e901 206
+  s_900835fb08b853::t_c61bcce99fcda2 250-258
+packages/nodes-base/nodes/Form/test/utils.test.ts
+  s_900835fb08b853::t_a9b0513ff1ee73 3822-3877
+  s_900835fb08b853::t_1e21664ae986d1 1062,1073-1082
+  s_900835fb08b853::t_7f6c55afec77cb 3670-3674,3680,3689
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_900835fb08b853::t_99a4f22617c4d8 799-846
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_900835fb08b853::t_c5c9cfcb065367 477-505
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_900835fb08b853::t_4b8332c3d963b6 403-409
+  s_900835fb08b853::t_29c6d38b81232a 419-427
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_900835fb08b853::t_b965f2ba0e3b3b 834-836
+  s_900835fb08b853::t_95a499413a3f1d 736-738,740,746-749,753,758-770,778-791,795-802,807-830,1028
+  s_900835fb08b853::t_eebe9b461e5fed 1020,1025,1027
+  s_900835fb08b853::t_fbe186a5e08e61 968-976
+  s_900835fb08b853::t_2938469717be36 831-833
+  s_900835fb08b853::t_1846d1f3d7ccea 977-979
+  s_900835fb08b853::t_9fa71d934bcb1b 1017-1019
+  s_900835fb08b853::t_249f17310e1b68 1029-1031
+packages/nodes-base/nodes/Form/utils/formNodeUtils.ts
+  s_900835fb08b853::t_c08d8c9e3d9847 28
+  s_900835fb08b853::t_d190ac5518dfd5 58-61
+  s_900835fb08b853::t_9920f975634ad7 62
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_900835fb08b853::t_81ed78f1ff13d0 418
+  s_900835fb08b853::t_716d72a13fefa6 405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ed98fae0364e16c28e91688880c7902efbfdda8a",
+  "prompts": {},
+  "sessions": {
+    "s_900835fb08b853": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9a4fb635-2385-4197-866b-a65f6985841a",
+        "model": "grok-4.6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/app/constants/modals.ts
+  s_3abcbb0b42c321::t_9b25389f9cdf37 1-2
+packages/frontend/editor-ui/src/app/__tests__/modal-key-ratchet.spec.ts
+  s_3abcbb0b42c321::t_7525193e5e13a4 9-11,13-14,16-17,20,26,32-34,53,61
+packages/frontend/editor-ui/src/app/__tests__/modal-fragment.contract.test.ts
+  s_3abcbb0b42c321::t_9d85b8270b51b1 18,20-23,38-39,54,74-75,94
+.github/workflows/ci-pull-requests.yml
+  s_3abcbb0b42c321::t_86ea5b0af0580f 105
+packages/frontend/editor-ui/src/app/__tests__/fixtures/exampleFeature/modals.ts
+  s_3abcbb0b42c321::t_928130e5c9b0e5 5
+packages/testing/playwright/tests/dev-server-smoke/dev-server-boots.spec.ts
+  s_3abcbb0b42c321::t_928130e5c9b0e5 14,30-33,35
+packages/frontend/editor-ui/eslint.config.mjs
+  s_3abcbb0b42c321::t_6f03aefba87526 253-254,266,275-277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d3827026956a4f623b0ebe18ed21c8c8829701b6",
+  "prompts": {},
+  "sessions": {
+    "s_3abcbb0b42c321": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b6f53a7-3312-4c23-987d-fc7fb995ec26",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

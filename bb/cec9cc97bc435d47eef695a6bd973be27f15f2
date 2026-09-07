@@ -1,0 +1,21 @@
+docs/superpowers/specs/2026-07-06-onboarding-empty-state-consistency-design.md
+  s_794a1be4bba94d::t_a5185ebcc56ad6 1-71,73-151,153-178
+  s_794a1be4bba94d::t_b51a8c3a393678 152
+  s_794a1be4bba94d::t_a5dba5e97312f5 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bbcec9cc97bc435d47eef695a6bd973be27f15f2",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

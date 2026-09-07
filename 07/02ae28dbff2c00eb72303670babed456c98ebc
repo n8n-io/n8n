@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_5bce6f80a7735b::t_74a8ba688bcfaa 342
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_5bce6f80a7735b::t_225952075f887e 325-329
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_5bce6f80a7735b::t_2d5d578f4be44d 219-221
+  s_5bce6f80a7735b::t_b74c4cc7d5c4ca 161-165
+packages/frontend/editor-ui/src/app/router.ts
+  s_5bce6f80a7735b::t_825a8e1f82e4b7 893-895
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_d726d1110abe55::t_451f265b8491df 73-81
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_5bce6f80a7735b::t_55337ef348689b 105
+packages/frontend/editor-ui/src/features/roles/project/ProjectRolesView.test.ts
+  s_5bce6f80a7735b::t_dfb345c3b763b3 5
+  s_5bce6f80a7735b::t_b0cd4a6d16c8a1 199
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersRoleCell.vue
+  s_5bce6f80a7735b::t_c30e27dfe20d61 62,87-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0702ae28dbff2c00eb72303670babed456c98ebc",
+  "prompts": {},
+  "sessions": {
+    "s_5bce6f80a7735b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9a86bfe-2688-4db8-876a-9967e680dca2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_d726d1110abe55": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "93550335-368e-411e-a304-2c4df4f9e431",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

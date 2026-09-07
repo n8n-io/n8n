@@ -1,0 +1,31 @@
+packages/cli/src/services/__tests__/credentials-tester.service.test.ts
+  s_e5eb138ee1927f::t_32aa4246fe33a4 1-8,18-22,161-175,214-390
+  s_e5eb138ee1927f::t_ad87bf70bb756b 391
+packages/cli/src/credentials/credentials.service.ts
+  s_e5eb138ee1927f::t_43ff81c7c7ab9e 123-131
+  s_e5eb138ee1927f::t_1d3ae08a81c405 983-1021
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_e5eb138ee1927f::t_e010d264c040d6 3094-3175
+packages/cli/src/services/credentials-tester.service.ts
+  s_e5eb138ee1927f::t_32aa4246fe33a4 192-257,274,276-278,309-352,354-372,475-477,485
+packages/cli/src/credentials/credentials.controller.ts
+  s_e5eb138ee1927f::t_290ca17b5153a1 158-174
+  s_e5eb138ee1927f::t_94071f65d27f29 155-157
+  s_e5eb138ee1927f::t_313722db5c749f 151-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "7c945f87a72e4db50f06f08748696c969ac14967",
+  "prompts": {},
+  "sessions": {
+    "s_e5eb138ee1927f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87369f71-7cd7-4171-b908-682eacaab3f4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

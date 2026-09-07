@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPromptSuggestions.vue
+  s_fa7e97f5e2e666::t_d8ba4dd5e0d019 254
+  s_fa7e97f5e2e666::t_f30f5e2c6f3e7f 17,27,73,79,145
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPromptSuggestions.test.ts
+  s_fa7e97f5e2e666::t_608ae4df5d5ec5 95
+  s_fa7e97f5e2e666::t_66ece7295aa85b 142
+  s_fa7e97f5e2e666::t_85d4345ec40196 40,61
+  s_fa7e97f5e2e666::t_7b702a838488c2 157,174,183
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_fa7e97f5e2e666::t_e56cfaeb4f07e3 367,378-384,562,580-581,583
+  s_fa7e97f5e2e666::t_ca9be99ba1f702 881,883,900-905,913,949-953
+  s_fa7e97f5e2e666::t_63f1f9578a058e 940
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "58646abc7fa7b1504d2810b8015f69f6c09a3d8c",
+  "prompts": {},
+  "sessions": {
+    "s_fa7e97f5e2e666": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eabf0-931c-7171-bb8a-34e49a7aedb2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

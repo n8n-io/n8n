@@ -1,0 +1,23 @@
+packages/testing/playwright/tests/e2e/regression/ADO-1338-ndv-missing-input-panel.spec.ts
+  s_96e1b355b1a1aa::t_a3cae9ab9608ba 22
+packages/testing/playwright/pages/components/NotificationsPage.ts
+  s_96e1b355b1a1aa::t_a3cae9ab9608ba 57,64,68-72,74-79,83-84,91,93-100,107,109-113
+packages/testing/playwright/tests/e2e/workflows/editor/expressions/modal.spec.ts
+  s_96e1b355b1a1aa::t_a3cae9ab9608ba 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9a6228ce0ed35db80f133e5c95404c4481b3239b",
+  "prompts": {},
+  "sessions": {
+    "s_96e1b355b1a1aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e3033f9-7703-4fb6-9f0f-3cab97467d85",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

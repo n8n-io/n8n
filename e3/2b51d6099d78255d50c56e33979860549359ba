@@ -1,0 +1,27 @@
+packages/@n8n/agents/src/harness/harness-runtime-agent.ts
+  s_e2504e875a073c::t_23530463330d5f 90-93,97-117,165,174
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_e2504e875a073c::t_f7a8b5a7500d1e 318-320,508
+  s_e2504e875a073c::t_23530463330d5f 48-64,104,107,109-114,118-123,139,153,198,242,245,263,321,484-488,649
+  s_e2504e875a073c::t_7a04a34f060f53 1,47,489
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_e2504e875a073c::t_522732457f0429 281,292,306,316
+  s_e2504e875a073c::t_6c0421b14546f3 150-163,259-280,282-291,293-305,307-315,317-320
+  s_e2504e875a073c::t_84c7027ee4c3ed 321-322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e32b51d6099d78255d50c56e33979860549359ba",
+  "prompts": {},
+  "sessions": {
+    "s_e2504e875a073c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff50f-358b-7522-8664-26ba4394dffe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_c62547e61ca40b 153-159
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.test.ts
+  s_5d6be4e6bc70a6::t_9757cea8a0a940 69
+  s_5d6be4e6bc70a6::t_cf03a42433383d 68,72-75,80-97,100-101,112
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.test.ts
+  s_5d6be4e6bc70a6::t_3bd7d922f70b1c 1576-1597
+  s_5d6be4e6bc70a6::t_251eb139fc268d 9
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/RunningIndicator.vue
+  s_5d6be4e6bc70a6::t_622032605d5f9c 1-42
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/CollectionCard.vue
+  s_5d6be4e6bc70a6::t_7972dddac24568 47,49-56
+  s_5d6be4e6bc70a6::t_9d99e9b79757fb 14-18,20
+  s_5d6be4e6bc70a6::t_74c5747c986a71 181-182
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/CollectionCard.test.ts
+  s_5d6be4e6bc70a6::t_e2e75dba0daab0 1-93
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.vue
+  s_5d6be4e6bc70a6::t_6a41bd739c7290 27-32,37
+  s_5d6be4e6bc70a6::t_605c136a6400a1 53-57,60-61,64-65
+  s_5d6be4e6bc70a6::t_594826a6545719 10-11
+  s_5d6be4e6bc70a6::t_3d8b90b35e34cf 81-82
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5d6be4e6bc70a6::t_7064c1558f7185 5737
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "86b0c7680962a0e35347dadcf207d88edacd0fd7",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

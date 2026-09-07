@@ -1,0 +1,20 @@
+packages/@n8n/db/src/migrations/sqlite/1787826404992-AddRequireBranchForPromotionToGitConnection.ts
+  s_cf478dbb68f525::t_ed8ddb68586d59 1-9,13-20,24-32
+  ai_agent 10-12,21-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6e36da046c05625fb01941f2c77197b55b0fd950",
+  "prompts": {},
+  "sessions": {
+    "s_cf478dbb68f525": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a085901d-23a6-4264-9a5a-8b9b83f78780",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

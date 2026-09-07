@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_363d5849f380e2::t_d6e20afd781499 344-345
+  s_363d5849f380e2::t_80bda4fbfcc886 79,181-193,207,218,306,315-320,324-328,330,334-343,347,363-376,379,387,435,442-444,536,538,641,651,659-660
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_363d5849f380e2::t_eea19842e5ba2e 66
+  s_363d5849f380e2::t_108de0b98d9a73 216-225,230-260
+  s_363d5849f380e2::t_29e3755c5792d7 6
+packages/cli/src/modules/agents/integrations/__tests__/slack-methods.service.test.ts
+  s_363d5849f380e2::t_9167d26600609a 20,26,32,36,40-56
+  s_363d5849f380e2::t_718acb2e885833 68,87-143
+  s_363d5849f380e2::t_74796b24297aed 5
+  s_363d5849f380e2::t_ecd3a65df189e3 2
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_387355890789d7::t_35457be2cb7b74 2,187
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_363d5849f380e2::t_c2a2cfbe4e3841 358-360
+  s_363d5849f380e2::t_fc5b5ace0c233c 48-62
+  s_363d5849f380e2::t_d3385ab6c54a0e 313-357,361-399
+  s_363d5849f380e2::t_9c957bf575820f 72
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_363d5849f380e2::t_b87cd68d4e3b77 8144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9fbe9badb31d94b2b7f737b0d9ff195ce2eade64",
+  "prompts": {},
+  "sessions": {
+    "s_363d5849f380e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "322e6574-03d3-4ce7-b0b5-4e3fe537699d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_387355890789d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b395bd2b-5b20-4733-9b00-7552d7b08565",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

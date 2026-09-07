@@ -1,0 +1,25 @@
+packages/@n8n/local-gateway/src/renderer/components/ComposerField.vue
+  s_4aa50c08d4840d::t_8f5573759541e0 21-26
+  s_4aa50c08d4840d::t_39b6db32f54c2f 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "10c4bfafaeba988a0e8decc2e3506651b5591af3",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4aa50c08d4840d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca3ec3e5-c3e7-4e8a-bc04-705d68d7b331",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

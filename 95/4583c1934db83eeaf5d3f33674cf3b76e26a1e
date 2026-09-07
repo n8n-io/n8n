@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/integrations/externalSecrets.ee/externalSecrets.ee.store.ts
+  s_0888fb3dd65a08::t_9e06ea9c22f0ab 183-186
+  s_0888fb3dd65a08::t_c8d7b2b2283903 218-220
+  s_0888fb3dd65a08::t_e97795d3e0f18e 87
+  s_0888fb3dd65a08::t_3042e65c355b80 157-160,162,164,174
+packages/frontend/editor-ui/src/features/integrations/externalSecrets.ee/externalSecrets.ee.store.test.ts
+  s_0888fb3dd65a08::t_8ae0c1b2a4fd2b 236
+  s_0888fb3dd65a08::t_fe3be1123b422c 190-191
+  s_0888fb3dd65a08::t_421dfb4482411f 595
+  s_0888fb3dd65a08::t_c2622629965e8e 510-522
+  s_0888fb3dd65a08::t_9e16436518e03e 277-278,291,293-305
+  s_0888fb3dd65a08::t_8dd8aba09e4c45 566
+  s_0888fb3dd65a08::t_48ff6e2ed6fc4c 370
+  s_0888fb3dd65a08::t_274ea73fb835de 168-175
+  s_0888fb3dd65a08::t_8edc2fa74e11c2 404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "954583c1934db83eeaf5d3f33674cf3b76e26a1e",
+  "prompts": {},
+  "sessions": {
+    "s_0888fb3dd65a08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd87c37e-a878-491e-a144-f863ae5f10b5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

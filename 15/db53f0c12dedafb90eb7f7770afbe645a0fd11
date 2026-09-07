@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_e914f9d650f740::t_c763ab07f058b6 2-3,5
+  s_e914f9d650f740::t_25c96fe5f9b7a5 381,391
+  s_e914f9d650f740::t_35ca359c130999 376-380,382-390,392-399
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "15db53f0c12dedafb90eb7f7770afbe645a0fd11",
+  "prompts": {},
+  "sessions": {
+    "s_e914f9d650f740": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba45f304-95eb-425b-a3af-c542d2a8a14b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

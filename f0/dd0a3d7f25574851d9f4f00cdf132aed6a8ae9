@@ -1,0 +1,81 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_ef691fa6454620 160,162-167,183
+  s_5d6be4e6bc70a6::t_243dc608811ce8 156-159,192
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.test.ts
+  s_5d6be4e6bc70a6::t_365d7b0de3cdc6 1554-1577
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/OutputsTab.vue
+  s_5d6be4e6bc70a6::t_5ba17ecc284219 134-137
+  s_5d6be4e6bc70a6::t_aa12828a4e0c48 51-54,58
+packages/cli/src/evaluation.ee/evaluation-collection.service.ts
+  s_5d6be4e6bc70a6::t_2cea4ccb4fd819 13-14,16,19
+  s_5d6be4e6bc70a6::t_df931486333076 35-36
+  s_5d6be4e6bc70a6::t_41d0666c8c308d 69
+  s_5d6be4e6bc70a6::t_02db6dea03ff2b 208-234,236-247,250-253,255-257,260,262-265,267-286,288-308,311-322,324-325
+  s_5d6be4e6bc70a6::t_91e637960e3884 341-345,349-350
+  s_5d6be4e6bc70a6::t_f4898482390fda 624,626-629,638
+packages/cli/src/evaluation.ee/__tests__/metric-scales.test.ts
+  s_5d6be4e6bc70a6::t_5147e18e335720 1-27,29-39
+  s_5d6be4e6bc70a6::t_243dc608811ce8 28
+packages/@n8n/api-types/src/index.ts
+  s_5d6be4e6bc70a6::t_a7352daceb525e 542
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/buildVersionEntries.test.ts
+  s_5d6be4e6bc70a6::t_457b1b8eaf605c 29-30,32-33
+packages/cli/src/evaluation.ee/metric-scales.ts
+  s_5d6be4e6bc70a6::t_5adb73d5935494 1-30
+packages/@n8n/api-types/src/schemas/eval-collections.schema.ts
+  s_5d6be4e6bc70a6::t_9c0b76fe4fb80a 57-67
+  s_5d6be4e6bc70a6::t_243dc608811ce8 3-6
+  s_5d6be4e6bc70a6::t_fdee15f2658064 167-170
+packages/@n8n/api-types/src/schemas/__tests__/eval-collections.schema.test.ts
+  s_5d6be4e6bc70a6::t_484678fcacc037 201-233
+  s_5d6be4e6bc70a6::t_d12bdbe513a99d 5
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareData.test.ts
+  s_5d6be4e6bc70a6::t_c805b83323a2e3 100-133
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareData.ts
+  s_5d6be4e6bc70a6::t_243dc608811ce8 63
+  s_5d6be4e6bc70a6::t_4a515905b2113a 1
+  s_5d6be4e6bc70a6::t_f01d0b60a515f1 20-22
+packages/cli/src/evaluation.ee/insights/eval-insights.service.ts
+  s_5d6be4e6bc70a6::t_5fb1062b6e61f4 13-14
+  s_5d6be4e6bc70a6::t_a76773300f77a9 2
+  s_5d6be4e6bc70a6::t_43141e9c30bfef 82-86,94
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.ts
+  s_5d6be4e6bc70a6::t_3bc4bc3bce17fa 160-165
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5d6be4e6bc70a6::t_f8f01e8d0bd6d5 5789
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/buildVersionEntries.ts
+  s_5d6be4e6bc70a6::t_6520f784247f1e 3-6,9
+packages/cli/src/evaluation.ee/__tests__/evaluation-collection.service.test.ts
+  s_5d6be4e6bc70a6::t_94a36f58b1e0d5 131-133
+  s_5d6be4e6bc70a6::t_243dc608811ce8 349-351,796
+  s_5d6be4e6bc70a6::t_74035ae2cbf4ac 115-116
+  s_5d6be4e6bc70a6::t_0a3989c17c96e1 347-348,352-380
+  s_5d6be4e6bc70a6::t_07d28ebbfdbb0f 17
+  s_5d6be4e6bc70a6::t_4f5c14c82ced81 795,797-848
+  s_5d6be4e6bc70a6::t_5d22ff5885c668 3
+  s_5d6be4e6bc70a6::t_ae3d9006cf00ef 128-129,139-141,143-148,159
+  s_5d6be4e6bc70a6::t_6a3bfc61ae20eb 130,142
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.vue
+  s_5d6be4e6bc70a6::t_a2222aa7f9aabd 32-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0dd0a3d7f25574851d9f4f00cdf132aed6a8ae9",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

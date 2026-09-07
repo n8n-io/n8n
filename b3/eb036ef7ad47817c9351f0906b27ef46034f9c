@@ -1,0 +1,30 @@
+packages/cli/src/workflows/publication/__tests__/trigger-diff.test.ts
+  s_0c4b67403cbc3f::t_fcedb252c5abd1 47-59
+packages/cli/src/workflows/publication/trigger-diff.ts
+  s_0c4b67403cbc3f::t_e049b154696596 1-2,6-13
+  s_0c4b67403cbc3f::t_517a1dfd46d851 36
+packages/workflow/src/workflow-diff.ts
+  s_0c4b67403cbc3f::t_f8d31dca9aaa0a 46-66
+packages/workflow/test/workflow-diff.test.ts
+  s_0c4b67403cbc3f::t_7781bee543a6b3 136-138,145-157,159-162
+  s_0c4b67403cbc3f::t_3583e057451f35 530-536
+  s_0c4b67403cbc3f::t_3f950722a56e7e 1145-1153
+  s_0c4b67403cbc3f::t_1aafd42ee67f27 158
+  s_0c4b67403cbc3f::t_e45be3c23009b2 62-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b3eb036ef7ad47817c9351f0906b27ef46034f9c",
+  "prompts": {},
+  "sessions": {
+    "s_0c4b67403cbc3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96409c27-0b45-4946-84ce-4d688b1bf45b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

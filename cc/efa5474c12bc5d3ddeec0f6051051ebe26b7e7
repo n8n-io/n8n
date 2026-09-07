@@ -1,0 +1,42 @@
+packages/nodes-base/nodes/Microsoft/ToDo/MicrosoftToDo.node.ts
+  s_622e6646e7b730::t_eb2054ff42c2bb 342-345
+  s_622e6646e7b730::t_68a563435f8d15 417-420
+  s_622e6646e7b730::t_a99634d629856f 324-327
+  s_622e6646e7b730::t_0fbeb1f65748d2 436-446
+  s_622e6646e7b730::t_6a4d09629f54fd 473-476
+  s_622e6646e7b730::t_8ce77c482e8994 371-374
+  s_622e6646e7b730::t_716a5901b3e33b 204-207
+  s_622e6646e7b730::t_7bbff3ef24a5e7 224
+  s_622e6646e7b730::t_3767b135469d65 234-237
+  s_622e6646e7b730::t_c16418b2f636d6 167-170
+  s_622e6646e7b730::t_49be45913a4889 258-261
+  s_622e6646e7b730::t_1648cdec7564f3 361
+  s_622e6646e7b730::t_7fcf3189dbeec2 185-188
+  s_622e6646e7b730::t_5991f434be7276 490
+  s_622e6646e7b730::t_2e92eb80da8acd 521-524
+  s_622e6646e7b730::t_a362feef89b597 307-310
+  s_622e6646e7b730::t_b82a8c92c59f27 457-460
+  s_622e6646e7b730::t_a9e86c4965d087 500-503
+packages/nodes-base/nodes/Microsoft/ToDo/GenericFunctions.ts
+  s_622e6646e7b730::t_bf52bb253c01f6 156,165-175
+  s_622e6646e7b730::t_ae5bc92d4bfc36 13
+  s_622e6646e7b730::t_b19e63bd54748b 145
+  s_622e6646e7b730::t_fec5e9c26dd9ff 96,108-111,114
+  s_622e6646e7b730::t_22d577f57e9b88 59-66,80-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ccefa5474c12bc5d3ddeec0f6051051ebe26b7e7",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

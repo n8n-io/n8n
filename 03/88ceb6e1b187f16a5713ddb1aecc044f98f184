@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_5498409d12d03d::t_7a97ab87465829 376
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0388ceb6e1b187f16a5713ddb1aecc044f98f184",
+  "prompts": {},
+  "sessions": {
+    "s_5498409d12d03d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70db0817-ca21-48df-8edb-aa5562a5b07f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

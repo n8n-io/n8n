@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.test.ts
+  s_5d6be4e6bc70a6::t_181c13e6718484 161-192
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.ts
+  s_5d6be4e6bc70a6::t_26567eea4477ba 143-155,157-159,171-173,177-178
+  s_5d6be4e6bc70a6::t_8f9a6f61857db3 53-55
+  s_5d6be4e6bc70a6::t_bc660e892b071a 182-185,187-189
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvalCollectionsListView.vue
+  s_5d6be4e6bc70a6::t_a4d5b802218e6b 123-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3a6807bc779cd5d732ff03bf56022dec91b69806",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

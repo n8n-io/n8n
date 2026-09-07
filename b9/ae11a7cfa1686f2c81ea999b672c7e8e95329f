@@ -1,0 +1,40 @@
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_f019419fbecb2c::t_e7d776246a71d5 212-213,223-226,237-240,419-424,584-586,622-626
+packages/cli/src/modules/agents/repositories/agent-task.repository.ts
+  s_f019419fbecb2c::t_3cfb41a68cade0 21-24
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_f019419fbecb2c::t_0cf8e1bcbf9741 67-70,83-85,185-188,198-200,312-315,362-364,402-409,441-442,465-471,518-525,549-551
+packages/frontend/editor-ui/src/features/agents/components/AgentJsonImportModal.vue
+  s_f019419fbecb2c::t_c7c6f92a0c7922 51-55
+packages/frontend/editor-ui/src/features/agents/utils/build-exported-agent-json.ts
+  s_f019419fbecb2c::t_c7c6f92a0c7922 9-13,44-45,65-67
+packages/cli/src/modules/agents/json-config/bare-config-refs.ts
+  s_f019419fbecb2c::t_3cfb41a68cade0 16-20,40-42
+packages/cli/src/modules/agents/utils/agent-config-hash.ts
+  s_f019419fbecb2c::t_3cfb41a68cade0 16-18,22-23
+packages/@n8n/api-types/src/agents/sanitize-agent-json-config.ts
+  s_f019419fbecb2c::t_e7d776246a71d5 206-208
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_f019419fbecb2c::t_c7c6f92a0c7922 812-816,879-881
+  s_f019419fbecb2c::t_dd696598eac354 920-921
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_f019419fbecb2c::t_c7c6f92a0c7922 1186-1189
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_f019419fbecb2c::t_3cfb41a68cade0 277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b9ae11a7cfa1686f2c81ea999b672c7e8e95329f",
+  "prompts": {},
+  "sessions": {
+    "s_f019419fbecb2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a42e06b0-e319-474d-a003-d3f5ee778b5f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

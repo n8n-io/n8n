@@ -1,0 +1,47 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_c90c2b2b320869::t_3ba2631c9d701d 108-109
+packages/cli/test/integration/public-api/variables.test.ts
+  s_c90c2b2b320869::t_08ed2f887177cd 124
+  s_c90c2b2b320869::t_32bb2d20fee505 181-200
+  s_c90c2b2b320869::t_b3cf5bc5ade9f5 119-123,125-136
+packages/@n8n/api-types/src/dto/variables/variable-public.dto.ts
+  s_c90c2b2b320869::t_a5269a10de8928 1-30
+packages/cli/src/public-api/v1/controllers/variables.public.controller.ts
+  s_c90c2b2b320869::t_33936922e14144 24
+  s_c90c2b2b320869::t_2c4c9b1a3a5000 108-109
+  s_c90c2b2b320869::t_8c270d2f0b65dc 165-166
+  s_c90c2b2b320869::t_86ebcebc14857e 1-23,25-27,29,31-32,34-39,44,51-65,68-107,110-137,140-164,167-169
+  s_c90c2b2b320869::t_c2b44173c4ad76 66-67
+  s_c90c2b2b320869::t_e1e4002190f963 138-139
+  s_c90c2b2b320869::t_3ca5fe0ececa2a 28,30,33,40-43,45-50
+packages/@n8n/api-types/src/dto/variables/list-variables-query.dto.ts
+  s_c90c2b2b320869::t_2484c73797710b 1-9
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_c90c2b2b320869::t_ea3f94b3b54c36 7
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/createVariable.generated.yml
+  s_c90c2b2b320869::t_932be16b0e6a4c 1-43
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/deleteVariable.generated.yml
+  s_c90c2b2b320869::t_9265779dcd88e9 1-22
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/getVariables.generated.yml
+  s_c90c2b2b320869::t_d7b0e98ce98b24 1-28,32-77
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/updateVariable.generated.yml
+  s_c90c2b2b320869::t_2011c98aac5433 1-12,14-18,20-49
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_c90c2b2b320869::t_8e12fcecf05324 9-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "91fee9ba00a81e7b8361881728489cc9c1180348",
+  "prompts": {},
+  "sessions": {
+    "s_c90c2b2b320869": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef3b9e11-afee-4f7d-b74e-2d7b837b335a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

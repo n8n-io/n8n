@@ -1,0 +1,20 @@
+packages/@n8n/decorators/src/multi-main/multi-main-metadata.ts
+  s_1a34162d408c68::t_fe65448f53f696 31-34
+  s_1a34162d408c68::t_81bf7ab2449f9a 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3cf4ce08f121850bc3158857d78488914f3f6b4c",
+  "prompts": {},
+  "sessions": {
+    "s_1a34162d408c68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a01f2a-e22d-49c3-9e0c-c72c54d31d92",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

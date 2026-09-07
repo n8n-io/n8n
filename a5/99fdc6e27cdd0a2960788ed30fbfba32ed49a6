@@ -1,0 +1,30 @@
+packages/cli/src/task-runners/task-broker/task-broker.service.ts
+  s_e8aea47e04250a::t_00567e95ddd6ba 131-132,135,137
+packages/cli/src/task-runners/task-broker/__tests__/task-broker.service.test.ts
+  s_e8aea47e04250a::t_a2324f4024acde 137
+  s_e8aea47e04250a::t_aeff519606af8f 262-267
+  s_e8aea47e04250a::t_48e966944d98ca 1184-1188
+  s_e8aea47e04250a::t_d6c369d5ae7221 1209,1235,1269,1289
+  s_e8aea47e04250a::t_8a0fb7d1565769 1430-1434
+  s_e8aea47e04250a::t_8a077ea174e137 22-28
+  s_e8aea47e04250a::t_d5c7c474b58f52 1534-1538
+  s_e8aea47e04250a::t_3e4cd231ff8ad0 136,138-144
+  s_e8aea47e04250a::t_1f50087a62e87a 1310
+  s_e8aea47e04250a::t_d979ac7079df04 1402,1404-1425
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a599fdc6e27cdd0a2960788ed30fbfba32ed49a6",
+  "prompts": {},
+  "sessions": {
+    "s_e8aea47e04250a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90488973-49a1-4d0a-920c-ce379725fbbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

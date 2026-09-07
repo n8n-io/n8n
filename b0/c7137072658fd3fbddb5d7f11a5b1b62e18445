@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_04dfbe3970e19f::t_227543e264852f 352
+  s_04dfbe3970e19f::t_2d495d6b7fc930 300
+  s_04dfbe3970e19f::t_1fe1a073164664 371
+  s_04dfbe3970e19f::t_f6d16b62d3f166 501,508
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b0c7137072658fd3fbddb5d7f11a5b1b62e18445",
+  "prompts": {},
+  "sessions": {
+    "s_04dfbe3970e19f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7a87d1f9-c84d-42fd-8504-8c74f35a7f43",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

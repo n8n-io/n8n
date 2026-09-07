@@ -1,0 +1,27 @@
+packages/@n8n/oauth2-token-validator/scripts/serve-issuer.mjs
+  s_467ede6818687a::t_ccedd330bd6e7b 8,10-11,13,19-21,23-40
+  s_467ede6818687a::t_2837b49d4fb6a8 66-67,70,72,80,86,92-94,97
+tasks/todo.md
+  s_467ede6818687a::t_358083aea47abe 51
+  s_467ede6818687a::t_00409a64edfa3d 102,123
+tasks/test-local.sh
+  s_467ede6818687a::t_7096ce11acde41 1-20,39-64,66-73
+  s_467ede6818687a::t_c2a72e8bea5a96 21-38
+  s_467ede6818687a::t_ca266f9af7e131 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "980f65b84a43b74e023f0f4ac7916962cc4de13a",
+  "prompts": {},
+  "sessions": {
+    "s_467ede6818687a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ee96959-2d33-4d77-9268-45e16a4f8ac8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

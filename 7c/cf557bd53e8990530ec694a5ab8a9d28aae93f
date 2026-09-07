@@ -1,0 +1,30 @@
+packages/cli/src/scaling/queue/job-queue.interface.ts
+  s_ee871748970946::t_3970f2e7a0ebc3 1-68
+packages/cli/src/scaling/queue/bull-job-queue.ts
+  s_ee871748970946::t_c4d816d5c9b7f6 1-121
+packages/cli/src/scaling/queue/__tests__/bull-job-queue.test.ts
+  s_ee871748970946::t_d9e08e88e00ced 86-91
+  s_ee871748970946::t_11f069062e91ac 11
+  s_ee871748970946::t_104249b7d39c45 198-199
+  s_ee871748970946::t_630c1b6b2a1b6c 171
+  s_ee871748970946::t_269bd62151f01a 185
+  s_ee871748970946::t_2e3962e7edf8df 1-10,12-32,39-85,92-157,161-170,172-184,186-197,200-264
+  s_ee871748970946::t_5db102e48f8edd 33-38
+  s_ee871748970946::t_0cc333449d626b 158-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7ccf557bd53e8990530ec694a5ab8a9d28aae93f",
+  "prompts": {},
+  "sessions": {
+    "s_ee871748970946": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0aca0d0f-1b2b-435b-891c-746f9b5703b3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

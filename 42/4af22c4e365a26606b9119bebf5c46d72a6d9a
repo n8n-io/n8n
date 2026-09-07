@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_df935f10e75d63::t_8563e88932dcfd 9
+  s_df935f10e75d63::t_7305b0e52a6fbd 62-69
+packages/@n8n/permissions/src/constants.ee.ts
+  s_df935f10e75d63::t_a532e761bfb0b9 113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "424af22c4e365a26606b9119bebf5c46d72a6d9a",
+  "prompts": {},
+  "sessions": {
+    "s_df935f10e75d63": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5005c7bc-d609-40c7-8b5a-d8d4bd4ecb3f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

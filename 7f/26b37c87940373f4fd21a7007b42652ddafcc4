@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/agents/agentCanvasCard.store.test.ts
+  s_3c8860b713ddc9::t_44eefc4328af0b 1-26
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_3c8860b713ddc9::t_eae12fa0ff58c3 256-264,269,276-278
+  s_3c8860b713ddc9::t_046b5af2e17b3b 64
+  s_3c8860b713ddc9::t_78cd7d8e2d2c17 46-51
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_3c8860b713ddc9::t_6b9223a9e5ffe2 79-95
+  s_3c8860b713ddc9::t_175ac9df7161b4 255
+  s_3c8860b713ddc9::t_755c98718e442b 2
+  s_3c8860b713ddc9::t_cc22927ffce6fe 12
+packages/frontend/editor-ui/src/features/agents/agentCanvasCard.store.ts
+  s_3c8860b713ddc9::t_bc12664c4fba81 1-26
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_3c8860b713ddc9::t_35075459d62bb3 57
+  s_3c8860b713ddc9::t_30d9f281a0079f 33
+  s_3c8860b713ddc9::t_2f464f68b94e06 444-446
+  s_3c8860b713ddc9::t_5566db0e50c1d4 407-443,447-471
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_3c8860b713ddc9::t_14612526eaba95 10
+  s_3c8860b713ddc9::t_4c6090ef767d77 207-230
+  s_3c8860b713ddc9::t_f4777ca2744bc2 60-62
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_3c8860b713ddc9::t_b9ad24a3d25dcb 237-265
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_3c8860b713ddc9::t_6fe6fb9facea98 1098-1101,1103,1120-1126
+  s_3c8860b713ddc9::t_5b3003703a16f6 207
+  s_3c8860b713ddc9::t_4705d9765f0ada 40
+  s_3c8860b713ddc9::t_496154ae1de262 145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f26b37c87940373f4fd21a7007b42652ddafcc4",
+  "prompts": {},
+  "sessions": {
+    "s_3c8860b713ddc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdaa2f6a-d47e-49df-930b-860d7d20015f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

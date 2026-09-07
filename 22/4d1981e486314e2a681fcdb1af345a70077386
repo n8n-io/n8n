@@ -1,0 +1,44 @@
+packages/nodes-base/nodes/Confluence/test/actions/page/get.operation.test.ts
+  s_ea16ab0e32e89a::t_7b69aeed90e1e0 302,335
+  s_ea16ab0e32e89a::t_06baa489e9f831 283,323
+  s_ea16ab0e32e89a::t_08ad1eb404859d 272,288,291
+  s_ea16ab0e32e89a::t_c770771f6f5604 326-328,331
+packages/nodes-base/nodes/Confluence/actions/common.ts
+  s_ea16ab0e32e89a::t_dac930aba2a6ac 153-154,157,165
+  s_ea16ab0e32e89a::t_9cb2a7260cec87 25-27
+  s_ea16ab0e32e89a::t_e7acef04d6c065 105,108-136,139-145
+  ai_agent 196-200
+  s_ea16ab0e32e89a::t_ef580036c15519 201-206
+  s_ea16ab0e32e89a::t_ff83c70253b1fe 47,54
+  s_ea16ab0e32e89a::t_b66ea89ff3788c 14-16
+packages/nodes-base/nodes/Confluence/methods/listSearch.ts
+  s_ea16ab0e32e89a::t_01a4241328fab7 26-27,29-32
+  s_ea16ab0e32e89a::t_952a85d5280c51 43-63,67-68
+  ai_agent 28
+  s_ea16ab0e32e89a::t_0d55836fd0bd5e 82-97
+  s_ea16ab0e32e89a::t_15404211bcd452 8,13-25,33-35
+packages/nodes-base/nodes/Confluence/test/methods/listSearch.test.ts
+  s_ea16ab0e32e89a::t_f56544ece12ca3 4
+  s_ea16ab0e32e89a::t_5e464efdc3e40b 114-178
+  s_ea16ab0e32e89a::t_49d71e1bc08106 67,79
+  s_ea16ab0e32e89a::t_a6388fa50e9eee 56-66,68-78,80-81
+packages/nodes-base/nodes/Confluence/actions/page/get.operation.ts
+  s_ea16ab0e32e89a::t_1705b378a4297b 4-11
+  s_ea16ab0e32e89a::t_69d257e6102e8e 18-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "224d1981e486314e2a681fcdb1af345a70077386",
+  "prompts": {},
+  "sessions": {
+    "s_ea16ab0e32e89a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9520c59a-f77e-4d65-859e-651e5c0871d8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

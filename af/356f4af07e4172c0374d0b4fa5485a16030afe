@@ -1,0 +1,19 @@
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-confirmations.spec.ts
+  s_ada89a76285e54::t_50b7838b65371d 233-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "af356f4af07e4172c0374d0b4fa5485a16030afe",
+  "prompts": {},
+  "sessions": {
+    "s_ada89a76285e54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "559ea97f-ae60-4dd2-b195-bff0516ef7ef",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

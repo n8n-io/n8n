@@ -1,0 +1,40 @@
+packages/nodes-base/nodes/Wait/Wait.node.ts
+  s_e5d1e3f565ab47::t_9ed4cf88d54671 534
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_e5d1e3f565ab47::t_9ed4cf88d54671 473
+packages/nodes-base/nodes/RespondToWebhook/RespondToWebhook.node.ts
+  s_e5d1e3f565ab47::t_9ed4cf88d54671 577
+packages/nodes-base/nodes/Wait/test/Wait.node.test.ts
+  ai_agent 4-9,111-127
+packages/workflow/src/interfaces.ts
+  ai_agent 1246
+packages/nodes-base/nodes/RespondToWebhook/test/RespondToWebhook.test.ts
+  ai_agent 12,85,122,142,163,184,213,236,257,277,303,327,340-376,389,555,580,608,635
+packages/nodes-base/nodes/RabbitMQ/test/RabbitMQ.node.test.ts
+  ai_agent 3,15,33,131-148
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  ai_agent 15,67-76
+packages/nodes-base/nodes/RabbitMQ/RabbitMQ.node.ts
+  s_e5d1e3f565ab47::t_9ed4cf88d54671 394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "48cb720e434b4395f8ee66058041ea1429865d13",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e5d1e3f565ab47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda7886d-c714-464f-ac3c-018fd3195773",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

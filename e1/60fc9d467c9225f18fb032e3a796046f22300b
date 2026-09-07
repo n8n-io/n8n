@@ -1,0 +1,21 @@
+packages/cli/src/modules/slack-comms/__tests__/slack-web-client.test.ts
+  s_60dfaf9586b4e7::t_5a1b379c4b6335 86-87,89,92-94
+  s_60dfaf9586b4e7::t_82c200a223ca25 88,90-91
+  s_60dfaf9586b4e7::t_da073efa2c70b6 323-401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e160fc9d467c9225f18fb032e3a796046f22300b",
+  "prompts": {},
+  "sessions": {
+    "s_60dfaf9586b4e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc0705c0-a9e7-42d1-901f-f21c693be3e3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

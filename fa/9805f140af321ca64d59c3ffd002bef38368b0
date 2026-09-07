@@ -1,0 +1,108 @@
+packages/cli/test/integration/scheduling/scheduler-concurrent-loops.test.ts
+  s_d9fe6f2604660e::t_11ba5a3397ea30 47,49
+packages/@n8n/scheduler/src/core/executor/index.ts
+  s_d9fe6f2604660e::t_72d9682fb5ae73 6-7,9-12
+  s_d9fe6f2604660e::t_cf8eebb6984219 8
+packages/cli/test/integration/scheduling/scheduler-multi-main.test.ts
+  s_d9fe6f2604660e::t_6e784cf96b882f 45,47
+packages/cli/test/integration/scheduling/scheduler-execute.test.ts
+  s_d9fe6f2604660e::t_9582e3f983556c 40,44
+  s_d9fe6f2604660e::t_2bcf370702b8c1 105
+packages/cli/test/integration/scheduling/scheduler-cascade-delete.test.ts
+  s_d9fe6f2604660e::t_d5d95d4e8662a4 47,49
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-task-handler.ts
+  s_d9fe6f2604660e::t_eb5bb5959689b7 46
+  s_d9fe6f2604660e::t_6349c91dd9b06c 68,78,94-95,100-101,103
+  s_d9fe6f2604660e::t_8bd29df771e13e 5
+packages/@n8n/scheduler/src/core/executor/task-handler.ts
+  s_d9fe6f2604660e::t_76d3b54233a59c 4-23,30-32,37-44,49-61,80
+  s_f0836d72854a3d::t_0285786b60be15 24-29,33-36
+  s_f0836d72854a3d::t_02cc4c3723f278 45-48
+  s_f0836d72854a3d::t_391bbe48c4dc9d 67-77
+packages/@n8n/scheduler/src/core/index.ts
+  s_d9fe6f2604660e::t_98eb19f6c2c19a 48-53
+  s_d9fe6f2604660e::t_a32406bc026f93 47
+packages/cli/test/integration/scheduling/durable-scheduler-lifecycle.test.ts
+  s_d9fe6f2604660e::t_52db4986aee380 86,88,110,112,133,135
+packages/@n8n/scheduler/src/observability/__tests__/executor-tracing.test.ts
+  s_d9fe6f2604660e::t_63320de405e16c 145,150,152,154,156-157
+  s_d9fe6f2604660e::t_e8a4ed7e225d20 174
+  s_d9fe6f2604660e::t_d85ae9717fc031 146-149
+  s_d9fe6f2604660e::t_3b5212dc6f2ce3 4
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.property.test.ts
+  s_d9fe6f2604660e::t_4bb685e95d767c 79
+  s_d9fe6f2604660e::t_accb483d70cca4 47-50
+  s_d9fe6f2604660e::t_6b6cb004dac7da 8
+  s_f0836d72854a3d::t_7581ad240e1106 63
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_f0836d72854a3d::t_15d0dadeb5ccb1 40
+packages/@n8n/scheduler/src/observability/executor-tracing.ts
+  s_d9fe6f2604660e::t_423365276cc0d2 68-71,82,84
+packages/@n8n/scheduler/src/core/factory.ts
+  s_d9fe6f2604660e::t_ae034aec9010e0 16
+packages/@n8n/scheduler/src/core/__tests__/executor-lookahead.test.ts
+  s_d9fe6f2604660e::t_3af62cbd1d41ec 107,109,111
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_d9fe6f2604660e::t_a4e136ba3a41df 267
+  h_32d8cd6a0d6aad 310
+  s_f0836d72854a3d::t_390f076eeb1ad4 273
+  s_f0836d72854a3d::t_c40b2b3e6a91e9 246-253,255,261
+  s_d9fe6f2604660e::t_cf441bd8d0062d 8
+packages/@n8n/scheduler/src/core/executor/__tests__/task-handler.test.ts
+  s_d9fe6f2604660e::t_79679ca7b8e82d 4-7
+  s_d9fe6f2604660e::t_9b0db468ad5b7d 3,8
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_d9fe6f2604660e::t_dca92a4fd9bf05 33-36
+  s_d9fe6f2604660e::t_3d7c693c6572b5 230
+  s_f0836d72854a3d::t_fa7f2e0dd5bd18 274,276-278,288-292
+  s_f0836d72854a3d::t_c22a4bd1220e46 702
+  s_d9fe6f2604660e::t_363c1140adba1a 573,588,606,631,672,703,762
+  s_d9fe6f2604660e::t_ff685198268809 303-305,307
+  s_f0836d72854a3d::t_9434cb5f02173b 30-31
+  s_d9fe6f2604660e::t_76f671225c8ed2 244-245,247,324-325,327
+  s_d9fe6f2604660e::t_60d68c91f17880 275,280,282-287,294-299
+  s_d9fe6f2604660e::t_1f27b963a5d1a7 221,279,396,420,540,555
+  s_d9fe6f2604660e::t_529651109d9181 281,293
+  s_d9fe6f2604660e::t_c469ff0978f7b2 10
+  s_d9fe6f2604660e::t_a460833f6ba1fc 347-348,373-374
+  s_f0836d72854a3d::t_c55547c1ae47a1 61-63
+  s_d9fe6f2604660e::t_740a94b06ddb01 29,32,37-38
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-task-handler.test.ts
+  s_d9fe6f2604660e::t_dd22c83700c8be 45-46
+  s_d9fe6f2604660e::t_295ae59d44cd60 96,112,126,140,152,161,180,222,230,239,250,260
+  s_d9fe6f2604660e::t_3b09ef248f4c92 195-197
+  s_d9fe6f2604660e::t_1993af06d0a328 6
+packages/cli/test/integration/scheduling/durable-scheduler-effect-boundary.test.ts
+  s_d9fe6f2604660e::t_551b558d918a41 100-101,104,120,126,132
+  s_d9fe6f2604660e::t_75fa74bc7cd985 28
+  s_d9fe6f2604660e::t_f17e50efca507f 6-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fa9805f140af321ca64d59c3ffd002bef38368b0",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d9fe6f2604660e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6db30b7c-ec24-49a8-8df0-47bd15fc7751",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_f0836d72854a3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59f929b9-0ff3-4099-b674-0e49b98aff72",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

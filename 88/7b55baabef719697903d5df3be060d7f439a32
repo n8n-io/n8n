@@ -1,0 +1,72 @@
+packages/@n8n/mcp-browser-extension/src/background.test.ts
+  s_934c52d564c9ad::t_599aac4f6341be 236
+  h_44f8d1c0f2f8c4 234
+  s_934c52d564c9ad::t_47173dc7f17d0b 235
+  s_934c52d564c9ad::t_9b42a044f8a549 237
+packages/@n8n/mcp-browser-extension/src/relayConnection.ts
+  s_934c52d564c9ad::t_44aefaf1ebba5c 502
+packages/@n8n/mcp-browser-extension/src/ui/components/InfoRow.vue
+  s_934c52d564c9ad::t_f3e24d1478dc34 1-39,41-62
+  s_934c52d564c9ad::t_6b9c125016400c 40
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseConnectStep.vue
+  s_934c52d564c9ad::t_9c33aef127ff6a 11
+  h_44f8d1c0f2f8c4 10
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/BrowserUseConnectStep.test.ts
+  h_44f8d1c0f2f8c4 144
+packages/@n8n/mcp-browser-extension/src/background.ts
+  h_44f8d1c0f2f8c4 166
+  s_934c52d564c9ad::t_86dda10969c021 167
+  s_934c52d564c9ad::t_8ae9d4e96085af 318
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.ts
+  s_934c52d564c9ad::t_1ac5acb8f0ab9e 6-7
+  s_934c52d564c9ad::t_dbd2d39e64bcc0 147-154
+  s_934c52d564c9ad::t_a607106584c8ca 272
+packages/@n8n/mcp-browser-extension/src/ui/components/TabList.vue
+  s_934c52d564c9ad::t_f924d74f2db8a4 26-35
+packages/@n8n/mcp-browser-extension/src/ui/App.vue
+  s_934c52d564c9ad::t_a2296302b45b0c 253-254
+  h_44f8d1c0f2f8c4 143
+  s_934c52d564c9ad::t_1f28fbf31cc7cd 57
+  s_934c52d564c9ad::t_a20a565d10b2d8 2
+  s_934c52d564c9ad::t_5c1fa8543ae140 252,261-264
+  s_934c52d564c9ad::t_76d332ccd0dc04 199
+  s_934c52d564c9ad::t_40402611da36a7 260
+  s_934c52d564c9ad::t_ba1d418d38e8da 116,119
+  s_934c52d564c9ad::t_85a7d0eb00b2f9 134-135
+  s_934c52d564c9ad::t_e8da621c903849 136,145
+  s_934c52d564c9ad::t_4bc374432b9209 3,5,20,23-24,31-32,34,36-48,50-56,58-69,71-96,102-111,113-115,117-118,120-124,129-132,137,140,154-157,161-163,167,171-178,181-186,189,195-198,200-202,205-217,219-225,227-234
+  s_934c52d564c9ad::t_1a2388704e13fe 35
+  s_934c52d564c9ad::t_3e4596c4b3c175 25-27
+  s_934c52d564c9ad::t_df9843237fbb2e 255-259
+  s_934c52d564c9ad::t_52cfcc0b93efaf 141-142,144,146-151
+  s_934c52d564c9ad::t_0b7ae325e6729c 218,226
+packages/@n8n/mcp-browser-extension/src/ui/components/TabItem.vue
+  s_934c52d564c9ad::t_3d231e0e72f914 46-52,60,74-75,98-101
+  s_934c52d564c9ad::t_4e4523d76dbf21 102
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.test.ts
+  s_934c52d564c9ad::t_1e1f334e031a00 612,614-616,621-624,626-628
+  s_934c52d564c9ad::t_e773e41ea2ee36 38-39
+packages/@n8n/mcp-browser-extension/src/relayConnection.test.ts
+  s_934c52d564c9ad::t_9495cdc38991d1 662,678,680
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "887b55baabef719697903d5df3be060d7f439a32",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_934c52d564c9ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "490ca0b4-c904-43da-9d07-f2b8bf8bae50",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

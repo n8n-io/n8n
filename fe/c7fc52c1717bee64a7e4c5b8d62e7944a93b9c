@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_4bc79cf80826f6::t_8171b62e658476 248-250
+  s_4bc79cf80826f6::t_2c6db0626410de 65,179-185,210,224-227,229-230,232,234-247,251-254,281-283
+  s_4bc79cf80826f6::t_ac50adf59746a8 228,231,233,288-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "fec7fc52c1717bee64a7e4c5b8d62e7944a93b9c",
+  "prompts": {},
+  "sessions": {
+    "s_4bc79cf80826f6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc821-4348-7fc2-93b6-13c4143d0153",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

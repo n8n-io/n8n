@@ -1,0 +1,28 @@
+packages/core/src/nodes-loader/__tests__/scan-directory-for-packages.test.ts
+  h_c63dce324dfc7b 1-3,50,63,88
+  s_703e41165fb496::t_8877f112c7490d 60,64-70
+  s_703e41165fb496::t_66391974be838b 4-49,51-59,61-62,71-87,89-96
+packages/core/src/nodes-loader/scan-directory-for-packages.ts
+  s_703e41165fb496::t_84cdec08205782 27-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "0f8eac87bdefd9b03be41f6b3772e633e3851e43",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_703e41165fb496": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f1fe4e9-f3f1-494f-b710-2e95aa6a1d04",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+AGENTS.md
+  s_ab95678c617f78::t_385fb5c23eef02 14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e49612f0fd922af743d9457a0b8e2092c3ebfb19",
+  "prompts": {},
+  "sessions": {
+    "s_ab95678c617f78": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a43c2dc-07b9-40cd-8418-41490654b41a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

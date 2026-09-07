@@ -1,0 +1,28 @@
+packages/frontend/@n8n/stores/src/rbac.store.test.ts
+  s_220639abd042d4::t_6cf5c47b3ea3f1 1,4-6,9
+packages/frontend/@n8n/stores/src/rbac.store.ts
+  s_220639abd042d4::t_37f010d59d69f3 7
+  s_220639abd042d4::t_aa9959a34ef298 1,4,6
+packages/frontend/@n8n/stores/package.json
+  s_220639abd042d4::t_7b6401755b99e3 39-40
+packages/frontend/editor-ui/src/app/stores/rbac.store.ts
+  s_220639abd042d4::t_003d4d652efc0e 1-6
+pnpm-lock.yaml
+  s_220639abd042d4::t_7d986015083045 5210-5215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "cd10acbb52cd2551ffcac6d9cfff247b87c8bb93",
+  "prompts": {},
+  "sessions": {
+    "s_220639abd042d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71759634-c800-4bbe-874d-026aae0ecbf2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

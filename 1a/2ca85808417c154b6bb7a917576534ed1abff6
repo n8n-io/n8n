@@ -1,0 +1,45 @@
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_d080cd0071e0f4::t_5a02d10e5c7efc 902
+packages/cli/src/modules/mcp/mcp-api-key.service.ts
+  s_d080cd0071e0f4::t_08002ed85b9dda 9
+packages/cli/src/services/oauth-token-verifier-proxy.service.ts
+  s_d080cd0071e0f4::t_cd70a52244b1db 59
+  s_d080cd0071e0f4::t_02c06a7ff93945 33-58,60-70
+packages/cli/src/workflows/workflow-history/workflow-history.service.ts
+  s_d080cd0071e0f4::t_37e8428d5aefcd 267-273
+  s_d080cd0071e0f4::t_48f93bf797c0a2 15-16
+packages/cli/src/services/__tests__/oauth-token-verifier-proxy.service.test.ts
+  s_d080cd0071e0f4::t_0ad84e7e47e300 1-36
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_d080cd0071e0f4::t_08002ed85b9dda 5
+packages/cli/src/services/__tests__/protected-resource.registry.test.ts
+  s_d080cd0071e0f4::t_8853efd17249d6 1-115
+packages/cli/src/modules/oauth-server/oauth-server.module.ts
+  s_d080cd0071e0f4::t_7475f73deb480c 20-27
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_d080cd0071e0f4::t_94a88f3990d533 29-30,34
+  s_d080cd0071e0f4::t_f2830cde9f2e9d 23,26-28,31
+  s_d080cd0071e0f4::t_cd70a52244b1db 19-22
+packages/cli/src/modules/mcp/mcp-server-middleware.service.ts
+  s_d080cd0071e0f4::t_1dcf37a74b59a8 9-12
+  s_d080cd0071e0f4::t_ad871a6843696f 29
+packages/cli/src/modules/mcp/__tests__/mcp-server-middleware.service.test.ts
+  s_d080cd0071e0f4::t_ecb089c1a4c268 8
+  s_d080cd0071e0f4::t_62b211b7da694d 29-30,39-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "1a2ca85808417c154b6bb7a917576534ed1abff6",
+  "prompts": {},
+  "sessions": {
+    "s_d080cd0071e0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6faeb930-cf57-48d0-aa3c-235422c166e5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_38f5272c4af8c0::t_2627fe37bbc5fb 222,445
+packages/@n8n/db/src/migrations/common/1784815940111-AddInstanceCredentials.ts
+  s_38f5272c4af8c0::t_2627fe37bbc5fb 1-47
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_38f5272c4af8c0::t_2627fe37bbc5fb 230,463
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7ec6bd4916076e360a626f6a29fa692583c88151",
+  "prompts": {},
+  "sessions": {
+    "s_38f5272c4af8c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3f35139-b098-407d-8f3f-37268864db9b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

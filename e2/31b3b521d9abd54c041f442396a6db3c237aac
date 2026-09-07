@@ -1,0 +1,98 @@
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer.ts
+  s_2f4169d66c1827::t_dffe89807b8d94 1,10,15-16,27-33
+packages/frontend/editor-ui/src/features/ai/mcpAccess/composables/useMcp.ts
+  s_2f4169d66c1827::t_3f7f1c22dc08e9 20
+  s_2f4169d66c1827::t_95abecaa0e1024 10-13
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.ts
+  s_2f4169d66c1827::t_adf2dde80fc647 364,368-369
+  s_2f4169d66c1827::t_6cabc116321b9f 391
+  s_2f4169d66c1827::t_cb1e7645495d8c 94-106
+  s_2f4169d66c1827::t_b2453a0df2d184 189-223
+  s_2f4169d66c1827::t_898c1fc95a3641 332-339
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.ts
+  s_2f4169d66c1827::t_d80b1fdc276465 33-39
+  s_2f4169d66c1827::t_9b71babc945f94 10
+  s_2f4169d66c1827::t_59e33db5cd7d18 152-185
+packages/frontend/editor-ui/src/features/ai/mcpAccess/module.descriptor.ts
+  s_2f4169d66c1827::t_4f98d992d3d241 6,8
+  s_2f4169d66c1827::t_b57f5be4716fce 20-21
+  s_2f4169d66c1827::t_51a0b27410fa7e 56-66
+  s_2f4169d66c1827::t_1a42c7ab1b898a 100-104
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_2f4169d66c1827::t_5fdbc7b5c5bd7a 38
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.constants.ts
+  s_2f4169d66c1827::t_ab0121cbb2d552 13,23
+  s_2f4169d66c1827::t_fca9dbae35c3e4 43
+  s_2f4169d66c1827::t_8f543f18e89ccf 33
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_2f4169d66c1827::t_cb95d1eb766557 123-127
+  s_2f4169d66c1827::t_ef56b039e1296e 291-302
+  s_2f4169d66c1827::t_7d1fc3091533ec 171-174
+  s_2f4169d66c1827::t_994af16b276979 204-208
+  s_2f4169d66c1827::t_2714a80cf35f77 81-89
+  s_2f4169d66c1827::t_d6be528e2f8758 108-117
+  s_2f4169d66c1827::t_8f846c5443847d 44,47
+  s_2f4169d66c1827::t_1978454b76c7d6 28,34
+  s_2f4169d66c1827::t_7d98b96c49fc3f 133-135
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  s_2f4169d66c1827::t_681196ad288c01 43-78
+  s_2f4169d66c1827::t_063d4d25ad8f10 159-162
+  s_2f4169d66c1827::t_64f65042fd92c0 264-305
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/AgentsTable.vue
+  s_2f4169d66c1827::t_5aae1b353ad0fe 1-312
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_2f4169d66c1827::t_9779efd7ca11aa 34
+  s_2f4169d66c1827::t_14654d4fbd687d 1-15,17-33,35-159,161-237
+  s_2f4169d66c1827::t_c05d1851b7b180 16
+  s_2f4169d66c1827::t_249fac92ae0c87 160
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPAgentsSelect.vue
+  s_2f4169d66c1827::t_28a2a3743beb70 1-172
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2f4169d66c1827::t_c252c4df46b506 4514-4515
+  s_2f4169d66c1827::t_c82b4d67c8fc50 3415-3419
+  s_2f4169d66c1827::t_8d1cd244058b8a 7077-7078
+  s_2f4169d66c1827::t_4f797c8e238720 3319
+  s_2f4169d66c1827::t_fb9f0c93180fa3 3358-3367
+  s_2f4169d66c1827::t_53b73ec70d0bc5 3211-3215
+  s_2f4169d66c1827::t_9d8e2bbe3cfe4d 2509
+  s_2f4169d66c1827::t_2d34da3675de56 3300-3301
+  s_2f4169d66c1827::t_963727780d3a0e 3272-3276
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_2f4169d66c1827::t_6081b5399bdddf 2,9-12
+  s_2f4169d66c1827::t_ea6cfe2cb93265 139-150
+  s_2f4169d66c1827::t_a5ec82b4844b12 34,36-38,47-58
+  s_2f4169d66c1827::t_454bfd678277cf 119-120
+  s_2f4169d66c1827::t_4fae783a2075bc 77-87
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.test.ts
+  s_2f4169d66c1827::t_1c082c9e047480 1-277
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpConfigSnippet.vue
+  s_2f4169d66c1827::t_906b64cf727dc6 4
+packages/frontend/editor-ui/src/features/agents/agent.types.ts
+  s_2f4169d66c1827::t_b2555abf263794 27-29
+  s_2f4169d66c1827::t_12f04cb6e95bd2 30
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectAgentsModal.vue
+  s_2f4169d66c1827::t_73498580d6fa8d 1-149
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.vue
+  s_2f4169d66c1827::t_82513b1e4c4506 4,11
+  s_2f4169d66c1827::t_dba7b9919c1371 147
+  s_2f4169d66c1827::t_a04b2428ba1ea2 22,29-75,79-84,89
+  s_2f4169d66c1827::t_3c87ecc9eb306b 124,131
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_2f4169d66c1827::t_d56e92e9ab91b0 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e231b3b521d9abd54c041f442396a6db3c237aac",
+  "prompts": {},
+  "sessions": {
+    "s_2f4169d66c1827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b4eb8f0-e632-454c-b878-59fb88b7f734",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/@n8n/instance-ai/evaluations/__tests__/artifact-agent-handler.test.ts
+  s_842425d35fc733::t_35d4635f78cbf7 14,19-20,24,26,36
+packages/@n8n/instance-ai/evaluations/__tests__/artifact-config-eval-handler.test.ts
+  s_842425d35fc733::t_0af275ecf42fb3 44,49-50,54,56,66
+packages/@n8n/instance-ai/evaluations/README.md
+  s_842425d35fc733::t_69967b0bcd44bc 286
+packages/@n8n/instance-ai/evaluations/outcome/collect-refs.ts
+  s_842425d35fc733::t_46b16ed3dede79 17-24,29-30
+  s_842425d35fc733::t_6a085165bdcc69 52-57
+packages/@n8n/instance-ai/evaluations/harness/artifacts/config-eval-handler.ts
+  ai_agent 20-23
+  s_842425d35fc733::t_4515ceea79638b 16-19
+packages/@n8n/instance-ai/evaluations/harness/artifacts/agent-handler.ts
+  s_842425d35fc733::t_8dfbdac3bb0f99 17-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "593a22a89cbb28ea2cb128efe42bb180136e9c93",
+  "prompts": {},
+  "sessions": {
+    "s_842425d35fc733": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a760909-ed85-4b6f-894c-5d7b2d1c8180",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

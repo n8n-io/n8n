@@ -1,0 +1,35 @@
+packages/@n8n/config/src/configs/sentry.config.ts
+  s_baa3238dfea470::t_ba27b383e68543 50-58
+packages/core/src/observability/tracing/__tests__/span-sampling.test.ts
+  s_baa3238dfea470::t_50794db38f1b39 2
+  s_baa3238dfea470::t_9e182f05f83e3f 139-152,154-155,157-160,162-165,167-170,172-175,177-181,186-188,194-196
+  s_baa3238dfea470::t_e1418c2b1d404a 153,156,161,166,171,176,182,189
+  ai_agent 183-185,190-193
+packages/core/src/observability/tracing/span-sampling.ts
+  s_baa3238dfea470::t_87947eead8bf98 81-83,85-88,95-97
+  s_baa3238dfea470::t_6eb5ba4602b493 41-57
+packages/@n8n/config/test/config.test.ts
+  s_baa3238dfea470::t_4043ed2a86a0f1 401
+packages/core/src/errors/error-reporter.ts
+  s_baa3238dfea470::t_2e25a572a57ebe 44-49
+  s_baa3238dfea470::t_3dd07beed1fb05 253-258
+packages/cli/src/commands/base-command.ts
+  s_baa3238dfea470::t_ea3a3d52fd80b8 100
+  s_baa3238dfea470::t_cda9e1060c25a0 117-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "744723819957a20c529d50d31fa53f68826428ec",
+  "prompts": {},
+  "sessions": {
+    "s_baa3238dfea470": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec51802c-a043-452d-a9c0-7904a9f6f943",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

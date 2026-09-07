@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_e261fef06e553c::t_367d8f4eb96a12 51-60
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-memory.test.ts
+  s_e261fef06e553c::t_c5dc8a6c16b36c 156-181
+packages/@n8n/agents/src/__tests__/integration/memory-custom-backend.test.ts
+  s_e261fef06e553c::t_ec1ea1a55c1c0e 68-70,72-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f820d078e9dfd3918a491b4ae9b2cdd71717cb96",
+  "prompts": {},
+  "sessions": {
+    "s_e261fef06e553c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f09a581b-fd2f-4107-965c-de4045d7a2ac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

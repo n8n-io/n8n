@@ -1,0 +1,30 @@
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_ccfbf8efadee2b::t_11469840f088ee 295-304
+  s_ccfbf8efadee2b::t_922d8a89644271 349-357,359-363,365-369,371-389
+  s_ccfbf8efadee2b::t_b694864513545f 15
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_ccfbf8efadee2b::t_d4531f88b95c49 424-429
+  s_ccfbf8efadee2b::t_fd45868c139178 9
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_ccfbf8efadee2b::t_977a253b9faa13 829
+  s_ccfbf8efadee2b::t_e55c954692c32f 1038-1043
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_ccfbf8efadee2b::t_526bed4ed07e64 856-929
+  s_ccfbf8efadee2b::t_7a3ac6ede6ba23 930-951
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "686f539dce78dcaae7953553669de7997a5ce7e7",
+  "prompts": {},
+  "sessions": {
+    "s_ccfbf8efadee2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fef4c5f-b8bf-4e9d-8954-de3cad800f5c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

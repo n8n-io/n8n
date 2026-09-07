@@ -1,0 +1,89 @@
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  s_fca2302987ca57::t_c49d54f360dc40 35
+  s_fca2302987ca57::t_6944a656507f54 324-326
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useNdvAgentConfig.ts
+  s_fca2302987ca57::t_c8fd05f4927113 286-294
+  s_fca2302987ca57::t_51daed2b557da0 72-74,83-86
+  s_fca2302987ca57::t_871725d961a7b0 253-255,257-259,261-267,272-273
+  s_fca2302987ca57::t_ffeebf184d08c9 18-19
+  s_fca2302987ca57::t_da69029cab99d0 118-121,134
+  s_fca2302987ca57::t_b88bbacddbc56c 57-58
+  s_fca2302987ca57::t_09fe4165d02068 122,135
+  s_fca2302987ca57::t_c48657f3efe568 318-321
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_fca2302987ca57::t_d6760e15c50cd2 10
+  s_fca2302987ca57::t_c10a8c981fb820 71-73
+  s_fca2302987ca57::t_9f7ce5fc40bee7 144-146
+  s_fca2302987ca57::t_d39001df95c2e8 222
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_fca2302987ca57::t_dd8f8d6623296e 180,184,187-188
+packages/frontend/editor-ui/src/features/ndv/agents/composables/__tests__/useNdvAgentConfig.test.ts
+  s_fca2302987ca57::t_2a666261cad156 96-97
+packages/frontend/editor-ui/src/features/agents/utils/agentNode.ts
+  s_fca2302987ca57::t_8b69268f6b3b43 1-13
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_fca2302987ca57::t_0fb6ce848e4707 768-770
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_fca2302987ca57::t_8a6277766c95af 22
+  s_fca2302987ca57::t_4fe911ce4fb440 282-283,289-293
+  s_fca2302987ca57::t_5c5d3a42857b49 89-91
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_fca2302987ca57::t_607ad16659ddc9 170
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedControls.vue
+  s_fca2302987ca57::t_ad505a76db6116 102,108
+  s_fca2302987ca57::t_88f708496b6e1a 29-36,44-45
+  s_fca2302987ca57::t_77ba49048e90ef 71,79,92,98
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitySummary.ts
+  s_fca2302987ca57::t_2a9449d5480cb9 113
+  s_fca2302987ca57::t_69f57370f25a1c 3,12-15,25-27,35-38,42,47-68
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_fca2302987ca57::t_a1c39ecfa9ce76 269-271
+  s_fca2302987ca57::t_d1bc464b310730 240-247
+  h_7555c3ee6524cf 276,282
+  s_fca2302987ca57::t_32d8027967680e 275,278-281
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_fca2302987ca57::t_92e63970564dbc 845
+  s_fca2302987ca57::t_84a7bf071bb319 29
+  s_fca2302987ca57::t_d1d5b6a4deef7a 528-529
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvReferencedControls.test.ts
+  s_fca2302987ca57::t_77ba49048e90ef 161,167,195,202,209,216
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvAdvancedSection.vue
+  s_fca2302987ca57::t_cd4b5957e27363 218-224,228-232
+  s_fca2302987ca57::t_5f99bea0253ed9 62-63
+packages/frontend/editor-ui/src/features/agents/composables/useAgentNavigation.ts
+  s_fca2302987ca57::t_5da0ad6a08c888 11-14
+  s_fca2302987ca57::t_ab055c5e5e21c9 33-42,44-54,58
+packages/frontend/editor-ui/src/features/agents/composables/useAgentScopeProjectId.ts
+  s_fca2302987ca57::t_3af68d4f0394b2 1-27
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_fca2302987ca57::t_93e3aebd335183 74
+  s_fca2302987ca57::t_a03505f1e6fe75 66
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvBuilderBanner.vue
+  s_fca2302987ca57::t_2de46ea309c756 132-135
+  s_fca2302987ca57::t_db92a05c9302fe 72-74,76,80-81
+  s_fca2302987ca57::t_3cba706d4b526d 131
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_fca2302987ca57::t_cc9be03e8b9d55 39-40,45
+  s_fca2302987ca57::t_3d4ee17d59a2b8 179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd82e67c1d4ba258d7619959c280c675b6d6e122",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fca2302987ca57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3ee84d5-1fd7-46c3-ba48-70e2c843ec51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

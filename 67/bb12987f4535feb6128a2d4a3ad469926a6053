@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_8c0bb2d06aee91::t_39da0c0080a25d 351-360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "67bb12987f4535feb6128a2d4a3ad469926a6053",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

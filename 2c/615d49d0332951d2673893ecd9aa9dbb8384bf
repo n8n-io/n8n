@@ -1,0 +1,23 @@
+packages/@n8n/api-types/src/dto/saml/saml-preferences.dto.ts
+  s_2138fd2cfb76ec::t_b1dcf56063e612 16-24
+  s_2138fd2cfb76ec::t_2fef9ce50c1f75 100
+packages/@n8n/api-types/src/dto/saml/__tests__/saml-preferences.dto.test.ts
+  s_2138fd2cfb76ec::t_3a7693fc31d10f 1
+  s_2138fd2cfb76ec::t_22708e7b932e92 158-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2c615d49d0332951d2673893ecd9aa9dbb8384bf",
+  "prompts": {},
+  "sessions": {
+    "s_2138fd2cfb76ec": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "02c0a3d3-b542-4d3c-b40c-957149418e2d",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

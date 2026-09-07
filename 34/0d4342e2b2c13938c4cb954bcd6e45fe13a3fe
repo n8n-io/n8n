@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/vite.config.mts
+  s_80d185abd37303::t_af901553cd967d 59-61
+  s_80d185abd37303::t_3c086167db56b8 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "340d4342e2b2c13938c4cb954bcd6e45fe13a3fe",
+  "prompts": {},
+  "sessions": {
+    "s_80d185abd37303": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2231-958a-77f0-881a-1fca61d763de",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

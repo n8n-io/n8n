@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_91c597c7193a8c::t_b47602dc913b5f 278-279,535,542-543,546,549-552
+  s_91c597c7193a8c::t_3de35fb56481f8 553-557
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e7ea4b2ab842116ce526887f357396abb062a9b9",
+  "prompts": {},
+  "sessions": {
+    "s_91c597c7193a8c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7122e3e1-00de-42c5-8307-a90549fc03e2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

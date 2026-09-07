@@ -1,0 +1,156 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_9f16307c732f06::t_ed7bd8226b1e95 29
+  s_9f16307c732f06::t_36039285649b3a 56-60,70-71,73
+  s_9f16307c732f06::t_e092770d4540ee 7,9
+  s_9f16307c732f06::t_3feec7f5232f1c 72
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_9f16307c732f06::t_f02ce4f1e35a05 15-18
+packages/@n8n/cli/docs/commands/package.md
+  s_9f16307c732f06::t_405493a0c313c5 33
+  s_9f16307c732f06::t_986b66aafe175f 40-43
+  s_9f16307c732f06::t_9e2697d9bf364f 44
+  s_9f16307c732f06::t_5f6ae49946bc06 39
+  s_9f16307c732f06::t_8587a1a8a288ec 21
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_9f16307c732f06::t_d806c2d93012e2 188
+  s_9f16307c732f06::t_d0136b72b5b655 11
+  s_9f16307c732f06::t_636ba2cb44deb0 23
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_9f16307c732f06::t_98050c29e29a0c 156-169
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_9f16307c732f06::t_77ba7c02b338ac 141
+  s_9f16307c732f06::t_2a0e98eeab2b40 35
+  s_9f16307c732f06::t_65be1d18f5ead6 154
+  s_9f16307c732f06::t_4827c12c873560 108,119
+  s_9f16307c732f06::t_123713a6384cfa 83,92
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_9f16307c732f06::t_d7de9004452e24 203
+  s_9f16307c732f06::t_70c2656df27e5c 83-93
+  s_9f16307c732f06::t_b8048127923f3b 172-174
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-dependency-resolver.test.ts
+  s_9f16307c732f06::t_95968b89de644b 52-56,70-74,86-90,114-118
+  s_9f16307c732f06::t_16c697703d2e52 164,183
+  s_9f16307c732f06::t_c367e721df9830 134,141,148
+  s_9f16307c732f06::t_c673c3d290b3f8 95-100
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_9f16307c732f06::t_2a5af8788b87f9 173,213,240
+  s_9f16307c732f06::t_8f0713a830a577 100-106,121-127,137-143,153-159
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-version-policy.test.ts
+  s_9f16307c732f06::t_da444a4f022688 1,4-10,13-17
+  s_9f16307c732f06::t_f5fe757e694fb6 2-3,11-12,18-23
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_9f16307c732f06::t_eaf54d78b39919 76-82
+  s_9f16307c732f06::t_50f7fb30de97ea 66-75,83-84
+packages/cli/src/modules/n8n-packages/__tests__/utils/test-builders.ts
+  s_9f16307c732f06::t_5eb6855a8fbe0c 1,3-6
+  s_9f16307c732f06::t_80ce3387b1cb64 214-288
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_9f16307c732f06::t_8751b9c3801cd3 256,282,382,428,474,500,526,552
+  s_9f16307c732f06::t_4b033bf4da61c6 63
+  s_9f16307c732f06::t_671954769a83a8 432-451
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_9f16307c732f06::t_8f7aa87bfda239 184-188,196-200
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow-resolver.ts
+  s_9f16307c732f06::t_087abfde387290 13,15
+  s_9f16307c732f06::t_1de6c880ad193c 46
+  s_9f16307c732f06::t_5e30f2797d95f2 238,244-248
+  s_9f16307c732f06::t_d636cf5b35dcea 258
+  s_9f16307c732f06::t_695815131f95a8 155,163
+  s_9f16307c732f06::t_926cc4a9e6a355 66
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_9f16307c732f06::t_4de1a3914ec0bb 54
+  s_f010a9de90b077::t_3297323437f159 841-864,891,903-904
+  s_9f16307c732f06::t_e1a5413c9640c1 840,884-890,893-902,905,954-1018
+  s_9f16307c732f06::t_ba72e13a8866fc 44-51,55-61
+  s_9f16307c732f06::t_d3d4617eeed148 865-883
+  s_9f16307c732f06::t_fcc01cd13c949f 23
+  s_9f16307c732f06::t_b25c8e0216a9dc 892,906-909,928-953
+  s_9f16307c732f06::t_d1e8713d90deea 910-927
+  s_9f16307c732f06::t_6dcf3908689ccd 25,29,31
+  s_9f16307c732f06::t_0412e1af062611 12
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-dependency-resolver.ts
+  s_9f16307c732f06::t_e9ab82f494bdc2 31
+  s_9f16307c732f06::t_aa2f8f6dbba848 39,43
+  s_9f16307c732f06::t_c6dbb262c00c90 7
+  s_9f16307c732f06::t_24ddda245677f3 20
+  s_9f16307c732f06::t_f0a5d34743a6ee 45
+  s_9f16307c732f06::t_23a9e9f9c43796 9
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_9f16307c732f06::t_5a7c2b9cbeba84 178-209
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_9f16307c732f06::t_8f0713a830a577 66-72,93,105-111,122-128,138-144,211-217
+  s_9f16307c732f06::t_9dad094b0b68d5 78
+  s_9f16307c732f06::t_42a8ae5ecf4620 160,182,244,265,298,333,358,387
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-version-policy.ts
+  s_9f16307c732f06::t_dfde4ddb5248d4 29-30,32
+  s_9f16307c732f06::t_43b2603590562f 1,5
+  s_9f16307c732f06::t_0eba200672dfcb 2-4,6-10,12-20,23-25,27-28,31,33-49,51,54,56,61-65,67-68
+  ai_agent 59-60
+  s_9f16307c732f06::t_9d665ae6868bb6 50,55,58,66
+  s_9f16307c732f06::t_db886e79e3aca2 11
+  s_9f16307c732f06::t_fa54ac29d14aa6 21
+  s_9f16307c732f06::t_3315c0e2832095 22,26
+  h_ce2c4b90496ac9 52-53,57
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_9f16307c732f06::t_b86dd9e086270a 47,49
+  s_9f16307c732f06::t_3d1635ba664d5d 25,29
+  s_9f16307c732f06::t_a4f3ca5b5e8360 596-605,607-612,614-622
+  s_9f16307c732f06::t_aea78fed73f09e 12
+  s_9f16307c732f06::t_9d8c5f884c953c 606,613,623-624
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_9f16307c732f06::t_8f0713a830a577 119
+  s_9f16307c732f06::t_6143d04bf68d02 53,86
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/auto-included-workflow-resolver.test.ts
+  s_9f16307c732f06::t_2649e3b570473f 109
+  s_9f16307c732f06::t_6311863b9d8be2 15
+  s_9f16307c732f06::t_dc73d5770a192d 339
+packages/@n8n/cli/src/commands/package/export.ts
+  s_9f16307c732f06::t_72829984a50edc 87
+  s_9f16307c732f06::t_8e2c8d26cfc740 84-86,88-89
+  s_9f16307c732f06::t_a4084fffcb9c57 116-122,129
+  s_9f16307c732f06::t_38eb67d052b190 100
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_9f16307c732f06::t_4a22ddeb6d3400 26
+  s_9f16307c732f06::t_14b7029025a353 116
+  s_9f16307c732f06::t_25ad990b7be468 12
+  s_9f16307c732f06::t_838f8119832324 136
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_9f16307c732f06::t_95968b89de644b 39-43
+  s_9f16307c732f06::t_300fd547c59311 158
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_9f16307c732f06::t_1401195905b4ac 20
+  s_9f16307c732f06::t_102e0839453a2a 137-174
+packages/@n8n/cli/src/client.ts
+  s_9f16307c732f06::t_9c04f70c2286b5 476
+  s_9f16307c732f06::t_66e4d714f9839c 486
+  s_9f16307c732f06::t_35322fafd65280 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c09b61450aa9f28ed70f579ecdb02c265afce220",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9f16307c732f06": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "109dd724-ee4f-481b-9d4c-a66e3c851e62",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    },
+    "s_f010a9de90b077": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3a0f1c0d-c3c8-4460-afa2-e547c760d578",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

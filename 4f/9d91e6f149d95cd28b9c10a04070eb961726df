@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/AiInsightsCard.vue
+  s_5d6be4e6bc70a6::t_04e1280a70b495 25-27
+  s_5d6be4e6bc70a6::t_fb8937ef83060b 198,202,206,221,225,229,233
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.vue
+  s_5d6be4e6bc70a6::t_00b97071740df5 4
+  s_5d6be4e6bc70a6::t_7a298d9b21cb66 34-50,53,58
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.test.ts
+  s_5d6be4e6bc70a6::t_264608de5814b6 154-183
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_f982e5ef87029c 118-124
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareData.test.ts
+  s_5d6be4e6bc70a6::t_f52e7e6d49cb3a 99-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f9d91e6f149d95cd28b9c10a04070eb961726df",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

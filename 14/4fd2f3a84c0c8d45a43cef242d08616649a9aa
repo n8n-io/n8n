@@ -1,0 +1,17 @@
+pnpm-lock.yaml
+  ai_agent 228-230,998-999,5178-5180,10138-10139,12551-12552,27649,30153,30212
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  ai_agent 1-275
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 7-8,14-16
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/getAllRoles.generated.yml
+  ai_agent 1-124
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "144fd2f3a84c0c8d45a43cef242d08616649a9aa",
+  "prompts": {}
+}

@@ -1,0 +1,23 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_13afa4c9ff51cc::t_1be14048478c0e 313
+packages/@n8n/api-types/src/dto/workflow-reviews/get-workflow-review-request-detail.dto.ts
+  s_13afa4c9ff51cc::t_1be14048478c0e 4
+  s_13afa4c9ff51cc::t_2ccd042e4a08f5 17
+  s_13afa4c9ff51cc::t_2697d99475c091 1-3,5-16,18-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3a93c43020c8aeb6670717024b21b4f0311dd8fe",
+  "prompts": {},
+  "sessions": {
+    "s_13afa4c9ff51cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01ce387f-9756-47ad-b092-e11666ad7870",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

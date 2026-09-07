@@ -1,0 +1,54 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_6a0cbfd021d0e7::t_c4f85bbd5c3b30 184-186
+packages/@n8n/api-types/src/dto/saml/saml-configuration-response.dto.ts
+  s_6a0cbfd021d0e7::t_bc2a00118e364b 1-9
+packages/cli/test/integration/public-api/sso-saml.test.ts
+  s_6a0cbfd021d0e7::t_5cd2c19eaf468f 13
+  s_6a0cbfd021d0e7::t_78757da528e6e8 1-12,14-114
+packages/cli/src/public-api/v1/handlers/sso-saml/sso-saml.mapper.ts
+  s_84458f29d00f13::t_3806c033b9559f 1,9
+  s_6a0cbfd021d0e7::t_33df458863cda8 2-8,10-16
+packages/cli/src/public-api/v1/openapi.yml
+  s_6a0cbfd021d0e7::t_fbc2b36b3c9671 43-44
+  s_6a0cbfd021d0e7::t_37df910b66495e 61-62
+packages/cli/src/public-api/v1/handlers/sso-saml/spec/schemas/saml-configuration.yml
+  s_6a0cbfd021d0e7::t_33531de2ff404d 1-121
+packages/cli/src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts
+  s_6a0cbfd021d0e7::t_2e3d9cfa1b26f7 2-23,25-29
+  s_84458f29d00f13::t_373765466a1a12 24
+  s_6a0cbfd021d0e7::t_716c32e7b4906e 1
+packages/@n8n/api-types/src/dto/index.ts
+  s_84458f29d00f13::t_0b763bb4045c40 79
+packages/cli/src/public-api/v1/handlers/sso-saml/spec/paths/settings.sso.saml.yml
+  s_6a0cbfd021d0e7::t_b6f9898fcf6b8a 1-24
+packages/cli/src/public-api/types.ts
+  s_6a0cbfd021d0e7::t_f9844ae8905f60 393-400
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_6a0cbfd021d0e7::t_bcbc862e2ce30b 18
+packages/@n8n/permissions/src/constants.ee.ts
+  s_6a0cbfd021d0e7::t_d942fdceb8fd79 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "84e063fc59d3c9c92bc2785190d3f5f4ea978203",
+  "prompts": {},
+  "sessions": {
+    "s_6a0cbfd021d0e7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "66e1bf28-1842-4d7c-8a33-30cd2a75d2c6",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_84458f29d00f13": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "669f064c-fbe2-424f-9767-52ddbcae54b2",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_1d360ad69afd30::t_aac58defac9651 1-6,8,13-14,18,20,22-23,25-26,28-29,31-35,37-39,41-45,47-52,54-55,57-60,67-70,72,74-76,78-79,81-85,87-89,109-124,126-127,130-133,135,137-140,142-158,173-203,207-220,223,247-258,272,280-281,288,290,297-306,310-320,323,325-330,332-333,346-355,359-365,373-377,379-387,389-454,462-472
+  s_1d360ad69afd30::t_ed9d6dd59fcd4a 61-64,204-206,224-227,229-234,366-372,455-461
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_1d360ad69afd30::t_0f8f16416f3468 39-40
+  s_1d360ad69afd30::t_a49d13d3490035 225
+  s_1d360ad69afd30::t_46ec720ddcc884 296-341
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_1d360ad69afd30::t_dffbfa4f193d9c 5-10
+  s_1d360ad69afd30::t_fdbe3e420fb3e4 47
+  s_1d360ad69afd30::t_5d005a2d668ef2 2006-2022,2027,2029
+  s_1d360ad69afd30::t_adbda6b092b042 2052,2067
+  s_1d360ad69afd30::t_f8f146c67d52f5 2086,2088-2106,2145-2149,2157
+  s_1d360ad69afd30::t_ed9d6dd59fcd4a 2087
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_1d360ad69afd30::t_df3a05acdf0c31 66
+  s_1d360ad69afd30::t_fee3993d949d3a 330-338
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_1d360ad69afd30::t_102452510415d7 143-144,146,149-150,152-153
+  s_1d360ad69afd30::t_10505c5c916b61 145,147-148
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_1d360ad69afd30::t_80b8a324eb35cf 4-6,9-11,13-20,23-24,28-38,42,46-50,57-69,72-92,95-100,102-103,107,109-114,116-120,123-124,126-127,131-133,135-152,156-157,160-176,179-180,183-185,203,205-207,210-212,218,220-249,253-255,257-258,260,267-275,293-294,297,301-302,305-306,310-311,314-320,322-360,376,378,384-408
+packages/cli/src/scaling/job-processor.ts
+  s_1d360ad69afd30::t_95929851bd0338 4
+  s_1d360ad69afd30::t_03b32d9c92e768 60
+  s_1d360ad69afd30::t_12cd443ce4073b 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "adbb451bc7552f0b9d28073b2eb82eddeaf82cb3",
+  "prompts": {},
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

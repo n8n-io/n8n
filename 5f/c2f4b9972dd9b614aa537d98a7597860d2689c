@@ -1,0 +1,86 @@
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_0607e661fb7835::t_551d7ffaf5f1f5 156-165,170-171,179-180,191-192
+  s_0607e661fb7835::t_8c1d4b6140c5d6 55-59
+  s_02bcb0e9f9d95d::t_ebf12c71ba4cfe 125-130
+  s_02bcb0e9f9d95d::t_8f58ad5cd24bc8 31-42
+  s_02bcb0e9f9d95d::t_23b47250fbc531 25,83,120-121,133-138
+  s_02bcb0e9f9d95d::t_a0092a5fe1de26 200-207
+  s_02bcb0e9f9d95d::t_10b7da984d4509 100-102
+  s_02bcb0e9f9d95d::t_04882eef0af6fa 208-210
+  s_02bcb0e9f9d95d::t_118ce6e90304af 11,211-214
+  s_02bcb0e9f9d95d::t_474dd68a8e8b5e 5,8,28,84-86
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_0607e661fb7835::t_ca446c436559f6 211-222,229-246,253-307
+  s_0607e661fb7835::t_15b1be60462b07 223-228
+  s_0607e661fb7835::t_b5dd2254f1eb7a 247-252
+  s_02bcb0e9f9d95d::t_7beae87fbc3c5b 148-165
+  s_02bcb0e9f9d95d::t_1fd430e44c6d2e 14-16
+packages/cli/src/events/maps/workflow-publication-metrics.event-map.ts
+  s_0607e661fb7835::t_7dde391aa8ccfe 58-61
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  s_0607e661fb7835::t_732d29b5f3423d 232-240,244-245
+  s_0607e661fb7835::t_02862894c86c6a 213-222
+packages/cli/src/workflows/publication/__tests__/workflow-publication-reconciler.service.test.ts
+  s_0607e661fb7835::t_931e82975fc038 321-345
+  s_0607e661fb7835::t_739dd182b6b9f0 120-121
+  s_0607e661fb7835::t_4402a5659ea5f6 346
+  s_02bcb0e9f9d95d::t_0296b137a61daf 129,148
+  s_02bcb0e9f9d95d::t_1d0cc846067652 239,360,365,367-381
+  s_02bcb0e9f9d95d::t_96903d68378e93 49
+  s_02bcb0e9f9d95d::t_41da5dad201099 176,180,182,187-188,190,192-193,195,199,201-202,204,207-238
+  s_02bcb0e9f9d95d::t_196628adea4383 28
+  s_02bcb0e9f9d95d::t_3d113006f5be6c 242-261
+  s_02bcb0e9f9d95d::t_1c6ac5192547dd 149-151
+  s_02bcb0e9f9d95d::t_aa8653d2c88fb1 130-133
+  s_02bcb0e9f9d95d::t_680ec08c7e998a 385-505
+  s_02bcb0e9f9d95d::t_d98155a2a23d0d 263,269-270
+  s_02bcb0e9f9d95d::t_73550bf88ed681 5-6,9,11-12
+  s_02bcb0e9f9d95d::t_c41432af0a2982 50-52,63-104
+  s_02bcb0e9f9d95d::t_dde14711ab5f18 301
+  s_02bcb0e9f9d95d::t_9842daf8d985a3 26
+  s_02bcb0e9f9d95d::t_d9023ab6bc7f8c 105-106
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_0607e661fb7835::t_8c991c47f3e020 366-443,477-514,516
+  s_0607e661fb7835::t_d0ee88244e31af 515
+  s_0607e661fb7835::t_e23ccf00f6cfe1 517
+  s_0607e661fb7835::t_956e260a92ae23 444-476
+  s_02bcb0e9f9d95d::t_141d4240ff3178 541-542
+  s_02bcb0e9f9d95d::t_f8e4fed8d30f13 518
+  s_02bcb0e9f9d95d::t_61db0106015d18 136-137,146-157
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_02bcb0e9f9d95d::t_e36bd9d5060c07 21-22
+  s_02bcb0e9f9d95d::t_ec705a43509f35 74
+  s_02bcb0e9f9d95d::t_b81bc1baa81d57 3
+packages/cli/test/integration/commands/start.cmd.test.ts
+  s_02bcb0e9f9d95d::t_5ee8c36d6eb801 94
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_02bcb0e9f9d95d::t_525c408b5e088e 466-471,480,482
+  s_02bcb0e9f9d95d::t_041d7541ed9079 1,4
+  s_02bcb0e9f9d95d::t_8e7561cd8a212d 472-478
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_02bcb0e9f9d95d::t_c1eacb49e18cc2 4,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "5fc2f4b9972dd9b614aa537d98a7597860d2689c",
+  "prompts": {},
+  "sessions": {
+    "s_02bcb0e9f9d95d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b0c3c1b-ecd2-46d6-b426-20dc6754a1da",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_0607e661fb7835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "830f0844-9f81-4a6a-bb3d-8a1f2786d064",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

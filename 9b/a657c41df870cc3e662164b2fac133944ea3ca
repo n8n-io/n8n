@@ -1,0 +1,26 @@
+.claude/plugins/n8n/agents/autodev-architecture-reviewer.md
+  s_c7478e625df7e3::t_5ca650f58ff961 12-14
+.claude/plugins/n8n/agents/autodev-test-reviewer.md
+  s_c7478e625df7e3::t_fce0371dde3763 17
+  s_c7478e625df7e3::t_eeb8cb398b7fa1 13
+.claude/plugins/n8n/agents/autodev-security-reviewer.md
+  s_c7478e625df7e3::t_a97a19da29df0b 12-14
+.claude/plugins/n8n/agents/autodev-conventions-reviewer.md
+  s_c7478e625df7e3::t_175eee91b590c4 10,12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9ba657c41df870cc3e662164b2fac133944ea3ca",
+  "prompts": {},
+  "sessions": {
+    "s_c7478e625df7e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "279c2622-09b5-4e1a-9634-deeb884cedb9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
