@@ -270,6 +270,9 @@ export function mapGroupsToVueFlowNodes({
 	getNodeExecutionSnapshot,
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
 	const out: CanvasGroupNode[] = [];
+	// Only the group-node path supplies a group position, so it marks that path.
+	const isGroupNodePath = getGroupOwnPosition !== undefined;
+
 	for (const group of allGroups) {
 		const isEmpty = isEmptyGroup(group.id);
 		// An empty group has no member rect to derive a position from, so it draws
@@ -327,7 +330,11 @@ export function mapGroupsToVueFlowNodes({
 			// The title bar stands in for the whole group: selecting it selects
 			// every member node (see useCanvasNodeGroupSelection).
 			selectable: true,
-			connectable: false,
+			// On the group-node model the card carries the group's own ports, so it
+			// must accept a dropped connection in every state. VueFlow refuses the
+			// drop at the node level before any handle is consulted, so this cannot
+			// stay false. The older path has no ports of its own and keeps it off.
+			connectable: isGroupNodePath && !readOnly,
 			// Below member nodes and (when expanded) below stickies — see the
 			// stacking contract in canvasNodeGroups.constants.ts.
 			zIndex: collapsed ? GROUP_NODE_Z_INDEX_COLLAPSED : GROUP_NODE_Z_INDEX_EXPANDED,

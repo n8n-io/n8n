@@ -98,6 +98,7 @@ import {
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
 import { NodeGroupDescriptionVisibilityKey } from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { useGroupNodeExperiment } from '@/experiments/groupNode/useGroupNodeExperiment';
+import { useGroupNodeCards } from '../composables/useGroupNodeCards';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -305,6 +306,31 @@ const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
 const injectedNodeGroupView = inject(NodeGroupViewKey, null);
 const { isFeatureEnabled: isGroupNodeEnabled } = useGroupNodeExperiment();
+const groupNodeCards = useGroupNodeCards(
+	computed(() => workflowDocumentStore.value.allNodes),
+	computed(() => workflowDocumentStore.value.connectionsBySourceNode),
+);
+
+/**
+ * The group the canvas is drawing, from whichever model is active.
+ *
+ * With the flag on a group is a node, so the old `nodeGroups` store holds
+ * nothing and every lookup through it fails. Resolving in one place keeps the
+ * group actions working on both paths.
+ */
+function resolveGroup(groupId: string): IWorkflowGroup | undefined {
+	if (isGroupNodeEnabled.value) {
+		return groupNodeCards.allGroups.value.find((group) => group.id === groupId);
+	}
+	return workflowDocumentStore.value.getGroupById(groupId);
+}
+
+/** Every group the canvas is drawing, from whichever model is active. */
+function resolveAllGroups(): IWorkflowGroup[] {
+	return isGroupNodeEnabled.value
+		? groupNodeCards.allGroups.value
+		: workflowDocumentStore.value.allGroups;
+}
 const injectedNodeGroupDescriptionVisibility = inject(NodeGroupDescriptionVisibilityKey, null);
 
 const classes = computed(() => ({
@@ -431,7 +457,7 @@ function onToggleZoomMode() {
 }
 
 function onNodeGroupCreated(groupId: string) {
-	const group = workflowDocumentStore.value.getGroupById(groupId);
+	const group = resolveGroup(groupId);
 	if (group) {
 		handleGroupCreated(group, 'group-toolbar');
 	}
@@ -462,7 +488,7 @@ const { isSelectionExtractable } = useSelectionValidation();
 const extractableGroupIds = computed(() => {
 	const ids = new Set<string>();
 	if (settingsStore.isSubworkflowConversionDisabled) return ids;
-	for (const group of workflowDocumentStore.value.allGroups) {
+	for (const group of resolveAllGroups()) {
 		if (isSelectionExtractable(group.nodeIds).valid) {
 			ids.add(group.id);
 		}
@@ -476,7 +502,7 @@ const soleSelectedGroupId = computed<string | null>(() => {
 
 	const groupId = parseCanvasGroupNodeId(selectedGroups[0].id);
 	if (!groupId) return null;
-	const group = workflowDocumentStore.value.getGroupById(groupId);
+	const group = resolveGroup(groupId);
 	if (!group) return null;
 
 	const memberIds = new Set(group.nodeIds);
@@ -525,7 +551,7 @@ const keyMap = computed(() => {
 
 	// Group collapse state is a view preference, so expanding/collapsing
 	// groups works in read-only canvases too.
-	const hasNoGroups = () => workflowDocumentStore.value.allGroups.length === 0;
+	const hasNoGroups = () => resolveAllGroups().length === 0;
 	readOnlyKeymap.alt_g = {
 		disabled: hasNoGroups,
 		run: () => onKeyboardSetGroupsExpanded(true),
@@ -754,7 +780,7 @@ function commitPushedPositionsForSourceGroups(sourceGroupIds: string[]) {
 const groupDrag = useCanvasNodeGroupDrag({
 	canvasId: props.id,
 	getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
-	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
+	getGroupById: (id) => resolveGroup(id),
 	getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
 	isNodeInGroup: (id) => workflowDocumentStore.value.nodeIdToGroupId.has(id),
 	getNodeVisualOffset: (id) => injectedNodeGroupView?.getVisualOffsetForNode(id) ?? { x: 0, y: 0 },
@@ -768,7 +794,7 @@ const { fullySelectedGroupMemberIds, selectedElementCount, selectionBoxBounds } 
 	useCanvasNodeGroupSelection({
 		canvasId: props.id,
 		isEnabled: () => props.showNodeGroups,
-		getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
+		getGroupById: (id) => resolveGroup(id),
 		getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
 		isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
 	});
@@ -821,7 +847,7 @@ function onCanvasGroupToggle(
 	if (!injectedNodeGroupView) return;
 
 	const isCollapsed = injectedNodeGroupView.isGroupCollapsed(groupId);
-	const group = workflowDocumentStore.value.getGroupById(groupId);
+	const group = resolveGroup(groupId);
 	if (group) {
 		if (isCollapsed) {
 			groupTelemetry.trackCollapsed(group, source);
@@ -830,7 +856,7 @@ function onCanvasGroupToggle(
 		}
 	}
 
-	const memberNodeIds = workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
+	const memberNodeIds = resolveGroup(groupId)?.nodeIds ?? [];
 	if (isCollapsed) {
 		// Collapsing hides the members, so drop them from the selection to clear
 		// the lingering box. A selected title bar stays selected and keeps
@@ -853,9 +879,7 @@ function onCanvasGroupToggle(
 }
 
 function isGroupNameTaken(groupId: string, name: string): boolean {
-	return workflowDocumentStore.value.allGroups.some(
-		(other) => other.id !== groupId && other.name === name,
-	);
+	return resolveAllGroups().some((other) => other.id !== groupId && other.name === name);
 }
 
 function onCanvasGroupNameUpdate(groupId: string, name: string) {
@@ -902,7 +926,7 @@ function renameSelectedGroup(): boolean {
 async function onOpenGroupRenameModal(groupId: string) {
 	if (props.readOnly || props.suppressInteraction) return;
 
-	const group = workflowDocumentStore.value.getGroupById(groupId);
+	const group = resolveGroup(groupId);
 	if (!group) return;
 
 	if (disableKeyBindings.value || document.querySelector('.rename-prompt')) return;
@@ -967,7 +991,7 @@ function onCanvasGroupUngroup(
 	source: CanvasNodeGroupEventSource = 'group-toolbar',
 ) {
 	// Capture before deletion — the group is gone by the time we track.
-	const group = workflowDocumentStore.value.getGroupById(groupId);
+	const group = resolveGroup(groupId);
 	// Ungrouping a collapsed group makes its hidden members reappear, so expand
 	// it first: the expansion pushes overlapping nodes aside, and the commit
 	// below persists that displacement (the group is gone after, so the push
@@ -988,13 +1012,13 @@ function onCanvasGroupUngroup(
 // Same downstream path as extracting the members through Alt+X or the
 // context menu, so collapsed and expanded groups behave identically.
 function onCanvasGroupExtract(groupId: string) {
-	const group = workflowDocumentStore.value.getGroupById(groupId);
+	const group = resolveGroup(groupId);
 	if (!group) return;
 	emit('extract-workflow', [...group.nodeIds]);
 }
 
 function onCanvasGroupAddNodesToChat(groupId: string) {
-	const group = workflowDocumentStore.value.getGroupById(groupId);
+	const group = resolveGroup(groupId);
 	if (!group) return;
 	void onAddNodesToChat([...group.nodeIds], 'group_title_bar');
 }
@@ -1019,7 +1043,7 @@ function setGroupsExpanded(
 
 function onSetAllGroupsExpanded(expanded: boolean, source: CanvasNodeGroupEventSource) {
 	setGroupsExpanded(
-		workflowDocumentStore.value.allGroups.map((group) => group.id),
+		resolveAllGroups().map((group) => group.id),
 		expanded,
 		source,
 	);
@@ -1029,7 +1053,7 @@ function onSetAllGroupsExpanded(expanded: boolean, source: CanvasNodeGroupEventS
 // counterpart to the per-group pin toggle in the title bar.
 function onSetAllDescriptionsVisible(visible: boolean) {
 	if (!injectedNodeGroupDescriptionVisibility) return;
-	const groupIds = workflowDocumentStore.value.allGroups
+	const groupIds = resolveAllGroups()
 		.filter((group) => !!group.description?.trim())
 		.map((group) => group.id);
 	injectedNodeGroupDescriptionVisibility.setVisibleForGroups(groupIds, visible);
@@ -1512,7 +1536,7 @@ function onOpenGroupContextMenu(groupId: string, event: MouseEvent) {
 	// read-only canvas keeps the menu (like nodes do) — the target's readOnly
 	// flag disables the mutating items while view/copy actions stay usable.
 	if (props.suppressInteraction) return;
-	const group = workflowDocumentStore.value.getGroupById(groupId);
+	const group = resolveGroup(groupId);
 	if (!group) return;
 
 	// Mirror node behavior: a right-click inside a wider selection targets the
@@ -1583,7 +1607,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return;
 		}
 		case 'rename_group': {
-			if (groupId && workflowDocumentStore.value.getGroupById(groupId)) {
+			if (groupId && resolveGroup(groupId)) {
 				openGroupRename(groupId);
 			}
 			return;
