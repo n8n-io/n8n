@@ -9,11 +9,11 @@ export type InstanceReportDataPoint =
 /**
  * Where a report stands.
  *
- * `SKIPPED_AFTER_MAX_RETRIES` means the instance stopped trying that day, not
+ * `skipped_after_max_retries` means the instance stopped trying that day, not
  * that the numbers were lost: only a delivered report crosses a day off, so a
  * skipped day is measured again and covered by the next report.
  */
-export type InstanceReportStatus = 'PENDING' | 'DELIVERED' | 'SKIPPED_AFTER_MAX_RETRIES';
+export type InstanceReportStatus = 'pending' | 'delivered' | 'skipped_after_max_retries';
 
 /**
  * One instance report: what was sent to the central monitoring receiver, and
@@ -37,7 +37,7 @@ export class CentralInstanceMonitoringReport extends WithTimestampsAndStringId {
 	dataPoints: InstanceReportDataPoint[];
 
 	/** Where the report stands. See {@link InstanceReportStatus}. */
-	@Column({ type: 'varchar', length: 255, default: 'PENDING' })
+	@Column({ type: 'varchar', length: 255, default: 'pending' })
 	status: InstanceReportStatus;
 
 	/** When the receiver accepted the report; `null` while undelivered. */

@@ -26,7 +26,7 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 	 */
 	async findTodaysPending(now: Date): Promise<CentralInstanceMonitoringReport | null> {
 		return await this.findOne({
-			where: { status: 'PENDING', createdAt: MoreThanOrEqual(startOfUtcDay(now)) },
+			where: { status: 'pending', createdAt: MoreThanOrEqual(startOfUtcDay(now)) },
 			order: { createdAt: 'DESC' },
 		});
 	}
@@ -47,7 +47,7 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 	async hasSettledToday(now: Date): Promise<boolean> {
 		return await this.existsBy({
 			createdAt: MoreThanOrEqual(startOfUtcDay(now)),
-			status: Not('PENDING'),
+			status: Not('pending'),
 		});
 	}
 
@@ -58,7 +58,7 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 	async createPending(
 		dataPoints: InstanceReportDataPoint[],
 	): Promise<CentralInstanceMonitoringReport> {
-		return await this.save(this.create({ dataPoints, status: 'PENDING', deliveredAt: null }));
+		return await this.save(this.create({ dataPoints, status: 'pending', deliveredAt: null }));
 	}
 
 	/**
@@ -76,7 +76,7 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 	 * row a day and only `dataPoints` is selected, so the scan stays cheap.
 	 */
 	async findLastCoveredDay(): Promise<string | null> {
-		const delivered = await this.find({ where: { status: 'DELIVERED' }, select: ['dataPoints'] });
+		const delivered = await this.find({ where: { status: 'delivered' }, select: ['dataPoints'] });
 		const days = delivered.flatMap((report) =>
 			report.dataPoints.flatMap((point) => (point.kind === 'daily' ? [point.date] : [])),
 		);
@@ -88,7 +88,7 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 		await this.increment({ id }, 'attempts', 1);
 		await this.update(
 			{ id },
-			{ status: 'DELIVERED', deliveredAt, lastAttemptAt: deliveredAt, lastError: null },
+			{ status: 'delivered', deliveredAt, lastAttemptAt: deliveredAt, lastError: null },
 		);
 	}
 
@@ -99,7 +99,7 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 
 	/** Stop trying to deliver this report. Its days are covered by the next one. */
 	async markSkipped(id: string): Promise<void> {
-		await this.update({ id }, { status: 'SKIPPED_AFTER_MAX_RETRIES' });
+		await this.update({ id }, { status: 'skipped_after_max_retries' });
 	}
 }
 

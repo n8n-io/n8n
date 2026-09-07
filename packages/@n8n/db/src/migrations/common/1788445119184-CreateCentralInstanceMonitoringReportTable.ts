@@ -18,9 +18,10 @@ export class CreateCentralInstanceMonitoringReportTable1788445119184
 			),
 			column('status')
 				.varchar(255)
-				.notNull.default("'PENDING'")
+				.notNull.default("'pending'")
+				.withEnumCheck(['pending', 'delivered', 'skipped_after_max_retries'])
 				.comment(
-					'PENDING, DELIVERED, or SKIPPED_AFTER_MAX_RETRIES. Skipped means the instance stopped trying that day, not that the numbers were lost: only a delivered report crosses a day off, so a skipped day is covered by the next report.',
+					'Skipped means the instance stopped trying that day, not that the numbers were lost: only a delivered report crosses a day off, so a skipped day is covered by the next report.',
 				),
 			column('deliveredAt')
 				.timestampTimezone()

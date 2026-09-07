@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "central_instance_monitoring_report" ("id" varchar(36) PRIMARY KEY NOT NULL, "dataPoints" text NOT NULL, "status" varchar(255) NOT NULL DEFAULT ('PENDING'), "deliveredAt" datetime(3), "attempts" integer NOT NULL DEFAULT (0), "lastAttemptAt" datetime(3), "lastError" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
+CREATE TABLE "central_instance_monitoring_report" ("id" varchar(36) PRIMARY KEY NOT NULL, "dataPoints" text NOT NULL, "status" varchar(255) NOT NULL DEFAULT ('pending'), "deliveredAt" datetime(3), "attempts" integer NOT NULL DEFAULT (0), "lastAttemptAt" datetime(3), "lastError" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_central_instance_monitoring_report_status" CHECK ("status" IN ('pending', 'delivered', 'skipped_after_max_retries')))
 ```
 
 </details>
@@ -22,13 +22,14 @@ CREATE TABLE "central_instance_monitoring_report" ("id" varchar(36) PRIMARY KEY 
 | id | varchar(36) |  | false |  |  |  |
 | lastAttemptAt | datetime(3) |  | true |  |  |  |
 | lastError | TEXT |  | true |  |  |  |
-| status | varchar(255) | 'PENDING' | false |  |  |  |
+| status | varchar(255) | 'pending' | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("status" IN ('pending', 'delivered', 'skipped_after_max_retries')) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_central_instance_monitoring_report_1 | PRIMARY KEY | PRIMARY KEY (id) |
 

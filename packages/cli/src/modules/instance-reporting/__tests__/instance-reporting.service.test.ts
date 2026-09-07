@@ -71,7 +71,7 @@ function makeReport(
 	return {
 		id: BATCH_ID,
 		dataPoints: [],
-		status: 'PENDING',
+		status: 'pending',
 		deliveredAt: null,
 		attempts: 0,
 		lastAttemptAt: null,

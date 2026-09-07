@@ -11,13 +11,14 @@
 | id | varchar(36) |  | false |  |  | Nanoid; travels with the payload as its `batchId`. |
 | lastAttemptAt | timestamp(3) with time zone |  | true |  |  | When the last attempt finished; NULL before the first. Paces retries across a restart. |
 | lastError | text |  | true |  |  | Message of the most recent delivery failure. |
-| status | varchar(255) | 'PENDING'::character varying | false |  |  | PENDING, DELIVERED, or SKIPPED_AFTER_MAX_RETRIES. Skipped means the instance stopped trying that day, not that the numbers were lost: only a delivered report crosses a day off, so a skipped day is covered by the next report. |
+| status | varchar(255) | 'pending'::character varying | false |  |  | Skipped means the instance stopped trying that day, not that the numbers were lost: only a delivered report crosses a day off, so a skipped day is covered by the next report. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_central_instance_monitoring_report_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'delivered'::character varying, 'skipped_after_max_retries'::character varying])::text[]))) |
 | PK_813b97cbafab6a2ac45aa10de6a | PRIMARY KEY | PRIMARY KEY (id) |
 | central_instance_monitoring_report_attempts_not_null | n | NOT NULL attempts |
 | central_instance_monitoring_report_createdAt_not_null | n | NOT NULL "createdAt" |

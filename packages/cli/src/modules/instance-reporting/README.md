@@ -35,9 +35,9 @@ without reading this document:
 
 | `status` | Meaning |
 |---|---|
-| `PENDING` | Not delivered yet, and attempts remain |
-| `DELIVERED` | The receiver answered 201 |
-| `SKIPPED_AFTER_MAX_RETRIES` | Three attempts failed, so the instance stopped for that day |
+| `pending` | Not delivered yet, and attempts remain |
+| `delivered` | The receiver answered 201 |
+| `skipped_after_max_retries` | Three attempts failed, so the instance stopped for that day |
 
 A skipped report is **not** lost data. Only a delivered report crosses a day
 off, so the days a skipped report covered are measured again and sent by the
