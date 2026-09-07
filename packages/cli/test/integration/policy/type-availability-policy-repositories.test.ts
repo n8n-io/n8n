@@ -5,7 +5,10 @@ import { Container } from '@n8n/di';
 import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
-import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
+import type {
+	PolicyAction,
+	PolicyRule,
+} from '@/modules/type-availability-policies/policy-rule.types';
 
 const KIND = 'node-types';
 
@@ -56,10 +59,19 @@ describe('type availability policy repositories', () => {
 	}
 
 	async function createInstanceScope() {
-		return await scopeRepo.createScope(
+		const { scope } = await scopeRepo.createScopeIfAbsent(
 			{ kind: KIND, projectId: null, defaultAction: 'allow', updatedBy: 'user-1' },
 			ROOT,
 		);
+		return scope;
+	}
+
+	async function createProjectScope(projectId: string, defaultAction: PolicyAction = 'allow') {
+		const { scope } = await scopeRepo.createScopeIfAbsent(
+			{ kind: KIND, projectId, defaultAction, updatedBy: 'user-1' },
+			ROOT,
+		);
+		return scope;
 	}
 
 	describe('TypeAvailabilityPolicyRepository', () => {
@@ -200,10 +212,7 @@ describe('type availability policy repositories', () => {
 		it('does not confuse a project scope with the instance scope', async () => {
 			const project = await createTeamProject();
 			await createInstanceScope();
-			const projectScope = await scopeRepo.createScope(
-				{ kind: KIND, projectId: project.id, defaultAction: 'deny', updatedBy: 'user-1' },
-				ROOT,
-			);
+			const projectScope = await createProjectScope(project.id, 'deny');
 
 			const found = await scopeRepo.findScopeByKindAndProject(KIND, project.id, ROOT);
 
@@ -211,10 +220,18 @@ describe('type availability policy repositories', () => {
 			expect(found?.defaultAction).toBe('deny');
 		});
 
-		it('rejects a second instance scope for the same kind', async () => {
+		it('rejects a second instance scope for the same kind at the database level', async () => {
 			await createInstanceScope();
 
-			await expect(createInstanceScope()).rejects.toThrow();
+			const secondRow = scopeRepo.create({
+				kind: KIND,
+				projectId: null,
+				defaultAction: 'deny',
+				updatedBy: 'user-2',
+				version: 1,
+			});
+
+			await expect(scopeRepo.save(secondRow)).rejects.toThrow();
 		});
 
 		it('bumps the version when the default action changes', async () => {
@@ -237,10 +254,7 @@ describe('type availability policy repositories', () => {
 		it('bumps many versions at once', async () => {
 			const project = await createTeamProject();
 			const instanceScope = await createInstanceScope();
-			const projectScope = await scopeRepo.createScope(
-				{ kind: KIND, projectId: project.id, defaultAction: 'allow', updatedBy: 'user-1' },
-				ROOT,
-			);
+			const projectScope = await createProjectScope(project.id);
 
 			await scopeRepo.bumpVersions([instanceScope.id, projectScope.id], ROOT);
 
@@ -277,10 +291,7 @@ describe('type availability policy repositories', () => {
 		it('locks only the scopes that exist and returns their ids', async () => {
 			const project = await createTeamProject();
 			const instanceScope = await createInstanceScope();
-			const projectScope = await scopeRepo.createScope(
-				{ kind: KIND, projectId: project.id, defaultAction: 'allow', updatedBy: 'user-1' },
-				ROOT,
-			);
+			const projectScope = await createProjectScope(project.id);
 
 			const locked = await transactionRunner.run(ROOT, async (ctx) => {
 				return await scopeRepo.lockScopesByIds(
@@ -499,10 +510,7 @@ describe('type availability policy repositories', () => {
 			const project = await createTeamProject();
 			const policy = await createPolicy();
 			const instanceScope = await createInstanceScope();
-			const projectScope = await scopeRepo.createScope(
-				{ kind: KIND, projectId: project.id, defaultAction: 'allow', updatedBy: 'user-1' },
-				ROOT,
-			);
+			const projectScope = await createProjectScope(project.id);
 			for (const scopeId of [instanceScope.id, projectScope.id]) {
 				await attachmentRepo.replaceAttachmentsForScope(
 					scopeId,

@@ -106,15 +106,6 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		return found;
 	}
 
-	async createScope(
-		input: NewPolicyScope,
-		ctx: OperationContext,
-	): Promise<TypeAvailabilityPolicyScope> {
-		const scope = this.create({ ...input, version: 1 });
-
-		return await this.managerFor(ctx).save(TypeAvailabilityPolicyScope, scope);
-	}
-
 	/**
 	 * Inserts the scope row if `(kind, projectId)` has none yet, then reads back whichever row
 	 * exists. `created: false` means a concurrent first write got there first.
