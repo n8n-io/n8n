@@ -46,11 +46,17 @@ type VmModule = typeof import('node:vm');
 let warnedAboutBrowserFallback = false;
 let engine: RegexEngine;
 
-export function parseRegexLiteral(value: string): RegexLiteral {
+export function parseRegexLiteral(value: string, ignoreCase = false): RegexLiteral {
 	const literal = value.toString();
 	const match = /^\/(.*?)\/([gimusy]*)$/.exec(literal);
-	if (!match) return { source: literal, flags: '' };
-	return { source: match[1] ?? '', flags: match[2] ?? '' };
+	if (!match) {
+		return { source: literal, flags: ignoreCase ? 'i' : '' };
+	}
+	let flags = match[2] ?? '';
+	if (ignoreCase && !flags.includes('i')) {
+		flags += 'i';
+	}
+	return { source: match[1] ?? '', flags };
 }
 
 function globalFlag(flags?: string): string {
