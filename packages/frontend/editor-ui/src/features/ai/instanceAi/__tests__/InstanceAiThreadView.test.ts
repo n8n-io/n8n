@@ -28,6 +28,7 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
+import { AGENT_RETURN_WORKFLOW_ID_STATE } from '@/features/agents/agentReturnContext.store';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 } as Ref<number>,
@@ -278,11 +279,18 @@ let workflowPreviewEmit:
 
 const InstanceAiWorkflowPreviewStub = defineComponent({
 	name: 'InstanceAiWorkflowPreviewStub',
+	props: {
+		workflowId: { type: String, required: true },
+	},
 	emits: ['workflow-failures'],
-	setup(_, { emit, expose }) {
+	setup(props, { emit, expose }) {
 		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
 		expose({ requestFitView: vi.fn() });
-		return () => h('div', { 'data-test-id': 'instance-ai-workflow-preview-stub' });
+		return () =>
+			h('div', {
+				'data-test-id': 'instance-ai-workflow-preview-stub',
+				'data-workflow-id': props.workflowId,
+			});
 	},
 });
 
@@ -587,6 +595,7 @@ describe('InstanceAiThreadView', () => {
 		inputState.initialDraft = '';
 		inputState.hasAttachments = false;
 		mockSidebarCollapsed.value = false;
+		history.replaceState({}, '');
 		testAgentOfferState.evalsFlagEnabled = false;
 		testAgentOfferState.capabilitySummary = null;
 	});
@@ -1964,6 +1973,31 @@ describe('InstanceAiThreadView', () => {
 
 		expect(restoredPreview).toHaveAttribute('data-agent-id', 'agent-1');
 		expect(await refreshedRender.findByTestId('instance-ai-preview-panel')).toBeVisible();
+	});
+
+	it('restores the workflow artifact selected before opening an agent', async () => {
+		thread.producedArtifacts = new Map([
+			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'First workflow' }],
+			['workflow-2', { type: 'workflow', id: 'workflow-2', name: 'Selected workflow' }],
+		]) as typeof thread.producedArtifacts;
+		thread.messages = [
+			{
+				id: 'msg-workflow',
+				role: 'user',
+				content: 'Update this workflow',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				attachments: [{ type: 'workflow', id: 'workflow-1', name: 'First workflow' }],
+			},
+		] as typeof thread.messages;
+		history.replaceState({ [AGENT_RETURN_WORKFLOW_ID_STATE]: 'workflow-2', preserved: true }, '');
+
+		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const workflowPreview = await findByTestId('instance-ai-workflow-preview-stub');
+
+		expect(workflowPreview).toHaveAttribute('data-workflow-id', 'workflow-2');
+		expect(history.state).toMatchObject({ preserved: true });
+		expect(history.state[AGENT_RETURN_WORKFLOW_ID_STATE]).toBeUndefined();
 	});
 
 	describe('Fix with AI card', () => {

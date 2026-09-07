@@ -3,7 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import AgentView from '../views/AgentView.vue';
 import { VIEWS } from '@/app/constants';
-import type { AgentReturnContext } from '../agentReturnContext.store';
+import {
+	AGENT_RETURN_WORKFLOW_ID_STATE,
+	type AgentReturnContext,
+} from '../agentReturnContext.store';
 
 const { push, routeLeaveGuards } = vi.hoisted(() => ({
 	push: vi.fn(),
@@ -31,6 +34,7 @@ const returnContextStore = reactive<{ context: AgentReturnContext | null; clear:
 	}),
 });
 vi.mock('../agentReturnContext.store', () => ({
+	AGENT_RETURN_WORKFLOW_ID_STATE: 'agentReturnWorkflowId',
 	useAgentReturnContextStore: () => returnContextStore,
 }));
 
@@ -86,6 +90,23 @@ describe('AgentView', () => {
 		expect(push).toHaveBeenCalledWith({
 			name: VIEWS.WORKFLOW,
 			params: { workflowId: 'wf-1' },
+		});
+	});
+
+	it('returns to an embedded workflow route and carries its artifact id', async () => {
+		returnContextStore.context = {
+			workflowId: 'artifact-workflow',
+			nodeId: '',
+			agentId: 'agent-1',
+			returnPath: '/assistant/thread-1',
+		};
+		const { getByRole } = renderComponent();
+
+		await userEvent.click(getByRole('button'));
+
+		expect(push).toHaveBeenCalledWith({
+			path: '/assistant/thread-1',
+			state: { [AGENT_RETURN_WORKFLOW_ID_STATE]: 'artifact-workflow' },
 		});
 	});
 

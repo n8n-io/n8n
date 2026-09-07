@@ -1,4 +1,5 @@
 import { useRouter } from 'vue-router';
+import { VIEWS } from '@/app/constants';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAgentReturnContextStore } from '../agentReturnContext.store';
@@ -20,14 +21,22 @@ export function useAgentNavigation() {
 	 * trips omit it so the return lands on the canvas.
 	 */
 	function rememberOrigin(agentId: string, originNodeId?: string) {
-		// Only a persisted workflow has a real id to return to; a brand-new
-		// (unsaved) workflow has no meaningful "back to workflow" target.
-		if (workflowsStore.isNewWorkflow) return;
+		const currentRoute = router.currentRoute.value;
+		const isStandaloneWorkflow = currentRoute.name === VIEWS.WORKFLOW;
 
-		const wfId = workflowsStore.workflowId || workflowId.value;
+		// Only a persisted standalone workflow has a real route to return to.
+		if (isStandaloneWorkflow && workflowsStore.isNewWorkflow) return;
+
+		// Prefer the injected id. Embedded workflow artifacts shadow the route id.
+		const wfId = workflowId.value || workflowsStore.workflowId;
 		if (!wfId) return;
 
-		returnContext.set({ workflowId: wfId, nodeId: originNodeId ?? '', agentId });
+		returnContext.set({
+			workflowId: wfId,
+			nodeId: originNodeId ?? '',
+			agentId,
+			...(isStandaloneWorkflow ? {} : { returnPath: currentRoute.fullPath }),
+		});
 	}
 
 	async function navigateWithOrigin(

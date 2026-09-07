@@ -4,7 +4,10 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
-import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
+import {
+	AGENT_RETURN_WORKFLOW_ID_STATE,
+	useAgentReturnContextStore,
+} from '@/features/agents/agentReturnContext.store';
 import BackToWorkflowBanner from '@/features/agents/components/BackToWorkflowBanner.vue';
 
 const documentTitle = useDocumentTitle();
@@ -37,6 +40,13 @@ async function onBackToWorkflow() {
 	if (!ctx) return;
 
 	returnContext.clear();
+	if (ctx.returnPath) {
+		await router.push({
+			path: ctx.returnPath,
+			state: { [AGENT_RETURN_WORKFLOW_ID_STATE]: ctx.workflowId },
+		});
+		return;
+	}
 
 	await router.push({
 		name: VIEWS.WORKFLOW,

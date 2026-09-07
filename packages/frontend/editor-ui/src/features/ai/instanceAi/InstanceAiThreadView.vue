@@ -106,6 +106,7 @@ import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAg
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
+import { AGENT_RETURN_WORKFLOW_ID_STATE } from '@/features/agents/agentReturnContext.store';
 
 const props = defineProps<{
 	threadId: string;
@@ -290,6 +291,16 @@ const preview = useCanvasPreview({
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
 });
+
+const agentReturnWorkflowId = (history.state as Record<string, unknown>)[
+	AGENT_RETURN_WORKFLOW_ID_STATE
+];
+if (typeof agentReturnWorkflowId === 'string') {
+	preview.openWorkflowPreview(agentReturnWorkflowId);
+	const historyState = history.state as Record<string, unknown>;
+	const { [AGENT_RETURN_WORKFLOW_ID_STATE]: _, ...state } = historyState;
+	history.replaceState(state, '');
+}
 const isAgentPreviewDockOpen = ref(false);
 
 function openAgentChatPreview(agentId: string, projectId: string): boolean {
