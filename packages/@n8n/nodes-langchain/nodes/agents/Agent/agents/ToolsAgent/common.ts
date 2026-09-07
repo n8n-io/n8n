@@ -424,7 +424,8 @@ export const getAgentStepsParser =
 
 		// Otherwise, if the steps contain a returnValues field, try to parse them manually.
 		if (outputParser && typeof steps === 'object' && (steps as AgentFinish).returnValues) {
-			const finalResponse = (steps as AgentFinish).returnValues;
+			// Thinking models return content-block arrays; the parser needs the text block(s) only.
+			const finalResponse = (handleAgentFinishOutput(steps) as AgentFinish).returnValues;
 			let parserInput: string;
 
 			if (finalResponse instanceof Object) {
