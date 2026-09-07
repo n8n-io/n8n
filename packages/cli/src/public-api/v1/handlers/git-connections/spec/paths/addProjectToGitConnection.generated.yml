@@ -10,14 +10,14 @@ x-decorator-routed: true
 parameters:
   - schema:
       type: string
-      description: The ID of the git connection.
     required: true
+    description: The ID of the git connection.
     name: id
     in: path
   - schema:
       type: string
-      description: The ID of the project.
     required: true
+    description: The ID of the project.
     name: projectId
     in: path
 responses:

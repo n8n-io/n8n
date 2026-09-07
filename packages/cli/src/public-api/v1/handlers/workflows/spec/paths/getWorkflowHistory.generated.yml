@@ -9,8 +9,8 @@ parameters:
   - $ref: ../../../../shared/spec/parameters/cursor.yml
   - schema:
       type: string
-      description: The ID of the workflow.
     required: true
+    description: The ID of the workflow.
     name: workflowId
     in: path
 x-eov-operation-id: unreachable

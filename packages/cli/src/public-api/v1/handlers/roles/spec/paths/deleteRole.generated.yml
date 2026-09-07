@@ -10,8 +10,8 @@ x-decorator-routed: true
 parameters:
   - schema:
       type: string
-      description: The slug of the role.
     required: true
+    description: The slug of the role.
     name: slug
     in: path
   - schema:
