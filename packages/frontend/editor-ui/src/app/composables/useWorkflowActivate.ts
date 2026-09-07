@@ -106,13 +106,15 @@ export function useWorkflowActivate() {
 		}
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-		// A hydrated document is open in an editor, routed or embedded (assistant artifact).
-		// The route id is empty on the assistant page and the publish modal is global, so
-		// neither can tell whether this workflow is on screen.
-		const isOpenInEditor = workflowDocumentStore.hydrated;
 
 		try {
-			const expectedChecksum = isOpenInEditor ? workflowDocumentStore.checksum : undefined;
+			// A hydrated document is open in an editor, routed or embedded (assistant artifact).
+			// The route id is empty on the assistant page and the publish modal is global, so
+			// neither can tell whether this workflow is on screen. Re-read the flag after the
+			// request: the editor may have closed while it was in flight.
+			const expectedChecksum = workflowDocumentStore.hydrated
+				? workflowDocumentStore.checksum
+				: undefined;
 
 			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId,
@@ -134,7 +136,7 @@ export function useWorkflowActivate() {
 				workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
 			}
 
-			if (isOpenInEditor) {
+			if (workflowDocumentStore.hydrated) {
 				workflowDocumentStore.setVersionData({
 					versionId: updatedWorkflow.versionId,
 					name: workflowDocumentStore.versionData?.name ?? null,

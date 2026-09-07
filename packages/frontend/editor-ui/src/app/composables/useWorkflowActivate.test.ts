@@ -22,9 +22,23 @@ const mockDocumentStore = vi.hoisted(() => ({
 	hydrated: false,
 }));
 
+// A second workflow's document store, to model the editor switching to another
+// workflow (or artifact tab) while a request is in flight.
+const otherDocumentStore = vi.hoisted(() => ({
+	setActiveState: vi.fn(),
+	setPublicationStatus: vi.fn(),
+	setVersionData: vi.fn(),
+	setChecksum: vi.fn(),
+	checksum: 'other-checksum' as string | undefined,
+	versionData: null,
+	hydrated: false,
+}));
+
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: vi.fn(() => mockDocumentStore),
-	createWorkflowDocumentId: vi.fn().mockReturnValue('doc-id'),
+	useWorkflowDocumentStore: vi.fn((documentId: string) =>
+		documentId === 'wf-2@latest' ? otherDocumentStore : mockDocumentStore,
+	),
+	createWorkflowDocumentId: vi.fn((workflowId: string) => `${workflowId}@latest`),
 }));
 
 const mockPublishWorkflow = vi.hoisted(() => vi.fn());
@@ -123,6 +137,7 @@ describe('useWorkflowActivate', () => {
 		mockSettingsImpl.isWorkflowPublicationServiceEnabled = false;
 		mockDocumentStore.hydrated = false;
 		mockDocumentStore.checksum = undefined;
+		otherDocumentStore.hydrated = false;
 	});
 
 	describe('publishWorkflow()', () => {
@@ -191,6 +206,47 @@ describe('useWorkflowActivate', () => {
 				expect.objectContaining({ expectedChecksum: undefined }),
 			);
 			expect(mockSetVersionData).not.toHaveBeenCalled();
+			expect(mockSetChecksum).not.toHaveBeenCalled();
+		});
+
+		it('does NOT refresh the checksum when the editor closed while the request was in flight', async () => {
+			mockDocumentStore.hydrated = true;
+			mockDocumentStore.checksum = 'before-publish';
+			mockPublishWorkflow.mockImplementationOnce(async () => {
+				mockDocumentStore.hydrated = false;
+				return makePublishedWorkflowResponse();
+			});
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: true });
+			expect(mockPublishWorkflow).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				expect.objectContaining({ expectedChecksum: 'before-publish' }),
+			);
+			expect(mockSetVersionData).not.toHaveBeenCalled();
+			expect(mockSetChecksum).not.toHaveBeenCalled();
+		});
+
+		it('does NOT touch the newly opened workflow when the editor switched while the request was in flight', async () => {
+			mockDocumentStore.hydrated = true;
+			mockDocumentStore.checksum = 'before-publish';
+			mockPublishWorkflow.mockImplementationOnce(async () => {
+				// wf-1 is torn down and wf-2 hydrates before the response arrives
+				mockDocumentStore.hydrated = false;
+				otherDocumentStore.hydrated = true;
+				return makePublishedWorkflowResponse();
+			});
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: true });
+			expect(otherDocumentStore.setActiveState).not.toHaveBeenCalled();
+			expect(otherDocumentStore.setPublicationStatus).not.toHaveBeenCalled();
+			expect(otherDocumentStore.setVersionData).not.toHaveBeenCalled();
+			expect(otherDocumentStore.setChecksum).not.toHaveBeenCalled();
 			expect(mockSetChecksum).not.toHaveBeenCalled();
 		});
 	});
