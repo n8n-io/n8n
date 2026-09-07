@@ -1,0 +1,37 @@
+packages/cli/src/modules/instance-reporting/database/repositories/central-instance-monitoring-report.repository.ts
+  s_27ae019df851f6::t_146c20670d7569 29,50,61,79,91,102
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.service.test.ts
+  s_27ae019df851f6::t_146c20670d7569 74
+packages/cli/src/modules/instance-reporting/README.md
+  s_27ae019df851f6::t_29b4cc199c40ec 38-40
+packages/@n8n/db/src/migrations/common/1788445119184-CreateCentralInstanceMonitoringReportTable.ts
+  s_27ae019df851f6::t_c4e15f6973c390 21-22,24
+packages/cli/src/modules/instance-reporting/database/entities/central-instance-monitoring-report.ts
+  s_27ae019df851f6::t_bc31ad0de8cb5e 12,16
+  s_27ae019df851f6::t_838ac379703050 40
+docs/generated/postgres-schema/public.central_instance_monitoring_report.md
+  s_27ae019df851f6::t_ee55a7fddc0c3e 14,21
+docs/generated/sqlite-schema/central_instance_monitoring_report.md
+  s_27ae019df851f6::t_a348e4402e616c 9,25,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "98ec91c20365624135dc35de95338b52b6e17c53",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_27ae019df851f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a28f242b-4b15-4862-8fb8-11b81da95a83",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
