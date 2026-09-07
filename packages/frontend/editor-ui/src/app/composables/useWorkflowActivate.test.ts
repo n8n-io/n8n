@@ -10,25 +10,32 @@ const mockSetPublicationStatus = vi.hoisted(() => vi.fn());
 const mockSetVersionData = vi.hoisted(() => vi.fn());
 const mockSetChecksum = vi.hoisted(() => vi.fn());
 
+// `hydrated` and `checksum` are set per-test to model a document that is
+// open in an editor (routed or embedded) versus one that is not.
+const mockDocumentStore = vi.hoisted(() => ({
+	setActiveState: mockSetActiveState,
+	setPublicationStatus: mockSetPublicationStatus,
+	setVersionData: mockSetVersionData,
+	setChecksum: mockSetChecksum,
+	checksum: undefined as string | undefined,
+	versionData: null,
+	hydrated: false,
+}));
+
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: vi.fn().mockReturnValue({
-		setActiveState: mockSetActiveState,
-		setPublicationStatus: mockSetPublicationStatus,
-		setVersionData: mockSetVersionData,
-		setChecksum: mockSetChecksum,
-		checksum: undefined,
-		versionData: null,
-	}),
+	useWorkflowDocumentStore: vi.fn(() => mockDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('doc-id'),
 }));
 
 const mockPublishWorkflow = vi.hoisted(() => vi.fn());
+const mockDeactivateWorkflow = vi.hoisted(() => vi.fn());
 const mockSetWorkflowActive = vi.hoisted(() => vi.fn());
 const mockSetWorkflowInactive = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
 		publishWorkflow: mockPublishWorkflow,
+		deactivateWorkflow: mockDeactivateWorkflow,
 		setWorkflowActive: mockSetWorkflowActive,
 		setWorkflowInactive: mockSetWorkflowInactive,
 	}),
@@ -78,13 +85,6 @@ vi.mock('@n8n/composables/useStorage', () => ({
 	useStorage: vi.fn().mockReturnValue({ value: undefined }),
 }));
 
-vi.mock('@/app/composables/useWorkflowId', async () => {
-	const { computed } = await import('vue');
-	return {
-		useWorkflowId: () => computed(() => 'other-workflow-id'),
-	};
-});
-
 vi.mock('@/app/composables/useActivationError', () => ({
 	useActivationError: vi.fn().mockReturnValue({ errorMessage: { value: '' } }),
 }));
@@ -121,6 +121,8 @@ describe('useWorkflowActivate', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		mockSettingsImpl.isWorkflowPublicationServiceEnabled = false;
+		mockDocumentStore.hydrated = false;
+		mockDocumentStore.checksum = undefined;
 	});
 
 	describe('publishWorkflow()', () => {
@@ -155,6 +157,70 @@ describe('useWorkflowActivate', () => {
 
 			expect(result).toEqual({ success: false, errorHandled: true });
 			expect(mockSetPublicationStatus).not.toHaveBeenCalled();
+		});
+
+		it('sends the document checksum and refreshes it when the document is open in an editor', async () => {
+			mockDocumentStore.hydrated = true;
+			mockDocumentStore.checksum = 'before-publish';
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: true });
+			expect(mockPublishWorkflow).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				expect.objectContaining({ versionId: VERSION_ID, expectedChecksum: 'before-publish' }),
+			);
+			expect(mockSetVersionData).toHaveBeenCalledWith(
+				expect.objectContaining({ versionId: 'v-2' }),
+			);
+			expect(mockSetChecksum).toHaveBeenCalledWith('abc123');
+		});
+
+		it('does NOT send or refresh the checksum when the document is not open in an editor', async () => {
+			mockDocumentStore.checksum = 'stale';
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: true });
+			expect(mockPublishWorkflow).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				expect.objectContaining({ expectedChecksum: undefined }),
+			);
+			expect(mockSetVersionData).not.toHaveBeenCalled();
+			expect(mockSetChecksum).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('unpublishWorkflowFromHistory()', () => {
+		it('sends the document checksum when the document is open in an editor', async () => {
+			mockDocumentStore.hydrated = true;
+			mockDocumentStore.checksum = 'after-publish';
+			mockDeactivateWorkflow.mockResolvedValueOnce(undefined);
+
+			const { unpublishWorkflowFromHistory } = useWorkflowActivate();
+			const result = await unpublishWorkflowFromHistory(WORKFLOW_ID);
+
+			expect(result).toBe(true);
+			expect(mockDeactivateWorkflow).toHaveBeenCalledWith(WORKFLOW_ID, 'after-publish');
+			expect(mockSetActiveState).toHaveBeenCalledWith({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+		});
+
+		it('does NOT send a checksum when the document is not open in an editor', async () => {
+			mockDocumentStore.checksum = 'stale';
+			mockDeactivateWorkflow.mockResolvedValueOnce(undefined);
+
+			const { unpublishWorkflowFromHistory } = useWorkflowActivate();
+			const result = await unpublishWorkflowFromHistory(WORKFLOW_ID);
+
+			expect(result).toBe(true);
+			expect(mockDeactivateWorkflow).toHaveBeenCalledWith(WORKFLOW_ID, undefined);
 		});
 	});
 });
