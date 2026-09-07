@@ -126,9 +126,12 @@ export class TypeAvailabilityPolicyService {
 	}
 
 	/**
-	 * Sets the scope's default action, creating the scope on first write. The version check
-	 * runs inside the same transaction as the write, so two racing first-writes can't both
-	 * see "no row yet" and both succeed — the loser's `expectedVersion: 0` no longer matches.
+	 * Sets the scope's default action, creating the scope on first write.
+	 *
+	 * Locks the scope row for the duration of the transaction, so a racing writer blocks on
+	 * the read until this one commits, then re-reads the bumped version and correctly fails
+	 * the `expectedVersion` check — instead of both writers reading the same version and one
+	 * silently overwriting the other's change.
 	 */
 	async setDefaultAction(
 		kind: string,
@@ -138,7 +141,12 @@ export class TypeAvailabilityPolicyService {
 		updatedBy: string,
 	): Promise<TypeAvailabilityPolicyScope> {
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeByKindAndProject(kind, projectId, ctx);
+			const scope = await this.scopeRepository.findScopeByKindAndProject(
+				kind,
+				projectId,
+				ctx,
+				true,
+			);
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
@@ -195,32 +203,57 @@ export class TypeAvailabilityPolicyService {
 		return { policy, warnings };
 	}
 
+	/**
+	 * Replaces a policy document's rules, guarded by optimistic concurrency: `expectedVersion`
+	 * must match the document's current version, checked and written inside one locked
+	 * transaction (see `TypeAvailabilityPolicyRepository.findById`).
+	 *
+	 * Also bumps every scope this document is attached to, in the same transaction — a scope's
+	 * `version` is its clients' freshness signal for the *effective* policy, and this document's
+	 * rules are part of that even though the edit never touches the scope row directly.
+	 */
 	async updatePolicyDocument(
 		policyId: string,
 		rules: readonly PolicyRule[],
+		expectedVersion: number,
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
 		const warnings = lintRulesForShadowing(rules);
 
-		const existing = await this.policyRepository.findById(policyId, {});
-		if (!existing) {
-			throw new NotFoundError(`Policy document not found: ${policyId}`);
-		}
+		const result = await this.transactionRunner.run({}, async (ctx) => {
+			const existing = await this.policyRepository.findById(policyId, ctx, true);
+			if (!existing) {
+				throw new NotFoundError(`Policy document not found: ${policyId}`);
+			}
 
-		const updated = await this.policyRepository.updateRules(policyId, rules, updatedBy, {});
-		if (!updated) {
-			throw new NotFoundError(`Policy document not found: ${policyId}`);
-		}
+			if (existing.version !== expectedVersion) {
+				throw new ConflictError(
+					`Policy document has changed since it was last read (expected version ${expectedVersion}, found ${existing.version})`,
+				);
+			}
+
+			const updated = await this.policyRepository.updateRules(policyId, rules, updatedBy, ctx);
+			// The row lock above holds for the rest of this transaction, so it can't have been
+			// deleted between the check and this write.
+			if (!updated) {
+				throw new NotFoundError(`Policy document not found: ${policyId}`);
+			}
+
+			const scopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(policyId, ctx);
+			await this.scopeRepository.bumpVersions(scopeIds, ctx);
+
+			return { existing, updated };
+		});
 
 		this.eventService.emit('node-type-policy-document-updated', {
 			updatedBy,
-			kind: existing.kind,
+			kind: result.existing.kind,
 			policyId,
-			before: { rules: existing.rules, version: existing.version },
-			after: { rules: updated.rules, version: updated.version },
+			before: { rules: result.existing.rules, version: result.existing.version },
+			after: { rules: result.updated.rules, version: result.updated.version },
 		});
 
-		return { policy: updated, warnings };
+		return { policy: result.updated, warnings };
 	}
 
 	/**
@@ -349,7 +382,12 @@ export class TypeAvailabilityPolicyService {
 		const warnings = lintRulesForShadowing(input.rules);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeByKindAndProject(kind, projectId, ctx);
+			const scope = await this.scopeRepository.findScopeByKindAndProject(
+				kind,
+				projectId,
+				ctx,
+				true,
+			);
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {

@@ -21,23 +21,41 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	/**
 	 * `projectId: null` looks up the instance scope. At most one row can match either way —
 	 * the two partial unique indexes guarantee it.
+	 *
+	 * Pass `forUpdate: true` inside a write transaction that checks `expectedVersion`. Without
+	 * it, this is a plain read: on Postgres, two concurrent writers can both read the same
+	 * version, both pass the check, and the second commit silently overwrites the first. The
+	 * row lock makes the second writer wait for the first to commit, then re-read the bumped
+	 * version and correctly fail the check.
 	 */
 	async findScopeByKindAndProject(
 		kind: string,
 		projectId: string | null,
 		ctx: OperationContext,
+		forUpdate = false,
 	): Promise<TypeAvailabilityPolicyScope | null> {
-		return await this.managerFor(ctx).findOneBy(TypeAvailabilityPolicyScope, {
-			kind,
-			projectId: projectId ?? IsNull(),
+		const manager = this.managerFor(ctx);
+		return await manager.findOne(TypeAvailabilityPolicyScope, {
+			where: { kind, projectId: projectId ?? IsNull() },
+			...(forUpdate && manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
 		});
 	}
 
+	/** See `findScopeByKindAndProject` for `forUpdate`. */
 	async findScopeById(
 		id: string,
 		ctx: OperationContext,
+		forUpdate = false,
 	): Promise<TypeAvailabilityPolicyScope | null> {
-		return await this.managerFor(ctx).findOneBy(TypeAvailabilityPolicyScope, { id });
+		const manager = this.managerFor(ctx);
+		return await manager.findOne(TypeAvailabilityPolicyScope, {
+			where: { id },
+			...(forUpdate && manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
 	}
 
 	async createScope(

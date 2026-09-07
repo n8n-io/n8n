@@ -208,7 +208,7 @@ describe('node type availability policy instance controller admin happy path', (
 		const updated = await testServer
 			.authAgentFor(owner)
 			.patch(`/node-type-policies/policies/${policyId}`)
-			.send({ rules: [] });
+			.send({ rules: [], version: 1 });
 		expect(updated.statusCode).toBe(200);
 		expect(updated.body.data.policy.version).toBe(2);
 

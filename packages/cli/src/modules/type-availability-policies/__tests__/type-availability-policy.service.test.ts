@@ -197,20 +197,34 @@ describe('TypeAvailabilityPolicyService', () => {
 		it('throws NotFoundError when the document does not exist', async () => {
 			policyRepository.findById.mockResolvedValue(null);
 
-			await expect(service.updatePolicyDocument('missing', [RULE], 'user-1')).rejects.toThrow(
+			await expect(service.updatePolicyDocument('missing', [RULE], 0, 'user-1')).rejects.toThrow(
 				NotFoundError,
 			);
 			expect(policyRepository.updateRules).not.toHaveBeenCalled();
 		});
 
-		it('emits once with before/after rules and version', async () => {
+		it('throws ConflictError on a stale version and writes nothing', async () => {
+			policyRepository.findById.mockResolvedValue(makePolicy({ version: 2 }));
+
+			await expect(service.updatePolicyDocument('policy-1', [RULE], 1, 'user-2')).rejects.toThrow(
+				ConflictError,
+			);
+
+			expect(policyRepository.updateRules).not.toHaveBeenCalled();
+			expect(attachmentRepository.listScopeIdsAttachedToPolicy).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits once with before/after rules and version, and bumps every attached scope', async () => {
 			const before = makePolicy({ rules: [], version: 1 });
 			policyRepository.findById.mockResolvedValue(before);
 			const after = makePolicy({ rules: [RULE], version: 2 });
 			policyRepository.updateRules.mockResolvedValue(after);
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1', 'scope-2']);
 
-			await service.updatePolicyDocument(before.id, [RULE], 'user-2');
+			await service.updatePolicyDocument(before.id, [RULE], 1, 'user-2');
 
+			expect(scopeRepository.bumpVersions).toHaveBeenCalledWith(['scope-1', 'scope-2'], ROOT);
 			expect(eventService.emit).toHaveBeenCalledTimes(1);
 			expect(eventService.emit).toHaveBeenCalledWith('node-type-policy-document-updated', {
 				updatedBy: 'user-2',
