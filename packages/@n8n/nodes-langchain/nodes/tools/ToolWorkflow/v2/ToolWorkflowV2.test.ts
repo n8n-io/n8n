@@ -1,5 +1,6 @@
 import { DynamicTool } from '@langchain/core/tools';
-import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeOperationError, UnexpectedError } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
 	INodeExecutionData,
@@ -8,22 +9,24 @@ import type {
 	INode,
 } from 'n8n-workflow';
 
+import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from '../constants';
 import { WorkflowToolService } from './utils/WorkflowToolService';
+import type { MockedFunction } from 'vitest';
 
-// Mock the sleep functions
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	sleep: jest.fn().mockResolvedValue(undefined),
-	sleepWithAbort: jest.fn().mockResolvedValue(undefined),
+// Mock the sleep function
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn().mockResolvedValue(undefined),
 }));
+
+const sleepMock = vi.mocked(sleep);
 
 function createMockClonedContext(
 	baseContext: ISupplyDataFunctions,
-	executeWorkflowMock?: jest.MockedFunction<any>,
+	executeWorkflowMock?: MockedFunction<any>,
 ): ISupplyDataFunctions {
 	return {
 		...baseContext,
-		addOutputData: jest.fn(),
+		addOutputData: vi.fn(),
 		getNodeParameter: baseContext.getNodeParameter,
 		getWorkflowDataProxy: baseContext.getWorkflowDataProxy,
 		executeWorkflow: executeWorkflowMock || baseContext.executeWorkflow,
@@ -33,36 +36,37 @@ function createMockClonedContext(
 
 function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDataFunctions {
 	let runIndex = 0;
-	const getNextRunIndex = jest.fn(() => {
+	const getNextRunIndex = vi.fn(() => {
 		return runIndex++;
 	});
 	const context = {
 		runIndex: 0,
-		getNodeParameter: jest.fn(),
-		getWorkflowDataProxy: jest.fn(),
-		getNode: jest.fn(),
-		executeWorkflow: jest.fn(),
-		addInputData: jest.fn(),
-		addOutputData: jest.fn(),
-		getCredentials: jest.fn(),
-		getCredentialsProperties: jest.fn(),
-		getInputData: jest.fn(),
-		getMode: jest.fn(),
-		getRestApiUrl: jest.fn(),
+		getNodeParameter: vi.fn(),
+		getWorkflowDataProxy: vi.fn(),
+		getNode: vi.fn(),
+		executeWorkflow: vi.fn(),
+		addInputData: vi.fn(),
+		addOutputData: vi.fn(),
+		logAiEvent: vi.fn(),
+		getCredentials: vi.fn(),
+		getCredentialsProperties: vi.fn(),
+		getInputData: vi.fn(),
+		getMode: vi.fn(),
+		getRestApiUrl: vi.fn(),
 		getNextRunIndex,
-		getTimezone: jest.fn(),
-		getWorkflow: jest.fn(),
-		getWorkflowStaticData: jest.fn(),
-		getWorkflowSettings: jest.fn(() => ({})),
+		getTimezone: vi.fn(),
+		getWorkflow: vi.fn(),
+		getWorkflowStaticData: vi.fn(),
+		getWorkflowSettings: vi.fn(() => ({})),
 		logger: {
-			debug: jest.fn(),
-			error: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
+			debug: vi.fn(),
+			error: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
 		},
 		...overrides,
 	} as ISupplyDataFunctions;
-	context.cloneWith = jest.fn().mockImplementation((_) => createMockClonedContext(context));
+	context.cloneWith = vi.fn().mockImplementation((_) => createMockClonedContext(context));
 	return context;
 }
 
@@ -73,7 +77,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 	beforeEach(() => {
 		// Prepare essential mocks
 		context = createMockContext();
-		jest.spyOn(context, 'getNode').mockReturnValue({
+		vi.spyOn(context, 'getNode').mockReturnValue({
 			parameters: { workflowInputs: { schema: [] } },
 		} as unknown as INode);
 		service = new WorkflowToolService(context);
@@ -110,20 +114,27 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				executionId: 'test-execution',
 			};
 
-			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
-			jest.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
-			jest.spyOn(context, 'getNodeParameter').mockReturnValue('database');
-			jest.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
+			vi.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
+			vi.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			vi.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
 				$execution: { id: 'exec-id' },
 				$workflow: { id: 'workflow-id' },
 			} as unknown as IWorkflowDataProxyData);
-			jest.spyOn(context, 'cloneWith').mockReturnValue(context);
+			vi.spyOn(context, 'cloneWith').mockReturnValue(context);
 
 			const tool = await service.createTool(toolParams);
 			const result = await tool.func('test query');
 
 			expect(result).toBe(JSON.stringify(TEST_RESPONSE, null, 2));
 			expect(context.addOutputData).toHaveBeenCalled();
+			expect(context.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: JSON.stringify(TEST_RESPONSE, null, 2),
+				}),
+			);
 
 			// Here we validate that the runIndex is correctly updated
 			expect(context.cloneWith).toHaveBeenCalledWith({
@@ -138,6 +149,37 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			});
 		});
 
+		it('should sanitize credential-shaped values in the tool-called event', async () => {
+			const TEST_RESPONSE = { api_key: 'sk-live-abcdef123456' };
+
+			const mockExecuteWorkflowResponse: ExecuteWorkflowData = {
+				data: [[{ json: TEST_RESPONSE }]],
+				executionId: 'test-execution',
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
+			vi.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
+			vi.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			vi.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData);
+			vi.spyOn(context, 'cloneWith').mockReturnValue(context);
+
+			const tool = await service.createTool({
+				ctx: context,
+				name: 'TestTool',
+				description: 'Test Description',
+				itemIndex: 0,
+			});
+			const result = await tool.func('test query');
+
+			expect(result).toContain('sk-live-abcdef123456');
+			const payload = vi.mocked(context.logAiEvent).mock.calls[0][1];
+			expect(payload).toContain('[REDACTED]');
+			expect(payload).not.toContain('sk-live-abcdef123456');
+		});
+
 		it('returns un-stringified data if manualLogging is false (meaning it was called from the engine)', async () => {
 			const TEST_RESPONSE = { msg: 'test response' };
 
@@ -146,9 +188,9 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				executionId: 'test-execution',
 			};
 
-			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
-			jest.spyOn(context, 'getNodeParameter').mockReturnValue('database');
-			jest.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
+			vi.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			vi.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
 				$execution: { id: 'exec-id' },
 				$workflow: { id: 'workflow-id' },
 			} as unknown as IWorkflowDataProxyData);
@@ -165,6 +207,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const result = await tool.func('test query');
 
 			expect(result).toEqual([{ json: TEST_RESPONSE }]);
+			expect(context.logAiEvent).not.toHaveBeenCalled();
 		});
 
 		it('should handle errors during tool execution', async () => {
@@ -175,18 +218,55 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				itemIndex: 0,
 			};
 
-			jest
-				.spyOn(context, 'executeWorkflow')
-				.mockRejectedValueOnce(new Error('Workflow execution failed'));
-			jest.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
-			jest.spyOn(context, 'getNodeParameter').mockReturnValue('database');
-			jest.spyOn(context, 'cloneWith').mockReturnValue(context);
+			vi.spyOn(context, 'executeWorkflow').mockRejectedValueOnce(
+				new Error('Workflow execution failed'),
+			);
+			vi.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
+			vi.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			vi.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData);
+			vi.spyOn(context, 'cloneWith').mockReturnValue(context);
 
 			const tool = await service.createTool(toolParams);
 			const result = await tool.func('test query');
 
 			expect(result).toContain('There was an error');
 			expect(context.addOutputData).toHaveBeenCalled();
+			expect(context.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: 'There was an error: "Workflow execution failed"',
+				}),
+			);
+		});
+
+		it('should throw on tool error when manualLogging is false so the engine records the failure', async () => {
+			const toolParams = {
+				ctx: context,
+				name: 'TestTool',
+				description: 'Test Description',
+				itemIndex: 0,
+				manualLogging: false,
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockRejectedValueOnce(
+				new Error('Workflow execution failed'),
+			);
+			vi.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
+			vi.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			vi.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData);
+			vi.spyOn(context, 'cloneWith').mockReturnValue(context);
+
+			const tool = await service.createTool(toolParams);
+
+			await expect(tool.func('test query')).rejects.toThrow(/Workflow execution failed/);
+			expect(context.logAiEvent).not.toHaveBeenCalled();
 		});
 	});
 
@@ -232,7 +312,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				executionId: 'test-execution',
 			};
 
-			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
 
 			const result = await service['executeSubWorkflow'](
 				context,
@@ -243,6 +323,18 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result.response).toBe(TEST_RESPONSE);
 			expect(result.subExecutionId).toBe('test-execution');
+			expect(context.executeWorkflow).toHaveBeenCalledWith(
+				workflowInfo,
+				items,
+				undefined,
+				expect.objectContaining({
+					parentExecution: expect.objectContaining({
+						executionId: 'exec-id',
+						workflowId: 'workflow-id',
+					}),
+					returnLastRunOnly: true,
+				}),
+			);
 		});
 
 		it('should successfully execute workflow and return first item of many', async () => {
@@ -261,7 +353,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				executionId: 'test-execution',
 			};
 
-			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
 
 			const result = await service['executeSubWorkflow'](
 				context,
@@ -291,7 +383,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				executionId: 'test-execution',
 			};
 
-			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
 
 			const result = await serviceWithReturnAllItems['executeSubWorkflow'](
 				context,
@@ -306,7 +398,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		});
 
 		it('should throw error when workflow execution fails', async () => {
-			jest.spyOn(context, 'executeWorkflow').mockRejectedValueOnce(new Error('Execution failed'));
+			vi.spyOn(context, 'executeWorkflow').mockRejectedValueOnce(new Error('Execution failed'));
 
 			await expect(service['executeSubWorkflow'](context, {}, [], {} as never)).rejects.toThrow(
 				NodeOperationError,
@@ -314,14 +406,132 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		});
 
 		it('should throw error when workflow returns no response', async () => {
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
 			const mockResponse: ExecuteWorkflowData = {
 				data: [],
 				executionId: 'test-execution',
 			};
 
-			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
 
-			await expect(service['executeSubWorkflow'](context, {}, [], {} as never)).rejects.toThrow();
+			await expect(
+				service['executeSubWorkflow'](context, {}, [], workflowProxyMock),
+			).rejects.toThrow('There was an error: "The workflow did not return a response"');
+		});
+
+		it('should return the waiting placeholder when the sub-workflow is waiting with no items', async () => {
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			const mockResponse: ExecuteWorkflowData = {
+				data: [],
+				executionId: 'test-execution',
+				waitTill: new Date('3000-01-01'),
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await service['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+			);
+
+			expect(result.response).toEqual(SUB_WORKFLOW_WAITING_PLACEHOLDER);
+			expect(result.subExecutionId).toBe('test-execution');
+		});
+
+		it('should return the waiting placeholder as an item when waiting with returnAllItems and no items', async () => {
+			const serviceWithReturnAllItems = new WorkflowToolService(context, { returnAllItems: true });
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			const mockResponse: ExecuteWorkflowData = {
+				data: [],
+				executionId: 'test-execution',
+				waitTill: new Date('3000-01-01'),
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await serviceWithReturnAllItems['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+			);
+
+			expect(result.response).toEqual([{ json: SUB_WORKFLOW_WAITING_PLACEHOLDER }]);
+			expect(result.subExecutionId).toBe('test-execution');
+		});
+
+		it('should ignore the passthrough payload and return the waiting placeholder when waiting', async () => {
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			// Wait / Send-and-Wait nodes park with their input passed through as run data.
+			const mockResponse: ExecuteWorkflowData = {
+				data: [[{ json: { query: 'hello' } }]],
+				executionId: 'test-execution',
+				waitTill: new Date('3000-01-01'),
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await service['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+			);
+
+			expect(result.response).toEqual(SUB_WORKFLOW_WAITING_PLACEHOLDER);
+			expect(result.subExecutionId).toBe('test-execution');
+		});
+
+		it('should ignore the passthrough payload and return the placeholder item when waiting with returnAllItems', async () => {
+			const serviceWithReturnAllItems = new WorkflowToolService(context, { returnAllItems: true });
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			const mockResponse: ExecuteWorkflowData = {
+				data: [[{ json: { query: 'hello' } }]],
+				executionId: 'test-execution',
+				waitTill: new Date('3000-01-01'),
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await serviceWithReturnAllItems['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+			);
+
+			expect(result.response).toEqual([{ json: SUB_WORKFLOW_WAITING_PLACEHOLDER }]);
+			expect(result.subExecutionId).toBe('test-execution');
 		});
 	});
 
@@ -333,7 +543,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				$workflow: { id: 'proxy-id' },
 			} as unknown as IWorkflowDataProxyData;
 
-			jest.spyOn(context, 'getNodeParameter').mockReturnValueOnce({ value: 'workflow-id' });
+			vi.spyOn(context, 'getNodeParameter').mockReturnValueOnce({ value: 'workflow-id' });
 
 			const result = await service['getSubWorkflowInfo'](
 				context,
@@ -354,7 +564,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			} as unknown as IWorkflowDataProxyData;
 			const mockWorkflow = { id: 'test-workflow' };
 
-			jest.spyOn(context, 'getNodeParameter').mockReturnValueOnce(JSON.stringify(mockWorkflow));
+			vi.spyOn(context, 'getNodeParameter').mockReturnValueOnce(JSON.stringify(mockWorkflow));
 
 			const result = await service['getSubWorkflowInfo'](
 				context,
@@ -374,7 +584,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				$workflow: { id: 'proxy-id' },
 			} as unknown as IWorkflowDataProxyData;
 
-			jest.spyOn(context, 'getNodeParameter').mockReturnValueOnce('invalid json');
+			vi.spyOn(context, 'getNodeParameter').mockReturnValueOnce('invalid json');
 
 			await expect(
 				service['getSubWorkflowInfo'](context, source, itemIndex, workflowProxyMock),
@@ -384,24 +594,22 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 	describe('error data format for addOutputData', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should pass error data in INodeExecutionData format to addOutputData', async () => {
 			// This test ensures that when tool execution fails, the error is wrapped
 			// in the correct format for addOutputData, not passed as raw ExecutionError
-			const executeWorkflowMock = jest
-				.fn()
-				.mockRejectedValue(new Error('Workflow execution failed'));
-			const addOutputDataMock = jest.fn();
+			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Workflow execution failed'));
+			const addOutputDataMock = vi.fn();
 
 			const contextWithError = createMockContext({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					name: 'Test Tool',
 					parameters: { workflowInputs: { schema: [] } },
 					retryOnFail: false,
 				}),
-				getNodeParameter: jest.fn().mockImplementation((name) => {
+				getNodeParameter: vi.fn().mockImplementation((name) => {
 					if (name === 'source') return 'database';
 					if (name === 'workflowId') return { value: 'test-workflow-id' };
 					if (name === 'fields.values') return [];
@@ -410,9 +618,9 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				executeWorkflow: executeWorkflowMock,
 				addOutputData: addOutputDataMock,
 			});
-			contextWithError.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+			contextWithError.cloneWith = vi.fn().mockImplementation((cloneOverrides) => ({
 				...createMockClonedContext(contextWithError, executeWorkflowMock),
-				getWorkflowDataProxy: jest.fn().mockReturnValue({
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
 					$execution: { id: 'exec-id' },
 					$workflow: { id: 'workflow-id' },
 				}),
@@ -446,16 +654,16 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 		it('should include error message in the wrapped output data', async () => {
 			const errorMessage = 'Sub-workflow failed with validation error';
-			const executeWorkflowMock = jest.fn().mockRejectedValue(new Error(errorMessage));
-			const addOutputDataMock = jest.fn();
+			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error(errorMessage));
+			const addOutputDataMock = vi.fn();
 
 			const contextWithError = createMockContext({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					name: 'Test Tool',
 					parameters: { workflowInputs: { schema: [] } },
 					retryOnFail: false,
 				}),
-				getNodeParameter: jest.fn().mockImplementation((name) => {
+				getNodeParameter: vi.fn().mockImplementation((name) => {
 					if (name === 'source') return 'database';
 					if (name === 'workflowId') return { value: 'test-workflow-id' };
 					if (name === 'fields.values') return [];
@@ -464,9 +672,9 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				executeWorkflow: executeWorkflowMock,
 				addOutputData: addOutputDataMock,
 			});
-			contextWithError.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+			contextWithError.cloneWith = vi.fn().mockImplementation((cloneOverrides) => ({
 				...createMockClonedContext(contextWithError, executeWorkflowMock),
-				getWorkflowDataProxy: jest.fn().mockReturnValue({
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
 					$execution: { id: 'exec-id' },
 					$workflow: { id: 'workflow-id' },
 				}),
@@ -498,16 +706,16 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 		it('should call addOutputData with correct arguments on error', async () => {
 			// Test that addOutputData is called with all expected arguments
-			const executeWorkflowMock = jest.fn().mockRejectedValue(new Error('Execution failed'));
-			const addOutputDataMock = jest.fn();
+			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Execution failed'));
+			const addOutputDataMock = vi.fn();
 
 			const contextWithError = createMockContext({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					name: 'Test Tool',
 					parameters: { workflowInputs: { schema: [] } },
 					retryOnFail: false,
 				}),
-				getNodeParameter: jest.fn().mockImplementation((name) => {
+				getNodeParameter: vi.fn().mockImplementation((name) => {
 					if (name === 'source') return 'database';
 					if (name === 'workflowId') return { value: 'test-workflow-id' };
 					if (name === 'fields.values') return [];
@@ -516,9 +724,9 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				executeWorkflow: executeWorkflowMock,
 				addOutputData: addOutputDataMock,
 			});
-			contextWithError.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+			contextWithError.cloneWith = vi.fn().mockImplementation((cloneOverrides) => ({
 				...createMockClonedContext(contextWithError, executeWorkflowMock),
-				getWorkflowDataProxy: jest.fn().mockReturnValue({
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
 					$execution: { id: 'exec-id' },
 					$workflow: { id: 'workflow-id' },
 				}),
@@ -550,29 +758,29 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 	describe('retry functionality', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should not retry when retryOnFail is false', async () => {
-			const executeWorkflowMock = jest.fn().mockRejectedValue(new Error('Test error'));
+			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Test error'));
 			const contextWithNonRetryNode = createMockContext({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					name: 'Test Tool',
 					parameters: { workflowInputs: { schema: [] } },
 					retryOnFail: false,
 				}),
-				getNodeParameter: jest.fn().mockImplementation((name) => {
+				getNodeParameter: vi.fn().mockImplementation((name) => {
 					if (name === 'source') return 'database';
 					if (name === 'workflowId') return { value: 'test-workflow-id' };
 					if (name === 'fields.values') return [];
 					return {};
 				}),
 				executeWorkflow: executeWorkflowMock,
-				addOutputData: jest.fn(),
+				addOutputData: vi.fn(),
 			});
-			contextWithNonRetryNode.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+			contextWithNonRetryNode.cloneWith = vi.fn().mockImplementation((cloneOverrides) => ({
 				...createMockClonedContext(contextWithNonRetryNode, executeWorkflowMock),
-				getWorkflowDataProxy: jest.fn().mockReturnValue({
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
 					$execution: { id: 'exec-id' },
 					$workflow: { id: 'workflow-id' },
 				}),
@@ -595,27 +803,27 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		});
 
 		it('should retry up to maxTries when retryOnFail is true', async () => {
-			const executeWorkflowMock = jest.fn().mockRejectedValue(new Error('Test error'));
+			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Test error'));
 			const contextWithRetryNode = createMockContext({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					name: 'Test Tool',
 					parameters: { workflowInputs: { schema: [] } },
 					retryOnFail: true,
 					maxTries: 3,
 					waitBetweenTries: 0,
 				}),
-				getNodeParameter: jest.fn().mockImplementation((name) => {
+				getNodeParameter: vi.fn().mockImplementation((name) => {
 					if (name === 'source') return 'database';
 					if (name === 'workflowId') return { value: 'test-workflow-id' };
 					if (name === 'fields.values') return [];
 					return {};
 				}),
 				executeWorkflow: executeWorkflowMock,
-				addOutputData: jest.fn(),
+				addOutputData: vi.fn(),
 			});
-			contextWithRetryNode.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+			contextWithRetryNode.cloneWith = vi.fn().mockImplementation((cloneOverrides) => ({
 				...createMockClonedContext(contextWithRetryNode, executeWorkflowMock),
-				getWorkflowDataProxy: jest.fn().mockReturnValue({
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
 					$execution: { id: 'exec-id' },
 					$workflow: { id: 'workflow-id' },
 				}),
@@ -643,31 +851,31 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				executionId: 'success-exec-id',
 			};
 
-			const executeWorkflowMock = jest
+			const executeWorkflowMock = vi
 				.fn()
 				.mockRejectedValueOnce(new Error('First attempt fails'))
 				.mockResolvedValueOnce(mockSuccessResponse);
 
 			const contextWithRetryNode = createMockContext({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					name: 'Test Tool',
 					parameters: { workflowInputs: { schema: [] } },
 					retryOnFail: true,
 					maxTries: 3,
 					waitBetweenTries: 0,
 				}),
-				getNodeParameter: jest.fn().mockImplementation((name) => {
+				getNodeParameter: vi.fn().mockImplementation((name) => {
 					if (name === 'source') return 'database';
 					if (name === 'workflowId') return { value: 'test-workflow-id' };
 					if (name === 'fields.values') return [];
 					return {};
 				}),
 				executeWorkflow: executeWorkflowMock,
-				addOutputData: jest.fn(),
+				addOutputData: vi.fn(),
 			});
-			contextWithRetryNode.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+			contextWithRetryNode.cloneWith = vi.fn().mockImplementation((cloneOverrides) => ({
 				...createMockClonedContext(contextWithRetryNode, executeWorkflowMock),
-				getWorkflowDataProxy: jest.fn().mockReturnValue({
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
 					$execution: { id: 'exec-id' },
 					$workflow: { id: 'workflow-id' },
 				}),
@@ -694,17 +902,17 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			{ maxTries: 3, expected: 3 },
 			{ maxTries: 6, expected: 5 }, // Should be clamped to maximum 5
 		])('should respect maxTries limits (2-5)', async ({ maxTries, expected }) => {
-			const executeWorkflowMock = jest.fn().mockRejectedValue(new Error('Test error'));
+			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Test error'));
 
 			const contextWithRetryNode = createMockContext({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					name: 'Test Tool',
 					parameters: { workflowInputs: { schema: [] } },
 					retryOnFail: true,
 					maxTries,
 					waitBetweenTries: 0,
 				}),
-				getNodeParameter: jest.fn().mockImplementation((name) => {
+				getNodeParameter: vi.fn().mockImplementation((name) => {
 					if (name === 'source') return 'database';
 					if (name === 'workflowId') return { value: 'test-workflow-id' };
 					if (name === 'fields.values') return [];
@@ -713,9 +921,9 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				executeWorkflow: executeWorkflowMock,
 			});
 
-			contextWithRetryNode.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+			contextWithRetryNode.cloneWith = vi.fn().mockImplementation((cloneOverrides) => ({
 				...createMockClonedContext(contextWithRetryNode, executeWorkflowMock),
-				getWorkflowDataProxy: jest.fn().mockReturnValue({
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
 					$execution: { id: 'exec-id' },
 					$workflow: { id: 'workflow-id' },
 				}),
@@ -736,31 +944,30 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(expected);
 		});
 
-		it('should respect waitBetweenTries with sleepWithAbort', async () => {
-			const { sleepWithAbort } = jest.requireMock('n8n-workflow');
-			sleepWithAbort.mockClear();
-			const executeWorkflowMock = jest.fn().mockRejectedValue(new Error('Test error'));
+		it('should respect waitBetweenTries with sleep', async () => {
+			sleepMock.mockClear();
+			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Test error'));
 
 			const contextWithRetryNode = createMockContext({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					name: 'Test Tool',
 					parameters: { workflowInputs: { schema: [] } },
 					retryOnFail: true,
 					maxTries: 2,
 					waitBetweenTries: 1500,
 				}),
-				getNodeParameter: jest.fn().mockImplementation((name) => {
+				getNodeParameter: vi.fn().mockImplementation((name) => {
 					if (name === 'source') return 'database';
 					if (name === 'workflowId') return { value: 'test-workflow-id' };
 					if (name === 'fields.values') return [];
 					return {};
 				}),
 				executeWorkflow: executeWorkflowMock,
-				addOutputData: jest.fn(),
+				addOutputData: vi.fn(),
 			});
-			contextWithRetryNode.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+			contextWithRetryNode.cloneWith = vi.fn().mockImplementation((cloneOverrides) => ({
 				...createMockClonedContext(contextWithRetryNode, executeWorkflowMock),
-				getWorkflowDataProxy: jest.fn().mockReturnValue({
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
 					$execution: { id: 'exec-id' },
 					$workflow: { id: 'workflow-id' },
 				}),
@@ -778,7 +985,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			await tool.func('test query');
 
-			expect(sleepWithAbort).toHaveBeenCalledWith(1500, undefined);
+			expect(sleepMock).toHaveBeenCalledWith(1500, undefined);
 		});
 	});
 
@@ -786,46 +993,46 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		let abortController: AbortController;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			abortController = new AbortController();
 		});
 
 		const createAbortSignalContext = (
-			executeWorkflowMock: jest.MockedFunction<any>,
+			executeWorkflowMock: MockedFunction<any>,
 			abortSignal?: AbortSignal,
 		) => {
 			const contextWithRetryNode = createMockContext({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					name: 'Test Tool',
 					parameters: { workflowInputs: { schema: [] } },
 					retryOnFail: true,
 					maxTries: 3,
 					waitBetweenTries: 100,
 				}),
-				getNodeParameter: jest.fn().mockImplementation((name) => {
+				getNodeParameter: vi.fn().mockImplementation((name) => {
 					if (name === 'source') return 'database';
 					if (name === 'workflowId') return { value: 'test-workflow-id' };
 					if (name === 'fields.values') return [];
 					return {};
 				}),
 				executeWorkflow: executeWorkflowMock,
-				addOutputData: jest.fn(),
+				addOutputData: vi.fn(),
 			});
-			contextWithRetryNode.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+			contextWithRetryNode.cloneWith = vi.fn().mockImplementation((cloneOverrides) => ({
 				...createMockClonedContext(contextWithRetryNode, executeWorkflowMock),
-				getWorkflowDataProxy: jest.fn().mockReturnValue({
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
 					$execution: { id: 'exec-id' },
 					$workflow: { id: 'workflow-id' },
 				}),
 				getNodeParameter: contextWithRetryNode.getNodeParameter,
-				getExecutionCancelSignal: jest.fn(() => abortSignal),
+				getExecutionCancelSignal: vi.fn(() => abortSignal),
 				...cloneOverrides,
 			}));
 			return contextWithRetryNode;
 		};
 
 		it('should return cancellation message if signal is already aborted', async () => {
-			const executeWorkflowMock = jest.fn().mockResolvedValue({
+			const executeWorkflowMock = vi.fn().mockResolvedValue({
 				data: [[{ json: { result: 'success' } }]],
 				executionId: 'success-exec-id',
 			});
@@ -850,13 +1057,49 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toBe('There was an error: "Execution was cancelled"');
 			expect(executeWorkflowMock).not.toHaveBeenCalled();
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenCalledTimes(1);
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: 'There was an error: "Execution was cancelled"',
+				}),
+			);
+		});
+
+		it('should not emit ai-tool-called when cancelled and manualLogging is false', async () => {
+			const executeWorkflowMock = vi.fn().mockResolvedValue({
+				data: [[{ json: { result: 'success' } }]],
+				executionId: 'success-exec-id',
+			});
+
+			abortController.abort();
+
+			const contextWithRetryNode = createAbortSignalContext(
+				executeWorkflowMock,
+				abortController.signal,
+			);
+
+			service = new WorkflowToolService(contextWithRetryNode);
+			const tool = await service.createTool({
+				ctx: contextWithRetryNode,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+				manualLogging: false,
+			});
+
+			const result = await tool.func('test query');
+
+			expect(result).toBe('There was an error: "Execution was cancelled"');
+			expect(executeWorkflowMock).not.toHaveBeenCalled();
+			expect(contextWithRetryNode.logAiEvent).not.toHaveBeenCalled();
 		});
 
 		it('should handle abort signal during retry wait', async () => {
-			const { sleepWithAbort } = jest.requireMock('n8n-workflow');
-			sleepWithAbort.mockRejectedValue(new Error('Execution was cancelled'));
+			sleepMock.mockRejectedValue(new Error('Execution was cancelled'));
 
-			const executeWorkflowMock = jest
+			const executeWorkflowMock = vi
 				.fn()
 				.mockRejectedValueOnce(new Error('First attempt fails'))
 				.mockResolvedValueOnce({
@@ -880,15 +1123,64 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const result = await tool.func('test query');
 
 			expect(result).toBe('There was an error: "Execution was cancelled"');
-			expect(sleepWithAbort).toHaveBeenCalledWith(100, abortController.signal);
+			expect(sleepMock).toHaveBeenCalledWith(100, abortController.signal);
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(1); // Only first attempt
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenCalledTimes(2);
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenNthCalledWith(
+				1,
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: 'There was an error: "First attempt fails"',
+				}),
+			);
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenNthCalledWith(
+				2,
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: 'There was an error: "Execution was cancelled"',
+				}),
+			);
+		});
+
+		it('should not emit ai-tool-called when retry wait is cancelled and manualLogging is false', async () => {
+			sleepMock.mockRejectedValue(new Error('Execution was cancelled'));
+
+			const executeWorkflowMock = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('First attempt fails'))
+				.mockResolvedValueOnce({
+					data: [[{ json: { result: 'success' } }]],
+					executionId: 'success-exec-id',
+				});
+
+			const contextWithRetryNode = createAbortSignalContext(
+				executeWorkflowMock,
+				abortController.signal,
+			);
+
+			service = new WorkflowToolService(contextWithRetryNode);
+			const tool = await service.createTool({
+				ctx: contextWithRetryNode,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+				manualLogging: false,
+			});
+
+			const result = await tool.func('test query');
+
+			expect(result).toBe('There was an error: "Execution was cancelled"');
+			expect(executeWorkflowMock).toHaveBeenCalledTimes(1);
+			expect(contextWithRetryNode.logAiEvent).not.toHaveBeenCalled();
 		});
 
 		it('should handle abort signal during execution', async () => {
-			const executeWorkflowMock = jest.fn().mockImplementation(() => {
+			const executeWorkflowMock = vi.fn().mockImplementation(() => {
 				// Simulate abort during execution
 				abortController.abort();
-				throw new ApplicationError('Workflow execution failed');
+				throw new UnexpectedError('Workflow execution failed');
 			});
 
 			const contextWithRetryNode = createAbortSignalContext(
@@ -908,13 +1200,47 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toBe('There was an error: "Execution was cancelled"');
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(1);
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenCalledTimes(1);
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: 'There was an error: "Execution was cancelled"',
+				}),
+			);
+		});
+
+		it('should not emit ai-tool-called when execution is cancelled and manualLogging is false', async () => {
+			const executeWorkflowMock = vi.fn().mockImplementation(() => {
+				abortController.abort();
+				throw new UnexpectedError('Workflow execution failed');
+			});
+
+			const contextWithRetryNode = createAbortSignalContext(
+				executeWorkflowMock,
+				abortController.signal,
+			);
+
+			service = new WorkflowToolService(contextWithRetryNode);
+			const tool = await service.createTool({
+				ctx: contextWithRetryNode,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+				manualLogging: false,
+			});
+
+			const result = await tool.func('test query');
+
+			expect(result).toBe('There was an error: "Execution was cancelled"');
+			expect(executeWorkflowMock).toHaveBeenCalledTimes(1);
+			expect(contextWithRetryNode.logAiEvent).not.toHaveBeenCalled();
 		});
 
 		it('should complete successfully if not aborted', async () => {
-			const { sleepWithAbort } = jest.requireMock('n8n-workflow');
-			sleepWithAbort.mockClear().mockResolvedValue(undefined);
+			sleepMock.mockClear().mockResolvedValue(undefined);
 
-			const executeWorkflowMock = jest
+			const executeWorkflowMock = vi
 				.fn()
 				.mockRejectedValueOnce(new Error('First attempt fails'))
 				.mockResolvedValueOnce({
@@ -939,14 +1265,13 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toBe(JSON.stringify({ result: 'success' }, null, 2));
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(2);
-			expect(sleepWithAbort).toHaveBeenCalledWith(100, abortController.signal);
+			expect(sleepMock).toHaveBeenCalledWith(100, abortController.signal);
 		});
 
 		it('should work when getExecutionCancelSignal is not available', async () => {
-			const { sleepWithAbort } = jest.requireMock('n8n-workflow');
-			sleepWithAbort.mockClear().mockResolvedValue(undefined);
+			sleepMock.mockClear().mockResolvedValue(undefined);
 
-			const executeWorkflowMock = jest
+			const executeWorkflowMock = vi
 				.fn()
 				.mockRejectedValueOnce(new Error('First attempt fails'))
 				.mockResolvedValueOnce({
@@ -968,7 +1293,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const result = await tool.func('test query');
 
 			expect(result).toBe(JSON.stringify({ result: 'success' }, null, 2));
-			expect(sleepWithAbort).toHaveBeenCalledWith(100, undefined);
+			expect(sleepMock).toHaveBeenCalledWith(100, undefined);
 		});
 	});
 });

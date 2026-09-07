@@ -1,5 +1,3 @@
-import { EventEmitter } from 'node:events';
-import { nanoid } from 'nanoid';
 import type {
 	McpToolCallRequest,
 	McpToolCallResult,
@@ -7,8 +5,10 @@ import type {
 	InstanceAiGatewayCapabilities,
 	ToolCategory,
 } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
+import { EventEmitter } from 'node:events';
 
-const REQUEST_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 60_000; // 1 minute — tool calls like browser automation and shell execution can be long-running
 
 // ── Internal types ───────────────────────────────────────────────────────────
 
@@ -16,9 +16,10 @@ interface PendingRequest {
 	resolve: (result: McpToolCallResult) => void;
 	reject: (error: Error) => void;
 	timer: NodeJS.Timeout;
+	toolCall: McpToolCallRequest;
 }
 
-export interface LocalGatewayEvent {
+export interface LocalGatewayRequestEvent {
 	type: 'filesystem-request';
 	payload: {
 		requestId: string;
@@ -26,8 +27,14 @@ export interface LocalGatewayEvent {
 	};
 }
 
+export interface LocalGatewayDisconnectEvent {
+	type: 'gateway-disconnect';
+}
+
+export type LocalGatewayEvent = LocalGatewayRequestEvent | LocalGatewayDisconnectEvent;
+
 /**
- * Singleton MCP gateway for a connected local client (e.g. the fs-proxy daemon).
+ * Singleton MCP gateway for a connected local client (e.g. the computer-use daemon).
  *
  * The client advertises its capabilities as `McpTool[]` on connect; all tool
  * calls are dispatched generically via the SSE channel. Tools are not limited
@@ -39,6 +46,9 @@ export interface LocalGatewayEvent {
  * 3. callTool() → emits filesystem-request via SSE
  * 4. Client executes locally, POSTs MCP result to /instance-ai/gateway/response/:requestId
  * 5. resolveRequest() resolves the pending promise → caller gets McpToolCallResult
+ *
+ * Resource-access confirmations (GATEWAY_CONFIRMATION_REQUIRED) are handled at the
+ * tool layer via native agents suspend/resume data — not here.
  */
 export class LocalGateway {
 	private readonly pendingRequests = new Map<string, PendingRequest>();
@@ -57,6 +67,8 @@ export class LocalGateway {
 
 	private _availableTools: McpTool[] = [];
 
+	private _excludedToolCategories: ReadonlySet<string> = new Set();
+
 	get isConnected(): boolean {
 		return this._connected;
 	}
@@ -69,20 +81,37 @@ export class LocalGateway {
 		return this._rootPath;
 	}
 
-	/** The MCP tools advertised by the client on connect. */
+	/** Restrict which tool categories are exposed to the agent. Pass an empty set to expose all. */
+	setExcludedToolCategories(categories: string[]): void {
+		this._excludedToolCategories = new Set(categories);
+	}
+
+	private isExcluded(tool: McpTool): boolean {
+		const category = tool.annotations?.category;
+		return category !== undefined && this._excludedToolCategories.has(category);
+	}
+
+	/** The MCP tools advertised by the client on connect, minus excluded categories. */
 	getAvailableTools(): McpTool[] {
-		return this._availableTools;
+		return this._availableTools.filter((t) => !this.isExcluded(t));
 	}
 
 	/** Return tools that belong to the given category (based on annotations.category). */
 	getToolsByCategory(category: string): McpTool[] {
+		if (this._excludedToolCategories.has(category)) return [];
 		return this._availableTools.filter((t) => t.annotations?.category === category);
 	}
 
 	/** Subscribe to outbound tool call events (consumed by the SSE endpoint). */
-	onRequest(listener: (event: LocalGatewayEvent) => void): () => void {
+	onRequest(listener: (event: LocalGatewayRequestEvent) => void): () => void {
 		this.emitter.on('filesystem-request', listener);
 		return () => this.emitter.off('filesystem-request', listener);
+	}
+
+	/** Subscribe to disconnect events so the SSE endpoint can tell the daemon to tear down. */
+	onDisconnect(listener: (event: LocalGatewayDisconnectEvent) => void): () => void {
+		this.emitter.on('gateway-disconnect', listener);
+		return () => this.emitter.off('gateway-disconnect', listener);
 	}
 
 	/** Called when the client uploads its MCP tool capabilities. */
@@ -105,23 +134,22 @@ export class LocalGateway {
 
 		if (error) {
 			pending.reject(new Error(error));
-		} else if (result?.isError === true) {
-			pending.reject(
-				new Error(
-					result.content
-						.filter((c): c is { type: 'text'; text: string } => c.type === 'text')
-						.map((c) => c.text)
-						.join('\n'),
-				),
-			);
-		} else {
-			pending.resolve(result ?? { content: [] });
+			return true;
 		}
+
+		// Resolve with the result as-is (including isError responses) so the tool
+		// layer (create-tools-from-mcp-server.ts) can inspect GATEWAY_CONFIRMATION_REQUIRED
+		// errors and handle them via native tool suspension.
+		pending.resolve(result ?? { content: [] });
 		return true;
 	}
 
 	/** Mark the gateway as disconnected and reject all pending requests. */
 	disconnect(): void {
+		this.emitter.emit('gateway-disconnect', {
+			type: 'gateway-disconnect',
+		} satisfies LocalGatewayDisconnectEvent);
+
 		this._connected = false;
 		this._connectedAt = null;
 		this._rootPath = null;
@@ -149,28 +177,89 @@ export class LocalGateway {
 			connectedAt: this._connectedAt,
 			directory: this._rootPath,
 			hostIdentifier: this._hostIdentifier,
-			toolCategories: this._toolCategories,
+			toolCategories: this._toolCategories.filter(
+				(category) => !this._excludedToolCategories.has(category.name),
+			),
 		};
 	}
 
 	/**
 	 * Dispatch an MCP tool call to the remote client and await its result.
-	 * Throws if not connected or if the request times out.
+	 * Throws if not connected, if the request times out, or if aborted.
 	 */
-	async callTool(toolCall: McpToolCallRequest): Promise<McpToolCallResult> {
+	async callTool(
+		toolCall: McpToolCallRequest,
+		options?: { abortSignal?: AbortSignal },
+	): Promise<McpToolCallResult> {
 		if (!this._connected) {
 			throw new Error('Local gateway is not connected');
+		}
+
+		const tool = this._availableTools.find((t) => t.name === toolCall.name);
+		if (tool && this.isExcluded(tool)) {
+			return {
+				content: [{ type: 'text', text: `Unknown tool: ${toolCall.name}` }],
+				isError: true,
+			};
+		}
+
+		const abortSignal = options?.abortSignal;
+		if (abortSignal?.aborted) {
+			const error = new Error(
+				typeof abortSignal.reason === 'string' ? abortSignal.reason : 'This operation was aborted',
+			);
+			error.name = 'AbortError';
+			throw error;
 		}
 
 		const requestId = `gw_${nanoid()}`;
 
 		return await new Promise<McpToolCallResult>((resolve, reject) => {
-			const timer = setTimeout(() => {
+			let settled = false;
+
+			const settle = (action: () => void) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				abortSignal?.removeEventListener('abort', onAbort);
 				this.pendingRequests.delete(requestId);
-				reject(new Error(`Local gateway request timed out after ${REQUEST_TIMEOUT_MS}ms`));
+				action();
+			};
+
+			const onAbort = () => {
+				settle(() => {
+					const error = new Error(
+						typeof abortSignal?.reason === 'string'
+							? abortSignal.reason
+							: 'This operation was aborted',
+					);
+					error.name = 'AbortError';
+					reject(error);
+				});
+			};
+
+			const timer = setTimeout(() => {
+				settle(() => {
+					reject(new Error(`Local gateway request timed out after ${REQUEST_TIMEOUT_MS}ms`));
+				});
 			}, REQUEST_TIMEOUT_MS);
 
-			this.pendingRequests.set(requestId, { resolve, reject, timer });
+			abortSignal?.addEventListener('abort', onAbort, { once: true });
+
+			this.pendingRequests.set(requestId, {
+				resolve: (result) => {
+					settle(() => {
+						resolve(result);
+					});
+				},
+				reject: (error) => {
+					settle(() => {
+						reject(error);
+					});
+				},
+				timer,
+				toolCall,
+			});
 
 			this.emitter.emit('filesystem-request', {
 				type: 'filesystem-request',

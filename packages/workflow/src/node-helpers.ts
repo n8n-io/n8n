@@ -2,17 +2,24 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-import { ApplicationError } from '@n8n/errors';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import { v4 as uuid } from 'uuid';
 
-import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+} from './constants';
+import { UnexpectedError, UserError } from './errors';
 import { isExpression } from './expressions/expression-helpers';
+import { isFromAIOnlyExpression } from './from-ai-parse-utils';
 import { NodeConnectionTypes } from './interfaces';
+import { safeRegex } from './safe-regex';
 import type {
 	FieldType,
 	IContextObject,
+	ICredentialsDisplayOptions,
 	INode,
 	INodeCredentialDescription,
 	INodeIssueObjectProperty,
@@ -52,7 +59,10 @@ import {
 } from './type-guards';
 import { validateFieldType } from './type-validation';
 import { deepCopy } from './utils';
-import type { Workflow } from './workflow';
+import type { Workflow } from '.';
+
+// To facilitate frontend refactoring, make some helper functions work without full workflow object
+type WorkflowForNodeHelpers = Pick<Workflow, 'expression'>;
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -126,7 +136,7 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 					},
 				},
 				default: 0,
-				description: 'The minute of the day to trigger',
+				description: 'The minute past the hour to trigger (0-59)',
 			},
 			{
 				displayName: 'Day of Month',
@@ -371,16 +381,21 @@ export const checkConditions = (
 					return (propertyValue as number) >= from && (propertyValue as number) <= to;
 				}
 				if (key === 'includes') {
-					return (propertyValue as string).includes(targetValue);
+					return typeof propertyValue === 'string' && propertyValue.includes(targetValue as string);
 				}
 				if (key === 'startsWith') {
-					return (propertyValue as string).startsWith(targetValue);
+					return (
+						typeof propertyValue === 'string' && propertyValue.startsWith(targetValue as string)
+					);
 				}
 				if (key === 'endsWith') {
-					return (propertyValue as string).endsWith(targetValue);
+					return typeof propertyValue === 'string' && propertyValue.endsWith(targetValue as string);
 				}
 				if (key === 'regex') {
-					return new RegExp(targetValue as string).test(propertyValue as string);
+					return (
+						typeof propertyValue === 'string' &&
+						safeRegex.test(targetValue as string, propertyValue)
+					);
 				}
 				if (key === 'exists') {
 					return propertyValue !== null && propertyValue !== undefined && propertyValue !== '';
@@ -497,6 +512,78 @@ export function displayParameterPath(
 }
 
 /**
+ * Returns the credential types a node actively uses given its current configuration,
+ * or `null` when the active set cannot be determined statically. A credential type is
+ * active when:
+ * - its description in the node type is currently displayed (its `displayOptions` match), or
+ * - it is referenced by the `nodeCredentialType` / `genericAuthType` parameters — nodes like
+ *   HTTP Request select credential types dynamically through these parameters instead of
+ *   declaring them in the node type description.
+ *
+ * Returns `null` when the node type description is unavailable, a credential-type
+ * parameter is an expression (it only resolves at runtime), or evaluating the
+ * configuration throws. Callers must fall back conservatively for their use case:
+ * treat all referenced credentials as active when validating, and clean nothing
+ * when removing stale entries.
+ */
+export function getActiveCredentialTypes(
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription | null,
+): Set<string> | null {
+	if (!nodeTypeDescription) {
+		return null;
+	}
+
+	try {
+		const activeTypes = new Set<string>();
+
+		for (const credentialDescription of nodeTypeDescription.credentials ?? []) {
+			if (displayParameter(node.parameters, credentialDescription, node, nodeTypeDescription)) {
+				activeTypes.add(credentialDescription.name);
+			}
+		}
+
+		const { nodeCredentialType, genericAuthType } = node.parameters;
+		for (const paramName of ['nodeCredentialType', 'genericAuthType'] as const) {
+			const paramValue = paramName === 'nodeCredentialType' ? nodeCredentialType : genericAuthType;
+			if (typeof paramValue !== 'string' || !paramValue) {
+				continue;
+			}
+
+			// These parameters select the credential type dynamically, so their own
+			// displayOptions (e.g. shown only for a given `authentication` value) decide
+			// whether the value they hold is actually in use. A stale value left over from
+			// a previous selection must not be reported as active just because it's
+			// non-empty. Node types that don't declare the property at all (e.g. tests)
+			// keep the previous, unconditional behaviour.
+			const paramDescription = (nodeTypeDescription.properties ?? []).find(
+				(p) => p.name === paramName,
+			);
+			if (
+				paramDescription &&
+				!displayParameter(node.parameters, paramDescription, node, nodeTypeDescription)
+			) {
+				continue;
+			}
+
+			// Checked after the hidden check: a hidden parameter holds no active value,
+			// expression or not, so a leftover expression must not make the whole node
+			// indeterminable and block cleanup.
+			if (isExpression(paramValue)) {
+				return null;
+			}
+
+			activeTypes.add(paramValue);
+		}
+
+		return activeTypes;
+	} catch {
+		// Malformed display options must not break callers that never evaluated them before
+		return null;
+	}
+}
+
+/**
  * Returns the context data
  *
  * @param {IRunExecutionData} runExecutionData The run execution data
@@ -510,7 +597,7 @@ export function getContext(
 ): IContextObject {
 	if (runExecutionData.executionData === undefined) {
 		// TODO: Should not happen leave it for test now
-		throw new ApplicationError('`executionData` is not initialized');
+		throw new UnexpectedError('`executionData` is not initialized');
 	}
 
 	let key: string;
@@ -519,13 +606,13 @@ export function getContext(
 	} else if (type === 'node') {
 		if (node === undefined) {
 			// @TODO: What does this mean?
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'The request data of context type "node" the node parameter has to be set!',
 			);
 		}
 		key = `node:${node.name}`;
 	} else {
-		throw new ApplicationError('Unknown context type. Only `flow` and `node` are supported.', {
+		throw new UnexpectedError('Unknown context type. Only `flow` and `node` are supported.', {
 			extra: { contextType: type },
 		});
 	}
@@ -556,6 +643,10 @@ function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IPara
 		}
 
 		for (const displayRule of Object.values(displayOptions)) {
+			if (typeof displayRule !== 'object' || displayRule === null) {
+				continue;
+			}
+
 			for (const parameterName of Object.keys(displayRule)) {
 				if (!dependencies[name].includes(parameterName)) {
 					if (parameterName.charAt(0) === '@') {
@@ -607,8 +698,10 @@ function getParameterResolveOrder(
 		// Parameter has dependencies
 		for (const dependency of parameterDependencies[property.name]) {
 			if (!resolvedParameters.includes(dependency)) {
-				if (dependency.charAt(0) === '/') {
-					// Assume that root level dependencies are resolved
+				if (!Object.hasOwn(parameterDependencies, dependency)) {
+					// Not a parameter of this level (e.g. a `/root.path`), so it cannot be
+					// resolved here. `displayParameter` looks the value up later and hides
+					// the parameter if it is missing.
 					continue;
 				}
 				// Dependencies for that parameter are still missing so
@@ -627,7 +720,7 @@ function getParameterResolveOrder(
 		}
 
 		if (iterations > lastIndexReduction + nodePropertiesArray.length) {
-			throw new ApplicationError(
+			throw new UserError(
 				'Could not resolve parameter dependencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.',
 			);
 		}
@@ -775,6 +868,25 @@ export function getNodeParameters(
 						nodeValues[nodeProperties.name] !== undefined
 							? deepCopy(nodeValues[nodeProperties.name])
 							: { __rl: true, ...nodeProperties.default };
+				} else if (
+					// Filter parameters may be missing "combinator" or "options" and
+					// still be considered valid (e.g. happens when generated by AI).
+					// this patches in the same way the UI does in FilterConditions.vue
+					nodeProperties.type === 'filter' &&
+					nodeValues[nodeProperties.name] !== undefined &&
+					typeof nodeValues[nodeProperties.name] === 'object' &&
+					nodeValues[nodeProperties.name] !== null
+				) {
+					const defaultOptions = {
+						caseSensitive: true,
+						leftValue: '',
+						typeValidation: 'strict',
+						version: 1,
+					};
+					const filter = deepCopy(nodeValues[nodeProperties.name]) as Record<string, unknown>;
+					filter.combinator ??= 'and';
+					filter.options = { ...defaultOptions, ...(filter.options as object) };
+					nodeParameters[nodeProperties.name] = filter as unknown as NodeParameterValue;
 				} else {
 					nodeParameters[nodeProperties.name] =
 						deepCopy(nodeValues[nodeProperties.name]) ?? nodeProperties.default;
@@ -796,7 +908,8 @@ export function getNodeParameters(
 			// Strip expression prefix if noDataExpression is true
 			if (nodeProperties.noDataExpression && nodeParameters[nodeProperties.name] !== undefined) {
 				const value = nodeParameters[nodeProperties.name];
-				if (isExpression(value)) {
+				// A lone $fromAI() placeholder must keep its "=" or the AI tool call never resolves it (#30531)
+				if (isExpression(value) && !isFromAIOnlyExpression(value)) {
 					nodeParameters[nodeProperties.name] = value.slice(1);
 					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				}
@@ -902,20 +1015,19 @@ export function getNodeParameters(
 					if (typeof propertyValues !== 'object' || Array.isArray(propertyValues)) {
 						continue;
 					}
+
+					nodePropertyOptions = nodeProperties.options!.find(
+						(nodePropertyOptions) => nodePropertyOptions.name === itemName,
+					) as INodePropertyCollection;
+
+					if (nodePropertyOptions === undefined) {
+						continue;
+					}
+
 					// Iterate over all items as it contains multiple ones
 					for (const nodeValue of (propertyValues as INodeParameters)[
 						itemName
 					] as INodeParameters[]) {
-						nodePropertyOptions = nodeProperties.options!.find(
-							(nodePropertyOptions) => nodePropertyOptions.name === itemName,
-						) as INodePropertyCollection;
-
-						if (nodePropertyOptions === undefined) {
-							throw new ApplicationError('Could not find property option', {
-								extra: { propertyOption: itemName, property: nodeProperties.name },
-							});
-						}
-
 						tempNodePropertiesArray = nodePropertyOptions.values!;
 						tempValue = getNodeParameters(
 							tempNodePropertiesArray,
@@ -1129,7 +1241,7 @@ export function getConnectionTypes(
 }
 
 export function getNodeInputs(
-	workflow: Workflow,
+	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<NodeConnectionType | INodeInputConfiguration> {
@@ -1152,7 +1264,7 @@ export function getNodeInputs(
 }
 
 export function getNodeOutputs(
-	workflow: Workflow,
+	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<NodeConnectionType | INodeOutputConfiguration> {
@@ -1245,6 +1357,33 @@ export function getNodeParametersIssues(
 	return foundIssues;
 }
 
+/**
+ * Returns the node's issues as a flat list of human-readable strings,
+ * covering execution errors, parameter/credential/input issues, and unknown node types.
+ */
+export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
+	const messages: string[] = [];
+
+	if (issues.execution !== undefined) {
+		messages.push('Execution Error.');
+	}
+
+	for (const propertyIssues of [issues.parameters, issues.credentials, issues.input]) {
+		if (propertyIssues === undefined) continue;
+		for (const parameterName of Object.keys(propertyIssues)) {
+			messages.push(...propertyIssues[parameterName]);
+		}
+	}
+
+	if (issues.typeUnknown !== undefined) {
+		messages.push(
+			node !== undefined ? `Node Type "${node.type}" is not known.` : 'Node Type is not known.',
+		);
+	}
+
+	return messages;
+}
+
 /*
  * Validates resource locator node parameters based on validation ruled defined in each parameter mode
  */
@@ -1263,9 +1402,8 @@ const validateResourceLocatorParameter = (
 		for (const validation of parameterMode.validation) {
 			if (validation && (validation as INodePropertyModeValidation).type === 'regex') {
 				const regexValidation = validation as INodePropertyRegexValidation;
-				const regex = new RegExp(`^${regexValidation.properties.regex}$`);
 
-				if (!regex.test(valueToValidate)) {
+				if (!safeRegex.test(`^${regexValidation.properties.regex}$`, valueToValidate)) {
 					validationErrors.push(regexValidation.properties.errorMessage);
 				}
 			}
@@ -1356,7 +1494,9 @@ function addToIssuesIfMissing(
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
 		(nodeProperties.type === 'dateTime' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
-		((nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
+		((nodeProperties.type === 'resourceLocator' ||
+			nodeProperties.type === 'workflowSelector' ||
+			nodeProperties.type === 'agentSelector') &&
 			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
 	) {
 		// Parameter is required but empty
@@ -1386,6 +1526,55 @@ export function getParameterValueByPath(
 	path: string,
 ) {
 	return get(nodeValues, path ? `${path}.${parameterName}` : parameterName);
+}
+
+/**
+ * Resolves the property definition for a parameter path, honoring `displayOptions` so that
+ * duplicate-named variants resolve to the one shown for the given node values (e.g. version- or
+ * source-gated parameters). Descends into `collection`/`fixedCollection`; the leading
+ * `parameters.` prefix and array indices in the path are ignored. Returns `undefined` when the
+ * path resolves to no displayed property.
+ */
+export function findDisplayedProperty(
+	parameterPath: string,
+	properties: INodeProperties[],
+	nodeValues: INodeParameters,
+	node: Pick<INode, 'typeVersion'> | null,
+	nodeTypeDescription: INodeTypeDescription | null,
+): INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined {
+	const parts = parameterPath.replace(/^parameters\./, '').split('.');
+	let currentPath = '';
+	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined;
+
+	const findProp = (
+		name: string,
+		options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+	) =>
+		options.find(
+			(option) =>
+				option.name === name &&
+				displayParameterPath(nodeValues, option, currentPath, node, nodeTypeDescription),
+		);
+
+	for (const part of parts) {
+		const name = part.split('[')[0];
+
+		if (!property) {
+			property = findProp(name, properties);
+		} else if ('options' in property && property.options) {
+			property = findProp(name, property.options);
+			currentPath += `.${name}`;
+		} else if ('values' in property) {
+			property = findProp(name, property.values);
+			currentPath += `.${name}`;
+		} else {
+			return undefined;
+		}
+
+		if (!property) return undefined;
+	}
+
+	return property;
 }
 
 function isINodeParameterResourceLocator(value: unknown): value is INodeParameterResourceLocator {
@@ -1438,7 +1627,9 @@ export function getParameterIssues(
 	}
 
 	if (
-		(nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
+		(nodeProperties.type === 'resourceLocator' ||
+			nodeProperties.type === 'workflowSelector' ||
+			nodeProperties.type === 'agentSelector') &&
 		isDisplayed
 	) {
 		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
@@ -1686,7 +1877,11 @@ export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
 	return nodeTypeData.group.includes('trigger');
 }
 
-export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
+export function isExecutable(
+	workflow: WorkflowForNodeHelpers,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+) {
 	if (!nodeTypeData) {
 		return false;
 	}
@@ -1700,7 +1895,11 @@ export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INod
 }
 
 export function isNodeWithWorkflowSelector(node: INode) {
-	return [EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE].includes(node.type);
+	return [
+		EXECUTE_WORKFLOW_NODE_TYPE,
+		WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+		RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
+	].includes(node.type);
 }
 
 /**
@@ -1770,6 +1969,28 @@ export function makeDescription(
 	}
 
 	return nodeTypeDescription.description;
+}
+
+/**
+ * Trigger node types that don't have "trigger" in their name
+ * but still function as workflow entry points
+ */
+const TRIGGER_NODE_TYPES = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.cron', // Legacy schedule trigger
+	'n8n-nodes-base.emailReadImap', // Email polling trigger
+	'n8n-nodes-base.telegramBot', // Can act as webhook trigger
+	'n8n-nodes-base.start', // Legacy trigger
+]);
+
+/**
+ * Check if a node type is a trigger
+ */
+export function isTriggerNodeType(type: string): boolean {
+	if (TRIGGER_NODE_TYPES.has(type)) {
+		return true;
+	}
+	return type.toLowerCase().includes('trigger');
 }
 
 export function isToolType(
@@ -1900,8 +2121,18 @@ export const getUpdatedToolDescription = (
 
 /**
  * Generates a tool description for a given node based on its parameters and type.
+ *
+ * When the user-provided `toolDescription` is an n8n expression (starts with `=`),
+ * the optional `resolveToolDescription` callback is used to evaluate it against
+ * the upstream input data — matching how other tool nodes (e.g. `toolWorkflow`)
+ * resolve their description parameter via `getNodeParameter`. Without a resolver,
+ * the raw value is returned unchanged for backward compatibility.
  */
-export function getToolDescriptionForNode(node: INode, nodeType: INodeType): string {
+export function getToolDescriptionForNode(
+	node: INode,
+	nodeType: INodeType,
+	resolveToolDescription?: () => string,
+): string {
 	let toolDescription;
 	if (
 		node.parameters.descriptionType === 'auto' ||
@@ -1909,7 +2140,12 @@ export function getToolDescriptionForNode(node: INode, nodeType: INodeType): str
 	) {
 		toolDescription = makeDescription(node.parameters, nodeType.description);
 	} else if (node?.parameters.toolDescription) {
-		toolDescription = node.parameters.toolDescription;
+		const raw = node.parameters.toolDescription;
+		if (resolveToolDescription && typeof raw === 'string' && raw.startsWith('=')) {
+			toolDescription = resolveToolDescription();
+		} else {
+			toolDescription = raw;
+		}
 	} else {
 		toolDescription = nodeType.description.description;
 	}
@@ -1977,4 +2213,64 @@ export function nodeHasOutputType(nodeType: INodeTypeDescription, connectionType
 		}
 		return output.type === connectionType;
 	});
+}
+
+/**
+ * Parameters to write so a credential's `displayOptions.show` becomes satisfied,
+ * making it the active slot (e.g. `{ authentication: ['apiKey'] }` →
+ * `{ authentication: 'apiKey' }`). `@version` is excluded — it gates typeVersion,
+ * not a settable parameter. A `show` clause may accept several values; this
+ * returns only the first, so callers must not apply it to an already-active slot.
+ */
+export function getCredentialActivationParameters(
+	displayOptions: ICredentialsDisplayOptions | undefined,
+): INodeParameters {
+	const parameters: INodeParameters = {};
+	const show = displayOptions?.show;
+	if (!show) return parameters;
+
+	for (const [name, values] of Object.entries(show)) {
+		if (name === '@version') continue;
+		const value = values?.[0];
+		if (value !== undefined && value !== null) {
+			parameters[name] = value;
+		}
+	}
+	return parameters;
+}
+
+/**
+ * Pick the credential type a node should use for a managed (n8n-credits)
+ * credential and the parameters that activate it. Prefers `preferredType`, else
+ * the first supported declared type. An already-active candidate returns empty
+ * parameters, so a valid value (e.g. the second entry of a multi-value `show`
+ * clause) is never overwritten; candidates the node can't display (e.g.
+ * `@version`-gated) are skipped. Returns `undefined` when none qualifies.
+ */
+export function resolveSupportedCredentialActivation(
+	nodeTypeDescription: INodeTypeDescription,
+	node: Pick<INode, 'typeVersion' | 'parameters'>,
+	isSupported: (credentialType: string) => boolean,
+	preferredType?: string,
+): { credentialType: string; parameters: INodeParameters } | undefined {
+	const credentials = nodeTypeDescription.credentials ?? [];
+	const ordered = preferredType
+		? [
+				...credentials.filter((cred) => cred.name === preferredType),
+				...credentials.filter((cred) => cred.name !== preferredType),
+			]
+		: credentials;
+
+	for (const cred of ordered) {
+		if (!isSupported(cred.name)) continue;
+		if (displayParameter(node.parameters, cred, node, nodeTypeDescription)) {
+			return { credentialType: cred.name, parameters: {} };
+		}
+		const parameters = getCredentialActivationParameters(cred.displayOptions);
+		const activatedValues = { ...node.parameters, ...parameters };
+		if (displayParameter(activatedValues, cred, node, nodeTypeDescription)) {
+			return { credentialType: cred.name, parameters };
+		}
+	}
+	return undefined;
 }

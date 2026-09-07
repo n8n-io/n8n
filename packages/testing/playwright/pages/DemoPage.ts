@@ -1,8 +1,11 @@
 import { BasePage } from './BasePage';
 
 export class DemoPage extends BasePage {
-	async goto(theme?: 'dark' | 'light') {
-		const query = theme ? `?theme=${theme}` : '';
+	async goto(options?: { theme?: 'dark' | 'light'; canExecute?: boolean }) {
+		const params = new URLSearchParams();
+		if (options?.theme) params.set('theme', options.theme);
+		if (options?.canExecute) params.set('canExecute', 'true');
+		const query = params.toString() ? `?${params.toString()}` : '';
 		await this.page.goto('/workflows/demo' + query);
 		await this.page.getByTestId('canvas-background').waitFor({ state: 'visible' });
 	}
@@ -19,25 +22,44 @@ export class DemoPage extends BasePage {
 		}, OPEN_WORKFLOW);
 	}
 
+	async gotoDiff(options?: { theme?: 'dark' | 'light' }) {
+		const params = new URLSearchParams();
+		if (options?.theme) params.set('theme', options.theme);
+		const query = params.toString() ? `?${params.toString()}` : '';
+		await this.page.goto('/workflows/demo/diff' + query);
+	}
+
 	/**
-	 * Dispatch a synthetic push event into the push connection store's handlers.
-	 * Requires the page to be authenticated (push connection established).
+	 * Open a workflow diff via postMessage on the demo diff page
+	 * @param diff - The old/new workflows and tidyUp option to diff
 	 */
-	async dispatchPushEvent(event: Record<string, unknown>) {
-		await this.page.evaluate((evt) => {
-			/* eslint-disable @typescript-eslint/naming-convention */
-			const app = document.querySelector('#app') as HTMLElement & {
-				__vue_app__?: { config: { globalProperties: { $pinia: { _s: Map<string, unknown> } } } };
-			};
-			const pinia = app?.__vue_app__?.config.globalProperties.$pinia;
-			if (!pinia) throw new Error('Pinia not found');
-			const pushStore = pinia._s.get('push') as {
-				onMessageReceivedHandlers: Array<(e: unknown) => void>;
-			};
-			if (!pushStore) throw new Error('Push store not found');
-			pushStore.onMessageReceivedHandlers.forEach((h) => h(evt));
-			/* eslint-enable @typescript-eslint/naming-convention */
-		}, event);
+	async openDiff(diff: { oldWorkflow?: object; newWorkflow?: object; tidyUp?: boolean }) {
+		const OPEN_DIFF = { command: 'openDiff', ...diff };
+		await this.page.evaluate((message) => {
+			window.postMessage(JSON.stringify(message), '*');
+		}, OPEN_DIFF);
+	}
+
+	/**
+	 * Post a raw, possibly malformed, message to the demo diff page
+	 * @param message - The raw message string to post
+	 */
+	async postRawMessage(message: string) {
+		await this.page.evaluate((raw) => {
+			window.postMessage(raw, '*');
+		}, message);
+	}
+
+	getWaitingMessage() {
+		return this.page.getByText('Waiting for workflow data...');
+	}
+
+	getDiffHeading(name?: string | RegExp) {
+		return this.page.getByRole('heading', { name: name ?? /Test Workflow/ });
+	}
+
+	getChangesButton() {
+		return this.page.getByRole('button', { name: /Changes/ });
 	}
 
 	getBody() {

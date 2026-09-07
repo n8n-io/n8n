@@ -1,21 +1,18 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import axios from 'axios';
 import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
+import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
+import { assertAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
+
 import { CacheService } from '@/services/cache/cache.service';
 
-import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
-import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
-
-// Use minimum of 30 seconds to avoid cache thrashing
 // Cap at 5 minutes to ensure periodic revalidation
-const MIN_TOKEN_CACHE_TIMEOUT = 30 * Time.seconds.toMilliseconds;
 const MAX_TOKEN_CACHE_TIMEOUT = 5 * Time.minutes.toMilliseconds;
 const DEFAULT_CACHE_TIMEOUT = 60 * Time.seconds.toMilliseconds; // 60 seconds
-const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour
 
 export const OAuth2IntrospectionOptionsSchema = z.object({
 	...OAuth2OptionsSchema.shape,
@@ -65,6 +62,7 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 	constructor(
 		private readonly logger: Logger,
 		private readonly cache: CacheService,
+		private readonly http: OAuth2MetadataHttpClient,
 	) {}
 
 	async validateOptions(identifierOptions: Record<string, unknown>): Promise<void> {
@@ -113,23 +111,27 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 
 		const hashedToken = sha256(context.identity);
 
-		const identifierCacheKey = `${CACHE_PREFIX}:subject:${metadata.issuer}:${hashedToken}`;
+		// Fold the options that decide the subject into the key, so a reconfigured
+		// resolver cannot keep serving subjects cached under its previous settings.
+		const optionsFingerprint = sha256(`${options.subjectClaim}:${options.expectedAudience ?? ''}`);
+		const identifierCacheKey = `${CACHE_PREFIX}:subject:${metadata.issuer}:${optionsFingerprint}:${hashedToken}`;
 		const cached = await this.cache.get<string>(identifierCacheKey);
 		if (cached) {
 			return cached;
 		}
 
-		let ttl = DEFAULT_CACHE_TIMEOUT;
 		const { subject, ttl: ttlOverwrite } = await this.resolveBasedOnTokenIntrospection(
 			metadata,
 			options,
 			context,
 		);
-		if (ttlOverwrite) {
-			ttl = ttlOverwrite;
-		}
 
-		await this.cache.set(identifierCacheKey, subject, ttl);
+		// `??`, not truthiness: a zero TTL means the token is spent, and caching the
+		// subject under the default would keep resolving it after it expired.
+		const ttl = ttlOverwrite ?? DEFAULT_CACHE_TIMEOUT;
+		if (ttl > 0) {
+			await this.cache.set(identifierCacheKey, subject, ttl);
+		}
 		return subject;
 	}
 
@@ -150,38 +152,11 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 		options: OAuth2IntrospectionOptions,
 		skipCache: boolean = false,
 	): Promise<OAuth2Metadata> {
-		const cacheKey = `${CACHE_PREFIX}:metadata:${options.metadataUri}`;
-		if (!skipCache) {
-			const cached = await this.cache.get<OAuth2Metadata>(cacheKey);
-			if (cached) {
-				return cached;
-			}
-		}
-
-		const response = await axios.get(options.metadataUri, {
-			validateStatus: () => true,
-			timeout: 10 * Time.seconds.toMilliseconds,
+		return await this.http.fetchMetadata(OAuth2MetadataSchema, {
+			metadataUri: options.metadataUri,
+			cachePrefix: CACHE_PREFIX,
+			skipCache,
 		});
-
-		if (response.status !== 200) {
-			this.logger.error(
-				`Failed to fetch OAuth2 metadata from ${options.metadataUri}, status code: ${response.status}`,
-			);
-			throw new IdentifierValidationError(
-				`Failed to fetch OAuth2 metadata, status code: ${response.status}`,
-			);
-		}
-
-		try {
-			const metadata = OAuth2MetadataSchema.parse(response.data);
-			if (!skipCache) {
-				await this.cache.set(cacheKey, metadata, METADATA_CACHE_TIMEOUT);
-			}
-			return metadata;
-		} catch (error) {
-			this.logger.error('Invalid OAuth2 metadata format', { error });
-			throw new IdentifierValidationError('Invalid OAuth2 metadata format', { cause: error });
-		}
 	}
 
 	private buildClientBasicRequest(options: OAuth2IntrospectionOptions): {
@@ -254,25 +229,39 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 			...authParams,
 		});
 
-		const response = await axios.post(metadata.introspection_endpoint, params, {
+		const response = await this.http.requestFull({
+			url: metadata.introspection_endpoint,
+			method: 'POST',
+			body: params,
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...authHeaders },
-			validateStatus: () => true,
-			timeout: 10 * Time.seconds.toMilliseconds,
+			json: true,
 		});
 
-		if (response.status !== 200) {
+		if (response.statusCode !== 200) {
 			this.logger.error('Token introspection failed', {
-				status: response.status,
-				data: response.data,
+				status: response.statusCode,
+				data: response.body,
 			});
 			throw new IdentifierValidationError('Token introspection failed');
 		}
 
-		const introspectionData = this.parseIntrospectionResponse(response.data);
+		const introspectionData = this.parseIntrospectionResponse(response.body);
 
 		if (!introspectionData.active) {
 			this.logger.error('Token is not active according to introspection response');
 			throw new IdentifierValidationError('Token is not active');
+		}
+
+		// Client authentication proves the IdP will answer us; `active` proves the token
+		// is live. Neither says it was addressed to us, so bind it before trusting a
+		// subject. Opt-in: with no audience configured there is nothing to compare against.
+		if (options.expectedAudience) {
+			assertAudience(introspectionData, options.expectedAudience);
+		} else {
+			this.logger.warn(
+				'OAuth2 resolver has no expected audience configured, so access tokens are not bound to this instance. Set an expected audience on the resolver.',
+				{ issuer: metadata.issuer },
+			);
 		}
 
 		const subject = introspectionData[options.subjectClaim];
@@ -289,15 +278,12 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 
 		this.logger.debug('Token introspected successfully', { subject: subjectStr });
 
-		let ttl: number | undefined = undefined;
-		if (introspectionData.exp) {
-			const expiresIn = introspectionData.exp * 1000 - Date.now();
-			if (expiresIn > 0) {
-				ttl = Math.max(MIN_TOKEN_CACHE_TIMEOUT, Math.min(expiresIn, MAX_TOKEN_CACHE_TIMEOUT));
-			} else {
-				ttl = MIN_TOKEN_CACHE_TIMEOUT;
-			}
-		}
+		// `resolve` serves a cached subject without re-introspecting, so the entry must
+		// never outlive the token itself.
+		const ttl =
+			introspectionData.exp === undefined
+				? undefined
+				: Math.min(Math.max(introspectionData.exp * 1000 - Date.now(), 0), MAX_TOKEN_CACHE_TIMEOUT);
 
 		return { subject: subjectStr, ttl };
 	}

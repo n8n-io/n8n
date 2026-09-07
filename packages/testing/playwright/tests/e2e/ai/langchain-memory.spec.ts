@@ -89,9 +89,8 @@ test.describe(
 					password: 'testtesttest',
 				});
 
-				await n8n.ndv.getParameterInput('sessionIdType').click();
-				await n8n.page.getByRole('option', { name: 'Define below' }).click();
-				await n8n.ndv.getParameterInput('sessionKey').locator('input').fill('asdasd');
+				await n8n.ndv.selectOptionInParameterDropdown('sessionIdType', 'Define below');
+				await n8n.ndv.fillParameterInputByName('sessionKey', 'asdasd');
 				await n8n.ndv.clickBackToCanvasButton();
 
 				// Add and configure OpenAI Language Model
@@ -105,19 +104,15 @@ test.describe(
 				await expect(n8n.ndv.getOutputDataContainer()).toBeVisible();
 				await expect(n8n.ndv.getAiOutputModeToggle()).toBeVisible();
 
-				const radioButtons = n8n.ndv.getAiOutputModeToggle().locator('[role="radio"]');
+				const radioButtons = n8n.ndv.getAiOutputModeRadios();
 				await expect(radioButtons).toHaveCount(2);
 				await expect(radioButtons.nth(1)).toHaveAttribute('aria-checked', 'true');
 			}
 
 			// Helper function to assert error message is visible
 			async function assertErrorMessageVisible(n8n: n8nPage) {
-				await expect(
-					n8n.ndv.getOutputPanel().getByTestId('node-error-message').first(),
-				).toBeVisible();
-				await expect(
-					n8n.ndv.getOutputPanel().getByTestId('node-error-message').first(),
-				).toContainText('Error in sub-node');
+				await expect(n8n.ndv.outputPanel.getErrorMessage()).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getErrorMessage()).toContainText('Error in sub-node');
 			}
 
 			test('should open logs tab by default when there was an error', async ({ n8n }) => {
@@ -166,9 +161,8 @@ test.describe(
 
 				// Open the AI Agent node
 				await n8n.canvas.openNode(AGENT_NODE_NAME);
-				await n8n.ndv.getParameterInput('promptType').click();
-				await n8n.page.getByRole('option', { name: 'Define below' }).click();
-				await n8n.ndv.getParameterInput('text').locator('textarea').fill('Some text');
+				await n8n.ndv.selectOptionInParameterDropdown('promptType', 'Define below');
+				await n8n.ndv.getParameterTextarea('text').fill('Some text');
 				await n8n.ndv.execute();
 				await waitForWorkflowSuccess(n8n);
 

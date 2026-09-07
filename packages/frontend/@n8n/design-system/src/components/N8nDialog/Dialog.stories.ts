@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import {
 	N8nDialog,
 	N8nDialogClose,
@@ -10,7 +9,8 @@ import {
 	N8nDialogDescription,
 	N8nDialogFooter,
 	type DialogProps,
-} from '@n8n/design-system/components/N8nDialog';
+} from './index';
+import N8nButton from '../N8nButton/Button.vue';
 
 const meta = {
 	title: 'Core/Dialog',
@@ -46,7 +46,7 @@ export const Default: Story = {
 			return { args, isOpen };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
+		<div>
 			<N8nButton label="Open Dialog" @click="isOpen = true" />
 
 			<N8nDialog v-model:open="isOpen" v-bind="args">
@@ -56,7 +56,7 @@ export const Default: Story = {
 
 				<N8nDialogFooter>
 					<N8nDialogClose as-child>
-						<N8nButton type="secondary" label="Cancel" />
+						<N8nButton label="Cancel" />
 					</N8nDialogClose>
 					<N8nButton label="Save changes" />
 				</N8nDialogFooter>
@@ -88,7 +88,7 @@ export const Sizes: Story = {
 			return { sizes, openDialogs, openDialog };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; justify-content: center; padding: 40px;">
+		<div style="display: flex; gap: 16px;">
 			<template v-for="size in sizes" :key="size">
 				<N8nButton :label="size" variant="outline" @click="openDialog(size)" />
 
@@ -128,7 +128,7 @@ export const WithoutCloseButton: Story = {
 			return { args, isOpen };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
+		<div>
 			<N8nButton label="Open Dialog" @click="isOpen = true" />
 
 			<N8nDialog v-model:open="isOpen" v-bind="args">
@@ -162,7 +162,7 @@ export const ScrollableContent: Story = {
 			return { isOpen };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
+		<div>
 			<N8nButton label="View Terms" variant="outline" @click="isOpen = true" />
 
 			<N8nDialog
@@ -205,8 +205,8 @@ export const AccessibilityFallback: Story = {
 			return { args, isOpen };
 		},
 		template: `
-		<div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px;">
-			<p style="max-width: 500px; text-align: center; color: var(--color--text--tint-1);">
+		<div style="display: flex; flex-direction: column; gap: 16px">
+			<p style="max-width: 500px; color: var(--color--text--tint-1);">
 				This dialog uses <code>ariaLabel</code> and <code>ariaDescription</code> props instead of
 				<code>N8nDialogTitle</code> and <code>N8nDialogDescription</code> components.
 				The title and description are visually hidden but accessible to screen readers.
@@ -228,9 +228,9 @@ export const AccessibilityFallback: Story = {
 
 				<N8nDialogFooter>
 					<N8nDialogClose as-child>
-						<N8nButton type="secondary" label="Cancel" />
+						<N8nButton label="Cancel" />
 					</N8nDialogClose>
-					<N8nButton type="danger" label="Delete" />
+					<N8nButton label="Delete" />
 				</N8nDialogFooter>
 			</N8nDialog>
 		</div>
@@ -255,8 +255,8 @@ export const AccessibilityFallbackTitleOnly: Story = {
 			return { args, isOpen };
 		},
 		template: `
-		<div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px;">
-			<p style="max-width: 500px; text-align: center; color: var(--color--text--tint-1);">
+		<div style="display: flex; flex-direction: column; gap: 16px">
+			<p style="max-width: 500px; color: var(--color--text--tint-1);">
 				This dialog only uses the <code>ariaLabel</code> prop for an accessible title.
 				Useful for simple confirmation dialogs or icon-only interfaces.
 			</p>
@@ -270,7 +270,7 @@ export const AccessibilityFallbackTitleOnly: Story = {
 
 				<N8nDialogFooter>
 					<N8nDialogClose as-child>
-						<N8nButton type="secondary" label="No" />
+						<N8nButton label="No" />
 					</N8nDialogClose>
 					<N8nButton label="Yes" />
 				</N8nDialogFooter>
@@ -302,7 +302,7 @@ export const CustomHeader: Story = {
 			return { isOpen };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
+		<div>
 			<N8nButton label="Open Dialog" @click="isOpen = true" />
 
 			<N8nDialog v-model:open="isOpen">
@@ -320,7 +320,7 @@ export const CustomHeader: Story = {
 
 				<N8nDialogFooter>
 					<N8nDialogClose as-child>
-						<N8nButton type="secondary" label="Cancel" />
+						<N8nButton label="Cancel" />
 					</N8nDialogClose>
 					<N8nButton label="Save" />
 				</N8nDialogFooter>

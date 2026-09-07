@@ -7,7 +7,7 @@ describe('Test Summarize Node, checkIfFieldExists', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = {
-			getNode: jest.fn().mockReturnValue({ name: 'test-node' }),
+			getNode: vi.fn().mockReturnValue({ name: 'test-node' }),
 		} as unknown as IExecuteFunctions;
 	});
 

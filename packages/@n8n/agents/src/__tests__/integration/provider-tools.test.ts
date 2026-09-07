@@ -12,6 +12,7 @@ import {
 import { Agent, Tool, providerTools, type StreamChunk } from '../../index';
 
 const describe = describeIf('anthropic');
+const describeOpenAI = describeIf('openai');
 
 /**
  * Instructions that force the model to use web search before answering.
@@ -19,6 +20,9 @@ const describe = describeIf('anthropic');
  */
 const WEB_SEARCH_INSTRUCTIONS =
 	'You MUST call the web_search tool before answering any question, even if you think you already know the answer. Never answer without searching first.';
+
+const OPENAI_WEB_SEARCH_MODEL = 'openai/gpt-4.1-mini';
+const OPENAI_IMAGE_GENERATION_MODEL = 'openai/gpt-5-mini';
 
 describe('provider tools integration', () => {
 	it('generate: the model calls the web search provider tool', async () => {
@@ -55,10 +59,8 @@ describe('provider tools integration', () => {
 		const lastFinish = finishChunks[finishChunks.length - 1];
 		expect(lastFinish?.type === 'finish' && lastFinish.finishReason).toBe('stop');
 
-		// Collect tool calls from message chunks
-		const messageChunks = chunksOfType(chunks, 'message');
-		const allMessages = messageChunks.map((c) => c.message);
-		const toolCalls = findAllToolCalls(allMessages);
+		// Tool calls now ride their own discrete `tool-call` chunks
+		const toolCalls = chunksOfType(chunks, 'tool-call');
 		const webSearchCall = toolCalls.find((tc) => tc.toolName.includes('web_search'));
 		expect(webSearchCall).toBeDefined();
 
@@ -104,9 +106,8 @@ describe('provider tools integration', () => {
 		expect(suspended.runId).toBeTruthy();
 		expect(suspended.toolCallId).toBeTruthy();
 
-		// The web search provider tool call should appear in the message history
-		const messageChunks = chunksOfType(chunks, 'message');
-		const toolCalls = findAllToolCalls(messageChunks.map((c) => c.message));
+		// The web search provider tool call should appear as a discrete tool-call chunk
+		const toolCalls = chunksOfType(chunks, 'tool-call');
 		const webSearchCall = toolCalls.find((tc) => tc.toolName.includes('web_search'));
 		expect(webSearchCall).toBeDefined();
 
@@ -115,8 +116,8 @@ describe('provider tools integration', () => {
 			'stream',
 			{ approved: true },
 			{
-				runId: suspended.runId!,
-				toolCallId: suspended.toolCallId!,
+				runId: suspended.runId,
+				toolCallId: suspended.toolCallId,
 			},
 		);
 		const resumeChunks = await collectStreamChunks(resumeStream.stream);
@@ -128,5 +129,43 @@ describe('provider tools integration', () => {
 		const finishChunks = chunksOfType(resumeChunks, 'finish');
 		const lastFinish = finishChunks[finishChunks.length - 1];
 		expect(lastFinish?.type === 'finish' && lastFinish.finishReason).toBe('stop');
+	});
+});
+
+describeOpenAI('OpenAI provider tools integration', () => {
+	it('openAI web search provider tool can be attached without suspending', async () => {
+		const agent = new Agent('openai-provider-web-search-test')
+			.model(OPENAI_WEB_SEARCH_MODEL)
+			.instructions(
+				'You MUST call the web_search tool before answering. Search for current n8n workflow automation information, then answer in one sentence.',
+			)
+			.providerTool(providerTools.openaiWebSearch({ searchContextSize: 'low' }));
+
+		const result = await agent.generate('Use web search to find one current fact about n8n.');
+
+		expect(result.finishReason).toBe('stop');
+		expect(result.pendingSuspend).toBeUndefined();
+		const webSearchCall = findAllToolCalls(result.messages).find((toolCall) =>
+			toolCall.toolName.includes('web_search'),
+		);
+		expect(webSearchCall).toBeDefined();
+	});
+
+	it('openAI image generation provider tool can be attached and does not use HITL suspension', async () => {
+		const agent = new Agent('openai-provider-image-generation-test')
+			.model(OPENAI_IMAGE_GENERATION_MODEL)
+			.instructions(
+				'You MUST use the image_generation tool before answering. Generate a very small simple image of a blue square, then answer in one short sentence.',
+			)
+			.providerTool(providerTools.openaiImageGeneration());
+
+		const result = await agent.generate('Generate the requested blue square image.');
+
+		expect(result.finishReason).toBe('stop');
+		expect(result.pendingSuspend).toBeUndefined();
+		const imageGenerationCall = findAllToolCalls(result.messages).find((toolCall) =>
+			toolCall.toolName.includes('image_generation'),
+		);
+		expect(imageGenerationCall).toBeDefined();
 	});
 });

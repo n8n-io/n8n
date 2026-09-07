@@ -14,21 +14,36 @@ describe('RedactedDataState', () => {
 	});
 
 	it('should show dynamic credentials description when isDynamicCredentials is true', () => {
-		const { getByText, queryByText } = renderComponent({
+		const { getByText, queryByText, getByTestId } = renderComponent({
 			props: { title: 'Redacted', isDynamicCredentials: true, canReveal: false },
 		});
 
 		expect(
 			getByText(
-				'This execution used dynamic credentials. Data from dynamic credential executions cannot be revealed.',
+				'This execution used end-user credentials. Data from end-user credential executions cannot be revealed.',
 			),
 		).toBeInTheDocument();
 		expect(queryByText('Execution data has been redacted.')).not.toBeInTheDocument();
+		expect(getByTestId('redacted-data-docs-link').closest('a')).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/workflows/executions/execution-data-redaction/',
+		);
 	});
 
-	it('should show standard description with workflow settings link when isDynamicCredentials is false', () => {
-		const { getByText } = renderComponent({
+	it('should show no-permission description when isDynamicCredentials is false and canReveal is false', () => {
+		const { getByText, queryByText } = renderComponent({
 			props: { title: 'Redacted', isDynamicCredentials: false, canReveal: false },
+		});
+
+		expect(
+			getByText('Execution data has been redacted. You do not have the permissions to reveal it.'),
+		).toBeInTheDocument();
+		expect(queryByText('workflow settings')).not.toBeInTheDocument();
+	});
+
+	it('should show standard description with workflow settings link when isDynamicCredentials is false and canReveal is true', () => {
+		const { getByText } = renderComponent({
+			props: { title: 'Redacted', isDynamicCredentials: false, canReveal: true },
 		});
 
 		expect(getByText('Execution data has been redacted.')).toBeInTheDocument();
@@ -63,11 +78,28 @@ describe('RedactedDataState', () => {
 
 	it('should emit "openSettings" when workflow settings link is clicked', async () => {
 		const { getByText, emitted } = renderComponent({
-			props: { title: 'Redacted', isDynamicCredentials: false, canReveal: false },
+			props: { title: 'Redacted', isDynamicCredentials: false, canReveal: true },
 		});
 
 		getByText('workflow settings').click();
 
 		expect(emitted('openSettings')).toHaveLength(1);
 	});
+
+	it.each([
+		{ isDynamicCredentials: false, canReveal: true },
+		{ isDynamicCredentials: false, canReveal: false },
+	])(
+		'should show docs link regardless of redaction reason (%o)',
+		({ isDynamicCredentials, canReveal }) => {
+			const { getByTestId } = renderComponent({
+				props: { title: 'Redacted', isDynamicCredentials, canReveal },
+			});
+
+			expect(getByTestId('redacted-data-docs-link').closest('a')).toHaveAttribute(
+				'href',
+				'https://docs.n8n.io/workflows/executions/execution-data-redaction/',
+			);
+		},
+	);
 });

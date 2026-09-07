@@ -1,8 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ChatHubExtractor } from '../chat-hub-extractor';
 
@@ -15,8 +16,8 @@ const createTriggerItem = (data: Record<string, unknown>): INodeExecutionData =>
 
 describe('ChatHubExtractor', () => {
 	let extractor: ChatHubExtractor;
-	let mockLogger: jest.Mocked<Logger>;
-	let mockCipher: jest.Mocked<Cipher>;
+	let mockLogger: Mocked<Logger>;
+	let mockCipher: Mocked<Cipher>;
 
 	beforeEach(() => {
 		mockLogger = mock<Logger>();
@@ -61,7 +62,7 @@ describe('ChatHubExtractor', () => {
 			};
 			const encryptedData = 'encrypted-string';
 
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(metadata));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(metadata));
 
 			const triggerItem = createTriggerItem({
 				encryptedMetadata: encryptedData,
@@ -73,7 +74,7 @@ describe('ChatHubExtractor', () => {
 
 			const result = await extractor.execute(options);
 
-			expect(mockCipher.decrypt).toHaveBeenCalledWith(encryptedData);
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith(encryptedData);
 			expect(result).toEqual({
 				triggerItems: [triggerItem],
 				contextUpdate: {
@@ -97,7 +98,7 @@ describe('ChatHubExtractor', () => {
 				method: 'POST',
 				endpoint: '/api/test',
 			};
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(metadata));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(metadata));
 
 			const triggerItem = createTriggerItem({
 				encryptedMetadata: 'encrypted',
@@ -133,7 +134,7 @@ describe('ChatHubExtractor', () => {
 				method: 'POST',
 				endpoint: '/api/test',
 			};
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(metadata));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(metadata));
 
 			const triggerItem = createTriggerItem({
 				encryptedMetadata: 'encrypted',
@@ -151,7 +152,7 @@ describe('ChatHubExtractor', () => {
 		});
 
 		it('should throw error when decryption fails', async () => {
-			mockCipher.decrypt.mockImplementation(() => {
+			mockCipher.decryptV2.mockImplementation(async () => {
 				throw new Error('Decryption failed');
 			});
 
@@ -174,7 +175,7 @@ describe('ChatHubExtractor', () => {
 		});
 
 		it('should throw error when JSON parsing fails', async () => {
-			mockCipher.decrypt.mockReturnValue('invalid-json{]');
+			mockCipher.decryptV2.mockResolvedValue('invalid-json{]');
 
 			const triggerItem = createTriggerItem({
 				encryptedMetadata: 'encrypted',
@@ -190,7 +191,7 @@ describe('ChatHubExtractor', () => {
 		});
 
 		it('should throw error when authToken is missing in decrypted data', async () => {
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ browserId: 'browser-id-456' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ browserId: 'browser-id-456' }));
 
 			const triggerItem = createTriggerItem({
 				encryptedMetadata: 'encrypted',
@@ -211,7 +212,7 @@ describe('ChatHubExtractor', () => {
 		});
 
 		it('should always delete encryptedMetadata even on error', async () => {
-			mockCipher.decrypt.mockImplementation(() => {
+			mockCipher.decryptV2.mockImplementation(async () => {
 				throw new Error('fail');
 			});
 
@@ -240,7 +241,7 @@ describe('ChatHubExtractor', () => {
 			await expect(extractor.execute(options)).rejects.toThrow(
 				'No valid Chat Hub authentication metadata could be extracted.',
 			);
-			expect(mockCipher.decrypt).not.toHaveBeenCalled();
+			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
 		});
 	});
 

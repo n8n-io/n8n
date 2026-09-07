@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type {
 	AddColumnResponse,
 	DataTable,
 	DataTableColumnCreatePayload,
 } from '@/features/core/dataTable/dataTable.types';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
@@ -14,7 +14,7 @@ import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
@@ -139,6 +139,13 @@ const handleSourceControlPull = async () => {
 		loading.value = false;
 	}
 };
+
+watch(
+	() => props.id,
+	async () => {
+		await initialize();
+	},
+);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('dataTable.dataTables'));
@@ -267,6 +274,7 @@ onBeforeUnmount(() => {
 
 .actions {
 	display: flex;
+	align-items: center;
 	gap: var(--spacing--3xs);
 	margin-left: auto;
 }

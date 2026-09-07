@@ -91,6 +91,19 @@ export const itemFields: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
+		displayName: 'Automatically Parse Numbers',
+		name: 'autoParseNumbers',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['upsert'],
+			},
+		},
+		default: true,
+		description:
+			'Whether to convert number-looking string values to DynamoDB Number (N). Disable to keep strings as String (S).',
+	},
+	{
 		displayName: 'Inputs to Ignore',
 		name: 'inputsToIgnore',
 		type: 'string',

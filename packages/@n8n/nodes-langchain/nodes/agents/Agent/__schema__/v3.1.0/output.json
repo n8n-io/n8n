@@ -1,0 +1,11 @@
+{
+	"type": "object",
+	"required": ["output"],
+	"properties": {
+		"output": {
+			"type": "string",
+			"description": "The agent's final response text — a plain STRING, never an object: downstream nodes interpolate it directly into messages"
+		}
+	},
+	"version": 1
+}

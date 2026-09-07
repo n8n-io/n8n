@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
 import type { IDataObject, IRunExecutionData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 import type { ExternalSecretsProxy } from '@/execution-engine/external-secrets-proxy';
@@ -73,11 +73,17 @@ describe('getAdditionalKeys', () => {
 		});
 	});
 
-	it('should include secrets', () => {
-		const result = getAdditionalKeys(additionalData, 'manual', null);
+	it('should include secrets when isCredential is true', () => {
+		const result = getAdditionalKeys(additionalData, 'manual', null, { isCredential: true });
 
 		expect(result.$secrets).toBeDefined();
 		expect((result.$secrets?.provider1 as IDataObject).secret1).toEqual('secret-value');
+	});
+
+	it('should return undefined $secrets by default', () => {
+		const result = getAdditionalKeys(additionalData, 'manual', null);
+
+		expect(result.$secrets).toBeUndefined();
 	});
 
 	it('should throw errors in manual mode', () => {
@@ -148,6 +154,20 @@ describe('getAdditionalKeys', () => {
 		const result = getAdditionalKeys(additionalData, 'manual', null);
 
 		expect(result.$execution?.customData).toBeUndefined();
+	});
+
+	it('should expose $evaluation.runId when evaluationRunId is set', () => {
+		const dataWithRunId = { ...additionalData, evaluationRunId: 'run-123' };
+		const result = getAdditionalKeys(dataWithRunId, 'manual', null);
+
+		expect(result.$evaluation).toEqual({ runId: 'run-123' });
+	});
+
+	it('should leave $evaluation undefined when evaluationRunId is unset', () => {
+		const dataWithoutRunId = { ...additionalData, evaluationRunId: undefined };
+		const result = getAdditionalKeys(dataWithoutRunId, 'manual', null);
+
+		expect(result.$evaluation).toBeUndefined();
 	});
 
 	it('should respect metadata KV limit', () => {

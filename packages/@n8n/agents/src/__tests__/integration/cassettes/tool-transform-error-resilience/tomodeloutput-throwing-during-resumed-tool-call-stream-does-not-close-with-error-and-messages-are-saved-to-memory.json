@@ -1,0 +1,193 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are an approval manager. Use approve_action when asked to perform an action. If the tool errors, acknowledge it and say what happened. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Please approve the action \"deploy to production\""
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "approve_action",
+					"description": "Request approval for an action. Suspends for human review.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"action": {
+								"type": "string",
+								"description": "Action to approve"
+							}
+						},
+						"required": ["action"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013cd55cb6edb3010bce72b843dcb8094c439f09616090aa4bd14718db62e880db9b559d3244b52460d43ff5ed0b262c98fb497d6396a66a99dd991b8b4241359b6a010704a3c44f4f142624496ad21ae1c01831e0979fb0c6c0d0b2b490303a1b1923498a19a5783ebc17070595c0ecba228210725d33bc29417e5f0935bbd1ddd8ddeafe4e3e8de3edeaadb37a32f90ef75821cbcd509c010548868525b614d2413817dfd964388d6714f18ac01662aadb750a09f1519413d505244a5438b55ad7a655c1579b4733201d8cd7599834031232e3c6154d6f07e45d1f29e509ee2dab3a901b9192dc8a3e6c3c561fd8e2d67fb6c9d83ad62171adee410c82f95201e157960902623d1cb3464f39d7c32cea7648181b191e31295c6274d50d7599665f5c50535716f47c99fb415f3e3a11f29d9b491f4ab31dbe593d7edb968ade655a036f8f45cf1a2bcb357e1eaf3bbf26139fd38a60ff7e3f1e821a62a838b4dd2ce79bb248e6233bcbc0907d8ba4e83d53a197e6e22952711b7b63abe9c32d33d231924104e7997a423beec7d53d2f3de203b394d763f8235cfc50e7d54a8372030804669f6520cff49ca7a02d895737e4522aabea033ebb166022c9bf4423bb726494edb55166de65ed1b7e4adacd27ff81ab4a8145b9db49cbee7acfbd335675d47c6d1f8db6d78d4568f848e8ddebeea5e927fb9b5ea7fb7b60ef6cc7e9cbbfd7f38bf2e07cda9df7f46cf1953080000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:48:47Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:48:47Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:48:47Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:48:47Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a154f9faafd95bb9-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Fri, 03 Jul 2026 09:48:48 GMT",
+			"request-id": "req_011CceuyqXyhkJK5jZF6z8dz",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-b7dfb8572ac77abe93eadc82ece2d59f-a205a7edf31f052a-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are an approval manager. Use approve_action when asked to perform an action. If the tool errors, acknowledge it and say what happened. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Please approve the action \"deploy to production\""
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01Eo3s3YH1KvgRWeMFWWUKte",
+							"name": "approve_action",
+							"input": {
+								"action": "deploy to production"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01Eo3s3YH1KvgRWeMFWWUKte",
+							"content": "Error: toModelOutput failed on resume intentionally",
+							"is_error": true
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "approve_action",
+					"description": "Request approval for an action. Suspends for human review.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"action": {
+								"type": "string",
+								"description": "Action to approve"
+							}
+						},
+						"required": ["action"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013c5554d6f133110bdf7578ce6bca992d2a8d2de8003152740150211b49ad893ac15afeddae3a411ca7f47ce07c9a62d7081ee65b5ef3d7bdeccd8b3bc642735749c12cdb94942512e3409d5f003651d186bec91581dbeb1fe819dd76cb14665296b1eb4641679703d180fae8657e3d17038c20a8d2e7ba479331cbdfffae5feeed3ed9b8fafdfbd1ddd76fa3345fd708dd55924ac307a5b004ac9242157c22aef849d60fded7b85497c682253f20e6b97addd4389ef333bc53d50b390b1e980e5837be3429646fc825dc2fae6eaa64245aae546452631de357dc5f0c04726fd1c77585b027068b9e348b619778ff54776d49eb39b0a7d9653685461e2b8348a1b311cb1c652184d51971abb19c7927733678f353a2f0d2dc9589a5ac6cd060ecfe6e282772ddf97b3995aaf164f37fe09c93696e6875dc2a77cc977bf4ef8a108b7af1af118bd672018373f8b0858407ccea4662bf47b935b49cfe40ee99bfb25db5bbc6b79eff2bf87060a21fa255988e5e82681998f3041cdc1fa35888710bdceaa1ca909424b09a6cc0e524e819d66bdd5b7b9230791978657154cb3e0e6255271c031fa085ea91c236bd0391a372f29284ec9b8f925dcb50c699d843b60a77c76c245490e4c4a9961d51acb4022dc05d99e86176a8c7850be0b9685415a3e366ae5e36266fdea12266ee23e58a6c420710d3427e3c0c7ad4552022987e0a380996d77d825183896a1962e9fbb18e7d7ce873f5d4c1f4ed23bdbed30bd9f2c548fc493c2f4e62bb2d38de4e8f0afa7ece6df8dd9b3b9387eb57954c1e31feb71ed4e39dc2ffb0986767a1406070000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:48:48Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:48:48Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:48:48Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:48:48Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a154fa00be795bb9-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Fri, 03 Jul 2026 09:48:48 GMT",
+			"request-id": "req_011Cceuyuh1VmypAqCkJfpPh",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-84a7372595993216080afa1ef0ff469d-e356958fdbb3a7eb-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

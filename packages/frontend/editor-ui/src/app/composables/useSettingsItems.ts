@@ -1,11 +1,13 @@
 import { useRouter } from 'vue-router';
 import { useUserHelpers } from './useUserHelpers';
+import { useAiGateway } from './useAiGateway';
+import { useAiGatewayTopUp } from './useAiGatewayTopUp';
 import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
 import { useUIStore } from '../stores/ui.store';
-import { useSettingsStore } from '../stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
@@ -15,6 +17,8 @@ export function useSettingsItems() {
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
+	const { balance } = useAiGateway();
+	const { openTopUp } = useAiGatewayTopUp();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
 		const menuItems: IMenuItem[] = [
@@ -52,12 +56,33 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.AI_SETTINGS } },
 			},
 			{
-				id: 'settings-project-roles',
-				icon: 'user-round',
-				label: i18n.baseText('settings.projectRoles'),
+				id: 'settings-n8n-connect',
+				icon: 'plug-zap',
+				label: i18n.baseText(
+					settingsStore.isAiGatewayCloudUbbEnabled ? 'settings.n8nCredits' : 'settings.n8nConnect',
+				),
 				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.PROJECT_ROLES_SETTINGS),
-				route: { to: { name: VIEWS.PROJECT_ROLES_SETTINGS } },
+				available:
+					settingsStore.isAiGatewayEnabled &&
+					(settingsStore.isAiGatewayCloudUbbEnabled ||
+						canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS)),
+				route: settingsStore.isAiGatewayCloudUbbEnabled
+					? undefined
+					: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
+				creditsTag:
+					balance.value !== undefined
+						? i18n.baseText('aiGateway.wallet.balanceRemaining', {
+								interpolate: { balance: `$${Number(balance.value).toFixed(2)}` },
+							})
+						: undefined,
+			},
+			{
+				id: 'settings-roles',
+				icon: 'user-round',
+				label: i18n.baseText('settings.roles'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
+				route: { to: { name: VIEWS.ROLES_SETTINGS } },
 				new: true,
 			},
 			{
@@ -93,12 +118,30 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
 			},
 			{
+				id: 'settings-git-connections',
+				icon: 'git-branch',
+				label: i18n.baseText('settings.gitConnections.title'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.GIT_CONNECTIONS_SETTINGS),
+				route: { to: { name: VIEWS.GIT_CONNECTIONS_SETTINGS } },
+			},
+			{
 				id: 'settings-sso',
 				icon: 'user-lock',
 				label: i18n.baseText('settings.sso'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
 				route: { to: { name: VIEWS.SSO_SETTINGS } },
+			},
+			{
+				id: 'settings-encryption-keys',
+				icon: 'key-round',
+				label: i18n.baseText('settings.encryptionKeys'),
+				position: 'top',
+				available:
+					settingsStore.moduleSettings['encryption-key-manager']?.rotationEnabled === true &&
+					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
+				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
 			},
 			{
 				id: 'settings-security',
@@ -165,5 +208,11 @@ export function useSettingsItems() {
 
 	const visibleSettingsItems = computed(() => settingsItems.value.filter((item) => item.available));
 
-	return { settingsItems: visibleSettingsItems };
+	const handleSettingsItemSelect = async (itemId: string) => {
+		if (itemId === 'settings-n8n-connect' && settingsStore.isAiGatewayCloudUbbEnabled) {
+			await openTopUp({ source: 'settings_page' });
+		}
+	};
+
+	return { settingsItems: visibleSettingsItems, handleSettingsItemSelect };
 }

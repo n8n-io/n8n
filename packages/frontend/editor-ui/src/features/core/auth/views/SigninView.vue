@@ -1,21 +1,27 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
 import MfaView from './MfaView.vue';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
 
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
+import {
+	SSO_ERROR_ACCESS_DENIED,
+	SSO_ERROR_LOGIN_FAILED,
+	SSO_ERROR_QUERY_PARAM,
+} from '@n8n/api-types';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -40,6 +46,58 @@ const showMfaView = ref(false);
 const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
+
+const notificationsStore = useNotificationsStore();
+
+// Notifications are suppressed on the auth views, so lift the suppression just
+// for this message.
+const showAuthViewMessage = (messageData: Parameters<typeof toast.showMessage>[0]) => {
+	notificationsStore.setNotificationsSuppressed(false);
+	toast.showMessage(messageData);
+	notificationsStore.setNotificationsSuppressed(true);
+};
+
+onMounted(() => {
+	// An SSO login denied by role mapping ("Block access"): the user authenticated
+	// fine at the IdP, they are simply not allowed in, so say exactly that.
+	if (route.query[SSO_ERROR_QUERY_PARAM] === SSO_ERROR_ACCESS_DENIED) {
+		showAuthViewMessage({
+			title: locale.baseText('auth.signin.accessDenied.title'),
+			message: locale.baseText('auth.signin.accessDenied'),
+			type: 'error',
+			duration: 0,
+		});
+		return;
+	}
+
+	// The SSO callback failed to sign the user in (bad IdP response, invalid
+	// state/nonce, token failure). The provider's own message is untrusted and
+	// never shown, so give a generic retry message.
+	if (route.query[SSO_ERROR_QUERY_PARAM] === SSO_ERROR_LOGIN_FAILED) {
+		showAuthViewMessage({
+			title: locale.baseText('auth.signin.ssoLoginFailed.title'),
+			message: locale.baseText('auth.signin.ssoLoginFailed'),
+			type: 'error',
+			duration: 0,
+		});
+		return;
+	}
+
+	if (route.query.sessionExpired !== 'true') {
+		return;
+	}
+
+	showAuthViewMessage({
+		title: locale.baseText('auth.signin.sessionExpired.title'),
+		message: locale.baseText('auth.signin.sessionExpired'),
+		type: 'info',
+	});
+});
+
+// Covers leaving via e.g. "Forgot password", which login() below never sees.
+onUnmounted(() => {
+	notificationsStore.setNotificationsSuppressed(false);
+});
 
 const ldapLoginLabel = computed(() => ssoStore.ldapLoginLabel);
 const isLdapLoginEnabled = computed(() => ssoStore.isLdapLoginEnabled);
@@ -125,6 +183,7 @@ const getRedirectQueryParameter = () => {
 };
 
 const login = async (form: LoginRequestDto) => {
+	notificationsStore.setNotificationsSuppressed(false);
 	try {
 		loading.value = true;
 		await usersStore.loginWithCreds({

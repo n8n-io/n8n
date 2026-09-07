@@ -51,11 +51,21 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_URL: ${{ github.event.pull_request.html_url }}
 
-      - name: Notify on failure
-        if: failure()
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+  notify-on-failure:
+    name: Notify Slack on failure
+    needs: [sync-security-fix]
+    if: ${{ always() && needs.sync-security-fix.result == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          status: ${{ job.status }}
-          channel: '#alerts-security'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: 'Security fix PR creation failed (1.x). Run "Security: Sync from Public" workflow, rebase your branch, reopen PR. (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'
+          ref: master
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-security' \
+            --text 'Security fix PR creation failed (1.x). Run "Security: Sync from Public" workflow, rebase your branch, reopen PR. (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'

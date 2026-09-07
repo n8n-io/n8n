@@ -5,14 +5,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockAgent } from '../__test__/data';
 import ChatPrompt from './ChatPrompt.vue';
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({
 		currentUserId: 'user-123',
 		currentUser: { id: 'user-123', firstName: 'Test', fullName: 'Test User' },
 	}),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		settings: {},
 		moduleSettings: {},
@@ -41,6 +41,12 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		loadNodeTypesIfNotLoaded: vi.fn().mockResolvedValue(undefined),
 		nodeTypes: [],
+		getNodeType: vi.fn(() => null),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	}),
 }));
 
@@ -162,22 +168,22 @@ describe('ChatPrompt', () => {
 		});
 
 		it('shows stop button when receiving', () => {
-			const { getByTitle } = renderComponent({
+			const { getByRole } = renderComponent({
 				pinia,
 				props: { ...defaultProps, messagingState: 'receiving' as const },
 			});
 
-			expect(getByTitle(/stop generating/i)).toBeInTheDocument();
+			expect(getByRole('button', { name: /stop/i })).toBeInTheDocument();
 		});
 
 		it('emits stop when stop button is clicked', async () => {
 			const user = userEvent.setup();
-			const { getByTitle, emitted } = renderComponent({
+			const { getByRole, emitted } = renderComponent({
 				pinia,
 				props: { ...defaultProps, messagingState: 'receiving' as const },
 			});
 
-			await user.click(getByTitle(/stop generating/i));
+			await user.click(getByRole('button', { name: /stop/i }));
 			expect(emitted().stop).toBeDefined();
 		});
 

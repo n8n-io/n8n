@@ -2,11 +2,14 @@ import type { APIResponse } from '@playwright/test';
 import * as http from 'http';
 import * as https from 'https';
 import { nanoid } from 'nanoid';
+import { setTimeout as wait } from 'node:timers/promises';
 
 import type { ApiHelpers } from './api-helper';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 
 type HttpMethod = 'GET' | 'POST' | 'DELETE';
+
+class SseNotFoundError extends Error {}
 
 interface SseConnection {
 	sessionId: string;
@@ -75,6 +78,18 @@ export interface InternalMcpToolsListResult {
 	tools: McpToolDefinition[];
 }
 
+/**
+ * Arguments accepted by the search_workflows tool. A type alias rather than an
+ * interface so it still satisfies the `Record<string, unknown>` tool-call payload.
+ */
+export type SearchWorkflowsArgs = {
+	limit?: number;
+	query?: string;
+	projectId?: string;
+	folderId?: string;
+	includeSubfolders?: boolean;
+};
+
 /** Response from search_workflows tool */
 export interface SearchWorkflowsResult {
 	data: Array<{
@@ -85,11 +100,12 @@ export interface SearchWorkflowsResult {
 		createdAt: string | null;
 		updatedAt: string | null;
 		triggerCount: number | null;
-		scopes: string[];
-		canExecute: boolean;
 		availableInMCP: boolean;
+		parentFolderId: string | null;
+		tags: Array<{ id: string; name: string }>;
 	}>;
 	count: number;
+	error?: string;
 }
 
 /** Response from get_workflow_details tool */
@@ -123,7 +139,7 @@ export interface ExecuteWorkflowResult {
 	error?: string;
 }
 
-/** Response from get_execution tool */
+/** Response from get_workflow_execution tool */
 export interface GetExecutionResult {
 	execution: {
 		id: string;
@@ -177,6 +193,29 @@ export class McpApiHelper {
 	 */
 	async sseSetup(
 		path: string,
+		options?: {
+			headers?: Record<string, string>;
+			maxNotFoundRetries?: number;
+			notFoundRetryDelayMs?: number;
+		},
+	): Promise<McpSession> {
+		const maxNotFoundRetries = options?.maxNotFoundRetries ?? 5;
+		const notFoundRetryDelayMs = options?.notFoundRetryDelayMs ?? 500;
+
+		for (let attempt = 0; attempt <= maxNotFoundRetries; attempt++) {
+			try {
+				return await this.attemptSseSetup(path, options);
+			} catch (error) {
+				if (!(error instanceof SseNotFoundError) || attempt === maxNotFoundRetries) throw error;
+				await wait(notFoundRetryDelayMs);
+			}
+		}
+		// unreachable: the catch above rethrows on the final attempt. Here to satisfy TS.
+		throw new Error('SSE setup: retry loop exhausted');
+	}
+
+	private async attemptSseSetup(
+		path: string,
 		options?: { headers?: Record<string, string> },
 	): Promise<McpSession> {
 		// Get base URL and auth cookie from Playwright context
@@ -216,6 +255,14 @@ export class McpApiHelper {
 					headers,
 				},
 				(res) => {
+					if (res.statusCode === 404) {
+						// Drain the response so the socket is released back to the pool across retries.
+						res.resume();
+						clearTimeout(timeout);
+						reject(new SseNotFoundError(`SSE setup got 404 for ${path}`));
+						return;
+					}
+
 					let buffer = '';
 					let resolved = false;
 
@@ -520,6 +567,7 @@ export class McpApiHelper {
 		session: McpSession,
 		path: string,
 		message: unknown,
+		options?: { headers?: Record<string, string> },
 	): Promise<APIResponse> {
 		if (session.transport !== 'streamableHttp') {
 			throw new Error('Invalid Streamable HTTP session');
@@ -531,6 +579,7 @@ export class McpApiHelper {
 				'Content-Type': 'application/json',
 				Accept: 'application/json, text/event-stream',
 				'mcp-session-id': session.sessionId,
+				...options?.headers,
 			},
 			data: message,
 		});
@@ -593,6 +642,7 @@ export class McpApiHelper {
 		path: string,
 		toolName: string,
 		args: Record<string, unknown>,
+		options?: { headers?: Record<string, string> },
 	): Promise<McpToolCallResponse> {
 		const message = this.createMessage('tools/call', {
 			name: toolName,
@@ -603,7 +653,7 @@ export class McpApiHelper {
 			// For SSE, response comes via the stream
 			return await this.sseSendAndWait<McpToolCallResponse>(session, message);
 		} else {
-			const response = await this.streamableHttpSendMessage(session, path, message);
+			const response = await this.streamableHttpSendMessage(session, path, message, options);
 			return await this.parseResponse<McpToolCallResponse>(response);
 		}
 	}
@@ -700,6 +750,28 @@ export class McpApiHelper {
 		}
 
 		return parsed.result as T;
+	}
+
+	/**
+	 * Parses a JSON-RPC response and returns the full envelope (result or error)
+	 * without throwing on a protocol error, for tests that assert on the error
+	 * itself. Handles both direct JSON and SSE responses. Prefer
+	 * {@link parseResponse} when only the successful result matters.
+	 */
+	async parseResponseEnvelope(response: APIResponse): Promise<McpJsonRpcResponse> {
+		const contentType = response.headers()['content-type'] ?? '';
+		const body = await response.text();
+
+		if (contentType.includes('text/event-stream')) {
+			for (const line of body.split('\n')) {
+				if (line.startsWith('data:')) {
+					return JSON.parse(line.slice(5).trim()) as McpJsonRpcResponse;
+				}
+			}
+			throw new Error(`Could not extract data from SSE response: ${body}`);
+		}
+
+		return JSON.parse(body) as McpJsonRpcResponse;
 	}
 
 	/**
@@ -892,7 +964,7 @@ export class McpApiHelper {
 	 */
 	async internalMcpSearchWorkflows(
 		apiKey: string,
-		args: { limit?: number; query?: string; projectId?: string } = {},
+		args: SearchWorkflowsArgs = {},
 	): Promise<SearchWorkflowsResult> {
 		return await this.callInternalMcpTool<SearchWorkflowsResult>(apiKey, 'search_workflows', args);
 	}
@@ -914,17 +986,24 @@ export class McpApiHelper {
 	 *
 	 * @param apiKey - The MCP API key for authentication
 	 * @param workflowId - The workflow ID to execute
+	 * @param executionMode - Whether to execute the current or published workflow version
 	 * @param inputs - Optional inputs for the workflow
+	 * @param triggerNodeName - Optional trigger node to execute
 	 * @returns Execution result
 	 */
 	async internalMcpExecuteWorkflow(
 		apiKey: string,
 		workflowId: string,
+		executionMode: 'manual' | 'production',
 		inputs?: Record<string, unknown>,
+		triggerNodeName?: string,
 	): Promise<ExecuteWorkflowResult> {
-		const args: Record<string, unknown> = { workflowId };
+		const args: Record<string, unknown> = { workflowId, executionMode };
 		if (inputs) {
 			args.inputs = inputs;
+		}
+		if (triggerNodeName) {
+			args.triggerNodeName = triggerNodeName;
 		}
 		try {
 			return await this.callInternalMcpTool<ExecuteWorkflowResult>(
@@ -942,7 +1021,7 @@ export class McpApiHelper {
 	}
 
 	/**
-	 * Calls get_execution tool on the internal MCP service.
+	 * Calls get_workflow_execution tool on the internal MCP service.
 	 */
 	async internalMcpGetExecution(
 		apiKey: string,
@@ -951,7 +1030,7 @@ export class McpApiHelper {
 		options?: { includeData?: boolean; nodeNames?: string[]; truncateData?: number },
 	): Promise<GetExecutionResult> {
 		try {
-			return await this.callInternalMcpTool<GetExecutionResult>(apiKey, 'get_execution', {
+			return await this.callInternalMcpTool<GetExecutionResult>(apiKey, 'get_workflow_execution', {
 				workflowId,
 				executionId,
 				...options,

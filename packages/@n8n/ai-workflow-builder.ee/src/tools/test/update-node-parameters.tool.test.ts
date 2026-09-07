@@ -1,6 +1,9 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { Mocked, MockedFunction } from 'vitest';
+
+import { createParameterUpdaterChain } from '@/chains/parameter-updater';
 
 import {
 	createNode,
@@ -22,48 +25,45 @@ import {
 import { createUpdateNodeParametersTool } from '../update-node-parameters.tool';
 
 // Mock LangGraph dependencies
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: jest.fn(),
-	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-		content: JSON.stringify(params),
-	})),
+vi.mock('@langchain/langgraph', () => ({
+	getCurrentTaskInput: vi.fn(),
+	Command: vi.fn(function (params: Record<string, unknown>) {
+		return { content: JSON.stringify(params) };
+	}),
 }));
 
 // Mock the parameter updater chain
-jest.mock('../../../src/chains/parameter-updater', () => ({
-	createParameterUpdaterChain: jest.fn(),
+vi.mock('@/chains/parameter-updater', () => ({
+	createParameterUpdaterChain: vi.fn(),
 }));
 
 describe('UpdateNodeParametersTool', () => {
 	let nodeTypesList: INodeTypeDescription[];
 	let updateNodeParametersTool: ReturnType<typeof createUpdateNodeParametersTool>['tool'];
-	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
-		typeof getCurrentTaskInput
-	>;
-	let mockLLM: jest.Mocked<BaseChatModel>;
+	const mockGetCurrentTaskInput = getCurrentTaskInput as MockedFunction<typeof getCurrentTaskInput>;
+	let mockLLM: Mocked<BaseChatModel>;
 	let mockChain: ReturnType<typeof mockParameterUpdaterChain>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Setup mock LLM
 		mockLLM = {
-			invoke: jest.fn(),
-		} as unknown as jest.Mocked<BaseChatModel>;
+			invoke: vi.fn(),
+		} as unknown as Mocked<BaseChatModel>;
 
 		// Setup mock parameter updater chain
 		mockChain = mockParameterUpdaterChain();
-		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-		const parameterUpdaterModule = require('../../../src/chains/parameter-updater');
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-		parameterUpdaterModule.createParameterUpdaterChain.mockReturnValue(mockChain);
+		vi.mocked(createParameterUpdaterChain).mockReturnValue(
+			mockChain as unknown as ReturnType<typeof createParameterUpdaterChain>,
+		);
 
 		nodeTypesList = [nodeTypes.code, nodeTypes.httpRequest, nodeTypes.webhook, nodeTypes.setNode];
 		updateNodeParametersTool = createUpdateNodeParametersTool(nodeTypesList, mockLLM).tool;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('invoke', () => {
@@ -631,10 +631,7 @@ describe('UpdateNodeParametersTool', () => {
 			);
 
 			// Verify createParameterUpdaterChain was called with correct config
-			// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-			const paramUpdaterModule = require('../../../src/chains/parameter-updater');
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			expect(paramUpdaterModule.createParameterUpdaterChain).toHaveBeenCalledWith(
+			expect(vi.mocked(createParameterUpdaterChain)).toHaveBeenCalledWith(
 				mockLLM,
 
 				expect.objectContaining({

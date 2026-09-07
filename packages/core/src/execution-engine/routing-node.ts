@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { sleep } from '@n8n/utils/sleep';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
@@ -10,8 +11,8 @@ import {
 	NodeHelpers,
 	NodeApiError,
 	NodeOperationError,
-	sleep,
 	NodeConnectionTypes,
+	getCredentialAllowedDomains,
 } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -40,6 +41,7 @@ import type {
 import url from 'node:url';
 
 import { type ExecuteContext, ExecuteSingleContext } from './node-execution-context';
+import { getAdditionalKeys } from './node-execution-context/utils/get-additional-keys';
 
 export class RoutingNode {
 	constructor(
@@ -132,6 +134,8 @@ export class RoutingNode {
 				};
 			}
 
+			const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+
 			if (nodeType.description.requestDefaults) {
 				for (const key of Object.keys(nodeType.description.requestDefaults)) {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,7 +146,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeData,
-						{ $credentials: credentials, $version: node.typeVersion },
+						{ ...additionalKeys, $credentials: credentials, $version: node.typeVersion },
 						false,
 					) as string;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -158,7 +162,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					executeData,
-					{ $credentials: credentials, $version: node.typeVersion },
+					{ ...additionalKeys, $credentials: credentials, $version: node.typeVersion },
 					false,
 				) as string | NodeParameterValue;
 
@@ -168,7 +172,12 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					'',
-					{ $credentials: credentials, $value: value, $version: node.typeVersion },
+					{
+						...additionalKeys,
+						$credentials: credentials,
+						$value: value,
+						$version: node.typeVersion,
+					},
 				);
 
 				this.mergeOptions(itemContext[itemIndex].requestData, tempOptions);
@@ -183,7 +192,7 @@ export class RoutingNode {
 						!(property in proxyParsed) ||
 						proxyParsed[property as keyof typeof proxyParsed] === null
 					) {
-						throw new NodeOperationError(node, 'The proxy is not value', {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
 							runIndex,
 							itemIndex,
 							description: `The proxy URL does not contain a valid value for "${property}"`,
@@ -216,6 +225,21 @@ export class RoutingNode {
 			} else {
 				// set default timeout to 5 minutes
 				itemContext[itemIndex].requestData.options.timeout = 300_000;
+			}
+
+			// A declarative node's URL comes from its own routing, not from the user. Only
+			// `baseURL` is safe to widen the allowlist with: a per-operation `url` can
+			// interpolate a node parameter, and that host is the user's choice, not the node's.
+			const allowedDomains = credentials
+				? getCredentialAllowedDomains({
+						node,
+						credentialData: credentials,
+						credentialOwnedSurface: true,
+						nodeEndpointUrl: itemContext[itemIndex].requestData.options.baseURL,
+					})
+				: undefined;
+			if (allowedDomains) {
+				itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;
 			}
 
 			requestPromises.push(
@@ -850,7 +874,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						additionalKeys,
+						{ ...additionalKeys, $value: parameterValue },
 						true,
 					) as string;
 
@@ -993,7 +1017,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
-					{ $value: optionValue, $version: node.typeVersion },
+					{ ...additionalKeys, $value: optionValue, $version: node.typeVersion },
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -1017,7 +1041,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
-						{ $version: node.typeVersion },
+						{ ...additionalKeys, $version: node.typeVersion },
 					);
 
 					this.mergeOptions(returnData, tempOptions);
@@ -1061,7 +1085,11 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							nodeProperties.typeOptions?.multipleValues ? `${loopBasePath}[${i}]` : loopBasePath,
-							{ ...(additionalKeys || {}), $index: i, $parent: value[i] },
+							{
+								...(additionalKeys || {}),
+								$index: i,
+								$parent: value[i],
+							},
 						);
 
 						this.mergeOptions(returnData, tempOptions);

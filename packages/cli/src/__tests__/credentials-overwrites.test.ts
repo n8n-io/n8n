@@ -2,9 +2,10 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CommaSeparatedStringArray, GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import { Cipher, UnrecognizedCredentialTypeError } from 'n8n-core';
 import type { ICredentialType } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -21,7 +22,7 @@ describe('CredentialsOverwrites', () => {
 	let credentialsOverwrites: CredentialsOverwrites;
 
 	beforeEach(async () => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		globalConfig.credentials.overwrite.data = JSON.stringify({
 			test: { username: 'user' },
@@ -64,7 +65,7 @@ describe('CredentialsOverwrites', () => {
 
 	describe('getOverwriteEndpointMiddleware', () => {
 		it('should call the static auth middleware with the correct token', () => {
-			const getStaticAuthMiddlewareSpy = jest.spyOn(StaticAuthService, 'getStaticAuthMiddleware');
+			const getStaticAuthMiddlewareSpy = vi.spyOn(StaticAuthService, 'getStaticAuthMiddleware');
 			globalConfig.credentials.overwrite.endpointAuthToken = 'test-token';
 			const localCredentialsOverwrites = new CredentialsOverwrites(
 				globalConfig,
@@ -113,6 +114,36 @@ describe('CredentialsOverwrites', () => {
 			expect(result).toEqual(data);
 		});
 
+		it('should not crash when skipTypes is undefined', () => {
+			// Simulate version mismatch where skipTypes is not present on the config object
+			globalConfig.credentials.overwrite.skipTypes =
+				undefined as unknown as CommaSeparatedStringArray<string>;
+
+			const result = credentialsOverwrites.applyOverwrite('test', {
+				username: '',
+				password: '',
+			});
+
+			expect(result).toEqual({ username: 'user', password: 'pass' });
+		});
+
+		it('should not crash when overwrite config object is undefined', () => {
+			// Simulate a DI/version mismatch where the nested overwrite config is undefined
+			const savedOverwrite = globalConfig.credentials.overwrite;
+			globalConfig.credentials.overwrite = undefined as never;
+
+			try {
+				const result = credentialsOverwrites.applyOverwrite('test', {
+					username: '',
+					password: '',
+				});
+
+				expect(result).toEqual({ username: 'user', password: 'pass' });
+			} finally {
+				globalConfig.credentials.overwrite = savedOverwrite;
+			}
+		});
+
 		describe('N8N_SKIP_CREDENTIAL_OVERWRITE', () => {
 			beforeEach(() => {
 				globalConfig.credentials.overwrite.skipTypes = [
@@ -155,6 +186,74 @@ describe('CredentialsOverwrites', () => {
 
 				expect(result).toEqual({ password: 'pass' });
 			});
+
+			it('should still apply overwrites to an extending type when only its parent is in the skip list', () => {
+				// The skip list is exact-name: a skip entry on 'parent' must not change how
+				// 'test' (which extends 'parent') is treated, even when 'test' has a
+				// customized field. This allows skipping a base type without affecting
+				// the concrete types that inherit its overwrite.
+				globalConfig.credentials.overwrite.skipTypes = [
+					'parent',
+				] as unknown as CommaSeparatedStringArray<string>;
+
+				const result = credentialsOverwrites.applyOverwrite('test', {
+					username: 'custom-user',
+					password: '',
+				});
+
+				expect(result).toEqual({ username: 'custom-user', password: 'pass' });
+			});
+		});
+	});
+
+	describe('supportsManagedAuth', () => {
+		it('should return true when an overwrite is configured for the type', () => {
+			expect(credentialsOverwrites.supportsManagedAuth('test')).toBe(true);
+		});
+
+		it('should return true for a base type that has its own overwrite', () => {
+			credentialTypes.getParentTypes.calledWith('parent').mockReturnValue([]);
+			expect(credentialsOverwrites.supportsManagedAuth('parent')).toBe(true);
+		});
+
+		it('should return false when no overwrite is configured for the type', () => {
+			credentialTypes.getParentTypes.mockReturnValueOnce([]);
+			expect(credentialsOverwrites.supportsManagedAuth('unknownCredential')).toBe(false);
+		});
+	});
+
+	describe('usesManagedAuth', () => {
+		it('should return true when an overwritten field is left empty', () => {
+			expect(
+				credentialsOverwrites.usesManagedAuth('test', { username: '', password: 'pass' }),
+			).toBe(true);
+		});
+
+		it('should return false when the user supplied all overwritten fields', () => {
+			expect(
+				credentialsOverwrites.usesManagedAuth('test', {
+					username: 'own-user',
+					password: 'own-pass',
+				}),
+			).toBe(false);
+		});
+
+		it('should return false when no overwrite is configured for the type', () => {
+			credentialTypes.getParentTypes.mockReturnValueOnce([]);
+			expect(credentialsOverwrites.usesManagedAuth('unknownCredential', { username: 'user' })).toBe(
+				false,
+			);
+		});
+
+		it('should return false for a skip-list type when the user customized an overwritten field', () => {
+			// applyOverwrite skips injection entirely here, so the credential is not managed
+			globalConfig.credentials.overwrite.skipTypes = [
+				'test',
+			] as unknown as CommaSeparatedStringArray<string>;
+
+			expect(
+				credentialsOverwrites.usesManagedAuth('test', { username: 'custom-user', password: '' }),
+			).toBe(false);
 		});
 	});
 
@@ -215,28 +314,28 @@ describe('CredentialsOverwrites', () => {
 
 	describe('Database Persistence', () => {
 		let dbCredentialsOverwrites: CredentialsOverwrites;
-		let settingsRepository: jest.Mocked<SettingsRepository>;
-		let cipher: jest.Mocked<Cipher>;
-		let publisherMock: { publishCommand: jest.Mock };
+		let settingsRepository: Mocked<SettingsRepository>;
+		let cipher: Mocked<Cipher>;
+		let publisherMock: { publishCommand: Mock };
 		let dbGlobalConfig: GlobalConfig;
 
 		beforeEach(async () => {
 			// Mock SettingsRepository
 			settingsRepository = mockInstance(SettingsRepository, {
-				findByKey: jest.fn(),
-				create: jest.fn(),
-				save: jest.fn(),
+				findByKey: vi.fn() as never,
+				create: vi.fn() as never,
+				save: vi.fn() as never,
 			});
 
 			// Mock Cipher
 			cipher = mockInstance(Cipher, {
-				encrypt: jest.fn(),
-				decrypt: jest.fn(),
+				encryptV2: vi.fn(),
+				decryptV2: vi.fn(),
 			});
 
 			// Mock Publisher service - need to import the class first
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
-			publisherMock = { publishCommand: jest.fn() };
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			publisherMock = { publishCommand: vi.fn() };
 			mockInstance(Publisher, publisherMock);
 
 			// Create separate config for database tests
@@ -264,11 +363,11 @@ describe('CredentialsOverwrites', () => {
 
 			await dbCredentialsOverwrites.init();
 
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		describe('saveOverwriteDataToDB', () => {
@@ -283,12 +382,12 @@ describe('CredentialsOverwrites', () => {
 					loadOnStartup: false,
 				};
 
-				cipher.encrypt.mockReturnValue(encryptedData);
+				cipher.encryptV2.mockResolvedValue(encryptedData);
 				settingsRepository.create.mockReturnValue(settingObject);
 
 				await dbCredentialsOverwrites.saveOverwriteDataToDB(overwriteData);
 
-				expect(cipher.encrypt).toHaveBeenCalledWith(JSON.stringify(overwriteData));
+				expect(cipher.encryptV2).toHaveBeenCalledWith(JSON.stringify(overwriteData));
 				expect(settingsRepository.create).toHaveBeenCalledWith({
 					key: 'credentialsOverwrite',
 					value: encryptedData,
@@ -302,7 +401,7 @@ describe('CredentialsOverwrites', () => {
 					test: { username: 'user' },
 				};
 
-				cipher.encrypt.mockReturnValue('encrypted');
+				cipher.encryptV2.mockResolvedValue('encrypted');
 				settingsRepository.create.mockReturnValue({
 					key: 'credentialsOverwrite',
 					value: 'encrypted',
@@ -321,7 +420,7 @@ describe('CredentialsOverwrites', () => {
 					test: { username: 'user' },
 				};
 
-				cipher.encrypt.mockReturnValue('encrypted');
+				cipher.encryptV2.mockResolvedValue('encrypted');
 				settingsRepository.create.mockReturnValue({
 					key: 'credentialsOverwrite',
 					value: 'encrypted',
@@ -347,12 +446,12 @@ describe('CredentialsOverwrites', () => {
 				};
 
 				settingsRepository.findByKey.mockResolvedValue(settingData);
-				cipher.decrypt.mockReturnValue(JSON.stringify(overwriteData));
+				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
 				await dbCredentialsOverwrites.loadOverwriteDataFromDB(false);
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
-				expect(cipher.decrypt).toHaveBeenCalledWith(encryptedData);
+				expect(cipher.decryptV2).toHaveBeenCalledWith(encryptedData);
 				expect(dbCredentialsOverwrites.getAll()).toEqual(overwriteData);
 			});
 
@@ -368,12 +467,12 @@ describe('CredentialsOverwrites', () => {
 				};
 
 				settingsRepository.findByKey.mockResolvedValue(settingData);
-				cipher.decrypt.mockReturnValue(JSON.stringify(overwriteData));
+				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
 				await dbCredentialsOverwrites.loadOverwriteDataFromDB(true);
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
-				expect(cipher.decrypt).toHaveBeenCalledWith(encryptedData);
+				expect(cipher.decryptV2).toHaveBeenCalledWith(encryptedData);
 				expect(dbCredentialsOverwrites.getAll()).toEqual(overwriteData);
 			});
 
@@ -383,7 +482,7 @@ describe('CredentialsOverwrites', () => {
 				await dbCredentialsOverwrites.loadOverwriteDataFromDB(false);
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
-				expect(cipher.decrypt).not.toHaveBeenCalled();
+				expect(cipher.decryptV2).not.toHaveBeenCalled();
 				// Should not throw error and existing data should remain unchanged
 			});
 
@@ -395,7 +494,7 @@ describe('CredentialsOverwrites', () => {
 				};
 
 				settingsRepository.findByKey.mockResolvedValue(settingData);
-				cipher.decrypt.mockImplementation(() => {
+				cipher.decryptV2.mockImplementation(async () => {
 					throw new Error('Decryption failed');
 				});
 
@@ -403,7 +502,7 @@ describe('CredentialsOverwrites', () => {
 				await expect(dbCredentialsOverwrites.loadOverwriteDataFromDB(false)).resolves.not.toThrow();
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
-				expect(cipher.decrypt).toHaveBeenCalledWith('invalid-encrypted-data');
+				expect(cipher.decryptV2).toHaveBeenCalledWith('invalid-encrypted-data');
 				expect(logger.error).toHaveBeenCalledWith('Error loading overwrite credentials', {
 					error: expect.any(Error),
 				});
@@ -417,7 +516,7 @@ describe('CredentialsOverwrites', () => {
 				await expect(dbCredentialsOverwrites.loadOverwriteDataFromDB(false)).resolves.not.toThrow();
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
-				expect(cipher.decrypt).not.toHaveBeenCalled();
+				expect(cipher.decryptV2).not.toHaveBeenCalled();
 				expect(logger.error).toHaveBeenCalledWith('Error loading overwrite credentials', {
 					error: dbError,
 				});
@@ -440,7 +539,7 @@ describe('CredentialsOverwrites', () => {
 						setTimeout(() => resolve(settingData), 100);
 					});
 				});
-				cipher.decrypt.mockReturnValue(JSON.stringify(overwriteData));
+				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
 				// Start first call
 				const firstCall = dbCredentialsOverwrites.loadOverwriteDataFromDB(false);
@@ -453,7 +552,7 @@ describe('CredentialsOverwrites', () => {
 
 				// Database should only be called once due to reloading flag protection
 				expect(settingsRepository.findByKey).toHaveBeenCalledTimes(1);
-				expect(cipher.decrypt).toHaveBeenCalledTimes(1);
+				expect(cipher.decryptV2).toHaveBeenCalledTimes(1);
 			});
 
 			it('should handle JSON parsing errors in decrypted data', async () => {
@@ -464,13 +563,13 @@ describe('CredentialsOverwrites', () => {
 				};
 
 				settingsRepository.findByKey.mockResolvedValue(settingData);
-				cipher.decrypt.mockReturnValue('invalid-json{');
+				cipher.decryptV2.mockResolvedValue('invalid-json{');
 
 				// Should not throw but log error
 				await expect(dbCredentialsOverwrites.loadOverwriteDataFromDB(false)).resolves.not.toThrow();
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
-				expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-data');
+				expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
 				expect(logger.error).toHaveBeenCalledWith('Error loading overwrite credentials', {
 					error: expect.any(Error),
 				});
@@ -480,28 +579,28 @@ describe('CredentialsOverwrites', () => {
 
 	describe('PubSub Integration', () => {
 		let pubsubCredentialsOverwrites: CredentialsOverwrites;
-		let settingsRepository: jest.Mocked<SettingsRepository>;
-		let cipher: jest.Mocked<Cipher>;
-		let publisherMock: { publishCommand: jest.Mock };
+		let settingsRepository: Mocked<SettingsRepository>;
+		let cipher: Mocked<Cipher>;
+		let publisherMock: { publishCommand: Mock };
 		let pubsubGlobalConfig: GlobalConfig;
 
 		beforeEach(async () => {
 			// Mock SettingsRepository
 			settingsRepository = mockInstance(SettingsRepository, {
-				findByKey: jest.fn(),
-				create: jest.fn(),
-				save: jest.fn(),
+				findByKey: vi.fn() as never,
+				create: vi.fn() as never,
+				save: vi.fn() as never,
 			});
 
 			// Mock Cipher
 			cipher = mockInstance(Cipher, {
-				encrypt: jest.fn(),
-				decrypt: jest.fn(),
+				encryptV2: vi.fn(),
+				decryptV2: vi.fn(),
 			});
 
 			// Mock Publisher service
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
-			publisherMock = { publishCommand: jest.fn() };
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			publisherMock = { publishCommand: vi.fn() };
 			mockInstance(Publisher, publisherMock);
 
 			// Create config for PubSub tests with persistence enabled
@@ -527,11 +626,11 @@ describe('CredentialsOverwrites', () => {
 			);
 
 			await pubsubCredentialsOverwrites.init();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		describe('reloadOverwriteCredentials', () => {
@@ -546,18 +645,17 @@ describe('CredentialsOverwrites', () => {
 				};
 
 				settingsRepository.findByKey.mockResolvedValue(settingData);
-				cipher.decrypt.mockReturnValue(JSON.stringify(overwriteData));
+				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
-				// Mock the reloadFrontendService to avoid circular dependency issues
-				const mockReloadFrontendService = jest.fn();
-				(pubsubCredentialsOverwrites as any).reloadFrontendService = mockReloadFrontendService;
+				const mockReloadHandler = vi.fn();
+				pubsubCredentialsOverwrites.registerReloadHandler(mockReloadHandler);
 
 				await pubsubCredentialsOverwrites.reloadOverwriteCredentials();
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
-				expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-data');
+				expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
 				expect(pubsubCredentialsOverwrites.getAll()).toEqual(overwriteData);
-				expect(mockReloadFrontendService).toHaveBeenCalled();
+				expect(mockReloadHandler).toHaveBeenCalled();
 			});
 
 			it('should handle database loading errors gracefully', async () => {
@@ -569,7 +667,7 @@ describe('CredentialsOverwrites', () => {
 				).resolves.not.toThrow();
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
-				expect(cipher.decrypt).not.toHaveBeenCalled();
+				expect(cipher.decryptV2).not.toHaveBeenCalled();
 				expect(logger.error).toHaveBeenCalledWith('Error loading overwrite credentials', {
 					error: dbError,
 				});
@@ -583,7 +681,7 @@ describe('CredentialsOverwrites', () => {
 				};
 
 				settingsRepository.findByKey.mockResolvedValue(settingData);
-				cipher.decrypt.mockImplementation(() => {
+				cipher.decryptV2.mockImplementation(async () => {
 					throw new Error('Decryption failed');
 				});
 
@@ -592,7 +690,7 @@ describe('CredentialsOverwrites', () => {
 				).resolves.not.toThrow();
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
-				expect(cipher.decrypt).toHaveBeenCalledWith('invalid-encrypted-data');
+				expect(cipher.decryptV2).toHaveBeenCalledWith('invalid-encrypted-data');
 				expect(logger.error).toHaveBeenCalledWith('Error loading overwrite credentials', {
 					error: expect.any(Error),
 				});
@@ -614,11 +712,9 @@ describe('CredentialsOverwrites', () => {
 						setTimeout(() => resolve(settingData), 100);
 					});
 				});
-				cipher.decrypt.mockReturnValue(JSON.stringify(overwriteData));
+				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
-				// Mock the reloadFrontendService
-				const mockReloadFrontendService = jest.fn();
-				(pubsubCredentialsOverwrites as any).reloadFrontendService = mockReloadFrontendService;
+				pubsubCredentialsOverwrites.registerReloadHandler(vi.fn());
 
 				// Start first reload
 				const firstReload = pubsubCredentialsOverwrites.reloadOverwriteCredentials();
@@ -631,7 +727,7 @@ describe('CredentialsOverwrites', () => {
 
 				// Database should only be called once due to reloading flag protection
 				expect(settingsRepository.findByKey).toHaveBeenCalledTimes(1);
-				expect(cipher.decrypt).toHaveBeenCalledTimes(1);
+				expect(cipher.decryptV2).toHaveBeenCalledTimes(1);
 			});
 		});
 
@@ -644,7 +740,7 @@ describe('CredentialsOverwrites', () => {
 					test: { username: 'user' },
 				};
 
-				cipher.encrypt.mockReturnValue('encrypted-data');
+				cipher.encryptV2.mockResolvedValue('encrypted-data');
 				settingsRepository.create.mockReturnValue({
 					key: 'credentialsOverwrite',
 					value: 'encrypted-data',
@@ -673,11 +769,9 @@ describe('CredentialsOverwrites', () => {
 				const overwriteData = { test: { username: 'decoratorTest' } };
 
 				settingsRepository.findByKey.mockResolvedValue(settingData);
-				cipher.decrypt.mockReturnValue(JSON.stringify(overwriteData));
+				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
-				// Mock the reloadFrontendService
-				const mockReloadFrontendService = jest.fn();
-				(pubsubCredentialsOverwrites as any).reloadFrontendService = mockReloadFrontendService;
+				pubsubCredentialsOverwrites.registerReloadHandler(vi.fn());
 
 				await expect(
 					pubsubCredentialsOverwrites.reloadOverwriteCredentials(),
@@ -698,13 +792,13 @@ describe('CredentialsOverwrites', () => {
 				};
 
 				pubsubGlobalConfig.credentials.overwrite.persistence = true;
-				cipher.encrypt.mockReturnValue(encryptedData);
+				cipher.encryptV2.mockResolvedValue(encryptedData);
 				settingsRepository.create.mockReturnValue(settingObject);
 
 				await pubsubCredentialsOverwrites.saveOverwriteDataToDB(overwriteData, true);
 
 				// Verify database operations
-				expect(cipher.encrypt).toHaveBeenCalledWith(JSON.stringify(overwriteData));
+				expect(cipher.encryptV2).toHaveBeenCalledWith(JSON.stringify(overwriteData));
 				expect(settingsRepository.create).toHaveBeenCalledWith({
 					key: 'credentialsOverwrite',
 					value: encryptedData,
@@ -723,7 +817,7 @@ describe('CredentialsOverwrites', () => {
 					test: { username: 'noBroadcastUser' },
 				};
 
-				cipher.encrypt.mockReturnValue('encrypted-data');
+				cipher.encryptV2.mockResolvedValue('encrypted-data');
 				settingsRepository.create.mockReturnValue({
 					key: 'credentialsOverwrite',
 					value: 'encrypted-data',
@@ -733,7 +827,7 @@ describe('CredentialsOverwrites', () => {
 				await pubsubCredentialsOverwrites.saveOverwriteDataToDB(overwriteData, false);
 
 				// Verify database operations still happen
-				expect(cipher.encrypt).toHaveBeenCalledWith(JSON.stringify(overwriteData));
+				expect(cipher.encryptV2).toHaveBeenCalledWith(JSON.stringify(overwriteData));
 				expect(settingsRepository.save).toHaveBeenCalled();
 
 				// Verify no PubSub broadcast
@@ -746,7 +840,7 @@ describe('CredentialsOverwrites', () => {
 				};
 
 				pubsubGlobalConfig.credentials.overwrite.persistence = true;
-				cipher.encrypt.mockReturnValue('encrypted-data');
+				cipher.encryptV2.mockResolvedValue('encrypted-data');
 				settingsRepository.create.mockReturnValue({
 					key: 'credentialsOverwrite',
 					value: 'encrypted-data',
@@ -761,7 +855,7 @@ describe('CredentialsOverwrites', () => {
 				).rejects.toThrow('Broadcast failed');
 
 				// Verify database operations completed before broadcast failure
-				expect(cipher.encrypt).toHaveBeenCalledWith(JSON.stringify(overwriteData));
+				expect(cipher.encryptV2).toHaveBeenCalledWith(JSON.stringify(overwriteData));
 				expect(settingsRepository.save).toHaveBeenCalled();
 				expect(publisherMock.publishCommand).toHaveBeenCalledWith({
 					command: 'reload-overwrite-credentials',
@@ -774,7 +868,7 @@ describe('CredentialsOverwrites', () => {
 		let frontendCredentialsOverwrites: CredentialsOverwrites;
 
 		beforeEach(async () => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			// Create instance for frontend tests
 			frontendCredentialsOverwrites = new CredentialsOverwrites(
@@ -786,58 +880,54 @@ describe('CredentialsOverwrites', () => {
 			);
 
 			await frontendCredentialsOverwrites.init();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
-		describe('reloadFrontendService via setData', () => {
+		describe('reload handler via setData', () => {
+			let reloadHandler: Mock;
+
 			beforeEach(() => {
-				// Mock the reloadFrontendService method directly to test through setData
-				jest
-					.spyOn(frontendCredentialsOverwrites as any, 'reloadFrontendService')
-					.mockResolvedValue(undefined);
+				reloadHandler = vi.fn().mockResolvedValue(undefined);
+				frontendCredentialsOverwrites.registerReloadHandler(reloadHandler);
 			});
 
-			it('should call reloadFrontendService when reloadFrontend is true', async () => {
+			it('should call the reload handler when reloadFrontend is true', async () => {
 				const testData = { test: { username: 'frontendUser' } };
-				const reloadSpy = frontendCredentialsOverwrites['reloadFrontendService'] as jest.Mock;
 
 				await frontendCredentialsOverwrites.setData(testData, false, true);
 
-				// Verify reloadFrontendService was called
-				expect(reloadSpy).toHaveBeenCalledTimes(1);
+				expect(reloadHandler).toHaveBeenCalledTimes(1);
 				expect(frontendCredentialsOverwrites.getAll()).toEqual(testData);
 			});
 
-			it('should skip reloadFrontendService when reloadFrontend is false', async () => {
+			it('should skip the reload handler when reloadFrontend is false', async () => {
 				const testData = { test: { username: 'noReloadUser' } };
-				const reloadSpy = frontendCredentialsOverwrites['reloadFrontendService'] as jest.Mock;
 
 				await frontendCredentialsOverwrites.setData(testData, false, false);
 
-				// Verify reloadFrontendService was NOT called
-				expect(reloadSpy).not.toHaveBeenCalled();
+				expect(reloadHandler).not.toHaveBeenCalled();
 				expect(frontendCredentialsOverwrites.getAll()).toEqual(testData);
 			});
 
 			it('should call setData with correct parameters in init methods', async () => {
 				// Test both paths of setData through database loading
 				const settingsRepository = mockInstance(SettingsRepository, {
-					findByKey: jest.fn().mockResolvedValue({
+					findByKey: vi.fn().mockResolvedValue({
 						key: 'credentialsOverwrite',
 						value: 'encrypted-data',
 						loadOnStartup: false,
 					}),
-					create: jest.fn(),
-					save: jest.fn(),
+					create: vi.fn() as never,
+					save: vi.fn() as never,
 				});
 
 				const cipher = mockInstance(Cipher, {
-					encrypt: jest.fn(),
-					decrypt: jest.fn().mockReturnValue(JSON.stringify({ test: { username: 'dbUser' } })),
+					encryptV2: vi.fn(),
+					decryptV2: vi.fn().mockResolvedValue(JSON.stringify({ test: { username: 'dbUser' } })),
 				});
 
 				const dbInstance = new CredentialsOverwrites(
@@ -850,7 +940,7 @@ describe('CredentialsOverwrites', () => {
 
 				await dbInstance.init(); // Initialize the instance first
 
-				const setDataSpy = jest.spyOn(dbInstance, 'setData');
+				const setDataSpy = vi.spyOn(dbInstance, 'setData');
 
 				await dbInstance.loadOverwriteDataFromDB(false);
 
@@ -871,34 +961,34 @@ describe('CredentialsOverwrites', () => {
 
 	describe('Configuration-Based Initialization', () => {
 		let initCredentialsOverwrites: CredentialsOverwrites;
-		let settingsRepository: jest.Mocked<SettingsRepository>;
-		let cipher: jest.Mocked<Cipher>;
-		let publisherMock: { publishCommand: jest.Mock };
+		let settingsRepository: Mocked<SettingsRepository>;
+		let cipher: Mocked<Cipher>;
+		let publisherMock: { publishCommand: Mock };
 
 		beforeEach(async () => {
 			// Mock SettingsRepository
 			settingsRepository = mockInstance(SettingsRepository, {
-				findByKey: jest.fn(),
-				create: jest.fn(),
-				save: jest.fn(),
+				findByKey: vi.fn() as never,
+				create: vi.fn() as never,
+				save: vi.fn() as never,
 			});
 
 			// Mock Cipher
 			cipher = mockInstance(Cipher, {
-				encrypt: jest.fn(),
-				decrypt: jest.fn(),
+				encryptV2: vi.fn(),
+				decryptV2: vi.fn(),
 			});
 
 			// Mock Publisher service
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
-			publisherMock = { publishCommand: jest.fn() };
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			publisherMock = { publishCommand: vi.fn() };
 			mockInstance(Publisher, publisherMock);
 
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should only load static config data when persistence is disabled', async () => {
@@ -922,8 +1012,8 @@ describe('CredentialsOverwrites', () => {
 			);
 
 			// Spy on methods to verify call patterns
-			const setPlainDataSpy = jest.spyOn(initCredentialsOverwrites, 'setPlainData');
-			const loadFromDbSpy = jest.spyOn(initCredentialsOverwrites, 'loadOverwriteDataFromDB');
+			const setPlainDataSpy = vi.spyOn(initCredentialsOverwrites, 'setPlainData');
+			const loadFromDbSpy = vi.spyOn(initCredentialsOverwrites, 'loadOverwriteDataFromDB');
 
 			await initCredentialsOverwrites.init();
 
@@ -967,11 +1057,11 @@ describe('CredentialsOverwrites', () => {
 				value: 'encrypted-db-data',
 				loadOnStartup: false,
 			});
-			cipher.decrypt.mockReturnValue(JSON.stringify(dbData));
+			cipher.decryptV2.mockResolvedValue(JSON.stringify(dbData));
 
 			// Spy on methods
-			const setDataSpy = jest.spyOn(initCredentialsOverwrites, 'setData');
-			const loadFromDbSpy = jest.spyOn(initCredentialsOverwrites, 'loadOverwriteDataFromDB');
+			const setDataSpy = vi.spyOn(initCredentialsOverwrites, 'setData');
+			const loadFromDbSpy = vi.spyOn(initCredentialsOverwrites, 'loadOverwriteDataFromDB');
 
 			await initCredentialsOverwrites.init();
 
@@ -985,7 +1075,7 @@ describe('CredentialsOverwrites', () => {
 
 			// Verify database operations were called
 			expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
-			expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-db-data');
+			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-db-data');
 
 			setDataSpy.mockRestore();
 			loadFromDbSpy.mockRestore();
@@ -1018,12 +1108,12 @@ describe('CredentialsOverwrites', () => {
 				value: 'encrypted-db-data',
 				loadOnStartup: false,
 			});
-			cipher.decrypt.mockReturnValue(JSON.stringify(dbData));
+			cipher.decryptV2.mockResolvedValue(JSON.stringify(dbData));
 
 			// Spy on methods
-			const setPlainDataSpy = jest.spyOn(initCredentialsOverwrites, 'setPlainData');
-			const setDataSpy = jest.spyOn(initCredentialsOverwrites, 'setData');
-			const loadFromDbSpy = jest.spyOn(initCredentialsOverwrites, 'loadOverwriteDataFromDB');
+			const setPlainDataSpy = vi.spyOn(initCredentialsOverwrites, 'setPlainData');
+			const setDataSpy = vi.spyOn(initCredentialsOverwrites, 'setData');
+			const loadFromDbSpy = vi.spyOn(initCredentialsOverwrites, 'loadOverwriteDataFromDB');
 
 			await initCredentialsOverwrites.init();
 
@@ -1069,8 +1159,8 @@ describe('CredentialsOverwrites', () => {
 			);
 
 			// Spy on methods
-			const setDataSpy = jest.spyOn(initCredentialsOverwrites, 'setData');
-			const loadFromDbSpy = jest.spyOn(initCredentialsOverwrites, 'loadOverwriteDataFromDB');
+			const setDataSpy = vi.spyOn(initCredentialsOverwrites, 'setData');
+			const loadFromDbSpy = vi.spyOn(initCredentialsOverwrites, 'loadOverwriteDataFromDB');
 
 			await initCredentialsOverwrites.init();
 
@@ -1111,6 +1201,109 @@ describe('CredentialsOverwrites', () => {
 
 			// Verify database operations were not attempted
 			expect(settingsRepository.findByKey).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('isManagedOAuthType', () => {
+		const oauthCredentialType = mock<ICredentialType>({
+			name: 'notionOAuth2Api',
+			extends: ['oAuth2Api'],
+		});
+		const baseOAuth2Type = mock<ICredentialType>({ name: 'oAuth2Api', extends: undefined });
+		const oauth1CredentialType = mock<ICredentialType>({
+			name: 'trelloOAuth1Api',
+			extends: ['oAuth1Api'],
+		});
+		const baseOAuth1Type = mock<ICredentialType>({ name: 'oAuth1Api', extends: undefined });
+		const apiKeyCredentialType = mock<ICredentialType>({ name: 'notionApi', extends: undefined });
+
+		const createInstance = async (data: ICredentialsOverwrite) => {
+			globalConfig.credentials.overwrite.data = JSON.stringify(data);
+			const instance = new CredentialsOverwrites(
+				globalConfig,
+				credentialTypes,
+				logger,
+				mock(),
+				mock(),
+			);
+			await instance.init();
+			return instance;
+		};
+
+		beforeEach(() => {
+			credentialTypes.recognizes.mockReturnValue(true);
+			credentialTypes.getByName.mockImplementation((name) => {
+				if (name === 'notionOAuth2Api') return oauthCredentialType;
+				if (name === 'oAuth2Api') return baseOAuth2Type;
+				if (name === 'trelloOAuth1Api') return oauth1CredentialType;
+				if (name === 'oAuth1Api') return baseOAuth1Type;
+				if (name === 'notionApi') return apiKeyCredentialType;
+				throw new UnrecognizedCredentialTypeError(name);
+			});
+			credentialTypes.getParentTypes.mockImplementation((name) => {
+				if (name === 'notionOAuth2Api') return ['oAuth2Api'];
+				if (name === 'trelloOAuth1Api') return ['oAuth1Api'];
+				return [];
+			});
+		});
+
+		it('returns true for an OAuth type whose clientId and clientSecret are overwritten', async () => {
+			const instance = await createInstance({
+				notionOAuth2Api: { clientId: 'client-id', clientSecret: 'client-secret' },
+			});
+
+			expect(instance.isManagedOAuthType('notionOAuth2Api')).toBe(true);
+		});
+
+		it('returns true for an OAuth1 type whose consumerKey and consumerSecret are overwritten', async () => {
+			const instance = await createInstance({
+				trelloOAuth1Api: { consumerKey: 'consumer-key', consumerSecret: 'consumer-secret' },
+			});
+
+			expect(instance.isManagedOAuthType('trelloOAuth1Api')).toBe(true);
+		});
+
+		it('returns false for an OAuth1 type overwritten with the OAuth2 client fields', async () => {
+			// clientId/clientSecret are meaningless for OAuth1; only consumerKey/consumerSecret count.
+			const instance = await createInstance({
+				trelloOAuth1Api: { clientId: 'client-id', clientSecret: 'client-secret' },
+			});
+
+			expect(instance.isManagedOAuthType('trelloOAuth1Api')).toBe(false);
+		});
+
+		it('returns false for a non-OAuth type even when overwritten', async () => {
+			const instance = await createInstance({
+				notionApi: { apiKey: 'key' },
+			});
+
+			expect(instance.isManagedOAuthType('notionApi')).toBe(false);
+		});
+
+		it('returns false when the client pair is not fully overwritten', async () => {
+			const instance = await createInstance({
+				notionOAuth2Api: { clientId: 'client-id' },
+			});
+
+			expect(instance.isManagedOAuthType('notionOAuth2Api')).toBe(false);
+		});
+
+		it('returns false for skip-list types', async () => {
+			globalConfig.credentials.overwrite.skipTypes = [
+				'notionOAuth2Api',
+			] as unknown as CommaSeparatedStringArray<string>;
+			const instance = await createInstance({
+				notionOAuth2Api: { clientId: 'client-id', clientSecret: 'client-secret' },
+			});
+
+			expect(instance.isManagedOAuthType('notionOAuth2Api')).toBe(false);
+		});
+
+		it('returns false for unrecognized types', async () => {
+			const instance = await createInstance({});
+			credentialTypes.recognizes.mockReturnValue(false);
+
+			expect(instance.isManagedOAuthType('somethingUnknown')).toBe(false);
 		});
 	});
 });

@@ -1,8 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import DemoLayout from './DemoLayout.vue';
-import { computed, ref, shallowRef } from 'vue';
+import { computed, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
+
+const demoLayoutMocks = vi.hoisted(() => ({
+	initializeData: vi.fn(),
+	initializeWorkflow: vi.fn(),
+	cleanupInitialization: vi.fn(),
+	setupPostMessages: vi.fn(),
+	cleanupPostMessages: vi.fn(),
+	currentWorkflowDocumentStore: { value: {} as object | null, __v_isRef: true as const },
+}));
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as object;
@@ -21,34 +30,21 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useWorkflowState', async (importOriginal) => {
-	const actual = (await importOriginal()) as object;
-	return {
-		...actual,
-		useWorkflowState: vi.fn(() => ({
-			getNewWorkflowDataAndMakeShareable: vi.fn(),
-			setWorkflowId: vi.fn(),
-			setActiveExecutionId: vi.fn(),
-			resetState: vi.fn(),
-		})),
-	};
-});
-
 vi.mock('@/app/composables/useWorkflowInitialization', () => ({
 	useWorkflowInitialization: vi.fn(() => ({
 		isLoading: ref(false),
 		workflowId: computed(() => 'demo'),
-		currentWorkflowDocumentStore: shallowRef(null),
-		initializeData: vi.fn().mockResolvedValue(undefined),
-		initializeWorkflow: vi.fn().mockResolvedValue(undefined),
-		cleanup: vi.fn(),
+		currentWorkflowDocumentStore: demoLayoutMocks.currentWorkflowDocumentStore,
+		initializeData: demoLayoutMocks.initializeData,
+		initializeWorkflow: demoLayoutMocks.initializeWorkflow,
+		cleanup: demoLayoutMocks.cleanupInitialization,
 	})),
 }));
 
 vi.mock('@/app/composables/usePostMessageHandler', () => ({
 	usePostMessageHandler: vi.fn(() => ({
-		setup: vi.fn(),
-		cleanup: vi.fn(),
+		setup: demoLayoutMocks.setupPostMessages,
+		cleanup: demoLayoutMocks.cleanupPostMessages,
 	})),
 }));
 
@@ -81,6 +77,9 @@ describe('DemoLayout', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		vi.clearAllMocks();
+		demoLayoutMocks.initializeData.mockResolvedValue(undefined);
+		demoLayoutMocks.initializeWorkflow.mockResolvedValue(undefined);
+		demoLayoutMocks.currentWorkflowDocumentStore.value = {};
 	});
 
 	it('should render the layout without throwing', () => {
@@ -110,6 +109,22 @@ describe('DemoLayout', () => {
 			},
 		});
 		expect(getByText('Demo Layout Content')).toBeInTheDocument();
+	});
+
+	it('should not render RouterView content until the scoped document store exists', () => {
+		demoLayoutMocks.currentWorkflowDocumentStore.value = null;
+
+		const { queryByText } = renderComponent({
+			global: {
+				stubs: {
+					RouterView: {
+						template: '<div>Demo Layout Content</div>',
+					},
+				},
+			},
+		});
+
+		expect(queryByText('Demo Layout Content')).not.toBeInTheDocument();
 	});
 
 	it('should render DemoFooter component in footer slot', () => {
@@ -185,6 +200,33 @@ describe('DemoLayout', () => {
 	});
 
 	describe('push connection', () => {
+		it('should set up post messages only after workflow initialization completes', async () => {
+			let resolveInitializeWorkflow: () => void;
+			demoLayoutMocks.initializeWorkflow.mockReturnValueOnce(
+				new Promise<void>((resolve) => {
+					resolveInitializeWorkflow = resolve;
+				}),
+			);
+
+			renderComponent();
+
+			await vi.waitFor(() => {
+				expect(demoLayoutMocks.initializeWorkflow).toHaveBeenCalled();
+			});
+			expect(mockPushInitialize).not.toHaveBeenCalled();
+			expect(demoLayoutMocks.setupPostMessages).not.toHaveBeenCalled();
+
+			resolveInitializeWorkflow!();
+
+			await vi.waitFor(() => {
+				expect(demoLayoutMocks.setupPostMessages).toHaveBeenCalled();
+			});
+			expect(mockPushInitialize).toHaveBeenCalled();
+			expect(mockPushInitialize.mock.invocationCallOrder[0]).toBeLessThan(
+				demoLayoutMocks.setupPostMessages.mock.invocationCallOrder[0],
+			);
+		});
+
 		it('should initialize push handlers on mount', async () => {
 			renderComponent();
 			await vi.waitFor(() => {

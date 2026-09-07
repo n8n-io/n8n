@@ -11,8 +11,9 @@ import {
 } from 'n8n-workflow';
 import type { ClientOptions } from 'openai';
 
-import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 import { mergeCustomHeaders } from '@utils/helpers';
+
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 const modelParameter: INodeProperties = {
@@ -252,7 +253,7 @@ export class EmbeddingsOpenAi implements INodeType {
 			defaultHeaders,
 		};
 		if (options.baseURL) {
-			checkDomainRestrictions(this, credentials, options.baseURL);
+			assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;

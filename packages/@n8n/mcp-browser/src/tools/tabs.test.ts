@@ -43,7 +43,10 @@ describe('createTabTools', () => {
 				const result = await getTool().execute({ url: 'http://example.com' }, TOOL_CONTEXT);
 				const data = structuredOf(result);
 
-				expect(mockConnection.adapter.newPage).toHaveBeenCalledWith('http://example.com');
+				expect(mockConnection.adapter.newPage).toHaveBeenCalledWith(
+					'http://example.com',
+					undefined,
+				);
 				expect(data.pageId).toBe('page2');
 				expect(data.title).toBe('New Page');
 				expect(data.url).toBe('about:blank');
@@ -63,7 +66,27 @@ describe('createTabTools', () => {
 				const data = structuredOf(result);
 
 				expect(data.snapshot).toBe('<snapshot-tree>');
-				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page2');
+				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page2', undefined, undefined);
+			});
+
+			// NODE-5598: browser_tab_open hardcodes waitUntil:'load' on the first
+			// navigation, so a heavy SPA console that never fires 'load' times out.
+			// The tool exposes no waitUntil param and never forwards one to newPage,
+			// so the agent has no escape hatch on the one navigation every credential
+			// setup starts with.
+			it('forwards waitUntil to adapter.newPage', async () => {
+				await getTool().execute(
+					{
+						url: 'https://console.apify.com/settings/integrations/',
+						waitUntil: 'domcontentloaded',
+					},
+					TOOL_CONTEXT,
+				);
+
+				expect(mockConnection.adapter.newPage).toHaveBeenCalledWith(
+					'https://console.apify.com/settings/integrations/',
+					'domcontentloaded',
+				);
 			});
 		});
 	});

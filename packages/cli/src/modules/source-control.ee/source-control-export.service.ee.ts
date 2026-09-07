@@ -10,20 +10,18 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import chunk from 'lodash/chunk';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
-import chunk from 'lodash/chunk';
-import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
@@ -49,11 +47,13 @@ import { SourceControlScopedService } from './source-control-scoped.service';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { DataTableResourceOwner, ExportableDataTable } from './types/exportable-data-table';
+import type { ExportableFolder } from './types/exportable-folders';
 import { ExportableProject } from './types/exportable-project';
 import { ExportableVariable } from './types/exportable-variable';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
+import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 
 @Service()
 export class SourceControlExportService {
@@ -132,6 +132,7 @@ export class SourceControlExportService {
 					const sanitizedWorkflow: ExportableWorkflow = {
 						id: workflow.id,
 						name: workflow.name,
+						description: workflow.description ?? null,
 						nodes: workflow.nodes,
 						connections: workflow.connections,
 						settings: workflow.settings,
@@ -140,6 +141,7 @@ export class SourceControlExportService {
 						owner: owners[workflow.id],
 						parentFolderId: workflow.parentFolder?.id ?? null,
 						isArchived: workflow.isArchived,
+						nodeGroups: workflow.nodeGroups ?? [],
 					};
 					this.logger.debug(`Writing workflow ${workflow.id} to ${fileName}`);
 					return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
@@ -255,7 +257,7 @@ export class SourceControlExportService {
 
 	async exportDataTablesToWorkFolder(
 		candidates: SourceControlledFile[],
-		_context: SourceControlContext,
+		context: SourceControlContext,
 	): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder, this.dataTableExportFolder]);
@@ -275,6 +277,7 @@ export class SourceControlExportService {
 			const dataTables = await this.dataTableRepository.find({
 				where: {
 					id: In(candidateIds),
+					...this.sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter(context),
 				},
 				relations: [
 					'columns',
@@ -403,20 +406,15 @@ export class SourceControlExportService {
 				};
 			}
 
-			const allowedProjects =
-				await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
-
 			const fileName = getFoldersPath(this.gitFolder);
 
-			const existingFolders = await readFoldersFromSourceControlFile(fileName);
-
-			// keep all folders that are not accessible by the current user
-			// if allowedProjects is undefined, all folders are accessible by the current user
-			const foldersToKeepUnchanged = context.hasAccessToAllProjects()
-				? []
-				: existingFolders.folders.filter((folder) => {
-						return !allowedProjects.some((project) => project.id === folder.homeProjectId);
-					});
+			let foldersToKeepUnchanged: ExportableFolder[] = [];
+			if (!context.hasAccessToAllProjects()) {
+				const existingFolders = await readFoldersFromSourceControlFile(fileName);
+				foldersToKeepUnchanged = existingFolders.folders.filter(
+					(folder) => !context.canAccessProject(folder.homeProjectId),
+				);
+			}
 
 			const newFolders = foldersToKeepUnchanged.concat(
 				...folders.map((f) => ({
@@ -523,16 +521,23 @@ export class SourceControlExportService {
 				credentialIds,
 				'credential:owner',
 			);
+
 			let missingIds: string[] = [];
-			if (credentialsToBeExported.length !== credentialIds.length) {
-				const foundCredentialIds = credentialsToBeExported.map((e) => e.credentialsId);
-				missingIds = credentialIds.filter(
-					(remote) => foundCredentialIds.findIndex((local) => local === remote) === -1,
-				);
+			const foundCredentialIds = new Set(credentialsToBeExported.map((e) => e.credentialsId));
+			if (foundCredentialIds.size !== credentialIds.length) {
+				missingIds = credentialIds.filter((remote) => !foundCredentialIds.has(remote));
 			}
 			await Promise.all(
 				credentialsToBeExported.map(async (sharing) => {
-					const { name, type, data, id, isGlobal = false } = sharing.credentials;
+					const {
+						name,
+						type,
+						data,
+						id,
+						isGlobal = false,
+						isResolvable = false,
+						resolvableAllowFallback = false,
+					} = sharing.credentials;
 					const credentials = new Credentials({ id, name }, type, data);
 
 					let owner: RemoteResourceOwner | null = null;
@@ -556,7 +561,7 @@ export class SourceControlExportService {
 						};
 					}
 
-					const sanitizedData = sanitizeCredentialData(credentials.getData());
+					const sanitizedData = sanitizeCredentialData(await credentials.getData());
 
 					const stub: ExportableCredential = {
 						id,
@@ -565,6 +570,8 @@ export class SourceControlExportService {
 						data: sanitizedData,
 						ownedBy: owner,
 						isGlobal,
+						isResolvable,
+						resolvableAllowFallback,
 					};
 
 					const filePath = this.getCredentialsPath(id);

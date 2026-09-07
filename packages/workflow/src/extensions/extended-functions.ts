@@ -7,6 +7,16 @@ import { average as aAverage } from './array-extensions';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
 
+// Define an own data field rather than assigning through an inherited setter.
+function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
+	Object.defineProperty(target, key, {
+		value,
+		writable: true,
+		enumerable: true,
+		configurable: true,
+	});
+}
+
 const min = Math.min;
 const max = Math.max;
 
@@ -27,14 +37,18 @@ const numberList = (start: number, end: number): number[] => {
 };
 
 const zip = (keys: unknown[], values: unknown[]): unknown => {
+	if (!Array.isArray(keys) || !Array.isArray(values)) {
+		throw new ExpressionExtensionError('keys and values must be arrays');
+	}
 	if (keys.length !== values.length) {
 		throw new ExpressionExtensionError('keys and values not of equal length');
 	}
-	return keys.reduce((p, c, i) => {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-		(p as any)[c as any] = values[i];
-		return p;
-	}, {});
+
+	const result: Record<string, unknown> = {};
+	for (let i = 0; i < keys.length; i++) {
+		defineField(result, keys[i] as PropertyKey, values[i]);
+	}
+	return result;
 };
 
 const average = (...args: number[]) => {

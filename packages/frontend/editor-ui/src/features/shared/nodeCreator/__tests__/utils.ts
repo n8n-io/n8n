@@ -37,7 +37,7 @@ export const mockSimplifiedNodeType = (
 	...overrides,
 });
 
-export const mockActionTypeDescription = (
+const mockActionTypeDescription = (
 	overrides?: Partial<ActionTypeDescription>,
 ): ActionTypeDescription => ({
 	...mockSimplifiedNodeType(),

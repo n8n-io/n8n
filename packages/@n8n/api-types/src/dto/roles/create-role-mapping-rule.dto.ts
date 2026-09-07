@@ -6,6 +6,6 @@ export class CreateRoleMappingRuleDto extends Z.class({
 	expression: z.string().min(1),
 	role: z.string().min(1).max(128),
 	type: z.enum(['instance', 'project']),
-	order: z.number().int(),
+	order: z.number().int().min(0).optional(),
 	projectIds: z.array(z.string()).optional(),
 }) {}

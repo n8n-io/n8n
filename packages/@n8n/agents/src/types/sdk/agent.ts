@@ -1,15 +1,42 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { LanguageModel } from 'ai';
+import type {
+	GenerateTextStepEndEvent,
+	GenerateTextStepStartEvent,
+	LanguageModel,
+	smoothStream,
+} from 'ai';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
-import type { BuiltTool } from './tool';
-import type { AgentEvent, AgentEventHandler } from '../runtime/event';
+import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
+import type {
+	AgentEvent,
+	AgentEventHandler,
+	SubAgentChunkPayload,
+	SubAgentCompletedPayload,
+	SubAgentStartedPayload,
+} from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
-import type { JSONValue } from '../utils/json';
+import type { JSONObject, JSONValue } from '../utils/json';
 
-export type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other';
+export type SmoothStreamOptions = NonNullable<Parameters<typeof smoothStream>[0]>;
+
+export const FINISH_REASONS = [
+	'stop',
+	'max-iterations',
+	'length',
+	'content-filter',
+	'tool-calls',
+	'error',
+	'other',
+] as const;
+
+export type FinishReason = (typeof FINISH_REASONS)[number];
+
+export function isFinishReason(value: unknown): value is FinishReason {
+	return typeof value === 'string' && FINISH_REASONS.some((reason) => reason === value);
+}
 
 export type TokenUsage<T extends Record<string, unknown> = Record<string, unknown>> = {
 	promptTokens: number;
@@ -18,6 +45,8 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	/** Estimated cost in USD, computed from models.dev pricing. */
 	cost?: number;
 	inputTokenDetails?: {
+		/** Uncached input tokens (billed at the full input rate). */
+		noCache?: number;
 		cacheRead?: number;
 		cacheWrite?: number;
 	};
@@ -27,8 +56,20 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	additionalMetadata?: T;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- LanguageModel is semantically distinct from string
-export type ModelConfig = string | { id: string; apiKey?: string; url?: string } | LanguageModel;
+/**
+ * Typed model config for known providers — gives IDE autocompletion for
+ * provider-specific credential fields based on the model id prefix.
+ */
+export type TypedModelConfig = {
+	[P in ProviderId]: { id: `${P}/${string}` } & ProviderCredentials<P>;
+}[ProviderId];
+
+export type ModelConfig =
+	| string
+	| TypedModelConfig
+	| { id: string; [k: string]: unknown }
+	// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- LanguageModel is semantically distinct from string
+	| LanguageModel;
 
 export interface AgentResult {
 	id?: string;
@@ -49,49 +90,85 @@ export interface AgentResult {
 
 export type StreamChunk = ContentMetadata &
 	(
+		| { type: 'start-step' }
+		| { type: 'finish-step' }
+		| { type: 'text-start'; id: string }
+		| { type: 'text-delta'; id: string; delta: string }
+		| { type: 'text-end'; id: string }
+		| { type: 'reasoning-start'; id: string }
+		| { type: 'reasoning-delta'; id: string; delta: string }
+		| { type: 'reasoning-end'; id: string }
+		| { type: 'tool-input-start'; toolCallId: string; toolName: string }
+		| { type: 'tool-input-delta'; toolCallId: string; delta: string }
+		| { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+		| {
+				/**
+				 * Emitted just before a tool handler starts executing. Bridged from
+				 * the runtime event bus (not part of the AI SDK stream). Pairs
+				 * with the subsequent `tool-result` to let consumers show a
+				 * mid-flight indicator between "LLM picked a tool" and "result arrived".
+				 */
+				type: 'tool-execution-start';
+				toolCallId: string;
+				toolName: string;
+				/** Epoch ms when the handler started, measured on the runtime. */
+				startTime: number;
+		  }
+		| {
+				/**
+				 * Emitted as soon as an individual tool handler settles, bridged from
+				 * the runtime event bus. Lets consumers flip a concurrent tool call to
+				 * its terminal state immediately, instead of waiting for the batched
+				 * `tool-result` chunks emitted only after the whole batch settles.
+				 */
+				type: 'tool-execution-end';
+				toolCallId: string;
+				toolName: string;
+				isError: boolean;
+				/** Epoch ms when the handler settled, measured on the runtime. */
+				endTime: number;
+		  }
+		| {
+				type: 'tool-result';
+				toolCallId: string;
+				toolName: string;
+				output: unknown;
+				isError?: boolean;
+				canceled?: boolean;
+		  }
+		| {
+				type: 'tool-call-suspended';
+				runId: string;
+				toolCallId: string;
+				toolName: string;
+				input?: unknown;
+				suspendPayload?: unknown;
+				/** JSON Schema describing the shape of data to send when resuming. */
+				resumeSchema?: JsonSchema7Type;
+		  }
+		// `message` is reserved for sub-agent / app-defined `CustomAgentMessage`
+		| { type: 'message'; message: AgentMessage }
+		| ({ type: 'subagent-started' } & SubAgentStartedPayload)
+		| ({ type: 'subagent-completed' } & SubAgentCompletedPayload)
+		| ({ type: 'subagent-chunk' } & SubAgentChunkPayload)
 		| {
 				type: 'finish';
 				finishReason: FinishReason;
 				usage?: TokenUsage;
 				model?: string;
 				structuredOutput?: unknown;
-				subAgentUsage?: SubAgentUsage[];
-				totalCost?: number;
 		  }
+		| { type: 'error'; error: unknown }
 		| {
-				type: 'text-delta';
-				id?: string;
-				delta: string;
-		  }
-		| {
-				type: 'reasoning-delta';
-				id?: string;
-				delta: string;
-		  }
-		| {
-				type: 'tool-call-delta';
-				id?: string;
-				name?: string;
-				argumentsDelta?: string;
-		  }
-		| {
-				type: 'error';
-				error: unknown;
-		  }
-		| {
-				type: 'message';
-				message: AgentMessage;
-				id?: string;
-		  }
-		| {
-				type: 'tool-call-suspended';
-				runId?: string;
-				toolCallId?: string;
-				toolName?: string;
-				input?: unknown;
-				suspendPayload?: unknown;
-				/** JSON Schema describing the shape of data to send when resuming. */
-				resumeSchema?: JsonSchema7Type;
+				/**
+				 * Non-fatal warning emitted during a run. The run continues — this
+				 * chunk only signals an MCP server that failed to connect so its tools were skipped.
+				 */
+				type: 'warning';
+				message: string;
+				code?: string;
+				source?: 'mcp';
+				server?: string;
 		  }
 	);
 
@@ -99,16 +176,104 @@ export interface RunOptions {
 	persistence?: AgentPersistenceOptions;
 }
 
+export interface AgentExecutionCounter {
+	incrementMessageCount(): void;
+	incrementToolCallCount(): void;
+	incrementTokenCount(tokenCount: number): void;
+}
+
 export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
-	/** Inherited telemetry from a parent agent. Used internally by asTool(). */
+	/**
+	 * Cap on completion tokens for each model call (`max_tokens` /
+	 * `maxOutputTokens`). When unset, provider/model defaults from
+	 * `resolveDefaultMaxOutputTokens` apply.
+	 */
+	maxOutputTokens?: number;
+	/** AI SDK `smoothStream` transform. Enabled by default; pass `false` to disable. */
+	smoothStream?: SmoothStreamOptions | false;
+	/**
+	 * Request the provider's raw stream events so a run aborted mid-turn can still
+	 * be billed for the tokens it consumed before the stop. Off by default — only
+	 * hosts that bill stopped runs (e.g. Instance AI) need it; leaving it off avoids
+	 * streaming raw provider events that nothing consumes.
+	 */
+	recoverUsageOnAbort?: boolean;
+	/**
+	 * Max silence in milliseconds between model stream chunks (after the turn
+	 * has streamed content) before the turn fails with a stall error. Healthy
+	 * streaming responses emit chunks continuously, so prolonged chunk silence
+	 * means a dead connection that the long AI network timeouts (raised to 1h
+	 * for slow non-streaming calls) would otherwise keep open. 0 disables the
+	 * stall watchdog entirely. Defaults to 90 seconds.
+	 */
+	modelStreamIdleTimeoutMs?: number;
+	/**
+	 * Max silence in milliseconds before the turn's first content chunk.
+	 * Longer than the idle limit by design — large cache-miss prompts spend
+	 * minutes in prompt processing before the provider sends anything — and a
+	 * trip here is recovered by a silent retry instead of a user-facing error.
+	 * Clamped to at least `modelStreamIdleTimeoutMs`. Defaults to 3 minutes.
+	 */
+	modelStreamFirstOutputTimeoutMs?: number;
+	/** Inherited telemetry from a host runtime. */
 	telemetry?: BuiltTelemetry;
+	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
+	executionCounter?: AgentExecutionCounter;
+	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
+	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
+	/** @deprecated Use `onStepEnd` instead. */
+	onStepFinish?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
+	/**
+	 * Durable-log RFC (resilience phase), opt-in: persist a `running`-status
+	 * checkpoint at every step boundary (after a tool batch settles, before the
+	 * next model call) so a crash loses only the in-flight step. Requires a
+	 * persistence-backed CheckpointStore; recover via `crashResume()`.
+	 */
+	stepCheckpoints?: boolean;
 }
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+}
+
+export interface AnthropicPromptCachingConfig {
+	/**
+	 * Cache breakpoint residency. Default `'1h'`: agent workloads pause (HITL,
+	 * tool loops, eval waves) and a 1h breakpoint fails cheaper than 5m under
+	 * that pattern. Use `'5m'` for continuously warm chat loops to avoid the
+	 * 2x write premium.
+	 */
+	ttl?: '5m' | '1h';
+}
+
+export interface OpenAIPromptCachingConfig {
+	/**
+	 * Routing hint combined with OpenAI's prefix hash to improve cache-hit
+	 * stickiness. Auto-generated at agent-version granularity when omitted
+	 * (agent name + model id + a hash of the base instructions). Set
+	 * explicitly for per-tenant routing.
+	 */
+	promptCacheKey?: string;
+	/** Retention policy. Default `'24h'` (free on gpt-4.1/5/5.1; the only supported value on gpt-5.5+). */
+	promptCacheRetention?: 'in_memory' | '24h';
+}
+
+/**
+ * Opt-in prompt caching config set via `Agent.promptCaching()`. Generates
+ * provider-specific `providerOptions` (Anthropic cache breakpoints, OpenAI
+ * cache key + retention) on top of the model's provider. Caller-supplied
+ * `providerOptions` always take precedence on conflicts.
+ */
+export interface PromptCachingConfig {
+	/** Master switch. Defaults to `true` when this config is set. */
+	enabled?: boolean;
+	/** Anthropic-specific config, or `false` to disable for Anthropic models. */
+	anthropic?: false | AnthropicPromptCachingConfig;
+	/** OpenAI-specific config, or `false` to disable for OpenAI models. */
+	openai?: false | OpenAIPromptCachingConfig;
 }
 
 export interface ToolResultEntry {
@@ -116,16 +281,7 @@ export interface ToolResultEntry {
 	input: unknown;
 	output: unknown;
 	transformed?: boolean;
-}
-
-/** Token usage from a sub-agent called via .asTool(). */
-export interface SubAgentUsage {
-	/** Name of the sub-agent. */
-	agent: string;
-	/** Model used by the sub-agent. */
-	model?: string;
-	/** Token usage for the sub-agent call. */
-	usage: TokenUsage;
+	canceled?: boolean;
 }
 
 export interface GenerateResult {
@@ -140,10 +296,6 @@ export interface GenerateResult {
 	providerMetadata?: Record<string, unknown>;
 	/** Tool calls made during the run (with merged results when available). */
 	toolCalls?: ToolResultEntry[];
-	/** Token usage from sub-agents called via .asTool(). */
-	subAgentUsage?: SubAgentUsage[];
-	/** Total cost (USD) including this agent + all sub-agents. */
-	totalCost?: number;
 	/**
 	 * Present when the run suspended awaiting tool resume (HITL).
 	 * Call `agent.resume('generate', data, { runId, toolCallId })` to resume.
@@ -163,6 +315,8 @@ export interface GenerateResult {
 	 * callers can handle them without try/catch.
 	 */
 	error?: unknown;
+	/** Return a snapshot of the agent state for this run. */
+	getState(): SerializableAgentState;
 }
 
 export interface StreamResult {
@@ -170,11 +324,18 @@ export interface StreamResult {
 	runId: string;
 	/** The readable stream of chunks. */
 	stream: ReadableStream<StreamChunk>;
+	/**
+	 * Return the current agent state for this run.
+	 * May be called while streaming or after the stream closes.
+	 */
+	getState(): SerializableAgentState;
 }
 
 export interface ResumeOptions {
 	runId: string;
 	toolCallId: string;
+	/** @internal Host lifecycle hook invoked after the checkpoint claim succeeds. */
+	onResumeClaimed?: () => void | Promise<void>;
 }
 
 export interface BuiltAgent {
@@ -191,12 +352,20 @@ export interface BuiltAgent {
 
 	on(event: AgentEvent, handler: AgentEventHandler): void;
 
-	asTool(description: string): BuiltTool;
-
-	getState(): SerializableAgentState;
-
 	/** Cancel the currently running agent. Synchronous — sets an abort flag that the agentic loop checks asynchronously. */
 	abort(): void;
+
+	/**
+	 * Close the agent and release all held resources.
+	 *
+	 * - Waits for any in-flight background tasks (title generation, observer
+	 *   cycles) to settle via the runtime's `dispose()`.
+	 * - Disconnects every MCP client that was attached via `.mcp()`.
+	 *
+	 * Safe to call multiple times. Should be called when the agent is no
+	 * longer needed so MCP transports are not left open indefinitely.
+	 */
+	close(): Promise<void>;
 
 	/** Resume a tool with custom resume data */
 	resume(
@@ -210,11 +379,11 @@ export interface BuiltAgent {
 		options: ResumeOptions & ExecutionOptions,
 	): Promise<StreamResult>;
 
-	/** Approve a tool that uses requiresApproval or needsApprovalFn */
+	/** Approve a tool that uses requireApproval or needsApprovalFn */
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	approve(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 
-	/** Deny a tool that uses requiresApproval or needsApprovalFn */
+	/** Deny a tool that uses requireApproval or needsApprovalFn */
 	deny(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	deny(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 }
@@ -246,6 +415,8 @@ export type PendingToolCall = {
 			suspended: true;
 			suspendPayload: unknown;
 			resumeSchema: JsonSchema7Type;
+			continuation?: JSONValue;
+			runId: string;
 	  }
 	| {
 			suspended: false;
@@ -261,9 +432,21 @@ export interface SerializableAgentState {
 	finishReason?: FinishReason;
 	usage?: TokenUsage;
 	executionOptions?: PersistedExecutionOptions;
+	/** Number of completed LLM iterations at suspension time. */
+	iterationCount?: number;
 }
 
 export type AgentPersistenceOptions = {
 	threadId: string;
 	resourceId: string;
+	hostMetadata?: JSONObject;
+	/** Internal child runs must only be resumed through their suspended parent. */
+	delegated?: true;
+	/**
+	 * The host application's own run id (distinct from the agent-SDK runId that
+	 * keys checkpoints). Persisted with checkpoints so host-side recovery (e.g.
+	 * Instance AI's interrupted-run sweep) can match a checkpoint to its run
+	 * exactly instead of guessing by recency.
+	 */
+	hostRunId?: string;
 };

@@ -3,16 +3,16 @@ import { runStageGuardrails } from '../../helpers/base';
 
 describe('base helper', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('runStageGuardrails', () => {
 		it('should run preflight stage guardrails and return grouped results', async () => {
-			const mockCheck1 = jest.fn().mockResolvedValue({
+			const mockCheck1 = vi.fn().mockResolvedValue({
 				guardrailName: 'guardrail-1',
 				tripwireTriggered: false,
 				confidenceScore: 0.3,
@@ -20,7 +20,7 @@ describe('base helper', () => {
 				info: {},
 			} as GuardrailResult);
 
-			const mockCheck2 = jest.fn().mockResolvedValue({
+			const mockCheck2 = vi.fn().mockResolvedValue({
 				guardrailName: 'guardrail-2',
 				tripwireTriggered: true,
 				confidenceScore: 0.8,
@@ -56,7 +56,7 @@ describe('base helper', () => {
 
 		it('should handle guardrail execution failures and wrap them in GuardrailError', async () => {
 			const mockError = new Error('Guardrail execution failed');
-			const mockCheck = jest.fn().mockRejectedValue(mockError);
+			const mockCheck = vi.fn().mockRejectedValue(mockError);
 
 			const stageGuardrails: StageGuardRails = {
 				preflight: [{ name: 'failing-guardrail', check: mockCheck }],
@@ -86,7 +86,7 @@ describe('base helper', () => {
 				message: 'Custom error message',
 				description: 'Custom error description',
 			};
-			const mockCheck = jest.fn().mockRejectedValue(customError);
+			const mockCheck = vi.fn().mockRejectedValue(customError);
 
 			const stageGuardrails: StageGuardRails = {
 				preflight: [{ name: 'custom-error-guardrail', check: mockCheck }],
@@ -110,7 +110,7 @@ describe('base helper', () => {
 
 		it('should handle guardrail execution failures with unknown error', async () => {
 			const unknownError = 'String error';
-			const mockCheck = jest.fn().mockRejectedValue(unknownError);
+			const mockCheck = vi.fn().mockRejectedValue(unknownError);
 
 			const stageGuardrails: StageGuardRails = {
 				preflight: [{ name: 'unknown-error-guardrail', check: mockCheck }],
@@ -148,7 +148,7 @@ describe('base helper', () => {
 		});
 
 		it('should handle mixed success and failure results', async () => {
-			const mockCheck1 = jest.fn().mockResolvedValue({
+			const mockCheck1 = vi.fn().mockResolvedValue({
 				guardrailName: 'success-guardrail',
 				tripwireTriggered: false,
 				confidenceScore: 0.2,
@@ -156,9 +156,9 @@ describe('base helper', () => {
 				info: {},
 			} as GuardrailResult);
 
-			const mockCheck2 = jest.fn().mockRejectedValue(new Error('Failed guardrail'));
+			const mockCheck2 = vi.fn().mockRejectedValue(new Error('Failed guardrail'));
 
-			const mockCheck3 = jest.fn().mockResolvedValue({
+			const mockCheck3 = vi.fn().mockResolvedValue({
 				guardrailName: 'triggered-guardrail',
 				tripwireTriggered: true,
 				confidenceScore: 0.9,
@@ -192,7 +192,7 @@ describe('base helper', () => {
 		});
 
 		it('should handle guardrails with execution failures', async () => {
-			const mockCheck = jest.fn().mockResolvedValue({
+			const mockCheck = vi.fn().mockResolvedValue({
 				guardrailName: 'execution-failed-guardrail',
 				tripwireTriggered: false,
 				confidenceScore: 0.5,

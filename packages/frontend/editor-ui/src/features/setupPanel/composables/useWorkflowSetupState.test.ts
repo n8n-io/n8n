@@ -1,4 +1,4 @@
-import { ref, nextTick } from 'vue';
+import { ref, shallowRef, nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
 import { createTestNode } from '@/__tests__/mocks';
@@ -8,8 +8,14 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
+import type { ITaskData } from 'n8n-workflow';
 
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
+import {
+	createWorkflowDocumentId,
+	type useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 let mockOnCredentialDeleted: ((credentialId: string) => void) | undefined;
 const mockProjectsStore = {
@@ -36,11 +42,17 @@ const mockUpdateNodeProperties = vi.fn();
 const mockUpdateNodeCredentialIssuesByName = vi.fn();
 const mockUpdateNodesCredentialsIssues = vi.fn();
 
-const mockWorkflowDocumentStore = {
-	allNodes: [] as INodeUi[],
-	getNodeByName: vi.fn() as ReturnType<typeof vi.fn>,
-	getNodes: vi.fn() as ReturnType<typeof vi.fn>,
+type Writable<T> = { -readonly [K in keyof T]: T[K] };
+
+const mockWorkflowDocumentStore: Writable<Partial<ReturnType<typeof useWorkflowDocumentStore>>> = {
+	allNodes: [],
 	updateNodeProperties: mockUpdateNodeProperties,
+	name: '',
+	settings: {},
+	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	connectionsBySourceNode: {},
+	connectionsByDestinationNode: {},
+	workflowTriggerNodes: [],
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
@@ -48,6 +60,7 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 	return {
 		...actual,
 		useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
+		injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 	};
 });
@@ -106,10 +119,19 @@ const createNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
 		...overrides,
 	}) as INodeUi;
 
+const executedRunData = [{ data: {} }] as ITaskData[];
+
 describe('useWorkflowSetupState', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
+
+	const mockActiveExecutionRunDataByNodeName = (runData: ITaskData[] | null) => {
+		vi.mocked(workflowExecutionStateStore.getActiveExecutionRunDataByNodeName).mockReturnValue(
+			runData,
+		);
+	};
 
 	beforeEach(() => {
 		createTestingPinia();
@@ -120,19 +142,22 @@ describe('useWorkflowSetupState', () => {
 		workflowsStore.workflowId = 'test-workflow';
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue(undefined);
 		credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
-		credentialsStore.getNodesWithAccess = vi.fn().mockReturnValue([]);
 		credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(true);
 		credentialsStore.isCredentialTestPending = vi.fn().mockReturnValue(false);
 		credentialsStore.getCredentialData = vi.fn().mockResolvedValue(undefined);
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
-		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue([]);
+		credentialsStore.fetchUsableCredentials = vi.fn().mockResolvedValue([]);
 		nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
-		workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+		workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		mockActiveExecutionRunDataByNodeName(null);
 
 		mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
 		mockWorkflowDocumentStore.allNodes = [];
 		mockWorkflowDocumentStore.getNodeByName = vi.fn();
-		mockWorkflowDocumentStore.getNodes = vi.fn();
+		mockWorkflowDocumentStore.connectionsBySourceNode = {};
+		mockWorkflowDocumentStore.connectionsByDestinationNode = {};
 		mockUpdateNodeProperties.mockReset();
 		mockUpdateNodeCredentialIssuesByName.mockReset();
 		mockUpdateNodesCredentialsIssues.mockReset();
@@ -453,7 +478,7 @@ describe('useWorkflowSetupState', () => {
 				displayName: 'Slack API',
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			mockActiveExecutionRunDataByNodeName(null);
 
 			const { credentialTypeStates } = useWorkflowSetupState();
 
@@ -477,7 +502,7 @@ describe('useWorkflowSetupState', () => {
 				displayName: 'Slack API',
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
+			mockActiveExecutionRunDataByNodeName(executedRunData);
 
 			const { credentialTypeStates } = useWorkflowSetupState();
 
@@ -558,7 +583,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
+			mockActiveExecutionRunDataByNodeName(executedRunData);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -578,7 +603,7 @@ describe('useWorkflowSetupState', () => {
 				displayName: 'Slack API',
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			mockActiveExecutionRunDataByNodeName(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -593,7 +618,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			mockActiveExecutionRunDataByNodeName(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -608,7 +633,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({});
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			mockActiveExecutionRunDataByNodeName(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -623,7 +648,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ polling: true });
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			mockActiveExecutionRunDataByNodeName(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -640,7 +665,7 @@ describe('useWorkflowSetupState', () => {
 			nodeTypesStore.getNodeType = vi
 				.fn()
 				.mockReturnValue({ triggerPanel: { header: 'Listening' } });
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			mockActiveExecutionRunDataByNodeName(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -1058,7 +1083,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			mockActiveExecutionRunDataByNodeName(null);
 
 			const { isAllComplete } = useWorkflowSetupState();
 
@@ -1506,7 +1531,7 @@ describe('useWorkflowSetupState', () => {
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Header Auth',
 			});
-			credentialsStore.getNodesWithAccess = vi.fn().mockReturnValue([]);
+			credentialsStore.isCredentialTypeTestable = vi.fn().mockReturnValue(false);
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
 				id: 'cred-1',

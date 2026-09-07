@@ -1,6 +1,6 @@
 import type { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	isWebhookHtmlSandboxingDisabled,
@@ -11,11 +11,11 @@ import {
 const securityConfig = mock<SecurityConfig>();
 
 describe('isWebhookHtmlSandboxingDisabled', () => {
-	beforeAll(() => {
-		jest.spyOn(Container, 'get').mockReturnValue(securityConfig);
-	});
 	afterAll(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
+	});
+	beforeEach(() => {
+		vi.spyOn(Container, 'get').mockReturnValue(securityConfig);
 	});
 
 	it('should return false when sandboxing is enabled', () => {
@@ -30,11 +30,11 @@ describe('isWebhookHtmlSandboxingDisabled', () => {
 });
 
 describe('isFormHtmlSandboxingDisabled', () => {
-	beforeAll(() => {
-		jest.spyOn(Container, 'get').mockReturnValue(securityConfig);
-	});
 	afterAll(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
+	});
+	beforeEach(() => {
+		vi.spyOn(Container, 'get').mockReturnValue(securityConfig);
 	});
 
 	it('should return false when sandboxing is enabled', () => {
@@ -52,7 +52,7 @@ describe('getHtmlSandboxCSP', () => {
 	it('should return correct CSP sandbox directive', () => {
 		const csp = getHtmlSandboxCSP();
 		expect(csp).toBe(
-			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 		);
 	});
 

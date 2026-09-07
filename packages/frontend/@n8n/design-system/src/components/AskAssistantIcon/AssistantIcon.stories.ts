@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import AssistantIcon from './AssistantIcon.vue';
 
 export default {
-	title: 'Assistant/AssistantIcon',
+	title: 'Areas/Assistant/AssistantIcon',
 	component: AssistantIcon,
 	argTypes: {},
 };
@@ -22,29 +22,25 @@ Default.args = {
 	theme: 'default',
 };
 
-export const Blank = Template.bind({
-	template: '<div style="background=black;"><AssistantIcon v-bind="args" /></div>',
+export const Variants: StoryFn = () => ({
+	components: { AssistantIcon },
+	template: `
+		<div style="display: flex; gap: 16px; align-items: center;">
+			<div style="background: lightgray; padding: 8px;"><AssistantIcon theme="default" /></div>
+			<div style="background: black; padding: 8px;"><AssistantIcon theme="blank" /></div>
+			<div style="background: lightgray; padding: 8px;"><AssistantIcon theme="disabled" /></div>
+		</div>
+	`,
 });
-Blank.args = {
-	theme: 'blank',
-};
 
-export const Mini = Template.bind({});
-Mini.args = {
-	size: 'mini',
-};
-
-export const Small = Template.bind({});
-Small.args = {
-	size: 'small',
-};
-
-export const Medium = Template.bind({});
-Medium.args = {
-	size: 'medium',
-};
-
-export const Large = Template.bind({});
-Large.args = {
-	size: 'large',
-};
+export const Sizes: StoryFn = () => ({
+	components: { AssistantIcon },
+	template: `
+		<div style="display: flex; gap: 16px; align-items: center; background: lightgray; padding: 8px;">
+			<AssistantIcon size="mini" />
+			<AssistantIcon size="small" />
+			<AssistantIcon size="medium" />
+			<AssistantIcon size="large" />
+		</div>
+	`,
+});

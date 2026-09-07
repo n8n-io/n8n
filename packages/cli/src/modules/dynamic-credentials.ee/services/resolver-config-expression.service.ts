@@ -20,7 +20,10 @@ export class ResolverConfigExpressionService {
 	 * Does not use runtime execution context or workflow data.
 	 * @throws Error if expression syntax is invalid
 	 */
-	async resolve(config: CredentialResolverConfiguration): Promise<CredentialResolverConfiguration> {
+	async resolve(
+		config: CredentialResolverConfiguration,
+		canUseExternalSecrets = false,
+	): Promise<CredentialResolverConfiguration> {
 		// If config is not INodeParameters, return as is
 		if (!isNodeParameters(config)) {
 			return config;
@@ -35,7 +38,9 @@ export class ResolverConfigExpressionService {
 		});
 
 		const additionalData = await getBase();
-		const additionalKeys = getNonWorkflowAdditionalKeys(additionalData);
+		const additionalKeys = getNonWorkflowAdditionalKeys(additionalData, {
+			secretsEnabled: canUseExternalSecrets,
+		});
 
 		await workflow.expression.acquireIsolate();
 		try {

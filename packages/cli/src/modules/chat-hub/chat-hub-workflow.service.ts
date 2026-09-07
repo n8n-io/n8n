@@ -13,11 +13,11 @@ import {
 	parseMessage,
 	collectChatArtifacts,
 } from '@n8n/chat-hub';
+import type { OperationContext } from '@n8n/db';
 import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
 	User,
-	withTransaction,
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -30,6 +30,8 @@ import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
+	getHighlightedInputKey,
+	HIGHLIGHTED_SESSION_KEY,
 	DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE,
 	IConnections,
 	IExecuteData,
@@ -48,6 +50,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
@@ -91,6 +94,7 @@ export class ChatHubWorkflowService {
 		private readonly chatHubToolService: ChatHubToolService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly cipher: Cipher,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -115,64 +119,81 @@ export class ChatHubWorkflowService {
 		timeZone: string,
 		vectorStoreSearch: { agentId: string; options: SemanticSearchOptions } | null,
 		executionMetadata: ChatHubAuthenticationMetadata,
-		trx?: EntityManager,
+		ctx: OperationContext = {},
 		providerSettings?: ChatProviderSettingsDto,
 	): Promise<{
 		workflowData: IWorkflowBase;
 		executionData: IRunExecutionData;
 		responseMode: ChatTriggerResponseMode;
 	}> {
-		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
-			this.logger.debug(
-				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
-			);
+		this.logger.debug(
+			`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
+		);
 
-			const { nodes, connections, executionData } = await this.buildChatWorkflow({
-				userId,
-				sessionId,
-				history,
-				humanMessage,
-				attachments,
-				credentials,
-				model,
-				systemMessage: systemMessage ?? this.getBaseSystemMessage(history, timeZone),
-				tools,
-				vectorStoreSearch,
-				executionMetadata,
-				providerSettings,
-			});
+		const { nodes, connections, executionData } = await this.buildChatWorkflow({
+			userId,
+			sessionId,
+			history,
+			humanMessage,
+			attachments,
+			credentials,
+			model,
+			systemMessage: systemMessage ?? this.getBaseSystemMessage(history, timeZone),
+			tools,
+			vectorStoreSearch,
+			executionMetadata,
+			providerSettings,
+		});
 
-			const newWorkflow = new WorkflowEntity();
+		const newWorkflow = new WorkflowEntity();
 
-			// Chat workflows are created as archived to hide them
-			// from the user by default while they are being run.
-			newWorkflow.isArchived = true;
+		// Chat workflows are created as archived to hide them
+		// from the user by default while they are being run.
+		newWorkflow.isArchived = true;
 
-			newWorkflow.versionId = uuidv4();
-			newWorkflow.name = `Chat ${sessionId}`;
-			newWorkflow.active = false;
-			newWorkflow.activeVersionId = null;
-			newWorkflow.nodes = nodes;
-			newWorkflow.connections = connections;
-			newWorkflow.settings = {
-				executionOrder: 'v1',
-			};
+		newWorkflow.versionId = uuidv4();
+		newWorkflow.name = `Chat ${sessionId}`;
+		newWorkflow.active = false;
+		newWorkflow.activeVersionId = null;
+		newWorkflow.nodes = nodes;
+		newWorkflow.connections = connections;
+		newWorkflow.settings = {
+			executionOrder: 'v1',
+		};
 
-			const workflow = await em.save<WorkflowEntity>(newWorkflow);
+		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId);
 
-			await em.save<SharedWorkflow>(
-				this.sharedWorkflowRepository.create({
-					role: 'workflow:owner',
-					projectId,
-					workflow,
-				}),
-			);
+		return await this.workflowRepository.runInTransaction(
+			{ ...ctx, policyCleared: cleared },
+			async (em, txCtx) => {
+				const workflow = await this.workflowRepository.createContent(newWorkflow, txCtx);
 
-			return {
-				workflowData: workflow,
-				executionData,
-				responseMode: 'streaming',
-			};
+				await em.save<SharedWorkflow>(
+					this.sharedWorkflowRepository.create({
+						role: 'workflow:owner',
+						projectId,
+						workflow,
+					}),
+				);
+
+				return {
+					workflowData: workflow,
+					executionData,
+					responseMode: 'streaming' as const,
+				};
+			},
+		);
+	}
+
+	/**
+	 * Chat workflows are system-generated but policed like any other: the nodes are real, so a
+	 * blocked node type has to block the run rather than reach the engine.
+	 */
+	private async enforceChatWorkflowSave(workflow: WorkflowEntity, projectId: string) {
+		return await this.policyEnforcementService.enforceWorkflowSave({
+			workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
+			storedWorkflow: null,
+			projectId,
 		});
 	}
 
@@ -184,58 +205,63 @@ export class ChatHubWorkflowService {
 		attachments: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
-		trx?: EntityManager,
+		ctx: OperationContext = {},
 		providerSettings?: ChatProviderSettingsDto,
 	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
-		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
-			this.logger.debug(
-				`Creating title generation workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
-			);
+		this.logger.debug(
+			`Creating title generation workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
+		);
 
-			const { nodes, connections, executionData } = this.buildTitleGenerationWorkflow(
-				userId,
-				sessionId,
-				credentials,
-				model,
-				humanMessage,
-				attachments,
-				providerSettings,
-			);
+		const { nodes, connections, executionData } = this.buildTitleGenerationWorkflow(
+			userId,
+			sessionId,
+			credentials,
+			model,
+			humanMessage,
+			attachments,
+			providerSettings,
+		);
 
-			const newWorkflow = new WorkflowEntity();
+		const newWorkflow = new WorkflowEntity();
 
-			// Chat workflows are created as archived to hide them
-			// from the user by default while they are being run.
-			newWorkflow.isArchived = true;
+		// Chat workflows are created as archived to hide them
+		// from the user by default while they are being run.
+		newWorkflow.isArchived = true;
 
-			newWorkflow.versionId = uuidv4();
-			newWorkflow.name = `Chat ${sessionId} (Title Generation)`;
-			newWorkflow.active = false;
-			newWorkflow.activeVersionId = null;
-			newWorkflow.nodes = nodes;
-			newWorkflow.connections = connections;
-			newWorkflow.settings = {
-				executionOrder: 'v1',
-				// Ensure chat workflows save data on successful executions regardless of instance settings
-				// This is done to ensure generated title can be read after execution.
-				saveDataSuccessExecution: 'all',
-			};
+		newWorkflow.versionId = uuidv4();
+		newWorkflow.name = `Chat ${sessionId} (Title Generation)`;
+		newWorkflow.active = false;
+		newWorkflow.activeVersionId = null;
+		newWorkflow.nodes = nodes;
+		newWorkflow.connections = connections;
+		newWorkflow.settings = {
+			executionOrder: 'v1',
+			// Ensure chat workflows save data on successful executions regardless of instance settings
+			// This is done to ensure generated title can be read after execution.
+			saveDataSuccessExecution: 'all',
+		};
 
-			const workflow = await em.save<WorkflowEntity>(newWorkflow);
+		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId);
 
-			await em.save<SharedWorkflow>(
-				this.sharedWorkflowRepository.create({
-					role: 'workflow:owner',
-					projectId,
-					workflow,
-				}),
-			);
+		return await this.workflowRepository.runInTransaction(
+			{ ...ctx, policyCleared: cleared },
+			async (em, txCtx) => {
+				const workflow = await this.workflowRepository.createContent(newWorkflow, txCtx);
 
-			return {
-				workflowData: workflow,
-				executionData,
-			};
-		});
+				await em.save<SharedWorkflow>(
+					this.sharedWorkflowRepository.create({
+						role: 'workflow:owner',
+						projectId,
+						workflow,
+					}),
+				);
+
+				return {
+					workflowData: workflow,
+					executionData,
+				};
+			},
+		);
 	}
 
 	/**
@@ -422,7 +448,7 @@ export class ChatHubWorkflowService {
 		const nodeNames = new Set(nodes.map((node) => node.name));
 		const distinctTools = tools.map((tool, i) => {
 			// Spread out the tool nodes so that they don't overlap on the canvas
-			const position = [
+			const position: [number, number] = [
 				700 + Math.floor(i / 3) * 60 + (i % 3) * 120,
 				300 + Math.floor(i / 3) * 120 - (i % 3) * 30,
 			];
@@ -526,7 +552,7 @@ export class ChatHubWorkflowService {
 				: {}),
 		};
 
-		const nodeExecutionStack = this.prepareExecutionData(
+		const nodeExecutionStack = await this.prepareExecutionData(
 			chatTriggerNode,
 			sessionId,
 			humanMessage,
@@ -537,6 +563,13 @@ export class ChatHubWorkflowService {
 		const executionData = createRunExecutionData({
 			executionData: {
 				nodeExecutionStack,
+			},
+			resultData: {
+				metadata: ChatHubWorkflowService.buildHighlightedDataMetadata(
+					chatTriggerNode.name,
+					humanMessage,
+					sessionId,
+				),
 			},
 			manualData: {
 				userId,
@@ -886,6 +919,15 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 					},
 				};
 			}
+			case 'nvidia': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			default:
 				throw new OperationalError('Unsupported model provider');
 		}
@@ -1145,14 +1187,14 @@ Respond the title only:`,
 		return 'file';
 	}
 
-	prepareExecutionData(
+	async prepareExecutionData(
 		triggerNode: INode,
 		sessionId: string,
 		message: string,
 		attachments: IBinaryData[],
 		executionMetadata: ChatHubAuthenticationMetadata,
-	): IExecuteData[] {
-		const encryptedMetadata = this.cipher.encrypt(executionMetadata);
+	): Promise<IExecuteData[]> {
+		const encryptedMetadata = await this.cipher.encryptV2(executionMetadata);
 		// Attachments are already processed (id field populated) by the caller
 		return [
 			{
@@ -1194,6 +1236,17 @@ Respond the title only:`,
 		];
 	}
 
+	private static buildHighlightedDataMetadata(
+		triggerNodeName: string,
+		message: string,
+		sessionId: string,
+	): Record<string, string> {
+		return {
+			[getHighlightedInputKey(triggerNodeName)]: message,
+			[HIGHLIGHTED_SESSION_KEY]: sessionId,
+		};
+	}
+
 	async prepareReplyWorkflow(
 		user: User,
 		sessionId: ChatSessionId,
@@ -1204,7 +1257,7 @@ Respond the title only:`,
 		tools: INode[],
 		attachments: IBinaryData[],
 		timeZone: string,
-		trx: EntityManager,
+		ctx: OperationContext,
 		executionMetadata: ChatHubAuthenticationMetadata,
 		manual?: boolean,
 	): Promise<PreparedChatWorkflow> {
@@ -1215,7 +1268,7 @@ Respond the title only:`,
 				model.workflowId,
 				message,
 				attachments,
-				trx,
+				ctx,
 				executionMetadata,
 				manual,
 			);
@@ -1230,7 +1283,7 @@ Respond the title only:`,
 				message,
 				attachments,
 				timeZone,
-				trx,
+				ctx,
 				executionMetadata,
 			);
 		}
@@ -1247,7 +1300,7 @@ Respond the title only:`,
 			attachments,
 			timeZone,
 			null,
-			trx,
+			ctx,
 			executionMetadata,
 		);
 	}
@@ -1264,34 +1317,38 @@ Respond the title only:`,
 		attachments: IBinaryData[],
 		timeZone: string,
 		vectorStoreSearch: { agentId: string; options: SemanticSearchOptions } | null,
-		trx: EntityManager,
+		ctx: OperationContext,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
-		await this.chatHubSettingsService.ensureModelIsAllowed(model, trx);
-		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
-		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
-		const providerSettings = await this.chatHubSettingsService.getProviderSettings(
-			model.provider,
-			trx,
-		);
+		// Joins the caller's transaction and recovers its manager for the reads below, which
+		// still take an `EntityManager`.
+		return await this.workflowRepository.runInTransaction(ctx, async (trx, txCtx) => {
+			await this.chatHubSettingsService.ensureModelIsAllowed(model, trx);
+			this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
+			const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
+			const providerSettings = await this.chatHubSettingsService.getProviderSettings(
+				model.provider,
+				trx,
+			);
 
-		return await this.createChatWorkflow(
-			user.id,
-			sessionId,
-			projectId,
-			history,
-			message,
-			attachments,
-			credentials,
-			model,
-			systemMessage,
-			tools,
-			timeZone,
-			vectorStoreSearch,
-			executionMetadata,
-			trx,
-			providerSettings,
-		);
+			return await this.createChatWorkflow(
+				user.id,
+				sessionId,
+				projectId,
+				history,
+				message,
+				attachments,
+				credentials,
+				model,
+				systemMessage,
+				tools,
+				timeZone,
+				vectorStoreSearch,
+				executionMetadata,
+				txCtx,
+				providerSettings,
+			);
+		});
 	}
 
 	private async prepareChatAgentWorkflow(
@@ -1302,7 +1359,35 @@ Respond the title only:`,
 		message: string,
 		attachments: IBinaryData[],
 		timeZone: string,
+		ctx: OperationContext,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
+		return await this.workflowRepository.runInTransaction(ctx, async (trx, txCtx) => {
+			return await this.prepareChatAgentWorkflowInTransaction(
+				agentId,
+				user,
+				sessionId,
+				history,
+				message,
+				attachments,
+				timeZone,
+				trx,
+				txCtx,
+				executionMetadata,
+			);
+		});
+	}
+
+	private async prepareChatAgentWorkflowInTransaction(
+		agentId: string,
+		user: User,
+		sessionId: ChatSessionId,
+		history: ChatHubMessage[],
+		message: string,
+		attachments: IBinaryData[],
+		timeZone: string,
 		trx: EntityManager,
+		ctx: OperationContext,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		const agent = await this.chatHubAgentRepository.getOneById(agentId, user.id, trx);
@@ -1359,12 +1444,40 @@ Respond the title only:`,
 			agent.files.length > 0 && semanticSearchOptions
 				? { agentId: agent.id, options: semanticSearchOptions }
 				: null,
-			trx,
+			ctx,
 			executionMetadata,
 		);
 	}
 
 	private async prepareWorkflowAgentWorkflow(
+		user: User,
+		sessionId: ChatSessionId,
+		workflowId: string,
+		message: string,
+		attachments: IBinaryData[],
+		ctx: OperationContext,
+		executionMetadata: ChatHubAuthenticationMetadata,
+		manual?: boolean,
+	) {
+		// This branch runs the user's own workflow rather than creating one, so it needs the
+		// caller's manager but no clearance.
+		return await this.workflowRepository.runInTransaction(
+			ctx,
+			async (trx) =>
+				await this.prepareWorkflowAgentWorkflowInTransaction(
+					user,
+					sessionId,
+					workflowId,
+					message,
+					attachments,
+					trx,
+					executionMetadata,
+					manual,
+				),
+		);
+	}
+
+	private async prepareWorkflowAgentWorkflowInTransaction(
 		user: User,
 		sessionId: ChatSessionId,
 		workflowId: string,
@@ -1441,7 +1554,7 @@ Respond the title only:`,
 			);
 		}
 
-		const nodeExecutionStack = this.prepareExecutionData(
+		const nodeExecutionStack = await this.prepareExecutionData(
 			chatTrigger,
 			sessionId,
 			message,
@@ -1449,10 +1562,21 @@ Respond the title only:`,
 			executionMetadata,
 		);
 
+		const autoSaveHighlightedData = chatTriggerParams.options?.autoSaveHighlightedData !== false;
+
 		const executionData = createRunExecutionData({
 			executionData: {
 				nodeExecutionStack,
 			},
+			resultData: autoSaveHighlightedData
+				? {
+						metadata: ChatHubWorkflowService.buildHighlightedDataMetadata(
+							chatTrigger.name,
+							message,
+							sessionId,
+						),
+					}
+				: undefined,
 			manualData: {
 				userId: user.id,
 			},
@@ -1604,7 +1728,7 @@ You can update the most recent document using the commands described above, or c
 		attachments: Array<{ attachment: IBinaryData; knowledgeId: string }>,
 		agentId: string,
 		vectorStoreSearch: SemanticSearchOptions,
-		trx: EntityManager,
+		ctx: OperationContext,
 		workflowId: string,
 	): Promise<{
 		workflowData: IWorkflowBase;
@@ -1742,45 +1866,50 @@ You can update the most recent document using the commands described above, or c
 			},
 		];
 
-		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
-			const newWorkflow = new WorkflowEntity();
+		const newWorkflow = new WorkflowEntity();
 
-			// Chat workflows are created as archived to hide them
-			// from the user by default while they are being run.
-			newWorkflow.isArchived = true;
+		// Chat workflows are created as archived to hide them
+		// from the user by default while they are being run.
+		newWorkflow.isArchived = true;
 
-			newWorkflow.id = workflowId;
-			newWorkflow.versionId = uuidv4();
-			newWorkflow.name = `Chat files insertion ${uuidv4()}`;
-			newWorkflow.active = false;
-			newWorkflow.activeVersionId = null;
-			newWorkflow.nodes = nodes;
-			newWorkflow.connections = connections;
-			newWorkflow.settings = {
-				executionOrder: 'v1',
-			};
+		newWorkflow.id = workflowId;
+		newWorkflow.versionId = uuidv4();
+		newWorkflow.name = `Chat files insertion ${uuidv4()}`;
+		newWorkflow.active = false;
+		newWorkflow.activeVersionId = null;
+		newWorkflow.nodes = nodes;
+		newWorkflow.connections = connections;
+		newWorkflow.settings = {
+			executionOrder: 'v1',
+		};
 
-			const workflow = await em.save<WorkflowEntity>(newWorkflow);
+		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId);
 
-			await em.save<SharedWorkflow>(
-				this.sharedWorkflowRepository.create({
-					role: 'workflow:owner',
-					projectId,
-					workflow,
-				}),
-			);
+		return await this.workflowRepository.runInTransaction(
+			{ ...ctx, policyCleared: cleared },
+			async (em, txCtx) => {
+				const workflow = await this.workflowRepository.createContent(newWorkflow, txCtx);
 
-			return {
-				workflowData: workflow,
-				executionData: createRunExecutionData({
-					executionData: {
-						nodeExecutionStack,
-					},
-					manualData: {
-						userId: user.id,
-					},
-				}),
-			};
-		});
+				await em.save<SharedWorkflow>(
+					this.sharedWorkflowRepository.create({
+						role: 'workflow:owner',
+						projectId,
+						workflow,
+					}),
+				);
+
+				return {
+					workflowData: workflow,
+					executionData: createRunExecutionData({
+						executionData: {
+							nodeExecutionStack,
+						},
+						manualData: {
+							userId: user.id,
+						},
+					}),
+				};
+			},
+		);
 	}
 }

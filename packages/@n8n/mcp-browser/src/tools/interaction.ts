@@ -7,6 +7,7 @@ import {
 	createConnectedTool,
 	elementTargetSchema,
 	pageIdField,
+	snapshotField,
 	withSnapshotEnvelope,
 } from './helpers';
 
@@ -41,6 +42,7 @@ const browserClickSchema = z
 			.optional()
 			.describe('Modifier keys to hold'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Click an element');
 
@@ -67,7 +69,7 @@ function browserClick(connection: BrowserConnection): ToolDefinition {
 			});
 		},
 		browserClickOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -79,10 +81,17 @@ const browserTypeSchema = z
 	.object({
 		element: elementTargetSchema.describe('Element to type into'),
 		text: z.string().describe('Text to type'),
+		mode: z
+			.enum(['type', 'paste'])
+			.optional()
+			.describe(
+				'"type" (default) sends one keystroke per character. "paste" inserts the whole value in one operation and replaces any existing content, so `clear` is redundant with it. Use "paste" for multi-line values, code or JSON editors, and whenever typed text comes back garbled, duplicated or wrongly indented.',
+			),
 		clear: z.boolean().optional().describe('Clear existing text first'),
 		submit: z.boolean().optional().describe('Press Enter after typing'),
 		delay: z.number().optional().describe('Delay between keystrokes in ms'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Type text into an element');
 
@@ -100,6 +109,7 @@ function browserType(connection: BrowserConnection): ToolDefinition {
 		browserTypeSchema,
 		async (state, input, pageId) => {
 			await state.adapter.type(pageId, input.element, input.text, {
+				mode: input.mode,
 				clear: input.clear,
 				submit: input.submit,
 				delay: input.delay,
@@ -111,7 +121,7 @@ function browserType(connection: BrowserConnection): ToolDefinition {
 			});
 		},
 		browserTypeOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -124,6 +134,7 @@ const browserSelectSchema = z
 		element: elementTargetSchema.describe('Select element to interact with'),
 		values: z.array(z.string()).describe('Option values or labels to select'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Select option(s) in a <select> element');
 
@@ -135,14 +146,14 @@ function browserSelect(connection: BrowserConnection): ToolDefinition {
 	return createConnectedTool(
 		connection,
 		'browser_select',
-		'Select option(s) in a <select> element. Use ref from browser_snapshot (preferred) or a selector as fallback.',
+		'Select option(s) in a <select> element. Use ref from browser_snapshot (preferred) or a selector as fallback. Always use this for native select elements instead of clicks',
 		browserSelectSchema,
 		async (state, input, pageId) => {
 			const selected = await state.adapter.select(pageId, input.element, input.values);
 			return formatCallToolResult({ selected });
 		},
 		browserSelectOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -155,6 +166,7 @@ const browserDragSchema = z
 		from: elementTargetSchema.describe('Source element to drag from'),
 		to: elementTargetSchema.describe('Target element to drag to'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Drag from one element to another');
 
@@ -173,7 +185,7 @@ function browserDrag(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ dragged: true });
 		},
 		browserDragOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -185,6 +197,7 @@ const browserHoverSchema = z
 	.object({
 		element: elementTargetSchema.describe('Element to hover over'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Hover over an element');
 
@@ -203,7 +216,7 @@ function browserHover(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ hovered: true });
 		},
 		browserHoverOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -215,6 +228,7 @@ const browserPressSchema = z
 	.object({
 		keys: z.string().describe('Key or key combination (e.g. "Enter", "Control+A")'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Press keyboard key(s)');
 
@@ -233,7 +247,7 @@ function browserPress(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ pressed: input.keys });
 		},
 		browserPressOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -245,6 +259,7 @@ const scrollToElementSchema = z.object({
 	mode: z.literal('element').describe('Scroll an element into view'),
 	element: elementTargetSchema.describe('Element to scroll into view'),
 	pageId: pageIdField,
+	snapshot: snapshotField,
 });
 
 const scrollByDirectionSchema = z.object({
@@ -252,11 +267,14 @@ const scrollByDirectionSchema = z.object({
 	direction: z.enum(['up', 'down']).describe('Scroll direction'),
 	amount: z.number().optional().describe('Pixels to scroll (default: 500)'),
 	pageId: pageIdField,
+	snapshot: snapshotField,
 });
 
 const browserScrollSchema = z
 	.discriminatedUnion('mode', [scrollToElementSchema, scrollByDirectionSchema])
-	.describe('Scroll an element into view, or scroll the page by direction/amount');
+	.describe(
+		'Scroll an element into view, or scroll the page by direction/amount in pixels. Always use an element if possible.',
+	);
 
 const browserScrollOutputSchema = withSnapshotEnvelope({
 	scrolled: z.boolean(),
@@ -280,7 +298,7 @@ function browserScroll(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ scrolled: true });
 		},
 		browserScrollOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -295,6 +313,7 @@ const browserUploadSchema = z
 			.describe('File input element (not needed when a file chooser dialog is pending)'),
 		files: z.array(z.string()).describe('Absolute file paths to upload'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Set files on a file input element or fulfill a pending file chooser dialog');
 
@@ -314,7 +333,7 @@ function browserUpload(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ uploaded: true, files: input.files });
 		},
 		browserUploadOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -327,6 +346,7 @@ const browserDialogSchema = z
 		action: z.enum(['accept', 'dismiss']).describe('How to handle the dialog'),
 		text: z.string().optional().describe('Text to enter (for prompt dialogs)'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Handle a JavaScript dialog');
 
@@ -347,6 +367,6 @@ function browserDialog(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ handled: true, action: input.action, dialogType });
 		},
 		browserDialogOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }

@@ -1,14 +1,15 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { returnJsonArray } from 'n8n-core';
 import type { IPollFunctions } from 'n8n-workflow';
 import Parser from 'rss-parser';
 
 import { RssFeedReadTrigger } from '../RssFeedReadTrigger.node';
+import type { Mock } from 'vitest';
 
-jest.mock('rss-parser');
+vi.mock('rss-parser');
 
 const now = new Date('2024-02-01T01:23:45.678Z');
-jest.useFakeTimers({ now });
+vi.useFakeTimers({ now });
 
 describe('RssFeedReadTrigger', () => {
 	describe('poll', () => {
@@ -17,8 +18,11 @@ describe('RssFeedReadTrigger', () => {
 		const newItemDate = '2022-01-02T00:00:00.000Z';
 
 		const node = new RssFeedReadTrigger();
-		const pollFunctions = mock<IPollFunctions>({
-			helpers: mock({ returnJsonArray }),
+		const helpers = mock<IPollFunctions['helpers']>({ returnJsonArray });
+		const pollFunctions = mock<IPollFunctions>({ helpers });
+
+		beforeEach(() => {
+			vi.clearAllMocks();
 		});
 
 		it('should throw an error if the feed URL is empty', async () => {
@@ -27,14 +31,16 @@ describe('RssFeedReadTrigger', () => {
 			await expect(node.poll.call(pollFunctions)).rejects.toThrowError();
 
 			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
-			expect(Parser.prototype.parseURL).not.toHaveBeenCalled();
+			expect(helpers.httpRequest).not.toHaveBeenCalled();
+			expect(Parser.prototype.parseString).not.toHaveBeenCalled();
 		});
 
 		it('should return new items from the feed', async () => {
 			const pollData = mock({ lastItemDate });
 			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
 			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
-			(Parser.prototype.parseURL as jest.Mock).mockResolvedValue({
+			helpers.httpRequest.mockResolvedValue('<rss />');
+			(Parser.prototype.parseString as Mock).mockResolvedValue({
 				items: [{ isoDate: lastItemDate }, { isoDate: newItemDate }],
 			});
 
@@ -43,7 +49,10 @@ describe('RssFeedReadTrigger', () => {
 			expect(result).toEqual([[{ json: { isoDate: newItemDate } }]]);
 			expect(pollFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
 			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
-			expect(Parser.prototype.parseURL).toHaveBeenCalledWith(feedUrl);
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ method: 'GET', url: feedUrl }),
+			);
+			expect(Parser.prototype.parseString).toHaveBeenCalledWith('<rss />');
 			expect(pollData.lastItemDate).toEqual(newItemDate);
 		});
 
@@ -51,28 +60,36 @@ describe('RssFeedReadTrigger', () => {
 			const pollData = mock();
 			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
 			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
-			(Parser.prototype.parseURL as jest.Mock).mockResolvedValue({ items: [{}, {}] });
+			helpers.httpRequest.mockResolvedValue('<rss />');
+			(Parser.prototype.parseString as Mock).mockResolvedValue({ items: [{}, {}] });
 
 			const result = await node.poll.call(pollFunctions);
 
 			expect(result).toEqual(null);
 			expect(pollFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
 			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
-			expect(Parser.prototype.parseURL).toHaveBeenCalledWith(feedUrl);
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ method: 'GET', url: feedUrl }),
+			);
+			expect(Parser.prototype.parseString).toHaveBeenCalledWith('<rss />');
 		});
 
 		it('should return null if the feed is empty', async () => {
 			const pollData = mock({ lastItemDate });
 			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
 			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
-			(Parser.prototype.parseURL as jest.Mock).mockResolvedValue({ items: [] });
+			helpers.httpRequest.mockResolvedValue('<rss />');
+			(Parser.prototype.parseString as Mock).mockResolvedValue({ items: [] });
 
 			const result = await node.poll.call(pollFunctions);
 
 			expect(result).toEqual(null);
 			expect(pollFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
 			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
-			expect(Parser.prototype.parseURL).toHaveBeenCalledWith(feedUrl);
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ method: 'GET', url: feedUrl }),
+			);
+			expect(Parser.prototype.parseString).toHaveBeenCalledWith('<rss />');
 			expect(pollData.lastItemDate).toEqual(lastItemDate);
 		});
 	});

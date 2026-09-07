@@ -40,12 +40,12 @@ describe('token-exchange.schemas', () => {
 				expect(result.success).toBe(true);
 			});
 
-			test('accepts role as array', () => {
+			test('rejects role as array', () => {
 				const result = ExternalTokenClaimsSchema.safeParse({
 					...validClaims,
 					role: ['admin', 'viewer'],
 				});
-				expect(result.success).toBe(true);
+				expect(result.success).toBe(false);
 			});
 		});
 

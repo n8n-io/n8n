@@ -1,10 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
 	ExecutionStatus,
@@ -13,23 +15,30 @@ import type {
 	WebhookResponseMode,
 } from 'n8n-workflow';
 import {
-	createDeferredPromise,
 	ExecutionCancelledError,
-	sleep,
+	OperationalError,
 	SystemShutdownExecutionCancelledError,
 } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
-import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
+import type {
+	IExecutingWorkflowData,
+	IExecutionsCurrentSummary,
+	ResumableExecution,
+} from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
+import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 
+import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import { EventService } from './events/event.service';
-import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
+
+const DEFAULT_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
 @Service()
 export class ActiveExecutions {
@@ -61,14 +70,28 @@ export class ActiveExecutions {
 	 */
 	async add(
 		executionData: IWorkflowExecutionDataProcess,
-		maybeExecutionId?: string,
+		existingExecution?: ResumableExecution,
 	): Promise<string> {
-		let executionStatus: ExecutionStatus = maybeExecutionId ? 'running' : 'new';
+		let executionStatus: ExecutionStatus = existingExecution ? 'running' : 'new';
 		const mode = executionData.executionMode;
 		const capacityReservation = new ConcurrencyCapacityReservation(this.concurrencyControl);
 
+		// Evaluation executions are already gated instance-wide by the
+		// test-runner fan-out, which throttles the shared evaluation
+		// concurrency queue before launching each case (see
+		// `test-runner.service.ee.ts`). Reserving capacity again here would
+		// consume a second slot from the same queue for the same case; once
+		// the fan-out fills the queue up to its cap, this nested reservation
+		// blocks forever — before `setRunning` runs — leaving the execution
+		// stuck at status 'new' with `startedAt` null (TRUST-144). Skip the
+		// reservation for evaluation mode; `release()` below is a no-op when
+		// nothing was reserved.
+		const shouldReserveCapacity = mode !== 'evaluation';
+
+		let executionId: string;
+
 		try {
-			if (maybeExecutionId === undefined) {
+			if (existingExecution === undefined) {
 				const fullExecutionData: CreateExecutionPayload = {
 					data: executionData.executionData!,
 					mode,
@@ -77,6 +100,8 @@ export class ActiveExecutions {
 					status: executionStatus,
 					workflowId: executionData.workflowData.id,
 					retryOf: executionData.retryOf ?? undefined,
+					tracingContext: executionData.tracingContext ?? null,
+					deduplicationKey: executionData.deduplicationKey,
 				};
 
 				const workflowId = executionData.workflowData.id;
@@ -84,37 +109,46 @@ export class ActiveExecutions {
 					fullExecutionData.workflowId = workflowId;
 				}
 
-				maybeExecutionId = await this.executionPersistence.create(fullExecutionData);
-				assert(maybeExecutionId);
+				executionId = await this.executionPersistence.create(fullExecutionData);
+				assert(executionId);
 
-				await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+				if (shouldReserveCapacity) {
+					await capacityReservation.reserve({ mode, executionId });
+				}
 
 				if (this.executionsConfig.mode === 'regular') {
-					await this.executionRepository.setRunning(maybeExecutionId);
+					await this.executionRepository.setRunning(executionId);
 				}
 				executionStatus = 'running';
 			} else {
 				// Is an existing execution we want to finish so update in DB
+				executionId = existingExecution.executionId;
 
-				await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+				if (shouldReserveCapacity) {
+					await capacityReservation.reserve({ mode, executionId });
+				}
 
 				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
-					id: maybeExecutionId,
+					id: executionId,
 					data: executionData.executionData!,
 					waitTill: null,
 					status: executionStatus,
-					// this is resuming, so keep `startedAt` as it was
 				};
 
-				const updateSucceeded = await this.executionRepository.updateExistingExecution(
-					maybeExecutionId,
+				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
+					executionId,
 					execution,
-					{ requireStatus: 'waiting' }, // Only update if status is 'waiting'
+					// Only claim the execution if it is still in the status the caller expected
+					{ requireStatus: existingExecution.expectedStatus },
 				);
 
 				if (!updateSucceeded) {
 					// Another process is already resuming this execution
-					throw new ExecutionAlreadyResumingError(maybeExecutionId);
+					throw new ExecutionAlreadyResumingError(executionId);
+				}
+
+				if (existingExecution.expectedStatus === 'new') {
+					await this.executionRepository.setRunning(executionId);
 				}
 			}
 		} catch (error) {
@@ -122,8 +156,6 @@ export class ActiveExecutions {
 			throw error;
 		}
 
-		// At this point executionId is guaranteed to be defined - capture it for use in closures
-		const executionId = maybeExecutionId;
 		const resumingExecution = this.activeExecutions[executionId];
 		const postExecutePromise = createDeferredPromise<IRun | undefined>();
 
@@ -252,7 +284,7 @@ export class ActiveExecutions {
 		const execution = this.getExecutionOrFail(executionId);
 
 		if (execution.status !== 'waiting' && execution?.responsePromise) {
-			execution.responsePromise.resolve({});
+			execution.responsePromise.resolve(EXECUTION_ENDED_WITHOUT_RESPONSE);
 			this.logger.debug('Execution response promise cleaned', { executionId });
 		}
 	}
@@ -285,6 +317,62 @@ export class ActiveExecutions {
 		}
 
 		return returnData;
+	}
+
+	getRunningExecutionIds(): string[] {
+		return Object.keys(this.activeExecutions).filter(
+			(executionId) => this.activeExecutions[executionId].status === 'running',
+		);
+	}
+
+	/**
+	 * @param writeDeadlineMs - How long to wait for the cancelled status to be recorded.
+	 *   Pass what the caller's own shutdown window can still afford.
+	 */
+	async cancelRunningExecutions(
+		writeDeadlineMs = DEFAULT_CANCEL_WRITE_TIMEOUT_MS,
+	): Promise<string[]> {
+		// An execution is registered before its workflow execution is attached. To
+		// cancel inside that window records the execution as failed, not cancelled.
+		const executionIds = this.getRunningExecutionIds().filter(
+			(executionId) => this.activeExecutions[executionId].workflowExecution !== undefined,
+		);
+
+		if (executionIds.length === 0) return executionIds;
+
+		// The engine's own write for a cancel is fire-and-forget and conditional on the
+		// execution not being canceled, so recording first makes it a no-op, not a race.
+		await this.recordAsCancelled(executionIds, writeDeadlineMs);
+
+		for (const executionId of executionIds) {
+			this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
+		}
+
+		return executionIds;
+	}
+
+	/** Record executions as cancelled, bounded so a stalling database cannot hold up shutdown. */
+	private async recordAsCancelled(executionIds: string[], writeDeadlineMs: number) {
+		let timeout: NodeJS.Timeout | undefined;
+
+		try {
+			await Promise.race([
+				this.executionRepository.cancelManyRunning(executionIds),
+				new Promise<never>((_, reject) => {
+					timeout = setTimeout(
+						() => reject(new OperationalError('Timed out writing the cancelled status')),
+						writeDeadlineMs,
+					);
+				}),
+			]);
+		} catch (error) {
+			this.logger.error(
+				`Failed to record ${executionIds.length} cancelled executions: ${ensureError(error).message}`,
+				{ executionIds },
+			);
+		} finally {
+			clearTimeout(timeout);
+		}
 	}
 
 	setStatus(executionId: string, status: ExecutionStatus) {

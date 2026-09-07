@@ -49,7 +49,7 @@ export class RoleMappingRuleController {
 	@Post('/')
 	@GlobalScope('roleMappingRule:create')
 	async create(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		res: Response,
 		@Body body: CreateRoleMappingRuleDto,
 	): Promise<RoleMappingRuleResponse | Response> {
@@ -57,13 +57,13 @@ export class RoleMappingRuleController {
 			return res.status(403).json({ message: 'Provisioning is not licensed' });
 		}
 
-		return await this.roleMappingRuleService.create(body);
+		return await this.roleMappingRuleService.create(body, req.user);
 	}
 
 	@Post('/:id/move')
 	@GlobalScope('roleMappingRule:update')
 	async move(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		res: Response,
 		@Body body: MoveRoleMappingRuleDto,
 		@Param('id') id: string,
@@ -72,14 +72,19 @@ export class RoleMappingRuleController {
 			return res.status(403).json({ message: 'Provisioning is not licensed' });
 		}
 
-		return await this.roleMappingRuleService.move(id, body.targetIndex);
+		return await this.roleMappingRuleService.move({
+			id,
+			targetIndex: body.targetIndex,
+			userId: req.user.id,
+			userEmail: req.user.email,
+		});
 	}
 
 	@Patch('/:id')
 	@GlobalScope('roleMappingRule:update')
 	// @Body at param index 2 (same as `create`) so controller-registry applies Zod to PatchRoleMappingRuleDto; @Param before @Body skips body validation.
 	async patch(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		res: Response,
 		@Body body: PatchRoleMappingRuleDto,
 		@Param('id') id: string,
@@ -88,13 +93,18 @@ export class RoleMappingRuleController {
 			return res.status(403).json({ message: 'Provisioning is not licensed' });
 		}
 
-		return await this.roleMappingRuleService.patch(id, body);
+		return await this.roleMappingRuleService.patch({
+			id,
+			dto: body,
+			userId: req.user.id,
+			userEmail: req.user.email,
+		});
 	}
 
 	@Delete('/:id')
 	@GlobalScope('roleMappingRule:delete')
 	async delete(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		res: Response,
 		@Param('id') id: string,
 	): Promise<{ success: true } | Response> {
@@ -102,7 +112,11 @@ export class RoleMappingRuleController {
 			return res.status(403).json({ message: 'Provisioning is not licensed' });
 		}
 
-		await this.roleMappingRuleService.delete(id);
+		await this.roleMappingRuleService.delete({
+			id,
+			userId: req.user.id,
+			userEmail: req.user.email,
+		});
 
 		return { success: true };
 	}

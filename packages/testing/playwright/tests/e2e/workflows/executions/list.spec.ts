@@ -2,7 +2,6 @@ import flatted from 'flatted';
 
 import { test, expect } from '../../../../fixtures/base';
 import executionOutOfMemoryResponse from '../../../../fixtures/execution-out-of-memory-server-response.json';
-import { retryUntil } from '../../../../utils/retry-utils';
 
 test.describe(
 	'Executions Filter',
@@ -49,7 +48,7 @@ test.describe(
 
 				await n8n.page.waitForTimeout(500);
 				// Select an option from the dropdown
-				await n8n.page.getByRole('option', { name: 'Success' }).click();
+				await n8n.executions.getStatusOption('Success').click();
 
 				// Verify the filter request was sent to the backend (confirms selection worked)
 				const filterRequest = await filterRequestPromise;
@@ -107,6 +106,16 @@ test.describe('Workflow Executions', () => {
 			await expect(n8n.executions.getSuccessfulExecutionItems()).toHaveCount(28);
 			await expect(n8n.executions.getFailedExecutionItems()).toHaveCount(2);
 			await expect(n8n.executions.getFirstExecutionItem()).toHaveClass(/_active_/);
+		});
+
+		test('should open command bar with keyboard shortcut on executions view', async ({ n8n }) => {
+			await n8n.executionsComposer.createExecutions(1);
+
+			await n8n.canvas.clickExecutionsTab();
+			await expect(n8n.executions.getPreview()).toBeVisible();
+
+			await n8n.commandBar.openWithShortcut();
+			await expect(n8n.commandBar.getItem('Delete this execution')).toBeVisible();
 		});
 
 		test('should not redirect back to execution tab when request is not done before leaving the page', async ({
@@ -193,8 +202,7 @@ test.describe('Workflow Executions', () => {
 			await n8n.canvas.clickExecutionsTab();
 			await executionDetailPromise;
 
-			const iframe = n8n.executions.getPreviewIframe();
-			await expect(iframe.locator('body')).not.toBeEmpty();
+			await expect(n8n.executions.getPreview()).toBeVisible();
 
 			await n8n.executions.getErrorNotificationsInPreview().first().waitFor({ timeout: 5000 });
 
@@ -234,26 +242,26 @@ test.describe('Workflow Executions', () => {
 			await n8n.canvas.clickExecutionsTab();
 			await executionsResponsePromise;
 
-			const iframe = n8n.executions.getPreviewIframe();
-			await expect(iframe.locator('body')).toBeAttached();
+			const preview = n8n.executions.getPreview();
+			await expect(preview).toBeAttached();
 
 			await n8n.executions.getExecutionItems().nth(2).click();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.executions.getExecutionItems().nth(4).click();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.executions.getExecutionItems().nth(6).click();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.page.goBack();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.page.goBack();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.page.goBack();
-			await expect(iframe.locator('body')).toBeAttached();
+			await expect(preview).toBeAttached();
 
 			await n8n.page.goBack();
 
@@ -270,7 +278,10 @@ test.describe('Workflow Executions', () => {
 
 			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-			const webhookResponse = await api.request.post(`/webhook/${webhookPath}`, { data: {} });
+			const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
+				method: 'POST',
+				data: {},
+			});
 			expect(webhookResponse.ok()).toBe(true);
 
 			const execution = await api.workflows.waitForExecution(workflowId, 10000);
@@ -286,7 +297,7 @@ test.describe('Workflow Executions', () => {
 
 			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-			const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
+			const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`);
 			expect(webhookResponse.ok()).toBe(true);
 
 			const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
@@ -304,10 +315,10 @@ test.describe('Workflow Executions', () => {
 
 			await api.workflows.waitForExecution(workflowId, 15000);
 
-			await retryUntil(async () => {
+			await expect(async () => {
 				const completedExecution = await api.workflows.getExecution(execution.id);
 				expect(completedExecution.startedAt).toBe(originalStartedAt);
-			});
+			}).toPass();
 		});
 	});
 
@@ -320,15 +331,15 @@ test.describe('Workflow Executions', () => {
 			await n8n.canvas.clickExecutionsTab();
 			await expect(n8n.executions.getExecutionsSidebar()).toBeVisible();
 			await expect(n8n.executions.getExecutionsEmptyList()).toBeVisible();
-			await expect(n8n.page.getByTestId('workflow-execution-no-trigger-content')).toBeVisible();
+			await expect(n8n.executions.getNoTriggerContent()).toBeVisible();
 
-			await n8n.page.getByRole('button', { name: 'Add first step' }).click();
+			await n8n.executions.getAddFirstStepButton().click();
 			await n8n.canvas.nodeCreatorItemByName('Trigger manually').click();
 
 			await n8n.canvas.clickExecutionsTab();
 			await expect(n8n.executions.getExecutionsSidebar()).toBeVisible();
 			await expect(n8n.executions.getExecutionsEmptyList()).toBeVisible();
-			await expect(n8n.page.getByTestId('workflow-execution-no-content')).toBeVisible();
+			await expect(n8n.executions.getNoContent()).toBeVisible();
 
 			await n8n.canvas.waitForSaveWorkflowCompleted();
 			await n8n.page.waitForURL(/\/workflow\/.+\/executions$/);

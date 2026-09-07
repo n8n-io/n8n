@@ -1,132 +1,194 @@
 <script lang="ts" setup>
-import { ref, watch, computed, onBeforeUnmount, useTemplateRef } from 'vue';
-import { N8nSpinner, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import type { PushMessage } from '@n8n/api-types';
-import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { IWorkflowDb } from '@/Interface';
+import { computed, provide, useTemplateRef } from 'vue';
+import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
+import {
+	EditorEnabledFeaturesKey,
+	type EditorEnabledFeatures,
+} from '@/app/constants/injectionKeys';
+import {
+	InstanceAiEditorCapabilityKey,
+	type InstanceAiEditorCapability,
+} from '@/app/composables/useInstanceAiEditorCapability';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
+import {
+	buildInstanceAiArtifactCredentialQuestion,
+	buildInstanceAiCredentialHandoffContext,
+} from '../composables/useInstanceAiHandoff';
+import { useIsAgentWorking } from '../composables/useIsAgentWorking';
+import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
+import type { FixWithAiError } from '../fixWithAi';
+import { useThread } from '../instanceAi.store';
+
+export interface WorkflowFailuresReport {
+	workflowId: string;
+	executionId: string;
+	errors: FixWithAiError[];
+}
 
 const props = withDefaults(
 	defineProps<{
-		workflowId: string | null;
-		executionId: string | null;
-		/** Incremented to force re-fetch even when workflowId stays the same (e.g. workflow was modified). */
+		workflowId: string;
+		/** Incremented to force re-init even when workflowId stays the same (e.g. workflow was modified). */
 		refreshKey?: number;
+		/** Latest completed execution produced by the agent for this workflow. */
+		executionResult?: ExecutionResult;
 	}>(),
-	{ refreshKey: 0 },
+	{ refreshKey: 0, executionResult: undefined },
 );
 
 const emit = defineEmits<{
-	'iframe-ready': [];
+	'workflow-failures': [report: WorkflowFailuresReport];
 }>();
 
-const i18n = useI18n();
-const workflowsListStore = useWorkflowsListStore();
-const previewRef = useTemplateRef<InstanceType<typeof WorkflowPreview>>('previewComponent');
+const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
 
-const workflow = ref<IWorkflowDb | null>(null);
-const isLoading = ref(false);
-const fetchError = ref<string | null>(null);
-let fetchGeneration = 0;
-
-// When executionId is set, switch WorkflowPreview to execution mode
-const previewMode = computed(() => (props.executionId ? 'execution' : 'workflow'));
-
-function handleIframeMessage(event: MessageEvent) {
-	if (typeof event.data !== 'string' || !event.data.includes('"command"')) return;
-	try {
-		const json = JSON.parse(event.data);
-		if (json.command === 'n8nReady') {
-			emit('iframe-ready');
-		}
-	} catch {
-		// Ignore parse errors
-	}
+function requestFitView() {
+	hostRef.value?.requestFitView();
 }
 
-function relayPushEvent(event: PushMessage) {
-	const iframe = (previewRef.value as { iframeRef?: HTMLIFrameElement | null } | undefined)
-		?.iframeRef;
-	if (!iframe?.contentWindow) return;
-	iframe.contentWindow.postMessage(
-		JSON.stringify({ command: 'executionEvent', event }),
-		window.location.origin,
-	);
+defineExpose({ requestFitView });
+
+// On executionFinished with errors, surface a structured failures report so
+// InstanceAiThreadView can offer "Fix with AI". This used to come via
+// postMessage from the iframe (useReportWorkflowFailuresToParent); now we read
+// the per-execution data directly.
+
+function collectNodeErrors(runData: IRunData | null | undefined): FixWithAiError[] {
+	const errors: FixWithAiError[] = [];
+	for (const [nodeName, tasks] of Object.entries(runData ?? {})) {
+		const error = tasks?.at(-1)?.error;
+		if (!error) continue;
+		const description = error.description ? ` (${error.description})` : '';
+		errors.push({ nodeName, errorMessage: `${error.message ?? 'Unknown error'}${description}` });
+	}
+	return errors;
 }
 
-async function fetchWorkflow(id: string) {
-	const isRefresh = workflow.value?.id === id;
-	const generation = ++fetchGeneration;
-	fetchError.value = null;
-	if (!isRefresh) {
-		isLoading.value = true;
-		workflow.value = null;
+// A pre-execution validation abort ("The 'X' node has issues — Parameter Y
+// required") executes no nodes, so it leaves no live error. But the FE has
+// already validated the workflow with the same NodeHelpers the backend aborts
+// on, so the failing node's issues are already on the document store — read
+// them synchronously instead of round-tripping for the execution.
+function collectValidationIssues(workflowId: string): FixWithAiError[] {
+	const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+	const errors: FixWithAiError[] = [];
+	for (const node of docStore.allNodes) {
+		if (!node.issues) continue;
+		const messages = nodeIssuesToString(node.issues, node);
+		if (messages.length === 0) continue;
+		errors.push({ nodeName: node.name, errorMessage: messages.join(' ') });
 	}
-
-	try {
-		const result = await workflowsListStore.fetchWorkflow(id);
-		if (generation !== fetchGeneration) return;
-		workflow.value = result;
-	} catch {
-		if (generation !== fetchGeneration) return;
-		workflow.value = null;
-		fetchError.value = i18n.baseText('instanceAi.workflowPreview.fetchError');
-	} finally {
-		if (generation === fetchGeneration) {
-			isLoading.value = false;
-		}
-	}
+	return errors;
 }
 
-// Re-fetch when workflowId changes OR when refreshKey increments (same workflow modified).
-watch(
-	() => [props.workflowId, props.refreshKey] as const,
-	async ([id]) => {
-		if (id) {
-			await fetchWorkflow(id);
-		} else {
-			workflow.value = null;
-			fetchError.value = null;
-		}
-	},
-	{ immediate: true },
-);
+function reportWorkflowFailures(executionId: string, workflowId: string) {
+	// Node-level runtime errors stream into the store live during the run, so
+	// they're already present when it finishes.
+	const execStore = useExecutionDataStore(createExecutionDataId(executionId));
+	let errors = collectNodeErrors(execStore.executionRunData);
 
-// Listen for iframe ready signal
-window.addEventListener('message', handleIframeMessage);
+	// A pre-execution validation abort runs no nodes, so there's no live error —
+	// but the FE has already validated the workflow, so read the failing node's
+	// issues straight from the document store (see collectValidationIssues).
+	if (errors.length === 0) {
+		errors = collectValidationIssues(workflowId);
+	}
 
-onBeforeUnmount(() => {
-	window.removeEventListener('message', handleIframeMessage);
+	if (errors.length === 0) return;
+	emit('workflow-failures', { workflowId, executionId, errors });
+}
+
+const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
+	workflowId: () => props.workflowId,
+	executionResult: () => props.executionResult,
+	reportWorkflowFailures,
 });
 
-defineExpose({ relayPushEvent });
+// === Editing lock ===
+// Lock the artifact's editor while the agent is working, so the user can't
+// drag nodes into a mid-stream conflict. Thread-wide, since the per-workflow
+// signals below only fire around tool calls that name a workflowId — leaving
+// the canvas editable through workspace file edits and failed builds.
+const thread = useThread();
+const isAgentWorking = useIsAgentWorking();
+
+// The workflow + execution the editor handed off, applied once when this
+// preview first opens. Consumed (cleared) here, so it never re-applies on a
+// later reload or re-open — it only reflects the redirect. Both snapshots are
+// passed to the canvas host, which opens/seeds them directly (no refetch).
+const handoff = thread.consumePendingHandoff(props.workflowId);
+const initialWorkflow = handoff?.workflow;
+const initialExecution = handoff?.execution;
+
+const isAgentEditingThisWorkflow = computed(() => {
+	for (const message of thread.messages) {
+		if (!message.agentTree) continue;
+		if (isAgentEditingWorkflow(message.agentTree, props.workflowId)) return true;
+	}
+	return false;
+});
+
+// Per-editor host overrides for the embedded editor. Instance AI supersedes the
+// standalone AI helpers (`false`), forces the canvas read-only while the agent
+// is working (see the editing lock above), and suppresses workflow
+// execution result toasts (success + error) — the agent surfaces run outcomes
+// in the thread UI, so the canvas would only duplicate them. The execute button
+// demotes to a secondary action — the conversation is the primary surface here.
+// NodeView derives its read-only state from these via useEditorContext();
+// usePushConnection reads the toast flags to gate execution result
+// notifications.
+const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
+	aiAssistant: false,
+	aiBuilder: false,
+	askAi: false,
+	readOnly: isAgentWorking.value || isAgentEditingThisWorkflow.value,
+	executionSuccessToasts: false,
+	executionErrorToasts: false,
+	executionButtonType: 'secondary',
+}));
+provide(EditorEnabledFeaturesKey, enabledFeatures);
+
+const rootStore = useRootStore();
+
+// The artifact already lives inside an Instance AI thread, so its entry points
+// append guidance to that conversation rather than opening a new one. It offers
+// only `openCredential` — `openWorkflow` is omitted because the workflow is
+// already the thread's subject, which hides the editor hand-off button here.
+const instanceAiCapability: InstanceAiEditorCapability = {
+	openCredential: async (credential) => {
+		// The handoff context carries the recipe's verified key page and the
+		// paste-only steering; without it the agent re-researches or suggests
+		// editing the pre-filled form.
+		void thread.sendMessage(
+			buildInstanceAiArtifactCredentialQuestion(credential),
+			undefined,
+			rootStore.pushRef,
+			buildInstanceAiCredentialHandoffContext(credential),
+		);
+		// Appends to the current thread → close the modal so the conversation shows.
+		return true;
+	},
+};
+provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 </script>
 
 <template>
 	<div :class="$style.content">
-		<!-- Error (only when no workflow to show) -->
-		<div v-if="fetchError && !workflow" :class="$style.centerState">
-			<N8nText color="text-light">{{ fetchError }}</N8nText>
-		</div>
-
-		<!-- Preview — stays mounted during re-fetch to keep iframe ready state -->
-		<WorkflowPreview
-			v-if="workflow"
-			ref="previewComponent"
-			:mode="previewMode"
-			:workflow="workflow"
-			:execution-id="props.executionId ?? undefined"
-			:can-open-ndv="true"
-			:hide-controls="false"
-			:suppress-notifications="true"
-			loader-type="spinner"
+		<WorkflowCanvasHost
+			ref="host"
+			:workflow-id="workflowId"
+			:refresh-key="refreshKey"
+			:initial-workflow="initialWorkflow"
+			:initial-execution="initialExecution"
+			@workflow-loaded="restoreExecutionResult"
 		/>
-
-		<!-- Loading overlay (shown during initial load or when no workflow yet) -->
-		<div v-if="isLoading && !workflow" :class="$style.centerState">
-			<N8nSpinner type="dots" />
-		</div>
 	</div>
 </template>
 
@@ -135,15 +197,6 @@ defineExpose({ relayPushEvent });
 	flex: 1;
 	min-height: 0;
 	position: relative;
-	height: 100%;
-}
-
-.centerState {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--xs);
 	height: 100%;
 }
 </style>

@@ -1,5 +1,6 @@
 patch:
   x-eov-operation-id: updatePackage
+  x-required-scope: communityPackage:update
   x-eov-operation-handler: v1/handlers/community-packages/community-packages.handler
   tags:
     - CommunityPackage
@@ -23,6 +24,12 @@ patch:
             version:
               type: string
               description: Specific semver version to update to
+            verify:
+              type: boolean
+              description: >
+                Whether to verify the package against the n8n-vetted package list.
+                Setting to false will allow installing or updating to an unverified version.
+                Default is true.
   responses:
     '200':
       description: Package updated successfully.
@@ -40,6 +47,7 @@ patch:
     - ApiKeyAuth: []
 delete:
   x-eov-operation-id: uninstallPackage
+  x-required-scope: communityPackage:uninstall
   x-eov-operation-handler: v1/handlers/community-packages/community-packages.handler
   tags:
     - CommunityPackage

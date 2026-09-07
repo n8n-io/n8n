@@ -1,5 +1,6 @@
 import { ref, computed, type Ref } from 'vue';
 import { isSafeObjectKey } from '@n8n/api-types';
+import { redactTelemetryText } from '@n8n/telemetry';
 import type { InstanceAiMessage, InstanceAiAgentNode } from '@n8n/api-types';
 import type { RatingFeedback } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
@@ -30,16 +31,31 @@ function hasPendingConfirmation(node: InstanceAiAgentNode): boolean {
 
 interface UseResponseFeedbackOptions {
 	messages: Ref<InstanceAiMessage[]>;
-	currentThreadId: Ref<string>;
+	threadId: string;
 	telemetry: { track: (event: string, props?: ITelemetryTrackProperties) => void };
+	/**
+	 * Optional remote callback invoked alongside telemetry to annotate the
+	 * LangSmith trace for the rated response. Fire-and-forget: errors are
+	 * swallowed so a LangSmith outage never blocks the UI.
+	 */
+	postFeedback?: (
+		threadId: string,
+		responseId: string,
+		payload: { rating: 'up' | 'down'; comment?: string },
+	) => Promise<void>;
 }
 
 export function useResponseFeedback({
 	messages,
-	currentThreadId,
+	threadId,
 	telemetry,
+	postFeedback,
 }: UseResponseFeedbackOptions) {
 	const feedbackByResponseId = ref<Record<string, RatingFeedback>>({});
+	// Tracks the last-known rating per response for LangSmith upsert merging.
+	// Kept separate from `feedbackByResponseId` which only records submitted
+	// (non-pending) feedback for UI state.
+	const ratingByResponseId = new Map<string, 'up' | 'down'>();
 
 	/**
 	 * Computes the one currently rateable response identity for the thread.
@@ -98,9 +114,9 @@ export function useResponseFeedback({
 		if (!isSafeObjectKey(responseId)) return;
 
 		if (payload.rating) {
-			telemetry.track('Instance AI response rating submitted', {
-				threadId: currentThreadId.value,
-				responseId,
+			telemetry.track('User rated workflow generation', {
+				thread_id: threadId,
+				response_id: responseId,
 				helpful: payload.rating === 'up',
 			});
 
@@ -110,10 +126,13 @@ export function useResponseFeedback({
 		}
 
 		if (payload.feedback !== undefined) {
-			telemetry.track('Instance AI response feedback text submitted', {
-				threadId: currentThreadId.value,
-				responseId,
-				feedback: payload.feedback,
+			telemetry.track('User submitted workflow generation feedback', {
+				thread_id: threadId,
+				response_id: responseId,
+				// A free-text box the user types into, and this event goes to
+				// RudderStack *and* PostHog straight from the browser — no backend
+				// hop can scrub it.
+				feedback: redactTelemetryText(payload.feedback),
 			});
 
 			feedbackByResponseId.value[responseId] = {
@@ -121,11 +140,31 @@ export function useResponseFeedback({
 				...payload,
 			};
 		}
+
+		if (payload.rating) {
+			ratingByResponseId.set(responseId, payload.rating);
+		}
+
+		// Fan out to LangSmith trace annotation. Fire-and-forget: merge the
+		// remembered rating with any new comment text so the backend can upsert a
+		// single feedback record regardless of which signal arrived first.
+		if (postFeedback) {
+			const rating = payload.rating ?? ratingByResponseId.get(responseId);
+			if (rating) {
+				void postFeedback(threadId, responseId, {
+					rating,
+					...(payload.feedback !== undefined ? { comment: payload.feedback } : {}),
+				}).catch(() => {
+					// Intentionally swallowed — LangSmith outages must never break the UI.
+				});
+			}
+		}
 	}
 
 	/** Clear all feedback state (e.g. on thread switch). */
 	function resetFeedback(): void {
 		feedbackByResponseId.value = {};
+		ratingByResponseId.clear();
 	}
 
 	return {

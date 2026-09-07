@@ -12,9 +12,13 @@
 		"dist"
 	],
 	"scripts": {
+		"clean": "rimraf dist .turbo",
+		"check": "tsx src/cli.ts",
 		"build": "tsc -p tsconfig.build.json",
+		"build:unchecked": "tsc -p tsconfig.build.json --noCheck",
 		"dev": "tsc --watch",
 		"test": "vitest run",
+		"test:unit": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
 		"format": "biome format --write .",
@@ -24,14 +28,18 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"license": "MIT",
-	"devDependencies": {
+	"dependencies": {
 		"@n8n/rules-engine": "workspace:*",
 		"@n8n/vitest-config": "workspace:*",
-		"@vitest/coverage-v8": "catalog:",
 		"fast-glob": "catalog:",
+		"ts-morph": "catalog:",
 		"tsx": "catalog:",
-		"typescript": "catalog:",
-		"vitest": "catalog:",
-		"yaml": "^2.4.0"
-	}
+		"typescript": "catalog:typescript",
+		"yaml": "catalog:"
+	},
+  "devDependencies": {
+		"@vitest/coverage-v8": "catalog:",
+		"fast-check": "catalog:",
+		"vitest": "catalog:"
+  }
 }

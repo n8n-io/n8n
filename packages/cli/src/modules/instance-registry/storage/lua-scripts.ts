@@ -20,7 +20,8 @@ return 1
 `;
 
 /**
- * Atomically read all active registrations: SMEMBERS + MGET, filtering expired keys.
+ * Atomically read all active registrations: SMEMBERS + batched MGET, filtering expired keys.
+ * Batches MGET in chunks of 1000 to avoid Lua unpack() stack overflow (~7999 limit).
  *
  * KEYS[1] - Membership set key, e.g. `n8n:{instance:}members`
  *
@@ -29,11 +30,18 @@ return 1
 export const READ_ALL_SCRIPT = `
 local members = redis.call('SMEMBERS', KEYS[1])
 if #members == 0 then return {} end
-local values = redis.call('MGET', unpack(members))
 local result = {}
-for i, v in ipairs(values) do
-  if v ~= false then
-    table.insert(result, v)
+local batch = 1000
+for i = 1, #members, batch do
+  local slice = {}
+  for j = i, math.min(i + batch - 1, #members) do
+    table.insert(slice, members[j])
+  end
+  local values = redis.call('MGET', unpack(slice))
+  for _, v in ipairs(values) do
+    if v ~= false then
+      table.insert(result, v)
+    end
   end
 end
 return result
@@ -41,6 +49,7 @@ return result
 
 /**
  * Atomically clean up stale membership entries whose data keys have expired.
+ * Batches MGET in chunks of 1000 to avoid Lua unpack() stack overflow (~7999 limit).
  *
  * KEYS[1] - Membership set key, e.g. `n8n:{instance:}members`
  *
@@ -49,12 +58,19 @@ return result
 export const CLEANUP_SCRIPT = `
 local members = redis.call('SMEMBERS', KEYS[1])
 if #members == 0 then return 0 end
-local values = redis.call('MGET', unpack(members))
 local removed = 0
-for i, v in ipairs(values) do
-  if v == false then
-    redis.call('SREM', KEYS[1], members[i])
-    removed = removed + 1
+local batch = 1000
+for i = 1, #members, batch do
+  local slice = {}
+  for j = i, math.min(i + batch - 1, #members) do
+    table.insert(slice, members[j])
+  end
+  local values = redis.call('MGET', unpack(slice))
+  for k, v in ipairs(values) do
+    if v == false then
+      redis.call('SREM', KEYS[1], members[i + k - 1])
+      removed = removed + 1
+    end
   end
 end
 return removed

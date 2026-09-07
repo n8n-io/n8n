@@ -10,7 +10,7 @@ const LEVEL_RANK: Record<LogLevel, number> = {
 	debug: 4,
 };
 
-let currentLevel: LogLevel = 'debug';
+let currentLevel: LogLevel = 'info';
 
 export function configureLogger(options: { level?: LogLevel }): void {
 	currentLevel = options.level ?? 'info';

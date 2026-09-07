@@ -10,21 +10,17 @@ const baseNodeParameters = {
 	fileId: 'file-123',
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn().mockResolvedValue({}),
+		apiRequest: vi.fn().mockResolvedValue({}),
 	};
 });
 
 describe('Test Airtop, delete file operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../transport');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should delete file successfully', async () => {

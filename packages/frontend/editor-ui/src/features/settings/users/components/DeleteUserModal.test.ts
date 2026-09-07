@@ -8,7 +8,7 @@ import { DELETE_USER_MODAL_KEY } from '../users.constants';
 import { STORES } from '@n8n/stores';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import userEvent from '@testing-library/user-event';
-import { useUsersStore } from '../users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ROLE, type UsersList, type User } from '@n8n/api-types';
 
@@ -62,7 +62,7 @@ const mockUsersList: UsersList = {
 
 const initialState = {
 	[STORES.UI]: {
-		modalsById: {
+		modalStateById: {
 			[DELETE_USER_MODAL_KEY]: {
 				open: true,
 			},
@@ -95,7 +95,7 @@ describe('DeleteUserModal', () => {
 		usersStore = mockedStore(useUsersStore);
 
 		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.searchProjects.mockResolvedValue({
+		projectsStore.searchShareableProjects.mockResolvedValue({
 			count: initialState[STORES.PROJECTS].projects.length,
 			data: initialState[STORES.PROJECTS].projects,
 		});
@@ -104,6 +104,7 @@ describe('DeleteUserModal', () => {
 			state: mockUsersList,
 			isLoading: false,
 			execute: vi.fn(),
+			executeImmediate: vi.fn(),
 			isReady: true,
 			error: null,
 			then: vi.fn(),

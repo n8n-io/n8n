@@ -123,6 +123,32 @@ describe('components/N8nInput', () => {
 			const container = wrapper.container.querySelector('div > div');
 			expect(container?.className).not.toContain('ph-no-capture');
 		});
+
+		it('should mask a textarea and add ph-no-capture when masked', () => {
+			const wrapper = render(Input, {
+				props: {
+					type: 'textarea',
+					masked: true,
+				},
+			});
+			const textarea = wrapper.container.querySelector('textarea');
+			expect(textarea).toBeInTheDocument();
+			expect(textarea?.className).toContain('masked');
+			const container = wrapper.container.querySelector('div > div');
+			expect(container?.className).toContain('ph-no-capture');
+		});
+
+		it('should not mask a plain textarea', () => {
+			const wrapper = render(Input, {
+				props: {
+					type: 'textarea',
+				},
+			});
+			const textarea = wrapper.container.querySelector('textarea');
+			expect(textarea?.className).not.toContain('masked');
+			const container = wrapper.container.querySelector('div > div');
+			expect(container?.className).not.toContain('ph-no-capture');
+		});
 	});
 
 	describe('v-model', () => {

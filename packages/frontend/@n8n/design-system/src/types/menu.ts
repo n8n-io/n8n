@@ -10,8 +10,9 @@ export type IMenuItem = {
 	label: string;
 	icon?:
 		| IconName
-		| { type: 'icon'; value: IconName; color?: IconColor }
-		| { type: 'emoji'; value: string; color?: IconColor };
+		| (string & {})
+		| { type: 'icon'; value: IconName | (string & {}); color?: IconColor | (string & {}) }
+		| { type: 'emoji'; value: string; color?: IconColor | (string & {}) };
 	secondaryIcon?: {
 		name: IconName;
 		size?: 'xsmall' | 'small' | 'medium' | 'large';
@@ -37,9 +38,9 @@ export type IMenuItem = {
 	disabledReason?: string;
 	notification?: boolean;
 	size?: 'medium' | 'small';
-	beta?: boolean;
 	preview?: boolean;
 	new?: boolean;
+	creditsTag?: string;
 };
 
 export interface ICustomMenuItem {

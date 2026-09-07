@@ -26,4 +26,8 @@ export declare namespace TestRunsRequest {
 	type Cancel = AuthenticatedRequest<RouteParams.WorkflowId & RouteParams.TestRunId>;
 
 	type GetCases = AuthenticatedRequest<RouteParams.WorkflowId & RouteParams.TestRunId>;
+
+	type CancelCase = AuthenticatedRequest<
+		RouteParams.WorkflowId & RouteParams.TestRunId & { caseId: string }
+	>;
 }

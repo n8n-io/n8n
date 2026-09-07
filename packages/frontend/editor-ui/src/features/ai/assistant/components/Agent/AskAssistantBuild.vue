@@ -1,27 +1,23 @@
 <script lang="ts" setup>
 import { useBuilderStore, type WorkflowBuilderJourneyEventType } from '../../builder.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState, VIEWS } from '@/app/constants';
-import { computed, watch, ref, nextTick, useSlots } from 'vue';
+import { computed, watch, ref, nextTick, useSlots, provide } from 'vue';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useRoute, useRouter } from 'vue-router';
-import type {
-	ChatUI,
-	RatingFeedback,
-	WorkflowSuggestion,
-} from '@n8n/design-system/types/assistant';
-import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
+import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '@n8n/design-system';
+import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { jsonParse } from 'n8n-workflow';
 import ExecuteMessage from './ExecuteMessage.vue';
@@ -38,7 +34,7 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
@@ -47,13 +43,14 @@ import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import shuffle from 'lodash/shuffle';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
 import { watchExecutionCompletion } from '@/features/ai/assistant/composables/useExecutionWatcher';
 
 import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
+import { AiBuilderScrollToBottomKey } from '@/app/constants/injectionKeys';
 import {
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
@@ -84,11 +81,8 @@ const workflowAutosaveStore = useWorkflowSaveStore();
 const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const slots = useSlots();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	workflowId.value
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
 const assistantStore = useAssistantStore();
 const settingsStore = useSettingsStore();
@@ -117,6 +111,7 @@ onDocumentVisible(() => {
 const processedWorkflowUpdates = ref(new Set<string>());
 const accumulatedNodeIdsToTidyUp = ref<string[]>([]);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
+provide(AiBuilderScrollToBottomKey, () => n8nChatRef.value?.scrollToBottom());
 const chatInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const inputText = ref('');
@@ -189,7 +184,7 @@ const showExecuteMessage = computed(() => {
 
 	return (
 		!builderStore.streaming &&
-		(workflowDocumentStore.value?.allNodes ?? []).length > 0 &&
+		workflowDocumentStore.value.allNodes.length > 0 &&
 		builderStore.hasMessages &&
 		!hasErrorAfterUpdate &&
 		!hasTaskAbortedAfterUpdate &&
@@ -208,7 +203,7 @@ const thinkingCompletionMessage = computed(() =>
 );
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
-	if (builderStore.hasMessages || (workflowDocumentStore.value?.allNodes ?? []).length > 0) {
+	if (builderStore.hasMessages || workflowDocumentStore.value.allNodes.length > 0) {
 		return undefined;
 	}
 	return shuffle(WORKFLOW_SUGGESTIONS);
@@ -398,7 +393,7 @@ async function onUserMessage(content: string) {
 	accumulatedNodeIdsToTidyUp.value = [];
 
 	// If the workflow is empty, set the initial generation flag
-	const isInitialGeneration = (workflowDocumentStore.value?.allNodes ?? []).length === 0;
+	const isInitialGeneration = workflowDocumentStore.value.allNodes.length === 0;
 
 	await builderStore.sendChatMessage({
 		text: content,
@@ -453,11 +448,13 @@ async function onWorkflowExecuted() {
 		return;
 	}
 
-	const executionData = workflowsStore.workflowExecutionData;
+	const executionData = useWorkflowExecutionStateStore(
+		workflowDocumentStore.value.documentId,
+	).activeExecution;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
 	const errorNodeType = errorNodeName
-		? workflowDocumentStore.value?.getNodeByName(errorNodeName)?.type
+		? workflowDocumentStore.value.getNodeByName(errorNodeName)?.type
 		: undefined;
 
 	if (!executionData) {
@@ -512,7 +509,7 @@ async function onWorkflowExecuted() {
 async function onExecuteWithMockData() {
 	builderStore.applyGeneratedPinData();
 
-	const triggerNode = (workflowDocumentStore.value?.allNodes ?? []).find((node) =>
+	const triggerNode = workflowDocumentStore.value.allNodes.find((node) =>
 		nodeTypesStore.isTriggerNode(node.type),
 	);
 
@@ -533,7 +530,9 @@ async function onExecuteWithMockData() {
 	});
 
 	await runWorkflow({
-		triggerNode: workflowsStore.selectedTriggerNodeName ?? triggerNode?.name,
+		triggerNode:
+			useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId)
+				.selectedTriggerNodeName ?? triggerNode?.name,
 	});
 }
 
@@ -609,10 +608,7 @@ watch(
 			return;
 		}
 
-		if (
-			builderStore.initialGeneration &&
-			(workflowDocumentStore.value?.allNodes ?? []).length > 0
-		) {
+		if (builderStore.initialGeneration && workflowDocumentStore.value.allNodes.length > 0) {
 			builderStore.initialGeneration = false;
 		}
 
@@ -764,6 +760,7 @@ defineExpose({
 				/>
 				<CreditWarningBanner
 					v-else-if="showCreditBanner"
+					variant="attached"
 					:credits-remaining="creditsRemaining"
 					:credits-quota="creditsQuota"
 					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
@@ -869,7 +866,7 @@ defineExpose({
 					@upgrade-click="onUpgradeClick"
 					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
 				>
-					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+					<template #right-actions>
 						<PlanModeSelector
 							:model-value="builderStore.builderMode"
 							@update:model-value="builderStore.setBuilderMode"
@@ -907,7 +904,7 @@ defineExpose({
 					@stop="builderStore.abortStreaming"
 					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 				>
-					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+					<template #right-actions>
 						<PlanModeSelector
 							:model-value="builderStore.builderMode"
 							@update:model-value="builderStore.setBuilderMode"

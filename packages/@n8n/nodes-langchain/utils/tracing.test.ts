@@ -1,6 +1,6 @@
 import type { CallbackManager } from '@langchain/core/callbacks/manager';
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { buildTracingMetadata, getTracingConfig } from './tracing';
 
@@ -111,9 +111,9 @@ describe('getTracingConfig', () => {
 		it('should return correct config without getParentCallbackManager', () => {
 			// ISupplyDataFunctions doesn't have getParentCallbackManager
 			const mockContext = {
-				getWorkflow: jest.fn().mockReturnValue(mockWorkflow),
-				getNode: jest.fn().mockReturnValue(mockNode),
-				getExecutionId: jest.fn().mockReturnValue('exec-789'),
+				getWorkflow: vi.fn().mockReturnValue(mockWorkflow),
+				getNode: vi.fn().mockReturnValue(mockNode),
+				getExecutionId: vi.fn().mockReturnValue('exec-789'),
 			} as unknown as ISupplyDataFunctions;
 
 			const result = getTracingConfig(mockContext);

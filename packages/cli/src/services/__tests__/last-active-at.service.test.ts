@@ -3,8 +3,9 @@ import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import type { NextFunction, Response } from 'express';
-import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
@@ -19,10 +20,10 @@ describe('LastActiveAtService', () => {
 	const user = mock<User>(userData);
 	const globalConfig = mock<GlobalConfig>({ auth: { cookie: { secure: true, samesite: 'lax' } } });
 	let queryBuilderMock = {
-		update: jest.fn().mockReturnThis(),
-		set: jest.fn().mockReturnThis(),
-		where: jest.fn().mockReturnThis(),
-		execute: jest.fn(),
+		update: vi.fn().mockReturnThis(),
+		set: vi.fn().mockReturnThis(),
+		where: vi.fn().mockReturnThis(),
+		execute: vi.fn(),
 	};
 
 	const userRepository = mock<UserRepository>();
@@ -30,19 +31,19 @@ describe('LastActiveAtService', () => {
 	const lastActiveAtService = new LastActiveAtService(userRepository, mockLogger());
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
-	jest.useFakeTimers({ now });
+	vi.useFakeTimers({ now });
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		jest.setSystemTime(now);
+		vi.resetAllMocks();
+		vi.setSystemTime(now);
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
 		queryBuilderMock = {
-			update: jest.fn().mockReturnThis(),
-			set: jest.fn().mockReturnThis(),
-			where: jest.fn().mockReturnThis(),
-			execute: jest.fn(),
+			update: vi.fn().mockReturnThis(),
+			set: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			execute: vi.fn(),
 		};
-		(userRepository.createQueryBuilder as jest.Mock).mockReturnValue(queryBuilderMock);
+		(userRepository.createQueryBuilder as Mock).mockReturnValue(queryBuilderMock);
 	});
 
 	describe('middleware', () => {
@@ -50,7 +51,7 @@ describe('LastActiveAtService', () => {
 			user,
 		});
 		const res = mock<Response>();
-		const next = jest.fn() as NextFunction;
+		const next = vi.fn() as NextFunction;
 
 		beforeEach(() => {
 			// reset the last active time cache (private variable)
@@ -95,7 +96,7 @@ describe('LastActiveAtService', () => {
 			queryBuilderMock.set.mockClear();
 			queryBuilderMock.where.mockClear();
 			queryBuilderMock.execute.mockClear();
-			jest.advanceTimersByTime(24 * Time.hours.toMilliseconds);
+			vi.advanceTimersByTime(24 * Time.hours.toMilliseconds);
 
 			// Call middleware again now that the user is in cache with a stale last active time
 			await lastActiveAtService.middleware(req, res, next);

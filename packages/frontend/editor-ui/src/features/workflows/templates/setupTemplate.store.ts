@@ -11,7 +11,7 @@ import type { INodeUi } from '@/Interface';
 import { VIEWS } from '@/app/constants';
 import { createWorkflowFromTemplate } from './utils/templateActions';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCredentialSetupState } from './composables/useCredentialSetupState';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
@@ -222,7 +222,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 			// Replace the URL so back button doesn't come back to this setup view
 			await router.replace({
 				name: VIEWS.WORKFLOW,
-				params: { name: createdWorkflow.id },
+				params: { workflowId: createdWorkflow.id },
 			});
 		} finally {
 			isSaving.value = false;

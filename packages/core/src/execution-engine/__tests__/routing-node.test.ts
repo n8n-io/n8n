@@ -1,7 +1,8 @@
-import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
+import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
 import type {
 	DeclarativeRestApiSettings,
+	ICredentialDataDecryptedObject,
 	IExecuteData,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
@@ -18,9 +19,9 @@ import type {
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	ICredentialsDecrypted,
 } from 'n8n-workflow';
-import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
-import type { ICredentialsDecrypted } from 'n8n-workflow/src';
+import { mock } from 'vitest-mock-extended';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
 import { DirectoryLoader } from '@/nodes-loader';
@@ -100,6 +101,7 @@ const getExecuteSingleFunctions = (
 describe('RoutingNode', () => {
 	const nodeTypes = NodeTypes();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		executionId: 'test-exec-123',
 		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
 		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 	});
@@ -753,6 +755,7 @@ describe('RoutingNode', () => {
 					mode,
 					connectionInputData,
 					runExecutionData,
+					nodeType,
 				});
 				const routingNode = new RoutingNode(executeFunctions, nodeType);
 
@@ -776,6 +779,78 @@ describe('RoutingNode', () => {
 				expect(result).toEqual(testData.output);
 			});
 		}
+
+		describe('when a routed property name is an inherited object member', () => {
+			// Guard the shared prototype so a regression here cannot cascade to other tests.
+			const hadOwnCall = Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call');
+			afterEach(() => {
+				if (!hadOwnCall) {
+					delete (Object.prototype.toString as unknown as { call?: unknown }).call;
+				}
+			});
+
+			it('keeps built-in object prototypes intact', () => {
+				const nodeTypeProperties: INodeProperties = {
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					routing: {
+						send: {
+							property: 'toString.call',
+							type: 'body',
+							value: 'x',
+						},
+					},
+					default: '',
+				};
+				node.parameters = {};
+				nodeType.description.properties = [nodeTypeProperties];
+
+				const workflow = new Workflow({
+					nodes: workflowData.nodes,
+					connections: workflowData.connections,
+					active: false,
+					nodeTypes,
+				});
+
+				const executeFunctions = mock<executionContexts.ExecuteContext>();
+				Object.assign(executeFunctions, {
+					runIndex,
+					additionalData,
+					workflow,
+					node,
+					mode,
+					connectionInputData,
+					runExecutionData,
+					nodeType,
+				});
+				const routingNode = new RoutingNode(executeFunctions, nodeType);
+
+				const executeSingleFunctions = getExecuteSingleFunctions(
+					workflow,
+					runExecutionData,
+					runIndex,
+					node,
+					itemIndex,
+				);
+
+				const result = routingNode.getRequestOptionsFromParameters(
+					executeSingleFunctions,
+					nodeTypeProperties,
+					itemIndex,
+					runIndex,
+					path,
+					{},
+				);
+
+				// Prototype untouched; the value lands as an own property on the request body.
+				expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
+				expect(Object.prototype.toString.call([])).toBe('[object Array]');
+				expect((result?.options.body as { toString?: { call?: unknown } }).toString?.call).toBe(
+					'x',
+				);
+			});
+		});
 	});
 
 	describe('runNode', () => {
@@ -790,7 +865,7 @@ describe('RoutingNode', () => {
 				nodeType: {
 					properties?: INodeProperties[];
 					credentials?: INodeCredentialDescription[];
-					requestDefaults?: IHttpRequestOptions;
+					requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 					requestOperations?: IN8nRequestOperations;
 				};
 				node: {
@@ -2057,6 +2132,124 @@ describe('RoutingNode', () => {
 					],
 				],
 			},
+			{
+				description: 'single parameter, routing.request.url resolves $execution.id',
+				input: {
+					node: {
+						parameters: {
+							resource: 'executions',
+						},
+					},
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+						},
+						properties: [
+							{
+								displayName: 'Resource',
+								name: 'resource',
+								type: 'string',
+								routing: {
+									request: {
+										method: 'GET',
+										url: '=/{{$value}}/{{ $execution.id }}',
+									},
+								},
+								default: '',
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/executions/test-exec-123',
+									method: 'GET',
+									headers: {},
+									qs: {},
+									body: {},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
+			{
+				description:
+					'options parameter with routing.request.url on selected option resolves $execution.id via $parameter',
+				input: {
+					node: {
+						parameters: {
+							operation: 'get',
+							executionId: '={{ $execution.id }}',
+						},
+					},
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+						},
+						properties: [
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								noDataExpression: true,
+								default: 'get',
+								options: [
+									{
+										name: 'Get',
+										value: 'get',
+										routing: {
+											request: {
+												method: 'GET',
+												url: '=/executions/{{ $parameter.executionId }}',
+											},
+										},
+									},
+								],
+							},
+							{
+								displayName: 'Execution ID',
+								name: 'executionId',
+								type: 'string',
+								default: '',
+								displayOptions: {
+									show: {
+										operation: ['get'],
+									},
+								},
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/executions/test-exec-123',
+									method: 'GET',
+									headers: {},
+									qs: {},
+									body: {},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
 		];
 
 		const baseNode: INode = {
@@ -2130,9 +2323,11 @@ describe('RoutingNode', () => {
 					itemIndex,
 				);
 
-				jest
-					.spyOn(executionContexts, 'ExecuteSingleContext')
-					.mockReturnValue(executeSingleFunctions);
+				vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+					this: executionContexts.ExecuteSingleContext,
+				) {
+					return executeSingleFunctions as never;
+				} as never);
 
 				const numberOfItems = testData.input.specialTestOptions?.numberOfItems ?? 1;
 				if (!inputData.main[0] || inputData.main[0].length !== numberOfItems) {
@@ -2142,8 +2337,8 @@ describe('RoutingNode', () => {
 					}
 				}
 
-				const workflowPackage = await import('n8n-workflow');
-				const spy = jest.spyOn(workflowPackage, 'sleep').mockReturnValue(
+				const sleepModule = await import('@n8n/utils/sleep');
+				const spy = vi.spyOn(sleepModule, 'sleep').mockReturnValue(
 					new Promise((resolve) => {
 						resolve();
 					}),
@@ -2305,7 +2500,11 @@ describe('RoutingNode', () => {
 						node,
 						itemIndex + iteration,
 					);
-					jest.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(context);
+					vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+						this: executionContexts.ExecuteSingleContext,
+					) {
+						return context as never;
+					} as never);
 					currentItemIndex = context.getItemIndex();
 				}
 
@@ -2314,5 +2513,200 @@ describe('RoutingNode', () => {
 				expect(currentItemIndex).toEqual(expectedItemIndex);
 			});
 		}
+	});
+
+	describe('credential allowedDomains', () => {
+		const mode = 'internal';
+		const runIndex = 0;
+		const itemIndex = 0;
+		const connectionInputData: INodeExecutionData[] = [];
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
+
+		const baseNode: INode = {
+			parameters: {},
+			name: 'test',
+			type: 'test.set',
+			typeVersion: 1,
+			id: 'uuid-1234',
+			position: [0, 0],
+		};
+
+		// `null` means the node declares no base URL; a default parameter cannot express that,
+		// since an explicit `undefined` triggers the default.
+		const buildNodeType = (
+			baseURL: string | null = 'https://api.example.com',
+			routedUrl = 'https://other-host.example.com/path',
+		): INodeType => {
+			const routingNodeType = nodeTypes.getByNameAndVersion(baseNode.type);
+			routingNodeType.description = {
+				credentials: [{ name: 'testCredential', required: true }],
+				requestDefaults: { baseURL: baseURL ?? undefined },
+				properties: [
+					{
+						displayName: 'Endpoint',
+						name: 'endpoint',
+						type: 'string',
+						default: '',
+						routing: {
+							request: {
+								url: routedUrl,
+							},
+						},
+					},
+				],
+			} as unknown as INodeTypeDescription;
+			return routingNodeType;
+		};
+
+		const runWithCredential = async (
+			data: Record<string, unknown>,
+			options: { baseURL?: string | null; routedUrl?: string } = {},
+		) => {
+			const credentialData = data as unknown as ICredentialDataDecryptedObject;
+			const nodeType = buildNodeType(options.baseURL, options.routedUrl);
+			const workflow = new Workflow({
+				nodes: [baseNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const executeFunctions = mock<executionContexts.ExecuteContext>();
+			Object.assign(executeFunctions, {
+				executeData: { data: {}, node: baseNode, source: null } as IExecuteData,
+				inputData: { main: [[{ json: {} }]] } as ITaskDataConnections,
+				runIndex,
+				additionalData,
+				workflow,
+				node: baseNode,
+				mode,
+				connectionInputData,
+				runExecutionData,
+			});
+			executeFunctions.getNodeParameter.mockImplementation(() => ({}));
+
+			const executeSingleFunctions = getExecuteSingleFunctions(
+				workflow,
+				runExecutionData,
+				runIndex,
+				baseNode,
+				itemIndex,
+			);
+			const originalGetNodeParameter = executeSingleFunctions.getNodeParameter;
+			// @ts-expect-error overwriting a method
+			executeSingleFunctions.getNodeParameter = (parameterName: string) =>
+				originalGetNodeParameter(parameterName) ?? {};
+			vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+				this: executionContexts.ExecuteSingleContext,
+			) {
+				return executeSingleFunctions as never;
+			} as never);
+
+			const mockCredentials = mock<ICredentialsDecrypted>({
+				id: 'cred-1',
+				name: 'Test Credential',
+				type: 'testCredential',
+				data: credentialData,
+			});
+
+			const routingNode = new RoutingNode(executeFunctions, nodeType, mockCredentials);
+			return await routingNode.runNode();
+		};
+
+		test("propagates credential allowedDomains when mode is 'domains'", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'api.example.com',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com');
+		});
+
+		test("does not set allowedDomains when mode is 'all'", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'all',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
+
+		test("adds the node's own host when mode is 'domains' and the list omits it", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'other.example.com',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com, other.example.com');
+		});
+
+		test.each([
+			['the node declares no base URL', null],
+			['the base URL resolves to an empty string', ''],
+		])('does not widen the allowlist from the routed URL when %s', async (_label, baseURL) => {
+			// The routed URL can interpolate a node parameter, so its host is the user's choice.
+			const result = await runWithCredential(
+				{
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'other.example.com',
+				},
+				{ baseURL, routedUrl: 'https://user-chosen.example.net/path' },
+			);
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('other.example.com');
+		});
+
+		test("does not block a declarative node when mode is 'none'", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'none',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
+
+		test("falls back to the node's own host when the 'domains' list is empty", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: '   ',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com');
+		});
+
+		test("falls back to the node's own host when the 'domains' list is missing", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com');
+		});
+
+		test('does not set allowedDomains when restriction field is absent', async () => {
+			const result = await runWithCredential({ apiKey: 'testApiKey' });
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
 	});
 });

@@ -12,7 +12,22 @@
 			"Bash(popd)",
 			"Bash(pushd:*)",
 			"Bash(mkdir -p .claude/plans)",
-			"Write(.claude/plans/*)"
+			"Edit(.claude/plans/*)"
+		]
+	},
+	"hooks": {
+		"PostToolUse": [
+			{
+				"matcher": "Skill",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "node .claude/plugins/n8n/scripts/track-skill-usage.mjs",
+						"timeout": 10,
+						"async": true
+					}
+				]
+			}
 		]
 	},
 	"extraKnownMarketplaces": {

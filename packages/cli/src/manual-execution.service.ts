@@ -9,7 +9,7 @@ import {
 	WorkflowExecute,
 	rewireGraph,
 } from 'n8n-core';
-import { NodeHelpers, createRunExecutionData } from 'n8n-workflow';
+import { NodeHelpers, UserError, createRunExecutionData } from 'n8n-workflow';
 import type {
 	IExecuteData,
 	IPinData,
@@ -142,6 +142,13 @@ export class ManualExecutionService {
 					workflow = graph.toWorkflow({
 						...workflow,
 					});
+
+					// A standalone tool cannot be rewired into a Tool Executor — it needs an Agent to wrap.
+					if (!workflow.getNode(TOOL_EXECUTOR_NODE_NAME)) {
+						throw new UserError(
+							`The tool "${destinationNode.name}" cannot be executed on its own. Connect it to an AI Agent and try again.`,
+						);
+					}
 
 					// Save original destination
 					if (data.executionData) {

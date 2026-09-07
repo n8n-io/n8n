@@ -12,19 +12,19 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { Cipher } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { mockCipher } from '@test/mocking';
 
 import { createDummyProvider, MockProviders } from '../../shared/external-secrets/utils';
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createAdmin, createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
-import { Cipher } from 'n8n-core';
-import { mockCipher } from '@test/mocking';
 
 const resetManager = async () => {
 	const manager = Container.get(ExternalSecretsManager);

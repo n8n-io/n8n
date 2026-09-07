@@ -12,11 +12,12 @@ import type {
 import {
 	NodeApiError,
 	NodeOperationError,
-	sleep,
 	removeCircularRefs,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
+
+import { sleep } from '@n8n/utils/sleep';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
@@ -627,23 +628,21 @@ export class HttpRequestV1 implements INodeType {
 		let oAuth1Api;
 		let oAuth2Api;
 
+		const authentication = this.getNodeParameter('authentication', 0) as string;
 		try {
-			httpBasicAuth = await this.getCredentials('httpBasicAuth');
-		} catch {}
-		try {
-			httpDigestAuth = await this.getCredentials('httpDigestAuth');
-		} catch {}
-		try {
-			httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-		} catch {}
-		try {
-			httpQueryAuth = await this.getCredentials('httpQueryAuth');
-		} catch {}
-		try {
-			oAuth1Api = await this.getCredentials('oAuth1Api');
-		} catch {}
-		try {
-			oAuth2Api = await this.getCredentials('oAuth2Api');
+			if (authentication === 'basicAuth') {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} else if (authentication === 'digestAuth') {
+				httpDigestAuth = await this.getCredentials('httpDigestAuth');
+			} else if (authentication === 'headerAuth') {
+				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} else if (authentication === 'queryAuth') {
+				httpQueryAuth = await this.getCredentials('httpQueryAuth');
+			} else if (authentication === 'oAuth1') {
+				oAuth1Api = await this.getCredentials('oAuth1Api');
+			} else if (authentication === 'oAuth2') {
+				oAuth2Api = await this.getCredentials('oAuth2Api');
+			}
 		} catch {}
 
 		const secrets: string[] = [];
@@ -693,7 +692,21 @@ export class HttpRequestV1 implements INodeType {
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex);
 
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const url = this.getNodeParameter('url', itemIndex) as string;
+			let url = this.getNodeParameter('url', itemIndex);
+
+			if (typeof url !== 'string') {
+				const actualType = url === null ? 'null' : typeof url;
+				throw new NodeOperationError(
+					this.getNode(),
+					`URL parameter must be a string, got ${actualType}`,
+				);
+			}
+
+			url = url.trim();
+
+			if (!url) {
+				throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
+			}
 
 			if (!url.startsWith('http://') && !url.startsWith('https://')) {
 				throw new NodeOperationError(

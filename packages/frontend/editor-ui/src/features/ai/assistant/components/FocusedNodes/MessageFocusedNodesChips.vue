@@ -20,21 +20,19 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
-	workflowId.value
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
 
 const nodeCount = computed(() => props.focusedNodeNames?.length ?? 0);
 const shouldBundle = computed(() => nodeCount.value >= CHIP_BUNDLE_THRESHOLD);
 const allNodesSelected = computed(() => {
-	const allNodes = workflowDocumentStore.value?.allNodes ?? [];
+	const allNodes = workflowDocumentStore.value.allNodes;
 	return nodeCount.value > 0 && allNodes.length > 0 && nodeCount.value >= allNodes.length;
 });
 
 const resolvedNodes = computed(() => {
 	if (!props.focusedNodeNames?.length) return [];
-	const allNodes = workflowDocumentStore.value?.allNodes ?? [];
+	const allNodes = workflowDocumentStore.value.allNodes;
 	return props.focusedNodeNames.map((name) => {
 		const workflowNode = allNodes.find((n) => n.name === name);
 		const nodeType = workflowNode ? nodeTypesStore.getNodeType(workflowNode.type) : null;

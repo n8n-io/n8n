@@ -9,7 +9,8 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import { ensureError, jsonParse } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { AuthService } from '@/auth/auth.service';
@@ -81,7 +82,9 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 
 		if (encryptedMetadataResult.success) {
 			try {
-				const decrypted = this.cipher.decrypt(encryptedMetadataResult.data.encryptedMetadata);
+				const decrypted = await this.cipher.decryptV2(
+					encryptedMetadataResult.data.encryptedMetadata,
+				);
 				const parsed = jsonParse(decrypted);
 				const chatHubInformation = ChatHubAuthenticationMetadataSchema.safeParse(parsed);
 				if (chatHubInformation.success) {

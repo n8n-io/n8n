@@ -2,8 +2,9 @@ import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 import { appendFileSync } from 'fs';
 
 interface BenchmarkRow {
-	trigger: string;
-	suite: string;
+	question: string;
+	variant: string;
+	verdict: string;
 	scenario: string;
 	metrics: Map<string, number>;
 }
@@ -18,6 +19,11 @@ const COLUMNS: Column[] = [
 	{
 		header: 'exec/s',
 		suffixes: ['throughput', 'exec-per-sec'],
+		format: (v) => v.toFixed(1),
+	},
+	{
+		header: 'tail/s',
+		suffixes: ['tail-exec-per-sec'],
 		format: (v) => v.toFixed(1),
 	},
 	{
@@ -62,22 +68,60 @@ const COLUMNS: Column[] = [
 	},
 ];
 
-function extractTrigger(filePath: string): string {
-	// e.g. tests/infrastructure/benchmarks/kafka/foo.spec.ts → kafka
-	const match = filePath.match(/benchmarks\/([^/]+)/);
-	return match?.[1] ?? 'unknown';
+interface MetricPayload {
+	value: number;
+	unit?: string;
+	dimensions?: Record<string, string | number>;
 }
 
-function extractSuite(filePath: string): string {
-	// e.g. load.spec.ts → load, throughput.spec.ts → throughput
-	const filename = filePath.split('/').pop() ?? '';
-	if (filename.includes('throughput')) return 'throughput';
-	if (filename.includes('load')) return 'load';
-	return 'other';
+interface ParsedMetric {
+	name: string;
+	value: number;
+	dimensions: Record<string, string | number>;
 }
 
-function extractMetricSuffix(metricName: string): string {
-	return metricName;
+function parseMetric(rawName: string, body: string): ParsedMetric | null {
+	const name = rawName.replace(/^metric:/, '');
+	try {
+		const data = JSON.parse(body) as MetricPayload;
+		return { name, value: data.value, dimensions: data.dimensions ?? {} };
+	} catch {
+		return null;
+	}
+}
+
+function dimensionKey(dimensions: Record<string, string | number>): string {
+	// Group rows by (variant, verdict). Same variant+verdict = same row, different = different row.
+	const variant = dimensions.variant ?? '';
+	const verdict = dimensions.verdict ?? '';
+	return `${variant} ${verdict}`;
+}
+
+/**
+ * For a group of rows under one question, decide which columns / annotations
+ * actually have data — anything entirely empty gets hidden so the table
+ * doesn't read as a wall of `—`.
+ */
+interface QuestionShape {
+	columns: Column[];
+	showVariant: boolean;
+	showVerdict: boolean;
+}
+
+function shapeFor(rows: BenchmarkRow[]): QuestionShape {
+	return {
+		columns: COLUMNS.filter((col) => rows.some((r) => col.suffixes.some((s) => r.metrics.has(s)))),
+		showVariant: rows.some((r) => r.variant.length > 0),
+		showVerdict: rows.some((r) => r.verdict.length > 0),
+	};
+}
+
+function formatCell(row: BenchmarkRow, col: Column): string {
+	for (const suffix of col.suffixes) {
+		const value = row.metrics.get(suffix);
+		if (value !== undefined) return col.format(value);
+	}
+	return '—';
 }
 
 class BenchmarkSummaryReporter implements Reporter {
@@ -87,112 +131,151 @@ class BenchmarkSummaryReporter implements Reporter {
 		const metricAttachments = result.attachments.filter((a) => a.name.startsWith('metric:'));
 		if (metricAttachments.length === 0) return;
 
-		const scenario = test.title;
-		const filePath = test.location.file;
-		const trigger = extractTrigger(filePath);
-		const suite = extractSuite(filePath);
-		const metrics = new Map<string, number>();
-
+		// Parse all metric attachments. Group them by their (variant, verdict) signature
+		// so a single test that emits multiple variants (e.g. staged ramps) produces
+		// multiple reporter rows.
+		const groups = new Map<string, ParsedMetric[]>();
 		for (const attachment of metricAttachments) {
-			const fullName = attachment.name.replace('metric:', '');
-			const suffix = extractMetricSuffix(fullName);
-			try {
-				const data = JSON.parse(attachment.body?.toString() ?? '');
-				metrics.set(suffix, data.value);
-			} catch (error) {
-				console.warn(`[BenchmarkReporter] Malformed metric attachment "${fullName}":`, error);
-			}
+			const body = attachment.body?.toString() ?? '';
+			const parsed = parseMetric(attachment.name, body);
+			if (!parsed) continue;
+			const key = dimensionKey(parsed.dimensions);
+			const existing = groups.get(key) ?? [];
+			existing.push(parsed);
+			groups.set(key, existing);
 		}
 
-		if (metrics.size > 0) {
-			this.rows.push({ trigger, suite, scenario, metrics });
+		const question = test.parent?.title || test.title;
+		const scenario = test.title;
+
+		for (const groupMetrics of groups.values()) {
+			const dimensions = groupMetrics[0]?.dimensions ?? {};
+			const metrics = new Map<string, number>();
+			for (const m of groupMetrics) metrics.set(m.name, m.value);
+			if (metrics.size === 0) continue;
+
+			this.rows.push({
+				question,
+				variant: String(dimensions.variant ?? ''),
+				verdict: String(dimensions.verdict ?? ''),
+				scenario,
+				metrics,
+			});
 		}
 	}
 
 	onEnd(): void {
 		if (this.rows.length === 0) return;
 
-		this.rows.sort(
-			(a, b) =>
-				a.trigger.localeCompare(b.trigger) ||
-				a.suite.localeCompare(b.suite) ||
-				a.scenario.localeCompare(b.scenario),
-		);
+		// Stable group: questions appear in the order their first row was added.
+		const groups = new Map<string, BenchmarkRow[]>();
+		for (const row of this.rows) {
+			const list = groups.get(row.question) ?? [];
+			list.push(row);
+			groups.set(row.question, list);
+		}
 
-		const triggerWidth = Math.max(7, ...this.rows.map((r) => r.trigger.length));
-		const suiteWidth = Math.max(5, ...this.rows.map((r) => r.suite.length));
-		const scenarioWidth = Math.max(8, ...this.rows.map((r) => r.scenario.length));
-		const colWidths = COLUMNS.map((col) => {
-			const values = this.rows.map((r) => this.resolveColumn(r, col));
-			return Math.max(col.header.length, ...values.map((v) => v.length));
-		});
-
-		const pad = (s: string, w: number) => s.padStart(w);
-		const padRight = (s: string, w: number) => s.padEnd(w);
-
-		const headerParts = [
-			padRight('Trigger', triggerWidth),
-			padRight('Suite', suiteWidth),
-			padRight('Scenario', scenarioWidth),
-			...COLUMNS.map((col, i) => pad(col.header, colWidths[i])),
-		];
-
-		const separator = headerParts.map((h) => '─'.repeat(h.length));
+		// Skip questions whose metrics don't match any of this reporter's column
+		// patterns (e.g. canvas-perf specs that emit their own structured report).
+		// Without this, the reporter prints an empty box frame with no data.
+		const renderable = new Map<string, BenchmarkRow[]>();
+		for (const [question, rows] of groups) {
+			const shape = shapeFor(rows);
+			if (shape.columns.length > 0 || shape.showVariant || shape.showVerdict) {
+				renderable.set(question, rows);
+			}
+		}
+		if (renderable.size === 0) return;
 
 		console.log('\n');
 		console.log('Benchmark Summary');
-		console.log('═'.repeat(headerParts.join(' │ ').length + 4));
-		console.log(`│ ${headerParts.join(' │ ')} │`);
-		console.log(`├─${separator.join('─┼─')}─┤`);
+		console.log('══════════════════');
 
-		for (const row of this.rows) {
-			const parts = [
-				padRight(row.trigger, triggerWidth),
-				padRight(row.suite, suiteWidth),
-				padRight(row.scenario, scenarioWidth),
-				...COLUMNS.map((col, i) => pad(this.resolveColumn(row, col), colWidths[i])),
-			];
-			console.log(`│ ${parts.join(' │ ')} │`);
+		for (const [question, rows] of renderable) {
+			this.renderConsoleQuestion(question, rows);
 		}
-
-		console.log(`└─${separator.map((s) => s).join('─┴─')}─┘`);
 		console.log('');
 
-		this.writeGitHubSummary();
+		this.writeGitHubSummary(renderable);
 	}
 
-	private writeGitHubSummary(): void {
+	private renderConsoleQuestion(question: string, rows: BenchmarkRow[]): void {
+		const shape = shapeFor(rows);
+		const scenario = rows[0]?.scenario ?? '';
+
+		const headerCells: string[] = [];
+		if (shape.showVariant) headerCells.push('Variant');
+		if (shape.showVerdict) headerCells.push('Verdict');
+		for (const col of shape.columns) headerCells.push(col.header);
+
+		const rowCells: string[][] = rows.map((row) => {
+			const cells: string[] = [];
+			if (shape.showVariant) cells.push(row.variant || '—');
+			if (shape.showVerdict) cells.push(row.verdict || '—');
+			for (const col of shape.columns) cells.push(formatCell(row, col));
+			return cells;
+		});
+
+		const widths = headerCells.map((h, i) =>
+			Math.max(h.length, ...rowCells.map((cells) => cells[i].length)),
+		);
+		const pad = (s: string, w: number) => s.padStart(w);
+		const padRight = (s: string, w: number) => s.padEnd(w);
+		const padCell = (s: string, w: number, leftAlign: boolean) =>
+			leftAlign ? padRight(s, w) : pad(s, w);
+
+		// Variant + Verdict are left-aligned text; metric columns are right-aligned numbers.
+		const isText = (i: number) =>
+			(shape.showVariant && i === 0) || (shape.showVerdict && i === (shape.showVariant ? 1 : 0));
+
+		console.log('');
+		console.log(`▎ ${question}`);
+		if (scenario) console.log(`  ${scenario}`);
+		console.log(`│ ${headerCells.map((h, i) => padCell(h, widths[i], isText(i))).join(' │ ')} │`);
+		console.log(`├─${widths.map((w) => '─'.repeat(w)).join('─┼─')}─┤`);
+		for (const cells of rowCells) {
+			console.log(`│ ${cells.map((c, i) => padCell(c, widths[i], isText(i))).join(' │ ')} │`);
+		}
+	}
+
+	private writeGitHubSummary(groups: Map<string, BenchmarkRow[]>): void {
 		const summaryPath = process.env.GITHUB_STEP_SUMMARY;
 		if (!summaryPath) return;
 
-		const headers = ['Trigger', 'Suite', 'Scenario', ...COLUMNS.map((c) => c.header)];
-		const lines: string[] = [
-			'## Benchmark Summary',
-			'',
-			`| ${headers.join(' | ')} |`,
-			`| ${headers.map((h) => '---'.padEnd(h.length, '-')).join(' | ')} |`,
-		];
+		const lines: string[] = ['## Benchmark Summary', ''];
 
-		for (const row of this.rows) {
-			const cells = [
-				row.trigger,
-				row.suite,
-				row.scenario,
-				...COLUMNS.map((col) => this.resolveColumn(row, col)),
-			];
-			lines.push(`| ${cells.join(' | ')} |`);
+		for (const [question, rows] of groups) {
+			const shape = shapeFor(rows);
+			const scenario = rows[0]?.scenario ?? '';
+
+			lines.push(`### ${question}`);
+			if (scenario) {
+				lines.push('');
+				lines.push(`> ${scenario}`);
+			}
+			lines.push('');
+
+			const headers: string[] = [];
+			if (shape.showVariant) headers.push('Variant');
+			if (shape.showVerdict) headers.push('Verdict');
+			for (const col of shape.columns) headers.push(col.header);
+
+			lines.push(`| ${headers.join(' | ')} |`);
+			lines.push(`| ${headers.map(() => '---').join(' | ')} |`);
+
+			for (const row of rows) {
+				const cells: string[] = [];
+				if (shape.showVariant) cells.push(row.variant || '—');
+				if (shape.showVerdict) cells.push(row.verdict || '—');
+				for (const col of shape.columns) cells.push(formatCell(row, col));
+				lines.push(`| ${cells.join(' | ')} |`);
+			}
+			lines.push('');
 		}
 
-		lines.push('');
-		appendFileSync(summaryPath, lines.join('\n'));
-	}
-
-	private resolveColumn(row: BenchmarkRow, col: Column): string {
-		for (const suffix of col.suffixes) {
-			const value = row.metrics.get(suffix);
-			if (value !== undefined) return col.format(value);
-		}
-		return '—';
+		// Leading newline so we don't concatenate against whatever a previous
+		// reporter wrote earlier in the same job.
+		appendFileSync(summaryPath, `\n${lines.join('\n')}`);
 	}
 }
 

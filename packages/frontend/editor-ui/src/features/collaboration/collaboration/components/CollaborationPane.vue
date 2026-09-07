@@ -2,12 +2,15 @@
 import { onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useCollaborationStore } from '../collaboration.store';
 
 import { N8nUserStack } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+
 const collaborationStore = useCollaborationStore();
 const usersStore = useUsersStore();
+const workflowId = useWorkflowId();
 
 const visibility = useDocumentVisibility();
 watch(visibility, (visibilityState) => {
@@ -32,7 +35,7 @@ const collaboratorsSorted = computed(() => {
 const currentUserEmail = computed(() => usersStore.currentUser?.email);
 
 onMounted(() => {
-	void collaborationStore.initialize();
+	void collaborationStore.initialize(workflowId.value);
 });
 
 onBeforeUnmount(() => {

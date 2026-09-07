@@ -17,18 +17,27 @@ const emit = defineEmits<{
 	selectTriggerNode: [name: string];
 }>();
 
-const props = defineProps<{
-	selectedTriggerNodeName?: string;
-	triggerNodes: INodeUi[];
-	waitingForWebhook?: boolean;
-	executing?: boolean;
-	disabled?: boolean;
-	hideTooltip?: boolean;
-	label?: string;
-	size?: 'small' | 'medium' | 'large';
-	includeChatTrigger?: boolean;
-	getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
-}>();
+const props = withDefaults(
+	defineProps<{
+		selectedTriggerNodeName?: string;
+		triggerNodes: INodeUi[];
+		waitingForWebhook?: boolean;
+		executing?: boolean;
+		disabled?: boolean;
+		hideTooltip?: boolean;
+		label?: string;
+		size?: 'small' | 'medium' | 'large';
+		includeChatTrigger?: boolean;
+		/** `'secondary'` renders the button as a secondary action instead of the
+		 * primary CTA (e.g. in the Instance AI artifact or the demo view, where
+		 * the canvas isn't the primary surface). */
+		type?: 'primary' | 'secondary';
+		getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
+	}>(),
+	{ type: 'primary' },
+);
+
+const buttonVariant = computed(() => (props.type === 'secondary' ? 'subtle' : 'solid'));
 
 const i18n = useI18n();
 
@@ -87,7 +96,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			:disabled="executing || hideTooltip"
 		>
 			<N8nButton
-				variant="solid"
+				:variant="buttonVariant"
 				:class="$style.button"
 				:loading="executing"
 				:iconOnly="executing"
@@ -126,7 +135,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			>
 				<template #activator>
 					<N8nButton
-						variant="solid"
+						:variant="buttonVariant"
 						icon-size="large"
 						:disabled="disabled"
 						:class="$style.chevron"

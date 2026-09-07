@@ -60,7 +60,6 @@ const shortcutTooltipLabel = computed(() => {
 					:label="saveButtonLabel"
 					:loading="isSaving"
 					:disabled="disabled"
-					:class="$style.button"
 					:variant="variant"
 					@click="emit('click')"
 				/>
@@ -70,7 +69,6 @@ const shortcutTooltipLabel = computed(() => {
 				:label="saveButtonLabel"
 				:loading="isSaving"
 				:disabled="disabled"
-				:class="$style.button"
 				:variant="variant"
 				@click="emit('click')"
 			/>
@@ -83,11 +81,6 @@ const shortcutTooltipLabel = computed(() => {
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
-	height: 30px;
-}
-
-.button {
-	height: 30px;
 }
 
 .saved {

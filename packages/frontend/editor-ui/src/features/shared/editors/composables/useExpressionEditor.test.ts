@@ -17,10 +17,13 @@ vi.mock('@/app/composables/useAutocompleteTelemetry', () => ({
 	useAutocompleteTelemetry: vi.fn(),
 }));
 
+const mockNdvStoreValue = {
+	activeNode: { type: 'n8n-nodes-base.test' },
+};
+
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: vi.fn(() => ({
-		activeNode: { type: 'n8n-nodes-base.test' },
-	})),
+	useNDVStore: vi.fn(() => mockNdvStoreValue),
+	injectNDVStore: vi.fn(() => ({ value: mockNdvStoreValue })),
 }));
 
 vi.mock(import('../plugins/codemirror/completions/utils'), async (importOriginal) => {
@@ -134,6 +137,31 @@ describe('useExpressionEditor', () => {
 					kind: 'plaintext',
 					plaintext: ' after',
 					to: 36,
+				},
+			]);
+		});
+	});
+
+	test('surfaces deprecated $getPairedItem as an error segment', async () => {
+		mockResolveExpression();
+
+		const {
+			expressionEditor: { segments },
+		} = await renderExpressionEditor({
+			editorValue: '{{ $getPairedItem }}',
+			extensions: [n8nLang()],
+		});
+
+		await waitFor(() => {
+			expect(toValue(segments.resolvable)).toEqual([
+				{
+					error: expect.any(Error),
+					from: 0,
+					kind: 'resolvable',
+					resolvable: '{{ $getPairedItem }}',
+					resolved: '[$getPairedItem is deprecated and will be removed]',
+					state: 'invalid',
+					to: 20,
 				},
 			]);
 		});
@@ -297,6 +325,77 @@ describe('useExpressionEditor', () => {
 		});
 	});
 
+	describe('initialCursorPosition', () => {
+		test('should place cursor inside the empty expression block when value is auto-converted', async () => {
+			const editorValue = 'Hello {{  }}';
+			const expectedPosition = editorValue.lastIndexOf(' }}');
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 'lastExpression',
+				extensions: [n8nLang()],
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(expectedPosition));
+		});
+
+		test('should place cursor at end when option is "end"', async () => {
+			const editorValue = 'text here';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 'end',
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(editorValue.length));
+		});
+
+		test('should place cursor at the given numeric position', async () => {
+			const editorValue = 'text here';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 3,
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(3));
+		});
+
+		test('should keep the cursor position set by a click', async () => {
+			const editorValue = 'text here';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 'end',
+			});
+
+			const view = toValue(editor);
+			if (!view) throw new Error('editor not created');
+			await fireEvent.mouseDown(view.contentDOM);
+			view.dispatch({ selection: EditorSelection.cursor(2) });
+			view.focus();
+			await new Promise((resolve) => requestAnimationFrame(resolve));
+
+			expect(view.state.selection).toEqual(EditorSelection.single(2));
+		});
+
+		test('should default to position 0 when no option is provided', async () => {
+			const editorValue = 'Hello {{  }}';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				extensions: [n8nLang()],
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(0));
+		});
+	});
+
 	describe('select()', () => {
 		test('should select number range', async () => {
 			const editorValue = 'text here';
@@ -395,6 +494,75 @@ describe('useExpressionEditor', () => {
 				secretsData,
 			);
 			expect(resolveExpressionMock).not.toHaveBeenCalled();
+		});
+
+		test('should defer previewing transformed external secrets until execution', async () => {
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['cred']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[evaluated during execution]',
+						state: 'pending',
+					}),
+				]);
+			});
+		});
+
+		test('should keep unknown external secret references invalid', async () => {
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['name-with-typo']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[secret not found]',
+						state: 'invalid',
+					}),
+				]);
+			});
+		});
+
+		test('should leave secret previews to the credential modal', async () => {
+			mockResolveExpression();
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['cred']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[undefined]',
+						state: 'invalid',
+					}),
+				]);
+			});
 		});
 	});
 });

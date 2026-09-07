@@ -11,6 +11,7 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { N8nButton, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const OTHER_SENTINEL = '__other__';
 
@@ -81,12 +82,12 @@ const hasValidAnswer = computed(() => {
 });
 
 const showSkipButton = computed(() => {
-	if (isLastQuestion.value) return false;
 	if (currentQuestion.value?.type === 'single' && hasCustomText.value) return false;
 	return true;
 });
 
 const showNextButton = computed(() => {
+	if (isLastQuestion.value) return true;
 	if (currentQuestion.value?.type === 'single') return hasCustomText.value;
 	return true;
 });
@@ -94,12 +95,13 @@ const showNextButton = computed(() => {
 const isNextEnabled = computed(() => {
 	const q = currentQuestion.value;
 	if (!q) return false;
-	if (q.type === 'single') return hasCustomText.value;
+	// Blank text is a valid submission — it advances marked as skipped
+	if (q.type === 'text') return true;
+	if (q.type === 'single') return hasValidAnswer.value;
 	if (q.type === 'multi') {
 		const answer = currentAnswer.value;
 		return (answer?.selectedOptions.length ?? 0) > 0 || hasCustomText.value;
 	}
-	if (q.type === 'text') return hasCustomText.value;
 	return false;
 });
 
@@ -154,10 +156,7 @@ function onSingleSelect(option: string) {
 	answer.skipped = false;
 }
 
-function onSingleSelectAndAdvance(
-	option: string,
-	_inputMethod: 'click' | 'keyboard_number' | 'keyboard_enter' = 'click',
-) {
+function onSingleSelectAndAdvance(option: string) {
 	onSingleSelect(option);
 	const idx = filteredOptions.value.indexOf(option);
 	selectedIndex.value = idx >= 0 ? idx : null;
@@ -271,7 +270,7 @@ function submitAnswers() {
 
 // Keyboard navigation
 
-function handleInputEnter(event: KeyboardEvent, _type: string) {
+function handleInputEnter(event: KeyboardEvent) {
 	if (event.key !== 'Enter' || event.shiftKey) return false;
 	event.preventDefault();
 	if (hasCustomText.value || isNextEnabled.value) {
@@ -313,7 +312,7 @@ function handleEnterKey(event: KeyboardEvent, type: string, optionCount: number)
 
 	if (type === 'single') {
 		if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
-			onSingleSelectAndAdvance(filteredOptions.value[highlightedIndex.value], 'keyboard_enter');
+			onSingleSelectAndAdvance(filteredOptions.value[highlightedIndex.value]);
 		}
 	} else if (type === 'multi') {
 		if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
@@ -325,7 +324,7 @@ function handleEnterKey(event: KeyboardEvent, type: string, optionCount: number)
 		} else if (isNextEnabled.value) {
 			goToNextInternal();
 		}
-	} else if (type === 'text' && hasCustomText.value) {
+	} else if (type === 'text' && isNextEnabled.value) {
 		goToNextInternal();
 	}
 	return true;
@@ -336,7 +335,7 @@ function handleNumberShortcut(event: KeyboardEvent, type: string, optionCount: n
 	const num = parseInt(event.key, 10);
 	if (num >= 1 && num <= optionCount) {
 		event.preventDefault();
-		onSingleSelectAndAdvance(filteredOptions.value[num - 1], 'keyboard_number');
+		onSingleSelectAndAdvance(filteredOptions.value[num - 1]);
 		return true;
 	}
 	return false;
@@ -350,7 +349,7 @@ function onKeydown(event: KeyboardEvent) {
 	const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
 	if (isInputFocused) {
-		handleInputEnter(event, q.type) || handleInputArrow(event);
+		handleInputEnter(event) || handleInputArrow(event);
 		return;
 	}
 
@@ -387,10 +386,6 @@ function onOptionMouseEnter(idx: number) {
 			tabindex="0"
 			@keydown="onKeydown"
 		>
-			<p v-if="introMessage" :class="$style.intro">
-				{{ introMessage }}
-			</p>
-
 			<Transition :name="$style.questionFade" mode="out-in">
 				<div :key="currentQuestion.id" :class="$style.question">
 					<N8nText tag="p" :bold="true" :class="$style.questionText">
@@ -416,7 +411,14 @@ function onOptionMouseEnter(idx: number) {
 						>
 							<span :class="$style.numberBadge">{{ idx + 1 }}</span>
 							<span :class="$style.optionLabel">{{ option }}</span>
-							<N8nIcon :class="$style.arrowIndicator" icon="arrow-right" :size="16" />
+							<span :class="$style.arrowIndicator">
+								<N8nIcon
+									:class="$style.arrowIcon"
+									icon="arrow-right"
+									size="large"
+									:stroke-width="2.5"
+								/>
+							</span>
 						</button>
 
 						<div
@@ -498,7 +500,7 @@ function onOptionMouseEnter(idx: number) {
 						:class="$style.textareaInput"
 						:model-value="currentAnswer.customText"
 						type="textarea"
-						:rows="3"
+						:autosize="{ minRows: 3, maxRows: 8 }"
 						:disabled="disabled"
 						:placeholder="
 							i18n.baseText('aiAssistant.builder.planMode.questions.clarifyPlaceholder')
@@ -509,11 +511,11 @@ function onOptionMouseEnter(idx: number) {
 			</Transition>
 
 			<!-- Footer -->
-			<div :class="$style.footer">
+			<ConfirmationFooter layout="row-between" bordered>
 				<div :class="$style.pagination">
 					<N8nButton
 						variant="ghost"
-						size="xsmall"
+						size="medium"
 						icon-only
 						:disabled="isFirstQuestion"
 						data-test-id="instance-ai-questions-back"
@@ -529,7 +531,7 @@ function onOptionMouseEnter(idx: number) {
 					</N8nText>
 					<N8nButton
 						variant="ghost"
-						size="xsmall"
+						size="medium"
 						icon-only
 						:disabled="isLastQuestion"
 						data-test-id="instance-ai-questions-forward"
@@ -544,7 +546,7 @@ function onOptionMouseEnter(idx: number) {
 					<N8nButton
 						v-if="showSkipButton"
 						variant="outline"
-						size="small"
+						size="medium"
 						:disabled="disabled"
 						data-test-id="instance-ai-questions-skip"
 						@click="skipQuestion"
@@ -554,8 +556,8 @@ function onOptionMouseEnter(idx: number) {
 
 					<N8nButton
 						v-if="showNextButton"
-						:type="isNextEnabled ? 'primary' : 'secondary'"
-						size="small"
+						:variant="isNextEnabled ? 'solid' : 'outline'"
+						size="medium"
 						:disabled="disabled || isSubmitted || !isNextEnabled"
 						data-test-id="instance-ai-questions-next"
 						@click="goToNext"
@@ -563,12 +565,14 @@ function onOptionMouseEnter(idx: number) {
 						{{ nextButtonLabel }}
 					</N8nButton>
 				</div>
-			</div>
+			</ConfirmationFooter>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '../../shared/styles/question-option-rows' as questionOptions;
+
 .wrapper {
 	display: flex;
 	flex-direction: column;
@@ -585,8 +589,9 @@ function onOptionMouseEnter(idx: number) {
 
 .container {
 	outline: none;
-	border: var(--border);
 	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .question {
@@ -604,94 +609,45 @@ function onOptionMouseEnter(idx: number) {
 }
 
 .optionRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border: none;
-	border-radius: var(--radius--lg);
-	background: none;
-	cursor: pointer;
-	transition: background-color 0.15s ease;
-	text-align: left;
-
-	&:hover,
-	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
-	}
+	@include questionOptions.option-button-row;
+	@include questionOptions.active-selected;
 
 	&:hover .arrowIndicator,
-	&.highlighted .arrowIndicator {
-		opacity: 1;
-	}
-
-	&.activeSelected {
-		background-color: var(--color--primary);
-
-		.numberBadge {
-			background-color: var(--color--orange-400);
-			color: white;
-		}
-
-		.optionLabel {
-			color: white;
-		}
-
-		.arrowIndicator {
-			opacity: 1;
-			color: white;
-		}
-	}
-
-	&:disabled {
-		color: var(--color--text--tint-1);
-		cursor: not-allowed;
+	&.highlighted .arrowIndicator,
+	&.activeSelected .arrowIndicator {
+		visibility: visible;
 	}
 }
 
 .numberBadge {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	border-radius: var(--radius);
-	background-color: var(--color--foreground--tint-1);
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	flex-shrink: 0;
+	@include questionOptions.number-badge;
 }
 
 .arrowIndicator {
 	margin-left: auto;
-	opacity: 0;
-	color: var(--color--text--tint-1);
+	visibility: hidden;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius--full);
+	background-color: var(--color--primary);
+	color: var(--color--neutral-white);
 	flex-shrink: 0;
-	transition: opacity 0.15s ease;
+}
+
+.arrowIcon {
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 }
 
 .optionLabel {
-	color: var(--color--text);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--regular);
-	line-height: var(--line-height--xl);
+	@include questionOptions.option-label;
 }
 
 .checkboxRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	cursor: pointer;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border-radius: var(--radius--lg);
-	transition: background-color 0.15s ease;
-
-	&:hover,
-	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
-	}
+	@include questionOptions.checkbox-row;
 }
 
 .somethingElseRow {
@@ -706,7 +662,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 
 	.somethingElseInput {
@@ -738,7 +694,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 }
 
@@ -758,14 +714,6 @@ function onOptionMouseEnter(idx: number) {
 	flex-shrink: 0;
 }
 
-.footer {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
-}
-
 .pagination {
 	display: flex;
 	align-items: center;
@@ -781,14 +729,6 @@ function onOptionMouseEnter(idx: number) {
 	display: flex;
 	gap: var(--spacing--2xs);
 	min-height: 28px;
-}
-
-.textareaInput {
-	textarea {
-		height: 5lh;
-		resize: none;
-		overflow-y: auto;
-	}
 }
 
 /* Question fade transition */

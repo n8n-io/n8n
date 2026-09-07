@@ -3,17 +3,20 @@ import { Container } from '@n8n/di';
 import { GlobalConfig } from '../../index';
 
 const getExternalHookFiles = (env: Record<string, string> = {}) => {
-	jest.replaceProperty(process, 'env', env);
+	Object.entries(env).forEach(([key, val]) => {
+		vi.stubEnv(key, val);
+	});
 	return Container.get(GlobalConfig).externalHooks.files;
 };
 
 describe('ExternalHooksConfig', () => {
 	beforeEach(() => {
 		Container.reset();
+		vi.unstubAllEnvs();
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('should split by colon separator by default', () => {

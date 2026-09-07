@@ -38,8 +38,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	},
 });
 
-export const Example = Template.bind({});
-Example.args = {
+export const Default = Template.bind({});
+Default.args = {
 	modelValue: 'first',
 	options: [
 		{
@@ -101,6 +101,11 @@ const options: Array<TabOptions<string>> = [
 		notification: true,
 	},
 	{
+		label: 'Count',
+		value: 'count',
+		tag: '2',
+	},
+	{
 		label: 'Settings',
 		value: 'settings',
 		icon: 'cog',
@@ -108,30 +113,26 @@ const options: Array<TabOptions<string>> = [
 	},
 ];
 
-export const TabVariants = Template.bind({});
-TabVariants.args = {
+export const Variants = Template.bind({});
+Variants.args = {
 	modelValue: 'first',
 	options,
 };
 
-export const WithSmallSize = Template.bind({});
-WithSmallSize.args = {
-	modelValue: 'first',
-	options,
-	size: 'small',
-};
-
-export const WithModernVariant = Template.bind({});
-WithModernVariant.args = {
-	modelValue: 'first',
-	variant: 'modern',
-	options,
-};
-
-export const WithSmallAndModern = Template.bind({});
-WithSmallAndModern.args = {
-	modelValue: 'first',
-	variant: 'modern',
-	options,
-	size: 'small',
-};
+export const Sizes: StoryFn = () => ({
+	components: { N8nTabs },
+	data() {
+		return {
+			val: 'first',
+			options,
+		};
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 24px;">
+			<n8n-tabs v-model="val" size="medium" :options="options" />
+			<n8n-tabs v-model="val" size="small" :options="options" />
+			<n8n-tabs v-model="val" variant="modern" size="medium" :options="options" />
+			<n8n-tabs v-model="val" variant="modern" size="small" :options="options" />
+		</div>
+	`,
+});

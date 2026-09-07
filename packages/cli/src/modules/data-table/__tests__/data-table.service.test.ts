@@ -1,8 +1,10 @@
-import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectRelationRepository, type User } from '@n8n/db';
-import type { DataTableInfoById } from 'n8n-workflow';
+import { mockInstance, testModules } from '@n8n/backend-test-utils';
+import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
+import { In } from '@n8n/typeorm';
+import type { DataTableInfoById, DataTablesSizeData } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
@@ -12,21 +14,28 @@ import { DataTableSizeValidator } from '../data-table-size-validator.service';
 import type { DataTable } from '../data-table.entity';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
+import { DataTableAccessDeniedError } from '../errors/data-table-access-denied.error';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
+
+import { EventService } from '@/events/event.service';
+import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
 describe('DataTableService', () => {
 	let dataTableService: DataTableService;
-	let mockDataTableRepository: jest.Mocked<DataTableRepository>;
-	let mockDataTableColumnRepository: jest.Mocked<DataTableColumnRepository>;
-	let mockDataTableRowsRepository: jest.Mocked<DataTableRowsRepository>;
-	let mockLogger: jest.Mocked<Logger>;
-	let mockDataTableSizeValidator: jest.Mocked<DataTableSizeValidator>;
-	let mockProjectRelationRepository: jest.Mocked<ProjectRelationRepository>;
-	let mockRoleService: jest.Mocked<RoleService>;
-	let mockCsvImportService: jest.Mocked<DataTableCsvImportService>;
+	let mockDataTableRepository: Mocked<DataTableRepository>;
+	let mockDataTableColumnRepository: Mocked<DataTableColumnRepository>;
+	let mockDataTableRowsRepository: Mocked<DataTableRowsRepository>;
+	let mockLogger: Mocked<Logger>;
+	let mockDataTableSizeValidator: Mocked<DataTableSizeValidator>;
+	let mockProjectRelationRepository: Mocked<ProjectRelationRepository>;
+	let mockRoleService: Mocked<RoleService>;
+	let mockCsvImportService: Mocked<DataTableCsvImportService>;
+	let mockEventService: Mocked<EventService>;
+	let mockProjectRepository: Mocked<ProjectRepository>;
+	let mockProjectService: Mocked<ProjectService>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -41,9 +50,12 @@ describe('DataTableService', () => {
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
 		mockRoleService = mockInstance(RoleService);
 		mockCsvImportService = mockInstance(DataTableCsvImportService);
+		mockEventService = mockInstance(EventService);
+		mockProjectRepository = mockInstance(ProjectRepository);
+		mockProjectService = mockInstance(ProjectService);
 
 		// Mock the logger.scoped method to return the logger itself
-		mockLogger.scoped = jest.fn().mockReturnValue(mockLogger);
+		mockLogger.scoped = vi.fn().mockReturnValue(mockLogger);
 
 		dataTableService = new DataTableService(
 			mockDataTableRepository,
@@ -54,9 +66,12 @@ describe('DataTableService', () => {
 			mockProjectRelationRepository,
 			mockRoleService,
 			mockCsvImportService,
+			mockEventService,
+			mockProjectRepository,
+			mockProjectService,
 		);
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('renameColumn', () => {
@@ -470,6 +485,139 @@ describe('DataTableService', () => {
 		});
 	});
 
+	describe('getCachedSizeBytesByIds', () => {
+		const cachedSizeData: DataTablesSizeData = {
+			totalBytes: 3072,
+			dataTables: {
+				'dt-1': {
+					id: 'dt-1',
+					name: 'Table 1',
+					projectId: 'project-1',
+					projectName: 'Project 1',
+					sizeBytes: 1024,
+				},
+				'dt-2': {
+					id: 'dt-2',
+					name: 'Table 2',
+					projectId: 'project-2',
+					projectName: 'Project 2',
+					sizeBytes: 2048,
+				},
+			},
+		};
+
+		beforeEach(() => {
+			mockDataTableSizeValidator.getCachedSizeData.mockImplementation(async (fn) => {
+				await fn();
+				return cachedSizeData;
+			});
+		});
+
+		it('should return the cached size for a known data table', async () => {
+			// Act
+			const result = await dataTableService.getCachedSizeBytesByIds(['dt-1', 'dt-2']);
+
+			// Assert
+			expect(result.get('dt-1')).toBe(1024);
+			expect(result.get('dt-2')).toBe(2048);
+		});
+
+		it('should return 0 for a table created within the cache window', async () => {
+			// Act
+			const result = await dataTableService.getCachedSizeBytesByIds(['dt-brand-new']);
+
+			// Assert
+			expect(result.get('dt-brand-new')).toBe(0);
+		});
+
+		it('should return an empty map without reading the cache for no ids', async () => {
+			// Act
+			const result = await dataTableService.getCachedSizeBytesByIds([]);
+
+			// Assert
+			expect(result.size).toBe(0);
+			expect(mockDataTableSizeValidator.getCachedSizeData).not.toHaveBeenCalled();
+		});
+
+		it('should return only the requested ids, never other tables on the instance', async () => {
+			// The cache holds every table on the instance, so the filter is the leak guard.
+			// Act
+			const result = await dataTableService.getCachedSizeBytesByIds(['dt-1']);
+
+			// Assert
+			expect([...result.keys()]).toEqual(['dt-1']);
+		});
+	});
+
+	describe('findDataTablesByIdsForUser', () => {
+		const adminUser = {
+			id: 'user-admin',
+			role: { slug: 'global:owner', scopes: [{ slug: 'dataTable:read' }] },
+		} as unknown as User;
+
+		const regularUser = {
+			id: 'user-regular',
+			role: { slug: 'global:member', scopes: [] },
+		} as unknown as User;
+
+		it('returns an empty array without querying when given no ids', async () => {
+			const result = await dataTableService.findDataTablesByIdsForUser([], regularUser, [
+				'dataTable:read',
+			]);
+
+			expect(result).toEqual([]);
+			expect(mockDataTableRepository.find).not.toHaveBeenCalled();
+			expect(mockRoleService.rolesWithScope).not.toHaveBeenCalled();
+		});
+
+		it('queries by id only for a user with the matching global scope', async () => {
+			mockDataTableRepository.find.mockResolvedValue([]);
+
+			await dataTableService.findDataTablesByIdsForUser(['dt-1', 'dt-2'], adminUser, [
+				'dataTable:read',
+			]);
+
+			expect(mockDataTableRepository.find).toHaveBeenCalledWith({
+				where: { id: In(['dt-1', 'dt-2']) },
+				relations: { columns: true, project: true },
+			});
+			expect(mockRoleService.rolesWithScope).not.toHaveBeenCalled();
+		});
+
+		it('filters by accessible projects for a user without the global scope', async () => {
+			mockRoleService.rolesWithScope.mockResolvedValue(['project:admin', 'project:editor']);
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['proj-1']);
+			mockDataTableRepository.find.mockResolvedValue([]);
+
+			await dataTableService.findDataTablesByIdsForUser(['dt-1'], regularUser, ['dataTable:read']);
+
+			expect(mockRoleService.rolesWithScope).toHaveBeenCalledWith('project', ['dataTable:read']);
+			expect(mockProjectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+				regularUser.id,
+				['project:admin', 'project:editor'],
+			);
+			expect(mockDataTableRepository.find).toHaveBeenCalledWith({
+				where: {
+					id: In(['dt-1']),
+					projectId: In(['proj-1']),
+				},
+				relations: { columns: true, project: true },
+			});
+		});
+
+		it('returns an empty array without querying the repository when the user has no accessible projects', async () => {
+			mockRoleService.rolesWithScope.mockResolvedValue([]);
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			const result = await dataTableService.findDataTablesByIdsForUser(['dt-1'], regularUser, [
+				'dataTable:read',
+			]);
+
+			expect(result).toEqual([]);
+			expect(mockDataTableRepository.find).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('importCsvToExistingTable', () => {
 		const projectId = 'test-project-id';
 		const dataTableId = 'test-data-table-id';
@@ -495,7 +643,7 @@ describe('DataTableService', () => {
 			// Mock insertRows transaction
 			Object.defineProperty(mockDataTableColumnRepository, 'manager', {
 				value: {
-					transaction: jest.fn(async (fn) => fn({} as any)),
+					transaction: vi.fn(async (fn) => fn({} as any)),
 				},
 				writable: true,
 				configurable: true,
@@ -504,7 +652,7 @@ describe('DataTableService', () => {
 				success: true,
 				insertedRows: 2,
 			});
-			mockDataTableSizeValidator.reset = jest.fn();
+			mockDataTableSizeValidator.reset = vi.fn();
 			mockDataTableRepository.touchUpdatedAt.mockResolvedValue(undefined);
 		});
 
@@ -596,6 +744,83 @@ describe('DataTableService', () => {
 			).rejects.toThrow();
 
 			expect(mockCsvImportService.cleanupFile).toHaveBeenCalledWith(fileId);
+		});
+	});
+
+	describe('getOne', () => {
+		const projectId = 'test-project-id';
+		const dataTableId = 'test-data-table-id';
+
+		it('should return the data table with columns when it exists', async () => {
+			const mockDataTable = {
+				id: dataTableId,
+				name: 'Test Table',
+				projectId,
+				columns: [],
+				project: { id: projectId },
+			} as unknown as DataTable;
+			mockDataTableRepository.findOne.mockResolvedValue(mockDataTable);
+
+			const result = await dataTableService.getOne(dataTableId, projectId);
+
+			expect(result).toEqual(mockDataTable);
+			expect(mockDataTableRepository.findOne).toHaveBeenCalledWith({
+				where: { id: dataTableId, project: { id: projectId } },
+				relations: ['project', 'columns'],
+			});
+		});
+
+		it('should throw DataTableNotFoundError when the table is missing', async () => {
+			mockDataTableRepository.findOne.mockResolvedValue(null);
+
+			await expect(dataTableService.getOne(dataTableId, projectId)).rejects.toThrow(
+				DataTableNotFoundError,
+			);
+		});
+	});
+
+	describe('resolveOwningProjectId', () => {
+		const projectId = 'test-project-id';
+		const user = { id: 'user-1' } as User;
+
+		it('should return the personal project when no projectId is given', async () => {
+			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: projectId,
+			} as never);
+
+			const result = await dataTableService.resolveOwningProjectId(user);
+
+			expect(result).toBe(projectId);
+			expect(mockProjectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(user.id);
+		});
+
+		it('should return the given project when the user has create scope', async () => {
+			mockProjectService.findProject.mockResolvedValue({ id: projectId } as never);
+			mockProjectService.getProjectWithScope.mockResolvedValue({ id: projectId } as never);
+
+			const result = await dataTableService.resolveOwningProjectId(user, projectId);
+
+			expect(result).toBe(projectId);
+			expect(mockProjectService.getProjectWithScope).toHaveBeenCalledWith(user, projectId, [
+				'dataTable:create',
+			]);
+		});
+
+		it('should throw ProjectNotFoundError when the project does not exist', async () => {
+			mockProjectService.findProject.mockResolvedValue(null);
+
+			await expect(dataTableService.resolveOwningProjectId(user, projectId)).rejects.toThrow(
+				ProjectNotFoundError,
+			);
+		});
+
+		it('should throw DataTableAccessDeniedError when the user cannot create in the project', async () => {
+			mockProjectService.findProject.mockResolvedValue({ id: projectId } as never);
+			mockProjectService.getProjectWithScope.mockResolvedValue(null);
+
+			await expect(dataTableService.resolveOwningProjectId(user, projectId)).rejects.toThrow(
+				DataTableAccessDeniedError,
+			);
 		});
 	});
 });

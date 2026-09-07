@@ -5,12 +5,12 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useLocalStorage } from '@vueuse/core';
 import { VIEWS } from '@/app/constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { N8nIcon } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const MAX_RECENT_ITEMS = 5;
 const MAX_RECENT_WORKFLOWS_TO_DISPLAY = 3;
@@ -32,7 +32,7 @@ type RecentNodesMap = Record<string, RecentNode[]>;
 export function useRecentResources() {
 	const i18n = useI18n();
 	const router = useRouter();
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const { setNodeActive } = useCanvasOperations();
@@ -41,8 +41,8 @@ export function useRecentResources() {
 	const recentNodes = useLocalStorage<RecentNodesMap>(RECENT_NODES_STORAGE_KEY, {});
 
 	function trackResourceOpened(to: RouteLocationNormalized): void {
-		if (to.name === VIEWS.WORKFLOW && typeof to.params.name === 'string') {
-			const workflowId = to.params.name;
+		if (to.name === VIEWS.WORKFLOW && typeof to.params.workflowId === 'string') {
+			const workflowId = to.params.workflowId;
 			const isNewWorkflow = to.query.new === 'true';
 			// Check if it's a valid workflow ID (not empty and exists)
 			if (workflowId && !isNewWorkflow) {
@@ -91,15 +91,15 @@ export function useRecentResources() {
 
 		const currentRoute = router.currentRoute.value;
 		const currentWorkflowId =
-			currentRoute.name === VIEWS.WORKFLOW && typeof currentRoute.params.name === 'string'
-				? currentRoute.params.name
+			currentRoute.name === VIEWS.WORKFLOW && typeof currentRoute.params.workflowId === 'string'
+				? currentRoute.params.workflowId
 				: null;
 
 		if (currentWorkflowId && recentNodes.value[currentWorkflowId]) {
 			const nodesForWorkflow = recentNodes.value[currentWorkflowId];
 
 			for (const recentNode of nodesForWorkflow) {
-				const node = workflowsStore.findNodeByPartialId(recentNode.nodeId);
+				const node = workflowDocumentStore.value.findNodeByPartialId(recentNode.nodeId);
 				if (!node) {
 					continue;
 				}
@@ -120,7 +120,7 @@ export function useRecentResources() {
 						},
 					},
 					handler: () => {
-						const node = workflowsStore.findNodeByPartialId(recentNode.nodeId);
+						const node = workflowDocumentStore.value.findNodeByPartialId(recentNode.nodeId);
 						if (node) {
 							setNodeActive(node.id, 'command_bar');
 						}
@@ -161,7 +161,7 @@ export function useRecentResources() {
 					handler: () => {
 						const targetRoute = router.resolve({
 							name: VIEWS.WORKFLOW,
-							params: { name: recentWorkflow.id },
+							params: { workflowId: recentWorkflow.id },
 						});
 						window.location.href = targetRoute.fullPath;
 					},

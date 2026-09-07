@@ -128,7 +128,7 @@ test.describe(
 			await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
 		});
 
-		test('should test webhook workflow', async ({ n8n }) => {
+		test('should test webhook workflow', async ({ n8n, api }) => {
 			await n8n.start.fromImportedWorkflow('Webhook_wait_set.json');
 
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
@@ -151,7 +151,7 @@ test.describe(
 			await n8n.ndv.clickBackToCanvasButton();
 
 			const webhookUrl = await n8n.clipboard.readText();
-			const response = await n8n.page.request.get(webhookUrl);
+			const response = await api.webhooks.trigger(webhookUrl);
 			expect(response.status()).toBe(200);
 
 			await assertNodeExecutionStates(n8n, [
@@ -197,7 +197,7 @@ test.describe(
 			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('Trigger A');
 
 			await n8n.ndv.clickBackToCanvasButton();
-			await expect(n8n.ndv.getContainer()).toBeHidden();
+			await expect(n8n.ndv.container).toBeHidden();
 
 			await n8n.canvas.nodeByName('Trigger B').hover();
 			await expect(n8n.canvas.getExecuteWorkflowButton('Trigger A')).toHaveCSS('opacity', '0');

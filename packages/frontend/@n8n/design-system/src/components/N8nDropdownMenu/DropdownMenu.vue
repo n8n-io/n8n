@@ -1,0 +1,476 @@
+<script setup lang="ts" generic="T = string, D = never">
+import {
+	DropdownMenuRoot,
+	DropdownMenuTrigger,
+	DropdownMenuPortal,
+	DropdownMenuContent,
+} from 'reka-ui';
+import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, watch } from 'vue';
+
+import { isAlign, isSide } from './DropdownMenu.typeguards';
+import {
+	DropdownMenuPortalTargetKey,
+	DropdownMenuSubMaxHeightKey,
+	type DropdownMenuItemProps,
+	type DropdownMenuProps,
+	type DropdownMenuSlots,
+} from './DropdownMenu.types';
+import DropdownMenuItems from './DropdownMenuItems.vue';
+import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
+import N8nButton from '../N8nButton/Button.vue';
+import type { IconName } from '../N8nIcon/icons';
+
+defineOptions({ inheritAttrs: false });
+
+const props = withDefaults(defineProps<DropdownMenuProps<T, D>>(), {
+	placement: 'bottom',
+	trigger: 'click',
+	activatorIcon: () => ({ type: 'icon', value: 'ellipsis' }),
+	modal: true,
+	disabled: false,
+	teleported: true,
+	loading: false,
+	loadingItemCount: 3,
+	searchable: false,
+	searchPlaceholder: 'Search...',
+	searchDebounce: 0,
+	emptyText: 'No items',
+	width: '24rem',
+});
+
+const emit = defineEmits<{
+	'update:modelValue': [open: boolean];
+	select: [value: T];
+	search: [searchTerm: string, itemId?: T];
+	'submenu:toggle': [itemId: T, open: boolean];
+	'item-mouseup': [item: DropdownMenuItemProps<T, D>];
+}>();
+
+const slots = defineSlots<DropdownMenuSlots<T, D>>();
+const $style = useCssModule();
+
+provide(
+	DropdownMenuPortalTargetKey,
+	computed(() => props.portalTarget),
+);
+
+provide(
+	DropdownMenuSubMaxHeightKey,
+	computed(() =>
+		props.subMenuMaxHeight === undefined
+			? undefined
+			: typeof props.subMenuMaxHeight === 'number'
+				? `${props.subMenuMaxHeight}px`
+				: props.subMenuMaxHeight,
+	),
+);
+
+// Handle controlled/uncontrolled state
+const internalOpen = ref(props.defaultOpen ?? false);
+
+const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
+let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
+
+// Track open sub-menu index for non-searchable menus. Searchable menus own this in
+// DropdownMenuSearchableContent because they use virtual keyboard focus.
+const openSubMenuIndex = ref(-1);
+
+const placementParts = computed(() => {
+	const [sideValue, alignValue] = props.placement.split('-');
+	return {
+		side: isSide(sideValue) ? sideValue : 'bottom',
+		align: isAlign(alignValue) ? alignValue : 'center',
+	};
+});
+
+const contentContainerStyle = computed(() => {
+	const maxHeightStyle = props.maxHeight
+		? {
+				maxHeight: typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight,
+				overflowY: 'auto',
+			}
+		: {};
+
+	return {
+		'--n8n--dropdown-menu-width': props.width,
+		...maxHeightStyle,
+	};
+});
+
+const handleOpenChange = (open: boolean) => {
+	internalOpen.value = open;
+	emit('update:modelValue', open);
+
+	if (!open) {
+		openSubMenuIndex.value = -1;
+	}
+};
+
+const handleSubMenuOpenChange = (index: number, open: boolean) => {
+	const item = props.items[index];
+	if (item) {
+		emit('submenu:toggle', item.id, open);
+	}
+
+	if (open) {
+		openSubMenuIndex.value = index;
+	} else if (openSubMenuIndex.value === index) {
+		openSubMenuIndex.value = -1;
+		void nextTick(() => {
+			const contentEl = contentRef.value?.$el as HTMLElement | undefined;
+			const menuItems = contentEl?.querySelectorAll('[role="menuitem"]');
+			const targetItem = menuItems?.[index] as HTMLElement | undefined;
+			targetItem?.focus();
+		});
+	}
+};
+
+function findItemById(
+	list: Array<DropdownMenuItemProps<T, D>>,
+	id: T,
+): DropdownMenuItemProps<T, D> | undefined {
+	for (const item of list) {
+		if (item.id === id) return item;
+		const found = item.children && findItemById(item.children, id);
+		if (found) return found;
+	}
+	return undefined;
+}
+
+const handleItemSelect = (value: T) => {
+	emit('select', value);
+	// Toggle-style rows (e.g. credential selection) keep the menu open.
+	if (!findItemById(props.items, value)?.keepOpen) close();
+};
+
+const handleItemSearch = (term: string, itemId: T) => {
+	emit('search', term, itemId);
+};
+
+const handleItemMouseUp = (item: DropdownMenuItemProps<T, D>) => {
+	emit('item-mouseup', item);
+};
+
+// Hover trigger support
+const cancelHoverClose = () => {
+	if (hoverCloseTimer) {
+		clearTimeout(hoverCloseTimer);
+		hoverCloseTimer = undefined;
+	}
+};
+
+const triggerHoverEnter = () => {
+	if (props.trigger === 'hover') {
+		cancelHoverClose();
+		open();
+	}
+};
+
+const triggerHoverLeave = () => {
+	if (props.trigger === 'hover') {
+		cancelHoverClose();
+		hoverCloseTimer = setTimeout(() => {
+			close();
+		}, 100);
+	}
+};
+
+const open = () => {
+	internalOpen.value = true;
+	emit('update:modelValue', true);
+};
+
+const close = () => {
+	internalOpen.value = false;
+	emit('update:modelValue', false);
+	openSubMenuIndex.value = -1;
+};
+
+watch(
+	() => props.modelValue,
+	(newValue) => {
+		if (newValue !== undefined) {
+			internalOpen.value = newValue;
+			if (!newValue) {
+				openSubMenuIndex.value = -1;
+			}
+		}
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	cancelHoverClose();
+});
+
+// Custom dismiss for cross-window portals (e.g. pop-out chat window).
+// reka-ui's DismissableLayer captures ownerDocument during setup when the
+// element ref is still null, falling back to globalThis.document — the main
+// window's document. So the dismiss pointerdown listener never fires in the
+// pop-out window. This watcher adds one on the correct document.
+watch(internalOpen, (isOpen, _oldValue, onCleanup) => {
+	const target = props.portalTarget;
+	if (!target || typeof target === 'string' || !isOpen) return;
+
+	const targetDoc = target.ownerDocument;
+	if (!targetDoc || targetDoc === document) return;
+
+	let handler: ((e: PointerEvent) => void) | undefined;
+	const timerId = setTimeout(() => {
+		handler = (e: PointerEvent) => {
+			const el = e.target as HTMLElement;
+			// Check both the main content and any sub-menu content (which is
+			// portaled separately and thus not inside contentEl).
+			const contentEl = contentRef.value?.$el as HTMLElement | undefined;
+			if (contentEl?.contains(el)) return;
+			if (el.closest?.('[role="menu"]')) return;
+			setTimeout(() => {
+				if (internalOpen.value) close();
+			}, 0);
+		};
+		targetDoc.addEventListener('pointerdown', handler);
+	}, 0);
+
+	onCleanup(() => {
+		clearTimeout(timerId);
+		if (handler) targetDoc.removeEventListener('pointerdown', handler);
+	});
+});
+
+defineExpose({ open, close });
+</script>
+
+<!-- TODO DS-580: Let consumers bind trigger props/listeners directly in the slot so their
+	element can be the actual trigger. For now this wrapper owns hover events and test ids. -->
+<template>
+	<DropdownMenuRoot :modal="modal" :open="internalOpen" @update:open="handleOpenChange">
+		<DropdownMenuTrigger as-child :disabled="disabled">
+			<span
+				v-if="slots.trigger"
+				:class="$style.trigger"
+				:data-test-id="dataTestId"
+				@pointerenter="triggerHoverEnter"
+				@pointerleave="triggerHoverLeave"
+			>
+				<slot name="trigger" />
+			</span>
+			<N8nButton
+				v-else
+				:icon="activatorIcon?.type === 'icon' ? (activatorIcon.value as IconName) : undefined"
+				:data-test-id="dataTestId"
+				:disabled="disabled"
+				:icon-only="true"
+				variant="ghost"
+				size="xsmall"
+				@pointerenter="triggerHoverEnter"
+				@pointerleave="triggerHoverLeave"
+			>
+				<template v-if="activatorIcon?.type === 'emoji'" #icon>
+					{{ activatorIcon.value }}
+				</template>
+			</N8nButton>
+		</DropdownMenuTrigger>
+
+		<DropdownMenuPortal
+			:disabled="!teleported && !portalTarget"
+			v-bind="portalTarget ? { to: portalTarget } : {}"
+		>
+			<DropdownMenuContent
+				v-bind="id ? { id } : {}"
+				ref="contentRef"
+				:data-test-id="contentTestId"
+				:class="[$style.content, searchable && $style.searchable, extraPopperClass]"
+				data-menu-content
+				:side="placementParts.side"
+				:align="placementParts.align"
+				:side-offset="5"
+				:style="contentContainerStyle"
+				:prioritize-position="true"
+				@mouseenter="cancelHoverClose"
+				@mouseleave="triggerHoverLeave"
+			>
+				<slot v-if="slots.content" name="content" />
+				<template v-else>
+					<DropdownMenuSearchableContent
+						v-if="searchable"
+						:open="internalOpen"
+						:items="items"
+						:search-placeholder="searchPlaceholder"
+						:search-debounce="searchDebounce"
+						@select="handleItemSelect"
+						@search="(term: string, itemId?: T) => emit('search', term, itemId)"
+						@close="close"
+						@submenu:toggle="(itemId: T, open: boolean) => emit('submenu:toggle', itemId, open)"
+					>
+						<template v-if="slots['search-prefix']" #search-prefix>
+							<slot name="search-prefix" />
+						</template>
+						<template v-if="slots['search-suffix']" #search-suffix>
+							<slot name="search-suffix" />
+						</template>
+						<template #default="searchableContent">
+							<DropdownMenuItems
+								:items="items"
+								:loading="loading"
+								:loading-item-count="loadingItemCount"
+								:empty-text="emptyText"
+								:highlighted-index="searchableContent.highlightedIndex"
+								:open-sub-menu-index="searchableContent.openSubMenuIndex"
+								:get-item-dom-id="searchableContent.getItemDomId"
+								:on-item-hover="searchableContent.onItemHover"
+								:disable-pointer-focus="true"
+								@select="handleItemSelect"
+								@search="handleItemSearch"
+								@submenu:toggle="searchableContent.onSubMenuOpenChange"
+								@item-mouseup="handleItemMouseUp"
+							>
+								<template v-if="slots.loading" #loading>
+									<slot name="loading" />
+								</template>
+								<template v-if="slots.empty" #empty>
+									<slot name="empty" />
+								</template>
+								<template v-if="slots.item" #item="slotProps">
+									<slot name="item" v-bind="slotProps" />
+								</template>
+								<template v-if="slots['item-leading']" #item-leading="slotProps">
+									<slot name="item-leading" v-bind="slotProps" />
+								</template>
+								<template v-if="slots['item-label']" #item-label="slotProps">
+									<slot name="item-label" v-bind="slotProps" />
+								</template>
+								<template v-if="slots['item-trailing']" #item-trailing="slotProps">
+									<slot name="item-trailing" v-bind="slotProps" />
+								</template>
+							</DropdownMenuItems>
+						</template>
+					</DropdownMenuSearchableContent>
+
+					<DropdownMenuItems
+						v-else
+						:items="items"
+						:loading="loading"
+						:loading-item-count="loadingItemCount"
+						:empty-text="emptyText"
+						:open-sub-menu-index="openSubMenuIndex"
+						@select="handleItemSelect"
+						@search="handleItemSearch"
+						@submenu:toggle="handleSubMenuOpenChange"
+						@item-mouseup="handleItemMouseUp"
+					>
+						<template v-if="slots.loading" #loading>
+							<slot name="loading" />
+						</template>
+						<template v-if="slots.empty" #empty>
+							<slot name="empty" />
+						</template>
+						<template v-if="slots.item" #item="slotProps">
+							<slot name="item" v-bind="slotProps" />
+						</template>
+						<template v-if="slots['item-leading']" #item-leading="slotProps">
+							<slot name="item-leading" v-bind="slotProps" />
+						</template>
+						<template v-if="slots['item-label']" #item-label="slotProps">
+							<slot name="item-label" v-bind="slotProps" />
+						</template>
+						<template v-if="slots['item-trailing']" #item-trailing="slotProps">
+							<slot name="item-trailing" v-bind="slotProps" />
+						</template>
+					</DropdownMenuItems>
+					<slot v-if="slots.footer" name="footer" />
+				</template>
+			</DropdownMenuContent>
+		</DropdownMenuPortal>
+	</DropdownMenuRoot>
+</template>
+
+<style module lang="scss">
+@use '../../css/common/var';
+@use '../../css/mixins/mixins' as scrollbar-mixins;
+@use '../../css/mixins/motion';
+
+.content {
+	--n8n--dropdown--offset--slide-x: 0;
+	--n8n--dropdown--offset--slide-y: 0;
+	--n8n--dropdown--offset--origin-x: center;
+	--n8n--dropdown--offset--origin-y: center;
+	--animation--popover-in--translate-x: var(--n8n--dropdown--offset--slide-x);
+	--animation--popover-in--translate-y: var(--n8n--dropdown--offset--slide-y);
+	display: flex;
+	flex-direction: column;
+	width: fit-content;
+	min-width: var(--spacing--4xl);
+	max-width: var(--n8n--dropdown-menu-width);
+	/** This stops dropdown menus expanding beyond the viewport height **/
+	max-height: min(var(--reka-dropdown-menu-content-available-height), 75vh);
+	overflow-y: auto;
+	border-radius: var(--radius--xs);
+	background-color: var(--background--surface);
+	--shadow-color--outline: var(--border-color);
+	box-shadow: var(--shadow--md), var(--shadow--outline);
+	will-change: transform, opacity;
+	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
+	z-index: var.$index-popper;
+	@include scrollbar-mixins.hoverable-scroll-bar;
+
+	&.searchable {
+		overflow-y: hidden;
+	}
+
+	&[data-state='open'] {
+		@include motion.popover-in;
+	}
+
+	&[data-state='closed'] {
+		display: none;
+	}
+}
+
+.content[data-state='open'][data-side='top'] {
+	--n8n--dropdown--offset--slide-y: -2px;
+	--n8n--dropdown--offset--origin-y: bottom;
+}
+
+.content[data-state='open'][data-side='right'] {
+	--n8n--dropdown--offset--slide-x: 2px;
+	--n8n--dropdown--offset--origin-x: left;
+}
+
+.content[data-state='open'][data-side='bottom'] {
+	--n8n--dropdown--offset--slide-y: 2px;
+	--n8n--dropdown--offset--origin-y: top;
+}
+
+.content[data-state='open'][data-side='left'] {
+	--n8n--dropdown--offset--slide-x: -2px;
+	--n8n--dropdown--offset--origin-x: right;
+}
+
+.content[data-state='open'][data-side='top'][data-align='start'],
+.content[data-state='open'][data-side='bottom'][data-align='start'] {
+	--n8n--dropdown--offset--slide-x: -2px;
+	--n8n--dropdown--offset--origin-x: left;
+}
+
+.content[data-state='open'][data-side='top'][data-align='end'],
+.content[data-state='open'][data-side='bottom'][data-align='end'] {
+	--n8n--dropdown--offset--slide-x: 2px;
+	--n8n--dropdown--offset--origin-x: right;
+}
+
+.content[data-state='open'][data-side='left'][data-align='start'],
+.content[data-state='open'][data-side='right'][data-align='start'] {
+	--n8n--dropdown--offset--slide-y: -2px;
+	--n8n--dropdown--offset--origin-y: top;
+}
+
+.content[data-state='open'][data-side='left'][data-align='end'],
+.content[data-state='open'][data-side='right'][data-align='end'] {
+	--n8n--dropdown--offset--slide-y: 2px;
+	--n8n--dropdown--offset--origin-y: bottom;
+}
+
+.trigger {
+	display: inline-flex;
+}
+</style>

@@ -1,12 +1,11 @@
 import { NodeApiError } from 'n8n-workflow';
 import type { INodeExecutionData, IN8nHttpFullResponse, JsonObject } from 'n8n-workflow';
 
-import { ERROR_DESCRIPTIONS } from '../../helpers/constants';
 import { handleError } from '../../helpers/errorHandler';
 
 const mockExecuteSingleFunctions = {
-	getNode: jest.fn(() => ({ name: 'MockNode' })),
-	getNodeParameter: jest.fn(),
+	getNode: vi.fn(() => ({ name: 'MockNode' })),
+	getNodeParameter: vi.fn(),
 } as any;
 
 describe('handleError', () => {
@@ -24,7 +23,7 @@ describe('handleError', () => {
 	});
 
 	test('should throw NodeApiError for EntityAlreadyExists with user conflict', async () => {
-		mockExecuteSingleFunctions.getNodeParameter = jest
+		mockExecuteSingleFunctions.getNodeParameter = vi
 			.fn()
 			.mockReturnValueOnce('user')
 			.mockReturnValueOnce('existingUserName');
@@ -34,12 +33,9 @@ describe('handleError', () => {
 			Error: { Code: 'EntityAlreadyExists', Message: 'User "existingUserName" already exists' },
 		} as JsonObject;
 
-		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
-			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
-				message: 'User "existingUserName" already exists',
-				description: ERROR_DESCRIPTIONS.EntityAlreadyExists.User,
-			}),
-		);
+		const promise = handleError.call(mockExecuteSingleFunctions, data, response);
+		await expect(promise).rejects.toThrow(NodeApiError);
+		await expect(promise).rejects.toThrow('User "existingUserName" already exists');
 	});
 
 	test('should throw NodeApiError for NoSuchEntity with user not found', async () => {
@@ -52,12 +48,9 @@ describe('handleError', () => {
 			Error: { Code: 'NoSuchEntity', Message: 'User "nonExistentUser" does not exist' },
 		} as JsonObject;
 
-		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrowError(
-			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
-				message: 'User "nonExistentUser" does not exist',
-				description: ERROR_DESCRIPTIONS.NoSuchEntity.User,
-			}),
-		);
+		const promise = handleError.call(mockExecuteSingleFunctions, data, response);
+		await expect(promise).rejects.toThrow(NodeApiError);
+		await expect(promise).rejects.toThrow('User "nonExistentUser" does not exist');
 	});
 
 	test('should throw generic error if no specific mapping exists', async () => {
@@ -66,12 +59,9 @@ describe('handleError', () => {
 		response.statusCode = 400;
 		response.body = { Error: { Code: 'BadRequest', Message: 'Invalid request' } } as JsonObject;
 
-		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
-			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
-				message: 'BadRequest',
-				description: 'Invalid request',
-			}),
-		);
+		const promise = handleError.call(mockExecuteSingleFunctions, data, response);
+		await expect(promise).rejects.toThrow(NodeApiError);
+		await expect(promise).rejects.toThrow('BadRequest');
 	});
 
 	test('should throw NodeApiError for EntityAlreadyExists with group conflict', async () => {
@@ -84,12 +74,9 @@ describe('handleError', () => {
 			Error: { Code: 'EntityAlreadyExists', Message: 'Group "existingGroupName" already exists' },
 		} as JsonObject;
 
-		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
-			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
-				message: 'Group "existingGroupName" already exists',
-				description: ERROR_DESCRIPTIONS.EntityAlreadyExists.Group,
-			}),
-		);
+		const promise = handleError.call(mockExecuteSingleFunctions, data, response);
+		await expect(promise).rejects.toThrow(NodeApiError);
+		await expect(promise).rejects.toThrow('Group "existingGroupName" already exists');
 	});
 
 	test('should throw NodeApiError for NoSuchEntity with group not found', async () => {
@@ -102,12 +89,9 @@ describe('handleError', () => {
 			Error: { Code: 'NoSuchEntity', Message: 'Group "nonExistentGroup" does not exist' },
 		} as JsonObject;
 
-		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
-			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
-				message: 'Group "nonExistentGroup" does not exist',
-				description: ERROR_DESCRIPTIONS.NoSuchEntity.Group,
-			}),
-		);
+		const promise = handleError.call(mockExecuteSingleFunctions, data, response);
+		await expect(promise).rejects.toThrow(NodeApiError);
+		await expect(promise).rejects.toThrow('Group "nonExistentGroup" does not exist');
 	});
 
 	test('should throw NodeApiError for DeleteConflict', async () => {
@@ -120,11 +104,8 @@ describe('handleError', () => {
 			Error: { Code: 'DeleteConflict', Message: 'User "userIngroup" is in a group' },
 		} as JsonObject;
 
-		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
-			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
-				message: 'User "userIngroup" is in a group',
-				description: 'This entity is still in use. Remove users from the group before deleting.',
-			}),
-		);
+		const promise = handleError.call(mockExecuteSingleFunctions, data, response);
+		await expect(promise).rejects.toThrow(NodeApiError);
+		await expect(promise).rejects.toThrow('User "userIngroup" is in a group');
 	});
 });

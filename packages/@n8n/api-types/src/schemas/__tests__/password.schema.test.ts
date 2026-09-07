@@ -70,8 +70,8 @@ describe('passwordSchema with N8N_PASSWORD_MIN_LENGTH', () => {
 	});
 
 	const importFreshSchema = async () => {
-		jest.resetModules();
-		return await import('../password.schema');
+		vi.resetModules();
+		return await import('../password.schema.js');
 	};
 
 	test('should use custom min length from env var', async () => {

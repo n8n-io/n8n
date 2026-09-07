@@ -1,38 +1,48 @@
 import {
 	PublicApiListDataTableQueryDto,
-	CreateDataTableDto,
+	PublicApiCreateDataTableDto,
 	UpdateDataTableDto,
 } from '@n8n/api-types';
-import { ProjectRepository, ProjectRelationRepository } from '@n8n/db';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Container } from '@n8n/di';
-import type express from 'express';
 
 import type { DataTableRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
-	apiKeyHasScope,
+	publicApiScope,
 	projectScope,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 
-const handleError = (error: unknown, res: express.Response): express.Response => {
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
+import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-table-access-denied.error';
+import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
+import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
+import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import { ProjectNotFoundError } from '@/services/project.service.ee';
+
+const handleError = (error: unknown) => {
+	if (error instanceof DataTableValidationError) {
+		throw new BadRequestError(error.message);
+	}
+	if (error instanceof ProjectNotFoundError) {
+		throw new BadRequestError(`Project with ID "${error.projectId}" not found`);
+	}
 	if (error instanceof DataTableNotFoundError) {
-		return res.status(404).json({ message: error.message });
+		throw new NotFoundError(error.message);
+	}
+	if (error instanceof DataTableAccessDeniedError) {
+		throw new ForbiddenError();
 	}
 	if (error instanceof DataTableNameConflictError) {
-		return res.status(409).json({ message: error.message });
+		throw new ConflictError(error.message);
 	}
-	if (error instanceof DataTableValidationError) {
-		return res.status(400).json({ message: error.message });
-	}
-	if (error instanceof Error) {
-		return res.status(400).json({ message: error.message });
-	}
+
 	throw error;
 };
 
@@ -50,76 +60,52 @@ const stringifyQuery = (query: Record<string, unknown>): Record<string, string |
 	return result;
 };
 
-/**
- * Gets the project ID for a data table.
- * Called AFTER projectScope middleware has validated access.
- */
-const getProjectIdForDataTable = async (dataTableId: string): Promise<string> => {
-	const dataTable = await Container.get(DataTableRepository).findOne({
-		where: { id: dataTableId },
-		relations: ['project'],
-	});
+function toPublicDataTable<T extends { project?: unknown }>(dataTable: T) {
+	const { project: _project, ...rest } = dataTable;
+	return rest;
+}
 
-	if (!dataTable) {
-		throw new DataTableNotFoundError(dataTableId);
-	}
-
-	return dataTable.project.id;
+const attachSize = async <T extends { id: string }>(dataTable: T) => {
+	const sizes = await Container.get(DataTableService).getCachedSizeBytesByIds([dataTable.id]);
+	return { ...dataTable, sizeBytes: sizes.get(dataTable.id) ?? 0 };
 };
 
-export = {
+type DataTableHandlers = {
+	listDataTables: PublicAPIEndpoint<DataTableRequest.List>;
+	createDataTable: PublicAPIEndpoint<DataTableRequest.Create>;
+	getDataTable: PublicAPIEndpoint<DataTableRequest.Get>;
+	updateDataTable: PublicAPIEndpoint<DataTableRequest.Update>;
+	deleteDataTable: PublicAPIEndpoint<DataTableRequest.Delete>;
+};
+
+const dataTableHandlers: DataTableHandlers = {
 	listDataTables: [
-		apiKeyHasScope('dataTable:list'),
+		publicApiScope('dataTable:list'),
 		validCursor,
-		async (req: DataTableRequest.List, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const payload = PublicApiListDataTableQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
-					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid query parameters',
-					});
+					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid query parameters');
 				}
 
 				const { offset, limit, filter, sortBy } = payload.data;
 
-				const providedFilter = filter ?? {};
-				const { projectId: _ignoredProjectId, ...restFilter } = providedFilter;
-
-				const isGlobalOwnerOrAdmin = ['global:owner', 'global:admin'].includes(req.user.role.slug);
-
-				let finalFilter: any;
-				if (isGlobalOwnerOrAdmin) {
-					finalFilter = restFilter;
-				} else {
-					const personalProject = await Container.get(
-						ProjectRepository,
-					).getPersonalProjectForUserOrFail(req.user.id);
-
-					const projectRelations = await Container.get(ProjectRelationRepository).find({
-						where: { userId: req.user.id },
-						relations: ['project'],
-					});
-
-					const teamProjectIds = projectRelations
-						.filter((rel) => rel.project.type === 'team')
-						.map((rel) => rel.projectId);
-
-					const allAccessibleProjectIds = [personalProject.id, ...teamProjectIds];
-
-					finalFilter = {
-						...restFilter,
-						projectId: allAccessibleProjectIds,
-					};
-				}
-
-				const result = await Container.get(DataTableService).getManyAndCount({
+				const result = await Container.get(DataTableAggregateService).getManyAndCount(req.user, {
 					skip: offset,
 					take: limit,
-					filter: finalFilter,
+					filter,
 					sortBy,
 				});
 
-				const data = result.data.map(({ project: _project, ...rest }) => rest);
+				const sizes = await Container.get(DataTableService).getCachedSizeBytesByIds(
+					result.data.map((dataTable) => dataTable.id),
+				);
+
+				const data = result.data.map((dataTable) => ({
+					...toPublicDataTable(dataTable),
+					sizeBytes: sizes.get(dataTable.id) ?? 0,
+				}));
 
 				return res.json({
 					data,
@@ -130,118 +116,101 @@ export = {
 					}),
 				});
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
 
 	createDataTable: [
-		apiKeyHasScope('dataTable:create'),
-		async (req: DataTableRequest.Create, res: express.Response): Promise<express.Response> => {
+		publicApiScope('dataTable:create'),
+		async (req, res) => {
+			const payload = PublicApiCreateDataTableDto.safeParse(req.body);
+			if (!payload.success) {
+				throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
+			}
+
+			const { projectId, name, columns, fileId, hasHeaders } = payload.data;
+			const dataTableService = Container.get(DataTableService);
+
 			try {
-				const payload = CreateDataTableDto.safeParse(req.body);
-				if (!payload.success) {
-					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
-					});
-				}
+				const owningProjectId = await dataTableService.resolveOwningProjectId(req.user, projectId);
+				const result = await dataTableService.createDataTable(owningProjectId, {
+					name,
+					columns,
+					fileId,
+					hasHeaders,
+				});
 
-				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-					req.user.id,
-				);
-
-				const result = await Container.get(DataTableService).createDataTable(
-					project.id,
-					payload.data,
-				);
-
-				const { project: _project, ...dataTable } = result;
-
-				return res.status(201).json(dataTable);
+				return res.status(201).json(await attachSize(toPublicDataTable(result)));
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
 
 	getDataTable: [
-		apiKeyHasScope('dataTable:read'),
+		publicApiScope('dataTable:read'),
 		projectScope('dataTable:read', 'dataTable'),
-		async (req: DataTableRequest.Get, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const { dataTableId } = req.params;
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 
-				const result = await Container.get(DataTableRepository).findOne({
-					where: { id: dataTableId, project: { id: projectId } },
-					relations: ['project', 'columns'],
-				});
+				const result = await Container.get(DataTableService).getOne(dataTableId, projectId);
 
-				if (!result) {
-					throw new DataTableNotFoundError(dataTableId);
-				}
-
-				const { project: _project, ...dataTable } = result;
-
-				return res.json(dataTable);
+				return res.json(await attachSize(toPublicDataTable(result)));
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
 
 	updateDataTable: [
-		apiKeyHasScope('dataTable:update'),
+		publicApiScope('dataTable:update'),
 		projectScope('dataTable:update', 'dataTable'),
-		async (req: DataTableRequest.Update, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = UpdateDataTableDto.safeParse(req.body);
 				if (!payload.success) {
-					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
-					});
+					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
 				}
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const dataTableService = Container.get(DataTableService);
+				const projectId = await dataTableService.getProjectIdForDataTable(dataTableId);
 
-				await Container.get(DataTableService).updateDataTable(dataTableId, projectId, payload.data);
+				await dataTableService.updateDataTable(dataTableId, projectId, payload.data);
 
-				const result = await Container.get(DataTableRepository).findOne({
-					where: { id: dataTableId, project: { id: projectId } },
-					relations: ['project', 'columns'],
-				});
+				const result = await dataTableService.getOne(dataTableId, projectId);
 
-				if (!result) {
-					throw new DataTableNotFoundError(dataTableId);
-				}
-
-				const { project: _project, ...dataTable } = result;
-
-				return res.json(dataTable);
+				return res.json(await attachSize(toPublicDataTable(result)));
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
 
 	deleteDataTable: [
-		apiKeyHasScope('dataTable:delete'),
+		publicApiScope('dataTable:delete'),
 		projectScope('dataTable:delete', 'dataTable'),
-		async (req: DataTableRequest.Delete, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const { dataTableId } = req.params;
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 
 				await Container.get(DataTableService).deleteDataTable(dataTableId, projectId);
 
 				return res.status(204).send();
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
 };
+
+export = dataTableHandlers;

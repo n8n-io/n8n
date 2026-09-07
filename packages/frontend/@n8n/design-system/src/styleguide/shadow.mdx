@@ -1,0 +1,64 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+import ShadowExamples from './components/ShadowExamples.vue';
+
+<Meta title="Style Guide/Shadow" />
+
+# Shadows
+
+Create depth and elevation for UI elements
+
+Shadows can be applied using the `shadow-*` primitive. Variants range from `2xs` to `xl` and can be used to create depth and elevation for UI elements.
+
+Below is a table showcasing the different shadow variants available in the design system.
+
+| Step    | Value                    | Description                                                    |
+| ------- | ------------------------ | -------------------------------------------------------------- |
+| outline | `var(--shadow--outline)` | Used for focus outlines and similar effects.                   |
+| 2xs     | `var(--shadow--2xs)`     | Used for very subtle shadows, such as small elements.          |
+| xs      | `var(--shadow--xs)`      | Used for slightly subtle shadows, such as on buttons or cards. |
+| sm      | `var(--shadow--sm)`      | Used for standard shadows, such as on popovers or selects.     |
+| md      | `var(--shadow--md)`      | Used for more prominent shadows, such as floating elements.    |
+| xl      | `var(--shadow--xl)`      | Used for elevated elements, such as dialogs.                   |
+
+## Example
+
+It's recommended to create a local variable and apply the `_primitives.scss` token for flexibility. Switch the Storybook theme to preview shadows in light or dark.
+
+<div class="sb-unstyled">
+	<ShadowExamples />
+</div>
+
+```css
+.box {
+	width: 160px;
+	height: 160px;
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
+	box-shadow: var(--n8n--shadow--box);
+}
+
+.box-outline {
+	--n8n--shadow--box: var(--shadow--outline);
+}
+
+.box-2xs {
+	--n8n--shadow--box: var(--shadow--2xs);
+}
+
+.box-xs {
+	--n8n--shadow--box: var(--shadow--xs);
+}
+
+.box-sm {
+	--n8n--shadow--box: var(--shadow--sm);
+}
+
+.box-md {
+	--n8n--shadow--box: var(--shadow--md);
+}
+
+.box-xl {
+	--n8n--shadow--box: var(--shadow--xl);
+}
+```

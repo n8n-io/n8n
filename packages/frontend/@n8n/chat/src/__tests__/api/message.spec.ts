@@ -528,6 +528,290 @@ describe('sendMessageStreaming', () => {
 		});
 	});
 
+	describe('proxy error HTML filtering', () => {
+		it('should replace proxy error HTML with a single user-facing error message', async () => {
+			const cloudflareHtml =
+				'<!DOCTYPE html><html class="no-js"><head><title>524</title></head><body>A timeout occurred</body></html>';
+			const validChunk = {
+				type: 'item',
+				content: 'Hello',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			};
+
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					controller.enqueue(
+						encoder.encode(JSON.stringify(validChunk) + '\n' + cloudflareHtml + '\n'),
+					);
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			const onChunk = vi.fn();
+			const onBeginMessage = vi.fn();
+			const onEndMessage = vi.fn();
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk,
+				onBeginMessage,
+				onEndMessage,
+			});
+
+			// The valid chunk and a single proxy error message should come through
+			expect(onChunk).toHaveBeenCalledTimes(2);
+			expect(onChunk).toHaveBeenCalledWith('Hello', 'node-1', 0);
+			expect(onChunk).toHaveBeenCalledWith(
+				expect.stringContaining('proxy timeout'),
+				expect.any(String),
+				undefined,
+			);
+			// Error chunk also triggers onEndMessage
+			expect(onEndMessage).toHaveBeenCalled();
+		});
+
+		it('should emit error and process subsequent valid JSON after HTML injection', async () => {
+			const htmlLine = '<html lang="en"><body>Error</body></html>';
+			const validChunk = {
+				type: 'end',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			};
+
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					controller.enqueue(encoder.encode(htmlLine + '\n' + JSON.stringify(validChunk) + '\n'));
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			const onChunk = vi.fn();
+			const onBeginMessage = vi.fn();
+			const onEndMessage = vi.fn();
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk,
+				onBeginMessage,
+				onEndMessage,
+			});
+
+			// Should emit error for HTML, then still process the valid end chunk
+			expect(onChunk).toHaveBeenCalledWith(
+				expect.stringContaining('proxy timeout'),
+				expect.any(String),
+				undefined,
+			);
+			// 2 onEndMessage calls: one from error chunk, one from valid end chunk
+			expect(onEndMessage).toHaveBeenCalledTimes(2);
+		});
+
+		it('should silently ignore keepalive heartbeat chunks', async () => {
+			const keepaliveChunk = { type: 'keepalive' };
+			const validChunk = {
+				type: 'item',
+				content: 'real data',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			};
+
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					controller.enqueue(
+						encoder.encode(
+							JSON.stringify(keepaliveChunk) +
+								'\n' +
+								JSON.stringify(validChunk) +
+								'\n' +
+								JSON.stringify(keepaliveChunk) +
+								'\n',
+						),
+					);
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			const onChunk = vi.fn();
+			const onBeginMessage = vi.fn();
+			const onEndMessage = vi.fn();
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk,
+				onBeginMessage,
+				onEndMessage,
+			});
+
+			// Only the real item chunk should produce output, keepalive chunks are ignored
+			expect(onChunk).toHaveBeenCalledTimes(1);
+			expect(onChunk).toHaveBeenCalledWith('real data', 'node-1', 0);
+		});
+
+		it('should discard all lines of a multi-line Cloudflare error page', async () => {
+			// Simulates a real Cloudflare 524 response: HTML split across many lines,
+			// with a valid JSON chunk arriving before and after the HTML injection.
+			const beforeChunk = {
+				type: 'item',
+				content: 'before',
+				metadata: { nodeId: 'n1', nodeName: 'N', timestamp: Date.now(), runIndex: 0, itemIndex: 0 },
+			};
+			const afterChunk = {
+				type: 'item',
+				content: 'after',
+				metadata: { nodeId: 'n1', nodeName: 'N', timestamp: Date.now(), runIndex: 0, itemIndex: 0 },
+			};
+			const multiLineHtml = [
+				'<!DOCTYPE html>',
+				'<html class="no-js" lang="en-US">',
+				'<head>',
+				'<title>n8n.cloud | 524: A timeout occurred</title>',
+				'</head>',
+				'<body>',
+				'<div id="cf-wrapper">',
+				'<h1>A timeout occurred</h1>',
+				'<p>The origin web server timed out.</p>',
+				'</div>',
+				'</body>',
+				'</html>',
+			].join('\n');
+
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					controller.enqueue(
+						encoder.encode(
+							JSON.stringify(beforeChunk) +
+								'\n' +
+								multiLineHtml +
+								'\n' +
+								JSON.stringify(afterChunk) +
+								'\n',
+						),
+					);
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			const onChunk = vi.fn();
+			const onBeginMessage = vi.fn();
+			const onEndMessage = vi.fn();
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk,
+				onBeginMessage,
+				onEndMessage,
+			});
+
+			// Both valid chunks + one proxy error message
+			expect(onChunk).toHaveBeenCalledTimes(3);
+			expect(onChunk).toHaveBeenCalledWith('before', 'n1', 0);
+			expect(onChunk).toHaveBeenCalledWith(
+				expect.stringContaining('proxy timeout'),
+				expect.any(String),
+				undefined,
+			);
+			expect(onChunk).toHaveBeenCalledWith('after', 'n1', 0);
+		});
+
+		it('should skip empty keepalive newlines without producing chunks', async () => {
+			const validChunk = {
+				type: 'item',
+				content: 'data',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			};
+
+			const encoder = new TextEncoder();
+			// Simulate heartbeat newlines interleaved with real data
+			const stream = new ReadableStream({
+				start(controller) {
+					controller.enqueue(encoder.encode('\n\n' + JSON.stringify(validChunk) + '\n\n\n'));
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			const onChunk = vi.fn();
+			const onBeginMessage = vi.fn();
+			const onEndMessage = vi.fn();
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk,
+				onBeginMessage,
+				onEndMessage,
+			});
+
+			// Only the real chunk should come through
+			expect(onChunk).toHaveBeenCalledTimes(1);
+			expect(onChunk).toHaveBeenCalledWith('data', 'node-1', 0);
+		});
+	});
+
 	describe('async handlers', () => {
 		it('should support async onEndMessage handler', async () => {
 			const onEndMessage = vi.fn().mockImplementation(async () => {

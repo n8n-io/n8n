@@ -54,4 +54,15 @@ cd(dir);
 const cmd = normalizeCommand(run);
 
 echo(chalk.cyan(`$ Running (dir: ${dir}) ${cmd} ${args.join(' ')}`));
-await $({ stdio: 'inherit' })`${cmd} ${args}`;
+try {
+	await $({ stdio: 'inherit' })`${cmd} ${args}`;
+} catch (err) {
+	// Forward signal-based exits silently (e.g. Playwright's globalTeardown
+	// SIGKILLs the n8n process, or the user Ctrl-C's `pnpm start`). Without
+	// this, zx logs an unhandled `_ProcessOutput` traceback as the parent
+	// is already shutting us down — pure noise.
+	if (err?.signal || err?.exitCode === 137 || err?.exitCode === 143) {
+		process.exit(err.exitCode ?? 0);
+	}
+	throw err;
+}

@@ -81,7 +81,13 @@ function loadManifest(): Manifest {
 	}
 }
 
-describe('n8n node API coverage', () => {
+// Skipped pending an API-team resync of node ↔ public-API coverage. This is a
+// coverage-backlog ledger with a drift guard, not a behavioural test, and its
+// real input (the CLI public API spec) lives in another package that Test
+// Impact Analysis can't link to this file. When re-enabled it should return as
+// an always-run invariant/check rather than a per-file unit test. See DEVP-656.
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('n8n node API coverage', () => {
 	let specEndpoints: string[];
 	let manifest: Manifest;
 

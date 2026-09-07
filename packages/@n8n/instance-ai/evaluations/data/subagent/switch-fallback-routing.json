@@ -1,0 +1,4 @@
+{
+	"id": "switch-fallback-routing",
+	"prompt": "Build a workflow that receives a webhook POST with a JSON body containing 'priority' and 'message'. Route priority 'urgent' items to Slack channel #incidents, priority 'normal' items to Gmail at ops@example.com, and send every unmatched priority to Slack channel #triage as the default fallback branch. Configure all nodes completely and don't ask for credentials."
+}

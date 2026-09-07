@@ -39,7 +39,7 @@ const openWorkflowTemplate = async (templateId: string) => {
 
 		await router.replace({
 			name: VIEWS.WORKFLOW,
-			params: { name: workflow.id },
+			params: { workflowId: workflow.id },
 			query: { onboardingId: templateId },
 		});
 

@@ -1,167 +1,87 @@
 import { describe, it, expect } from 'vitest';
-import ts from 'typescript';
 
-import modalsVueContent from '../components/Modals.vue?raw';
 // eslint-disable-next-line import-x/extensions
-import uiStoreContent from './ui.store.ts?raw';
-
-const MODAL_KEY_REGEX = /^[A-Z_][A-Z_0-9]+$/;
-const MODAL_ROOT_NAME_ATTR_REGEX = /<ModalRoot\s+:name\s*=\s*(['"])([A-Z_][A-Z_0-9]+)\1/g;
-
-function uniqueSorted(values: string[]): string[] {
-	return [...new Set(values)].sort();
-}
+import shellModalsContent from './defaults/modals.ts?raw';
 
 /**
- * Extract all modal keys used in <ModalRoot :name="..."> from Modals.vue.
- * This intentionally only supports constant-like modal keys (ALL_CAPS_WITH_UNDERSCORES).
+ * A modal key with nothing defining it resolves to a closed state rather than
+ * throwing (`ui.store.ts`, `withFallback`) — deliberate, since Seam A, and the
+ * reason a missing definition now fails *silently*: the modal simply never opens.
+ *
+ * So this holds the two halves together: every `<ModalRoot :name="SOME_KEY">` in
+ * the tree must have a definition backing it, either the shell catalogue in
+ * `defaults/modals.ts` or — for module-owned modals, which register a component
+ * alongside their key and render through `DynamicModalLoader` — `modalRegistry`.
+ * A hand-written root is by definition the shell's, so the catalogue is where its
+ * key has to be.
+ *
+ * Both sides are read as source text and compared by *constant name*: the same
+ * `WORKFLOW_SETTINGS_MODAL_KEY` identifier has to appear on both. That keeps the
+ * check on the pairing it exists to protect, independent of how either side is
+ * written.
+ *
+ * As modals move onto the registry both sides shrink together — the `<ModalRoot>`
+ * block goes, and so does the catalogue entry. When the catalogue is empty this
+ * file has nothing left to check and goes with it.
+ *
+ * Not asserted in reverse: a definition may be rendered by something other than a
+ * `<ModalRoot>` (`WorkflowHistory.vue` drives its diff modal through `<Modal>`
+ * directly), so an entry with no matching root is not necessarily dead.
  */
-function extractModalKeysFromModalsVue(content: string): string[] {
-	const keys: string[] = [];
-	let match: RegExpExecArray | null;
 
-	while ((match = MODAL_ROOT_NAME_ATTR_REGEX.exec(content)) !== null) {
-		keys.push(match[2]);
+const MODAL_ROOT_NAME_ATTR_REGEX = /<ModalRoot\s[^>]*?:name\s*=\s*(['"])([A-Z_][A-Z_0-9]*)\1/g;
+const CATALOGUE_ENTRY_REGEX = /^\t\[([A-Z_][A-Z_0-9]*)\]\s*:/gm;
+
+const vueSources = import.meta.glob<string>('../../**/*.vue', {
+	query: '?raw',
+	import: 'default',
+	eager: true,
+});
+
+/** Constant-named modal keys rendered by a hand-written `<ModalRoot>`, by file. */
+function renderedModalKeys(): Map<string, string> {
+	const keys = new Map<string, string>();
+
+	for (const [path, content] of Object.entries(vueSources)) {
+		for (const [, , key] of content.matchAll(MODAL_ROOT_NAME_ATTR_REGEX)) {
+			keys.set(key, path);
+		}
 	}
 
-	if (keys.length === 0) {
-		throw new Error(
-			'No modal keys were extracted from Modals.vue. ' +
-				'The <ModalRoot :name="..."> pattern may have changed, or modal keys are no longer constant-like.',
-		);
-	}
-
-	return uniqueSorted(keys);
+	return keys;
 }
 
-/**
- * Extract modal keys registered in modalsById from ui.store.ts (AST-based).
- *
- * It looks inside the object literal passed to ref(...) for:
- * 1) Computed keys: { [DELETE_USER_MODAL_KEY]: { ... } }
- * 2) Identifiers / strings inside array literals found in spread assignments
- *    (e.g. ...something([ABOUT_MODAL_KEY, ...])).
- *
- * This avoids relying on specific helpers like Object.fromEntries().
- */
-function extractRegisteredModalKeys(content: string): string[] {
-	const sourceFile = ts.createSourceFile('ui.store.ts', content, ts.ScriptTarget.Latest, true);
-	const registered = new Set<string>();
+describe('shell modal definitions', () => {
+	const rendered = renderedModalKeys();
+	const defined = new Set(
+		[...shellModalsContent.matchAll(CATALOGUE_ENTRY_REGEX)].map(([, key]) => key),
+	);
 
-	const addIfModalLike = (value: string) => {
-		if (MODAL_KEY_REGEX.test(value)) registered.add(value);
-	};
-
-	const addFromArrayElement = (el: ts.Expression) => {
-		if (ts.isIdentifier(el)) addIfModalLike(el.text);
-		if (ts.isStringLiteral(el)) addIfModalLike(el.text);
-		if (ts.isAsExpression(el) && ts.isIdentifier(el.expression)) {
-			addIfModalLike(el.expression.text);
-		}
-	};
-
-	const collectFromArrayLiteralsInSubtree = (node: ts.Node) => {
-		const walk = (n: ts.Node) => {
-			if (ts.isArrayLiteralExpression(n)) {
-				for (const el of n.elements) addFromArrayElement(el);
-			}
-			ts.forEachChild(n, walk);
-		};
-		walk(node);
-	};
-
-	const findModalsByIdInitializer = (): ts.Expression | undefined => {
-		let found: ts.Expression | undefined;
-
-		const visit = (node: ts.Node) => {
-			if (
-				ts.isVariableDeclaration(node) &&
-				ts.isIdentifier(node.name) &&
-				node.name.text === 'modalsById' &&
-				node.initializer
-			) {
-				found = node.initializer;
-				return;
-			}
-			ts.forEachChild(node, visit);
-		};
-
-		visit(sourceFile);
-		return found;
-	};
-
-	const findObjectLiteralPassedToRef = (
-		expr: ts.Expression,
-	): ts.ObjectLiteralExpression | undefined => {
-		if (!ts.isCallExpression(expr)) return undefined;
-		const arg0 = expr.arguments[0];
-		return arg0 && ts.isObjectLiteralExpression(arg0) ? arg0 : undefined;
-	};
-
-	const init = findModalsByIdInitializer();
-	if (!init) throw new Error('Could not find modalsById declaration in ui.store.ts');
-
-	const obj = findObjectLiteralPassedToRef(init);
-	if (!obj) {
-		throw new Error(
-			'Could not find an object literal passed to ref(...) for modalsById in ui.store.ts',
+	it('reads both sides — the shapes it matches on still exist', () => {
+		// Guards the glob and the two regexes: if the glob path breaks or either side
+		// is rewritten so nothing matches, this fails loudly instead of the emptiness
+		// quietly passing the check below.
+		expect(Object.keys(vueSources).length, 'the .vue glob matched almost nothing').toBeGreaterThan(
+			100,
 		);
-	}
-
-	for (const prop of obj.properties) {
-		// { [SOME_MODAL_KEY]: {...} }
-		if (ts.isPropertyAssignment(prop) && ts.isComputedPropertyName(prop.name)) {
-			const keyExpr = prop.name.expression;
-			if (ts.isIdentifier(keyExpr)) addIfModalLike(keyExpr.text);
-			if (ts.isStringLiteral(keyExpr)) addIfModalLike(keyExpr.text);
-		}
-
-		// { ...somethingThatContains([A, B, C]) }
-		if (ts.isSpreadAssignment(prop)) {
-			collectFromArrayLiteralsInSubtree(prop.expression);
-		}
-	}
-
-	if (registered.size === 0) {
-		throw new Error(
-			'Extracted 0 modal keys from modalsById initializer (AST). The store structure likely changed.',
+		expect(rendered.size, 'no <ModalRoot :name="SOME_KEY"> found in any .vue file').toBeGreaterThan(
+			0,
 		);
-	}
-
-	return [...registered].sort();
-}
-
-describe('UI Store - Modal Registration', () => {
-	it('should have all modal keys used in Modals.vue registered in ui.store.ts', () => {
-		const usedModalKeys = extractModalKeysFromModalsVue(modalsVueContent);
-		const registeredModalKeys = extractRegisteredModalKeys(uiStoreContent);
-
-		expect(usedModalKeys.length).toBeGreaterThan(0);
-		expect(registeredModalKeys.length).toBeGreaterThan(0);
-
-		const missingKeys = usedModalKeys.filter((key) => !registeredModalKeys.includes(key));
-
-		expect(
-			missingKeys,
-			missingKeys.length
-				? `\n\n❌ Modal registration check failed.\n\nMissing in ui.store.ts (modalsById):\n${missingKeys.map((k) => `  • ${k}`).join('\n')}\n`
-				: undefined,
-		).toEqual([]);
+		expect(defined.size, 'no [SOME_KEY]: entries found in defaults/modals.ts').toBeGreaterThan(0);
 	});
 
-	it('should warn about unused modal keys registered in ui.store.ts', () => {
-		const usedModalKeys = extractModalKeysFromModalsVue(modalsVueContent);
-		const registeredModalKeys = extractRegisteredModalKeys(uiStoreContent);
+	it('defines every modal key a <ModalRoot> renders', () => {
+		const missing = [...rendered]
+			.filter(([key]) => !defined.has(key))
+			.map(([key, path]) => `  • ${key} (${path})`);
 
-		const unusedKeys = registeredModalKeys.filter((key) => !usedModalKeys.includes(key));
-
-		if (unusedKeys.length) {
-			// eslint-disable-next-line no-console
-			console.warn(
-				`\n⚠️  Unused modal key(s) registered in ui.store.ts but not used in Modals.vue:\n${unusedKeys
-					.map((k) => `  • ${k}`)
-					.join('\n')}\n`,
-			);
-		}
+		expect(
+			missing,
+			missing.length
+				? `\n\n❌ Rendered by a <ModalRoot> with no entry in SHELL_MODAL_INITIAL_STATE:\n${missing.join(
+						'\n',
+					)}\n\nAdd the entry, or move the modal onto modalRegistry and delete its <ModalRoot>.\n`
+				: undefined,
+		).toEqual([]);
 	});
 });

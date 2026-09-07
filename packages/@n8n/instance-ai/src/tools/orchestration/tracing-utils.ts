@@ -1,8 +1,9 @@
-import type { ToolsInput } from '@mastra/core/agent';
-
 import {
 	createDetachedSubAgentTraceContext,
+	getCurrentOtelSpanContext,
+	getCurrentTraceToolCallId,
 	mergeCurrentTraceMetadata,
+	type BrowserExtensionTraceContext,
 } from '../../tracing/langsmith-tracing';
 import type {
 	InstanceAiTraceContext,
@@ -10,6 +11,21 @@ import type {
 	InstanceAiTraceRunFinishOptions,
 	OrchestrationContext,
 } from '../../types';
+
+/** Rebuilds the parent's browser-extension dimensions so sub-agent tool calls stay sliceable. */
+function readBrowserExtensionFromMetadata(
+	metadata: Record<string, unknown> | undefined,
+): BrowserExtensionTraceContext | undefined {
+	const state = metadata?.browser_connection_state;
+	if (state !== 'connected' && state !== 'disconnected') return undefined;
+	const version = metadata?.browser_extension_version;
+	return {
+		connectionState: state,
+		...(typeof version === 'string' ? { version } : {}),
+	};
+}
+
+type ToolRegistry = OrchestrationContext['domainTools'];
 
 interface StartSubAgentTraceOptions {
 	agentId: string;
@@ -29,7 +45,8 @@ export async function startSubAgentTrace(
 	if (!context.tracing) return undefined;
 
 	return await context.tracing.startChildRun(context.tracing.actorRun, {
-		name: `subagent:${options.role}`,
+		name: `agent: ${options.role}`,
+		canonicalName: `instance-ai.subagent.${options.role}.stream`,
 		tags: ['sub-agent'],
 		metadata: {
 			agent_role: options.role,
@@ -48,7 +65,14 @@ export async function createDetachedSubAgentTracing(
 	context: OrchestrationContext,
 	options: StartSubAgentTraceOptions,
 ): Promise<InstanceAiTraceContext | undefined> {
-	if (!context.tracing) return undefined;
+	return await createDetachedSubAgentTraceFactory(context, options)();
+}
+
+export function createDetachedSubAgentTraceFactory(
+	context: OrchestrationContext,
+	options: StartSubAgentTraceOptions,
+): () => Promise<InstanceAiTraceContext | undefined> {
+	if (!context.tracing) return async () => await Promise.resolve(undefined);
 
 	const messageId =
 		typeof context.tracing.actorRun.metadata?.message_id === 'string'
@@ -62,47 +86,77 @@ export async function createDetachedSubAgentTracing(
 		typeof context.tracing.actorRun.metadata?.agent_id === 'string'
 			? context.tracing.actorRun.metadata.agent_id
 			: context.orchestratorAgentId;
-	const tracing = await createDetachedSubAgentTraceContext({
-		projectName: context.tracing.projectName,
-		threadId: context.threadId,
-		conversationId,
-		messageGroupId: context.messageGroupId,
-		messageId,
-		runId: context.runId,
-		userId: context.userId,
-		modelId: context.modelId,
-		input: options.inputs,
-		metadata: options.metadata,
-		agentId: options.agentId,
-		role: options.role,
-		kind: options.kind,
-		taskId: options.taskId,
-		plannedTaskId: options.plannedTaskId,
-		workItemId: options.workItemId,
-		spawnedByTraceId: context.tracing.rootRun.traceId,
-		spawnedByRunId: context.tracing.actorRun.id,
-		spawnedByAgentId,
-		proxyConfig: context.tracingProxyConfig,
-	});
+	const spawnedByAgentRole =
+		typeof context.tracing.actorRun.metadata?.agent_role === 'string'
+			? context.tracing.actorRun.metadata.agent_role
+			: undefined;
+	const parentN8nVersion =
+		typeof context.tracing.actorRun.metadata?.n8n_version === 'string'
+			? context.tracing.actorRun.metadata.n8n_version
+			: undefined;
+	const parentWorkflowSdkVersion =
+		typeof context.tracing.actorRun.metadata?.workflow_sdk_version === 'string'
+			? context.tracing.actorRun.metadata.workflow_sdk_version
+			: undefined;
+	const parentBrowserExtension = readBrowserExtensionFromMetadata(
+		context.tracing.actorRun.metadata,
+	);
+	const activeSpanContext = getCurrentOtelSpanContext();
+	const spawnedByToolCallId = getCurrentTraceToolCallId();
 
-	if (tracing) {
-		mergeCurrentTraceMetadata({
-			detached_trace: true,
-			spawned_role: options.role,
-			...(options.taskId ? { spawned_task_id: options.taskId } : {}),
-			spawned_trace_id: tracing.rootRun.traceId,
-			spawned_root_run_id: tracing.rootRun.id,
+	return async () => {
+		if (!context.tracing) return undefined;
+		const tracing = await createDetachedSubAgentTraceContext({
+			projectName: context.tracing.projectName,
+			threadId: context.threadId,
+			conversationId,
+			messageGroupId: context.messageGroupId,
+			messageId,
+			runId: context.runId,
+			userId: context.userId,
+			modelId: context.modelId,
+			input: options.inputs,
+			metadata: options.metadata,
+			n8nVersion: parentN8nVersion,
+			workflowSdkVersion: parentWorkflowSdkVersion,
+			browserExtension: parentBrowserExtension,
+			agentId: options.agentId,
+			role: options.role,
+			kind: options.kind,
+			taskId: options.taskId,
+			plannedTaskId: options.plannedTaskId,
+			workItemId: options.workItemId,
+			spawnedByTraceId:
+				activeSpanContext?.traceId ??
+				context.tracing.rootRun.otelTraceId ??
+				context.tracing.rootRun.traceId,
+			spawnedBySpanId: activeSpanContext?.spanId ?? context.tracing.actorRun.otelSpanId,
+			spawnedByRunId: context.tracing.actorRun.id,
+			spawnedByAgentId,
+			spawnedByAgentRole,
+			spawnedByToolCallId,
+			proxyConfig: context.tracingProxyConfig,
 		});
-	}
 
-	return tracing;
+		if (tracing) {
+			mergeCurrentTraceMetadata({
+				detached_trace: true,
+				spawned_role: options.role,
+				...(options.taskId ? { spawned_task_id: options.taskId } : {}),
+				spawned_trace_id: tracing.rootRun.traceId,
+				spawned_root_run_id: tracing.rootRun.id,
+			});
+		}
+
+		return tracing;
+	};
 }
 
 export function traceSubAgentTools(
 	context: OrchestrationContext,
-	tools: ToolsInput,
+	tools: ToolRegistry,
 	role: string,
-): ToolsInput {
+): ToolRegistry {
 	return (
 		context.tracing?.wrapTools(tools, {
 			agentRole: role,
@@ -120,7 +174,7 @@ export async function withTraceRun<T>(
 		return await fn();
 	}
 
-	return await context.tracing.withRunTree(traceRun, fn);
+	return await context.tracing.withActiveSpan(traceRun, fn);
 }
 
 export async function withTraceContextActor<T>(
@@ -131,7 +185,7 @@ export async function withTraceContextActor<T>(
 		return await fn();
 	}
 
-	return await tracing.withRunTree(tracing.actorRun, fn);
+	return await tracing.withActiveSpan(tracing.actorRun, fn);
 }
 
 export async function finishTraceRun(

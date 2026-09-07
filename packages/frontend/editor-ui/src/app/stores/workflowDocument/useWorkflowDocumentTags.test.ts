@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import type { ITag } from '@n8n/rest-api-client';
 import { useWorkflowDocumentTags } from './useWorkflowDocumentTags';
 
 function createTags() {
@@ -45,6 +46,26 @@ describe('useWorkflowDocumentTags', () => {
 
 			expect(tags.value).toEqual([]);
 		});
+
+		it('should normalize ITag[] input to id strings', () => {
+			const { tags, setTags } = createTags();
+			const itags: ITag[] = [
+				{ id: 't-1', name: 'alpha' },
+				{ id: 't-2', name: 'beta' },
+			];
+
+			setTags(itags);
+
+			expect(tags.value).toEqual(['t-1', 't-2']);
+		});
+
+		it('should accept mixed ITag and string input', () => {
+			const { tags, setTags } = createTags();
+
+			setTags(['t-raw', { id: 't-obj', name: 'obj' }]);
+
+			expect(tags.value).toEqual(['t-raw', 't-obj']);
+		});
 	});
 
 	describe('addTags', () => {
@@ -78,6 +99,15 @@ describe('useWorkflowDocumentTags', () => {
 			addTags(['tag2', 'tag3']);
 
 			expect(tags.value).toEqual(['tag1', 'tag2', 'tag3']);
+		});
+
+		it('should normalize ITag[] input to id strings', () => {
+			const { tags, addTags } = createTags();
+			const itags: ITag[] = [{ id: 't-1', name: 'alpha' }];
+
+			addTags(itags);
+
+			expect(tags.value).toEqual(['t-1']);
 		});
 	});
 

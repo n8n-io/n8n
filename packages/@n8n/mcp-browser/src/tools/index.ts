@@ -1,5 +1,7 @@
 import { BrowserConnection } from '../connection';
+import type { BrowserConnectionOptions } from '../connection';
 import type { BrowserToolkit, Config, ToolDefinition } from '../types';
+import { createCredentialTools } from './credential';
 import { createInspectionTools } from './inspection';
 import { createInteractionTools } from './interaction';
 import { createNavigationTools } from './navigation';
@@ -8,8 +10,11 @@ import { createStateTools } from './state';
 import { createTabTools } from './tabs';
 import { createWaitTools } from './wait';
 
-export function createBrowserTools(config?: Partial<Config>): BrowserToolkit {
-	const connection = new BrowserConnection(config);
+export function createBrowserTools(
+	config?: Partial<Config>,
+	options?: BrowserConnectionOptions,
+): BrowserToolkit {
+	const connection = new BrowserConnection(config, options);
 
 	const tools: ToolDefinition[] = [
 		...createSessionTools(connection),
@@ -19,6 +24,7 @@ export function createBrowserTools(config?: Partial<Config>): BrowserToolkit {
 		...createInspectionTools(connection),
 		...createWaitTools(connection),
 		...createStateTools(connection),
+		...createCredentialTools(connection),
 	];
 
 	return { tools, connection };

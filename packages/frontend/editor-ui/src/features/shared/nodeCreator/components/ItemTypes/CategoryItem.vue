@@ -32,6 +32,7 @@ const categoryName = computed(() => {
 				<N8nIcon v-if="isTrigger" icon="bolt-filled" size="xsmall" :class="$style.triggerIcon" />
 				<slot />
 			</span>
+			<slot name="trailing" />
 			<N8nIcon v-if="expanded" icon="chevron-down" color="text-light" size="large" />
 			<N8nIcon v-else icon="chevron-up" color="text-light" size="large" />
 		</div>

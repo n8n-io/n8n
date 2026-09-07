@@ -12,6 +12,7 @@ import type { CompletionSource, CompletionResult } from '@codemirror/autocomplet
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 import { n8nLang } from '@/features/shared/editors/plugins/codemirror/n8nLang';
+import { WORKFLOW_DOCUMENT_FACET } from './constants';
 
 beforeEach(async () => {
 	setActivePinia(createTestingPinia());
@@ -28,7 +29,7 @@ export async function completions(docWithCursor: string, explicit = false) {
 	const state = EditorState.create({
 		doc,
 		selection: { anchor: cursorPosition },
-		extensions: [n8nLang()],
+		extensions: [n8nLang(), WORKFLOW_DOCUMENT_FACET.of('test@latest')],
 	});
 
 	const context = new CompletionContext(state, cursorPosition, explicit);

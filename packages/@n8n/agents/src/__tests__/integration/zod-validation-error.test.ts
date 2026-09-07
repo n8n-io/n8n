@@ -42,15 +42,15 @@ describe('Zod validation errors surface to LLM and allow self-correction', () =>
 			'Find a user aged 150. If that age is invalid, use 25 instead and retry. You MUST find a user aged 150, and only then use 25',
 		);
 
-		expect(result.finishReason).toBe('stop');
 		expect(result.error).toBeUndefined();
+		expect(result.finishReason).toBe('stop');
 
-		// At least two tool-result messages: one error, one success
+		// At least two tool-call messages: one rejected, one resolved
 		const allMessages = filterLlmMessages(result.messages);
-		const toolResultMessages = allMessages.filter((m) =>
-			m.content.some((c) => c.type === 'tool-result'),
+		const toolCallMessages = allMessages.filter((m) =>
+			m.content.some((c) => c.type === 'tool-call'),
 		);
-		expect(toolResultMessages.length).toBeGreaterThanOrEqual(2);
+		expect(toolCallMessages.length).toBeGreaterThanOrEqual(2);
 
 		// The final response should mention a user (age 25 or similar)
 		const text = findLastTextContent(result.messages);

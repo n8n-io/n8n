@@ -21,4 +21,14 @@ class CookieConfig {
 export class AuthConfig {
 	@Nested
 	cookie: CookieConfig;
+
+	/**
+	 * Bind OAuth credential callbacks to the browser that initiated the flow.
+	 * When enabled, a session-scoped `n8n-oauth-binding` cookie is set on flow
+	 * initiation and verified on callback. Defeats phishing attacks where an
+	 * attacker injects an OAuth authorize URL into a victim's browser to land
+	 * tokens on the attacker's credential.
+	 */
+	@Env('N8N_OAUTH_BROWSER_BINDING')
+	oauthBrowserBinding: boolean = false;
 }

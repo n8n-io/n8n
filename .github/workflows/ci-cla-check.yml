@@ -1,0 +1,75 @@
+name: 'CI: CLA Check'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: CLA Check (PR #{0})', inputs.pr_number) || '' }}"
+
+# In-house replacement for the GitHub App "CLA Bot". The implementation lives in
+# n8n-io/github-actions/cla-check (SHA-pinned below); this workflow only binds it
+# to events. Change behaviour there, then bump the pin here.
+#
+# Triggers
+#   - pull_request_target (opened/synchronize/reopened): re-checks signatures
+#     whenever a PR is opened or new commits are pushed.
+#   - issue_comment (`/cla-check` on a PR): manual re-check after a contributor
+#     signs the CLA, without needing a push.
+#   - merge_group: re-checks at merge-queue time so a ruleset can hard-block
+#     unsigned merges even if the PR check went stale.
+#
+# Output
+#   - A commit status named "CLA Check" on the head SHA. Add this name to a
+#     ruleset's required-checks list to gate merges on it.
+#   - A single, edited-in-place PR comment listing unsigned contributors.
+#   - The `cla-signed` label, which community-PR triage tooling reads.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+  merge_group:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to re-verify'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  statuses: write
+
+concurrency:
+  # Concurrency is evaluated BEFORE the job-level `if` below, so a comment that
+  # isn't `/cla-check` (e.g. a bot's "StageReview" comment) still creates a run.
+  # If that run shared the PR's group (issue number == PR number) it would, with
+  # cancel-in-progress, cancel the in-progress pull_request_target check — then
+  # get skipped by the `if` and do nothing, leaving the "CLA Check" status stuck
+  # on pending. Keep comment-triggered runs in their own group so they can only
+  # ever cancel each other, never the PR push check that gates the merge. PR
+  # pushes, merge_group and dispatch keep the head-based group (push debounce).
+  group: >-
+    cla-check-${{ github.event_name == 'issue_comment'
+      && format('comment-{0}', github.event.issue.number)
+      || github.event.pull_request.number
+      || github.event.merge_group.head_sha
+      || github.event.inputs.pr_number
+      || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cla-check:
+    name: Verify CLA signatures
+    # Skip issue_comment unless it's on a PR and the body starts with /cla-check.
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.pull_request != null &&
+       startsWith(github.event.comment.body, '/cla-check'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Defaults for the CLA endpoints, status context, comment marker and label
+      # are already n8n's production values.
+      - uses: n8n-io/github-actions/cla-check@931777df53ace1bdb31d2bf5c63c9f2d27451c35 # cla-check/v1.0.0
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}

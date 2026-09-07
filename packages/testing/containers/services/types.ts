@@ -23,6 +23,8 @@ export const SERVICE_NAMES = [
 	'localstack',
 	'kent',
 	'postgresExporter',
+	'cadvisor',
+	'sandbox',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
@@ -51,6 +53,7 @@ export interface StartContext {
 	projectName: string;
 	mains: number;
 	workers: number;
+	webhooks: number;
 	isQueueMode: boolean;
 	usePostgres: boolean;
 	needsLoadBalancer: boolean;
@@ -62,17 +65,39 @@ export interface StartContext {
 	baseUrl?: string;
 }
 
+export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';
+
 export interface StackConfig {
 	mains?: number;
 	workers?: number;
+	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
+	webhooks?: number;
 	postgres?: boolean;
 	env?: Record<string, string>;
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
 	workerResourceQuota?: { memory?: number; cpu?: number };
+	/** Resource quota for webhook procs. Falls back to `resourceQuota` if omitted. */
+	webhookResourceQuota?: { memory?: number; cpu?: number };
 	services?: readonly ServiceName[];
 	/** When true, services target host machine instead of Docker-internal n8n */
 	external?: boolean;
+	/** When set, the Docker network uses this exact name instead of a random UUID. */
+	networkName?: string;
+	/**
+	 * Caddy load-balancer upstream-selection policy. Only applies when `mains > 1`
+	 * or `webhooks > 0` (anything that triggers the LB to start).
+	 * Defaults to `'first'` — sticky to main #1, useful for UI debuggability.
+	 * Benchmarks should set `'round_robin'` to actually distribute load.
+	 */
+	lbPolicy?: LoadBalancerPolicy;
+	/**
+	 * When set, each n8n container collects Node V8 coverage: `NODE_V8_COVERAGE`
+	 * is written to a per-container subdir of this host path (bind-mounted), reuse
+	 * is disabled, and the stack stops gracefully so the process flushes on exit.
+	 * Opt-in capability for the coverage pipeline; off by default.
+	 */
+	coverageHostDir?: string;
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {
@@ -84,6 +109,19 @@ export interface Service<TResult extends ServiceResult = ServiceResult> {
 	shouldStart?(ctx: StartContext): boolean;
 	/** @example (ctx) => ({ taskBrokerUri: `http://${ctx.projectName}-n8n:5679` }) */
 	getOptions?(ctx: StartContext): unknown;
+	/**
+	 * Env for an already-deployed instance of this service, read from the host
+	 * environment. Returning a value means the deployment stands in for the
+	 * local containers: `start()` is skipped and this env is handed to n8n
+	 * instead. Return `undefined` to fall back to the local stack.
+	 *
+	 * Implementations may probe the deployment before claiming it. They must
+	 * resolve, never reject: an unreachable deployment is `undefined` (use the
+	 * local stack), not an error that takes the whole stack down with it.
+	 *
+	 * @example async () => (await reachable()) ? { FOO_URL: process.env.FOO_URL } : undefined
+	 */
+	hostedEnv?(ctx?: StartContext): Promise<Record<string, string> | undefined>;
 	/** Starts container, returns connection details for env() */
 	start(
 		network: StartedNetwork,

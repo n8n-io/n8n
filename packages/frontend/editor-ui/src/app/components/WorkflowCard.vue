@@ -8,20 +8,22 @@ import {
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import type { WorkflowListPublicationStatus } from '@n8n/api-types';
+import type { StatusDotVariant } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { UserAction, WorkflowResource } from '@/Interface';
@@ -30,8 +32,9 @@ import {
 	type ProjectSharingData,
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 import {
 	N8nActionToggle,
@@ -39,15 +42,21 @@ import {
 	N8nBreadcrumbs,
 	N8nCard,
 	N8nIcon,
+	N8nStatusDot,
 	N8nTags,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenInAssistantCardButton from '@/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.vue';
+import { useOpenInAssistantCard } from '@/experiments/openWorkflowInAssistant/composables/useOpenInAssistantCard';
+import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useDependencies } from '@/app/composables/useDependencies';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
@@ -61,6 +70,7 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	ENABLE_MCP_ACCESS: 'enableMCPAccess',
 	REMOVE_MCP_ACCESS: 'removeMCPAccess',
 	UNPUBLISH: 'unpublish',
+	TOGGLE_FAVORITE: 'toggleFavorite',
 };
 
 const props = withDefaults(
@@ -71,6 +81,9 @@ const props = withDefaults(
 		showOwnershipBadge?: boolean;
 		areTagsEnabled?: boolean;
 		isMcpEnabled?: boolean;
+		isMcpModuleActive?: boolean;
+		canManageInstanceMcp?: boolean;
+		isWorkflowCardMcpToggleEnabled?: boolean;
 		areFoldersEnabled?: boolean;
 	}>(),
 	{
@@ -79,6 +92,9 @@ const props = withDefaults(
 		showOwnershipBadge: false,
 		areTagsEnabled: true,
 		isMcpEnabled: false,
+		isMcpModuleActive: false,
+		canManageInstanceMcp: false,
+		isWorkflowCardMcpToggleEnabled: false,
 		areFoldersEnabled: false,
 	},
 );
@@ -108,8 +124,7 @@ const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
-const mcp = useMcp();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { hasDependencies } = useDependencies();
 
 const uiStore = useUIStore();
@@ -118,15 +133,12 @@ const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
+const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
+const mcp = useMcp();
 const workflowActivate = useWorkflowActivate();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
-
-// We use this to optimistically update the MCP status in the UI
-// without needing to modify the workflow prop directly.
-// null means we haven't changed it yet
-const mcpToggleStatus = ref<boolean | null>(null);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -192,6 +204,13 @@ const actions = computed(() => {
 		});
 	}
 
+	items.push({
+		label: favoritesStore.isFavorite(props.data.id, 'workflow')
+			? locale.baseText('favorites.remove')
+			: locale.baseText('favorites.add'),
+		value: WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
+	});
+
 	if (
 		workflowPermissions.value.read &&
 		canCreateWorkflow.value &&
@@ -249,6 +268,7 @@ const actions = computed(() => {
 	}
 
 	if (
+		!props.isWorkflowCardMcpToggleEnabled &&
 		props.isMcpEnabled &&
 		workflowPermissions.value.update &&
 		!props.readOnly &&
@@ -278,12 +298,24 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const isAvailableInMCP = computed(() => {
-	if (mcpToggleStatus.value === null) {
-		return props.data.settings?.availableInMCP ?? false;
-	}
-	return mcpToggleStatus.value;
-});
+const canEditMcp = computed(
+	() => Boolean(workflowPermissions.value.update) && !props.readOnly && !props.data.isArchived,
+);
+
+// Experiment cleanup: remove with openWorkflowInAssistant.
+const openInAssistant = useOpenInAssistantCard(props);
+
+// Optimistic state for the legacy 3-dot menu fallback (used when the
+// 086_workflow_card_mcp_toggle experiment is off).
+const mcpToggleStatus = ref<boolean | null>(null);
+
+const isAvailableInMCP = computed(
+	() => mcpToggleStatus.value ?? props.data.settings?.availableInMCP ?? false,
+);
+
+const showLegacyMcpIndicator = computed(
+	() => !props.isWorkflowCardMcpToggleEnabled && props.isMcpEnabled && isAvailableInMCP.value,
+);
 
 const isSomeoneElsesWorkflow = computed(
 	() =>
@@ -295,25 +327,53 @@ const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
 
-const hasDynamicCredentials = computed(() => {
-	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;
+// Keyed by the full status union so a new backend status is a compile error
+// here instead of silently rendering as the green 'Published' dot.
+const publicationIndicators: Record<
+	WorkflowListPublicationStatus,
+	{ variant: StatusDotVariant; labelKey: BaseTextKey; tooltipKey?: BaseTextKey }
+> = {
+	published: { variant: 'success', labelKey: 'workflows.published' },
+	partial: {
+		variant: 'warning',
+		labelKey: 'workflows.publicationStatus.partial',
+		tooltipKey: 'workflows.publicationStatus.partial.tooltip',
+	},
+	failed: {
+		variant: 'danger',
+		labelKey: 'workflows.publicationStatus.failed',
+		tooltipKey: 'workflows.publicationStatus.failed.tooltip',
+	},
+};
+
+// The server-derived status is authoritative when present; workflows with no
+// settled trigger rows omit it and fall back to the legacy activeVersionId indicator.
+const publicationIndicator = computed(() => {
+	const state = props.data.publicationStatus ?? (isWorkflowPublished.value ? 'published' : null);
+	if (state === null) return null;
+	const { variant, labelKey, tooltipKey } = publicationIndicators[state];
+	return {
+		state,
+		variant,
+		label: locale.baseText(labelKey),
+		tooltip: tooltipKey ? locale.baseText(tooltipKey) : null,
+	};
 });
 
-const isResolverMissing = computed(() => {
-	return (
-		isDynamicCredentialsEnabled.value &&
-		props.data.hasResolvableCredentials &&
-		!props.data.settings?.credentialResolverId
-	);
+const hasDynamicCredentials = computed(() => {
+	return isPrivateCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
 
 const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	if (openInAssistant(event)) return;
+
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
 			name: VIEWS.WORKFLOW,
-			params: { name: props.data.id },
+			params: { workflowId: props.data.id },
 		});
 		window.open(route.href, '_blank');
 
@@ -322,7 +382,7 @@ async function onClick(event?: KeyboardEvent | PointerEvent) {
 
 	await router.push({
 		name: VIEWS.WORKFLOW,
-		params: { name: props.data.id },
+		params: { workflowId: props.data.id },
 	});
 }
 
@@ -384,14 +444,17 @@ async function onAction(action: string) {
 				homeProjectId: props.data.homeProject?.id,
 			});
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
+			await unpublishWorkflow();
+			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
 			await toggleMCPAccess(true);
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
 			await toggleMCPAccess(false);
 			break;
-		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
-			await unpublishWorkflow();
+		case WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
+			await favoritesStore.toggleFavorite(props.data.id, 'workflow');
 			break;
 	}
 }
@@ -433,17 +496,22 @@ async function toggleMCPAccess(enabled: boolean) {
 	try {
 		await mcpStore.toggleWorkflowMcpAccess(props.data.id, enabled);
 		mcpToggleStatus.value = enabled;
-		mcp.trackMcpAccessEnabledForWorkflow(props.data.id);
+		if (enabled) {
+			mcp.trackMcpAccessEnabledForWorkflow(props.data.id);
+		}
 	} catch (error) {
 		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
-		return;
 	}
 }
 
 async function deleteWorkflow() {
+	await deleteWorkflowById(props.data.id, props.data.name);
+}
+
+async function deleteWorkflowById(id: WorkflowResource['id'], name: WorkflowResource['name']) {
 	const deleteConfirmed = await message.confirm(
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: name },
 		}),
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
 		{
@@ -462,7 +530,7 @@ async function deleteWorkflow() {
 	}
 
 	try {
-		await workflowsListStore.deleteWorkflow(props.data.id);
+		await workflowsListStore.deleteWorkflow(id);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
@@ -471,7 +539,7 @@ async function deleteWorkflow() {
 	// Reset tab title since workflow is deleted.
 	toast.showMessage({
 		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: name },
 		}),
 		type: 'success',
 	});
@@ -501,17 +569,27 @@ async function archiveWorkflow() {
 		}
 	}
 
+	const archivedWorkflowId = props.data.id;
+	const archivedWorkflowName = props.data.name;
+
 	try {
-		await workflowsStore.archiveWorkflow(props.data.id);
+		await workflowsStore.archiveWorkflow(archivedWorkflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
 		return;
 	}
 
-	toast.showMessage({
+	toast.showToast({
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: archivedWorkflowName },
 		}),
+		message: `<a href="#" data-test-id="archive-toast-delete-permanently-link">${locale.baseText('mainSidebar.showMessage.handleArchive.message')}</a>`,
+		onClick: (event) => {
+			if (event?.target instanceof HTMLAnchorElement) {
+				event.preventDefault();
+				void deleteWorkflowById(archivedWorkflowId, archivedWorkflowName);
+			}
+		},
 		type: 'success',
 	});
 	emit('workflow:archived');
@@ -586,57 +664,38 @@ const tags = computed(
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
-				<N8nTooltip v-if="hasDynamicCredentials" placement="top">
-					<template #content>
-						<div :class="$style.tooltipContent">
-							<strong>{{ locale.baseText('workflows.dynamic.tooltipTitle') }}</strong>
-							<span>{{ locale.baseText('workflows.dynamic.tooltip') }}</span>
-						</div>
-					</template>
-					<N8nBadge
-						theme="tertiary"
-						class="ml-3xs pl-3xs pr-3xs"
-						data-test-id="workflow-card-dynamic-credentials"
-					>
-						<span :class="$style.dynamicBadgeText">
-							<N8nIcon icon="key-round" size="medium" />
-							{{ locale.baseText('credentials.dynamic.badge') }}
-						</span>
-					</N8nBadge>
-				</N8nTooltip>
-				<N8nBadge
-					v-if="isResolverMissing"
-					theme="warning"
-					class="ml-3xs pl-3xs pr-3xs"
-					data-test-id="workflow-card-resolver-missing"
-				>
-					<span :class="$style.resolverMissingBadge">
-						{{ locale.baseText('workflows.dynamic.resolverMissing') }}
-					</span>
-				</N8nBadge>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
-			<span v-show="data"
-				>{{ locale.baseText('workflows.item.updated') }}
-				<TimeAgo :date="String(data.updatedAt)" /> |
+			<span v-show="data">
+				{{ locale.baseText('workflows.item.updated') }}
+				<TimeAgo :date="String(data.updatedAt)" />
 			</span>
+			<span v-show="data" :class="$style.divider">|</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				<span v-if="props.isMcpEnabled && isAvailableInMCP">|</span>
 			</span>
+			<span v-if="showLegacyMcpIndicator" :class="$style.divider">|</span>
 			<span
-				v-show="props.isMcpEnabled && isAvailableInMCP"
-				:class="[$style['description-cell'], $style['description-cell--mcp']]"
+				v-show="showLegacyMcpIndicator"
+				:class="$style.legacyMcpIndicator"
 				data-test-id="workflow-card-mcp"
 			>
-				<N8nTooltip
-					placement="right"
-					:content="locale.baseText('workflows.item.availableInMCP')"
-					data-test-id="workflow-card-mcp-tooltip"
-				>
-					<N8nIcon icon="mcp" size="medium"></N8nIcon>
+				<N8nTooltip placement="right" :content="locale.baseText('workflows.item.availableInMCP')">
+					<N8nIcon icon="mcp" size="medium" />
 				</N8nTooltip>
+			</span>
+			<span v-if="hasDynamicCredentials" :class="$style.divider">|</span>
+			<span
+				v-if="hasDynamicCredentials"
+				:class="$style.privateCredentialIndicator"
+				data-test-id="workflow-card-private-credential"
+			>
+				<PrivateCredentialIcon
+					:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
+					:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
+					size="small"
+				/>
 			</span>
 			<span
 				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
@@ -699,18 +758,46 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<div
-					v-else-if="isWorkflowPublished"
-					:class="$style.publishIndicator"
-					data-test-id="workflow-card-publish-indicator"
-				>
-					<span :class="$style.publishIndicatorDot" />
-					<N8nText size="small" color="text-base">{{
-						locale.baseText('workflows.published')
-					}}</N8nText>
-				</div>
+				<!-- The tooltip is only mounted for the rare partial/failed states; the
+					common published case keeps the plain markup. -->
+				<template v-else-if="publicationIndicator">
+					<div
+						v-if="!publicationIndicator.tooltip"
+						:class="$style.publishIndicator"
+						:data-state="publicationIndicator.state"
+						data-test-id="workflow-card-publish-indicator"
+					>
+						<N8nStatusDot :variant="publicationIndicator.variant" />
+						<N8nText size="small" color="text-base">{{ publicationIndicator.label }}</N8nText>
+					</div>
+					<N8nTooltip v-else placement="top" as-child>
+						<template #content>{{ publicationIndicator.tooltip }}</template>
+						<!-- tabindex makes the explanation keyboard-reachable: the tooltip opens on focus. -->
+						<div
+							:class="$style.publishIndicator"
+							:data-state="publicationIndicator.state"
+							data-test-id="workflow-card-publish-indicator"
+							tabindex="0"
+						>
+							<N8nStatusDot :variant="publicationIndicator.variant" />
+							<N8nText size="small" color="text-base">{{ publicationIndicator.label }}</N8nText>
+						</div>
+					</N8nTooltip>
+				</template>
+				<WorkflowCardMcpToggle
+					v-if="props.isWorkflowCardMcpToggleEnabled"
+					:workflow-id="data.id"
+					:available-in-mcp="data.settings?.availableInMCP ?? false"
+					:can-edit="canEditMcp"
+					:is-mcp-enabled="props.isMcpEnabled"
+					:is-mcp-module-active="props.isMcpModuleActive"
+					:can-manage-instance-mcp="props.canManageInstanceMcp"
+				/>
+				<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+				<OpenInAssistantCardButton :workflow="data" :read-only="readOnly" />
 				<N8nActionToggle
 					:actions="actions"
+					placement="bottom-end"
 					theme="dark"
 					data-test-id="workflow-card-actions"
 					@action="onAction"
@@ -763,6 +850,21 @@ const tags = computed(
 	margin-top: var(--spacing--4xs);
 }
 
+.legacyMcpIndicator {
+	display: inline-flex;
+	align-items: center;
+}
+
+.divider {
+	// Standalone flex item so the row `gap` applies evenly on both sides.
+	user-select: none;
+}
+
+.privateCredentialIndicator {
+	display: inline-flex;
+	align-items: center;
+}
+
 .cardActions {
 	display: flex;
 	gap: var(--spacing--2xs);
@@ -793,37 +895,6 @@ const tags = computed(
 	color: var(--color--text);
 }
 
-.description-cell--mcp {
-	display: inline-flex;
-	align-items: center;
-
-	&:hover {
-		color: var(--color--text);
-	}
-}
-
-.dynamicBadgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	height: 18px;
-}
-
-.resolverMissingBadge {
-	display: inline-flex;
-	align-items: center;
-	font-size: var(--font-size--3xs);
-	height: 18px;
-	color: var(--color--warning);
-}
-
-.tooltipContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-}
-
 .publishIndicator {
 	display: flex;
 	align-items: center;
@@ -836,13 +907,6 @@ const tags = computed(
 		// This is needed to line height up with ownership badge
 		line-height: calc(var(--font-size--sm) + 1px);
 	}
-}
-
-.publishIndicatorDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	background-color: var(--color--mint-600);
 }
 
 @include mixins.breakpoint('sm-and-down') {

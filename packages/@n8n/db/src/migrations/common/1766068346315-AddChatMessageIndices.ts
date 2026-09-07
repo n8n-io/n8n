@@ -18,7 +18,7 @@ export class AddChatMessageIndices1766068346315 implements ReversibleMigration {
 			WHERE ${lastMessageAtColumn} IS NULL`,
 		);
 
-		await addNotNull('chat_hub_sessions', 'lastMessageAt');
+		await addNotNull('chat_hub_sessions', 'lastMessageAt', { recreatesOnSqlite: true });
 
 		// Index intended for faster sessionRepository.getManyByUserId queries
 		await runQuery(
@@ -39,6 +39,6 @@ export class AddChatMessageIndices1766068346315 implements ReversibleMigration {
 		);
 		await runQuery(`DROP INDEX IF EXISTS ${escape.indexName('chat_hub_messages_sessionId')}`);
 
-		await dropNotNull('chat_hub_sessions', 'lastMessageAt');
+		await dropNotNull('chat_hub_sessions', 'lastMessageAt', { recreatesOnSqlite: true });
 	}
 }

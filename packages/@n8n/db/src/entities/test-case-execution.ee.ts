@@ -40,6 +40,15 @@ export class TestCaseExecution extends WithStringId {
 	@Column()
 	status: TestCaseExecutionStatus;
 
+	/**
+	 * Sequential index of this case within its test run, set when the run is
+	 * seeded with one row per dataset entry. Used to order pending/running
+	 * cases on the run detail page (since `runAt` is null until each case
+	 * actually starts).
+	 */
+	@Column('integer', { nullable: true })
+	runIndex: number | null;
+
 	@DateTimeColumn({ nullable: true })
 	runAt: Date | null;
 

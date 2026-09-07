@@ -1,6 +1,6 @@
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ensureUserId, getUserScopedSlot } from './userScoped';
 

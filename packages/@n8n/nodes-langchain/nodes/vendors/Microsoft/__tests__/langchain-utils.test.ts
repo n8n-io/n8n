@@ -1,9 +1,9 @@
-import { mock } from 'jest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { invokeAgent } from '../langchain-utils';
-
+import { getOptionalOutputParser } from '../../../../utils/output_parsers/N8nOutputParser';
 import {
 	getChatModel,
 	getOptionalMemory,
@@ -11,21 +11,21 @@ import {
 	preparePrompt,
 } from '../../../agents/Agent/agents/ToolsAgent/common';
 import { createAgentExecutor } from '../../../agents/Agent/agents/ToolsAgent/V2/execute';
-import { getOptionalOutputParser } from '../../../../utils/output_parsers/N8nOutputParser';
+import { invokeAgent } from '../langchain-utils';
 
-jest.mock('../../../agents/Agent/agents/ToolsAgent/common', () => ({
-	getChatModel: jest.fn(),
-	getOptionalMemory: jest.fn(),
-	getTools: jest.fn(),
-	preparePrompt: jest.fn(),
+vi.mock('../../../agents/Agent/agents/ToolsAgent/common', () => ({
+	getChatModel: vi.fn(),
+	getOptionalMemory: vi.fn(),
+	getTools: vi.fn(),
+	preparePrompt: vi.fn(),
 }));
 
-jest.mock('../../../agents/Agent/agents/ToolsAgent/V2/execute', () => ({
-	createAgentExecutor: jest.fn(),
+vi.mock('../../../agents/Agent/agents/ToolsAgent/V2/execute', () => ({
+	createAgentExecutor: vi.fn(),
 }));
 
-jest.mock('../../../../utils/output_parsers/N8nOutputParser', () => ({
-	getOptionalOutputParser: jest.fn(),
+vi.mock('../../../../utils/output_parsers/N8nOutputParser', () => ({
+	getOptionalOutputParser: vi.fn(),
 }));
 
 describe('langchain-utils', () => {
@@ -33,18 +33,18 @@ describe('langchain-utils', () => {
 		let nodeContext: IWebhookFunctions;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			nodeContext = mock<IWebhookFunctions>({
-				getNodeParameter: jest.fn(),
-				getNode: jest.fn().mockReturnValue({ name: 'Test Node' }),
+				getNodeParameter: vi.fn(),
+				getNode: vi.fn().mockReturnValue({ name: 'Test Node' }),
 			});
 		});
 
 		test('should throw error if no model is connected', async () => {
-			(getChatModel as jest.Mock).mockResolvedValue(null);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(null);
-			(nodeContext.getNodeParameter as jest.Mock).mockReturnValue(false);
+			(getChatModel as Mock).mockResolvedValue(null);
+			(getOptionalMemory as Mock).mockResolvedValue(null);
+			(nodeContext.getNodeParameter as Mock).mockReturnValue(false);
 
 			await expect(invokeAgent(nodeContext, 'test input')).rejects.toThrow(
 				'Please connect a model to the Chat Model input',
@@ -53,10 +53,10 @@ describe('langchain-utils', () => {
 
 		test('should throw NodeOperationError if fallback is needed but fallback model is not connected', async () => {
 			const mockModel = { name: 'primary-model' };
-			(getChatModel as jest.Mock).mockResolvedValueOnce(mockModel).mockResolvedValueOnce(null);
+			(getChatModel as Mock).mockResolvedValueOnce(mockModel).mockResolvedValueOnce(null);
 
-			(getOptionalMemory as jest.Mock).mockResolvedValue(null);
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(getOptionalMemory as Mock).mockResolvedValue(null);
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return true;
 				if (param === 'options') return {};
 				return false;
@@ -75,17 +75,17 @@ describe('langchain-utils', () => {
 			const microsoftMcpToolkits = [{ tools: mcpTools }];
 			const mockPrompt = { name: 'prompt' };
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ output: 'test response' }),
+				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as jest.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(mockMemory);
-			(getTools as jest.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as jest.Mock).mockResolvedValue(null);
-			(preparePrompt as jest.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as jest.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -119,17 +119,17 @@ describe('langchain-utils', () => {
 			const mockTools = [{ name: 'tool1' }];
 			const mockPrompt = { name: 'prompt' };
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ output: 'test response' }),
+				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as jest.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(mockMemory);
-			(getTools as jest.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as jest.Mock).mockResolvedValue(null);
-			(preparePrompt as jest.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as jest.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -155,17 +155,17 @@ describe('langchain-utils', () => {
 			const mockTools = [{ name: 'tool1' }];
 			const mockPrompt = { name: 'prompt' };
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ output: 'test response' }),
+				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as jest.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(mockMemory);
-			(getTools as jest.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as jest.Mock).mockResolvedValue(null);
-			(preparePrompt as jest.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as jest.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -191,19 +191,19 @@ describe('langchain-utils', () => {
 			const mockTools = [{ name: 'tool1' }];
 			const mockPrompt = { name: 'prompt' };
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ output: 'test response' }),
+				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as jest.Mock)
+			(getChatModel as Mock)
 				.mockResolvedValueOnce(mockModel)
 				.mockResolvedValueOnce(mockFallbackModel);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(mockMemory);
-			(getTools as jest.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as jest.Mock).mockResolvedValue(null);
-			(preparePrompt as jest.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as jest.Mock).mockReturnValue(mockExecutor);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return true;
 				if (param === 'options') return {};
 				return false;
@@ -229,17 +229,17 @@ describe('langchain-utils', () => {
 			const mockTools = [{ name: 'tool1' }];
 			const mockPrompt = { name: 'prompt' };
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ output: 'test response' }),
+				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as jest.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(mockMemory);
-			(getTools as jest.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as jest.Mock).mockResolvedValue(null);
-			(preparePrompt as jest.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as jest.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return { maxIterations: 20 };
 				return false;
@@ -266,17 +266,17 @@ describe('langchain-utils', () => {
 			const mockPrompt = { name: 'prompt' };
 			const mockError = new Error('Execution failed');
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ status: 'rejected', reason: mockError }),
+				invoke: vi.fn().mockResolvedValue({ status: 'rejected', reason: mockError }),
 			};
 
-			(getChatModel as jest.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(mockMemory);
-			(getTools as jest.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as jest.Mock).mockResolvedValue(null);
-			(preparePrompt as jest.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as jest.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -292,19 +292,17 @@ describe('langchain-utils', () => {
 			const mockPrompt = { name: 'prompt' };
 			const mockOutputParser = { name: 'outputParser' };
 			const mockExecutor = {
-				invoke: jest
-					.fn()
-					.mockResolvedValue({ output: '{"output": {"result": "parsed response"}}' }),
+				invoke: vi.fn().mockResolvedValue({ output: '{"output": {"result": "parsed response"}}' }),
 			};
 
-			(getChatModel as jest.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(mockMemory);
-			(getTools as jest.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as jest.Mock).mockResolvedValue(mockOutputParser);
-			(preparePrompt as jest.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as jest.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(mockOutputParser);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -321,17 +319,17 @@ describe('langchain-utils', () => {
 			const mockTools = [{ name: 'tool1' }];
 			const mockPrompt = { name: 'prompt' };
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ output: 'raw output response' }),
+				invoke: vi.fn().mockResolvedValue({ output: 'raw output response' }),
 			};
 
-			(getChatModel as jest.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(mockMemory);
-			(getTools as jest.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as jest.Mock).mockResolvedValue(null);
-			(preparePrompt as jest.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as jest.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -350,17 +348,17 @@ describe('langchain-utils', () => {
 			const microsoftMcpToolkits = [{ tools: mcpTools }];
 			const mockPrompt = { name: 'prompt' };
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ output: 'test response' }),
+				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as jest.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(mockMemory);
-			(getTools as jest.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as jest.Mock).mockResolvedValue(null);
-			(preparePrompt as jest.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as jest.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -385,17 +383,17 @@ describe('langchain-utils', () => {
 			const mockTools = [{ name: 'tool1' }];
 			const mockPrompt = { name: 'prompt' };
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ output: 'test response' }),
+				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as jest.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(mockMemory);
-			(getTools as jest.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as jest.Mock).mockResolvedValue(null);
-			(preparePrompt as jest.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as jest.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -421,17 +419,17 @@ describe('langchain-utils', () => {
 			const mockTools = [{ name: 'tool1' }];
 			const mockPrompt = { name: 'prompt' };
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ output: 'test response' }),
+				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as jest.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as jest.Mock).mockResolvedValue(mockMemory);
-			(getTools as jest.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as jest.Mock).mockResolvedValue(null);
-			(preparePrompt as jest.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as jest.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;

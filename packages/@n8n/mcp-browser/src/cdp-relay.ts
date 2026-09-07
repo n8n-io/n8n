@@ -9,6 +9,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import http from 'node:http';
 import type net from 'node:net';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -21,18 +22,41 @@ import type {
 	ExtensionEvents,
 	ExtensionResponse,
 } from './cdp-relay-protocol';
-import { ExtensionNotConnectedError, type ExtensionNotConnectedPhase } from './errors';
+import {
+	ConnectionLostError,
+	ExtensionNotConnectedError,
+	type ConnectionLostReason,
+	type ExtensionNotConnectedPhase,
+} from './errors';
 import { createLogger } from './logger';
+import type { DisconnectDetails } from './types';
 
 const log = createLogger('relay');
+
+// ---------------------------------------------------------------------------
+// Restricted target filtering
+// ---------------------------------------------------------------------------
+
+/** Targets that should not be exposed to Playwright (extension pages, service workers, etc.). */
+function isRestrictedTarget(targetInfo: { type?: string; url?: string }): boolean {
+	const { type, url } = targetInfo;
+	// Only allow page and iframe targets
+	if (type && type !== 'page' && type !== 'iframe') return true;
+	if (!url) return false;
+	return ['chrome://', 'chrome-extension://', 'devtools://', 'edge://'].some((prefix) =>
+		url.startsWith(prefix),
+	);
+}
 
 // ---------------------------------------------------------------------------
 // CDPRelayServer
 // ---------------------------------------------------------------------------
 
 export interface CDPRelayServerOptions {
-	/** Timeout in ms waiting for extension to connect. Default 15_000 */
+	/** Timeout in ms waiting for extension to connect. Default 30_000 */
 	connectionTimeoutMs?: number;
+	/** Run without an internal HTTP server; feed connections via `attachExtension()`/`attachController()`. */
+	noServer?: boolean;
 }
 
 export interface WaitForExtensionOptions {
@@ -41,10 +65,11 @@ export interface WaitForExtensionOptions {
 }
 
 export class CDPRelayServer {
-	private readonly httpServer: http.Server;
-	private readonly wss: WebSocketServer;
+	private readonly httpServer?: http.Server;
+	private readonly wss?: WebSocketServer;
 	private readonly cdpPath: string;
 	private readonly extensionPath: string;
+	private boundPort?: number;
 
 	private playwrightWs: WebSocket | null = null;
 	private extensionConn: ExtensionConnection | null = null;
@@ -65,10 +90,28 @@ export class CDPRelayServer {
 	private extensionConnectedReject?: (error: Error) => void;
 	private extensionConnectedPromise: Promise<void>;
 
+	private blockingExtensionIds: string[] = [];
+
+	/** Called when the extension disconnects with a typed reason. */
+	onExtensionDisconnect?: (reason: ConnectionLostReason, details?: DisconnectDetails) => void;
+
+	/** Fired before any teardown, so an in-flight action can fail fast. */
+	onTabBlocked?: (details: DisconnectDetails) => void;
+
+	/** Called when the extension (re)connects. */
+	onExtensionConnect?: () => void;
+
 	private readonly connectionTimeoutMs: number;
 
+	/** Grace period allowing the extension to reconnect before tearing down Playwright. */
+	private readonly RECONNECT_WINDOW_MS = 15_000;
+	private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+
+	/** Internal event bus for CDP events (used to synchronize Runtime.enable). */
+	private readonly cdpEvents = new EventEmitter();
+
 	constructor(options?: CDPRelayServerOptions) {
-		this.connectionTimeoutMs = options?.connectionTimeoutMs ?? 15_000;
+		this.connectionTimeoutMs = options?.connectionTimeoutMs ?? 30_000;
 
 		const uuid = randomUUID();
 		this.cdpPath = `/cdp/${uuid}`;
@@ -80,38 +123,66 @@ export class CDPRelayServer {
 		});
 		this.extensionConnectedPromise.catch(() => {});
 
-		this.httpServer = http.createServer((_req, res) => {
-			res.writeHead(404);
-			res.end();
-		});
-
-		this.wss = new WebSocketServer({ server: this.httpServer });
-		this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
+		if (!options?.noServer) {
+			this.httpServer = http.createServer((_req, res) => {
+				res.writeHead(404);
+				res.end();
+			});
+			this.wss = new WebSocketServer({ server: this.httpServer });
+			this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
+		}
 	}
 
 	/** Start listening on a random available port. Returns the bound port. */
 	async listen(): Promise<number> {
+		const server = this.httpServer;
+		if (!server) {
+			throw new Error('CDPRelayServer was created with noServer — cannot listen');
+		}
+
 		return await new Promise((resolve, reject) => {
-			this.httpServer.listen(0, '127.0.0.1', () => {
-				const addr = this.httpServer.address() as net.AddressInfo;
+			server.listen(0, '127.0.0.1', () => {
+				const addr = server.address() as net.AddressInfo;
 				log.debug('listening on port', addr.port);
+				this.boundPort = addr.port;
 				resolve(addr.port);
 			});
-			this.httpServer.on('error', reject);
+			server.on('error', reject);
 		});
 	}
 
+	/** Attach an already-upgraded extension WebSocket (embedder owns the handshake and auth). */
+	attachExtension(ws: WebSocket): void {
+		this.handleExtensionConnection(ws);
+	}
+
+	/** Attach an already-upgraded CDP-client (Playwright or agent-browser) WebSocket. */
+	attachController(ws: WebSocket): void {
+		this.handlePlaywrightConnection(ws);
+	}
+
+	private resolvePort(port?: number): number {
+		const resolved = port ?? this.boundPort;
+		if (resolved === undefined) {
+			throw new Error('Relay port is unknown - call listen() or pass a port');
+		}
+
+		return resolved;
+	}
+
 	/** The WebSocket URL Playwright should connectOverCDP to. */
-	cdpEndpoint(port: number): string {
-		return `ws://127.0.0.1:${port}${this.cdpPath}`;
+	cdpEndpoint(port?: number): string {
+		return `ws://127.0.0.1:${this.resolvePort(port)}${this.cdpPath}`;
 	}
 
 	/** The WebSocket URL the extension should connect to. */
-	extensionEndpoint(port: number): string {
-		return `ws://127.0.0.1:${port}${this.extensionPath}`;
+	extensionEndpoint(port?: number): string {
+		return `ws://127.0.0.1:${this.resolvePort(port)}${this.extensionPath}`;
 	}
 
-	/** Wait for the extension to connect. Rejects after timeout with phase-specific guidance. */
+	/** Wait for the extension to connect. Rejects after timeout with phase-specific guidance.
+	 *  The underlying relay connection remains open so the extension can still connect later.
+	 */
 	async waitForExtension(options?: WaitForExtensionOptions): Promise<void> {
 		if (this.extensionConn) return;
 
@@ -120,32 +191,44 @@ export class CDPRelayServer {
 		const phase: ExtensionNotConnectedPhase =
 			options?.browserWasLaunched === false ? 'browser_not_launched' : 'extension_missing';
 
-		const timer = setTimeout(() => {
-			log.error('extension connection timed out, phase:', phase);
-			this.extensionConnectedReject?.(
-				new ExtensionNotConnectedError(
-					this.connectionTimeoutMs,
-					phase,
-					getExtensionInstallInstructions(),
-				),
-			);
-		}, this.connectionTimeoutMs);
+		let timeoutId: ReturnType<typeof setTimeout>;
+		const timeoutPromise = new Promise<never>((_, reject) => {
+			timeoutId = setTimeout(() => {
+				log.error('extension connection timed out, phase:', phase);
+				reject(
+					new ExtensionNotConnectedError(
+						this.connectionTimeoutMs,
+						phase,
+						getExtensionInstallInstructions(),
+					),
+				);
+			}, this.connectionTimeoutMs);
+		});
 
 		try {
-			await this.extensionConnectedPromise;
+			await Promise.race([this.extensionConnectedPromise, timeoutPromise]);
 			log.debug('extension connected');
 		} finally {
-			clearTimeout(timer);
+			clearTimeout(timeoutId!);
 		}
+	}
+
+	/** Whether the extension is currently connected. */
+	isExtensionConnected(): boolean {
+		return this.extensionConn !== null;
 	}
 
 	/** Shut down the relay, closing all connections. */
 	stop(): void {
 		log.debug('stopping relay server');
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = undefined;
+		}
 		this.closePlaywrightConnection('Server stopped');
 		this.closeExtensionConnection('Server stopped');
-		this.wss.close();
-		this.httpServer.close();
+		this.wss?.close();
+		this.httpServer?.close();
 	}
 
 	// =========================================================================
@@ -263,9 +346,10 @@ export class CDPRelayServer {
 
 	private handlePlaywrightConnection(ws: WebSocket): void {
 		if (this.playwrightWs) {
-			log.debug('rejected duplicate Playwright connection');
-			ws.close(1000, 'Another CDP client already connected');
-			return;
+			const stale = this.playwrightWs;
+			this.playwrightWs = null;
+			stale.terminate();
+			log.debug('replaced stale Playwright connection');
 		}
 
 		log.debug('Playwright connected');
@@ -284,6 +368,7 @@ export class CDPRelayServer {
 		});
 
 		ws.on('close', () => {
+			log.debug('Adapter WS closed');
 			if (this.playwrightWs !== ws) return;
 			log.debug('Playwright disconnected');
 			this.playwrightWs = null;
@@ -332,22 +417,94 @@ export class CDPRelayServer {
 			case 'Target.disposeBrowserContext':
 				return {};
 
-			case 'Target.setAutoAttach': {
-				// Child session auto-attach: ack without forwarding
-				if (sessionId) return {};
+			case 'Target.getTargets': {
+				const tabs = await this.listTabs();
+				return {
+					targetInfos: tabs.map((entry) => ({
+						targetId: entry.id,
+						type: 'page',
+						title: entry.title,
+						url: entry.url,
+						attached: false,
+						browserContextId: this.browserContextId,
+					})),
+				};
+			}
 
-				log.debug('Target.setAutoAttach: listing tabs from extension');
+			case 'Target.setDiscoverTargets':
+				return {};
+
+			case 'Target.attachToTarget': {
+				const targetId = (params as { targetId: string })?.targetId;
+				if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
+				await this.extensionConn.send('attachTab', { id: targetId });
+				return { sessionId: targetId };
+			}
+
+			case 'Target.setAutoAttach': {
+				// Child session auto-attach: forward to extension so Chrome attaches to iframes
+				if (sessionId) {
+					return await this.forwardToExtension(method, params, sessionId);
+				}
+
+				// Root-level: forward to extension (applies to all attached tabs) AND list tabs for cache
+				log.debug('Target.setAutoAttach: forwarding to extension and listing tabs');
+				await this.forwardToExtension(method, params, sessionId);
+
 				const { tabs } = (await this.extensionConn!.send('listRegisteredTabs', {})) as {
 					tabs: Array<{ id: string; title: string; url: string }>;
 				};
 				log.debug('listRegisteredTabs result:', tabs.length, 'tabs');
 
-				// Cache metadata — don't activate (lazy)
 				for (const tab of tabs) {
 					this.tabCache.set(tab.id, { title: tab.title, url: tab.url });
 					this.primaryTabId ??= tab.id;
 				}
 				return {};
+			}
+
+			case 'Runtime.enable': {
+				if (!sessionId) {
+					return await this.forwardToExtension(method, params, sessionId);
+				}
+
+				// Wait for Chrome to emit executionContextCreated (default context) before
+				// returning, so Playwright's context cache is populated. Without this there's
+				// a race where Playwright tries to use the context before it's announced.
+				const contextCreatedPromise = new Promise<void>((resolve) => {
+					const handler = (event: {
+						method: string;
+						params: unknown;
+						sessionId: string;
+					}) => {
+						if (
+							event.method === 'Runtime.executionContextCreated' &&
+							event.sessionId === sessionId
+						) {
+							const ctxParams = event.params as {
+								context?: { auxData?: { isDefault?: boolean } };
+							};
+							if (ctxParams?.context?.auxData?.isDefault === true) {
+								clearTimeout(timer);
+								this.cdpEvents.off('cdp:event', handler);
+								resolve();
+							}
+						}
+					};
+					const timer = setTimeout(() => {
+						this.cdpEvents.off('cdp:event', handler);
+						log.debug(
+							'Runtime.enable: timed out waiting for executionContextCreated, session:',
+							sessionId,
+						);
+						resolve();
+					}, 3_000);
+					this.cdpEvents.on('cdp:event', handler);
+				});
+
+				const result = await this.forwardToExtension(method, params, sessionId);
+				await contextCreatedPromise;
+				return result;
 			}
 
 			case 'Target.createTarget': {
@@ -396,7 +553,7 @@ export class CDPRelayServer {
 		params: unknown,
 		sessionId: string | undefined,
 	): Promise<unknown> {
-		if (!this.extensionConn) throw new Error('Extension not connected');
+		if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
 
 		// sessionId IS the CDP targetId — pass it directly
 		log.debug('→ EXT: forwardCDPCommand', method, sessionId ? 'id=' + sessionId : '(primary)');
@@ -419,7 +576,7 @@ export class CDPRelayServer {
 
 	/** Create a new tab via the extension. */
 	private async createTab(url?: string): Promise<{ id: string; title: string; url: string }> {
-		if (!this.extensionConn) throw new Error('Extension not connected');
+		if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
 
 		log.debug('createTab: requesting from extension, url =', url);
 		const result = (await this.extensionConn.send('createTab', { url })) as {
@@ -456,7 +613,7 @@ export class CDPRelayServer {
 
 	/** Close a tab via the extension. */
 	async closeTab(id: string): Promise<void> {
-		if (!this.extensionConn) throw new Error('Extension not connected');
+		if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
 
 		await this.extensionConn.send('closeTab', { id });
 
@@ -479,6 +636,8 @@ export class CDPRelayServer {
 	/** Handle tabOpened event from extension. */
 	private handleTabOpened(id: string, title: string, url: string): void {
 		if (this.tabCache.has(id)) return;
+		// A new tab is the agent recovering; the earlier block is history.
+		this.blockingExtensionIds = [];
 
 		log.debug('tabOpened:', id, url);
 		this.tabCache.set(id, { title, url });
@@ -487,8 +646,21 @@ export class CDPRelayServer {
 	}
 
 	/** Handle tabClosed event from extension. */
-	private handleTabClosed(id: string): void {
-		log.debug('tabClosed:', id);
+	private handleTabClosed(
+		id: string,
+		reason?: 'blocked_by_extension',
+		blockingExtensionIds?: string[],
+	): void {
+		if (reason === 'blocked_by_extension') {
+			log.debug('tabClosed:', id, 'blocked by', blockingExtensionIds);
+			this.blockingExtensionIds = blockingExtensionIds ?? [];
+			this.onTabBlocked?.({ blockingExtensionIds: this.blockingExtensionIds });
+		} else {
+			log.debug('tabClosed:', id);
+			// The session carried on past the block, so stop attributing later
+			// disconnects to it.
+			this.blockingExtensionIds = [];
+		}
 
 		this.tabCache.delete(id);
 		const wasActivated = this.activatedTabs.delete(id);
@@ -510,7 +682,11 @@ export class CDPRelayServer {
 		if (this.playwrightWs?.readyState === WebSocket.OPEN) {
 			const json = JSON.stringify(message);
 			log.debug('→ PW:', json.length > 200 ? json.slice(0, 200) + '…' : json);
-			this.playwrightWs.send(json);
+			try {
+				this.playwrightWs.send(json);
+			} catch {
+				log.debug('sendToPlaywright: send failed (connection closing)');
+			}
 		} else {
 			log.debug('sendToPlaywright: no Playwright connection');
 		}
@@ -521,20 +697,74 @@ export class CDPRelayServer {
 	// =========================================================================
 
 	private handleExtensionConnection(ws: WebSocket): void {
+		// If reconnecting during the grace window, cancel the teardown timer
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = undefined;
+			log.debug('extension reconnected within grace window');
+		}
+
 		if (this.extensionConn) {
-			log.debug('rejected duplicate extension connection');
-			ws.close(1000, 'Another extension already connected');
-			return;
+			// Accept the new connection as a replacement (e.g. reconnect after transient drop).
+			// Clear the handler first so the async close event from the old connection doesn't
+			// null out extensionConn or start a spurious reconnect timer after we've already
+			// installed the replacement.
+			log.debug('replacing existing extension connection');
+			this.extensionConn.onclose = undefined;
+			this.extensionConn.close('Replaced by new connection');
 		}
 
 		log.debug('extension connected');
+		// A fresh session must not inherit the previous one's block.
+		this.blockingExtensionIds = [];
 		this.extensionConn = new ExtensionConnection(ws);
 
 		this.extensionConn.onclose = () => {
-			log.debug('extension disconnected');
-			this.resetState();
-			this.closePlaywrightConnection('Extension disconnected');
+			const blockingExtensionIds = this.blockingExtensionIds;
+			// A recorded block outranks the socket's own reason: it says why the tab
+			// went, which the close frame never does.
+			const reason: ConnectionLostReason =
+				blockingExtensionIds.length > 0
+					? 'blocked_by_extension'
+					: asConnectionLostReason(this.extensionConn?.closeReason);
+			log.debug('extension disconnected, reason:', reason);
+			this.onExtensionDisconnect?.(reason, { blockingExtensionIds });
+
+			// Clear extension ref but KEEP tabCache, activatedTabs, and Playwright connection.
+			// Pending requests are already rejected by ExtensionConnection.handleClose.
+			this.extensionConn = null;
+
+			// Start a grace period: if the extension reconnects in time, we rebind
+			// without tearing down Playwright. If not, we close everything.
+			this.reconnectTimer = setTimeout(() => {
+				this.reconnectTimer = undefined;
+				log.debug('reconnection window expired, closing Playwright');
+				this.resetState();
+				this.closePlaywrightConnection('Extension did not reconnect');
+			}, this.RECONNECT_WINDOW_MS);
+
+			// Re-create the promise so waitForExtension() works for the next connection
+			this.extensionConnectedPromise = new Promise((resolve, reject) => {
+				this.extensionConnectedResolve = resolve;
+				this.extensionConnectedReject = reject;
+			});
+			this.extensionConnectedPromise.catch(() => {});
 		};
+
+		this.setupExtensionEventHandlers();
+
+		// Re-sync tab state from extension after reconnect (if Playwright is still alive)
+		if (this.playwrightWs) {
+			void this.resyncTabsFromExtension();
+		}
+
+		this.extensionConnectedResolve?.();
+		this.onExtensionConnect?.();
+	}
+
+	/** Wire up event handlers for the current extension connection. */
+	private setupExtensionEventHandlers(): void {
+		if (!this.extensionConn) return;
 
 		this.extensionConn.onmessage = <M extends keyof ExtensionEvents>(
 			method: M,
@@ -546,6 +776,54 @@ export class CDPRelayServer {
 
 				// Use the CDP targetId as Playwright's sessionId
 				const sessionId = eventParams.id ?? this.primaryTabId;
+
+				// --- Restricted target filtering (second line of defense after extension) ---
+				if (eventParams.method === 'Target.attachedToTarget') {
+					const attachParams = eventParams.params as
+						| {
+								sessionId?: string;
+								targetInfo?: { type?: string; url?: string };
+								waitingForDebugger?: boolean;
+						  }
+						| undefined;
+					if (attachParams?.targetInfo && isRestrictedTarget(attachParams.targetInfo)) {
+						log.debug('filtering restricted target:', attachParams.targetInfo.url);
+						// Resume if waiting for debugger to prevent hanging navigations
+						if (attachParams.waitingForDebugger && attachParams.sessionId && this.extensionConn) {
+							this.extensionConn
+								.send('forwardCDPCommand', {
+									id: sessionId,
+									method: 'Runtime.runIfWaitingForDebugger',
+									params: {},
+								})
+								.catch((e) => log.debug('failed to resume restricted target:', e));
+						}
+						return;
+					}
+				}
+
+				// --- Target crash cleanup ---
+				if (eventParams.method === 'Target.targetCrashed') {
+					const crashParams = eventParams.params as { targetId?: string } | undefined;
+					const targetId = crashParams?.targetId;
+					if (targetId && this.tabCache.has(targetId)) {
+						log.debug('Target.targetCrashed: removing crashed tab:', targetId);
+						this.tabCache.delete(targetId);
+						const wasActivated = this.activatedTabs.delete(targetId);
+						if (targetId === this.primaryTabId) {
+							const remaining = [...this.tabCache.keys()];
+							this.primaryTabId = remaining.length > 0 ? remaining[0] : undefined;
+						}
+						if (wasActivated) {
+							this.sendToPlaywright({
+								method: 'Target.targetCrashed',
+								params: { targetId },
+								sessionId: targetId,
+							});
+						}
+					}
+					return;
+				}
 
 				// Keep cached metadata fresh on navigation
 				if (eventParams.method === 'Page.frameNavigated' && sessionId) {
@@ -566,16 +844,55 @@ export class CDPRelayServer {
 					method: eventParams.method,
 					params: eventParams.params,
 				});
+
+				// Emit internally so Runtime.enable can wait for executionContextCreated
+				this.cdpEvents.emit('cdp:event', {
+					method: eventParams.method,
+					params: eventParams.params,
+					sessionId,
+				});
 			} else if (method === 'tabOpened') {
 				const p = params as ExtensionEvents['tabOpened']['params'];
 				this.handleTabOpened(p.id, p.title, p.url);
 			} else if (method === 'tabClosed') {
 				const p = params as ExtensionEvents['tabClosed']['params'];
-				this.handleTabClosed(p.id);
+				this.handleTabClosed(p.id, p.reason, p.blockingExtensionIds);
 			}
 		};
+	}
 
-		this.extensionConnectedResolve?.();
+	/** After reconnect, sync tab state from extension and clean up stale entries. */
+	private async resyncTabsFromExtension(): Promise<void> {
+		if (!this.extensionConn) return;
+		try {
+			const { tabs } = (await this.extensionConn.send('listRegisteredTabs', {})) as {
+				tabs: Array<{ id: string; title: string; url: string }>;
+			};
+			const currentIds = new Set(tabs.map((t) => t.id));
+
+			// Update cache for tabs that still exist
+			for (const tab of tabs) {
+				this.tabCache.set(tab.id, { title: tab.title, url: tab.url });
+				this.primaryTabId ??= tab.id;
+			}
+
+			// Remove stale entries for tabs that no longer exist in extension
+			for (const id of [...this.tabCache.keys()]) {
+				if (!currentIds.has(id)) {
+					this.tabCache.delete(id);
+					if (this.activatedTabs.delete(id)) {
+						this.sendToPlaywright({
+							method: 'Target.detachedFromTarget',
+							params: { sessionId: id },
+						});
+					}
+				}
+			}
+
+			log.debug('resyncTabsFromExtension: synced', tabs.length, 'tabs');
+		} catch (e) {
+			log.error('resyncTabsFromExtension failed:', e);
+		}
 	}
 
 	private closeExtensionConnection(reason: string): void {
@@ -590,6 +907,7 @@ export class CDPRelayServer {
 		this.activatedTabs.clear();
 		this.primaryTabId = undefined;
 		this.lastCreatedTabId = undefined;
+		this.blockingExtensionIds = [];
 		this.browserContextId = 'n8n-default-context';
 		this.extensionConn = null;
 		this.extensionConnectedPromise = new Promise((resolve, reject) => {
@@ -612,6 +930,9 @@ export class CDPRelayServer {
 // ExtensionConnection — wraps the WebSocket to the extension
 // ---------------------------------------------------------------------------
 
+const HEARTBEAT_INTERVAL_MS = 5_000;
+const HEARTBEAT_TIMEOUT_MS = 15_000;
+
 class ExtensionConnection {
 	private readonly ws: WebSocket;
 	private readonly callbacks = new Map<
@@ -619,6 +940,12 @@ class ExtensionConnection {
 		{ resolve: (value: unknown) => void; reject: (reason: Error) => void }
 	>();
 	private lastId = 0;
+	private lastPongAt = Date.now();
+	private lastPingSentAt = 0;
+	private heartbeatInterval: ReturnType<typeof setInterval> | undefined;
+
+	/** The reason string from the WebSocket close frame, if any. */
+	closeReason: string | undefined;
 
 	onmessage?: <M extends keyof ExtensionEvents>(
 		method: M,
@@ -629,14 +956,22 @@ class ExtensionConnection {
 	constructor(ws: WebSocket) {
 		this.ws = ws;
 		this.ws.on('message', (data) => this.handleMessage(data));
-		this.ws.on('close', () => {
-			log.debug('ExtensionConnection WebSocket closed');
+		this.ws.on('close', (_code: number, reason: Buffer) => {
+			const reasonStr = reason.toString();
+			log.debug('ExtensionConnection WebSocket closed:', reasonStr || '(no reason)');
+			// Only update closeReason if not already set (e.g. by heartbeat timeout)
+			this.closeReason ??= reasonStr || undefined;
 			this.handleClose();
 		});
 		this.ws.on('error', (error) => {
 			log.debug('ExtensionConnection WebSocket error:', error);
 			this.handleClose();
 		});
+		this.ws.on('pong', () => {
+			this.lastPongAt = Date.now();
+		});
+
+		this.startHeartbeat();
 	}
 
 	async send<M extends keyof ExtensionCommands>(
@@ -645,13 +980,17 @@ class ExtensionConnection {
 		timeoutMs = 30_000,
 	): Promise<unknown> {
 		if (this.ws.readyState !== WebSocket.OPEN) {
-			throw new Error(`WebSocket not open (state=${this.ws.readyState})`);
+			throw new ConnectionLostError('network_error');
 		}
 
 		const id = ++this.lastId;
 		const payload = JSON.stringify({ id, method, params });
 		log.debug('→ EXT:', method, 'id=' + String(id));
-		this.ws.send(payload);
+		try {
+			this.ws.send(payload);
+		} catch {
+			throw new ConnectionLostError('network_error');
+		}
 
 		return await new Promise((resolve, reject) => {
 			const timer = setTimeout(() => {
@@ -666,11 +1005,7 @@ class ExtensionConnection {
 					'pending:',
 					this.callbacks.size,
 				);
-				reject(
-					new Error(
-						`Extension command '${String(method)}' (id=${id}) timed out after ${timeoutMs}ms`,
-					),
-				);
+				reject(new ConnectionLostError('heartbeat_timeout'));
 			}, timeoutMs);
 
 			this.callbacks.set(id, {
@@ -687,8 +1022,40 @@ class ExtensionConnection {
 	}
 
 	close(reason: string): void {
+		this.stopHeartbeat();
 		if (this.ws.readyState === WebSocket.OPEN) {
 			this.ws.close(1000, reason);
+		}
+	}
+
+	private startHeartbeat(): void {
+		this.heartbeatInterval = setInterval(() => {
+			if (this.ws.readyState !== WebSocket.OPEN) {
+				this.stopHeartbeat();
+				return;
+			}
+
+			const elapsed = Date.now() - this.lastPongAt;
+			// Only terminate if we already sent a ping since the last pong with no response.
+			// This prevents false timeouts after system sleep, where the timer fires with a
+			// large elapsed value before any new ping has been sent (and thus answered).
+			if (elapsed > HEARTBEAT_TIMEOUT_MS && this.lastPingSentAt > this.lastPongAt) {
+				log.debug('heartbeat timeout: no pong for', elapsed, 'ms');
+				this.closeReason = 'heartbeat_timeout';
+				this.stopHeartbeat();
+				this.ws.terminate();
+				return;
+			}
+
+			this.lastPingSentAt = Date.now();
+			this.ws.ping();
+		}, HEARTBEAT_INTERVAL_MS);
+	}
+
+	private stopHeartbeat(): void {
+		if (this.heartbeatInterval) {
+			clearInterval(this.heartbeatInterval);
+			this.heartbeatInterval = undefined;
 		}
 	}
 
@@ -722,14 +1089,35 @@ class ExtensionConnection {
 	}
 
 	private handleClose(): void {
+		this.stopHeartbeat();
 		const pendingCount = this.callbacks.size;
 		if (pendingCount > 0) {
 			log.debug('ExtensionConnection closed with', pendingCount, 'pending callbacks');
 		}
+		const reason = asConnectionLostReason(this.closeReason);
 		for (const pending of this.callbacks.values()) {
-			pending.reject(new Error('WebSocket closed'));
+			pending.reject(new ConnectionLostError(reason));
 		}
 		this.callbacks.clear();
 		this.onclose?.();
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Close reason validation
+// ---------------------------------------------------------------------------
+
+const VALID_REASONS = new Set<ConnectionLostReason>([
+	'browser_closed',
+	'extension_disconnected',
+	'debugger_detached',
+	'blocked_by_extension',
+	'network_error',
+	'heartbeat_timeout',
+]);
+
+/** Validate a raw close reason string as a typed `ConnectionLostReason`. */
+function asConnectionLostReason(raw: string | undefined): ConnectionLostReason {
+	if (raw && VALID_REASONS.has(raw as ConnectionLostReason)) return raw as ConnectionLostReason;
+	return 'network_error';
 }

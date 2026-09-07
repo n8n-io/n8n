@@ -1,15 +1,29 @@
 <script setup lang="ts">
 import { ElSelect } from 'element-plus';
-import type { PropType } from 'vue';
+import type { ComponentPublicInstance, PropType, Ref } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
 
+import type { InnerSelectRef, N8nSelectExposed } from './Select.types';
 import type { SelectSize } from '../../types';
 import { isEventBindingElementAttribute } from '../../utils';
 
-type InnerSelectRef = InstanceType<typeof ElSelect>;
+/**
+ * `ElSelect.props` is typed as `any`, and spreading `any` collapses this whole
+ * object literal to `any` — which is why the emitted declarations published no
+ * prop names for this component. Casting the spread to element-plus' own
+ * resolved prop types restores the names. The cast is erased at build time, so
+ * the runtime prop declarations remain exactly the spread: every prop
+ * element-plus accepts is still declared here, and still forwarded.
+ */
+type ElSelectPropsOptions = {
+	[K in Exclude<
+		keyof InnerSelectRef['$props'],
+		`on${string}` | 'key' | 'ref' | 'ref_for' | 'ref_key' | 'class' | 'style'
+	>]-?: { type: PropType<InnerSelectRef['$props'][K]> };
+};
 
 const props = defineProps({
-	...ElSelect.props,
+	...(ElSelect.props as ElSelectPropsOptions),
 	modelValue: {},
 	size: {
 		type: String as PropType<SelectSize>,
@@ -58,7 +72,17 @@ const props = defineProps({
 });
 
 const attrs = useAttrs();
-const innerSelect = ref<InnerSelectRef | null>(null);
+const innerSelect: Ref<InnerSelectRef | null> = ref(null);
+
+/**
+ * Assigned via a function ref rather than `ref="innerSelect"`. A string ref
+ * registers in vue-tsc's `__VLS_TemplateRefs`, which materialises element-plus'
+ * full ElSelect instance type — too large for the compiler to serialize, so the
+ * declaration for this component was silently skipped (TS7056).
+ */
+const setInnerSelect = (el: Element | ComponentPublicInstance | null) => {
+	innerSelect.value = (el as InnerSelectRef | null) ?? null;
+};
 
 const listeners = computed(() => {
 	return Object.entries(attrs).reduce<Record<string, unknown>>((acc, [key, value]) => {
@@ -104,11 +128,28 @@ const focusOnInput = () => {
 	else inputRef?.focus();
 };
 
-defineExpose({
+// Declared rather than inferred from the template: inferring them drags
+// element-plus' ElSelect types into `__VLS_template`, which the compiler will
+// not serialize (TS7056), and the declaration for this component is then skipped.
+defineSlots<{
+	default?: () => unknown;
+	prepend?: () => unknown;
+	prefix?: () => unknown;
+	suffix?: () => unknown;
+	footer?: () => unknown;
+	empty?: () => unknown;
+}>();
+
+defineExpose<N8nSelectExposed>({
 	focus,
 	blur,
 	focusOnInput,
-	innerSelect,
+	// A getter, not the ref itself: exposing the ref makes vue-tsc unwrap it
+	// through `ShallowUnwrapRef`, which loses the `InnerSelectRef` name and
+	// expands element-plus' instance type past what it will serialize (TS7056).
+	get innerSelect() {
+		return innerSelect.value;
+	},
 });
 </script>
 
@@ -125,7 +166,7 @@ defineExpose({
 		</div>
 		<ElSelect
 			v-bind="{ ...$props, ...listeners }"
-			ref="innerSelect"
+			:ref="setInnerSelect"
 			:multiple-limit="props.multipleLimit"
 			:model-value="props.modelValue ?? undefined"
 			:size="computedSize"

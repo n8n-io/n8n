@@ -16,8 +16,7 @@ test.describe(
 			await n8n.ndv.getAssignmentCollectionAdd('assignments').click();
 
 			// Switch assignment value to Expression mode
-			const assignmentValue = n8n.ndv.getAssignmentValue('assignments');
-			await assignmentValue.locator('text=Expression').click();
+			await n8n.ndv.clickAssignmentExpressionToggle('assignments');
 		}
 
 		test('$json + native string methods', async ({ n8n }) => {
@@ -112,7 +111,7 @@ test.describe(
 			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toContainText(output);
 
 			await n8n.ndv.execute();
-			const valueElements = n8n.ndv.getOutputDataContainer().locator('[class*=value_]');
+			const valueElements = n8n.ndv.getOutputDataValues();
 			await expect(valueElements).toBeVisible();
 			await expect(valueElements).toContainText(output);
 		});
@@ -132,7 +131,7 @@ test.describe(
 			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toContainText(output);
 
 			await n8n.ndv.execute();
-			const valueElements = n8n.ndv.getOutputDataContainer().locator('[class*=value_]');
+			const valueElements = n8n.ndv.getOutputDataValues();
 			await expect(valueElements).toBeVisible();
 			await expect(valueElements).toContainText(output);
 		});

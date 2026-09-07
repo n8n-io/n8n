@@ -2,10 +2,11 @@ import { useRoute, useRouter } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import SignupView from './SignupView.vue';
 import { VIEWS } from '@/app/constants';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { mockedStore } from '@/__tests__/utils';
 
 vi.mock('vue-router', () => {
@@ -26,7 +27,7 @@ vi.mock('vue-router', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	return {
 		useToast: () => ({
@@ -194,6 +195,24 @@ describe('SignupView', () => {
 		// IAM-403: invite acceptance is token-only; must not send legacy params
 		expect(payload).not.toHaveProperty('inviterId');
 		expect(payload).not.toHaveProperty('inviteeId');
+	});
+
+	it('should default to 8-character minimum when passwordMinLength is not configured', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		delete (settingsStore.userManagement as { passwordMinLength?: number }).passwordMinLength;
+
+		const { getByText } = renderComponent();
+
+		expect(getByText(/8\+ characters/)).toBeInTheDocument();
+	});
+
+	it('should reflect configured passwordMinLength in password hint text', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.userManagement.passwordMinLength = 12;
+
+		const { getByText } = renderComponent();
+
+		expect(getByText(/12\+ characters/)).toBeInTheDocument();
 	});
 
 	it('should show error and redirect when URL has inviterId but no token', async () => {

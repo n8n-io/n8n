@@ -1,11 +1,13 @@
 import {
 	MANUAL_TRIGGER_NODE_TYPE,
-	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	createRunExecutionData,
+	isTrimmedNodeExecutionData,
 } from 'n8n-workflow';
+import { CANCELLABLE_EXECUTION_STATUSES } from './executions.constants';
 import type {
 	ITaskData,
 	ExecutionStatus,
+	ExecutionSummary,
 	IDataObject,
 	INode,
 	IPinData,
@@ -13,10 +15,10 @@ import type {
 	ExecutionError,
 	INodeTypeBaseDescription,
 	INodeExecutionData,
-	Workflow,
 	IWorkflowDataProxyAdditionalKeys,
 } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import type {
 	ExecutionFilterType,
 	ExecutionPreviewNodeSchema,
@@ -36,6 +38,8 @@ import {
 	WORKFLOW_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
@@ -43,13 +47,18 @@ import NodeExecutionErrorMessage from '@/app/components/NodeExecutionErrorMessag
 import { parse } from 'flatted';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
+export function hasCancellableExecutions(executions: ExecutionSummary[]): boolean {
+	const cancellableStatuses = new Set<ExecutionStatus>(CANCELLABLE_EXECUTION_STATUSES);
+
+	return executions.some((execution) => cancellableStatuses.has(execution.status));
+}
+
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
 		workflowId: 'all',
 		status: 'all',
 		startDate: '',
 		endDate: '',
-		tags: [],
 		annotationTags: [],
 		metadata: [],
 		vote: 'all',
@@ -63,10 +72,6 @@ export const executionFilterToQueryFilter = (
 	const queryFilter: IDataObject = {};
 	if (filter.workflowId !== 'all') {
 		queryFilter.workflowId = filter.workflowId;
-	}
-
-	if (!isEmpty(filter.tags)) {
-		queryFilter.tags = filter.tags;
 	}
 
 	if (!isEmpty(filter.annotationTags)) {
@@ -187,7 +192,7 @@ export async function displayForm({
 
 export const waitingNodeTooltip = (
 	node: INodeUi | null | undefined,
-	workflow?: Workflow,
+	workflow?: WorkflowObjectAccessors,
 	metadata?: { resumeUrl?: string; resumeFormUrl?: string },
 ) => {
 	if (!node) return '';
@@ -196,7 +201,9 @@ export const waitingNodeTooltip = (
 			node.type,
 		)?.waitingNodeTooltip;
 		if (waitingNodeTooltipFromNodeType) {
-			const activeExecutionId = useWorkflowsStore().activeExecutionId as string;
+			const activeExecutionId = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			).activeExecutionId as string;
 			// Use signed URLs from metadata if available
 			// otherwise fall back to constructing URLs without token
 			const additionalData: IWorkflowDataProxyAdditionalKeys = {
@@ -229,12 +236,7 @@ export const waitingNodeTooltip = (
 	return '';
 };
 
-/**
- * Check whether node execution data contains a trimmed item.
- */
-export function isTrimmedNodeExecutionData(data: INodeExecutionData[] | null) {
-	return data?.some((entry) => entry.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY]);
-}
+export { isTrimmedNodeExecutionData };
 
 /**
  * Check whether task data contains a trimmed item.
@@ -368,6 +370,13 @@ export function getExecutionErrorToastConfiguration({
 	lastNodeExecuted?: string;
 }) {
 	const message = getExecutionErrorMessage({ error, lastNodeExecuted });
+
+	if (error.name === 'WorkflowHasIssuesError') {
+		return {
+			title: i18n.baseText('pushConnection.workflowHasIssues.title'),
+			message: h('div', { style: 'white-space: pre-line' }, error.message),
+		};
+	}
 
 	if (error.name === 'SubworkflowOperationError') {
 		return { title: error.message, message: error.description ?? '' };

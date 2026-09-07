@@ -1,5 +1,5 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
-import { randomEmail, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, randomEmail, testDb } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, type User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -83,6 +83,45 @@ describe('UserRepository', () => {
 		});
 	});
 
+	describe('findMany()', () => {
+		let users: User[];
+
+		beforeAll(async () => {
+			await testDb.truncate(['User']);
+			users = await Promise.all([createMember(), createMember(), createMember()]);
+		});
+
+		test('should return offset pages in stable id order', async () => {
+			const expectedIds = users.map((user) => user.id).sort();
+
+			const page1 = await userRepository.findMany({ offset: 0, limit: 2 });
+			const page2 = await userRepository.findMany({ offset: 2, limit: 2 });
+
+			expect(page1.map((user) => user.id)).toEqual(expectedIds.slice(0, 2));
+			expect(page2.map((user) => user.id)).toEqual(expectedIds.slice(2));
+		});
+	});
+
+	describe('findManyByIds()', () => {
+		let users: User[];
+
+		beforeAll(async () => {
+			await testDb.truncate(['User']);
+			users = await Promise.all([createMember(), createMember(), createMember()]);
+		});
+
+		test('should return offset pages in stable id order', async () => {
+			const expectedIds = users.map((user) => user.id).sort();
+			const ids = [...expectedIds].reverse();
+
+			const page1 = await userRepository.findManyByIds(ids, { offset: 0, limit: 2 });
+			const page2 = await userRepository.findManyByIds(ids, { offset: 2, limit: 2 });
+
+			expect(page1.map((user) => user.id)).toEqual(expectedIds.slice(0, 2));
+			expect(page2.map((user) => user.id)).toEqual(expectedIds.slice(2));
+		});
+	});
+
 	describe('buildUserQuery()', () => {
 		let user1: User;
 		let user2: User;
@@ -134,6 +173,31 @@ describe('UserRepository', () => {
 
 				expect(count).toBe(3);
 				expect(users.map((u) => u.id).sort()).toStrictEqual([user1.id, user2.id, user3.id].sort());
+			});
+		});
+
+		describe('projectId filter', () => {
+			test('should return only users who are members of the project', async () => {
+				await testDb.truncate(['ProjectRelation', 'Project', 'User']);
+				const [u1, u2, u3] = await Promise.all([createMember(), createMember(), createMember()]);
+				const project = await createTeamProject();
+				await Promise.all([
+					linkUserToProject(u1, project, 'project:admin'),
+					linkUserToProject(u2, project, 'project:viewer'),
+				]);
+
+				const options: UsersListFilterDto = {
+					filter: { projectId: project.id },
+					take: 10,
+					skip: 0,
+				};
+
+				const query = userRepository.buildUserQuery(options);
+				const [users, count] = await query.getManyAndCount();
+
+				expect(count).toBe(2);
+				expect(users.map((u) => u.id).sort()).toStrictEqual([u1.id, u2.id].sort());
+				expect(users.map((u) => u.id)).not.toContain(u3.id);
 			});
 		});
 	});

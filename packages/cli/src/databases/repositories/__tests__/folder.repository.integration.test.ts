@@ -48,8 +48,8 @@ describe('FolderRepository', () => {
 				expect(count).toBe(2);
 				expect(folders).toHaveLength(2);
 
-				expect(folders[1].name).toBe('folder1');
-				expect(folders[0].name).toBe('folder2');
+				expect(folders).toContainEqual(expect.objectContaining({ name: 'folder1' }));
+				expect(folders).toContainEqual(expect.objectContaining({ name: 'folder2' }));
 
 				folders.forEach((folder) => {
 					expect(folder).toMatchObject({

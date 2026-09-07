@@ -2,20 +2,14 @@
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import type { IUser, UserAction } from '../../types';
+import type { IUser } from '../../types';
 import N8nActionToggle from '../N8nActionToggle';
 import N8nBadge from '../N8nBadge';
+import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nUserInfo from '../N8nUserInfo';
+import type { UsersListProps } from './UsersList.types';
 
-interface UsersListProps {
-	users: UserType[];
-	readonly?: boolean;
-	currentUserId?: string | null;
-	actions?: Array<UserAction<UserType>>;
-	isSamlLoginEnabled?: boolean;
-}
-
-const props = withDefaults(defineProps<UsersListProps>(), {
+const props = withDefaults(defineProps<UsersListProps<UserType>>(), {
 	readonly: false,
 	currentUserId: '',
 	users: () => [],
@@ -64,10 +58,17 @@ const sortedUsers = computed(() =>
 );
 
 const defaultGuard = () => true;
-const getActions = (user: UserType): Array<UserAction<UserType>> => {
+const getActions = (user: UserType): Array<DropdownMenuItemProps<string>> => {
 	if (user.isOwner) return [];
 
-	return props.actions.filter((action) => (action.guard ?? defaultGuard)(user));
+	return props.actions
+		.filter((action) => (action.guard ?? defaultGuard)(user))
+		.map((action) => ({
+			...action,
+			id: action.value,
+			label: action.label,
+			disabled: action.disabled,
+		}));
 };
 
 const emit = defineEmits<{

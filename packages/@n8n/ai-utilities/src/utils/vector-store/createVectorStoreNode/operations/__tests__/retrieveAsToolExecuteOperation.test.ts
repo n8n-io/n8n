@@ -5,22 +5,22 @@ import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { logAiEvent } from '../../../../log-ai-event';
 import type { VectorStoreNodeConstructorArgs } from '../../types';
 import { handleRetrieveAsToolExecuteOperation } from '../retrieveAsToolExecuteOperation';
 
 // Mock helper functions from external modules
-jest.mock('../../../../helpers', () => ({
-	getMetadataFiltersValues: jest.fn().mockReturnValue({ testFilter: 'value' }),
+vi.mock('../../../../helpers', () => ({
+	getMetadataFiltersValues: vi.fn().mockReturnValue({ testFilter: 'value' }),
 }));
 
-jest.mock('../../../../log-ai-event', () => ({
-	logAiEvent: jest.fn(),
+vi.mock('../../../../log-ai-event', () => ({
+	logAiEvent: vi.fn(),
 }));
 
 describe('handleRetrieveAsToolExecuteOperation', () => {
@@ -90,14 +90,14 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 				icon: 'file:testIcon.svg',
 			},
 			sharedFields: [],
-			getVectorStoreClient: jest.fn().mockResolvedValue(mockVectorStore),
-			populateVectorStore: jest.fn().mockResolvedValue(undefined),
-			releaseVectorStoreClient: jest.fn(),
+			getVectorStoreClient: vi.fn().mockResolvedValue(mockVectorStore),
+			populateVectorStore: vi.fn().mockResolvedValue(undefined),
+			releaseVectorStoreClient: vi.fn(),
 		};
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should retrieve documents from vector store using query from input data', async () => {

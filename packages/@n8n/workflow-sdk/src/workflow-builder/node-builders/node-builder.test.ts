@@ -11,7 +11,13 @@ import {
 	switchCase,
 } from './node-builder';
 import { languageModel, memory, tool, outputParser } from './subnode-builders';
+import { isAnchoredStickyNote, type NodeInstance } from '../../types/base';
 import { splitInBatches } from '../control-flow-builders/split-in-batches';
+
+/** The nodes a sticky was asked to wrap, by ID. */
+function anchorsOf(instance: NodeInstance<string, string, unknown>): readonly string[] {
+	return isAnchoredStickyNote(instance) ? instance.stickyAnchorIds : [];
+}
 
 describe('Node Builder', () => {
 	describe('node()', () => {
@@ -214,7 +220,7 @@ describe('Node Builder', () => {
 			expect(s.config.parameters?.height).toBe(200);
 		});
 
-		it('should auto-position around nodes when nodes array is provided as second parameter', () => {
+		it('should record the nodes it wraps as anchors', () => {
 			const n1 = node({
 				type: 'n8n-nodes-base.httpRequest',
 				version: 4.2,
@@ -229,13 +235,10 @@ describe('Node Builder', () => {
 			// New signature: sticky(content, nodes?, config?)
 			const s = sticky('## API Section', [n1, n2], { color: 2 });
 
-			// Should calculate bounding box around nodes with padding (50px)
-			// minX = 400, maxX = 700 + 200 = 900, minY = 300, maxY = 300 + 100 = 400
-			// position = [400-50, 300-50] = [350, 250]
-			// width = (900-400) + 100 = 600, height = (400-300) + 100 = 200
-			expect(s.config.position).toEqual([350, 250]);
-			expect(s.config.parameters?.width).toBe(600);
-			expect(s.config.parameters?.height).toBe(200);
+			// The box itself is resolved during serialization, once layout has placed
+			// the anchors — see sticky-placement.test.ts
+			expect(anchorsOf(s)).toEqual([n1.id, n2.id]);
+			expect(s.config.position).toBeUndefined();
 			expect(s.config.parameters?.color).toBe(2);
 		});
 
@@ -312,8 +315,8 @@ describe('Node Builder', () => {
 
 			expect(s.type).toBe('n8n-nodes-base.stickyNote');
 			expect(s.config.parameters?.content).toBe('## Batch Processing');
-			// Should use the sibNode's position for bounding box
-			expect(s.config.position).toEqual([450, 350]);
+			// Anchors on the underlying node, not the builder wrapper
+			expect(anchorsOf(s)).toEqual([sibNode.id]);
 		});
 
 		it('should not crash when nodes array contains an IfElseBuilder', () => {
@@ -323,15 +326,15 @@ describe('Node Builder', () => {
 				version: 3.4,
 				config: { name: 'Set', position: [600, 200] },
 			});
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- IF nodes always have onTrue
+
 			const builder = ifNode.onTrue!(target);
 
 			const s = sticky('## Conditional Logic', [builder as never]);
 
 			expect(s.type).toBe('n8n-nodes-base.stickyNote');
 			expect(s.config.parameters?.content).toBe('## Conditional Logic');
-			// Should use ifNode's position for bounding box
-			expect(s.config.position).toEqual([250, 150]);
+			// Anchors on the IF node, not the builder wrapper
+			expect(anchorsOf(s)).toEqual([ifNode.id]);
 		});
 
 		it('should not crash when nodes array contains a SwitchCaseBuilder', () => {
@@ -341,29 +344,28 @@ describe('Node Builder', () => {
 				version: 3.4,
 				config: { name: 'Set', position: [700, 300] },
 			});
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Switch nodes always have onCase
+
 			const builder = sw.onCase!(0, target);
 
 			const s = sticky('## Routing', [builder as never]);
 
 			expect(s.type).toBe('n8n-nodes-base.stickyNote');
 			expect(s.config.parameters?.content).toBe('## Routing');
-			// Should use switchNode's position for bounding box
-			expect(s.config.position).toEqual([350, 250]);
+			// Anchors on the Switch node, not the builder wrapper
+			expect(anchorsOf(s)).toEqual([sw.id]);
 		});
 	});
 
 	describe('placeholder()', () => {
-		it('should create a placeholder value with hint', () => {
+		it('returns the placeholder marker string', () => {
 			const p = placeholder('Enter Channel');
-			expect(p.__placeholder).toBe(true);
-			expect(p.hint).toBe('Enter Channel');
+			expect(typeof p).toBe('string');
+			expect(p).toBe('<__PLACEHOLDER_VALUE__Enter Channel__>');
 		});
 
-		it('should serialize to placeholder format', () => {
+		it('JSON-serializes to the placeholder marker', () => {
 			const p = placeholder('API Key');
-			// eslint-disable-next-line @typescript-eslint/no-base-to-string -- Testing custom toString behavior
-			expect(String(p)).toBe('<__PLACEHOLDER_VALUE__API Key__>');
+			expect(JSON.stringify({ key: p })).toBe('{"key":"<__PLACEHOLDER_VALUE__API Key__>"}');
 		});
 	});
 
@@ -442,6 +444,141 @@ describe('Node Builder', () => {
 			expect(credJson).toEqual({
 				httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
 			});
+		});
+	});
+
+	describe('placeholder() inside credentials slot', () => {
+		it('normalizes placeholder() to a __newCredential marker carrying the hint as name', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					parameters: { channel: '#general' },
+					credentials: { slackApi: placeholder('Slack Bot') },
+				},
+			});
+
+			const stored = n.config.credentials?.slackApi;
+			expect(stored).toBeDefined();
+			expect((stored as { __newCredential?: boolean }).__newCredential).toBe(true);
+			expect((stored as { name?: string }).name).toBe('Slack Bot');
+			expect((stored as { id?: string }).id).toBeUndefined();
+			// The placeholder marker string is gone — credentials maps never carry it.
+			expect(typeof stored).not.toBe('string');
+		});
+
+		it('serializes a placeholder() credential to undefined (omitted from JSON)', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					credentials: { slackApi: placeholder('Slack Bot') },
+				},
+			});
+
+			// Same shape as newCredential() without id: toJSON returns undefined
+			// so JSON.stringify drops the slot entirely.
+			expect(JSON.stringify(n.config.credentials)).toBe('{}');
+		});
+
+		it('does not leak the <__PLACEHOLDER_VALUE__*> string into serialized credentials', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					credentials: { slackApi: placeholder('Slack Bot') },
+				},
+			});
+
+			expect(JSON.stringify(n.config.credentials)).not.toContain('__PLACEHOLDER_VALUE__');
+		});
+
+		it('normalizes only the placeholder slot, leaving other credentials untouched', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					credentials: {
+						httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
+						httpHeaderAuth: placeholder('Header Auth'),
+					},
+				},
+			});
+
+			const creds = n.config.credentials!;
+			expect(creds.httpBasicAuth).toEqual({ id: 'existing-123', name: 'Existing Auth' });
+			expect((creds.httpHeaderAuth as { __newCredential?: boolean }).__newCredential).toBe(true);
+			expect((creds.httpHeaderAuth as { name?: string }).name).toBe('Header Auth');
+		});
+
+		it('also normalizes when credentials are supplied via update()', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { parameters: { channel: '#general' } },
+			});
+
+			const updated = n.update({ credentials: { slackApi: placeholder('Slack Bot') } });
+			const stored = updated.config.credentials?.slackApi;
+			expect((stored as { __newCredential?: boolean }).__newCredential).toBe(true);
+			expect((stored as { name?: string }).name).toBe('Slack Bot');
+		});
+
+		it('normalizes { value: placeholder() } shape to newCredential', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { value: placeholder('Slack token') } } },
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('Slack token');
+		});
+
+		it('normalizes { value: literal } shape to newCredential', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { value: 'My Slack Token' } } },
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('My Slack Token');
+		});
+
+		it('normalizes { id: placeholder, name: literal } to newCredential keyed by name', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { id: placeholder('id hint'), name: 'Slack Bot' } } },
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('Slack Bot');
+		});
+
+		it('normalizes { id: placeholder, name: placeholder } to newCredential keyed by name hint', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					credentials: {
+						slackApi: { id: placeholder('id hint'), name: placeholder('Slack Bot') },
+					},
+				},
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('Slack Bot');
+		});
+
+		it('passes a raw {id, name} CredentialReference through unchanged', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { id: 'cred-1', name: 'Slack Bot' } } },
+			});
+			expect(n.config.credentials?.slackApi).toEqual({ id: 'cred-1', name: 'Slack Bot' });
 		});
 	});
 
@@ -739,6 +876,264 @@ describe('Node Builder', () => {
 				config: { position: [100, 200] },
 			});
 			expect(mergeNode.config.position).toEqual([100, 200]);
+		});
+	});
+
+	describe('node() and trigger() invalid input handling', () => {
+		it('node() should throw a clear TypeError when called with a string instead of a config object', () => {
+			const fn = () => {
+				// @ts-expect-error intentional misuse
+				node('n8n-nodes-base.httpRequest', { url: 'https://example.com' });
+			};
+			expect(fn).toThrow(TypeError);
+			expect(fn).toThrow(/node\(\) requires a configuration object/);
+		});
+
+		it('trigger() should throw a clear TypeError when called with a string instead of a config object', () => {
+			const fn = () => {
+				// @ts-expect-error intentional misuse
+				trigger('n8n-nodes-base.webhook', { httpMethod: 'GET', path: 'test' });
+			};
+			expect(fn).toThrow(TypeError);
+			expect(fn).toThrow(/trigger\(\) requires a configuration object/);
+		});
+
+		it('node() error message should include the received type and a usage example', () => {
+			let errorMessage = '';
+			try {
+				// @ts-expect-error intentional misuse
+				node('n8n-nodes-base.httpRequest');
+			} catch (e) {
+				errorMessage = (e as Error).message;
+			}
+			expect(errorMessage).toContain('string');
+			expect(errorMessage).toContain('type');
+			expect(errorMessage).toContain('version');
+			expect(errorMessage).toContain('config');
+		});
+
+		it('trigger() error message should include the received type and a usage example', () => {
+			let errorMessage = '';
+			try {
+				// @ts-expect-error intentional misuse
+				trigger('n8n-nodes-base.webhook');
+			} catch (e) {
+				errorMessage = (e as Error).message;
+			}
+			expect(errorMessage).toContain('string');
+			expect(errorMessage).toContain('type');
+			expect(errorMessage).toContain('version');
+			expect(errorMessage).toContain('config');
+		});
+
+		it('node() should reject array input with a descriptive TypeError', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node([{ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } }]);
+			}).toThrow(/received an array/);
+		});
+
+		it('trigger() should reject array input with a descriptive TypeError', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				trigger([{ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } }]);
+			}).toThrow(/received an array/);
+		});
+
+		it('node() should report null input as null in the error message', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node(null);
+			}).toThrow(/received null/);
+		});
+
+		it('trigger() should report null input as null in the error message', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				trigger(null);
+			}).toThrow(/received null/);
+		});
+
+		it('should not crash when config is undefined', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node({ type: 'n8n-nodes-base.set', version: 3, config: undefined });
+			}).not.toThrow();
+		});
+	});
+
+	/**
+	 * A node id is the stable identity that execution logs, poll cursors, dedupe state
+	 * and the version diff all key on, so an id declared in the source has to survive
+	 * the rebuild instead of being replaced by a fresh uuid.
+	 */
+	describe('source-declared node ids', () => {
+		it('node() should use the id declared in config', () => {
+			const n = node({ type: 'n8n-nodes-base.set', version: 3, config: { id: 'saved-set' } });
+
+			expect(n.id).toBe('saved-set');
+		});
+
+		it('trigger() should use the id declared in config', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { id: 'saved-trigger' },
+			});
+
+			expect(t.id).toBe('saved-trigger');
+		});
+
+		it('ifElse() should use the id declared in config', () => {
+			const ifNode = ifElse({ version: 2.2, config: { id: 'saved-if' } });
+
+			expect(ifNode.id).toBe('saved-if');
+		});
+
+		it('switchCase() should use the id declared in config', () => {
+			const switchNode = switchCase({ version: 3.2, config: { id: 'saved-switch' } });
+
+			expect(switchNode.id).toBe('saved-switch');
+		});
+
+		it('merge() should use the id declared in config', () => {
+			const mergeNode = merge({ version: 3, config: { id: 'saved-merge' } });
+
+			expect(mergeNode.id).toBe('saved-merge');
+		});
+
+		it('sticky() should use the id declared in config', () => {
+			const s = sticky('## Notes', { id: 'saved-sticky' });
+
+			expect(s.id).toBe('saved-sticky');
+		});
+
+		it('splitInBatches() should use the id declared in config', () => {
+			const sib = splitInBatches({ version: 3, config: { id: 'saved-sib' } });
+
+			expect(sib.sibNode.id).toBe('saved-sib');
+		});
+
+		it('languageModel() should use the id declared in config', () => {
+			const model = languageModel({
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				version: 1.2,
+				config: { id: 'saved-model' },
+			});
+
+			expect(model.id).toBe('saved-model');
+		});
+
+		it('memory() should use the id declared in config', () => {
+			const mem = memory({
+				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+				version: 1.2,
+				config: { id: 'saved-memory' },
+			});
+
+			expect(mem.id).toBe('saved-memory');
+		});
+
+		it('tool() should use the id declared in config', () => {
+			const t = tool({
+				type: '@n8n/n8n-nodes-langchain.toolCode',
+				version: 1.1,
+				config: { id: 'saved-tool' },
+			});
+
+			expect(t.id).toBe('saved-tool');
+		});
+
+		it('should still auto-generate distinct ids when config declares none', () => {
+			const n1 = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
+			const n2 = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
+
+			expect(n1.id).toBeDefined();
+			expect(n2.id).toBeDefined();
+			expect(n1.id).not.toBe(n2.id);
+		});
+
+		it('should keep the declared id through update()', () => {
+			const n = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { id: 'saved-set', parameters: { a: 1 } },
+			});
+
+			expect(n.update({ parameters: { a: 2 } }).id).toBe('saved-set');
+		});
+
+		it('should keep a generated sticky id through update()', () => {
+			const s = sticky('## Before');
+
+			expect(s.update({ parameters: { content: '## After' } }).id).toBe(s.id);
+		});
+
+		it('should keep a generated splitInBatches id through update()', () => {
+			const sib = splitInBatches({ version: 3 });
+
+			expect(sib.sibNode.update({ parameters: { batchSize: 5 } }).id).toBe(sib.sibNode.id);
+		});
+
+		/**
+		 * `update()` must not be a back door to changing identity. The instance id is passed
+		 * positionally so it already wins, but the patch must not leave a different value in
+		 * `config.id` either — `regenerateNodeIds()` reads that as the author's declaration and
+		 * would adopt it on the next rebuild.
+		 */
+		it('should ignore an id in an update() patch', () => {
+			const n = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { id: 'declared', parameters: { a: 1 } },
+			});
+
+			const updated = n.update({ id: 'hijacked', parameters: { a: 2 } });
+
+			expect(updated.id).toBe('declared');
+			expect(updated.config.id).toBe('declared');
+		});
+
+		it('should not let an update() patch introduce an id where none was declared', () => {
+			const n = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
+
+			const updated = n.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe(n.id);
+			expect(updated.config.id).toBeUndefined();
+		});
+
+		it('should ignore an id in a subnode update() patch', () => {
+			const model = languageModel({
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				version: 1.2,
+				config: { id: 'declared-model' },
+			});
+
+			const updated = model.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe('declared-model');
+			expect(updated.config.id).toBe('declared-model');
+		});
+
+		it('should ignore an id in a splitInBatches update() patch', () => {
+			const sib = splitInBatches({ version: 3, config: { id: 'declared-sib' } });
+
+			const updated = sib.sibNode.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe('declared-sib');
+			expect(updated.config.id).toBe('declared-sib');
+		});
+
+		/** A blank id is not a declaration — it would hand two nodes one empty identity. */
+		it('should treat a blank declared id as absent', () => {
+			const n1 = node({ type: 'n8n-nodes-base.set', version: 3, config: { id: '' } });
+			const n2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { id: '   ' } });
+
+			expect(n1.id).not.toBe('');
+			expect(n1.config.id).toBeUndefined();
+			expect(n2.config.id).toBeUndefined();
+			expect(n1.id).not.toBe(n2.id);
 		});
 	});
 });

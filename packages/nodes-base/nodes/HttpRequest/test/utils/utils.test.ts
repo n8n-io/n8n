@@ -1,5 +1,9 @@
+import FormData from 'form-data';
+import { Readable } from 'stream';
+import { jsonParse } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	INodeExecutionData,
 	IRequestOptions,
 } from 'n8n-workflow';
@@ -23,12 +27,54 @@ describe('HTTP Node Utils', () => {
 					value: 'baz',
 				},
 			];
-			const defaultReducer: BodyParametersReducer = jest.fn();
+			const defaultReducer: BodyParametersReducer = vi.fn();
 
 			await prepareRequestBody(bodyParameters, 'json', 3, defaultReducer);
 
 			expect(defaultReducer).toBeCalledTimes(1);
 			expect(defaultReducer).toBeCalledWith({}, { name: 'foo.bar', value: 'baz' });
+		});
+
+		it('should create FormData with knownLength for stream binary data', async () => {
+			const streamContent = Buffer.from('test-binary-content');
+			const bodyParameters: BodyParameter[] = [
+				{
+					name: 'File',
+					value: '',
+					parameterType: 'formBinaryData',
+				},
+				{
+					name: 'Folder',
+					value: '/uploads',
+				},
+			];
+
+			const mockReducer: BodyParametersReducer = vi.fn().mockResolvedValue({
+				File: {
+					value: Readable.from(streamContent),
+					options: {
+						filename: 'test.pdf',
+						contentType: 'application/pdf',
+						knownLength: streamContent.length,
+					},
+				},
+			});
+
+			const result = await prepareRequestBody(
+				bodyParameters,
+				'multipart-form-data',
+				4.2,
+				mockReducer,
+			);
+
+			expect(result).toBeInstanceOf(FormData);
+			const formData = result as FormData;
+
+			// Verify FormData can calculate its total length (fails without knownLength)
+			const length = await new Promise<number>((resolve, reject) => {
+				formData.getLength((err, len) => (err ? reject(err) : resolve(len)));
+			});
+			expect(length).toBeGreaterThan(0);
 		});
 
 		it('should call process dot notations', async () => {
@@ -38,7 +84,7 @@ describe('HTTP Node Utils', () => {
 					value: 'baz',
 				},
 			];
-			const defaultReducer: BodyParametersReducer = jest.fn();
+			const defaultReducer: BodyParametersReducer = vi.fn();
 
 			const result = await prepareRequestBody(bodyParameters, 'json', 4, defaultReducer);
 
@@ -85,9 +131,53 @@ describe('HTTP Node Utils', () => {
 				},
 			});
 		});
+
+		it('should keep a passphrase containing whitespace unchanged', async () => {
+			const requestOptions: IRequestOptions = {
+				method: 'GET',
+				uri: 'https://example.com',
+			};
+
+			const sslCertificates = {
+				passphrase: 'my secret key',
+			};
+
+			setAgentOptions(requestOptions, sslCertificates);
+
+			expect(requestOptions).toStrictEqual({
+				method: 'GET',
+				uri: 'https://example.com',
+				agentOptions: {
+					passphrase: 'my secret key',
+				},
+			});
+		});
+
+		it('should wrap compact PEM certificates but not the passphrase', async () => {
+			const requestOptions: IRequestOptions = {
+				method: 'GET',
+				uri: 'https://example.com',
+			};
+
+			const sslCertificates = {
+				cert: `-----BEGIN CERTIFICATE-----${'A'.repeat(70)}-----END CERTIFICATE-----`,
+				key: `-----BEGIN PRIVATE KEY-----${'B'.repeat(70)}-----END PRIVATE KEY-----`,
+				passphrase: 'my secret key',
+			};
+
+			setAgentOptions(requestOptions, sslCertificates);
+
+			expect(requestOptions.agentOptions).toStrictEqual({
+				cert: `-----BEGIN CERTIFICATE-----\n${'A'.repeat(64)}\n${'A'.repeat(6)}\n-----END CERTIFICATE-----`,
+				key: `-----BEGIN PRIVATE KEY-----\n${'B'.repeat(64)}\n${'B'.repeat(6)}\n-----END PRIVATE KEY-----`,
+				passphrase: 'my secret key',
+			});
+		});
 	});
 
 	describe('sanitizeUiMessage', () => {
+		const STREAM_REPLACEMENT = 'Binary data got replaced with this text. Original was a stream.';
+
 		it('should remove large Buffers', async () => {
 			const requestOptions: IRequestOptions = {
 				method: 'POST',
@@ -97,6 +187,104 @@ describe('HTTP Node Utils', () => {
 
 			expect(sanitizeUiMessage(requestOptions, {}).body).toEqual(
 				'Binary data got replaced with this text. Original was a Buffer with a size of 900000 bytes.',
+			);
+		});
+
+		it('should remove a streamed body', () => {
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				body: Readable.from(Buffer.alloc(10)),
+			};
+
+			expect(sanitizeUiMessage(requestOptions, {}).body).toEqual(STREAM_REPLACEMENT);
+		});
+
+		it('should remove a multipart upload built as form-data (node version >= 4.2)', () => {
+			const formData = new FormData();
+			formData.append('file', Readable.from(Buffer.alloc(10)), { filename: 'f.pdf' });
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				formData,
+			};
+
+			expect(sanitizeUiMessage(requestOptions, {}).formData).toEqual(STREAM_REPLACEMENT);
+		});
+
+		// Below node version 4.2 (and in V1/V2) the upload sits one level down, as
+		// `{ field: { value, options } }`. `value` is a stream when binary data is
+		// stored outside the run data and a Buffer when it is inline, so a field has
+		// to be capped there just like a root body.
+		it.each([
+			['a stream', () => Readable.from(Buffer.alloc(10)), STREAM_REPLACEMENT],
+			[
+				'an oversized Buffer',
+				() => Buffer.alloc(300000),
+				'Binary data got replaced with this text. Original was a Buffer with a size of 300000 bytes.',
+			],
+		])('should replace %s nested in a formData field', (_name, upload, replacement) => {
+			const uri = 'https://example.com';
+
+			expect(
+				sanitizeUiMessage(
+					{
+						method: 'POST',
+						uri,
+						formData: {
+							file: { value: upload(), options: { filename: 'f.pdf' } },
+							name: 'invoice',
+						},
+					},
+					{},
+				).formData,
+			).toEqual({
+				file: { value: replacement, options: { filename: 'f.pdf' } },
+				name: 'invoice',
+			});
+
+			// The same upload at the root has to reach the same verdict, so the two
+			// branches cannot drift apart again.
+			expect(sanitizeUiMessage({ method: 'POST', uri, body: upload() }, {}).body).toEqual(
+				replacement,
+			);
+		});
+
+		it('should keep a Buffer nested in a formData field below the size limit', () => {
+			const sanitized = sanitizeUiMessage(
+				{
+					method: 'POST',
+					uri: 'https://example.com',
+					formData: { file: { value: Buffer.alloc(10), options: { filename: 'f.pdf' } } },
+				},
+				{},
+			).formData as IDataObject;
+
+			expect(typeof (sanitized.file as IDataObject).value).not.toBe('string');
+		});
+
+		// `__proto__` arrives as an own key on anything JSON.parse builds, and
+		// assigning it would retarget the copy's prototype and drop the key.
+		it('should keep an own __proto__ key without retargeting the prototype', () => {
+			const body = jsonParse('{"__proto__": {"injected": "yes"}, "keep": 1}');
+			const requestOptions: IRequestOptions = { method: 'POST', uri: 'https://example.com', body };
+
+			const sanitized = sanitizeUiMessage(requestOptions, {}).body as IDataObject;
+
+			expect(Object.getPrototypeOf(sanitized)).toBe(Object.prototype);
+			expect(Object.getOwnPropertyNames(sanitized)).toEqual(['__proto__', 'keep']);
+			expect(sanitized.injected).toBeUndefined();
+		});
+
+		it('should keep the placeholder when the body also carries auth data', () => {
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				body: Readable.from(Buffer.alloc(10)),
+			};
+
+			expect(sanitizeUiMessage(requestOptions, { body: ['token'] }).body).toEqual(
+				STREAM_REPLACEMENT,
 			);
 		});
 
@@ -274,7 +462,7 @@ describe('HTTP Node Utils', () => {
 
 	describe('getSecrets', () => {
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should return all string credential values as secrets', () => {

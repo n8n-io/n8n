@@ -1,42 +1,36 @@
 import { UpdateSecuritySettingsDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
-import {
-	PERSONAL_SPACE_PUBLISHING_SETTING,
-	PERSONAL_SPACE_SHARING_SETTING,
-} from '@n8n/permissions';
 import type { Response } from 'express';
 
-import { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { SecuritySettingsService } from '@/services/security-settings.service';
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 @RestController('/settings/security')
 export class SecuritySettingsController {
 	constructor(
 		private readonly securitySettingsService: SecuritySettingsService,
-		private readonly eventService: EventService,
+		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
+		private readonly licenseState: LicenseState,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
 
 	@Licensed('feat:personalSpacePolicy')
 	@GlobalScope('securitySettings:manage')
 	@Get('/')
 	async getSecuritySettings(_req: AuthenticatedRequest, _res: Response) {
-		const [
-			settings,
-			publishedPersonalWorkflowsCount,
-			sharedPersonalWorkflowsCount,
-			sharedPersonalCredentialsCount,
-		] = await Promise.all([
-			this.securitySettingsService.arePersonalSpaceSettingsEnabled(),
-			this.securitySettingsService.getPublishedPersonalWorkflowsCount(),
-			this.securitySettingsService.getSharedPersonalWorkflowsCount(),
-			this.securitySettingsService.getSharedPersonalCredentialsCount(),
+		const [settings, workflowReviews] = await Promise.all([
+			this.securitySettingsService.getSecuritySettings(),
+			this.getWorkflowReviewsIfAvailable(),
 		]);
+
 		return {
 			...settings,
-			publishedPersonalWorkflowsCount,
-			sharedPersonalWorkflowsCount,
-			sharedPersonalCredentialsCount,
+			managedByEnv: this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv,
+			...(workflowReviews !== undefined ? { workflowReviews } : {}),
 		};
 	}
 
@@ -48,46 +42,55 @@ export class SecuritySettingsController {
 		_res: Response,
 		@Body dto: UpdateSecuritySettingsDto,
 	) {
-		const updatedSettings: Record<string, boolean> = {};
-		if (dto.personalSpacePublishing !== undefined) {
-			await this.securitySettingsService.setPersonalSpaceSetting(
-				PERSONAL_SPACE_PUBLISHING_SETTING,
-				dto.personalSpacePublishing,
+		if (this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv) {
+			throw new ForbiddenError(
+				'Security settings are managed via environment variables and cannot be modified through the API',
 			);
-			updatedSettings.personalSpacePublishing = dto.personalSpacePublishing;
-
-			this.eventService.emit('instance-policies-updated', {
-				user: {
-					id: req.user.id,
-					email: req.user.email,
-					firstName: req.user.firstName,
-					lastName: req.user.lastName,
-					role: req.user.role,
-				},
-				settingName: 'workflow_publishing',
-				value: dto.personalSpacePublishing,
-			});
 		}
-		if (dto.personalSpaceSharing !== undefined) {
-			await this.securitySettingsService.setPersonalSpaceSetting(
-				PERSONAL_SPACE_SHARING_SETTING,
-				dto.personalSpaceSharing,
-			);
-			updatedSettings.personalSpaceSharing = dto.personalSpaceSharing;
 
-			this.eventService.emit('instance-policies-updated', {
-				user: {
-					id: req.user.id,
-					email: req.user.email,
-					firstName: req.user.firstName,
-					lastName: req.user.lastName,
-					role: req.user.role,
+		if (dto.workflowReviews !== undefined) {
+			this.assertWorkflowReviewsAvailable();
+		}
+
+		const updatedSettings: Partial<UpdateSecuritySettingsDto> =
+			await this.securitySettingsService.updateSecuritySettings(
+				{
+					personalSpacePublishing: dto.personalSpacePublishing,
+					personalSpaceSharing: dto.personalSpaceSharing,
+					redactionEnforcement: dto.redactionEnforcement,
 				},
-				settingName: 'workflow_sharing',
-				value: dto.personalSpaceSharing,
-			});
+				req.user,
+			);
+
+		if (dto.workflowReviews?.enabled !== undefined) {
+			const before = (await this.workflowReviewPolicyService.get()).enabled;
+			const after = dto.workflowReviews.enabled;
+			updatedSettings.workflowReviews = { enabled: after };
+			if (before !== after) {
+				const workflowReviews = await this.workflowReviewPolicyService.set(after);
+				updatedSettings.workflowReviews = workflowReviews;
+				this.securitySettingsService.emitInstancePolicyUpdated(req.user, {
+					settingName: 'workflow_reviews',
+					value: workflowReviews.enabled,
+				});
+			}
 		}
 
 		return updatedSettings;
+	}
+
+	private isWorkflowReviewsAvailable(): boolean {
+		return this.licenseState.isWorkflowReviewsLicensed();
+	}
+
+	private async getWorkflowReviewsIfAvailable() {
+		if (!this.isWorkflowReviewsAvailable()) return undefined;
+		return await this.workflowReviewPolicyService.get();
+	}
+
+	private assertWorkflowReviewsAvailable(): void {
+		if (!this.isWorkflowReviewsAvailable()) {
+			throw new ForbiddenError('Workflow reviews settings are not enabled in this instance');
+		}
 	}
 }

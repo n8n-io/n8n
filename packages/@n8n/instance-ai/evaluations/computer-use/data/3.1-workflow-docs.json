@@ -1,0 +1,26 @@
+{
+	"id": "3.1-workflow-docs",
+	"category": "filesystem-write",
+	"prompt": "I have a workflow called 'CU Eval — Sample Workflow'. Can you write documentation for it to a file on my computer? Include the overall architecture and highlight what key nodes do.",
+	"setup": {
+		"seedWorkflow": "sample-workflow.json"
+	},
+	"budgets": { "maxToolCalls": 30, "maxDurationMs": 300000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustCallTool", "name": "write_file" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 3 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 30,
+			"maxToolResultTokensEst": 50000,
+			"maxSingleToolResultTokensEst": 20000
+		},
+		{
+			"type": "fs.fileMatches",
+			"glob": "**/*.md",
+			"anyOf": ["architecture", "## ", "node"]
+		}
+	],
+	"tags": ["filesystem-write", "regression"]
+}

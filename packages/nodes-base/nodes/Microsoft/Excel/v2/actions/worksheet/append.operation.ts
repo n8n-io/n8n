@@ -145,6 +145,7 @@ export async function execute(
 
 	const nodeVersion = this.getNode().typeVersion;
 
+	// Whole-batch operation: one request set for all items; request-level params (including the SP target) are read at item 0.
 	const workbookId = this.getNodeParameter('workbook', 0, undefined, {
 		extractValue: true,
 	}) as string;
@@ -159,6 +160,11 @@ export async function execute(
 		this,
 		'GET',
 		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		0,
 	);
 
 	let values: string[][] = [];
@@ -254,6 +260,10 @@ export async function execute(
 		'PATCH',
 		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 		{ values },
+		undefined,
+		undefined,
+		undefined,
+		0,
 	);
 
 	const rawData = this.getNodeParameter('options.rawData', 0, false) as boolean;

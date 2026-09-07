@@ -1,14 +1,13 @@
-import { createAddDataTableColumnTool } from '../../tools/data-table';
-
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 
 import { createTelemetry, user } from './test-utils';
+import { createAddDataTableColumnTool } from '../../tools/data-table';
 
 const createMocks = (overrides?: { error?: Error }) => {
 	const dataTableOps = {
 		addColumn: overrides?.error
-			? jest.fn().mockRejectedValue(overrides.error)
-			: jest.fn().mockResolvedValue({ id: 'col-new', name: 'age', type: 'number' }),
+			? vi.fn().mockRejectedValue(overrides.error)
+			: vi.fn().mockResolvedValue({ id: 'col-new', name: 'age', type: 'number' }),
 	} as unknown as DataTableUserOperations;
 	const telemetry = createTelemetry();
 	return { dataTableOps, telemetry };

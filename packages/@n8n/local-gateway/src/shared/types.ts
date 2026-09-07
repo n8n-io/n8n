@@ -1,21 +1,26 @@
 export type LogLevel = 'silent' | 'error' | 'warn' | 'info' | 'debug';
 
-export type DaemonStatus = 'stopped' | 'starting' | 'waiting' | 'connected' | 'disconnected';
+export type DaemonStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 export interface AppSettings {
-	port: number;
+	/** User-configured origin patterns for validating instances before connect (never derived from URLs). */
+	allowedOrigins: string[];
 	filesystemDir: string;
 	filesystemEnabled: boolean;
 	shellEnabled: boolean;
 	screenshotEnabled: boolean;
 	mouseKeyboardEnabled: boolean;
 	browserEnabled: boolean;
-	allowedOrigins: string[];
 	logLevel: LogLevel;
 }
 
 export interface StatusSnapshot {
 	status: DaemonStatus;
 	connectedUrl: string | null;
-	connectedAt: string | null;
+	lastError: string | null;
+}
+
+export interface ConnectPayload {
+	url: string;
+	apiKey?: string;
 }

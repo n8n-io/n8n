@@ -1,8 +1,13 @@
-import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { AuthenticatedRequest, TokenGrant, User } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 
 import { AuthStrategyRegistry } from '../auth-strategy.registry';
 import type { AuthStrategy } from '../auth-strategy.types';
+
+const makeGrant = (id: string): TokenGrant => ({
+	subject: { ...mock<User>(), id },
+	scopes: [],
+});
 
 describe('AuthStrategyRegistry', () => {
 	let registry: AuthStrategyRegistry;
@@ -42,16 +47,18 @@ describe('AuthStrategyRegistry', () => {
 		it('evaluates strategies in registration order', async () => {
 			const order: number[] = [];
 			const strategy1: AuthStrategy = {
-				authenticate: jest.fn().mockImplementation(async () => {
+				authenticate: vi.fn().mockImplementation(async () => {
 					order.push(1);
 					return null;
 				}),
+				buildTokenGrant: vi.fn().mockResolvedValue(null),
 			};
 			const strategy2: AuthStrategy = {
-				authenticate: jest.fn().mockImplementation(async () => {
+				authenticate: vi.fn().mockImplementation(async () => {
 					order.push(2);
 					return null;
 				}),
+				buildTokenGrant: vi.fn().mockResolvedValue(null),
 			};
 
 			registry.register(strategy1);
@@ -140,6 +147,50 @@ describe('AuthStrategyRegistry', () => {
 
 			// First registration succeeded — short-circuited
 			expect(strategy.authenticate).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('buildContextFromToken', () => {
+		it('returns the grant from the first matching strategy and skips subsequent strategies', async () => {
+			const grant = makeGrant('user-1');
+			const strategy1 = mock<AuthStrategy>();
+			const strategy2 = mock<AuthStrategy>();
+			const strategy3 = mock<AuthStrategy>();
+			strategy1.buildTokenGrant.mockResolvedValue(null); // abstain
+			strategy2.buildTokenGrant.mockResolvedValue(grant); // match
+			// strategy3 must not be invoked
+
+			registry.register(strategy1);
+			registry.register(strategy2);
+			registry.register(strategy3);
+
+			expect(
+				await registry.buildContextFromToken('the-token', { audience: 'mcp-server-api' }),
+			).toBe(grant);
+
+			expect(strategy1.buildTokenGrant).toHaveBeenCalledWith('the-token', {
+				audience: 'mcp-server-api',
+			});
+			expect(strategy3.buildTokenGrant).not.toHaveBeenCalled();
+		});
+
+		it('returns null when all strategies abstain or when a strategy returns false (fail-fast)', async () => {
+			const emptyRegistry = new AuthStrategyRegistry();
+			expect(await emptyRegistry.buildContextFromToken('token')).toBeNull();
+
+			const abstain = mock<AuthStrategy>();
+			abstain.buildTokenGrant.mockResolvedValue(null);
+			registry.register(abstain);
+			expect(await registry.buildContextFromToken('token')).toBeNull();
+
+			const unreached = mock<AuthStrategy>();
+			const failing = mock<AuthStrategy>();
+			failing.buildTokenGrant.mockResolvedValue(false);
+			const failRegistry = new AuthStrategyRegistry();
+			failRegistry.register(failing);
+			failRegistry.register(unreached);
+			expect(await failRegistry.buildContextFromToken('token')).toBeNull();
+			expect(unreached.buildTokenGrant).not.toHaveBeenCalled();
 		});
 	});
 });

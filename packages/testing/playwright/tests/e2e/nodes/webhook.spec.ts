@@ -1,8 +1,8 @@
 import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
+import { EditFieldsNode } from '../../../pages/components/nodes/EditFieldsNode';
 import type { n8nPage } from '../../../pages/n8nPage';
-import { EditFieldsNode } from '../../../pages/nodes/EditFieldsNode';
 
 const cowBase64 =
 	'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=';
@@ -67,8 +67,7 @@ test.describe(
 			const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
 
 			// Add the Response Code optional parameter
-			await n8n.ndv.getAddOptionDropdown().click();
-			await n8n.page.getByRole('option', { name: 'Response Code' }).click();
+			await n8n.ndv.addParameterOptionByName('Response Code');
 			// Select 201 from the dropdown
 			await n8n.ndv.selectOptionInParameterDropdown('responseCode', '201');
 			await n8n.ndv.execute();
@@ -170,6 +169,8 @@ test.describe(
 			});
 			const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
 
+			await n8n.ndv.credentials.selectByName(credentialName);
+
 			await n8n.ndv.execute();
 			await expect(n8n.ndv.getWebhookTestEvent()).toBeVisible();
 
@@ -178,7 +179,7 @@ test.describe(
 					Authorization: 'Basic ' + Buffer.from('wrong:wrong').toString('base64'),
 				},
 			});
-			expect(failResponse.status()).toBe(403);
+			expect(failResponse.status()).toBe(401);
 
 			const successResponse = await n8n.api.webhooks.trigger(`/webhook-test/${webhookPath}`, {
 				headers: {
@@ -190,7 +191,10 @@ test.describe(
 
 		test('should listen for a GET request with Header Authentication', async ({ n8n }) => {
 			const credentialName = `test-${nanoid()}`;
-			const name = `test-${nanoid()}`;
+			// Keep the header NAME underscore-free: proxies commonly drop request headers
+			// with underscores in the name (the multi-main CI stack's Caddy LB does), and
+			// nanoid's default alphabet includes '_'. Values are unaffected.
+			const name = `test-${nanoid().replaceAll('_', '-')}`;
 			const value = `test-${nanoid()}`;
 			await n8n.credentialsComposer.createFromApi({
 				type: 'httpHeaderAuth',
@@ -208,16 +212,25 @@ test.describe(
 			});
 			const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
 
+			await n8n.ndv.credentials.selectByName(credentialName);
+
 			await n8n.ndv.execute();
 			await expect(n8n.ndv.getWebhookTestEvent()).toBeVisible();
 
-			const failResponse = await n8n.api.webhooks.trigger(`/webhook-test/${webhookPath}`, {
-				headers: {
-					test: 'wrong',
-				},
-			});
-
-			expect(failResponse.status()).toBe(403);
+			// The test webhook can take a moment to register after "Listening for test
+			// event" appears. A wrong-credential request is safe to retry because it fails
+			// auth before the workflow runs, so it never consumes the one-shot test webhook.
+			// Polling until it returns 403 also confirms the webhook is registered before
+			// the (single-use) success request is fired, avoiding a registration race.
+			await expect(async () => {
+				const failResponse = await n8n.api.webhooks.trigger(`/webhook-test/${webhookPath}`, {
+					headers: {
+						test: 'wrong',
+					},
+					maxNotFoundRetries: 0,
+				});
+				expect(failResponse.status()).toBe(403);
+			}).toPass();
 
 			const successResponse = await n8n.api.webhooks.trigger(`/webhook-test/${webhookPath}`, {
 				headers: {

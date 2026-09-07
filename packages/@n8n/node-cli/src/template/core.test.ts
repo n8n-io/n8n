@@ -3,6 +3,7 @@ import handlebars from 'handlebars';
 import * as fs from 'node:fs/promises';
 
 import {
+	copyDefaultTemplateFilesToDestination,
 	copyTemplateFilesToDestination,
 	templateStaticFiles,
 	createTemplate,
@@ -53,6 +54,29 @@ describe('Templates > core', () => {
 		});
 	});
 
+	describe('copyDefaultTemplateFilesToDestination', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('copies the shared default template and restores renamed dotfiles', async () => {
+			mockCopyFolder.mockResolvedValue();
+			mockFs.rename.mockResolvedValue();
+
+			await copyDefaultTemplateFilesToDestination(baseData);
+
+			expect(mockCopyFolder).toHaveBeenCalledWith(
+				expect.objectContaining({
+					destination: '/dest',
+					ignore: ['dist', 'node_modules'],
+				}),
+			);
+			// npm strips `.gitignore` from published packages, so it's shipped as `gitignore`
+			// and renamed back at scaffold time.
+			expect(mockFs.rename).toHaveBeenCalledWith('/dest/gitignore', '/dest/.gitignore');
+		});
+	});
+
 	describe('templateStaticFiles', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
@@ -96,6 +120,7 @@ describe('Templates > core', () => {
 			mockFs.readFile.mockResolvedValue('');
 			mockHandlebars.compile.mockReturnValue(() => '');
 			mockFs.writeFile.mockResolvedValue();
+			mockFs.rename.mockResolvedValue();
 
 			const wrapped = createTemplate(template);
 			await wrapped.run(baseData);

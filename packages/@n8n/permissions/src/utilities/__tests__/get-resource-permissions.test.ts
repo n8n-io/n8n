@@ -6,6 +6,7 @@ import { getResourcePermissions } from '../get-resource-permissions.ee';
 describe('permissions', () => {
 	it('getResourcePermissions for empty scopes', () => {
 		expect(getResourcePermissions()).toEqual({
+			agent: {},
 			aiAssistant: {},
 			annotationTag: {},
 			auditLogs: {},
@@ -17,9 +18,11 @@ describe('permissions', () => {
 			externalSecret: {},
 			eventBusDestination: {},
 			execution: {},
+			testRun: {},
 			ldap: {},
 			license: {},
 			logStreaming: {},
+			nodeTypePolicy: {},
 			oidc: {},
 			orchestration: {},
 			project: {},
@@ -28,6 +31,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
+			gitConnection: {},
 			tag: {},
 			user: {},
 			variable: {},
@@ -45,9 +49,11 @@ describe('permissions', () => {
 			chatHubAgent: {},
 			breakingChanges: {},
 			apiKey: {},
+			encryptionKey: {},
 			credentialResolver: {},
 			instanceAi: {},
 			roleMappingRule: {},
+			otel: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -87,6 +93,7 @@ describe('permissions', () => {
 		];
 
 		const permissionRecord: PermissionsRecord = {
+			agent: {},
 			aiAssistant: {},
 			annotationTag: {},
 			auditLogs: {},
@@ -111,6 +118,7 @@ describe('permissions', () => {
 			ldap: {},
 			license: {},
 			logStreaming: {},
+			nodeTypePolicy: {},
 			orchestration: {},
 			project: {
 				list: true,
@@ -124,6 +132,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
+			gitConnection: {},
 			tag: {
 				create: true,
 				list: true,
@@ -160,6 +169,7 @@ describe('permissions', () => {
 			},
 			dataTable: {},
 			execution: {},
+			testRun: {},
 			workflowTags: {},
 			role: {},
 			chatHub: {},
@@ -170,9 +180,11 @@ describe('permissions', () => {
 			apiKey: {
 				manage: true,
 			},
+			encryptionKey: {},
 			credentialResolver: {},
 			instanceAi: {},
 			roleMappingRule: {},
+			otel: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);
