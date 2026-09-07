@@ -4,6 +4,7 @@ import {
 	ListProjectsQueryPublicDto,
 	ProjectListPublicDto,
 	ProjectPublicDto,
+	UpdateProjectPublicDto,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest, Project } from '@n8n/db';
@@ -15,10 +16,13 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	Licensed,
+	Param,
 	Post,
 	PublicApiController,
+	Put,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -87,5 +91,39 @@ export class ProjectsPublicController {
 		const scopes = await this.projectService.getProjectScopesForUser(req.user, project.id);
 
 		return { ...toProjectPublicDto(project), role: 'project:admin', scopes };
+	}
+
+	@Put('/:projectId')
+	@Licensed(LICENSE_FEATURES.PROJECT_ROLE_ADMIN)
+	@ApiKeyScope('project:update')
+	@ApiSummary('Update a project')
+	@ApiDescription('Update a project on your instance.')
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	async updateProject(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Body body: UpdateProjectPublicDto,
+	): Promise<void> {
+		await this.projectService.updateProject(req.user, projectId, { name: body.name });
+	}
+
+	@Delete('/:projectId')
+	@Licensed(LICENSE_FEATURES.PROJECT_ROLE_ADMIN)
+	@ApiKeyScope('project:delete')
+	@ApiSummary('Delete a project')
+	@ApiDescription('Delete a project from your instance.')
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async deleteProject(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+	): Promise<void> {
+		await this.projectService.deleteProject(req.user, projectId);
 	}
 }
