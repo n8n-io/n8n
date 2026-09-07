@@ -54,8 +54,8 @@ const SingleFieldTemplate: StoryFn = (args, { argTypes }) => ({
 	},
 });
 
-export const SingleField = SingleFieldTemplate.bind({});
-SingleField.args = {
+export const Default = SingleFieldTemplate.bind({});
+Default.args = {
 	label: 'Label',
 	placeholder: 'placeholder',
 };
@@ -114,6 +114,36 @@ SchemaDriven.args = {
 					},
 				],
 			},
+		},
+	],
+};
+
+export const SchemaDrivenSmallTags = SchemaDrivenTemplate.bind({});
+SchemaDrivenSmallTags.args = {
+	columnView: true,
+	tagSize: 'small',
+	inputs: [
+		{
+			name: 'automationGoal',
+			properties: {
+				type: 'multi-select',
+				label: 'What are you looking to automate?',
+				options: [
+					{
+						label: 'Marketing',
+						value: 'marketing',
+					},
+					{
+						label: 'Sales',
+						value: 'sales',
+					},
+					{
+						label: 'Other',
+						value: 'other',
+					},
+				],
+			},
+			initialValue: ['marketing', 'other'],
 		},
 	],
 };

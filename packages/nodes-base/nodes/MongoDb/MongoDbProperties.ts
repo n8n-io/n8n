@@ -1,5 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+const parametersDescription =
+	'JSON array of values to use for $1, $2, and so on, in order. Values can be strings, numbers, booleans, null, or arrays of these values. You can also use an expression that returns an array.';
+
 export const nodeProperties: INodeProperties[] = [
 	{
 		displayName: 'Resource',
@@ -134,10 +137,11 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 		default: '',
-		placeholder: '[{ "$match": { "$gt": "1950-01-01" }, ... }]',
-		hint: 'Learn more about aggregation pipeline <a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/">here</a>',
+		placeholder: '[{ "$match": { "name": "$1", "age": { "$gte": "$2" } } }]',
+		hint: 'Use query parameters for dynamic values instead of embedding expressions in the query. <a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/" target="_blank">Learn more about aggregation pipelines</a>.',
 		required: true,
-		description: 'MongoDB aggregation pipeline query in JSON format',
+		description:
+			'MongoDB aggregation pipeline in JSON format. Use $1, $2, and so on as complete values to reference Query Parameters below.',
 	},
 
 	// ----------------------------------
@@ -157,9 +161,11 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 		default: '{}',
-		placeholder: '{ "birth": { "$gt": "1950-01-01" } }',
+		placeholder: '{ "name": "$1", "age": "$2" }',
+		hint: 'Use query parameters for dynamic values instead of embedding expressions in the query',
 		required: true,
-		description: 'MongoDB Delete query',
+		description:
+			'MongoDB delete query in JSON format. Use $1, $2, and so on as complete values to reference Query Parameters below.',
 	},
 
 	// ----------------------------------
@@ -206,8 +212,23 @@ export const nodeProperties: INodeProperties[] = [
 					rows: 2,
 				},
 				default: '{}',
-				placeholder: '{ "field": -1 }',
-				description: 'A JSON that defines the sort order of the result set',
+				placeholder: '{ "field1": 1, "$1": -1 }',
+				hint: 'Use sort parameters to bind dynamic field names and values',
+				description:
+					'A JSON that defines the sort order of the result set. Use $1, $2, and so on as complete field names or values to reference Sort Parameters.',
+			},
+			{
+				displayName: 'Sort Parameters',
+				name: 'sortParameters',
+				type: 'json',
+				typeOptions: {
+					rows: 2,
+				},
+				default: '=[]',
+				placeholder: '["fieldName"]',
+				validateType: 'array',
+				description: parametersDescription,
+				hint: 'For example, ["name"] replaces $1 with "name", sorting descending by that field',
 			},
 			{
 				displayName: 'Projection (JSON Format)',
@@ -217,9 +238,23 @@ export const nodeProperties: INodeProperties[] = [
 					rows: 4,
 				},
 				default: '{}',
-				placeholder: '{ "_id": 0, "field": 1 }',
+				placeholder: '{ "_id": 0, "$1": 1 }',
+				hint: 'Use projection parameters to bind dynamic field names and values',
 				description:
-					'A JSON that defines a selection of fields to retrieve or exclude from the result set',
+					'A JSON that defines a selection of fields to retrieve or exclude from the result set. Use $1, $2, and so on as complete field names or values to reference Projection Parameters.',
+			},
+			{
+				displayName: 'Projection Parameters',
+				name: 'projectionParameters',
+				type: 'json',
+				typeOptions: {
+					rows: 2,
+				},
+				default: '=[]',
+				placeholder: '["fieldName"]',
+				validateType: 'array',
+				description: parametersDescription,
+				hint: 'For example, ["name"] replaces $1 with "name", returning only that field',
 			},
 		],
 	},
@@ -237,9 +272,30 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 		default: '{}',
-		placeholder: '{ "birth": { "$gt": "1950-01-01" } }',
+		placeholder: '{ "name": "$1", "age": "$2" }',
+		hint: 'Use query parameters for dynamic values instead of embedding expressions in the query',
 		required: true,
-		description: 'MongoDB Find query',
+		description:
+			'MongoDB find query in JSON format. Use $1, $2, and so on as complete values to reference Query Parameters below.',
+	},
+	{
+		displayName: 'Query Parameters',
+		name: 'queryParameters',
+		type: 'json',
+		typeOptions: {
+			rows: 2,
+		},
+		displayOptions: {
+			show: {
+				operation: ['aggregate', 'delete', 'find'],
+				resource: ['document'],
+			},
+		},
+		default: '=[]',
+		placeholder: '["value1", 123, true, null]',
+		validateType: 'array',
+		description: parametersDescription,
+		hint: 'For example, ["Alice", 30] replaces $1 with "Alice" and $2 with 30',
 	},
 
 	// ----------------------------------
@@ -379,7 +435,27 @@ export const nodeProperties: INodeProperties[] = [
 		hint: 'Learn more about search index definitions <a href="https://www.mongodb.com/docs/atlas/atlas-search/index-definitions/">here</a>',
 		default: '{}',
 		required: true,
-		description: 'The search index definition',
+		description:
+			'The search index definition. Use $1, $2, and so on as complete field names or values to reference Index Definition Parameters below.',
+	},
+	{
+		displayName: 'Index Definition Parameters',
+		name: 'indexDefinitionParameters',
+		type: 'json',
+		typeOptions: {
+			rows: 2,
+		},
+		displayOptions: {
+			show: {
+				operation: ['createSearchIndex', 'updateSearchIndex'],
+				resource: ['searchIndexes'],
+			},
+		},
+		default: '=[]',
+		placeholder: '["value1", 123, true, null]',
+		validateType: 'array',
+		description: parametersDescription,
+		hint: 'For example, ["embedding", 1536] replaces $1 with "embedding" and $2 with 1536',
 	},
 	{
 		displayName: 'Index Type',

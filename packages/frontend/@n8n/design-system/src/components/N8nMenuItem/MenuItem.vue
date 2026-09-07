@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 
-import type { IMenuItem } from '@n8n/design-system/types';
-
+import type { IMenuItem } from '../../types';
 import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
@@ -49,7 +48,7 @@ const handleClick = () => {
 	emit('click');
 };
 
-const icon = computed<IconName | undefined>(() => {
+const icon = computed<IconName | (string & {}) | undefined>(() => {
 	if (typeof props.item.icon === 'object' && props.item.icon?.type === 'icon') {
 		return props.item.icon.value;
 	}
@@ -122,7 +121,6 @@ const tooltipPlacement = computed(() => {
 					<N8nText
 						v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
 						:class="$style.menuItemEmoji"
-						:color="iconColor"
 						>{{ item.icon.value }}</N8nText
 					>
 					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
@@ -162,6 +160,9 @@ const tooltipPlacement = computed(() => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	// Match the height of items with icons (24px icon + 2 * 4px padding), so
+	// icon-less items (e.g. modal sidebar tabs) don't render shorter.
+	min-height: var(--spacing--xl);
 	padding: var(--spacing--4xs);
 	gap: var(--spacing--4xs);
 	cursor: pointer;

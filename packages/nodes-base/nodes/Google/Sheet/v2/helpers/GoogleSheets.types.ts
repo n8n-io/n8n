@@ -18,7 +18,7 @@ export interface ISheetUpdateData {
 
 export interface ILookupValues {
 	lookupColumn: string;
-	lookupValue: string;
+	lookupValue: string | number | boolean | null | undefined;
 }
 
 export interface IToDeleteRange {

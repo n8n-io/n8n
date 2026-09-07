@@ -1,17 +1,27 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { createRefreshingAuthFetch, proxyFetch } from '@n8n/ai-utilities';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
+	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	McpOAuth2CredentialType,
+	McpRegistryConnection,
 	INode,
 	ISupplyDataFunctions,
-	Result,
+	NodeEgressFilter,
+	PrepareMcpRegistryConnectionInput,
+	PrepareMcpRegistryConnectionResult,
 } from 'n8n-workflow';
-import { createResultError, createResultOk, NodeOperationError } from 'n8n-workflow';
-
-import { proxyFetch } from '@n8n/ai-utilities';
+import {
+	assertCredentialAllowsUrl,
+	assertUrlAllowed,
+	getMcpAuthHeaders,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import {
 	isMcpOAuth2Authentication,
@@ -72,16 +82,35 @@ type OnUnauthorizedHandler = (
 	headers?: Record<string, string>,
 ) => Promise<Record<string, string> | null>;
 
+const OAUTH2_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
+
+type McpOAuth2Credentials = ICredentialDataDecryptedObject & {
+	oauthTokenData?: ClientOAuth2TokenData;
+};
+
 type ConnectMcpClientError =
 	| { type: 'invalid_url'; error: Error }
 	| { type: 'connection'; error: Error }
-	| { type: 'auth'; error: Error };
+	| { type: 'auth'; error: Error }
+	| { type: 'cancelled'; error: Error };
 
+/**
+ * Convert a ConnectMcpClientError into a NodeOperationError associated with the provided node.
+ *
+ * @param node - The node instance where the error occurred
+ * @param error - The MCP client error to map
+ * @returns A NodeOperationError containing a user-facing message and, when available, the original error message as the description
+ */
 export function mapToNodeOperationError(
 	node: INode,
 	error: ConnectMcpClientError,
 ): NodeOperationError {
 	switch (error.type) {
+		case 'cancelled':
+			return new NodeOperationError(node, error.error, {
+				message: 'Execution was cancelled',
+			});
 		case 'invalid_url':
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server. The provided URL is invalid.',
@@ -100,6 +129,22 @@ export function mapToNodeOperationError(
 	}
 }
 
+/**
+ * Establishes and returns a connected MCP Client to the provided endpoint using the selected transport.
+ *
+ * @param serverTransport - Transport to use; `'httpStreamable'` uses the streamable HTTP transport, otherwise SSE is used.
+ * @param endpointUrl - MCP server endpoint URL; missing scheme will be normalized (e.g., `https://` prefixed) and validated.
+ * @param headers - Initial request headers to include with each transport request.
+ * @param name - Client name sent to the MCP server.
+ * @param version - Client version sent to the MCP server.
+ * @param onUnauthorized - Optional handler invoked to refresh/replace headers when a `401` response is encountered.
+ * @param signal - Optional AbortSignal to cooperatively cancel the connection attempt; if aborted, returns a `cancelled` error.
+ * @returns A Result containing a connected `Client` on success. On failure returns a `ConnectMcpClientError` with `type` one of:
+ * - `'invalid_url'` when the endpoint URL could not be parsed,
+ * - `'cancelled'` when the operation was aborted,
+ * - `'auth'` for authentication failures (HTTP 401/403),
+ * - `'connection'` for other connection errors. The returned error includes the underlying `Error`.
+ */
 export async function connectMcpClient({
 	headers,
 	serverTransport,
@@ -107,6 +152,9 @@ export async function connectMcpClient({
 	name,
 	version,
 	onUnauthorized,
+	signal,
+	allowedDomains,
+	secureEgressFilter,
 }: {
 	serverTransport: McpServerTransport;
 	endpointUrl: string;
@@ -114,6 +162,18 @@ export async function connectMcpClient({
 	name: string;
 	version: number;
 	onUnauthorized?: OnUnauthorizedHandler;
+	signal?: AbortSignal;
+	/**
+	 * Comma-separated allowlist from the credential. When set, every request
+	 * (including redirect hops) is validated against it via `assertUrlAllowed`.
+	 */
+	allowedDomains?: string;
+	/**
+	 * Instance egress filter. Every request (including redirect hops) is
+	 * validated against the configured egress policy, and the connection is
+	 * pinned to the validated address.
+	 */
+	secureEgressFilter: NodeEgressFilter;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
@@ -121,17 +181,63 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
-	const authFetch = createAuthFetch(headers, onUnauthorized);
+	const authFetch = createAuthFetch(headers, secureEgressFilter, onUnauthorized, allowedDomains);
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
+
+	let onAbort: (() => void) | undefined;
+	if (signal) {
+		onAbort = () => {
+			Promise.resolve(client.close()).catch(() => {});
+		};
+		signal.addEventListener('abort', onAbort, { once: true });
+
+		// Clean up the listener when the client is closed normally,
+		// preventing accumulation of dead client references for long-running agents.
+		const originalClose = client.close.bind(client);
+		client.close = async () => {
+			if (onAbort && signal) {
+				signal.removeEventListener('abort', onAbort);
+				onAbort = undefined;
+			}
+			await originalClose();
+		};
+	}
+
+	if (signal?.aborted) {
+		if (onAbort && signal) {
+			signal.removeEventListener('abort', onAbort);
+			onAbort = undefined;
+		}
+		return createResultError({
+			type: 'cancelled',
+			error: new Error('Execution was cancelled'),
+		});
+	}
 
 	if (serverTransport === 'httpStreamable') {
 		try {
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
 				fetch: authFetch,
+				...(signal ? { requestInit: { signal } } : {}),
 			});
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
+			const connectionError = error instanceof Error ? error : new Error(String(error));
+			if ((signal && connectionError.name === 'AbortError') || signal?.aborted) {
+				if (onAbort && signal) {
+					signal.removeEventListener('abort', onAbort);
+					onAbort = undefined;
+				}
+				return createResultError({ type: 'cancelled', error: connectionError });
+			}
+
+			// Clean up the abort listener so a failed client doesn't stay pinned to the execution signal
+			if (onAbort && signal) {
+				signal.removeEventListener('abort', onAbort);
+				onAbort = undefined;
+			}
+
 			if (isUnauthorizedError(error) || isForbiddenError(error)) {
 				return createResultError({ type: 'auth', error: error as Error });
 			} else {
@@ -153,10 +259,26 @@ export async function connectMcpClient({
 					}),
 			},
 			fetch: authFetch,
+			...(signal ? { requestInit: { signal } } : {}),
 		});
 		await client.connect(sseTransport);
 		return createResultOk(client);
 	} catch (error) {
+		const connectionError = error instanceof Error ? error : new Error(String(error));
+		if ((signal && connectionError.name === 'AbortError') || signal?.aborted) {
+			if (onAbort && signal) {
+				signal.removeEventListener('abort', onAbort);
+				onAbort = undefined;
+			}
+			return createResultError({ type: 'cancelled', error: connectionError });
+		}
+
+		// Clean up the abort listener so a failed client doesn't stay pinned to the execution signal
+		if (onAbort && signal) {
+			signal.removeEventListener('abort', onAbort);
+			onAbort = undefined;
+		}
+
 		if (isUnauthorizedError(error) || isForbiddenError(error)) {
 			return createResultError({ type: 'auth', error: error as Error });
 		} else {
@@ -165,112 +287,97 @@ export async function connectMcpClient({
 	}
 }
 
-/** Safely converts any HeadersInit value to a plain Record<string, string>. */
 function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
-	if (!headers) return {};
-	if (headers instanceof Headers) return Object.fromEntries(headers.entries());
-	if (Array.isArray(headers)) return Object.fromEntries(headers);
-	return headers;
+	return headers ? Object.fromEntries(new Headers(headers).entries()) : {};
 }
 
 /**
- * Creates a fetch wrapper that injects auth headers into every request
- * and retries once on 401 after refreshing the token via onUnauthorized.
+ * Creates a fetch wrapper that:
+ *   - injects auth headers into every request,
+ *   - retries once on 401 after refreshing the token via onUnauthorized,
+ *   - validates the initial URL and every redirect hop against `allowedDomains`
+ *     so credentials are never sent to a host the credential doesn't allow,
+ *   - validates the initial URL and every redirect hop against the instance
+ *     `secureEgressFilter`, and pins the connection to the validated address,
+ *   - withholds the auth headers once a redirect crosses origins, so
+ *     credentials never reach a host other than the one the request started on.
  */
 function createAuthFetch(
 	initialHeaders: Record<string, string> | undefined,
+	secureEgressFilter: NodeEgressFilter,
 	onUnauthorized?: OnUnauthorizedHandler,
+	allowedDomains?: string,
 ): typeof fetch {
-	let headers = initialHeaders;
+	const secureLookup = secureEgressFilter.createSecureLookup();
+	return createRefreshingAuthFetch({
+		baseFetch: async (input, init) => await proxyFetch({ input, init, lookup: secureLookup }),
+		initialHeaders,
+		...(onUnauthorized
+			? {
+					refreshHeaders: async (current: Headers) =>
+						await onUnauthorized(Object.fromEntries(current.entries())),
+				}
+			: {}),
+		assertAllowedUrl: async (hopUrl) => {
+			assertUrlAllowed({ url: hopUrl, allowedDomains });
+			const result = await secureEgressFilter.validateUrl(hopUrl);
+			if (!result.ok) throw result.error;
+		},
+	});
+}
 
-	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		const response = await proxyFetch(input, {
-			...init,
-			headers: {
-				...headersToRecord(init?.headers),
-				...headers,
-			},
-		});
+function shouldRefreshOAuth2Token(credentials: McpOAuth2Credentials): boolean {
+	const tokenData = credentials.oauthTokenData;
+	if (!tokenData?.refresh_token) return false;
 
-		// Early return if not 401 or no handler
-		if (response.status !== 401 || !onUnauthorized) {
-			return response;
-		}
+	const expiresAt = Number(tokenData.n8n_expires_at);
+	if (!Number.isFinite(expiresAt)) {
+		return false;
+	}
 
-		// Try to refresh and retry
-		const refreshedHeaders = await onUnauthorized(headers);
-		if (!refreshedHeaders) {
-			return response;
-		}
+	const expiresInMs = Number(tokenData.expires_in) * 1000;
+	const refreshBufferMs =
+		Number.isFinite(expiresInMs) && expiresInMs > 0
+			? Math.min(OAUTH2_REFRESH_BUFFER_MS, expiresInMs * OAUTH2_REFRESH_BUFFER_RATIO)
+			: OAUTH2_REFRESH_BUFFER_MS;
 
-		headers = refreshedHeaders;
-		return await proxyFetch(input, {
-			...init,
-			headers: {
-				...headersToRecord(init?.headers),
-				...headers,
-			},
-		});
-	};
+	return Date.now() + refreshBufferMs >= expiresAt;
 }
 
 export async function getAuthHeaders(
-	ctx: Pick<IExecuteFunctions, 'getCredentials'>,
+	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	authentication: McpAuthenticationOption,
-): Promise<{ headers?: Record<string, string> }> {
+): Promise<{
+	headers?: Record<string, string>;
+	credentials?: ICredentialDataDecryptedObject;
+}> {
+	if (authentication === 'none') return {};
+
+	let credentialType: string;
 	if (isMcpOAuth2Authentication(authentication)) {
-		const result = await ctx
-			.getCredentials<{ oauthTokenData: { access_token: string } }>(authentication)
-			.catch(() => null);
-
-		if (!result) return {};
-
-		return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
+		credentialType = authentication;
+	} else {
+		const credentialTypes: Record<string, string> = {
+			headerAuth: 'httpHeaderAuth',
+			bearerAuth: 'httpBearerAuth',
+			multipleHeadersAuth: 'httpMultipleHeadersAuth',
+		};
+		credentialType = credentialTypes[authentication];
+		if (!credentialType) return {};
 	}
 
-	switch (authentication) {
-		case 'headerAuth': {
-			const header = await ctx
-				.getCredentials<{ name: string; value: string }>('httpHeaderAuth')
-				.catch(() => null);
+	const credentials = await ctx
+		.getCredentials<ICredentialDataDecryptedObject>(credentialType)
+		.catch(() => null);
+	if (!credentials) return {};
 
-			if (!header) return {};
-
-			return { headers: { [header.name]: header.value } };
-		}
-		case 'bearerAuth': {
-			const result = await ctx
-				.getCredentials<{ token: string }>('httpBearerAuth')
-				.catch(() => null);
-
-			if (!result) return {};
-
-			return { headers: { Authorization: `Bearer ${result.token}` } };
-		}
-		case 'multipleHeadersAuth': {
-			const result = await ctx
-				.getCredentials<{ headers: { values: Array<{ name: string; value: string }> } }>(
-					'httpMultipleHeadersAuth',
-				)
-				.catch(() => null);
-
-			if (!result) return {};
-
-			return {
-				headers: result.headers.values.reduce(
-					(acc, cur) => {
-						acc[cur.name] = cur.value;
-						return acc;
-					},
-					{} as Record<string, string>,
-				),
-			};
-		}
-		case 'none':
-		default: {
-			return {};
-		}
+	if (isMcpOAuth2Authentication(authentication) && shouldRefreshOAuth2Token(credentials)) {
+		const refreshedHeaders = await tryRefreshOAuth2Token(ctx, authentication);
+		if (refreshedHeaders) return { headers: refreshedHeaders, credentials };
 	}
+
+	const headers = getMcpAuthHeaders(authentication, credentials);
+	return Object.keys(headers).length > 0 ? { headers, credentials } : { credentials };
 }
 
 /**
@@ -310,10 +417,83 @@ export async function tryRefreshOAuth2Token(
 		};
 	}
 
+	const headersWithoutAuthorization = Object.fromEntries(
+		Object.entries(headers).filter(([name]) => name.toLowerCase() !== 'authorization'),
+	);
 	return {
-		...headers,
+		...headersWithoutAuthorization,
 		Authorization: `Bearer ${access_token}`,
 	};
+}
+
+/**
+ * Connect to an MCP server on behalf of a user credential
+ * enforcing the credential's "Allowed Domains"
+ */
+export async function connectMcpClientForCredential(
+	ctx: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
+	config: {
+		authentication: McpAuthenticationOption;
+		serverTransport: McpServerTransport;
+		endpointUrl: string;
+		registryCredential?: {
+			connection: McpRegistryConnection;
+			credentialType: McpOAuth2CredentialType;
+			prepareConnection(
+				input: PrepareMcpRegistryConnectionInput,
+			): PrepareMcpRegistryConnectionResult;
+		};
+		surface: string;
+		signal?: AbortSignal;
+	},
+): Promise<Result<Client, ConnectMcpClientError>> {
+	const node = ctx.getNode();
+	const { headers, credentials } = await getAuthHeaders(ctx, config.authentication);
+	const isOAuth2 = isMcpOAuth2Authentication(config.authentication);
+	let endpointUrl = config.endpointUrl;
+	let serverTransport = config.serverTransport;
+	let authHeaders = headers;
+	let allowedDomains: string | undefined;
+
+	if (config.registryCredential) {
+		if (!credentials) {
+			throw new NodeOperationError(node, 'No MCP OAuth2 credential type found');
+		}
+		const prepared = config.registryCredential.prepareConnection({
+			connection: config.registryCredential.connection,
+			credentialType: config.registryCredential.credentialType,
+			credentialData: credentials,
+			headers,
+		});
+		if (!prepared.ok) {
+			throw new NodeOperationError(node, prepared.error.message);
+		}
+		endpointUrl = prepared.value.endpointUrl;
+		serverTransport = prepared.value.transport;
+		authHeaders = prepared.value.headers;
+		allowedDomains = prepared.value.allowedDomains;
+	} else if (credentials) {
+		allowedDomains = assertCredentialAllowsUrl({
+			node,
+			credentialData: credentials,
+			url: endpointUrl,
+			surface: config.surface,
+		});
+	}
+
+	return await connectMcpClient({
+		serverTransport,
+		endpointUrl,
+		headers: authHeaders,
+		allowedDomains,
+		secureEgressFilter: ctx.helpers.getSecureEgressFilter(),
+		name: node.type,
+		version: node.typeVersion,
+		onUnauthorized: isOAuth2
+			? async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h)
+			: undefined,
+		signal: config.signal,
+	});
 }
 
 export function isStructuredContent(value: unknown): value is Record<string, unknown> {

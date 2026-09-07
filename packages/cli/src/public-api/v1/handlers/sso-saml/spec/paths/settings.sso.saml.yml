@@ -1,0 +1,61 @@
+get:
+  x-eov-operation-id: getSamlConfiguration
+  x-required-scope: saml:manage
+  x-eov-operation-handler: v1/handlers/sso-saml/sso-saml.handler
+  tags:
+    - SettingsSsoSaml
+  summary: Retrieve the SAML SSO configuration
+  description: >
+    Retrieve the current SAML SSO configuration, including every field exposed in the UI
+    plus the service provider entity ID and ACS return URL. Signing private keys, signing
+    certificates, and identity provider metadata are redacted on read. Requires the
+    `saml:manage` scope and the SAML feature to be licensed.
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/saml-configuration.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+put:
+  x-eov-operation-id: updateSamlConfiguration
+  x-required-scope: saml:manage
+  x-eov-operation-handler: v1/handlers/sso-saml/sso-saml.handler
+  tags:
+    - SettingsSsoSaml
+  summary: Set the SAML SSO configuration
+  description: >
+    Replace the SAML SSO configuration with the provided full object. Every writable field
+    must be sent; use empty strings or empty arrays when a value is unset. Read-only
+    `entityID` / `returnUrl` from GET are ignored if included, so a GET response can be
+    sent back as a PUT body. Redacted secret placeholders keep the stored values unchanged.
+    The update takes effect exactly as it would from the UI, using the same validation.
+    Requires the `saml:manage` scope and the SAML feature to be licensed. When the
+    configuration is managed via environment variables, the write is rejected with 409 and no
+    changes are made.
+  requestBody:
+    description: The full SAML SSO configuration to set.
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/saml-configuration.update.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/saml-configuration.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'

@@ -1,23 +1,19 @@
-import { logger } from '../../logger';
-import type { ToolModule } from '../types';
+import { ModuleActivation, type ToolModule } from '../types';
 import { screenshotRegionTool, screenshotTool } from './screenshot';
 
 export const ScreenshotModule: ToolModule = {
-	async isSupported() {
+	name: 'Screenshot',
+	category: 'screenshot',
+	permissionGroup: 'computer',
+	async activate() {
 		try {
 			const { Monitor } = await import('node-screenshots');
-			const monitors = Monitor.all();
-			if (monitors.length === 0) {
-				logger.info('Screenshot module not supported', { reason: 'no monitors detected' });
-				return false;
+			if (Monitor.all().length === 0) {
+				return ModuleActivation.unsupported('No monitors detected');
 			}
-			return true;
+			return ModuleActivation.supported([screenshotTool, screenshotRegionTool]);
 		} catch (error) {
-			logger.info('Screenshot module not supported', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return false;
+			return ModuleActivation.unsupported(error instanceof Error ? error.message : String(error));
 		}
 	},
-	definitions: [screenshotTool, screenshotRegionTool],
 };

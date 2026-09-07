@@ -7,28 +7,31 @@ import { ABOUT_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useVersionsStore } from '@/app/stores/versions.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useVersionsStore } from '@n8n/stores/versions.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useKeybindings } from '@/app/composables/useKeybindings';
-import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
+import {
+	MAX_SIDEBAR_WIDTH,
+	MIN_SIDEBAR_WIDTH,
+	useSidebarLayout,
+} from '@/app/composables/useSidebarLayout';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
-import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
 import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
 import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
 import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
+import { injectWorkflowDocumentStore } from '../stores/workflowDocument.store';
 
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
@@ -36,7 +39,7 @@ const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
 const versionsStore = useVersionsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const resourceCenterStore = useResourceCenterStore();
 
 const i18n = useI18n();
@@ -67,7 +70,7 @@ const {
 	toggleCollapse,
 } = useSidebarLayout();
 
-const { settingsItems } = useSettingsItems();
+const { settingsItems, handleSettingsItemSelect } = useSettingsItems();
 const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
 
 // Component data
@@ -185,6 +188,16 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				},
 			},
 			{
+				id: 'contact-support',
+				icon: 'life-buoy',
+				label: i18n.baseText('mainSidebar.helpMenuItems.contactSupport'),
+				available: settingsStore.isCloudDeployment,
+				link: {
+					href: EXTERNAL_LINKS.SUPPORT,
+					target: '_blank',
+				},
+			},
+			{
 				id: 'report-bug',
 				icon: 'bug',
 				label: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
@@ -211,7 +224,12 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 ]);
 
 const visibleMenuItems = computed<IMenuItem[]>(() =>
-	mainMenuItems.value.filter((item) => item.available !== false),
+	mainMenuItems.value
+		.filter((item) => item.available !== false)
+		.map((item) => ({
+			...item,
+			children: item.children?.filter((child) => child.available !== false),
+		})),
 );
 
 const checkOverflow = () => {
@@ -264,7 +282,7 @@ onBeforeUnmount(() => {
 const trackHelpItemClick = (itemType: string) => {
 	telemetry.track('User clicked help resource', {
 		type: itemType,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 };
 
@@ -285,10 +303,6 @@ function openCommandBar(event: MouseEvent) {
 
 const handleSelect = (key: string) => {
 	switch (key) {
-		case 'resource-center': {
-			resourceCenterStore.markResourceCenterTooltipDismissed();
-			break;
-		}
 		case 'about': {
 			trackHelpItemClick('about');
 			uiStore.openModal(ABOUT_MODAL_KEY);
@@ -298,6 +312,11 @@ const handleSelect = (key: string) => {
 			void pageRedirectionHelper.goToDashboard();
 			break;
 		}
+		case 'settings-n8n-connect': {
+			void handleSettingsItemSelect(key);
+			break;
+		}
+		case 'contact-support':
 		case 'quickstart':
 		case 'docs':
 		case 'forum':
@@ -351,8 +370,8 @@ useKeybindings({
 		:width="sidebarWidth"
 		:style="isCollapsed ? {} : { width: `${sidebarWidth}px` }"
 		:supported-directions="['right']"
-		:min-width="200"
-		:max-width="500"
+		:min-width="MIN_SIDEBAR_WIDTH"
+		:max-width="MAX_SIDEBAR_WIDTH"
 		:grid-size="8"
 		@resizestart="onResizeStart"
 		@resize="onResize"
@@ -384,7 +403,6 @@ useKeybindings({
 			@select="handleSelect"
 		/>
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
-		<ResourceCenterTooltip />
 	</N8nResizeWrapper>
 </template>
 

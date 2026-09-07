@@ -1,10 +1,13 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { vi } from 'vitest';
+import type { Mock } from 'vitest';
 
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
 import {
+	cleanupPrebuiltWorkflows,
 	fetchPrebuiltBuild,
 	loadPrebuiltManifest,
 	pickPrebuiltWorkflowId,
@@ -99,7 +102,7 @@ describe('fetchPrebuiltBuild', () => {
 		isVerbose: false,
 	};
 
-	function makeClient(getWorkflow: jest.Mock): N8nClient {
+	function makeClient(getWorkflow: Mock): N8nClient {
 		// Only the methods used by fetchPrebuiltBuild — narrow cast in test code is fine.
 		return { getWorkflow } as unknown as N8nClient;
 	}
@@ -111,7 +114,7 @@ describe('fetchPrebuiltBuild', () => {
 			nodes: [{ id: 'n1', name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }],
 			connections: {},
 		} as unknown as WorkflowResponse;
-		const getWorkflow = jest.fn().mockResolvedValue(fakeWorkflow);
+		const getWorkflow = vi.fn().mockResolvedValue(fakeWorkflow);
 		const client = makeClient(getWorkflow);
 
 		const result = await fetchPrebuiltBuild(client, 'W123', silentLogger);
@@ -127,7 +130,7 @@ describe('fetchPrebuiltBuild', () => {
 	});
 
 	it('returns a failed BuildResult with the workflow ID in the error when fetch throws', async () => {
-		const getWorkflow = jest.fn().mockRejectedValue(new Error('HTTP 404 Not Found'));
+		const getWorkflow = vi.fn().mockRejectedValue(new Error('HTTP 404 Not Found'));
 		const client = makeClient(getWorkflow);
 
 		const result = await fetchPrebuiltBuild(client, 'Wstale', silentLogger);
@@ -141,7 +144,7 @@ describe('fetchPrebuiltBuild', () => {
 	});
 
 	it('coerces non-Error rejection values into a string in the error message', async () => {
-		const getWorkflow = jest.fn().mockRejectedValue('plain string failure');
+		const getWorkflow = vi.fn().mockRejectedValue('plain string failure');
 		const client = makeClient(getWorkflow);
 
 		const result = await fetchPrebuiltBuild(client, 'Wodd', silentLogger);
@@ -149,5 +152,47 @@ describe('fetchPrebuiltBuild', () => {
 		expect(result.success).toBe(false);
 		expect(result.error).toContain('Wodd');
 		expect(result.error).toContain('plain string failure');
+	});
+});
+
+describe('cleanupPrebuiltWorkflows', () => {
+	function makeLogger(): EvalLogger & { info: Mock; warn: Mock } {
+		return {
+			info: vi.fn(),
+			verbose: vi.fn(),
+			success: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+			isVerbose: false,
+		};
+	}
+
+	it('deletes each workflow ID once', async () => {
+		const deleteWorkflow = vi.fn().mockResolvedValue(undefined);
+		const client = { deleteWorkflow } as unknown as N8nClient;
+		const logger = makeLogger();
+
+		await cleanupPrebuiltWorkflows(client, ['W1', 'W1', 'W2'], logger);
+
+		expect(deleteWorkflow).toHaveBeenCalledTimes(2);
+		expect(deleteWorkflow).toHaveBeenNthCalledWith(1, 'W1');
+		expect(deleteWorkflow).toHaveBeenNthCalledWith(2, 'W2');
+		expect(logger.info).toHaveBeenCalledWith('Deleted 2/2 prebuilt workflow(s)');
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('continues deleting after a workflow deletion fails', async () => {
+		const deleteWorkflow = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('HTTP 404'))
+			.mockResolvedValueOnce(undefined);
+		const client = { deleteWorkflow } as unknown as N8nClient;
+		const logger = makeLogger();
+
+		await cleanupPrebuiltWorkflows(client, ['W1', 'W2'], logger);
+
+		expect(deleteWorkflow).toHaveBeenCalledTimes(2);
+		expect(logger.warn).toHaveBeenCalledWith('Failed to delete prebuilt workflow W1: HTTP 404');
+		expect(logger.info).toHaveBeenCalledWith('Deleted 1/2 prebuilt workflow(s)');
 	});
 });

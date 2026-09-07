@@ -89,7 +89,7 @@ test.describe(
 
 			const addResourceItem = n8n.ndv.getAddResourceItem();
 			await expect(addResourceItem).toHaveCount(1);
-			await expect(addResourceItem.getByText(/Create a/)).toBeVisible();
+			await expect(n8n.ndv.getAddResourceCreateOption()).toBeVisible();
 
 			const secondPage = await n8n.start.fromNewPage(async () => {
 				await n8n.ndvComposer.createNewSubworkflow('workflowId');

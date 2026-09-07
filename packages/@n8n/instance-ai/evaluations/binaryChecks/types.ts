@@ -14,6 +14,14 @@ import type { WorkflowResponse } from '../clients/n8n-client';
 export interface BinaryCheckResult {
 	pass: boolean;
 	comment?: string;
+	/** Omitted = true. `false` = no subject in this workflow (excluded from pass-rate denominator). */
+	applicable?: boolean;
+	/**
+	 * `true` = the check could not be measured (e.g. judge timeout). Excluded
+	 * from the pass-rate denominator like N/A, but reported separately so
+	 * infra flakiness stays distinguishable from genuine inapplicability.
+	 */
+	errored?: boolean;
 }
 
 /**
@@ -30,17 +38,43 @@ export interface BinaryCheckContext {
 	modelId?: string;
 	/** Timeout in ms for LLM checks. Defaults to 30_000. */
 	timeoutMs?: number;
-	/** The agent's text response (used by response-matches-workflow-changes check) */
+	/** The agent's narration across the conversation (used by the response_describes_changes_accurately check) */
 	agentTextResponse?: string;
-	/** The workflow before the agent's turn (used by response-matches-workflow-changes check) */
-	existingWorkflow?: WorkflowResponse;
 	/**
-	 * Per-test-case annotations that let authors flag false positives
-	 * (e.g. `code_necessary: true` for prompts where a Code node is the right answer).
-	 * Sourced from the test case JSON's `annotations` field.
+	 * The workflow at the start of the conversation, before the agent's changes
+	 * (used by response_describes_changes_accurately). Empty for from-scratch
+	 * builds — set only when a conversation starts from an existing workflow.
 	 */
+	workflowBefore?: WorkflowResponse;
+	/** Per-test-case annotations forwarded from fixtures. Used by checks that opt into fixture-side overrides. */
 	annotations?: Record<string, unknown>;
+	/**
+	 * Per-live-turn count of build-workflow calls that FAILED (errored / returned
+	 * success:false) — error-forced rebuilds, the universal thrash signal (see
+	 * `failedBuildsPerTurn`). Absent when there's no build transcript
+	 * (e.g. prebuilt-workflow scoring).
+	 */
+	failedBuildsPerTurn?: number[];
 }
+
+/**
+ * WHAT-side rubric dimensions for the workflow artifact. The order here
+ * drives sort order in reports. The execution verifier covers a separate
+ * `execution_outcome` dimension that lives outside this binary-check suite.
+ */
+export const CHECK_DIMENSIONS = [
+	'structure',
+	'connection_topology',
+	'parameter_correctness',
+	'intent_match',
+	'communication',
+	'ai_nodes',
+	'nodes_craftsmanship',
+	'efficiency',
+	'security',
+] as const;
+
+export type CheckDimension = (typeof CHECK_DIMENSIONS)[number];
 
 /**
  * A single check that inspects a workflow and returns pass/fail.
@@ -52,8 +86,26 @@ export interface BinaryCheck {
 	description: string;
 	/** Whether this check requires an LLM call */
 	kind: 'deterministic' | 'llm';
+	/** WHAT-side rubric dimension this check contributes to. */
+	dimension: CheckDimension;
 	run(
 		workflow: WorkflowResponse,
 		ctx: BinaryCheckContext,
 	): BinaryCheckResult | Promise<BinaryCheckResult>;
+}
+
+// ---------------------------------------------------------------------------
+// Outcomes — projected per check after a run
+// ---------------------------------------------------------------------------
+
+export type CheckStatus = 'pass' | 'fail' | 'n_a' | 'error';
+
+/** Per-run projection of a BinaryCheck result; surfaced in reports + LangSmith Feedback. */
+export interface CheckOutcome {
+	name: string;
+	description: string;
+	kind: 'deterministic' | 'llm';
+	dimension: CheckDimension;
+	status: CheckStatus;
+	comment?: string;
 }

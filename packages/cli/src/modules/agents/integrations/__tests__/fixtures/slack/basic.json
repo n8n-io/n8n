@@ -1,0 +1,52 @@
+{
+	"botUserId": "U_BOT",
+	"user": {
+		"id": "U_ALICE",
+		"name": "alice",
+		"real_name": "Alice Developer"
+	},
+	"channel": {
+		"id": "C_SUPPORT",
+		"name": "support"
+	},
+	"mention": {
+		"type": "event_callback",
+		"team_id": "T_TEAM",
+		"event": {
+			"type": "app_mention",
+			"user": "U_ALICE",
+			"text": "<@U_BOT> hello agent",
+			"ts": "1719000000.000100",
+			"thread_ts": "1719000000.000100",
+			"channel": "C_SUPPORT",
+			"channel_type": "channel"
+		}
+	},
+	"followUp": {
+		"type": "event_callback",
+		"team_id": "T_TEAM",
+		"event": {
+			"type": "message",
+			"user": "U_ALICE",
+			"text": "follow up",
+			"ts": "1719000001.000200",
+			"thread_ts": "1719000000.000100",
+			"channel": "C_SUPPORT",
+			"channel_type": "channel"
+		}
+	},
+	"selfMessage": {
+		"type": "event_callback",
+		"team_id": "T_TEAM",
+		"event": {
+			"type": "message",
+			"user": "U_BOT",
+			"bot_id": "B_BOT",
+			"text": "bot echo",
+			"ts": "1719000002.000300",
+			"thread_ts": "1719000000.000100",
+			"channel": "C_SUPPORT",
+			"channel_type": "channel"
+		}
+	}
+}

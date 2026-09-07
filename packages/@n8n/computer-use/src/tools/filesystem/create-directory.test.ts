@@ -1,20 +1,21 @@
 import * as fs from 'node:fs/promises';
+import type { Mock } from 'vitest';
 
 import { textOf } from '../test-utils';
 import { createDirectoryTool } from './create-directory';
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 const CONTEXT = { dir: '/base' };
 
 function mockMkdir(): void {
-	(fs.mkdir as jest.Mock).mockResolvedValue(undefined);
+	(fs.mkdir as Mock).mockResolvedValue(undefined);
 }
 
 describe('createDirectoryTool', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
-		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+		vi.resetAllMocks();
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
 			if (p === '/base') return await Promise.resolve('/base');
 			throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
 		});
@@ -60,7 +61,7 @@ describe('createDirectoryTool', () => {
 
 		it('is idempotent when the directory already exists', async () => {
 			// fs.mkdir with { recursive: true } resolves without error when the dir already exists
-			(fs.mkdir as jest.Mock).mockResolvedValue(undefined);
+			(fs.mkdir as Mock).mockResolvedValue(undefined);
 
 			const result = await createDirectoryTool.execute({ dirPath: 'existing' }, CONTEXT);
 

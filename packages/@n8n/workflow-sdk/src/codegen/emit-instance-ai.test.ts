@@ -4,6 +4,7 @@ import {
 	buildImports,
 	hoistSharedCredentials,
 	SDK_FUNCTIONS,
+	SDK_IMPORTABLE_FUNCTIONS,
 } from './emit-instance-ai';
 import type { WorkflowJSON } from '../types/base';
 
@@ -236,8 +237,10 @@ describe('emit-instance-ai', () => {
 			'isSwitchNodeType',
 			'isWebhookType',
 			// Codegen + parse round-trip
+			'buildImports',
 			'emitInstanceAi',
 			'generateWorkflowCode',
+			'locateNodeDeclarations',
 			'parseWorkflowCode',
 			'parseWorkflowCodeToBuilder',
 			// Code-step helpers — appear as arguments to `.code()` callbacks, not as
@@ -251,7 +254,14 @@ describe('emit-instance-ai', () => {
 			// Validation
 			'validateNodeConfig',
 			'validateWorkflow',
+			'getSchemaBaseDirs',
 			'setSchemaBaseDirs',
+			'isInformationalIssue',
+			'partitionValidationIssues',
+			'validateWorkflowBuilder',
+			// Code-node source lint — the host re-runs it with the executing runner's
+			// real import policy. Never called from a workflow body.
+			'lintPythonCode',
 			// Pin-data + schema discovery
 			'discoverOutputSchemaForNode',
 			'discoverSchemasForNode',
@@ -259,8 +269,30 @@ describe('emit-instance-ai', () => {
 			'inferSchemasFromRunData',
 			'needsPinData',
 			'normalizePinData',
+			// Mock/pin-data generation building blocks (src/mock-data/) — eval
+			// and simulated-verification tooling, never in workflow bodies
+			'buildAiRootPlaceholder',
+			'buildDateAnchors',
+			'buildFieldViolationRetryMessage',
+			'buildNodeSchemaSection',
+			'buildPinDataUserPrompt',
+			'buildSchemaContexts',
+			'buildSchemaPlaceholderItem',
+			'collectDownstreamConsumers',
+			'collectPinFieldViolations',
+			'describeAiRootShape',
+			'findEnvelopeKey',
+			'findOutputParserTargets',
+			'isAiRootNodeType',
+			'parsePinDataResponse',
+			'repairStructuredOutput',
+			'workflowToMermaid',
 			// Display-options matching
 			'matchesDisplayOptions',
+			// SDK-to-engine adapters for host-side validation and graph helpers
+			'dropInvalidWorkflowJsonGroups',
+			'toEngineConnections',
+			'toGroupValidationNodes',
 			// Plugin registration
 			'registerDefaultPlugins',
 			// Generate-types module (build-time type generation, never appears in workflows)
@@ -324,6 +356,12 @@ describe('emit-instance-ai', () => {
 
 		it('has no stale entries in SDK_FUNCTIONS', () => {
 			const stale = SDK_FUNCTIONS.filter((n) => !sdkFunctionExports.has(n)).sort();
+
+			expect(stale).toEqual([]);
+		});
+
+		it('has no stale entries in SDK_IMPORTABLE_FUNCTIONS', () => {
+			const stale = SDK_IMPORTABLE_FUNCTIONS.filter((n) => !sdkFunctionExports.has(n)).sort();
 
 			expect(stale).toEqual([]);
 		});

@@ -39,7 +39,7 @@ describe('ProjectRepository', () => {
 			// ASSERT
 			//
 			if (!personalProject) {
-				fail('Expected personalProject to be defined.');
+				expect.fail('Expected personalProject to be defined.');
 			}
 			expect(personalProject).toBeDefined();
 			expect(personalProject.id).toBe(ownerPersonalProject.id);
@@ -88,7 +88,7 @@ describe('ProjectRepository', () => {
 			// ASSERT
 			//
 			if (!personalProject) {
-				fail('Expected personalProject to be defined.');
+				expect.fail('Expected personalProject to be defined.');
 			}
 			expect(personalProject).toBeDefined();
 			expect(personalProject.id).toBe(ownerPersonalProject.id);
@@ -332,6 +332,94 @@ describe('ProjectRepository', () => {
 			const firstPersonalIndex = types.indexOf('personal');
 			const lastTeamIndex = types.lastIndexOf('team');
 			expect(lastTeamIndex).toBeLessThan(firstPersonalIndex);
+		});
+	});
+
+	describe('getAccessibleProjectsByExactName', () => {
+		it('returns a team project the user has a relation to, matched case-insensitively', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			const finance = await createTeamProject('Finance', owner);
+			await linkUserToProject(member, finance, 'project:viewer');
+			await createTeamProject('Finance-Old', owner); // accessible to owner only
+
+			const repo = Container.get(ProjectRepository);
+			const matches = await repo.getAccessibleProjectsByExactName(member.id, 'finance');
+
+			expect(matches).toHaveLength(1);
+			expect(matches[0].id).toBe(finance.id);
+		});
+
+		it('returns nothing when the project exists but the user has no relation to it', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			await createTeamProject('Finance', owner);
+
+			const repo = Container.get(ProjectRepository);
+			const matches = await repo.getAccessibleProjectsByExactName(member.id, 'Finance');
+
+			expect(matches).toEqual([]);
+		});
+
+		it('returns the user own personal project when its name matches', async () => {
+			const member = await createMember();
+			const repo = Container.get(ProjectRepository);
+			const personal = await repo.getPersonalProjectForUserOrFail(member.id);
+
+			const matches = await repo.getAccessibleProjectsByExactName(member.id, personal.name);
+
+			expect(matches.some((p) => p.id === personal.id)).toBe(true);
+		});
+
+		it('does not return partial matches', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			const exact = await createTeamProject('Finance', owner);
+			const partial = await createTeamProject('Finance-Old', owner);
+			await linkUserToProject(member, exact, 'project:viewer');
+			await linkUserToProject(member, partial, 'project:viewer');
+
+			const repo = Container.get(ProjectRepository);
+			const matches = await repo.getAccessibleProjectsByExactName(member.id, 'Finance');
+
+			expect(matches).toHaveLength(1);
+			expect(matches[0].id).toBe(exact.id);
+		});
+
+		it('returns multiple projects when several share the same name', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			const a = await createTeamProject('Finance', owner);
+			const b = await createTeamProject('Finance', owner);
+			await linkUserToProject(member, a, 'project:viewer');
+			await linkUserToProject(member, b, 'project:viewer');
+
+			const repo = Container.get(ProjectRepository);
+			const matches = await repo.getAccessibleProjectsByExactName(member.id, 'Finance');
+
+			expect(matches.map((p) => p.id).sort()).toEqual([a.id, b.id].sort());
+		});
+
+		it('narrows by project type when provided', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			const team = await createTeamProject('Finance', owner);
+			await linkUserToProject(member, team, 'project:viewer');
+
+			const repo = Container.get(ProjectRepository);
+			const teamOnly = await repo.getAccessibleProjectsByExactName(member.id, 'Finance', 'team');
+			const personalOnly = await repo.getAccessibleProjectsByExactName(
+				member.id,
+				'Finance',
+				'personal',
+			);
+
+			expect(teamOnly.map((p) => p.id)).toEqual([team.id]);
+			expect(personalOnly).toEqual([]);
 		});
 	});
 

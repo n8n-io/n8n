@@ -232,7 +232,7 @@ export async function execute(
 			mime = this.getNodeParameter(
 				`${parameterKey}.sheetsToFormat`,
 				i,
-				'application/x-vnd.oasis.opendocument.spreadsheet',
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 			) as string;
 		} else {
 			mime = this.getNodeParameter(`${parameterKey}.drawingsToFormat`, i, 'image/jpeg') as string;

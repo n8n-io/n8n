@@ -1,0 +1,131 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { z } from 'zod';
+
+import { startSseServer, type TestServer } from './mcp-server-helpers';
+import { Agent, McpClient, Tool } from '../../index';
+
+describe('McpClient.listTools()', () => {
+	let server: TestServer;
+
+	beforeAll(async () => {
+		server = await startSseServer();
+	});
+
+	afterAll(async () => {
+		await server.close();
+	});
+
+	it('connects and returns tools when server is reachable', async () => {
+		const client = new McpClient([{ name: 'tools', url: server.url }]);
+		const tools = await client.listTools();
+
+		expect(tools.length).toBe(3);
+		expect(tools.map((t) => t.name).sort()).toEqual(['tools_add', 'tools_echo', 'tools_image']);
+
+		await client.close();
+	});
+
+	it('returns cached tools on subsequent calls without reconnecting', async () => {
+		const client = new McpClient([{ name: 'tools', url: server.url }]);
+
+		const first = await client.listTools();
+		const second = await client.listTools();
+
+		expect(first).toBe(second);
+
+		await client.close();
+	});
+
+	it('returns empty array when no servers are configured', async () => {
+		const client = new McpClient([]);
+		const tools = await client.listTools();
+
+		expect(tools).toHaveLength(0);
+	});
+
+	it('skips an unreachable server, records the failure, and keeps the cache', async () => {
+		const client = new McpClient([{ name: 'dead', url: 'http://127.0.0.1:1/sse' }]);
+
+		const tools = await client.listTools();
+		expect(tools).toEqual([]);
+		expect(client.getConnectionFailures().map((f) => f.server)).toEqual(['dead']);
+	});
+
+	it('keeps healthy server tools and records the failing server', async () => {
+		const client = new McpClient([
+			{ name: 'ok', url: server.url },
+			{ name: 'dead', url: 'http://127.0.0.1:1/sse' },
+		]);
+
+		const tools = await client.listTools();
+		expect(tools.map((t) => t.name).sort()).toEqual(['ok_add', 'ok_echo', 'ok_image']);
+		expect(client.getConnectionFailures().map((f) => f.server)).toEqual(['dead']);
+	});
+});
+
+describe('Agent with MCP boundary errors', () => {
+	it('exposes MCP connection failures without aborting the agent build', async () => {
+		const client = new McpClient([{ name: 'dead', url: 'http://127.0.0.1:1/sse' }]);
+		const agent = new Agent('bad-mcp-agent')
+			.model('anthropic/claude-haiku-4-5')
+			.instructions('test')
+			.mcp(client);
+
+		// `build()` calls `McpClient.listTools()`; invoking it directly populates
+		// the client's recorded failures without kicking off the LLM loop.
+		const tools = await client.listTools();
+		expect(tools).toEqual([]);
+		expect(agent.getMcpConnectionFailures().map((f) => f.server)).toEqual(['dead']);
+
+		await client.close();
+	});
+
+	it('merges externally-reported failures with McpClient-sourced failures in getMcpConnectionFailures()', async () => {
+		const client = new McpClient([{ name: 'dead', url: 'http://127.0.0.1:1/sse' }]);
+		const agent = new Agent('mcp-merge-agent')
+			.model('anthropic/claude-haiku-4-5')
+			.instructions('test')
+			.mcp(client)
+			.mcpConnectionFailures([{ server: 'external_dead', error: 'unreachable' }]);
+
+		await client.listTools();
+
+		const failures = agent.getMcpConnectionFailures();
+		expect(failures.map((f) => f.server)).toEqual(['dead', 'external_dead']);
+		expect(failures.find((f) => f.server === 'external_dead')?.error).toBe('unreachable');
+
+		await client.close();
+	});
+
+	describe('MCP tool name collision detection', () => {
+		let server: TestServer;
+
+		beforeAll(async () => {
+			server = await startSseServer();
+		});
+
+		afterAll(async () => {
+			await server.close();
+		});
+
+		it('throws when a static tool and an MCP tool share the same prefixed name', async () => {
+			const conflicting = new Tool('tools_echo')
+				.description('conflicts with MCP echo')
+				.input(z.object({ message: z.string() }))
+				.handler(async ({ message }) => ({ result: message }));
+
+			const client = new McpClient([{ name: 'tools', url: server.url }]);
+			const agent = new Agent('collision-agent')
+				.model('anthropic/claude-haiku-4-5')
+				.instructions('test')
+				.tool(conflicting)
+				.mcp(client);
+
+			try {
+				await expect(agent.generate('hello')).rejects.toThrow(/collision/i);
+			} finally {
+				await client.close();
+			}
+		});
+	});
+});

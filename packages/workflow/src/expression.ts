@@ -1,19 +1,12 @@
-import { ApplicationError } from '@n8n/errors';
 import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
 import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { UnexpectedError } from './errors';
+import { UnexpectedError, UserError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
-import {
-	DollarSignValidator,
-	PrototypeSanitizer,
-	ThisSanitizer,
-	sanitizer,
-	sanitizerName,
-} from './expression-sandboxing';
+import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
@@ -225,7 +218,7 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 };
 
 export class Expression {
-	private static expressionEngine: 'legacy' | 'vm' = 'legacy';
+	private static expressionEngine: 'legacy' | 'vm' | 'quickjs' = 'legacy';
 
 	private static vmEvaluator?: IExpressionEvaluator;
 
@@ -236,16 +229,20 @@ export class Expression {
 	 * @private
 	 */
 	private static shouldUseVm(): boolean {
-		return this.expressionEngine === 'vm' && !IS_FRONTEND && !!this.vmEvaluator;
+		return (
+			(this.expressionEngine === 'vm' || this.expressionEngine === 'quickjs') &&
+			!IS_FRONTEND &&
+			!!this.vmEvaluator
+		);
 	}
 
 	/**
-	 * Initialize the VM evaluator (if feature flag is enabled).
+	 * Initialize the VM evaluator (no-op when the legacy engine is selected).
 	 * Should be called once during application startup.
 	 * Only available in Node.js environments (not in browser).
 	 */
 	static async initExpressionEngine(options: {
-		engine: 'legacy' | 'vm';
+		engine: 'legacy' | 'vm' | 'quickjs';
 		bridgeTimeout: number;
 		bridgeMemoryLimit: number;
 		poolSize: number;
@@ -253,26 +250,32 @@ export class Expression {
 		observability?: ObservabilityProvider;
 		idleTimeoutMs?: number;
 	}): Promise<void> {
-		if (options.engine !== 'vm' || IS_FRONTEND) return;
+		if ((options.engine !== 'vm' && options.engine !== 'quickjs') || IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
 
 		if (!this.vmEvaluator) {
 			// Dynamic import to avoid loading expression-runtime in browser environments
-			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
-			this.vmEvaluator = new ExpressionEvaluator({
-				createBridge: () =>
-					new IsolatedVmBridge({
-						timeout: options.bridgeTimeout,
-						memoryLimit: options.bridgeMemoryLimit,
-						logger: LoggerProxy,
-					}),
+			const runtime = await import('@n8n/expression-runtime');
+			const createBridge =
+				options.engine === 'quickjs'
+					? () =>
+							new runtime.QuickJsBridge({
+								timeout: options.bridgeTimeout,
+								memoryLimit: options.bridgeMemoryLimit,
+								logger: LoggerProxy,
+							})
+					: () =>
+							new runtime.IsolatedVmBridge({
+								timeout: options.bridgeTimeout,
+								memoryLimit: options.bridgeMemoryLimit,
+								logger: LoggerProxy,
+							});
+			this.vmEvaluator = new runtime.ExpressionEvaluator({
+				createBridge,
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
 				idleTimeoutMs: options.idleTimeoutMs,
-				hooks: {
-					before: [ThisSanitizer],
-					after: [PrototypeSanitizer, DollarSignValidator],
-				},
+				hooks: expressionSandboxHooks,
 				logger: LoggerProxy,
 				observability: options.observability,
 			});
@@ -280,12 +283,29 @@ export class Expression {
 		}
 	}
 
-	async acquireIsolate(): Promise<void> {
-		if (Expression.vmEvaluator) await Expression.vmEvaluator.acquire(this);
+	/** Returns whether an isolate was newly acquired; `false` means this caller already held one and must not release it. */
+	async acquireIsolate(): Promise<boolean> {
+		if (Expression.vmEvaluator) return await Expression.vmEvaluator.acquire(this);
+		return false;
 	}
 
 	async releaseIsolate(): Promise<void> {
 		if (Expression.vmEvaluator) await Expression.vmEvaluator.release(this);
+	}
+
+	async withIsolate<T>(fn: () => Promise<T>): Promise<T> {
+		const acquired = await this.acquireIsolate();
+		try {
+			return await fn();
+		} finally {
+			if (acquired) {
+				try {
+					await this.releaseIsolate();
+				} catch (error) {
+					LoggerProxy.error('Failed to release expression isolate', { error });
+				}
+			}
+		}
 	}
 
 	/**
@@ -303,9 +323,9 @@ export class Expression {
 	 * Get the active expression evaluation implementation.
 	 * Used for testing and verification.
 	 */
-	static getActiveImplementation(): 'legacy' | 'vm' {
-		if (this.shouldUseVm()) return 'vm';
-		return 'legacy';
+	static getActiveImplementation(): 'legacy' | 'vm' | 'quickjs' {
+		if (!this.shouldUseVm()) return 'legacy';
+		return this.expressionEngine === 'quickjs' ? 'quickjs' : 'vm';
 	}
 
 	/**
@@ -313,10 +333,11 @@ export class Expression {
 	 *
 	 * WARNING: This is a global setting — switching engines mid-execution could
 	 * cause a workflow to evaluate some expressions with one engine and some with
-	 * another. Only use this in benchmarks and tests, never in production code.
-	 * In production, set `N8N_EXPRESSION_ENGINE` before process startup instead.
+	 * another. Only call this during process startup (or in benchmarks and tests),
+	 * never mid-execution. In production, set `N8N_EXPRESSION_ENGINE` before
+	 * process startup instead.
 	 */
-	static setExpressionEngine(engine: 'legacy' | 'vm'): void {
+	static setExpressionEngine(engine: 'legacy' | 'vm' | 'quickjs'): void {
 		this.expressionEngine = engine;
 	}
 
@@ -374,10 +395,23 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
-		data.__lookupGetter__ = undefined;
-		data.__lookupSetter__ = undefined;
-		data.__defineGetter__ = undefined;
-		data.__defineSetter__ = undefined;
+		// These four names are inherited from `Object.prototype`. In the secure-mode
+		// task-runner sandbox `Object.prototype` is frozen, so plain assignment walks
+		// the prototype chain to the now read-only inherited property and throws in
+		// strict mode. Define them as own properties to overwrite them safely.
+		for (const key of [
+			'__lookupGetter__',
+			'__lookupSetter__',
+			'__defineGetter__',
+			'__defineSetter__',
+		]) {
+			Object.defineProperty(data, key, {
+				value: undefined,
+				writable: true,
+				enumerable: true,
+				configurable: true,
+			});
+		}
 
 		// Deprecated
 		data.escape = {};
@@ -475,7 +509,7 @@ export class Expression {
 	 */
 	convertObjectValueToString(value: object): string {
 		if (value instanceof DateTime && value.invalidReason !== null) {
-			throw new ApplicationError('invalid DateTime');
+			throw new UserError('invalid DateTime');
 		}
 
 		if (value === null) {
@@ -547,19 +581,32 @@ export class Expression {
 
 		Expression.initializeGlobalContext(data);
 
+		const usingVm = Expression.shouldUseVm();
+
 		// Expression extensions — only attached for the legacy engine.
 		//
-		// In the VM engine, every host function reachable from `data` becomes
-		// a callable target the isolate can reach via `callFunctionAtPath`.
-		// To minimise that attack surface we keep the VM-path data object as
-		// small as possible and let the in-isolate runtime resolve helpers
-		// itself (see packages/@n8n/expression-runtime/src/runtime/context.ts,
-		// where Tournament's polyfill rewrites bare `extend(...)` calls to the
-		// in-isolate copy on `target.extend`). Setting them here in VM mode
-		// would be dead code AND an unnecessary host-callable.
-		if (!Expression.shouldUseVm()) {
+		// In the VM engine, function-typed bindings on `data` are
+		// structurally unreachable: the bridge's `getValueAtPath` returns
+		// `undefined` for any function-typed value, and the in-isolate
+		// runtime resolves helpers itself via Tournament's polyfill
+		// (see packages/@n8n/expression-runtime/src/runtime/context.ts,
+		// where bare `extend(...)` calls bind to the in-isolate copy on
+		// `target.extend`). Setting them on `data` in VM mode would be
+		// dead code.
+		if (!usingVm) {
 			data.extend = extend;
 			data.extendOptional = extendOptional;
+		}
+
+		// In VM mode, strip `$jmesPath` / `$jmespath` from the data proxy.
+		// WorkflowDataProxy adds them, but the in-isolate `target.$jmespath`
+		// shadows them via Tournament's polyfill (see
+		// packages/@n8n/expression-runtime/src/runtime/context.ts). The delete
+		// makes them unreachable via direct path lookup through the bridge
+		// too, so the bridge can never invoke the host-side copies.
+		if (usingVm) {
+			delete data.$jmesPath;
+			delete data.$jmespath;
 		}
 
 		Object.defineProperty(data, sanitizerName, {
@@ -584,9 +631,9 @@ export class Expression {
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === 'DateTime')
-				throw new ApplicationError('this is a DateTime, please access its methods');
+				throw new UserError('this is a DateTime, please access its methods');
 
-			throw new ApplicationError('this is a function, please add ()');
+			throw new UserError('this is a function, please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -599,11 +646,15 @@ export class Expression {
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
-		// Use VM evaluator if engine is set to 'vm' and we're not in the browser
-		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
+		// The VM engines (isolated-vm, quickjs) are Node-only; the browser always
+		// uses the legacy path below.
+		if (
+			(Expression.expressionEngine === 'vm' || Expression.expressionEngine === 'quickjs') &&
+			!IS_FRONTEND
+		) {
 			if (!Expression.vmEvaluator) {
 				throw new UnexpectedError(
-					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initExpressionEngine() during application startup.',
+					`The ${Expression.expressionEngine} expression engine has not been initialized. Call Expression.initExpressionEngine() during application startup.`,
 				);
 			}
 
@@ -623,14 +674,14 @@ export class Expression {
 		} catch (error) {
 			if (isExpressionError(error)) throw error;
 
-			if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
+			if (isSyntaxError(error)) throw new UserError('invalid syntax');
 
 			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
 
 				if (!match?.groups?.msg) return null;
 
-				throw new ApplicationError(match.groups.msg);
+				throw new UserError(match.groups.msg);
 			}
 		}
 

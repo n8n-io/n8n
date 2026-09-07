@@ -2,7 +2,6 @@
 import { useFixedCollectionItemState } from '@/app/composables/useFixedCollectionItemState';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { telemetry } from '@/app/plugins/telemetry';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { IUpdateInformation } from '@/Interface';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
@@ -25,16 +24,15 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
-import { storeToRefs } from 'pinia';
 import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import ParameterInputList from '../ParameterInputList.vue';
 import FixedCollectionItemList from './FixedCollectionItemList.vue';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const locale = useI18n();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
 const nodeHelpers = useNodeHelpers();
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 export type Props = {
 	nodeValues: INodeParameters;
@@ -66,6 +64,8 @@ const emit = defineEmits<{
 	valueChanged: [value: ValueChangedEvent];
 	delete: [];
 }>();
+
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const mutableValues = ref({} as Record<string, INodeParameters[] | INodeParameters>);
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
@@ -137,8 +137,13 @@ const addOptionalFieldButtonText = computed(() => {
 	return locale.nodeText(activeNode.value?.type).addOptionalFieldButtonText(props.parameter);
 });
 
+// Keyed by stable index so revealed fields follow their item when the list is
+// reordered or an earlier item is deleted.
 const getOptionalValuesKey = (propertyName: string, index?: number): string => {
-	return index !== undefined ? `${propertyName}-${index}` : propertyName;
+	if (index !== undefined) {
+		return `${propertyName}-${itemState.getItemStableIndex(propertyName, index)}`;
+	}
+	return propertyName;
 };
 
 const hasNonDefaultValue = (
@@ -414,16 +419,16 @@ const handleDelete = (optionName: string, index?: number) => {
 
 const trackFieldAdded = () => {
 	telemetry.track('User added workflow input field', {
-		workflow_id: workflowsStore.workflowId,
-		node_id: ndvStore.activeNode?.id,
+		workflow_id: workflowDocumentStore.value.workflowId,
+		node_id: ndvStore.value.activeNode?.id,
 	});
 };
 
 const trackFieldTypeChange = (parameterData: IUpdateInformation) => {
 	telemetry.track('User changed workflow input field type', {
 		type: parameterData.value,
-		workflow_id: workflowsStore.workflowId,
-		node_id: ndvStore.activeNode?.id,
+		workflow_id: workflowDocumentStore.value.workflowId,
+		node_id: ndvStore.value.activeNode?.id,
 	});
 };
 

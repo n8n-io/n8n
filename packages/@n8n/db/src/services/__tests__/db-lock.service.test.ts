@@ -1,22 +1,24 @@
 import type { DatabaseConfig } from '@n8n/config';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { OperationalError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { DbLockService } from '../db-lock.service';
+import { TypeOrmTransaction } from '../typeorm-transaction';
 
 describe('DbLockService', () => {
 	const mockTx = mock<EntityManager>();
 	const dataSource = mock<DataSource>();
 	const databaseConfig = mock<DatabaseConfig>();
 
-	const transactionMock = jest.fn<Promise<unknown>, [(tx: EntityManager) => Promise<unknown>]>();
+	const transactionMock =
+		vi.fn<(...args: [(tx: EntityManager) => Promise<unknown>]) => Promise<unknown>>();
 
 	let service: DbLockService;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		transactionMock.mockImplementation(async (fn) => await fn(mockTx));
 		dataSource.manager.transaction = transactionMock as never;
 		mockTx.query.mockResolvedValue([]);
@@ -26,29 +28,33 @@ describe('DbLockService', () => {
 	describe('withLock', () => {
 		it('should acquire advisory lock and execute fn on Postgres', async () => {
 			databaseConfig.type = 'postgresdb';
-			const fn = jest.fn().mockResolvedValue('result');
+			const fn = vi.fn().mockResolvedValue('result');
 
 			const result = await service.withLock(1001, fn);
 
 			expect(result).toBe('result');
 			expect(mockTx.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock($1)', [1001]);
-			expect(fn).toHaveBeenCalledWith(mockTx);
+			expect(fn).toHaveBeenCalledWith(mockTx, {
+				trx: expect.any(TypeOrmTransaction) as TypeOrmTransaction,
+			});
 		});
 
 		it('should skip advisory lock on SQLite and still execute fn', async () => {
 			databaseConfig.type = 'sqlite';
-			const fn = jest.fn().mockResolvedValue('result');
+			const fn = vi.fn().mockResolvedValue('result');
 
 			const result = await service.withLock(1001, fn);
 
 			expect(result).toBe('result');
 			expect(mockTx.query).not.toHaveBeenCalled();
-			expect(fn).toHaveBeenCalledWith(mockTx);
+			expect(fn).toHaveBeenCalledWith(mockTx, {
+				trx: expect.any(TypeOrmTransaction) as TypeOrmTransaction,
+			});
 		});
 
 		it('should set lock_timeout when timeoutMs is provided', async () => {
 			databaseConfig.type = 'postgresdb';
-			const fn = jest.fn().mockResolvedValue('result');
+			const fn = vi.fn().mockResolvedValue('result');
 
 			await service.withLock(1001, fn, { timeoutMs: 5000 });
 
@@ -58,7 +64,7 @@ describe('DbLockService', () => {
 
 		it('should not set lock_timeout when timeoutMs is not provided', async () => {
 			databaseConfig.type = 'postgresdb';
-			const fn = jest.fn().mockResolvedValue('result');
+			const fn = vi.fn().mockResolvedValue('result');
 
 			await service.withLock(1001, fn);
 
@@ -66,9 +72,75 @@ describe('DbLockService', () => {
 			expect(mockTx.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock($1)', [1001]);
 		});
 
+		it('should disable all lock-killing timeouts when waitIndefinitely is set', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn().mockResolvedValue('result');
+
+			await service.withLock(1001, fn, { waitIndefinitely: true });
+
+			expect(mockTx.query).toHaveBeenCalledWith('SET LOCAL statement_timeout = 0');
+			expect(mockTx.query).toHaveBeenCalledWith('SET LOCAL lock_timeout = 0');
+			expect(mockTx.query).toHaveBeenCalledWith(
+				'SET LOCAL idle_in_transaction_session_timeout = 0',
+			);
+		});
+
+		it('should not touch statement timeouts without waitIndefinitely', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn().mockResolvedValue('result');
+
+			await service.withLock(1001, fn);
+			await service.withLock(1001, fn, { timeoutMs: 5000 });
+
+			expect(mockTx.query).not.toHaveBeenCalledWith(expect.stringContaining('statement_timeout'));
+			expect(mockTx.query).not.toHaveBeenCalledWith(
+				expect.stringContaining('idle_in_transaction_session_timeout'),
+			);
+		});
+
+		it('should reject combining timeoutMs and waitIndefinitely at compile time', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn().mockResolvedValue('result');
+
+			// @ts-expect-error timeoutMs and waitIndefinitely are mutually exclusive
+			await service.withLock(1001, fn, { timeoutMs: 5000, waitIndefinitely: true });
+		});
+
+		it('should use the two-key lock form when subKey is provided', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn().mockResolvedValue('result');
+
+			const result = await service.withLock(1005, fn, { subKey: -12345 });
+
+			expect(result).toBe('result');
+			expect(mockTx.query).toHaveBeenCalledWith(
+				'SELECT pg_advisory_xact_lock($1, $2)',
+				[1005, -12345],
+			);
+			expect(fn).toHaveBeenCalledWith(mockTx, {
+				trx: expect.any(TypeOrmTransaction) as TypeOrmTransaction,
+			});
+		});
+
+		it('should include both keys in the timeout error message when subKey is provided', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn();
+			const timeoutError = new QueryFailedError(
+				'SELECT pg_advisory_xact_lock($1, $2)',
+				[1005, -12345],
+				new Error('canceling statement due to lock timeout'),
+			);
+
+			mockTx.query.mockResolvedValueOnce(undefined).mockRejectedValueOnce(timeoutError);
+
+			await expect(service.withLock(1005, fn, { timeoutMs: 5000, subKey: -12345 })).rejects.toThrow(
+				/Timed out waiting for DbLock 1005:-12345 after 5000ms/,
+			);
+		});
+
 		it('should throw OperationalError when lock timeout is exceeded', async () => {
 			databaseConfig.type = 'postgresdb';
-			const fn = jest.fn();
+			const fn = vi.fn();
 			const timeoutError = new QueryFailedError(
 				'SELECT pg_advisory_xact_lock($1)',
 				[1001],
@@ -86,7 +158,7 @@ describe('DbLockService', () => {
 
 		it('should include timeout details in OperationalError message', async () => {
 			databaseConfig.type = 'postgresdb';
-			const fn = jest.fn();
+			const fn = vi.fn();
 			const timeoutError = new QueryFailedError(
 				'SELECT pg_advisory_xact_lock($1)',
 				[1001],
@@ -102,7 +174,7 @@ describe('DbLockService', () => {
 
 		it('should propagate non-timeout errors unchanged', async () => {
 			databaseConfig.type = 'postgresdb';
-			const fn = jest.fn();
+			const fn = vi.fn();
 			const otherError = new Error('connection lost');
 
 			mockTx.query.mockRejectedValueOnce(otherError);
@@ -112,10 +184,22 @@ describe('DbLockService', () => {
 		});
 	});
 
+	describe('withLockContext', () => {
+		it('provides an opaque context for the locked transaction', async () => {
+			databaseConfig.type = 'sqlite';
+			const fn = vi.fn().mockResolvedValue('result');
+
+			await expect(service.withLockContext(1001, fn)).resolves.toBe('result');
+			expect(fn).toHaveBeenCalledWith({
+				trx: expect.any(TypeOrmTransaction) as TypeOrmTransaction,
+			});
+		});
+	});
+
 	describe('tryWithLock', () => {
 		it('should execute fn when lock is acquired', async () => {
 			databaseConfig.type = 'postgresdb';
-			const fn = jest.fn().mockResolvedValue('result');
+			const fn = vi.fn().mockResolvedValue('result');
 			mockTx.query.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: true }]);
 
 			const result = await service.tryWithLock(1001, fn);
@@ -127,7 +211,7 @@ describe('DbLockService', () => {
 
 		it('should throw OperationalError when lock is already held', async () => {
 			databaseConfig.type = 'postgresdb';
-			const fn = jest.fn();
+			const fn = vi.fn();
 			mockTx.query.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: false }]);
 
 			const error = await service.tryWithLock(1001, fn).catch((e: unknown) => e);
@@ -140,13 +224,39 @@ describe('DbLockService', () => {
 
 		it('should skip advisory lock on SQLite and execute fn', async () => {
 			databaseConfig.type = 'sqlite';
-			const fn = jest.fn().mockResolvedValue('result');
+			const fn = vi.fn().mockResolvedValue('result');
 
 			const result = await service.tryWithLock(1001, fn);
 
 			expect(result).toBe('result');
 			expect(mockTx.query).not.toHaveBeenCalled();
 			expect(fn).toHaveBeenCalledWith(mockTx);
+		});
+
+		it('should use the two-key try-lock form when subKey is provided', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn().mockResolvedValue('result');
+			mockTx.query.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: true }]);
+
+			const result = await service.tryWithLock(1006, fn, { subKey: -999 });
+
+			expect(result).toBe('result');
+			expect(mockTx.query).toHaveBeenCalledWith(
+				'SELECT pg_try_advisory_xact_lock($1, $2)',
+				[1006, -999],
+			);
+			expect(fn).toHaveBeenCalledWith(mockTx);
+		});
+
+		it('should include both keys in the already-held error when subKey is provided', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn();
+			mockTx.query.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: false }]);
+
+			await expect(service.tryWithLock(1006, fn, { subKey: -999 })).rejects.toThrow(
+				/DbLock 1006:-999 is already held/,
+			);
+			expect(fn).not.toHaveBeenCalled();
 		});
 	});
 
@@ -156,7 +266,7 @@ describe('DbLockService', () => {
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should serialize concurrent withLock calls for the same lockId', async () => {
@@ -166,13 +276,13 @@ describe('DbLockService', () => {
 				resolveFirst = r;
 			});
 
-			const fn1 = jest.fn(async () => {
+			const fn1 = vi.fn(async () => {
 				executionOrder.push('fn1-start');
 				await firstBlocking;
 				executionOrder.push('fn1-end');
 				return 'first';
 			});
-			const fn2 = jest.fn(async () => {
+			const fn2 = vi.fn(async () => {
 				executionOrder.push('fn2-start');
 				return 'second';
 			});
@@ -193,17 +303,72 @@ describe('DbLockService', () => {
 			expect(executionOrder).toEqual(['fn1-start', 'fn1-end', 'fn2-start']);
 		});
 
+		it('should scope the in-process mutex by subKey', async () => {
+			let resolveFirst!: () => void;
+			const firstBlocking = new Promise<void>((r) => {
+				resolveFirst = r;
+			});
+
+			const fn1 = vi.fn(async () => {
+				await firstBlocking;
+				return 'first';
+			});
+			const fn2 = vi.fn(async () => 'second');
+			const fn3 = vi.fn(async () => 'third');
+
+			const p1 = service.withLock(1001, fn1, { subKey: 1 });
+			// Different subKey — must not block
+			const p2 = service.withLock(1001, fn2, { subKey: 2 });
+			// Same subKey — must block until fn1 releases
+			const p3 = service.withLock(1001, fn3, { subKey: 1 });
+
+			await new Promise((r) => setImmediate(r));
+			expect(fn1).toHaveBeenCalled();
+			expect(fn2).toHaveBeenCalled();
+			expect(fn3).not.toHaveBeenCalled();
+
+			resolveFirst();
+			const results = await Promise.all([p1, p2, p3]);
+			expect(results).toEqual(['first', 'second', 'third']);
+		});
+
+		it('should scope tryWithLock by subKey (fail-fast per sub-scope)', async () => {
+			let resolveHold!: () => void;
+			const holding = new Promise<void>((r) => {
+				resolveHold = r;
+			});
+			const holder = vi.fn(async () => {
+				await holding;
+				return 'held';
+			});
+
+			// Hold subKey 1 via a blocking withLock.
+			const p1 = service.withLock(1006, holder, { subKey: 1 });
+			await new Promise((r) => setImmediate(r));
+			expect(holder).toHaveBeenCalled();
+
+			// Same subKey → tryWithLock can't acquire and fails fast.
+			await expect(service.tryWithLock(1006, vi.fn(), { subKey: 1 })).rejects.toThrow(
+				OperationalError,
+			);
+			// Different subKey → acquires immediately.
+			await expect(service.tryWithLock(1006, async () => 'ok', { subKey: 2 })).resolves.toBe('ok');
+
+			resolveHold();
+			await p1;
+		});
+
 		it('should not block different lockIds', async () => {
 			let resolveFirst!: () => void;
 			const firstBlocking = new Promise<void>((r) => {
 				resolveFirst = r;
 			});
 
-			const fn1 = jest.fn(async () => {
+			const fn1 = vi.fn(async () => {
 				await firstBlocking;
 				return 'first';
 			});
-			const fn2 = jest.fn(async () => 'second');
+			const fn2 = vi.fn(async () => 'second');
 
 			const p1 = service.withLock(1001, fn1);
 			const p2 = service.withLock(9999, fn2);
@@ -220,23 +385,23 @@ describe('DbLockService', () => {
 		});
 
 		it('should reject with OperationalError when withLock timeout expires', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 
 			let resolveFirst!: () => void;
 			const firstBlocking = new Promise<void>((r) => {
 				resolveFirst = r;
 			});
 
-			const fn1 = jest.fn(async () => {
+			const fn1 = vi.fn(async () => {
 				await firstBlocking;
 				return 'first';
 			});
-			const fn2 = jest.fn().mockResolvedValue('second');
+			const fn2 = vi.fn().mockResolvedValue('second');
 
 			const p1 = service.withLock(1001, fn1);
 			const p2 = service.withLock(1001, fn2, { timeoutMs: 100 });
 
-			jest.advanceTimersByTime(100);
+			vi.advanceTimersByTime(100);
 
 			await expect(p2).rejects.toThrow(OperationalError);
 			await expect(p2).rejects.toThrow(/Timed out waiting for DbLock 1001 after 100ms/);
@@ -252,11 +417,11 @@ describe('DbLockService', () => {
 				resolveFirst = r;
 			});
 
-			const fn1 = jest.fn(async () => {
+			const fn1 = vi.fn(async () => {
 				await firstBlocking;
 				return 'first';
 			});
-			const fn2 = jest.fn().mockResolvedValue('second');
+			const fn2 = vi.fn().mockResolvedValue('second');
 
 			const p1 = service.withLock(1001, fn1);
 
@@ -273,8 +438,8 @@ describe('DbLockService', () => {
 		});
 
 		it('should release lock when fn throws in withLock', async () => {
-			const fn1 = jest.fn().mockRejectedValue(new Error('fn1 failed'));
-			const fn2 = jest.fn().mockResolvedValue('second');
+			const fn1 = vi.fn().mockRejectedValue(new Error('fn1 failed'));
+			const fn2 = vi.fn().mockResolvedValue('second');
 
 			await expect(service.withLock(1001, fn1)).rejects.toThrow('fn1 failed');
 
@@ -283,8 +448,8 @@ describe('DbLockService', () => {
 		});
 
 		it('should release lock when fn throws in tryWithLock', async () => {
-			const fn1 = jest.fn().mockRejectedValue(new Error('fn1 failed'));
-			const fn2 = jest.fn().mockResolvedValue('second');
+			const fn1 = vi.fn().mockRejectedValue(new Error('fn1 failed'));
+			const fn2 = vi.fn().mockResolvedValue('second');
 
 			await expect(service.tryWithLock(1001, fn1)).rejects.toThrow('fn1 failed');
 
@@ -298,12 +463,12 @@ describe('DbLockService', () => {
 				resolveFirst = r;
 			});
 
-			const fn1 = jest.fn(async () => {
+			const fn1 = vi.fn(async () => {
 				await firstBlocking;
 				return 'first';
 			});
-			const fn2 = jest.fn().mockResolvedValue('second');
-			const fn3 = jest.fn().mockResolvedValue('third');
+			const fn2 = vi.fn().mockResolvedValue('second');
+			const fn3 = vi.fn().mockResolvedValue('third');
 
 			const p1 = service.withLock(1001, fn1);
 			const p2 = service.withLock(1001, fn2);
@@ -331,17 +496,17 @@ describe('DbLockService', () => {
 				resolve2 = r;
 			});
 
-			const fn1 = jest.fn(async () => {
+			const fn1 = vi.fn(async () => {
 				executionOrder.push('fn1');
 				await blocking1;
 				return 'first';
 			});
-			const fn2 = jest.fn(async () => {
+			const fn2 = vi.fn(async () => {
 				executionOrder.push('fn2');
 				await blocking2;
 				return 'second';
 			});
-			const fn3 = jest.fn(async () => {
+			const fn3 = vi.fn(async () => {
 				executionOrder.push('fn3');
 				return 'third';
 			});

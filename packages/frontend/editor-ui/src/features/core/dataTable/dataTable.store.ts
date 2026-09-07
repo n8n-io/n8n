@@ -33,7 +33,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { reorderItem } from '@/features/core/dataTable/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { BoardAllowedStatus, DataTableKind, DataTableListSortBy } from '@n8n/api-types';
@@ -346,6 +346,16 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return null;
 	};
 
+	// Looks up a data table across every project the user can access, without
+	// mutating the store's list. Used to resolve a link for an id typed by hand.
+	const fetchDataTableById = async (dataTableId: string): Promise<DataTable | null> => {
+		if (!canViewDataTables.value) return null;
+		const response = await fetchDataTablesApi(rootStore.restApiContext, '', undefined, {
+			id: dataTableId,
+		});
+		return response.data[0] ?? null;
+	};
+
 	const fetchOrFindDataTable = async (
 		dataTableId: string,
 		projectId: string,
@@ -455,7 +465,9 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return inserted[0];
 	};
 
-	const insertDataTableRow = async (dataTableId: string, projectId: string, row: DataTableRow) => {
+	// Data-carrying sibling of `insertEmptyRow`, for callers that build the row up
+	// front instead of letting the grid fill in a blank one cell by cell.
+	const insertRow = async (dataTableId: string, projectId: string, row: DataTableRow) => {
 		const inserted = await insertDataTableRowApi(
 			rootStore.restApiContext,
 			dataTableId,
@@ -464,6 +476,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		);
 		return inserted[0];
 	};
+	const insertDataTableRow = insertRow;
 
 	const updateRow = async (
 		dataTableId: string,
@@ -562,6 +575,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		updateBoardStatusColor,
 		deleteBoardStatus,
 		fetchDataTableDetails,
+		fetchDataTableById,
 		fetchOrFindDataTable,
 		addDataTableColumn,
 		deleteDataTableColumn,
@@ -570,6 +584,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		fetchDataTableContent,
 		insertEmptyRow,
 		insertDataTableRow,
+		insertRow,
 		updateRow,
 		deleteRows,
 		downloadDataTableCsv,

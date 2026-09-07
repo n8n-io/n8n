@@ -14,6 +14,10 @@ function isComplex(command: string): boolean {
 	return COMPLEX_TOKENS.some((token) => command.includes(token));
 }
 
+function formatShellResource(commandResource: string, workingDirectory: string): string {
+	return `${workingDirectory}: ${commandResource}`;
+}
+
 /**
  * Build a shell resource identifier for permission checking.
  *
@@ -24,10 +28,12 @@ function isComplex(command: string): boolean {
  * variable-indirect execution, relative paths): return the full command
  * unchanged so the confirmation prompt shows exactly what will run.
  */
-export function buildShellResource(command: string): string {
+export function buildShellResource(command: string, workingDirectory: string): string {
 	const trimmed = command.trim();
 
-	if (isComplex(trimmed)) return trimmed;
+	if (isComplex(trimmed)) {
+		return formatShellResource(trimmed, workingDirectory);
+	}
 
 	const words = trimmed.split(/\s+/);
 	let programIndex = -1;
@@ -41,17 +47,20 @@ export function buildShellResource(command: string): string {
 		break;
 	}
 
-	if (programIndex === -1) return trimmed;
+	if (programIndex === -1) {
+		return formatShellResource(trimmed, workingDirectory);
+	}
 
 	const program = words[programIndex];
 
 	// Variable reference or relative path — context-dependent, return full command
 	if (program.startsWith('$') || program.startsWith('./') || program.startsWith('../')) {
-		return trimmed;
+		return formatShellResource(trimmed, workingDirectory);
 	}
 
 	const basename = path.basename(program);
 	const rest = words.slice(programIndex + 1);
+	const commandResource = rest.length > 0 ? `${basename} ${rest.join(' ')}` : basename;
 
-	return rest.length > 0 ? `${basename} ${rest.join(' ')}` : basename;
+	return formatShellResource(commandResource, workingDirectory);
 }

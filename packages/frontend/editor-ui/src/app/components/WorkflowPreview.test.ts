@@ -396,6 +396,32 @@ describe('WorkflowPreview', () => {
 		});
 	});
 
+	describe('canOpenNDV prop', () => {
+		it('should include canOpenNDV=false in iframe src when canOpenNDV prop is false', () => {
+			const { container } = renderComponent({
+				pinia,
+				props: {
+					canOpenNDV: false,
+				},
+			});
+
+			const iframe = container.querySelector('iframe');
+			expect(iframe?.getAttribute('src')).toContain('canOpenNDV=false');
+		});
+
+		it('should not include canOpenNDV param when canOpenNDV prop is true', () => {
+			const { container } = renderComponent({
+				pinia,
+				props: {
+					canOpenNDV: true,
+				},
+			});
+
+			const iframe = container.querySelector('iframe');
+			expect(iframe?.getAttribute('src')).not.toContain('canOpenNDV');
+		});
+	});
+
 	describe('ready event', () => {
 		it('should emit ready event when iframe sends n8nReady command', async () => {
 			const { emitted } = renderComponent({
@@ -545,6 +571,20 @@ describe('WorkflowPreview', () => {
 			await waitFor(() => {
 				expect(countCommand('openExecution')).toBe(1);
 			});
+		});
+
+		it('requestFitView posts a fitView command to the iframe', async () => {
+			const wrapper = mount(WorkflowPreview, {
+				global: { plugins: [pinia] },
+				props: {},
+			});
+
+			sendPostMessageCommand('n8nReady');
+			postMessageSpy.mockClear();
+
+			(wrapper.vm as unknown as { requestFitView: () => void }).requestFitView();
+
+			expectIframePostMessage({ command: 'fitView' });
 		});
 
 		it('reloadExecution bypasses the executionId dedup so the same id is re-sent', async () => {

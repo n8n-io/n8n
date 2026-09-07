@@ -74,7 +74,7 @@ export class RoleResolverService {
 	): ResolvedInstanceRole {
 		for (const rule of rules) {
 			if (!rule.enabled) continue;
-			if (this.evaluateExpression(rule.expression, context)) {
+			if (this.evaluateExpression(rule.expression, context, rule.id)) {
 				return {
 					role: rule.role,
 					matchedRuleId: rule.id,
@@ -107,7 +107,7 @@ export class RoleResolverService {
 			}
 
 			const enrichedContext = withProjectContext(context, project);
-			if (this.evaluateExpression(rule.expression, enrichedContext)) {
+			if (this.evaluateExpression(rule.expression, enrichedContext, rule.id)) {
 				matched.set(rule.projectId, {
 					projectId: rule.projectId,
 					role: rule.role,
@@ -120,15 +120,26 @@ export class RoleResolverService {
 		return matched;
 	}
 
-	private evaluateExpression(expression: string, context: RoleResolverContext): boolean {
+	private evaluateExpression(
+		expression: string,
+		context: RoleResolverContext,
+		ruleId: string,
+	): boolean {
 		try {
 			const result = Expression.resolveWithoutWorkflow(
 				expression,
 				context as unknown as IDataObject,
 			);
-			return String(result) === 'true';
+			const matched = String(result) === 'true';
+			this.logger.debug('Role mapping rule evaluated', {
+				ruleId,
+				matched,
+				resultType: typeof result,
+			});
+			return matched;
 		} catch (error) {
 			this.logger.warn('Role resolver expression evaluation failed, treating as false', {
+				ruleId,
 				expression,
 				error: error instanceof Error ? error.message : String(error),
 			});

@@ -6,7 +6,7 @@ import type { Project } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
 import type { CredentialsResource, FolderResource, WorkflowResource } from '@/Interface';
 import { VIEWS } from '@/app/constants';
-import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import ProjectIcon from './ProjectIcon.vue';
 import { N8nBadge, N8nTooltip } from '@n8n/design-system';
 import type { DataTableResource } from '@/features/core/dataTable/types';
@@ -168,7 +168,7 @@ const projectLocation = computed(() => {
 			placement="top"
 		>
 			<N8nBadge
-				:class="[$style.badge, $style.projectBadge]"
+				:class="[$style.badge, $style.projectBadge, projectLocation && $style.link]"
 				theme="tertiary"
 				data-test-id="card-badge"
 				:show-border="showBadgeBorder"
@@ -251,6 +251,10 @@ const projectLocation = computed(() => {
 		display: flex;
 		gap: var(--spacing--3xs);
 	}
+}
+
+.link:hover {
+	background-color: var(--background--hover);
 }
 
 .count-badge {

@@ -22,8 +22,11 @@ export function createMoveFileTool(filesystem: WorkspaceFilesystem): BuiltTool {
 				success: z.boolean().describe('Whether the move was successful'),
 			}),
 		)
-		.handler(async (input) => {
-			await filesystem.moveFile(input.src, input.dest, { overwrite: input.overwrite });
+		.handler(async (input, ctx) => {
+			await filesystem.moveFile(input.src, input.dest, {
+				overwrite: input.overwrite,
+				abortSignal: ctx.abortSignal,
+			});
 			return { success: true };
 		})
 		.build();

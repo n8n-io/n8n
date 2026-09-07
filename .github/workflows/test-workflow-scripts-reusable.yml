@@ -12,7 +12,7 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 24.14.1
+        default: 26.5.1
 
 env:
   NODE_OPTIONS: --max-old-space-size=7168
@@ -22,7 +22,7 @@ jobs:
     name: Run tests for workflow scripts
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-slim' || 'blacksmith-4vcpu-ubuntu-2204' }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ inputs.ref }}
 
@@ -31,7 +31,12 @@ jobs:
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Run tests
         id: run-tests
         run: npm test --prefix=.github/scripts
+
+      - name: Check cubic.yaml
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/quality/check-cubic-config.mjs

@@ -1,5 +1,6 @@
 import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import * as helpers from '@utils/helpers';
@@ -14,14 +15,19 @@ import * as transport from './transport';
 
 describe('GoogleGemini Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
-	const getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
-	const downloadFileMock = vi.spyOn(utils, 'downloadFile');
-	const uploadFileMock = vi.spyOn(utils, 'uploadFile');
-	const transferFileMock = vi.spyOn(utils, 'transferFile');
+	let apiRequestMock: MockInstance;
+	let getConnectedToolsMock: MockInstance;
+	let downloadFileMock: MockInstance;
+	let uploadFileMock: MockInstance;
+	let transferFileMock: MockInstance;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		apiRequestMock = vi.spyOn(transport, 'apiRequest');
+		getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
+		downloadFileMock = vi.spyOn(utils, 'downloadFile');
+		uploadFileMock = vi.spyOn(utils, 'uploadFile');
+		transferFileMock = vi.spyOn(utils, 'transferFile');
 		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 1 } as INode);
 	});
 
@@ -1047,6 +1053,115 @@ describe('GoogleGemini Node', () => {
 		});
 	});
 
+	describe('Empty Prompt Validation', () => {
+		it('should throw error when text messages are all empty', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-2.5-flash';
+					case 'messages.values':
+						return [{ role: 'user', content: '' }];
+					case 'simplify':
+						return true;
+					case 'jsonOutput':
+						return false;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when text messages are whitespace-only', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-2.5-flash';
+					case 'messages.values':
+						return [{ role: 'user', content: '   \t\n  ' }];
+					case 'simplify':
+						return true;
+					case 'jsonOutput':
+						return false;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when image generate prompt is empty', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-2.0-flash-preview-image-generation';
+					case 'prompt':
+						return '';
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(image.generate.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when video generate prompt is empty', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/veo-3.0-generate-002';
+					case 'prompt':
+						return '   ';
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(video.generate.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when audio analyze text is empty', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-2.5-flash';
+					case 'inputType':
+						return 'url';
+					case 'audioUrls':
+						return 'https://example.com/audio.mp3';
+					case 'text':
+						return '';
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(audio.analyze.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+	});
+
 	describe('Audio -> Analyze', () => {
 		it('should analyze audio from URL', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
@@ -1883,7 +1998,10 @@ describe('GoogleGemini Node', () => {
 						return undefined;
 				}
 			});
-			executeFunctionsMock.getCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				host: 'https://generativelanguage.googleapis.com',
+			});
 			let pollCount = 0;
 			apiRequestMock.mockImplementation(async (_method: string, path: string) => {
 				if (path.includes(':predictLongRunning')) {
@@ -1903,7 +2021,7 @@ describe('GoogleGemini Node', () => {
 										generatedSamples: [
 											{
 												video: {
-													uri: 'https://example.com/video.mp4',
+													uri: 'https://generativelanguage.googleapis.com/v1beta/files/video:download',
 												},
 											},
 										],
@@ -1967,9 +2085,12 @@ describe('GoogleGemini Node', () => {
 			);
 			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/operations/123');
 			expect(pollCount).toBe(2);
-			expect(downloadFileMock).toHaveBeenCalledWith('https://example.com/video.mp4', 'video/mp4', {
-				key: 'test-api-key',
-			});
+			expect(downloadFileMock).toHaveBeenCalledWith(
+				'https://generativelanguage.googleapis.com/v1beta/files/video:download',
+				'video/mp4',
+				{ key: 'test-api-key' },
+				'generativelanguage.googleapis.com',
+			);
 		});
 
 		it('should derive video filename from MIME type', async () => {
@@ -1993,7 +2114,10 @@ describe('GoogleGemini Node', () => {
 						return undefined;
 				}
 			});
-			executeFunctionsMock.getCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				host: 'https://generativelanguage.googleapis.com',
+			});
 			apiRequestMock
 				.mockResolvedValueOnce({
 					name: 'operations/123',
@@ -2007,7 +2131,7 @@ describe('GoogleGemini Node', () => {
 							generatedSamples: [
 								{
 									video: {
-										uri: 'https://example.com/video.mp4',
+										uri: 'https://generativelanguage.googleapis.com/v1beta/files/video:download',
 									},
 								},
 							],
@@ -2153,64 +2277,98 @@ describe('GoogleGemini Node', () => {
 				'Model models/gemini-2.0-flash is not supported for video generation. Please use a Veo model',
 			);
 		});
+	});
 
-		describe('Video -> Download', () => {
-			it('should derive download filename from MIME type', async () => {
-				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
-					switch (parameter) {
-						case 'url':
-							return 'https://example.com/video.mp4';
-						case 'options.binaryPropertyOutput':
-							return 'data';
-						default:
-							return undefined;
-					}
-				});
-				executeFunctionsMock.getCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
-				downloadFileMock.mockResolvedValue({
-					fileContent: Buffer.from('abcdefgh'),
-					mimeType: 'video/webm',
-				});
-				executeFunctionsMock.helpers.prepareBinaryData.mockResolvedValue({
-					mimeType: 'video/webm',
-					fileName: 'video.webm',
-					fileSize: '1000',
-					data: 'abcdefgh',
-				});
+	describe('Video -> Download', () => {
+		it('should derive download filename from MIME type', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'url':
+						return 'https://generativelanguage.googleapis.com/v1beta/files/video:download';
+					case 'options.binaryPropertyOutput':
+						return 'data';
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				host: 'https://generativelanguage.googleapis.com',
+			});
+			downloadFileMock.mockResolvedValue({
+				fileContent: Buffer.from('abcdefgh'),
+				mimeType: 'video/webm',
+			});
+			executeFunctionsMock.helpers.prepareBinaryData.mockResolvedValue({
+				mimeType: 'video/webm',
+				fileName: 'video.webm',
+				fileSize: '1000',
+				data: 'abcdefgh',
+			});
 
-				const result = await video.download.execute.call(executeFunctionsMock, 0);
+			const result = await video.download.execute.call(executeFunctionsMock, 0);
 
-				expect(result).toEqual([
-					{
-						binary: {
-							data: {
-								mimeType: 'video/webm',
-								fileName: 'video.webm',
-								fileSize: '1000',
-								data: 'abcdefgh',
-							},
-						},
-						json: {
+			expect(result).toEqual([
+				{
+					binary: {
+						data: {
 							mimeType: 'video/webm',
 							fileName: 'video.webm',
 							fileSize: '1000',
+							data: 'abcdefgh',
 						},
-						pairedItem: { item: 0 },
 					},
-				]);
-				expect(downloadFileMock).toHaveBeenCalledWith(
-					'https://example.com/video.mp4',
-					'video/mp4',
-					{
-						key: 'test-api-key',
+					json: {
+						mimeType: 'video/webm',
+						fileName: 'video.webm',
+						fileSize: '1000',
 					},
-				);
-				expect(executeFunctionsMock.helpers.prepareBinaryData).toHaveBeenCalledWith(
-					Buffer.from('abcdefgh'),
-					'video.webm',
-					'video/webm',
-				);
+					pairedItem: { item: 0 },
+				},
+			]);
+			expect(downloadFileMock).toHaveBeenCalledWith(
+				'https://generativelanguage.googleapis.com/v1beta/files/video:download',
+				'video/mp4',
+				{
+					key: 'test-api-key',
+				},
+				'generativelanguage.googleapis.com',
+			);
+			expect(executeFunctionsMock.helpers.prepareBinaryData).toHaveBeenCalledWith(
+				Buffer.from('abcdefgh'),
+				'video.webm',
+				'video/webm',
+			);
+		});
+
+		it('should propagate download domain policy errors', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'url':
+						return 'https://example.com/video.mp4';
+					case 'options.binaryPropertyOutput':
+						return 'data';
+					default:
+						return undefined;
+				}
 			});
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				host: 'https://generativelanguage.googleapis.com',
+			});
+			downloadFileMock.mockRejectedValue(new Error('Domain not allowed'));
+
+			await expect(video.download.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'Domain not allowed',
+			);
+
+			expect(downloadFileMock).toHaveBeenCalledWith(
+				'https://example.com/video.mp4',
+				'video/mp4',
+				{ key: 'test-api-key' },
+				'generativelanguage.googleapis.com',
+			);
+			expect(executeFunctionsMock.helpers.prepareBinaryData).not.toHaveBeenCalled();
 		});
 	});
 });

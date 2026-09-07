@@ -184,25 +184,20 @@ describe('Gemini Node image edit', () => {
 		);
 	});
 
-	it('should handle empty prompt', async () => {
+	it('should throw error for empty prompt', async () => {
 		const executeFunctions = getMockedExecuteFunctions({ prompt: '' });
 
-		const result = await execute.call(executeFunctions, 0);
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'A non-empty prompt is required.',
+		);
+	});
 
-		expect(result).toEqual([
-			{
-				binary: {
-					edited: {
-						data: 'ZWRpdGVkIGltYWdl',
-						fileName: 'image.png',
-						fileSize: '12',
-						mimeType: 'image/png',
-					},
-				},
-				json: { fileName: 'image.png', fileSize: '12', mimeType: 'image/png', data: undefined },
-				pairedItem: { item: 0 },
-			},
-		]);
+	it('should throw error for whitespace-only prompt', async () => {
+		const executeFunctions = getMockedExecuteFunctions({ prompt: '   ' });
+
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'A non-empty prompt is required.',
+		);
 	});
 
 	it('should handle different MIME types', async () => {

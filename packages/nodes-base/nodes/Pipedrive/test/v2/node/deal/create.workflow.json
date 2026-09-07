@@ -21,7 +21,8 @@
 					"person_id": 10,
 					"value": 5000,
 					"currency": "USD",
-					"status": "open"
+					"status": "open",
+					"user_id": 25455458
 				}
 			},
 			"id": "bb222222-cc33-dd44-ee55-ff6666666666",

@@ -5,6 +5,7 @@ export const hasTrigger: BinaryCheck = {
 	name: 'has_trigger',
 	description: 'Workflow contains a trigger or start node',
 	kind: 'deterministic',
+	dimension: 'structure',
 	run(workflow) {
 		const nodes = workflow.nodes ?? [];
 		const triggers = nodes.filter((n) => isTriggerNode(n.type));

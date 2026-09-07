@@ -1,19 +1,20 @@
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
-import axios from 'axios';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError } from '../identifier-interface';
 import { OAuth2TokenIntrospectionIdentifier } from '../oauth2-introspection-identifier';
-
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client';
 
 describe('OAuth2TokenIntrospectionIdentifier', () => {
 	const logger = mockLogger();
 	const cache = mock<CacheService>();
+	const request = vi.fn();
+	const outboundHttp = mock<OutboundHttp>();
 	let identifier: OAuth2TokenIntrospectionIdentifier;
 
 	const validOptions = {
@@ -43,26 +44,32 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		version: 1 as const,
 	};
 
+	/**
+	 * Branch the single `request` mock on HTTP method so tests can invoke
+	 * `resolve` more than once without exhausting a `mockResolvedValueOnce` chain.
+	 */
+	const stubFlow = (metadata: unknown, introspection: unknown) => {
+		request.mockImplementation(async (options: IHttpRequestOptions) =>
+			options.method === 'POST'
+				? { statusCode: 200, body: introspection }
+				: { statusCode: 200, body: metadata },
+		);
+	};
+
 	beforeEach(() => {
-		jest.clearAllMocks();
-		identifier = new OAuth2TokenIntrospectionIdentifier(logger, cache);
+		vi.clearAllMocks();
+		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request }));
+		const httpClient = new OAuth2MetadataHttpClient(logger, cache, outboundHttp);
+		identifier = new OAuth2TokenIntrospectionIdentifier(logger, cache, httpClient);
 		cache.get.mockResolvedValue(undefined);
 		cache.set.mockResolvedValue();
 	});
 
 	describe('Happy Path', () => {
 		test('should resolve subject successfully with client_secret_basic', async () => {
-			// Mock metadata endpoint
-			mockedAxios.get.mockResolvedValueOnce({
-				status: 200,
-				data: validMetadata,
-			});
-
-			// Mock introspection endpoint
-			mockedAxios.post.mockResolvedValueOnce({
-				status: 200,
-				data: validIntrospectionResponse,
-			});
+			request
+				.mockResolvedValueOnce({ statusCode: 200, body: validMetadata })
+				.mockResolvedValueOnce({ statusCode: 200, body: validIntrospectionResponse });
 
 			const result = await identifier.resolve(mockContext, validOptions);
 
@@ -72,15 +79,41 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 				'user-123',
 				expect.any(Number),
 			);
-			expect(mockedAxios.post).toHaveBeenCalledWith(
-				'https://auth.example.com/oauth/introspect',
-				expect.any(URLSearchParams),
+			// Introspection POST: form-urlencoded body, JSON response, Basic auth header.
+			expect(request).toHaveBeenNthCalledWith(
+				2,
 				expect.objectContaining({
+					url: 'https://auth.example.com/oauth/introspect',
+					method: 'POST',
+					body: expect.any(URLSearchParams),
+					json: true,
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: true,
 					headers: expect.objectContaining({
+						'Content-Type': 'application/x-www-form-urlencoded',
 						Authorization: expect.stringMatching(/^Basic /),
 					}),
 				}),
 			);
+		});
+
+		test('should use client_secret_post auth params in the body', async () => {
+			const metadataPostOnly = {
+				...validMetadata,
+				introspection_endpoint_auth_methods_supported: ['client_secret_post'],
+			};
+			request
+				.mockResolvedValueOnce({ statusCode: 200, body: metadataPostOnly })
+				.mockResolvedValueOnce({ statusCode: 200, body: validIntrospectionResponse });
+
+			await identifier.resolve(mockContext, validOptions);
+
+			const postCall = request.mock.calls[1][0] as IHttpRequestOptions;
+			expect(postCall.headers).not.toHaveProperty('Authorization');
+			const body = postCall.body as URLSearchParams;
+			expect(body.get('client_id')).toBe('test-client');
+			expect(body.get('client_secret')).toBe('test-secret');
+			expect(body.get('token')).toBe('mock-access-token');
 		});
 
 		test('should return cached result on subsequent calls', async () => {
@@ -88,30 +121,23 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			// Second cache.get call is for subject (returns cached value)
 			cache.get.mockResolvedValueOnce(undefined).mockResolvedValueOnce('cached-user-123');
 
-			mockedAxios.get.mockResolvedValueOnce({
-				status: 200,
-				data: validMetadata,
-			});
+			request.mockResolvedValueOnce({ statusCode: 200, body: validMetadata });
 
 			const result = await identifier.resolve(mockContext, validOptions);
 
 			expect(result).toBe('cached-user-123');
-			expect(mockedAxios.post).not.toHaveBeenCalled(); // Should not call introspection
+			// Only the metadata GET — never the introspection POST.
+			expect(request).toHaveBeenCalledTimes(1);
+			expect(request.mock.calls.every((call) => call[0].method === 'GET')).toBe(true);
 		});
 
 		test('should extract subject from custom claim', async () => {
 			const customOptions = { ...validOptions, subjectClaim: 'username' };
 			const customResponse = { ...validIntrospectionResponse, username: 'john.doe' };
 
-			mockedAxios.get.mockResolvedValueOnce({
-				status: 200,
-				data: validMetadata,
-			});
-
-			mockedAxios.post.mockResolvedValueOnce({
-				status: 200,
-				data: customResponse,
-			});
+			request
+				.mockResolvedValueOnce({ statusCode: 200, body: validMetadata })
+				.mockResolvedValueOnce({ statusCode: 200, body: customResponse });
 
 			const result = await identifier.resolve(mockContext, customOptions);
 
@@ -129,15 +155,7 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		});
 
 		test('should throw IdentifierValidationError when token is not active', async () => {
-			mockedAxios.get.mockResolvedValue({
-				status: 200,
-				data: validMetadata,
-			});
-
-			mockedAxios.post.mockResolvedValue({
-				status: 200,
-				data: { ...validIntrospectionResponse, active: false },
-			});
+			stubFlow(validMetadata, { ...validIntrospectionResponse, active: false });
 
 			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				IdentifierValidationError,
@@ -148,30 +166,23 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		});
 
 		test('should throw IdentifierValidationError when metadata fetch fails', async () => {
-			mockedAxios.get.mockResolvedValue({
-				status: 404,
-				data: {},
-			});
+			request.mockResolvedValue({ statusCode: 404, body: {} });
 
 			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				IdentifierValidationError,
 			);
 			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
-				'Failed to fetch OAuth2 metadata',
+				'Failed to fetch OAuth2 metadata, status code: 404',
 			);
 		});
 
 		test('should throw IdentifierValidationError when subject claim is missing', async () => {
-			mockedAxios.get.mockResolvedValue({
-				status: 200,
-				data: validMetadata,
-			});
-
-			const responseWithoutSub = { active: true, exp: validIntrospectionResponse.exp };
-			mockedAxios.post.mockResolvedValue({
-				status: 200,
-				data: responseWithoutSub,
-			});
+			const responseWithoutSub = {
+				active: true,
+				exp: validIntrospectionResponse.exp,
+				client_id: 'test-client',
+			};
+			stubFlow(validMetadata, responseWithoutSub);
 
 			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				IdentifierValidationError,
@@ -179,6 +190,106 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				'missing subject claim',
 			);
+		});
+	});
+
+	describe('Audience', () => {
+		test('should not check the audience when none is configured', async () => {
+			// Opt-in: the client id is not an audience, so there is nothing to compare to.
+			const response = { active: true, sub: 'user-123', aud: 'someone-else' };
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('no expected audience configured'),
+				expect.any(Object),
+			);
+		});
+
+		test('should treat a blank expectedAudience as not configured', async () => {
+			// The form sends every rendered property, so an untouched field arrives as ''.
+			const options = { ...validOptions, expectedAudience: '   ' };
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'someone-else' });
+
+			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
+		});
+
+		test('should accept a token whose aud matches the expected audience', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'https://api.example.com' });
+
+			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
+		});
+
+		test('should accept a token whose aud array contains the expected audience', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			const response = {
+				active: true,
+				sub: 'user-123',
+				aud: ['other-app', 'https://api.example.com'],
+			};
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
+		});
+
+		test('should reject a token addressed to a different party', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'other-app' });
+
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
+				IdentifierValidationError,
+			);
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
+				'Token was not issued for the expected audience',
+			);
+		});
+
+		test('should reject a token that declares no audience', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			stubFlow(validMetadata, { active: true, sub: 'user-123' });
+
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
+				'Token declares no audience',
+			);
+		});
+
+		test('should not accept azp or client_id in place of an audience', async () => {
+			// They name the client that requested the token, not who it is for. Honouring
+			// them would admit a token minted for another application of the same client.
+			const options = { ...validOptions, expectedAudience: 'test-client' };
+			const response = {
+				active: true,
+				sub: 'user-123',
+				aud: 'https://other-service.example.com',
+				azp: 'test-client',
+				client_id: 'test-client',
+			};
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
+				'Token was not issued for the expected audience',
+			);
+		});
+
+		test('should not reuse a cached subject after expectedAudience changes', async () => {
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'https://api.example.com' });
+			await identifier.resolve(mockContext, {
+				...validOptions,
+				expectedAudience: 'https://api.example.com',
+			});
+
+			const firstKey = cache.set.mock.calls.find((call) => call[0].includes(':subject:'))![0];
+			cache.set.mockClear();
+
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'https://other.example.com' });
+			await identifier.resolve(mockContext, {
+				...validOptions,
+				expectedAudience: 'https://other.example.com',
+			});
+
+			const secondKey = cache.set.mock.calls.find((call) => call[0].includes(':subject:'))![0];
+			expect(secondKey).not.toBe(firstKey);
 		});
 	});
 
@@ -216,7 +327,7 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		});
 
 		test('should throw IdentifierValidationError when metadata URL is unreachable', async () => {
-			mockedAxios.get.mockRejectedValue(new Error('connect ECONNREFUSED 127.0.0.1:443'));
+			request.mockRejectedValue(new Error('connect ECONNREFUSED 127.0.0.1:443'));
 
 			const error = await identifier.validateOptions(validOptions).catch((e) => e);
 			expect(error).toBeInstanceOf(IdentifierValidationError);
@@ -224,7 +335,7 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		});
 
 		test('should throw IdentifierValidationError on DNS resolution failure', async () => {
-			mockedAxios.get.mockRejectedValue(new Error('getaddrinfo ENOTFOUND auth.example.com'));
+			request.mockRejectedValue(new Error('getaddrinfo ENOTFOUND auth.example.com'));
 
 			const error = await identifier.validateOptions(validOptions).catch((e) => e);
 			expect(error).toBeInstanceOf(IdentifierValidationError);
@@ -232,7 +343,7 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		});
 
 		test('should throw IdentifierValidationError on request timeout', async () => {
-			mockedAxios.get.mockRejectedValue(new Error('timeout of 10000ms exceeded'));
+			request.mockRejectedValue(new Error('timeout of 10000ms exceeded'));
 
 			const error = await identifier.validateOptions(validOptions).catch((e) => e);
 			expect(error).toBeInstanceOf(IdentifierValidationError);
@@ -247,23 +358,18 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 				introspection_endpoint: 'https://auth.example.com/oauth/introspect',
 			};
 
-			mockedAxios.get.mockResolvedValueOnce({
-				status: 200,
-				data: metadataWithoutAuthMethods,
-			});
-
-			mockedAxios.post.mockResolvedValueOnce({
-				status: 200,
-				data: validIntrospectionResponse,
-			});
+			request
+				.mockResolvedValueOnce({ statusCode: 200, body: metadataWithoutAuthMethods })
+				.mockResolvedValueOnce({ statusCode: 200, body: validIntrospectionResponse });
 
 			const result = await identifier.resolve(mockContext, validOptions);
 
 			expect(result).toBe('user-123');
-			expect(mockedAxios.post).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.any(URLSearchParams),
+			expect(request).toHaveBeenNthCalledWith(
+				2,
 				expect.objectContaining({
+					method: 'POST',
+					body: expect.any(URLSearchParams),
 					headers: expect.objectContaining({
 						Authorization: expect.stringMatching(/^Basic /),
 					}),
@@ -277,15 +383,7 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 				exp: Math.floor(Date.now() / 1000) + 7200, // 2 hours from now
 			};
 
-			mockedAxios.get.mockResolvedValue({
-				status: 200,
-				data: validMetadata,
-			});
-
-			mockedAxios.post.mockResolvedValue({
-				status: 200,
-				data: longLivedResponse,
-			});
+			stubFlow(validMetadata, longLivedResponse);
 
 			await identifier.resolve(mockContext, validOptions);
 
@@ -297,30 +395,37 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			expect(subjectCacheCall![2]).toBe(5 * Time.minutes.toMilliseconds);
 		});
 
-		test('should use MIN_TOKEN_CACHE_TIMEOUT for expired but active token', async () => {
+		test('should not cache the subject of an expired but active token', async () => {
+			// `resolve` serves a cached subject without re-introspecting, so caching a
+			// spent token would keep resolving it past its expiry.
 			const expiredButActiveResponse = {
 				...validIntrospectionResponse,
 				exp: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
 			};
 
-			mockedAxios.get.mockResolvedValue({
-				status: 200,
-				data: validMetadata,
-			});
-
-			mockedAxios.post.mockResolvedValue({
-				status: 200,
-				data: expiredButActiveResponse,
-			});
+			stubFlow(validMetadata, expiredButActiveResponse);
 
 			await identifier.resolve(mockContext, validOptions);
 
-			// Check that the subject cache was set with the min TTL
-			// Find the call that sets the subject (not metadata)
+			const subjectCacheCall = cache.set.mock.calls.find((call) => call[0].includes(':subject:'));
+
+			expect(subjectCacheCall).toBeUndefined();
+		});
+
+		test('should not cache a subject for longer than the token has left', async () => {
+			const soonToExpire = {
+				...validIntrospectionResponse,
+				exp: Math.floor(Date.now() / 1000) + 5, // shorter than the old 30s floor
+			};
+
+			stubFlow(validMetadata, soonToExpire);
+
+			await identifier.resolve(mockContext, validOptions);
+
 			const subjectCacheCall = cache.set.mock.calls.find((call) => call[0].includes(':subject:'));
 
 			expect(subjectCacheCall).toBeDefined();
-			expect(subjectCacheCall![2]).toBe(30 * Time.seconds.toMilliseconds);
+			expect(subjectCacheCall![2]).toBeLessThanOrEqual(5 * Time.seconds.toMilliseconds);
 		});
 	});
 });

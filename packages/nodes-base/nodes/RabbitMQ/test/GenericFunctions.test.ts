@@ -1,5 +1,5 @@
 import type { Channel, Connection, ConsumeMessage, Message } from 'amqplib';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteResponsePromiseData,
 	INode,
@@ -8,11 +8,13 @@ import type {
 	IWorkflowMetadata,
 } from 'n8n-workflow';
 
+const { connect } = vi.hoisted(() => ({ connect: vi.fn() }));
+vi.mock('amqplib', () => ({ connect }));
+
 const mockChannel = mock<Channel>();
 const mockConnection = mock<Connection>({ createChannel: async () => mockChannel });
 mockChannel.connection = mockConnection;
-const connect = jest.fn().mockReturnValue(mockConnection);
-jest.mock('amqplib', () => ({ connect }));
+connect.mockReturnValue(mockConnection);
 
 import {
 	parseMessage,
@@ -35,7 +37,10 @@ describe('RabbitMQ GenericFunctions', () => {
 	};
 	const context = mockDeep<ITriggerFunctions>();
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => {
+		vi.clearAllMocks();
+		connect.mockReturnValue(mockConnection);
+	});
 
 	describe('parseMessage', () => {
 		const helpers = mock<ITriggerFunctions['helpers']>();
@@ -228,8 +233,8 @@ describe('RabbitMQ GenericFunctions', () => {
 				promise: new Promise<IRun>((resolve) => {
 					resolvePromise = resolve;
 				}),
-				resolve: jest.fn(),
-				reject: jest.fn(),
+				resolve: vi.fn(),
+				reject: vi.fn(),
 			};
 			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
 
@@ -268,8 +273,8 @@ describe('RabbitMQ GenericFunctions', () => {
 				promise: new Promise<IRun>((resolve) => {
 					resolvePromise = resolve;
 				}),
-				resolve: jest.fn(),
-				reject: jest.fn(),
+				resolve: vi.fn(),
+				reject: vi.fn(),
 			};
 			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
 
@@ -308,8 +313,8 @@ describe('RabbitMQ GenericFunctions', () => {
 				promise: new Promise<IRun>((resolve) => {
 					resolvePromise = resolve;
 				}),
-				resolve: jest.fn(),
-				reject: jest.fn(),
+				resolve: vi.fn(),
+				reject: vi.fn(),
 			};
 			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
 
@@ -349,8 +354,8 @@ describe('RabbitMQ GenericFunctions', () => {
 					promise: new Promise<IRun>((resolve) => {
 						resolvePromise = resolve;
 					}),
-					resolve: jest.fn(),
-					reject: jest.fn(),
+					resolve: vi.fn(),
+					reject: vi.fn(),
 				};
 				return { deferred, resolve: (data: IRun) => resolvePromise(data) };
 			};
@@ -361,8 +366,8 @@ describe('RabbitMQ GenericFunctions', () => {
 					promise: new Promise<IExecuteResponsePromiseData>((resolve) => {
 						resolvePromise = resolve;
 					}),
-					resolve: jest.fn(),
-					reject: jest.fn(),
+					resolve: vi.fn(),
+					reject: vi.fn(),
 				};
 				return {
 					deferred,

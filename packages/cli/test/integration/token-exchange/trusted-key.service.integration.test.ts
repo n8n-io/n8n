@@ -211,7 +211,7 @@ describe('TrustedKeyService (integration)', () => {
 			Object.defineProperty(instanceSettings, 'isLeader', { value: false, configurable: true });
 			config.trustedKeys = JSON.stringify([staticKeyEntry()]);
 
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			try {
 				await service.initialize();
@@ -248,7 +248,7 @@ describe('TrustedKeyService (integration)', () => {
 			config.trustedKeys = JSON.stringify([staticKeyEntry({ kid: 'takeover-key' })]);
 			await service.initialize();
 
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			try {
 				Object.defineProperty(instanceSettings, 'isLeader', { value: true, configurable: true });
@@ -460,6 +460,57 @@ describe('TrustedKeyService (integration)', () => {
 
 			expect(await service.listSources()).toHaveLength(2);
 			expect(await service.listAll()).toHaveLength(3);
+		});
+	});
+
+	describe('hasSingleTrustedIssuer', () => {
+		it('should return false when no keys are configured', async () => {
+			expect(await service.hasSingleTrustedIssuer()).toBe(false);
+		});
+
+		it('should return true when every key shares one issuer', async () => {
+			await insertSource();
+			await insertKey({
+				kid: 'kid-1',
+				data: makeTrustedKeyData({ issuer: 'https://only.example.com' }),
+			});
+			await insertKey({
+				kid: 'kid-2',
+				data: makeTrustedKeyData({ issuer: 'https://only.example.com' }),
+			});
+
+			expect(await service.hasSingleTrustedIssuer()).toBe(true);
+		});
+
+		it('should return false when keys span multiple issuers', async () => {
+			await insertSource();
+			await insertKey({
+				kid: 'kid-1',
+				data: makeTrustedKeyData({ issuer: 'https://a.example.com' }),
+			});
+			await insertKey({
+				kid: 'kid-2',
+				data: makeTrustedKeyData({ issuer: 'https://b.example.com' }),
+			});
+
+			expect(await service.hasSingleTrustedIssuer()).toBe(false);
+		});
+
+		it('should skip corrupted key rows when counting issuers', async () => {
+			await insertSource();
+			await insertKey({
+				kid: 'kid-1',
+				data: makeTrustedKeyData({ issuer: 'https://only.example.com' }),
+			});
+
+			const corrupted = new TrustedKeyEntity();
+			corrupted.sourceId = 'static';
+			corrupted.kid = 'kid-corrupt';
+			corrupted.data = 'not-json';
+			corrupted.createdAt = new Date();
+			await keyRepo.save(corrupted);
+
+			expect(await service.hasSingleTrustedIssuer()).toBe(true);
 		});
 	});
 });

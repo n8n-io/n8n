@@ -2,20 +2,30 @@
 // Stub LocalMcpServer for discovery evals.
 //
 // The orchestrator computes `browserAvailable` from the size of
-// `context.localMcpServer?.getToolsByCategory('browser')` plus any browser
-// MCP tools loaded via the McpClientManager. To exercise the
-// `browserAvailable: true` branch of the system prompt without spinning up
-// the real computer-use daemon, we plug in a stub server that advertises
-// browser tools by name. The stub never receives actual `callTool`
-// invocations during discovery scenarios — the orchestrator's first
-// dispatch decision is what we measure, not downstream tool execution.
+// `context.localMcpServer?.getToolsByCategory('browser')`. To exercise the
+// `browserAvailable: true` branch of the system prompt without spinning up the
+// real computer-use daemon, we plug in a stub server that advertises browser
+// tools by name. The stub never receives actual `callTool` invocations during
+// discovery scenarios — the orchestrator's first dispatch decision is what we
+// measure, not downstream tool execution.
 // ---------------------------------------------------------------------------
 
 import type { McpTool, McpToolCallRequest, McpToolCallResult } from '@n8n/api-types';
 
 import type { LocalMcpServer } from '../../src/types';
 
-const STUB_BROWSER_TOOL_NAMES = ['browser_navigate', 'browser_snapshot', 'browser_screenshot'];
+const STUB_BROWSER_TOOL_NAMES = [
+	'browser_connect',
+	'browser_tab_open',
+	'browser_navigate',
+	'browser_snapshot',
+	'browser_content',
+	'browser_click',
+	'browser_type',
+	'browser_screenshot',
+	'browser_capture_secret',
+	'browser_create_credential',
+];
 
 const STUB_FILESYSTEM_TOOL_NAMES = ['fs_read_file', 'fs_search_files', 'fs_list_dir'];
 
@@ -60,7 +70,7 @@ export function createStubLocalMcpServer(options: CreateStubLocalMcpServerOption
 			}),
 		// eslint-disable-next-line @typescript-eslint/require-await
 		callTool: async (req: McpToolCallRequest): Promise<McpToolCallResult> => {
-			// Return a normal tool-error result rather than throwing. Mastra logs an
+			// Return a normal tool-error result rather than throwing. native agent logs an
 			// error stack trace for thrown tool errors; an `isError: true` result is
 			// treated as expected and surfaced as a `tool-error` event without spam.
 			// The discovery check still records the underlying `tool-call` event, so

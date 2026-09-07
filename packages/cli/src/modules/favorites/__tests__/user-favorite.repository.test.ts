@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
 import type { DataSource, DeleteResult, EntityManager } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 
 import type { UserFavorite } from '../database/entities/user-favorite.entity';
 import { UserFavoriteRepository } from '../database/repositories/user-favorite.repository';
@@ -20,17 +20,17 @@ describe('UserFavoriteRepository', () => {
 	let repo: UserFavoriteRepository;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		repo = new UserFavoriteRepository(mockDataSource);
 		// Spy on inherited TypeORM methods
-		jest.spyOn(repo, 'find').mockResolvedValue([]);
-		jest.spyOn(repo, 'delete').mockResolvedValue({ affected: 1 } as DeleteResult);
+		vi.spyOn(repo, 'find').mockResolvedValue([]);
+		vi.spyOn(repo, 'delete').mockResolvedValue({ affected: 1 } as DeleteResult);
 	});
 
 	describe('findByUser', () => {
 		it('should query favorites for a user ordered by id DESC', async () => {
 			const favorites = [makeEntity({ id: 2 }), makeEntity({ id: 1 })];
-			jest.spyOn(repo, 'find').mockResolvedValue(favorites);
+			vi.spyOn(repo, 'find').mockResolvedValue(favorites);
 
 			const result = await repo.findByUser('user1');
 
@@ -42,7 +42,7 @@ describe('UserFavoriteRepository', () => {
 		});
 
 		it('should return empty array when user has no favorites', async () => {
-			jest.spyOn(repo, 'find').mockResolvedValue([]);
+			vi.spyOn(repo, 'find').mockResolvedValue([]);
 
 			const result = await repo.findByUser('user1');
 

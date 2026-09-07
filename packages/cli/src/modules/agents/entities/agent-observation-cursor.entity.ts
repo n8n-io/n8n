@@ -1,15 +1,14 @@
 import { DateTimeColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
-
-import type { ObservationScopeKind } from './agent-observation.entity';
+import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'agents_observation_cursors' })
+@Index(['observationScopeId'])
 export class AgentObservationCursorEntity extends WithTimestamps {
-	@PrimaryColumn({ type: 'varchar', length: 20 })
-	scopeKind: ObservationScopeKind;
+	@PrimaryColumn({ type: 'varchar', length: 36 })
+	agentId: string;
 
 	@PrimaryColumn({ type: 'varchar', length: 255 })
-	scopeId: string;
+	observationScopeId: string;
 
 	@Column({ type: 'varchar', length: 36 })
 	lastObservedMessageId: string;

@@ -158,6 +158,10 @@ export class ChatHubModelsService {
 				const rawModels = await this.fetchMistralCloudModels(credentials, additionalData);
 				return { models: this.transformAndFilterModels(rawModels, 'mistralCloud') };
 			}
+			case 'nvidia': {
+				const rawModels = await this.fetchNvidiaModels(credentials, additionalData);
+				return { models: this.transformAndFilterModels(rawModels, 'nvidia') };
+			}
 			case 'n8n':
 				return { models: await this.fetchAgentWorkflowsAsModels(user) };
 			case 'custom-agent':
@@ -315,30 +319,49 @@ export class ChatHubModelsService {
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		// From AWS Bedrock node
-		// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts#L100
-		// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts#L155
-		const foundationModelsRequest = this.nodeParametersService.getOptionsViaLoadOptions(
+		// Runs the AWS Bedrock node's own listModels loadOptions method, so this list stays
+		// in sync with the node's Model dropdown (foundation models plus system-defined and
+		// application inference profiles).
+		return await this.nodeParametersService.getOptionsViaMethodName(
+			'listModels',
+			'',
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.awsBedrock,
+			{},
+			credentials,
+		);
+	}
+
+	private async fetchNvidiaModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				routing: {
 					request: {
 						method: 'GET',
-						url: '/foundation-models?&byOutputModality=TEXT&byInferenceType=ON_DEMAND',
+						url: '/models',
 					},
 					output: {
 						postReceive: [
 							{
 								type: 'rootProperty',
 								properties: {
-									property: 'modelSummaries',
+									property: 'data',
+								},
+							},
+							{
+								type: 'filter',
+								properties: {
+									pass: '={{ /nemotron/i.test($responseItem.id) }}',
 								},
 							},
 							{
 								type: 'setKeyValue',
 								properties: {
-									name: '={{$responseItem.modelName}}',
-									description: '={{$responseItem.modelArn}}',
-									value: '={{$responseItem.modelId}}',
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
 								},
 							},
 							{
@@ -352,57 +375,10 @@ export class ChatHubModelsService {
 				},
 			},
 			additionalData,
-			PROVIDER_NODE_TYPE_MAP.awsBedrock,
+			PROVIDER_NODE_TYPE_MAP.nvidia,
 			{},
 			credentials,
 		);
-
-		const inferenceProfileModelsRequest = this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/inference-profiles?maxResults=1000',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'inferenceProfileSummaries',
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.inferenceProfileName}}',
-									description:
-										'={{$responseItem.description || $responseItem.inferenceProfileArn}}',
-									value: '={{$responseItem.inferenceProfileId}}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
-			additionalData,
-			PROVIDER_NODE_TYPE_MAP.awsBedrock,
-			{},
-			credentials,
-		);
-
-		const [foundationModels, inferenceProfileModels] = await Promise.all([
-			foundationModelsRequest,
-			inferenceProfileModelsRequest,
-		]);
-
-		return foundationModels.concat(inferenceProfileModels);
 	}
 
 	private async fetchMistralCloudModels(

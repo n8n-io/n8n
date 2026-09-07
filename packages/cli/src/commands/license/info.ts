@@ -14,12 +14,13 @@ export class LicenseInfoCommand extends BaseCommand {
 		const license = Container.get(License);
 		await license.init({ isCli: true });
 
-		this.logger.info('Printing license information:\n' + license.getInfo());
+		// Write to stdout so output is independent of N8N_LOG_LEVEL.
+		process.stdout.write(license.getInfo() + '\n');
 	}
 
 	async catch(error: Error) {
-		this.logger.error('\nGOT ERROR');
-		this.logger.info('====================================');
-		this.logger.error(error.message);
+		process.stderr.write('\nGOT ERROR\n');
+		process.stderr.write('====================================\n');
+		process.stderr.write(error.message + '\n');
 	}
 }

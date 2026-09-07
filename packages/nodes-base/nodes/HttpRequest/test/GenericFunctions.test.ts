@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
 import { getAllowedDomains, updadeQueryParameterConfig } from '../GenericFunctions';
@@ -80,7 +80,7 @@ describe('getAllowedDomains', () => {
 
 	it('should throw when allowedHttpRequestDomains is "none"', () => {
 		expect(() => getAllowedDomains(node, { allowedHttpRequestDomains: 'none' })).toThrow(
-			'This credential is configured to prevent use within an HTTP Request node',
+			'This credential is configured to prevent use within an HTTP Request or GraphQL node',
 		);
 	});
 

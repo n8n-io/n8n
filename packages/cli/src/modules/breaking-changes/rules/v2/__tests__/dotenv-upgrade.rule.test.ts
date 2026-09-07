@@ -1,8 +1,9 @@
 import { access } from 'node:fs/promises';
+import type { Mock } from 'vitest';
 
 import { DotenvUpgradeRule } from '../dotenv-upgrade.rule';
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 describe('DotenvUpgradeRule', () => {
 	let rule: DotenvUpgradeRule;
@@ -11,7 +12,7 @@ describe('DotenvUpgradeRule', () => {
 	beforeEach(() => {
 		rule = new DotenvUpgradeRule();
 		process.env = { ...originalEnv };
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
@@ -20,7 +21,7 @@ describe('DotenvUpgradeRule', () => {
 
 	describe('detect()', () => {
 		it('should not be affected when no .env files exist', async () => {
-			(access as jest.Mock).mockRejectedValue(new Error('File not found'));
+			(access as Mock).mockRejectedValue(new Error('File not found'));
 
 			const result = await rule.detect();
 
@@ -30,7 +31,7 @@ describe('DotenvUpgradeRule', () => {
 
 		it('should be affected when .env files exist', async () => {
 			delete process.env.DOTENV_CONFIG_PATH;
-			(access as jest.Mock).mockResolvedValue(undefined);
+			(access as Mock).mockResolvedValue(undefined);
 
 			const result = await rule.detect();
 

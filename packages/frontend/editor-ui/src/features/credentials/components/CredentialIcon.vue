@@ -4,7 +4,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getThemedValue } from '@/app/utils/nodeTypesUtils';
-import { getNodeIconSource } from '@/app/utils/nodeIcon';
+import { getNodeIconSource, type NodeIconSource } from '@/app/utils/nodeIcon';
 import type { ICredentialType } from 'n8n-workflow';
 import { computed } from 'vue';
 import { N8nNodeIcon } from '@n8n/design-system';
@@ -31,8 +31,12 @@ const referencedNodeIconSource = computed(() => {
 	const icon = getThemedValue(credentialWithIcon.value?.icon, theme.value);
 	if (!icon?.startsWith('node:')) return undefined;
 	const nodeType = nodeTypesStore.getNodeType(icon.replace('node:', ''));
-	if (!nodeType) return undefined;
-	return getNodeIconSource(nodeType, null, null);
+	if (nodeType) return getNodeIconSource(nodeType, null, null);
+
+	return {
+		type: 'icon',
+		name: icon,
+	} satisfies NodeIconSource;
 });
 
 const iconSource = computed(() => {
@@ -78,7 +82,6 @@ function getCredentialWithIcon(name: string | null): ICredentialType | null {
 	}
 
 	const type = credentialsStore.getCredentialTypeByName(name);
-
 	if (!type) {
 		return null;
 	}

@@ -3,12 +3,12 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { searchTables } from '../../v2/methods/listSearch';
 
-const mockRelease = jest.fn();
-const mockEnd = jest.fn().mockResolvedValue(undefined);
+const mockRelease = vi.fn();
+const mockEnd = vi.fn().mockResolvedValue(undefined);
 
 const createMockPool = (rows: object[]) => {
-	const mockQuery = jest.fn().mockResolvedValue([rows]);
-	const mockFormat = jest
+	const mockQuery = vi.fn().mockResolvedValue([rows]);
+	const mockFormat = vi
 		.fn()
 		.mockImplementation((query: string, values: unknown[]) =>
 			values.reduce<string>((q, v) => q.replace('?', String(v)), query),
@@ -19,7 +19,7 @@ const createMockPool = (rows: object[]) => {
 		release: mockRelease,
 	};
 	return {
-		pool: { getConnection: jest.fn().mockResolvedValue(mockConnection), end: mockEnd },
+		pool: { getConnection: vi.fn().mockResolvedValue(mockConnection), end: mockEnd },
 		mockFormat,
 		mockQuery,
 	};
@@ -27,24 +27,25 @@ const createMockPool = (rows: object[]) => {
 
 const mockLoadOptionsFunctions = (database = 'test_db'): ILoadOptionsFunctions =>
 	({
-		getCredentials: jest.fn().mockResolvedValue({ database }),
-		getNodeParameter: jest.fn().mockReturnValue({}),
+		getCredentials: vi.fn().mockResolvedValue({ database }),
+		getNodeParameter: vi.fn().mockReturnValue({}),
 	}) as unknown as ILoadOptionsFunctions;
 
-jest.mock('../../v2/transport', () => ({ createPool: jest.fn() }));
+vi.mock('../../v2/transport', () => ({ createPool: vi.fn() }));
 
 import { createPool } from '../../v2/transport';
+import type { Mock } from 'vitest';
 
 describe('MySQL v2 / listSearch / searchTables', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockEnd.mockResolvedValue(undefined);
 	});
 
 	it('should return all tables when no filter is provided', async () => {
 		const rows = [{ TABLE_NAME: 'users' }, { TABLE_NAME: 'orders' }];
 		const { pool, mockFormat } = createMockPool(rows);
-		(createPool as jest.Mock).mockResolvedValue(pool);
+		(createPool as Mock).mockResolvedValue(pool);
 
 		const result = await searchTables.call(mockLoadOptionsFunctions());
 
@@ -62,7 +63,7 @@ describe('MySQL v2 / listSearch / searchTables', () => {
 	it('should filter tables by name when filter is provided', async () => {
 		const rows = [{ TABLE_NAME: 'users' }];
 		const { pool, mockFormat } = createMockPool(rows);
-		(createPool as jest.Mock).mockResolvedValue(pool);
+		(createPool as Mock).mockResolvedValue(pool);
 
 		const result = await searchTables.call(mockLoadOptionsFunctions(), 'user');
 
@@ -77,7 +78,7 @@ describe('MySQL v2 / listSearch / searchTables', () => {
 
 	it('should return empty results when no tables match filter', async () => {
 		const { pool } = createMockPool([]);
-		(createPool as jest.Mock).mockResolvedValue(pool);
+		(createPool as Mock).mockResolvedValue(pool);
 
 		const result = await searchTables.call(mockLoadOptionsFunctions(), 'nonexistent');
 
@@ -86,7 +87,7 @@ describe('MySQL v2 / listSearch / searchTables', () => {
 
 	it('should always close the pool', async () => {
 		const { pool } = createMockPool([]);
-		(createPool as jest.Mock).mockResolvedValue(pool);
+		(createPool as Mock).mockResolvedValue(pool);
 
 		await searchTables.call(mockLoadOptionsFunctions());
 
@@ -96,11 +97,11 @@ describe('MySQL v2 / listSearch / searchTables', () => {
 	it('should close the pool even when query throws', async () => {
 		const mockConnection = {
 			format: (_q: string, v: unknown[]) => v,
-			query: jest.fn().mockRejectedValue(new Error('DB error')),
+			query: vi.fn().mockRejectedValue(new Error('DB error')),
 			release: mockRelease,
 		};
-		const pool = { getConnection: jest.fn().mockResolvedValue(mockConnection), end: mockEnd };
-		(createPool as jest.Mock).mockResolvedValue(pool);
+		const pool = { getConnection: vi.fn().mockResolvedValue(mockConnection), end: mockEnd };
+		(createPool as Mock).mockResolvedValue(pool);
 
 		await expect(searchTables.call(mockLoadOptionsFunctions())).rejects.toThrow('DB error');
 		expect(mockEnd).toHaveBeenCalled();

@@ -5,10 +5,10 @@ import { getDefaultBoardStatusColor } from '@n8n/api-types';
 import { computed, onMounted, ref } from 'vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useRoute, useRouter } from 'vue-router';
 import { BOARD_DETAILS, PROJECT_BOARDS } from '@/features/core/dataTable/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import {
 	N8nButton,

@@ -14,16 +14,16 @@ describe('TwilioTriggerHelpers', () => {
 	let mockWebhookFunctions: any;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockWebhookFunctions = {
-			getCredentials: jest.fn(),
-			getRequestObject: jest.fn(),
-			getNodeWebhookUrl: jest.fn().mockReturnValue(sinkUrl),
+			getCredentials: vi.fn(),
+			getRequestObject: vi.fn(),
+			getNodeWebhookUrl: vi.fn().mockReturnValue(sinkUrl),
 		};
 
 		mockWebhookFunctions.getRequestObject.mockReturnValue({
-			header: jest.fn().mockImplementation((name: string) => {
+			header: vi.fn().mockImplementation((name: string) => {
 				if (name === 'x-twilio-signature') return validSignature;
 				return null;
 			}),
@@ -75,7 +75,7 @@ describe('TwilioTriggerHelpers', () => {
 				authToken: testAuthToken,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name: string) => {
+				header: vi.fn().mockImplementation((name: string) => {
 					if (name === 'x-twilio-signature') {
 						return Buffer.from('invalidsignaturevaluepadded').toString('base64');
 					}
@@ -97,7 +97,7 @@ describe('TwilioTriggerHelpers', () => {
 				authToken: testAuthToken,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				query: { bodySHA256: testBodyHash },
 				rawBody: Buffer.from(testBody),
 				originalUrl: `/webhook/abc/webhook?${queryString}`,
@@ -114,7 +114,7 @@ describe('TwilioTriggerHelpers', () => {
 				authToken: testAuthToken,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(validSignature),
+				header: vi.fn().mockReturnValue(validSignature),
 				query: {},
 				rawBody: Buffer.from(testBody),
 				originalUrl: '/webhook/abc/webhook',
@@ -132,7 +132,7 @@ describe('TwilioTriggerHelpers', () => {
 			});
 			const tamperedHash = createHash('sha256').update('tampered').digest('hex');
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(validSignature),
+				header: vi.fn().mockReturnValue(validSignature),
 				query: { bodySHA256: tamperedHash },
 				rawBody: Buffer.from(testBody),
 				originalUrl: `/webhook/abc/webhook?bodySHA256=${tamperedHash}`,
@@ -149,7 +149,7 @@ describe('TwilioTriggerHelpers', () => {
 				authToken: testAuthToken,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(validSignature),
+				header: vi.fn().mockReturnValue(validSignature),
 				query: { bodySHA256: testBodyHash },
 				rawBody: undefined,
 				originalUrl: `/webhook/abc/webhook?${queryString}`,
@@ -182,7 +182,7 @@ describe('TwilioTriggerHelpers', () => {
 			// getNodeWebhookUrl returns the production URL
 			mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue(sinkUrl);
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name: string) => {
+				header: vi.fn().mockImplementation((name: string) => {
 					if (name === 'x-twilio-signature') return testModeSignature;
 					return null;
 				}),
@@ -203,7 +203,7 @@ describe('TwilioTriggerHelpers', () => {
 				authToken: testAuthToken,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(validSignature),
+				header: vi.fn().mockReturnValue(validSignature),
 				query: { bodySHA256: testBodyHash },
 				rawBody: testBody,
 				originalUrl: `/webhook/abc/webhook?${queryString}`,

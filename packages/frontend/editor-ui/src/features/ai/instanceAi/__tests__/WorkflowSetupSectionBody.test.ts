@@ -1,3 +1,4 @@
+import { createTestingPinia } from '@pinia/testing';
 import { computed, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
@@ -23,6 +24,10 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', () => ({
 	default: { template: '<div />' },
 }));
 
+vi.mock('@/app/components/FreeAiCreditsCallout.vue', () => ({
+	default: { template: '<div />' },
+}));
+
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
@@ -39,6 +44,16 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		getCredentialTypeByName: () => ({ displayName: 'HTTP Basic Auth' }),
 		getCredentialById: () => undefined,
+		// Non-empty so the inline-form gate resolves to the (stubbed) NodeCredentials selector.
+		getUsableCredentialByType: () => [{ id: 'cred-1', name: 'Existing' }],
+	}),
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: { value: false },
+		isNodeTypeVersionSupported: () => false,
+		isCredentialTypeSupported: () => false,
 	}),
 }));
 
@@ -46,11 +61,17 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType: () => null,
 		communityNodeType: () => null,
+		getAllNodeTypes: () => ({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	}),
 }));
 
 vi.mock('@/features/settings/environments.ee/environments.store', () => ({
 	default: () => ({ variablesAsObject: {} }),
+	useEnvironmentsStore: () => ({ variablesAsObject: {} }),
 }));
 
 function makeContext(): WorkflowSetupContext {
@@ -64,6 +85,7 @@ function makeContext(): WorkflowSetupContext {
 		credentialSelections: ref({}),
 		terminalState: ref(null),
 		isReady: ref(true),
+		workflowId: computed(() => undefined),
 		projectId: computed(() => undefined),
 		credentialFlow: computed(() => undefined),
 		isActionPending: ref(false),
@@ -91,6 +113,7 @@ function renderComponent(section: WorkflowSetupSection) {
 	return mount(WorkflowSetupSectionBody, {
 		props: { section },
 		global: {
+			plugins: [createTestingPinia({ stubActions: false })],
 			stubs: {
 				N8nText: { template: '<span><slot /></span>' },
 				N8nTooltip: {

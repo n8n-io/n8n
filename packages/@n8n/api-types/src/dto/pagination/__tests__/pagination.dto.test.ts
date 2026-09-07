@@ -145,5 +145,21 @@ describe('PaginationDto', () => {
 				expect(result.data).toBe(customMaxItems);
 			}
 		});
+
+		test('should fall back to 10 when no default is given', () => {
+			expect(createTakeValidator(MAX_ITEMS_PER_PAGE).parse(undefined)).toBe(10);
+		});
+
+		test('should apply a custom default when take is omitted', () => {
+			expect(createTakeValidator(MAX_ITEMS_PER_PAGE, false, 50).parse(undefined)).toBe(50);
+		});
+
+		// The default is a fallback, not a floor or ceiling.
+		test('should let an explicit take override a custom default', () => {
+			const validator = createTakeValidator(MAX_ITEMS_PER_PAGE, false, 50);
+
+			expect(validator.parse('5')).toBe(5);
+			expect(validator.parse('9999')).toBe(MAX_ITEMS_PER_PAGE);
+		});
 	});
 });

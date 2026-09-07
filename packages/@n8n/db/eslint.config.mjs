@@ -1,11 +1,31 @@
 import { defineConfig } from 'eslint/config';
 import { baseConfig } from '@n8n/eslint-config/base';
+import { encryptionBoundaryConfig } from '@n8n/eslint-config/encryption-boundary';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+// Single source of truth for project-owned entity transfer decisions
+const ownershipTransferManifest = require('../../cli/src/services/ownership-transfer/ownership-transfer.manifest.json');
+const acknowledgedProjectOwnedEntities = [
+	...ownershipTransferManifest.transferred,
+	...ownershipTransferManifest.notTransferred,
+].map(({ name, path }) => ({ name, path }));
 
 export default defineConfig(
+	{
+		ignores: ['scripts/**'],
+	},
 	baseConfig,
+	// This package holds the DeploymentKey entity/repository, so the
+	// encryption guardrails must run here even though it is not on nodeConfig.
+	encryptionBoundaryConfig,
 	{
 		rules: {
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
+			'n8n-local-rules/project-owned-entity-transfer': [
+				'error',
+				{ acknowledged: acknowledgedProjectOwnedEntities },
+			],
 
 			// TODO: Remove this
 			'@typescript-eslint/naming-convention': 'warn',

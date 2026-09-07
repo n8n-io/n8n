@@ -2,7 +2,7 @@ import type { INodeUi } from '@/Interface';
 import type { IConnections, IPinData, IWorkflowSettings } from 'n8n-workflow';
 import { Workflow, deepCopy } from 'n8n-workflow';
 import { ref, type Ref } from 'vue';
-import { DEFAULT_SETTINGS } from './useWorkflowDocumentSettings';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import { useNodeTypesStore } from '../nodeTypes.store';
 
 export interface WorkflowDocumentWorkflowObjectDeps {

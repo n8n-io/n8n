@@ -112,6 +112,7 @@ $--mode-selector-width: 92px;
 .selectInput input {
 	overflow: hidden;
 	text-overflow: ellipsis;
+	min-height: 30px;
 }
 
 .selectIcon {
@@ -142,6 +143,12 @@ $--mode-selector-width: 92px;
 	width: 80%;
 	align-items: center;
 	text-align: center;
+}
+
+.errorDetails {
+	max-height: 120px;
+	overflow-y: auto;
+	word-break: break-word;
 }
 
 .errorDescription {

@@ -1,5 +1,5 @@
 {
-	"extends": ["./tsconfig.json", "@n8n/typescript-config/modern/tsconfig.cjs.json"],
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/modern/tsconfig.cjs.go.json"],
 	"compilerOptions": {
 		"rootDir": "src",
 		"outDir": "dist/cjs",

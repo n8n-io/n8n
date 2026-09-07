@@ -1,3 +1,5 @@
+import type { Mocked } from 'vitest';
+
 import * as config from './config';
 import type { ToolGroup } from './config';
 import { GatewaySession, buildDefaultPermissions } from './gateway-session';
@@ -12,17 +14,15 @@ function makeStore(
 		allow: Record<string, string[]>;
 		deny: Record<string, string[]>;
 	}> = {},
-): jest.Mocked<
-	Pick<SettingsStore, 'getResourcePermissions' | 'alwaysAllow' | 'alwaysDeny' | 'flush'>
-> {
+): Mocked<Pick<SettingsStore, 'getResourcePermissions' | 'alwaysAllow' | 'alwaysDeny' | 'flush'>> {
 	return {
-		getResourcePermissions: jest.fn((toolGroup: ToolGroup) => ({
+		getResourcePermissions: vi.fn((toolGroup: ToolGroup) => ({
 			allow: overrides.allow?.[toolGroup] ?? [],
 			deny: overrides.deny?.[toolGroup] ?? [],
 		})),
-		alwaysAllow: jest.fn(),
-		alwaysDeny: jest.fn(),
-		flush: jest.fn().mockResolvedValue(undefined),
+		alwaysAllow: vi.fn(),
+		alwaysDeny: vi.fn(),
+		flush: vi.fn().mockResolvedValue(undefined),
 	};
 }
 
@@ -217,6 +217,65 @@ describe('GatewaySession', () => {
 			expect(session.check('shell', 'npm')).toBe('ask');
 		});
 
+		describe('credential creation', () => {
+			it('asks when only the browser group mode would allow it', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('ask');
+				// The group mode still covers ordinary domains.
+				expect(session.check('browser', 'example.com', 'host')).toBe('allow');
+			});
+
+			it('treats a host named "credentials" as a domain, not a credential write', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials', 'host')).toBe('allow');
+			});
+
+			it('applies the group mode when no kind is given', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials')).toBe('allow');
+			});
+
+			it('honours an explicit session approval for the credentials resource', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				session.allowForSession('browser', 'credentials');
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('allow');
+			});
+
+			it('honours an explicit persistent approval for the credentials resource', () => {
+				const store = makeStore({ allow: { browser: ['credentials'] } });
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('allow');
+			});
+
+			it('still denies when the credentials resource is on the deny list', () => {
+				const store = makeStore({ deny: { browser: ['credentials'] } });
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('deny');
+			});
+		});
+
 		describe('settings self-protection', () => {
 			const settingsFile = config.getSettingsFilePath();
 			const settingsDir = config.getSettingsDir();
@@ -281,8 +340,8 @@ describe('GatewaySession', () => {
 	// Session-level allow rules
 	// ---------------------------------------------------------------------------
 
-	describe('allowForSession / clearSessionRules', () => {
-		it('allow for session is cleared after clearSessionRules', () => {
+	describe('allowForSession / clearSession', () => {
+		it('allow for session is cleared after clearSession', () => {
 			const store = makeStore();
 			const session = new GatewaySession(
 				{ permissions: buildDefaultPermissions({ shell: 'ask' }), dir: '/' },
@@ -290,7 +349,7 @@ describe('GatewaySession', () => {
 			);
 			session.allowForSession('shell', 'npm');
 			expect(session.check('shell', 'npm')).toBe('allow');
-			session.clearSessionRules();
+			session.clearSession();
 			expect(session.check('shell', 'npm')).toBe('ask');
 		});
 
@@ -338,6 +397,56 @@ describe('GatewaySession', () => {
 			);
 			await session.flush();
 			expect(store.flush).toHaveBeenCalled();
+		});
+	});
+
+	// ---------------------------------------------------------------------------
+	// Secrets buffer
+	// ---------------------------------------------------------------------------
+
+	describe('captureSecret / getSecretFields / clearSecrets', () => {
+		function makeSession() {
+			return new GatewaySession(
+				{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+				makeStore() as unknown as SettingsStore,
+			);
+		}
+
+		it('stores a captured field and retrieves it', () => {
+			const session = makeSession();
+			session.captureSecret('k1', 'apiKey', 'secret');
+			const fields = session.getSecretFields('k1');
+			expect(fields?.get('apiKey')).toBe('secret');
+		});
+
+		it('accumulates multiple fields under the same key', () => {
+			const session = makeSession();
+			session.captureSecret('k1', 'clientId', 'id-value');
+			session.captureSecret('k1', 'clientSecret', 'secret-value');
+			const fields = session.getSecretFields('k1');
+			expect(fields?.get('clientId')).toBe('id-value');
+			expect(fields?.get('clientSecret')).toBe('secret-value');
+		});
+
+		it('returns undefined for an unknown key', () => {
+			const session = makeSession();
+			expect(session.getSecretFields('no-such-key')).toBeUndefined();
+		});
+
+		it('clears only the specified key', () => {
+			const session = makeSession();
+			session.captureSecret('k1', 'field', 'value');
+			session.captureSecret('k2', 'other', 'other-value');
+			session.clearSecrets('k1');
+			expect(session.getSecretFields('k1')).toBeUndefined();
+			expect(session.getSecretFields('k2')?.get('other')).toBe('other-value');
+		});
+
+		it('clearSession also wipes the secrets buffer', () => {
+			const session = makeSession();
+			session.captureSecret('k1', 'field', 'value');
+			session.clearSession();
+			expect(session.getSecretFields('k1')).toBeUndefined();
 		});
 	});
 });

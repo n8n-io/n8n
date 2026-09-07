@@ -111,7 +111,7 @@ test.describe(
 			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toContainText(output);
 
 			await n8n.ndv.execute();
-			const valueElements = n8n.ndv.getOutputDataContainer().locator('[class*=value_]');
+			const valueElements = n8n.ndv.getOutputDataValues();
 			await expect(valueElements).toBeVisible();
 			await expect(valueElements).toContainText(output);
 		});
@@ -131,7 +131,7 @@ test.describe(
 			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toContainText(output);
 
 			await n8n.ndv.execute();
-			const valueElements = n8n.ndv.getOutputDataContainer().locator('[class*=value_]');
+			const valueElements = n8n.ndv.getOutputDataValues();
 			await expect(valueElements).toBeVisible();
 			await expect(valueElements).toContainText(output);
 		});

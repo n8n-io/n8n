@@ -22,11 +22,12 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   update-pointer-tags:
+    permissions:
+      contents: write
     name: Update pointer tags
     runs-on: ubuntu-slim
     environment: minor-release-tag-merge
@@ -53,6 +54,7 @@ jobs:
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Configure git author
         run: |

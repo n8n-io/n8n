@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+import type { Mock } from 'vitest';
+
 import { NotConnectedError } from '../errors';
 import { createNavigationTools } from './navigation';
-import { createMockConnection, findTool, structuredOf, TOOL_CONTEXT } from './test-helpers';
+import { createMockConnection, findTool, structuredOf, textOf, TOOL_CONTEXT } from './test-helpers';
 
 describe('createNavigationTools', () => {
 	let mockConnection: ReturnType<typeof createMockConnection>;
@@ -93,7 +95,7 @@ describe('createNavigationTools', () => {
 			});
 
 			it('returns error when not connected', async () => {
-				(mockConnection.connection.getConnection as jest.Mock).mockImplementation(() => {
+				(mockConnection.connection.getConnection as Mock).mockImplementation(() => {
 					throw new NotConnectedError();
 				});
 
@@ -121,6 +123,14 @@ describe('createNavigationTools', () => {
 			it('accepts optional pageId', () => {
 				expect(() => getTool().inputSchema.parse({ pageId: 'p1' })).not.toThrow();
 			});
+
+			it('accepts waitUntil', () => {
+				expect(() => getTool().inputSchema.parse({ waitUntil: 'networkidle' })).not.toThrow();
+			});
+
+			it('rejects invalid waitUntil', () => {
+				expect(() => getTool().inputSchema.parse({ waitUntil: 'complete' })).toThrow();
+			});
 		});
 
 		describe('execute', () => {
@@ -128,9 +138,15 @@ describe('createNavigationTools', () => {
 				const result = await getTool().execute({}, TOOL_CONTEXT);
 				const data = structuredOf(result);
 
-				expect(mockConnection.adapter.back).toHaveBeenCalledWith('page1');
+				expect(mockConnection.adapter.back).toHaveBeenCalledWith('page1', undefined);
 				expect(data.title).toBe('Previous');
 				expect(data.url).toBe('http://test.com/prev');
+			});
+
+			it('forwards waitUntil to adapter.back', async () => {
+				await getTool().execute({ waitUntil: 'networkidle' }, TOOL_CONTEXT);
+
+				expect(mockConnection.adapter.back).toHaveBeenCalledWith('page1', 'networkidle');
 			});
 		});
 	});
@@ -148,6 +164,14 @@ describe('createNavigationTools', () => {
 			it('accepts empty object', () => {
 				expect(() => getTool().inputSchema.parse({})).not.toThrow();
 			});
+
+			it('accepts waitUntil', () => {
+				expect(() => getTool().inputSchema.parse({ waitUntil: 'networkidle' })).not.toThrow();
+			});
+
+			it('rejects invalid waitUntil', () => {
+				expect(() => getTool().inputSchema.parse({ waitUntil: 'complete' })).toThrow();
+			});
 		});
 
 		describe('execute', () => {
@@ -155,9 +179,15 @@ describe('createNavigationTools', () => {
 				const result = await getTool().execute({}, TOOL_CONTEXT);
 				const data = structuredOf(result);
 
-				expect(mockConnection.adapter.forward).toHaveBeenCalledWith('page1');
+				expect(mockConnection.adapter.forward).toHaveBeenCalledWith('page1', undefined);
 				expect(data.title).toBe('Next');
 				expect(data.url).toBe('http://test.com/next');
+			});
+
+			it('forwards waitUntil to adapter.forward', async () => {
+				await getTool().execute({ waitUntil: 'networkidle' }, TOOL_CONTEXT);
+
+				expect(mockConnection.adapter.forward).toHaveBeenCalledWith('page1', 'networkidle');
 			});
 		});
 	});
@@ -206,6 +236,30 @@ describe('createNavigationTools', () => {
 			const data = structuredOf(result);
 
 			expect(data.snapshot).toBe('- heading "Test"');
+		});
+
+		it('redacts injected auto-snapshot text using host-side sensitivity analysis', async () => {
+			const secret = `sk-ant-api03-${'a'.repeat(93)}AA`;
+			mockConnection.adapter.snapshot.mockResolvedValue({
+				tree: `- text "API key ${secret}"`,
+				refCount: 0,
+			});
+			mockConnection.adapter.probePageHtml.mockResolvedValue({
+				ok: true,
+				root: {
+					kind: 'document',
+					html: `<p>${secret}</p>`,
+					children: [],
+					errors: [],
+				},
+			});
+
+			const tool = findTool(tools, 'browser_navigate');
+			const result = await tool.execute({ url: 'http://example.com' }, TOOL_CONTEXT);
+			const data = structuredOf(result);
+
+			expect(data.snapshot).toBe('- text "API key [REDACTED:anthropic_api_key:1]"');
+			expect(textOf(result)).not.toContain(secret);
 		});
 
 		it('injects modalStates when present', async () => {

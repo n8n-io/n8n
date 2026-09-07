@@ -45,8 +45,13 @@ export class Code implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		builderHint: {
 			searchHint:
-				'Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures.',
+				'Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures. The sandbox has NO network access: fetch(), axios, XMLHttpRequest and require of http modules are unavailable and FAIL at runtime. NEVER make HTTP requests in a Code node — use the HTTP Request node and process its output instead. Prefer JavaScript: the Python option cannot import anything by default.',
 			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.httpRequest',
+					relationHint:
+						'Use this instead for ANY HTTP/API call — the Code node sandbox cannot make network requests',
+				},
 				{
 					nodeType: 'n8n-nodes-base.set',
 					relationHint:
@@ -166,6 +171,10 @@ return items.map(item => ({
 					},
 				],
 				default: 'javaScript',
+				builderHint: {
+					propertyHint:
+						'Default to javaScript — the only language with library access and cross-node helpers. Choose pythonNative only when the user explicitly asks for Python.',
+				},
 			},
 			{
 				displayName: 'Language',

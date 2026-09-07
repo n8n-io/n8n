@@ -1,8 +1,12 @@
+import { Container } from '@n8n/di';
 import { type Response } from 'express';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import jwt from 'jsonwebtoken';
+import { InstanceSettings } from 'n8n-core';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	type FormFieldsParameter,
+	type IUser,
 	type IWebhookFunctions,
 	type NodeTypeAndVersion,
 	NodeOperationError,
@@ -11,15 +15,22 @@ import {
 
 import { renderFormNode, getFormTriggerNode } from '../utils/formNodeUtils';
 
+Container.set(InstanceSettings, { hmacSignatureSecret: 'test-hmac-secret' } as InstanceSettings);
+
 describe('formNodeUtils', () => {
 	let webhookFunctions: MockProxy<IWebhookFunctions>;
 
 	beforeEach(() => {
 		webhookFunctions = mock<IWebhookFunctions>();
+		webhookFunctions.getRequestObject.mockReturnValue({
+			method: 'GET',
+			headers: { host: 'localhost:5678' },
+			protocol: 'http',
+		} as never);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should sanitize custom html', async () => {
@@ -30,7 +41,7 @@ describe('formNodeUtils', () => {
 			buttonLabel: 'Test Button Label',
 		});
 
-		const mockRender = jest.fn();
+		const mockRender = vi.fn();
 
 		const formFields: FormFieldsParameter = [
 			{
@@ -154,7 +165,7 @@ describe('formNodeUtils', () => {
 				buttonLabel: 'Submit',
 			});
 
-			const mockRender = jest.fn();
+			const mockRender = vi.fn();
 			const res = mock<Response>({ render: mockRender } as any);
 
 			await renderFormNode(webhookFunctions, res, triggerMock, formFields, 'test');
@@ -164,6 +175,199 @@ describe('formNodeUtils', () => {
 				expect.objectContaining({ formDescription: expected }),
 			);
 		}
+	});
+
+	it('should resolve expressions in the form title inherited from the trigger', async () => {
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: '',
+			formDescription: '',
+			buttonLabel: '',
+		});
+
+		const triggerName = 'triggerName';
+		webhookFunctions.evaluateExpression.mockImplementation((expression) => {
+			// The trigger stores the raw, unresolved expression string in its params.
+			if (expression === `{{ $(${JSON.stringify(triggerName)}).params.formTitle }}`) {
+				return "={{ $workflow.name.split('-')[0].trim() }}";
+			}
+			if (expression === "{{ $workflow.name.split('-')[0].trim() }}") {
+				return 'MyForm';
+			}
+			return '';
+		});
+
+		const mockRender = vi.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: triggerName } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({ formTitle: 'MyForm' }),
+		);
+	});
+
+	it('should resolve expressions in the button label inherited from the trigger', async () => {
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: 'Title',
+			formDescription: '',
+			buttonLabel: '',
+		});
+
+		const triggerName = 'triggerName';
+		webhookFunctions.evaluateExpression.mockImplementation((expression) => {
+			// The trigger stores the raw, unresolved expression string in its params.
+			if (expression === `{{ $(${JSON.stringify(triggerName)}).params.options?.buttonLabel }}`) {
+				return '={{ $workflow.name }}';
+			}
+			if (expression === '{{ $workflow.name }}') {
+				return 'MyForm';
+			}
+			return '';
+		});
+
+		const mockRender = vi.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: triggerName } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({ buttonLabel: 'MyForm' }),
+		);
+	});
+
+	it('should render display values from node parameters as-is without re-evaluating them', async () => {
+		// `getNodeParameter` already resolves expressions, so the values it
+		// returns must be rendered verbatim. Resolving them a second time would
+		// evaluate expression-like text that is already a final value.
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: '={{ 1 + 1 }}',
+			formDescription: '={{ 1 + 1 }}',
+			buttonLabel: '={{ 1 + 1 }}',
+		});
+		// A second evaluation would turn `{{ 1 + 1 }}` into `2`, so the rendered
+		// values below would change if any of these were resolved again.
+		webhookFunctions.evaluateExpression.mockImplementation((expression) =>
+			expression === '{{ 1 + 1 }}' ? '2' : '',
+		);
+
+		const mockRender = vi.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: 'triggerName' } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(webhookFunctions.evaluateExpression).not.toHaveBeenCalledWith('{{ 1 + 1 }}');
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({
+				formTitle: '={{ 1 + 1 }}',
+				formDescription: '={{ 1 + 1 }}',
+				buttonLabel: '={{ 1 + 1 }}',
+			}),
+		);
+	});
+
+	// The next page is reached by navigating to it, which can present no header, so
+	// the page render also hands it the token as a cookie.
+	describe('form page auth cookie', () => {
+		const authedUser: IUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		};
+
+		const renderAuthedPage = async () => {
+			webhookFunctions.getNode.mockReturnValue({
+				id: 'page-node',
+				webhookId: 'page-webhook',
+				typeVersion: 2.5,
+			} as never);
+			webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+				formTitle: 'Test Title',
+				formDescription: '',
+				buttonLabel: 'Submit',
+			});
+			webhookFunctions.getWorkflow.mockReturnValue({
+				id: 'workflow-1',
+				name: 'wf',
+				active: true,
+			});
+			webhookFunctions.getExecutionId.mockReturnValue('execution-1');
+			webhookFunctions.evaluateExpression.mockReturnValue(
+				'http://localhost:5678/form-waiting/execution-1' as never,
+			);
+			const cookie = vi.fn();
+			const render = vi.fn();
+			const res = mock<Response>({ render, cookie } as never);
+			webhookFunctions.getResponseObject.mockReturnValue(res);
+
+			await renderFormNode(
+				webhookFunctions,
+				res,
+				mock<NodeTypeAndVersion>({ name: 'triggerName' } as never),
+				[],
+				'production',
+				authedUser,
+			);
+
+			return { cookie, render };
+		};
+
+		it('is set for an authenticated submitter, scoped to the form-waiting path', async () => {
+			const { cookie } = await renderAuthedPage();
+
+			expect(cookie).toHaveBeenCalledWith(
+				// Named for the run, so concurrent forms don't overwrite each other.
+				'n8n-form-auth-ex-execution-1',
+				expect.any(String),
+				expect.objectContaining({ httpOnly: true, sameSite: 'lax', path: '/form-waiting' }),
+			);
+		});
+
+		it('carries the workflow and the execution the page belongs to', async () => {
+			const { cookie } = await renderAuthedPage();
+
+			const [, token] = cookie.mock.calls[0] as [string, string];
+			expect(jwt.decode(token)).toMatchObject({
+				sub: authedUser.id,
+				wfid: 'workflow-1',
+				eid: 'execution-1',
+			});
+		});
+
+		it('ships the client-side credential-gate handling for an authenticated submitter', async () => {
+			const { render } = await renderAuthedPage();
+
+			expect(render).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({ hasAuthenticatedSubmitter: true }),
+			);
+		});
+
+		it('is not set when the page has no authenticated submitter', async () => {
+			webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as never);
+			webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
+			const cookie = vi.fn();
+			const res = mock<Response>({ render: vi.fn(), cookie } as never);
+
+			await renderFormNode(
+				webhookFunctions,
+				res,
+				mock<NodeTypeAndVersion>({ name: 'triggerName' } as never),
+				[],
+				'production',
+			);
+
+			expect(cookie).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getFormTriggerNode', () => {
@@ -197,7 +401,7 @@ describe('formNodeUtils', () => {
 			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
 
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger1.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`)
 				.mockReturnValue('success');
 
 			const result = getFormTriggerNode(webhookFunctions);
@@ -205,7 +409,7 @@ describe('formNodeUtils', () => {
 			expect(result).toBe(formTrigger1);
 			expect(webhookFunctions.getParentNodes).toHaveBeenCalledWith('currentNode');
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger1.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`,
 			);
 		});
 
@@ -227,22 +431,22 @@ describe('formNodeUtils', () => {
 			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
 
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger1.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`)
 				.mockImplementation(() => {
 					throw new Error('Evaluation failed');
 				});
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger2.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger2.name)}).first() }}`)
 				.mockReturnValue('success');
 
 			const result = getFormTriggerNode(webhookFunctions);
 
 			expect(result).toBe(formTrigger2);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger1.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`,
 			);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger2.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger2.name)}).first() }}`,
 			);
 		});
 
@@ -290,10 +494,10 @@ describe('formNodeUtils', () => {
 			);
 
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger1.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`,
 			);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger2.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger2.name)}).first() }}`,
 			);
 		});
 
@@ -330,7 +534,7 @@ describe('formNodeUtils', () => {
 			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
 
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger.name)}).first() }}`)
 				.mockReturnValue('success');
 
 			const result = getFormTriggerNode(webhookFunctions);
@@ -338,7 +542,7 @@ describe('formNodeUtils', () => {
 			expect(result).toBe(formTrigger);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledTimes(1);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger.name)}).first() }}`,
 			);
 		});
 	});

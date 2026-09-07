@@ -7,18 +7,21 @@ import {
 	trackTemplatesClick,
 } from '@/experiments/utils';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon, N8nLink, N8nTooltip } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const router = useRouter();
 const isTooltipVisible = ref(false);
+const workflowId = useWorkflowId();
 
 const templatesLinkEnabled = computed(() => {
 	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
@@ -44,6 +47,7 @@ function onHideTooltip() {
 
 function onClick() {
 	nodeCreatorStore.openNodeCreatorForTriggerNodes(
+		workflowId.value,
 		NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
 	);
 }

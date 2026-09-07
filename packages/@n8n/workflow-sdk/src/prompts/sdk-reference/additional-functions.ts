@@ -11,8 +11,15 @@ export const ADDITIONAL_FUNCTIONS = `Additional SDK functions:
 - \`placeholder('hint')\` — marks a parameter value for user input. Use directly as the parameter value — never wrap in \`expr()\`, objects, or arrays.
   Example: \`parameters: { url: placeholder('Your API URL (e.g. https://api.example.com/v1)') }\`
 
-- \`sticky('content', nodes?, config?)\` — creates a sticky note on the canvas.
-  Example: \`sticky('## Data Processing', [httpNode, setNode], { color: 2 })\`
+- \`sticky('content', nodes?, config?)\` — creates a sticky note instance. Like every other node, the sticky must be passed to \`workflow(...)\` (or \`.add(...)\`) to appear on the canvas. The optional \`nodes\` array is **only used to size and anchor the sticky around those nodes** — it does **not** add them to the workflow; you must still add each wrapped node yourself.
+  Example:
+  \`\`\`ts
+  const httpNode = node({ ... });
+  const setNode = node({ ... });
+  const note = sticky('## Data Processing', [httpNode, setNode], { color: 2 });
+  // All three must be added to the workflow:
+  workflow('id', 'name').add(httpNode.to(setNode)).add(note);
+  \`\`\`
 
 - \`.output(n)\` — selects a specific output index for multi-output nodes. The index is **0-based**: \`.output(0)\` is the first output, \`.output(1)\` is the second. IF and Switch have dedicated methods (\`onTrue/onFalse\`, \`onCase\`), but \`.output(n)\` works as a generic alternative.
   Example: \`classifier.output(0).to(categoryA); classifier.output(1).to(categoryB)\`

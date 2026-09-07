@@ -175,16 +175,28 @@ class BenchmarkSummaryReporter implements Reporter {
 			groups.set(row.question, list);
 		}
 
+		// Skip questions whose metrics don't match any of this reporter's column
+		// patterns (e.g. canvas-perf specs that emit their own structured report).
+		// Without this, the reporter prints an empty box frame with no data.
+		const renderable = new Map<string, BenchmarkRow[]>();
+		for (const [question, rows] of groups) {
+			const shape = shapeFor(rows);
+			if (shape.columns.length > 0 || shape.showVariant || shape.showVerdict) {
+				renderable.set(question, rows);
+			}
+		}
+		if (renderable.size === 0) return;
+
 		console.log('\n');
 		console.log('Benchmark Summary');
 		console.log('══════════════════');
 
-		for (const [question, rows] of groups) {
+		for (const [question, rows] of renderable) {
 			this.renderConsoleQuestion(question, rows);
 		}
 		console.log('');
 
-		this.writeGitHubSummary(groups);
+		this.writeGitHubSummary(renderable);
 	}
 
 	private renderConsoleQuestion(question: string, rows: BenchmarkRow[]): void {

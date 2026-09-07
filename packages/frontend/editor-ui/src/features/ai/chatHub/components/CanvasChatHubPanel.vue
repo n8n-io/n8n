@@ -3,8 +3,8 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nScrollArea, N8nText, N8nTooltip } from '@n8n/design-system';
-import { useClipboard } from '@/app/composables/useClipboard';
-import { useToast } from '@/app/composables/useToast';
+import { useClipboard } from '@n8n/composables/useClipboard';
+import { useToast } from '@n8n/composables/useToast';
 import type {
 	AgentIconOrEmoji,
 	ChatHubSendMessageRequest,
@@ -13,10 +13,9 @@ import type {
 	ChatSessionId,
 } from '@n8n/api-types';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { flattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useChatStore } from '../chat.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useChatSession } from '../composables/useChatSession';
@@ -42,7 +41,6 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const chatStore = useChatStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const telemetry = useTelemetry();
@@ -72,7 +70,7 @@ const agentDisplayName = computed(() => {
 });
 
 const workflowAgent = computed<ChatModelDto | null>(() => {
-	const workflowId = workflowsStore.workflowId;
+	const workflowId = workflowDocumentStore.value.workflowId;
 	if (!workflowId) return null;
 
 	const params = chatTriggerNode.value?.parameters;
@@ -174,7 +172,7 @@ async function handleSelectSession(selectedSessionId: ChatSessionId) {
 
 // Reset session when workflow changes
 watch(
-	() => workflowsStore.workflowId,
+	() => workflowDocumentStore.value.workflowId,
 	() => {
 		sessionId.value = uuidv4();
 	},
@@ -189,6 +187,7 @@ async function onSubmit(message: string, attachments: File[]) {
 		workflowAgent.value,
 		{} as ChatHubSendMessageRequest['credentials'],
 		attachments,
+		workflowDocumentStore.value.workflowId,
 	);
 
 	inputRef.value?.reset();
@@ -208,6 +207,7 @@ async function handleRegenerateMessage(message: ChatMessageType) {
 		message.id,
 		workflowAgent.value,
 		{} as ChatHubSendMessageRequest['credentials'],
+		workflowDocumentStore.value.workflowId,
 	);
 }
 
@@ -234,6 +234,7 @@ async function handleEditMessage(
 		{} as ChatHubSendMessageRequest['credentials'],
 		keptAttachmentIndices,
 		newFiles,
+		workflowDocumentStore.value.workflowId,
 	);
 
 	editingMessageId.value = undefined;
@@ -300,7 +301,7 @@ defineExpose({
 				<CanvasChatSessionDropdown
 					:session-id="sessionId"
 					:session-title="sessionIdText"
-					:workflow-id="workflowsStore.workflowId"
+					:workflow-id="workflowDocumentStore.workflowId"
 					@select-session="handleSelectSession"
 				/>
 				<N8nTooltip placement="bottom">

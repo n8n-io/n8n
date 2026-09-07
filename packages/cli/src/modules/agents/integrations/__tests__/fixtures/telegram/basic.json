@@ -1,0 +1,111 @@
+{
+	"bot": {
+		"id": 777000,
+		"is_bot": true,
+		"first_name": "n8n Agent",
+		"username": "n8n_agent_bot"
+	},
+	"user": {
+		"id": 123456,
+		"is_bot": false,
+		"first_name": "Alice",
+		"username": "alice_dev"
+	},
+	"chat": {
+		"id": 123456,
+		"type": "private",
+		"first_name": "Alice",
+		"username": "alice_dev"
+	},
+	"mention": {
+		"update_id": 10001,
+		"message": {
+			"message_id": 11,
+			"from": {
+				"id": 123456,
+				"is_bot": false,
+				"first_name": "Alice",
+				"username": "alice_dev"
+			},
+			"chat": {
+				"id": 123456,
+				"type": "private",
+				"first_name": "Alice",
+				"username": "alice_dev"
+			},
+			"date": 1719000000,
+			"text": "hello agent"
+		}
+	},
+	"followUp": {
+		"update_id": 10002,
+		"message": {
+			"message_id": 12,
+			"from": {
+				"id": 123456,
+				"is_bot": false,
+				"first_name": "Alice",
+				"username": "alice_dev"
+			},
+			"chat": {
+				"id": 123456,
+				"type": "private",
+				"first_name": "Alice",
+				"username": "alice_dev"
+			},
+			"date": 1719000001,
+			"text": "follow up"
+		}
+	},
+	"selfMessage": {
+		"update_id": 10003,
+		"message": {
+			"message_id": 13,
+			"from": {
+				"id": 777000,
+				"is_bot": true,
+				"first_name": "n8n Agent",
+				"username": "n8n_agent_bot"
+			},
+			"chat": {
+				"id": 123456,
+				"type": "private",
+				"first_name": "Alice",
+				"username": "alice_dev"
+			},
+			"date": 1719000002,
+			"text": "bot echo"
+		}
+	},
+	"callbackBase": {
+		"update_id": 10004,
+		"callback_query": {
+			"id": "callback-1",
+			"from": {
+				"id": 123456,
+				"is_bot": false,
+				"first_name": "Alice",
+				"username": "alice_dev"
+			},
+			"message": {
+				"message_id": 1000,
+				"from": {
+					"id": 777000,
+					"is_bot": true,
+					"first_name": "n8n Agent",
+					"username": "n8n_agent_bot"
+				},
+				"chat": {
+					"id": 123456,
+					"type": "private",
+					"first_name": "Alice",
+					"username": "alice_dev"
+				},
+				"date": 1719000003,
+				"text": "Approval required"
+			},
+			"chat_instance": "chat-instance-1",
+			"data": "placeholder"
+		}
+	}
+}

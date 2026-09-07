@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import { jsonParse, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
 import nock from 'nock';
 
@@ -10,9 +10,7 @@ import messages from '../fixtures/messages.json';
 
 describe('Test Gmail Node v2', () => {
 	beforeAll(() => {
-		jest
-			.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
-			.setSystemTime(new Date('2024-12-16 12:34:56.789Z'));
+		vi.useFakeTimers({ toFake: ['Date'] }).setSystemTime(new Date('2024-12-16 12:34:56.789Z'));
 	});
 
 	describe('Messages', () => {
@@ -318,9 +316,9 @@ describe('Test Gmail Node v2', () => {
 		describe('getLabels', () => {
 			it('should return a list of Gmail labels', async () => {
 				const loadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getNode: jest.fn(() => mock<INode>()),
+					getNode: vi.fn(() => mock<INode>()),
 					helpers: mock<ILoadOptionsFunctions['helpers']>({
-						requestWithAuthentication: jest
+						requestWithAuthentication: vi
 							.fn()
 							// 2 pages of labels
 							.mockImplementationOnce(async () => ({ labels, nextPageToken: 'nextPageToken' }))
@@ -340,9 +338,9 @@ describe('Test Gmail Node v2', () => {
 		describe('getThreadMessages', () => {
 			it('should return a list of Gmail thread messages', async () => {
 				const loadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getNode: jest.fn(() => mock<INode>()),
+					getNode: vi.fn(() => mock<INode>()),
 					helpers: mock<ILoadOptionsFunctions['helpers']>({
-						requestWithAuthentication: jest.fn(async () => ({ messages })),
+						requestWithAuthentication: vi.fn(async () => ({ messages })),
 					}),
 				});
 
@@ -362,9 +360,9 @@ describe('Test Gmail Node v2', () => {
 		describe('getGmailAliases', () => {
 			it('should return a list of Gmail aliases', async () => {
 				const loadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getNode: jest.fn(() => mock<INode>()),
+					getNode: vi.fn(() => mock<INode>()),
 					helpers: mock<ILoadOptionsFunctions['helpers']>({
-						requestWithAuthentication: jest.fn(async () => ({
+						requestWithAuthentication: vi.fn(async () => ({
 							sendAs: [
 								{ isDefault: false, sendAsEmail: 'alias1@n8n.io' },
 								{ isDefault: true, sendAsEmail: 'alias2@n8n.io' },

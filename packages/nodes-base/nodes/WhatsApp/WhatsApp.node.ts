@@ -78,29 +78,32 @@ export class WhatsApp implements INodeType {
 	customOperations = {
 		message: {
 			async [SEND_AND_WAIT_OPERATION](this: IExecuteFunctions) {
+				const phoneNumberId = this.getNodeParameter('phoneNumberId', 0) as string;
+
+				const recipientPhoneNumber = sanitizePhoneNumber(
+					this.getNodeParameter('recipientPhoneNumber', 0) as string,
+				);
+
+				const config = getSendAndWaitConfig(this);
+				const instanceId = this.getInstanceId();
+
 				try {
-					const phoneNumberId = this.getNodeParameter('phoneNumberId', 0) as string;
-
-					const recipientPhoneNumber = sanitizePhoneNumber(
-						this.getNodeParameter('recipientPhoneNumber', 0) as string,
-					);
-
-					const config = getSendAndWaitConfig(this);
-					const instanceId = this.getInstanceId();
-
 					await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						WHATSAPP_CREDENTIALS_TYPE,
 						createMessage(config, phoneNumberId, recipientPhoneNumber, instanceId),
 					);
-
-					const waitTill = configureWaitTillDate(this);
-
-					await this.putExecutionToWait(waitTill);
-					return [this.getInputData()];
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error);
+					if (this.continueOnFail()) {
+						return [[{ json: { error: (error as Error).message } }]];
+					}
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
+
+				const waitTill = configureWaitTillDate(this);
+
+				await this.putExecutionToWait(waitTill);
+				return [this.getInputData()];
 			},
 		},
 	};

@@ -22,6 +22,8 @@ interface ProviderMetadata {
 	thinkingType?: 'thinking' | 'redacted_thinking';
 	/** Anthropic thinking signature */
 	thinkingSignature?: string;
+	/** DeepSeek reasoning content for thinking mode */
+	reasoningContent?: string;
 }
 
 /**
@@ -57,11 +59,18 @@ function extractProviderMetadata(metadata?: RequestResponseMetadata): ProviderMe
 			? metadata.anthropic.thinkingSignature
 			: undefined;
 
+	// Extract DeepSeek metadata
+	const reasoningContent =
+		typeof metadata.deepseek?.reasoningContent === 'string'
+			? metadata.deepseek.reasoningContent
+			: undefined;
+
 	return {
 		thoughtSignature,
 		thinkingContent,
 		thinkingType,
 		thinkingSignature,
+		reasoningContent,
 	};
 }
 
@@ -134,7 +143,7 @@ function buildMessageContent(
 	toolInput: IDataObject,
 	toolId: string,
 	toolName: string,
-): string | Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
+): null | Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
 	const { thinkingContent, thinkingType, thinkingSignature } = providerMetadata;
 
 	// Anthropic thinking mode: build content blocks
@@ -149,8 +158,7 @@ function buildMessageContent(
 		);
 	}
 
-	// Default: simple string content
-	return `Calling ${toolName} with input: ${JSON.stringify(toolInput)}`;
+	return null;
 }
 
 function resolveToolName(tool: EngineResult<RequestResponseMetadata>): string {
@@ -183,21 +191,30 @@ interface ProcessedToolResponse {
  * The structure matches what @langchain/google-common expects:
  * - `__gemini_function_call_thought_signatures__`: maps the first tool call ID to the signature
  * - `tool_calls`: array of tool call descriptors
- * - `signatures`: array aligned to parts [textPart, functionCall_1, ...], with the signature
- *   only on the first function call (per Google's docs)
+ * - `signatures`: array positionally aligned to the Gemini request parts, with the signature
+ *   only on the first function call (per Google's docs). @langchain/google-common applies it
+ *   only when `signatures.length` equals the part count, so the array must account for whether
+ *   the message content produces a leading text part.
  *
  * @param toolCalls - Tool calls to include
  * @param thoughtSignature - The Gemini thought signature
+ * @param hasLeadingTextPart - Whether the message content serializes to a text part before the
+ *   function-call parts
  * @returns additional_kwargs object for AIMessage
  */
 function buildGeminiAdditionalKwargs(
 	toolCalls: Array<{ id: string; name: string; args: IDataObject }>,
 	thoughtSignature: string,
+	hasLeadingTextPart: boolean,
 ): Record<string, unknown> {
-	const signatures: string[] = ['', thoughtSignature];
-	for (let i = 2; i <= toolCalls.length; i++) {
-		signatures.push('');
-	}
+	const signatures = [
+		// Reserve the first position for the leading text part, which has no signature
+		...(hasLeadingTextPart ? [''] : []),
+		// Gemini attaches the thought signature only to the first function call
+		thoughtSignature,
+		// Reserve positions for the remaining unsigned function calls
+		...toolCalls.slice(1).map(() => ''),
+	];
 
 	return {
 		__gemini_function_call_thought_signatures__: {
@@ -230,16 +247,25 @@ function buildIndividualAIMessage(
 
 	const content = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
 
-	return new AIMessage({
-		content,
-		// When content is an array (Anthropic thinking), LangChain ignores tool_calls
-		...(typeof content === 'string' && { tool_calls: [toolCall] }),
-		...(providerMetadata.thoughtSignature && {
-			additional_kwargs: buildGeminiAdditionalKwargs(
+	const additionalKwargs: Record<string, unknown> = providerMetadata.thoughtSignature
+		? buildGeminiAdditionalKwargs(
 				[{ id: toolId, name: toolName, args: toolInput }],
 				providerMetadata.thoughtSignature,
-			),
-		}),
+				// Empty content produces no text part, so the function call is the first part
+				content !== null && content.length > 0,
+			)
+		: {};
+	// DeepSeek's thinking mode requires reasoning_content to be echoed back on the
+	// assistant message that requested the tool call, or the next turn 400s.
+	if (providerMetadata.reasoningContent) {
+		additionalKwargs.reasoning_content = providerMetadata.reasoningContent;
+	}
+
+	return new AIMessage({
+		content: content ?? [],
+		// When content is an array (Anthropic thinking), LangChain ignores tool_calls
+		...(content === null && { tool_calls: [toolCall] }),
+		...(Object.keys(additionalKwargs).length > 0 && { additional_kwargs: additionalKwargs }),
 	});
 }
 
@@ -274,7 +300,8 @@ function buildSharedGeminiAIMessage(
 	return new AIMessage({
 		content: `Calling tools: ${toolNames}`,
 		tool_calls: allToolCalls,
-		additional_kwargs: buildGeminiAdditionalKwargs(allToolCalls, thoughtSignature),
+		// String content serializes to a text part preceding the function-call parts
+		additional_kwargs: buildGeminiAdditionalKwargs(allToolCalls, thoughtSignature, true),
 	});
 }
 
@@ -387,11 +414,14 @@ export function buildSteps(
 				: []
 			: [buildIndividualAIMessage(toolId, toolName, toolInput, providerMetadata)];
 
+		const logFallback = messageLog[0]?.content?.length
+			? messageLog[0]?.content
+			: `Calling ${nodeName}`;
 		steps.push({
 			action: {
 				tool: toolName,
 				toolInput: toolInputForResult,
-				log: toolInput.log || (messageLog[0]?.content ?? `Calling ${nodeName}`),
+				log: toolInput.log || logFallback,
 				messageLog,
 				toolCallId: toolInput?.id,
 				type: toolInput.type || 'tool_call',

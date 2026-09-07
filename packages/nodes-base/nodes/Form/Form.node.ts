@@ -19,6 +19,7 @@ import {
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import {
+	appendAttributionToForm,
 	formDescription,
 	formFields,
 	formFieldsDynamic,
@@ -27,7 +28,13 @@ import {
 import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './utils/formCompletionUtils';
 import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
-import { parseFormFields, prepareFormReturnItem } from './utils/utils';
+import {
+	getNodeReference,
+	parseFormFields,
+	prepareFormReturnItem,
+	respondIfCredentialsNotReady,
+	validateFormPageAuth,
+} from './utils/utils';
 
 const waitTimeProperties: INodeProperties[] = [
 	{
@@ -230,7 +237,7 @@ const completionProperties = updateDisplayOptions(
 			description: 'The text to display on the page. Use HTML to show a customized web page.',
 		},
 		{
-			displayName: 'Input Data Field Name',
+			displayName: 'Input Data Field Name(s)',
 			name: 'inputDataFieldName',
 			type: 'string',
 			displayOptions: {
@@ -241,8 +248,8 @@ const completionProperties = updateDisplayOptions(
 			default: 'data',
 			placeholder: 'e.g. data',
 			description:
-				'Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab',
-			hint: 'The name of the input field containing the binary file data to be returned',
+				'Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab. You can provide multiple comma-separated field names.',
+			hint: 'The name of the input field containing the binary file data to be returned. You can provide multiple comma-separated field names.',
 		},
 		...waitTimeProperties,
 		{
@@ -253,6 +260,11 @@ const completionProperties = updateDisplayOptions(
 			default: {},
 			options: [
 				{ ...formTitle, required: false, displayName: 'Completion Page Title' },
+				{
+					...appendAttributionToForm,
+					description:
+						'Whether to include the link “Form automated with n8n” at the bottom of the page. Defaults to the Form Trigger’s setting.',
+				},
 				{
 					displayName: 'Custom Form Styling',
 					name: 'customCss',
@@ -358,7 +370,20 @@ export class Form extends Node {
 
 		const trigger = getFormTriggerNode(context);
 
-		const mode = context.evaluateExpression(`{{ $('${trigger.name}').first().json.formMode }}`) as
+		const triggerRef = getNodeReference(trigger.name);
+
+		const triggerAuth =
+			(context.evaluateExpression(`{{ ${triggerRef}.params.authentication }}`) as string) ?? 'none';
+		const authResult = await validateFormPageAuth(context, triggerAuth);
+		if (authResult.responded) {
+			return { noWebhookResponse: true };
+		}
+		const triggerIncludeUser = context.evaluateExpression(
+			`{{ ${triggerRef}.params.options?.includeUserInOutput }}`,
+		) as boolean | undefined;
+		const userForOutput = triggerIncludeUser === false ? undefined : authResult.authedUser;
+
+		const mode = context.evaluateExpression(`{{ ${triggerRef}.first().json.formMode }}`) as
 			| 'test'
 			| 'production';
 
@@ -381,8 +406,17 @@ export class Form extends Node {
 
 		const method = context.getRequestObject().method;
 
+		// Same submit-time readiness gate as the trigger (see `formWebhook`): every
+		// POST here resumes the execution, and doing so with an account disconnected
+		// mid-journey — from the hosting shell's panel — would kill the run at
+		// credential resolution. That includes the completion resume POST, which can
+		// arrive long after the last page's own gate ran if its redirect hop was lost.
+		if (method === 'POST' && (await respondIfCredentialsNotReady(context, res))) {
+			return { noWebhookResponse: true };
+		}
+
 		if (operation === 'completion' && method === 'GET') {
-			return await renderFormCompletion(context, res, trigger);
+			return await renderFormCompletion(context, res, trigger, authResult.authedUser);
 		}
 
 		if (operation === 'completion' && method === 'POST') {
@@ -392,18 +426,24 @@ export class Form extends Node {
 		}
 
 		if (method === 'GET') {
-			return await renderFormNode(context, res, trigger, fields, mode);
+			return await renderFormNode(context, res, trigger, fields, mode, authResult.authedUser);
 		}
 
 		let useWorkflowTimezone = context.evaluateExpression(
-			`{{ $('${trigger.name}').params.options?.useWorkflowTimezone }}`,
+			`{{ ${triggerRef}.params.options?.useWorkflowTimezone }}`,
 		) as boolean;
 
 		if (useWorkflowTimezone === undefined && trigger?.typeVersion > 2) {
 			useWorkflowTimezone = true;
 		}
 
-		const returnItem = await prepareFormReturnItem(context, fields, mode, useWorkflowTimezone);
+		const returnItem = await prepareFormReturnItem(
+			context,
+			fields,
+			mode,
+			useWorkflowTimezone,
+			userForOutput,
+		);
 
 		return {
 			webhookResponse: { status: 200 },
@@ -446,7 +486,7 @@ export class Form extends Node {
 
 		await context.putExecutionToWait(waitTill);
 
-		context.sendResponse({
+		await context.sendResponse({
 			headers: {
 				location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
 			},

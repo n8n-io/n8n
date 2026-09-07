@@ -4,13 +4,15 @@ import dateFormat from 'dateformat';
 import { useCssVar } from '@vueuse/core';
 
 export function useMetricsChart() {
+	// vueuse v14 types `useCssVar().value` as `string | undefined`; fall back to '' so the
+	// values stay assignable to chart.js color fields (matches the previous v10 behavior).
 	const colors = {
-		primary: useCssVar('--color--primary', document.body).value,
-		textBase: useCssVar('--color--text', document.body).value,
-		backgroundXLight: useCssVar('--color--background--light-3', document.body).value,
-		foregroundLight: useCssVar('--color--foreground--tint-1', document.body).value,
-		foregroundBase: useCssVar('--color--foreground', document.body).value,
-		foregroundDark: useCssVar('--color--foreground--shade-1', document.body).value,
+		primary: useCssVar('--color--primary', document.body).value ?? '',
+		textBase: useCssVar('--color--text', document.body).value ?? '',
+		backgroundXLight: useCssVar('--color--background--light-3', document.body).value ?? '',
+		foregroundLight: useCssVar('--color--foreground--tint-1', document.body).value ?? '',
+		foregroundBase: useCssVar('--color--foreground', document.body).value ?? '',
+		foregroundDark: useCssVar('--color--foreground--shade-1', document.body).value ?? '',
 	};
 
 	function generateChartData(

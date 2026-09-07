@@ -10,18 +10,23 @@ import {
 	MAIN_AUTH_FIELD_NAME,
 	MAPPING_PARAMS,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	TEMPLATES_NODES_FILTER,
 } from '@/app/constants';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { i18n as locale } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { isJsonKeyObject } from '@/app/utils/typesUtils';
 import {
+	getActiveCredentialTypes,
 	isResourceLocatorValue,
 	type IDataObject,
+	type INode,
 	type INodeCredentialDescription,
 	type INodeExecutionData,
 	type INodeProperties,
+	type INodePropertyOptions,
 	type INodeTypeDescription,
 	type NodeParameterValueType,
 	type ResourceMapperField,
@@ -60,6 +65,71 @@ export function getAppNameFromNodeName(name: string) {
 
 export function getTriggerNodeServiceName(nodeType: INodeTypeDescription): string {
 	return nodeType.displayName.replace(/ trigger/i, '');
+}
+
+/**
+ * Derives the subtitle displayed under a node's name on the canvas.
+ *
+ * Pure function: reads only its parameters — it must not access stores or
+ * `inject()`, because `useWorkflowDocumentRenderData` calls it from detached
+ * effect scopes outside component setup (watch callbacks in
+ * `WorkflowCanvas.vue` / `useWorkflowDiff.ts`).
+ */
+export function getNodeSubtitle(
+	data: INode,
+	nodeType: INodeTypeDescription,
+	workflow: WorkflowObjectAccessors,
+): string | undefined {
+	if (!data) {
+		return undefined;
+	}
+
+	if (data.notesInFlow) {
+		return data.notes;
+	}
+
+	if (nodeType?.subtitle !== undefined) {
+		try {
+			return workflow.expression.getSimpleParameterValue(
+				data,
+				nodeType.subtitle,
+				'internal',
+				{},
+				undefined,
+				PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			) as string | undefined;
+		} catch (e) {
+			return undefined;
+		}
+	}
+
+	if (data.parameters.operation !== undefined) {
+		const operation = data.parameters.operation as string;
+		if (nodeType === null) {
+			return operation;
+		}
+
+		const operationData = nodeType.properties.find((property: INodeProperties) => {
+			return property.name === 'operation';
+		});
+		if (operationData === undefined) {
+			return operation;
+		}
+
+		if (operationData.options === undefined) {
+			return operation;
+		}
+
+		const optionData = operationData.options.find((option) => {
+			return (option as INodePropertyOptions).value === data.parameters.operation;
+		});
+		if (optionData === undefined) {
+			return operation;
+		}
+
+		return optionData.name;
+	}
+	return undefined;
 }
 
 export function getActivatableTriggerNodes(nodes: INodeUi[]) {
@@ -184,8 +254,16 @@ const findAlternativeAuthField = (
 		}
 	});
 	const alternativeAuthField = fields.find((field) => {
+		// A field can only act as an authentication selector if it offers a fixed
+		// set of options whose values map to credentials. Fields without options
+		// (e.g. boolean toggles) are never authentication fields — otherwise an
+		// unrelated toggle that happens to gate an optional credential would be
+		// mistaken for the node's main auth field.
+		if (!field.options?.length) {
+			return false;
+		}
 		let required = true;
-		field.options?.forEach((option) => {
+		field.options.forEach((option) => {
 			if (
 				'value' in option &&
 				typeof option.value === 'string' &&
@@ -249,14 +327,10 @@ export const getNodeAuthOptions = (
 			);
 		}
 	});
-	// sort so recommended options are first
-	options.forEach((item, i) => {
-		if (item.name.includes(recommendedSuffix)) {
-			options.splice(i, 1);
-			options.unshift(item);
-		}
-	});
-	return options;
+	// recommended options first; stable, so descriptor-relative order is kept within each group
+	const recommended = options.filter((option) => option.name.includes(recommendedSuffix));
+	const notRecommended = options.filter((option) => !option.name.includes(recommendedSuffix));
+	return [...recommended, ...notRecommended];
 };
 
 export const getAllNodeCredentialForAuthType = (
@@ -475,6 +549,17 @@ export const isResourceMapperFieldListStale = (
 	return false;
 };
 
+/**
+ * Detects a resource mapper schema that was authored (e.g. by an AI builder, or
+ * hand-edited) rather than loaded from its source. Loaders always populate
+ * `readOnly` and `removed`; an authored schema omits them. Such schemas render
+ * with broken/outdated inputs, so callers can use this to decide whether to
+ * reconcile against the live source on open instead of just flagging it stale.
+ */
+export const isResourceMapperSchemaIncomplete = (fields: ResourceMapperField[]): boolean => {
+	return fields.some((field) => field.readOnly === undefined || field.removed === undefined);
+};
+
 export const isMatchingField = (
 	field: string,
 	matchingFields: string[],
@@ -486,6 +571,77 @@ export const isMatchingField = (
 	}
 	return false;
 };
+
+/**
+ * True when the node picks its credential type through parameters rather than
+ * through the node type's declared credentials (HTTP Request and friends).
+ */
+export function usesParameterSelectedCredentials(node: INodeUi): boolean {
+	return hasProxyAuth(node) || Object.keys(node.parameters ?? {}).includes('genericAuthType');
+}
+
+/**
+ * Credential types the node type declares whose visibility does not depend on the
+ * auth-mode parameter (`authentication`). These sit alongside the auth-mode
+ * credential rather than being alternatives to it — HTTP Request's `httpSslAuth`
+ * is gated on the `provideSslCertificates` node setting — so switching auth types
+ * must not remove them. Types gated on `authentication` (e.g. HTTP Request v2's
+ * v1-era `httpBasicAuth`, which its current `authentication` values can never
+ * show) stay removable.
+ */
+function getAuthModeIndependentCredentials(nodeType: INodeTypeDescription | null): Set<string> {
+	const types = new Set<string>();
+
+	for (const credential of nodeType?.credentials ?? []) {
+		const { show, hide } = credential.displayOptions ?? {};
+		const dependsOnAuthMode = [show, hide].some(
+			(rules) =>
+				rules !== undefined &&
+				(MAIN_AUTH_FIELD_NAME in rules || `/${MAIN_AUTH_FIELD_NAME}` in rules),
+		);
+
+		if (!dependsOnAuthMode) {
+			types.add(credential.name);
+		}
+	}
+
+	return types;
+}
+
+/**
+ * Returns the credential type names in `node.credentials` that are safe to remove
+ * because the node's current configuration doesn't use them (see
+ * `getActiveCredentialTypes` in n8n-workflow).
+ *
+ * Returns an empty array when the active set cannot be determined statically
+ * (e.g. unknown node type or an expression in a credential-type parameter), since
+ * removing a credential that may be in use is worse than keeping a stale one.
+ */
+export function getInactiveCredentials(
+	node: INodeUi,
+	nodeType: INodeTypeDescription | null,
+): string[] {
+	if (!node.credentials) {
+		return [];
+	}
+
+	const activeTypes = getActiveCredentialTypes(node, nodeType);
+	if (!activeTypes) {
+		return [];
+	}
+
+	// Parameter-selected credentials are the ones that accumulate on an auth switch,
+	// and they used to be kept wholesale on save. Only remove what the auth mode
+	// itself governs there, so an unrelated declared credential isn't collateral
+	// damage. Nodes on the declared path keep matching the save-time display filter.
+	const keepRegardlessOfAuthMode = usesParameterSelectedCredentials(node)
+		? getAuthModeIndependentCredentials(nodeType)
+		: new Set<string>();
+
+	return Object.keys(node.credentials).filter(
+		(type) => !activeTypes.has(type) && !keepRegardlessOfAuthMode.has(type),
+	);
+}
 
 export const getThemedValue = <T extends string>(
 	value: Themed<T> | T | undefined,

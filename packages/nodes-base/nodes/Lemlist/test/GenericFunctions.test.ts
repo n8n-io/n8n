@@ -12,7 +12,7 @@ describe('GenericFunctions', () => {
 	describe('lemlistApiRequest', () => {
 		const mockThis = {
 			helpers: {
-				requestWithAuthentication: jest.fn(),
+				requestWithAuthentication: vi.fn(),
 			},
 		} as unknown as IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
 
@@ -39,7 +39,7 @@ describe('GenericFunctions', () => {
 	describe('lemlistApiRequestAllItems', () => {
 		const mockThis = {
 			helpers: {
-				requestWithAuthentication: jest
+				requestWithAuthentication: vi
 					.fn()
 					.mockResolvedValue([{ id: 'cam_A1B2C3D4E5F6G7H8I9' }, { id: 'cam_A1B2C3D4E5F6G7H8I8' }]),
 			},

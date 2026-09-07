@@ -1,30 +1,31 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
+import type { Mock } from 'vitest';
 
 import { textOf } from '../test-utils';
 import { deleteTool } from './delete';
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 const CONTEXT = { dir: '/base' };
 
 function mockStatFile(): void {
-	jest.mocked(fs.stat).mockResolvedValue({ isDirectory: () => false } as unknown as Stats);
+	vi.mocked(fs.stat).mockResolvedValue({ isDirectory: () => false } as unknown as Stats);
 }
 
 function mockStatDirectory(): void {
-	jest.mocked(fs.stat).mockResolvedValue({ isDirectory: () => true } as unknown as Stats);
+	vi.mocked(fs.stat).mockResolvedValue({ isDirectory: () => true } as unknown as Stats);
 }
 
 function mockStatNotFound(): void {
 	const error = Object.assign(new Error('ENOENT: no such file or directory'), { code: 'ENOENT' });
-	jest.mocked(fs.stat).mockRejectedValue(error);
+	vi.mocked(fs.stat).mockRejectedValue(error);
 }
 
 describe('deleteTool', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
-		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+		vi.resetAllMocks();
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
 			if (p === '/base') return await Promise.resolve('/base');
 			throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
 		});
@@ -57,7 +58,7 @@ describe('deleteTool', () => {
 	describe('execute', () => {
 		it('deletes a file using unlink', async () => {
 			mockStatFile();
-			jest.mocked(fs.unlink).mockResolvedValue(undefined);
+			vi.mocked(fs.unlink).mockResolvedValue(undefined);
 
 			const result = await deleteTool.execute({ path: 'src/old.ts' }, CONTEXT);
 
@@ -70,7 +71,7 @@ describe('deleteTool', () => {
 
 		it('deletes a directory recursively using rm', async () => {
 			mockStatDirectory();
-			(fs.rm as jest.Mock).mockResolvedValue(undefined);
+			(fs.rm as Mock).mockResolvedValue(undefined);
 
 			const result = await deleteTool.execute({ path: 'old-dir' }, CONTEXT);
 
@@ -83,7 +84,7 @@ describe('deleteTool', () => {
 
 		it('returns a single text content block', async () => {
 			mockStatFile();
-			jest.mocked(fs.unlink).mockResolvedValue(undefined);
+			vi.mocked(fs.unlink).mockResolvedValue(undefined);
 
 			const result = await deleteTool.execute({ path: 'file.ts' }, CONTEXT);
 

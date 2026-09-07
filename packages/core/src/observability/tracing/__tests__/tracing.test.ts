@@ -1,19 +1,21 @@
 import type { StartSpanOptions } from '@sentry/core';
-import { mock } from 'jest-mock-extended';
 import type { INode, Workflow } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { EmptySpan, NoopTracing } from '../noop-tracing';
 import { type Span, Tracing, type Tracer } from '../tracing';
 
 describe('tracing', () => {
-	let mockTracingImplementation: jest.Mocked<Tracer>;
+	let mockTracingImplementation: Mocked<Tracer>;
 	const tracing = new Tracing();
 	const noopTracing = new NoopTracing();
 
 	beforeEach(() => {
 		mockTracingImplementation = {
-			startSpan: jest.fn(),
-		};
+			startSpan: vi.fn(),
+			startNewTraceSpan: vi.fn(),
+		} as unknown as Mocked<Tracer>;
 
 		tracing.setTracingImplementation(noopTracing);
 	});
@@ -23,11 +25,36 @@ describe('tracing', () => {
 			tracing.setTracingImplementation(mockTracingImplementation);
 
 			const options: StartSpanOptions = { name: 'test-span' };
-			const callback = jest.fn().mockResolvedValue('result');
+			const callback = vi.fn().mockResolvedValue('result');
 
 			await tracing.startSpan(options, callback);
 
 			expect(mockTracingImplementation.startSpan).toHaveBeenCalledWith(options, callback);
+		});
+	});
+
+	describe('startNewTraceSpan', () => {
+		it('should delegate to the current implementation', async () => {
+			mockTracingImplementation.startNewTraceSpan.mockResolvedValue('test-result');
+			tracing.setTracingImplementation(mockTracingImplementation);
+
+			const options: StartSpanOptions = { name: 'test-span' };
+			const callback = vi.fn().mockResolvedValue('callback-result');
+
+			const result = await tracing.startNewTraceSpan(options, callback);
+
+			expect(mockTracingImplementation.startNewTraceSpan).toHaveBeenCalledWith(options, callback);
+			expect(result).toBe('test-result');
+		});
+
+		it('should use NoopTracing by default', async () => {
+			const options: StartSpanOptions = { name: 'test-span' };
+			const callback = vi.fn().mockResolvedValue('callback-result');
+
+			const result = await tracing.startNewTraceSpan(options, callback);
+
+			expect(callback).toHaveBeenCalledWith(expect.any(EmptySpan));
+			expect(result).toBe('callback-result');
 		});
 	});
 
@@ -37,7 +64,7 @@ describe('tracing', () => {
 			tracing.setTracingImplementation(mockTracingImplementation);
 
 			const options: StartSpanOptions = { name: 'test-span' };
-			const callback = jest.fn().mockResolvedValue('callback-result');
+			const callback = vi.fn().mockResolvedValue('callback-result');
 
 			const result = await tracing.startSpan(options, callback);
 
@@ -47,7 +74,7 @@ describe('tracing', () => {
 
 		it('should use NoopTracing by default', async () => {
 			const options: StartSpanOptions = { name: 'test-span' };
-			const callback = jest.fn().mockResolvedValue('callback-result');
+			const callback = vi.fn().mockResolvedValue('callback-result');
 
 			const result = await tracing.startSpan(options, callback);
 
@@ -66,7 +93,7 @@ describe('tracing', () => {
 					key2: 123,
 				},
 			};
-			const callback = jest.fn();
+			const callback = vi.fn();
 
 			await tracing.startSpan(options, callback);
 
@@ -77,7 +104,7 @@ describe('tracing', () => {
 			tracing.setTracingImplementation(mockTracingImplementation);
 
 			const options: StartSpanOptions = { name: 'async-span' };
-			const callback = jest.fn().mockImplementation(async (_span: Span) => {
+			const callback = vi.fn().mockImplementation(async (_span: Span) => {
 				await new Promise((resolve) => setTimeout(resolve, 10));
 				return 'async-result';
 			});
@@ -96,7 +123,7 @@ describe('tracing', () => {
 
 			const options: StartSpanOptions = { name: 'error-span' };
 			const error = new Error('Callback error');
-			const callback = jest.fn().mockRejectedValue(error);
+			const callback = vi.fn().mockRejectedValue(error);
 
 			mockTracingImplementation.startSpan.mockImplementation(async (_opts, cb) => {
 				return await cb(mock<Span>());
@@ -111,7 +138,7 @@ describe('tracing', () => {
 			tracing.setTracingImplementation(mockTracingImplementation);
 
 			const options: StartSpanOptions = { name: 'error-span' };
-			const callback = jest.fn();
+			const callback = vi.fn();
 
 			await expect(tracing.startSpan(options, callback)).rejects.toThrow('Implementation error');
 		});

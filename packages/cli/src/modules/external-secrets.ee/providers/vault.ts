@@ -1,10 +1,24 @@
 import { Logger } from '@n8n/backend-common';
+import {
+	type HttpRequestClient,
+	isConnectionRefusedError,
+	OutboundHttp,
+} from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import type { AxiosInstance, AxiosResponse } from 'axios';
-import axios from 'axios';
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import {
+	type IDataObject,
+	type IHttpRequestMethods,
+	type IHttpRequestOptions,
+	type IN8nHttpFullResponse,
+	type INodeProperties,
+} from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
+import {
+	buildHttpProviderErrorContext,
+	logSecretsProviderOperationFailure,
+	type SecretsProviderOperationFailureParams,
+} from '../errors/secrets-provider-errors';
 import { ExternalSecretsConfig } from '../external-secrets.config';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
@@ -31,6 +45,7 @@ interface VaultSettings {
 	// Manual KV configuration (bypasses sys/mounts auto-discovery)
 	kvMountPath?: string;
 	kvVersion?: string;
+	kvSecretPath?: string;
 }
 
 interface VaultResponse<T> {
@@ -86,6 +101,12 @@ type VaultAppRoleResp = VaultUserPassLoginResp;
 
 interface VaultSecretList {
 	keys: string[];
+}
+
+interface KvMount {
+	path: string;
+	version: string;
+	subPath: string;
 }
 
 export class VaultProvider extends SecretsProvider {
@@ -241,6 +262,16 @@ export class VaultProvider extends SecretsProvider {
 			],
 			hint: 'Only used when KV Mount Path is specified.',
 		},
+		{
+			displayName: 'KV Secret Path (optional)',
+			name: 'kvSecretPath',
+			type: 'string',
+			default: '',
+			required: false,
+			noDataExpression: true,
+			placeholder: 'e.g. my-app/',
+			hint: 'Folder inside the KV mount to read secrets from. Leave blank to read the whole mount. Only used when KV Mount Path is specified.',
+		},
 	];
 
 	displayName = 'HashiCorp Vault';
@@ -255,13 +286,16 @@ export class VaultProvider extends SecretsProvider {
 
 	#tokenInfo: VaultTokenInfo | null = null;
 
-	#http: AxiosInstance;
+	#http: HttpRequestClient;
 
 	private refreshTimeout: NodeJS.Timeout | null;
 
 	private refreshAbort = new AbortController();
 
-	constructor(readonly logger = Container.get(Logger)) {
+	constructor(
+		readonly logger = Container.get(Logger),
+		private readonly outboundHttp = Container.get(OutboundHttp),
+	) {
 		super();
 		this.logger = this.logger.scoped('external-secrets');
 	}
@@ -269,53 +303,57 @@ export class VaultProvider extends SecretsProvider {
 	async init(settings: SecretsProviderSettings): Promise<void> {
 		this.settings = settings.settings as unknown as VaultSettings;
 
-		const baseURL = new URL(this.settings.url);
-
-		this.#http = axios.create({ baseURL: baseURL.toString() });
-		if (this.settings.namespace) {
-			this.#http.interceptors.request.use((config) => {
-				config.headers['X-Vault-Namespace'] = this.settings.namespace;
-				return config;
-			});
-		}
-		this.#http.interceptors.request.use((config) => {
-			if (this.#currentToken) {
-				config.headers['X-Vault-Token'] = this.#currentToken;
-			}
-			return config;
+		this.#http = this.outboundHttp.requests({
+			baseURL: new URL(this.settings.url).toString(), // Normalize here so a malformed URL fails at init time rather than on the first request.
+			headers: () => this.buildAuthHeaders(),
+			useDefaultSsrfPolicy: 'unsafe', // admin-configured infrastructure
 		});
 
 		this.logger.debug('Vault provider initialized');
 	}
 
 	protected async doConnect(): Promise<void> {
-		// Authenticate based on method
-		if (this.settings.authMethod === 'token') {
-			this.#currentToken = this.settings.token;
-		} else if (this.settings.authMethod === 'usernameAndPassword') {
-			this.#currentToken = await this.authUsernameAndPassword(
-				this.settings.username,
-				this.settings.password,
-			);
-			if (!this.#currentToken) {
-				throw new Error('Failed to authenticate with Username and Password');
+		try {
+			// Authenticate based on method
+			if (this.settings.authMethod === 'token') {
+				this.#currentToken = this.settings.token;
+			} else if (this.settings.authMethod === 'usernameAndPassword') {
+				this.#currentToken = await this.authUsernameAndPassword(
+					this.settings.username,
+					this.settings.password,
+				);
+				if (!this.#currentToken) {
+					throw new Error('Failed to authenticate with Username and Password');
+				}
+			} else if (this.settings.authMethod === 'appRole') {
+				this.#currentToken = await this.authAppRole(this.settings.roleId, this.settings.secretId);
+				if (!this.#currentToken) {
+					throw new Error('Failed to authenticate with AppRole');
+				}
 			}
-		} else if (this.settings.authMethod === 'appRole') {
-			this.#currentToken = await this.authAppRole(this.settings.roleId, this.settings.secretId);
-			if (!this.#currentToken) {
-				throw new Error('Failed to authenticate with AppRole');
+
+			// Test connection
+			const [testSuccess, failureMessage] = await this.test();
+			if (!testSuccess) {
+				throw new Error(failureMessage ?? 'Connection test failed');
 			}
-		}
 
-		// Test connection
-		const [testSuccess] = await this.test();
-		if (!testSuccess) {
-			throw new Error('Connection test failed');
+			// Setup token refresh
+			[this.#tokenInfo] = await this.getTokenInfo();
+			this.setupTokenRefresh();
+		} catch (error) {
+			if (!this.isVaultAuthFailure(error)) {
+				this.logOperationFailure('Failed to connect Vault provider', {
+					operation: 'connect',
+					error,
+					context: {
+						...buildHttpProviderErrorContext(error),
+						authMethod: this.settings.authMethod,
+					},
+				});
+			}
+			throw error;
 		}
-
-		// Setup token refresh
-		[this.#tokenInfo] = await this.getTokenInfo();
-		this.setupTokenRefresh();
 	}
 
 	async disconnect(): Promise<void> {
@@ -349,7 +387,7 @@ export class VaultProvider extends SecretsProvider {
 		try {
 			// We don't actually care about the result of this since it doesn't
 			// return an expire_time
-			await this.#http.post('auth/token/renew-self');
+			await this.#http.request({ url: 'auth/token/renew-self', method: 'POST' });
 
 			[this.#tokenInfo] = await this.getTokenInfo();
 
@@ -365,8 +403,15 @@ export class VaultProvider extends SecretsProvider {
 			}
 
 			this.setupTokenRefresh();
-		} catch {
-			this.logger.error('Failed to renew Vault token. Attempting to reconnect.');
+		} catch (error) {
+			this.logOperationFailure('Failed to renew Vault token. Attempting to reconnect.', {
+				operation: 'tokenRefresh',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
+					authMethod: this.settings.authMethod,
+				},
+			});
 			void this.connect();
 		}
 	};
@@ -376,95 +421,113 @@ export class VaultProvider extends SecretsProvider {
 		password: string,
 	): Promise<string | null> {
 		try {
-			const resp = await this.#http.request<VaultUserPassLoginResp>({
+			const body = await this.#http.request<VaultUserPassLoginResp>({
 				method: 'POST',
 				url: `auth/userpass/login/${username}`,
-				responseType: 'json',
-				data: { password },
+				json: true,
+				body: { password },
 			});
 
-			return resp.data.auth.client_token;
-		} catch {
+			return body.auth.client_token;
+		} catch (error) {
+			this.logOperationFailure('Vault provider username/password authentication failed', {
+				operation: 'connect',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
+					authMethod: 'usernameAndPassword',
+				},
+			});
 			return null;
 		}
 	}
 
 	private async authAppRole(roleId: string, secretId: string): Promise<string | null> {
 		try {
-			const resp = await this.#http.request<VaultAppRoleResp>({
+			const body = await this.#http.request<VaultAppRoleResp>({
 				method: 'POST',
 				url: 'auth/approle/login',
-				responseType: 'json',
-				data: { role_id: roleId, secret_id: secretId },
+				json: true,
+				body: { role_id: roleId, secret_id: secretId },
 			});
 
-			return resp.data.auth.client_token;
-		} catch (e) {
+			return body.auth.client_token;
+		} catch (error) {
+			this.logOperationFailure('Vault provider AppRole authentication failed', {
+				operation: 'connect',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
+					authMethod: 'appRole',
+				},
+			});
 			return null;
 		}
 	}
 
-	private async getTokenInfo(): Promise<[VaultTokenInfo | null, AxiosResponse]> {
-		const resp = await this.#http.request<VaultResponse<VaultTokenInfo>>({
+	private async getTokenInfo(): Promise<[VaultTokenInfo | null, IN8nHttpFullResponse]> {
+		const resp = await this.requestFull({
 			method: 'GET',
 			url: 'auth/token/lookup-self',
-			responseType: 'json',
-			validateStatus: () => true,
+			json: true,
 		});
 
-		if (resp.status !== 200 || !resp.data.data) {
+		const body = resp.body as VaultResponse<VaultTokenInfo> | undefined;
+		if (resp.statusCode !== 200 || !body?.data) {
 			return [null, resp];
 		}
-		return [resp.data.data, resp];
+		return [body.data, resp];
 	}
 
-	private async getKVSecrets(
-		mountPath: string,
-		kvVersion: string,
-		path: string,
-	): Promise<[string, IDataObject] | null> {
+	private async getKVSecrets(mount: KvMount, path: string): Promise<IDataObject | null> {
+		const { path: mountPath, version: kvVersion, subPath } = mount;
 		this.logger.debug(`Getting kv secrets from ${mountPath}${path} (version ${kvVersion})`);
-		let listPath = mountPath;
-		if (kvVersion === '2') {
-			listPath += 'metadata/';
-		}
-		listPath += path;
-		let listResp: AxiosResponse<VaultResponse<VaultSecretList>>;
+		const listRequest = this.kvListRequest(this.kvApiPath(mountPath, kvVersion, 'metadata', path));
+		let listBody: VaultResponse<VaultSecretList>;
 		try {
-			const shouldPreferGet = Container.get(ExternalSecretsConfig).preferGet;
-			const url = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const method = shouldPreferGet ? 'GET' : ('LIST' as any);
-			listResp = await this.#http.request<VaultResponse<VaultSecretList>>({
-				url,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				method,
+			listBody = await this.#http.request<VaultResponse<VaultSecretList>>(listRequest);
+		} catch (error) {
+			const errorContext = buildHttpProviderErrorContext(error);
+			this.logger.debug('Vault provider failed to list KV secrets', {
+				providerName: this.name,
+				operation: 'update',
+				mountPath,
+				kvVersion,
+				vaultApiPath: listRequest.url,
+				...errorContext,
 			});
-		} catch {
 			return null;
 		}
 		const data = Object.fromEntries(
 			(
 				await Promise.allSettled(
-					listResp.data.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
+					listBody.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
 						if (key.endsWith('/')) {
-							return await this.getKVSecrets(mountPath, kvVersion, path + key);
+							const folder = await this.getKVSecrets(mount, path + key);
+							const folderKey = (path + key).slice(subPath.length, -1);
+							return folder === null ? null : [folderKey, folder];
 						}
-						let secretPath = mountPath;
-						if (kvVersion === '2') {
-							secretPath += 'data/';
-						}
-						secretPath += path + key;
+						const secretPath = this.kvApiPath(mountPath, kvVersion, 'data', path + key);
 						try {
-							const secretResp = await this.#http.get<VaultResponse<IDataObject>>(secretPath);
+							const secretBody = await this.#http.request<VaultResponse<IDataObject>>({
+								url: secretPath,
+								method: 'GET',
+							});
 							this.logger.debug(`Vault provider retrieved secrets from ${secretPath}`);
 							return [
 								key,
-								kvVersion === '2'
-									? (secretResp.data.data.data as IDataObject)
-									: secretResp.data.data,
+								kvVersion === '2' ? (secretBody.data.data as IDataObject) : secretBody.data,
 							];
-						} catch {
+						} catch (error) {
+							const errorContext = buildHttpProviderErrorContext(error);
+							this.logger.debug('Vault provider failed to read KV secret', {
+								providerName: this.name,
+								operation: 'update',
+								mountPath,
+								kvVersion,
+								secretPath,
+								...errorContext,
+							});
 							return null;
 						}
 					}),
@@ -473,24 +536,56 @@ export class VaultProvider extends SecretsProvider {
 				.map((i) => (i.status === 'rejected' ? null : i.value))
 				.filter((v): v is [string, IDataObject] => v !== null),
 		);
-		const name = path.substring(0, path.length - 1);
-		this.logger.debug(`Vault provider retrieved kv secrets from ${name}`);
-		return [name, data];
+		this.logger.debug(`Vault provider retrieved kv secrets from ${mountPath}${path}`);
+		return data;
 	}
 
-	private normalizeKvPath(mountPath: string): string {
-		return mountPath.endsWith('/') ? mountPath : `${mountPath}/`;
+	private normalizeKvPath(path = ''): string {
+		const segments = path
+			.split('/')
+			.map((segment) => segment.trim())
+			.filter(Boolean);
+		return segments.length === 0 ? '' : `${segments.join('/')}/`;
 	}
 
-	private async discoverKvMounts(): Promise<Array<{ path: string; version: string }>> {
-		const { kvMountPath, kvVersion } = this.settings;
+	private kvApiPath(
+		mountPath: string,
+		kvVersion: string,
+		segment: 'metadata' | 'data',
+		path: string,
+	): string {
+		return kvVersion === '2' ? `${mountPath}${segment}/${path}` : `${mountPath}${path}`;
+	}
 
-		if (kvMountPath) {
-			return [{ path: this.normalizeKvPath(kvMountPath), version: kvVersion ?? '2' }];
+	private kvListRequest(listPath: string): { url: string; method: IHttpRequestMethods } {
+		const preferGet = Container.get(ExternalSecretsConfig).preferGet;
+		return {
+			url: `${listPath}${preferGet ? '?list=true' : ''}`,
+			// non-standard `LIST` verb works; `preferGet` swaps it for `GET ?list=true`.
+			method: (preferGet ? 'GET' : 'LIST') as IHttpRequestMethods,
+		};
+	}
+
+	private manualKvMount(): KvMount | null {
+		const { kvMountPath, kvVersion, kvSecretPath } = this.settings;
+		const path = this.normalizeKvPath(kvMountPath);
+		if (path === '') {
+			return null;
+		}
+		return { path, version: kvVersion ?? '2', subPath: this.normalizeKvPath(kvSecretPath) };
+	}
+
+	private async discoverKvMounts(): Promise<KvMount[]> {
+		const manualMount = this.manualKvMount();
+		if (manualMount) {
+			return [manualMount];
 		}
 
-		const mounts = await this.#http.get<VaultResponse<VaultMountsResp>>('sys/mounts');
-		const kvMounts = Object.entries(mounts.data.data).filter(([, mount]) => mount.type === 'kv');
+		const mounts = await this.#http.request<VaultResponse<VaultMountsResp>>({
+			url: 'sys/mounts',
+			method: 'GET',
+		});
+		const kvMounts = Object.entries(mounts.data).filter(([, mount]) => mount.type === 'kv');
 
 		return kvMounts
 			.map(([basePath, mount]) => {
@@ -499,64 +594,92 @@ export class VaultProvider extends SecretsProvider {
 					this.logger.debug(`Skipping KV mount "${basePath}" — no version in mount options`);
 					return null;
 				}
-				return { path: basePath, version };
+				return { path: basePath, version, subPath: '' };
 			})
-			.filter((entry): entry is { path: string; version: string } => entry !== null);
+			.filter((entry): entry is KvMount => entry !== null);
 	}
 
 	private async testSecretAccess(): Promise<[boolean] | [boolean, string]> {
-		const { kvMountPath, kvVersion } = this.settings;
+		const manualMount = this.manualKvMount();
 
-		let listUrl: string;
+		let listRequest: IHttpRequestOptions;
 		let forbiddenMessage: string;
 		let failureMessage: (status: number) => string;
 
-		if (kvMountPath) {
-			const normalizedPath = this.normalizeKvPath(kvMountPath);
-			const version = kvVersion ?? '2';
-			listUrl =
-				version === '2' ? `${normalizedPath}metadata/?list=true` : `${normalizedPath}?list=true`;
-			forbiddenMessage = `Permission denied accessing ${kvMountPath}. Check your token policies.`;
+		if (manualMount) {
+			const listPath = this.kvApiPath(
+				manualMount.path,
+				manualMount.version,
+				'metadata',
+				manualMount.subPath,
+			);
+			listRequest = this.kvListRequest(listPath);
+			forbiddenMessage = `Permission denied accessing ${listPath}. Check your token policies.`;
 			failureMessage = (status) =>
-				`Could not access KV mount at ${kvMountPath} (status ${status}).`;
+				status === 404 && manualMount.subPath !== ''
+					? `No secrets found at ${listPath}. Check the KV Secret Path.`
+					: `Could not access ${listPath} (status ${status}).`;
 		} else {
-			listUrl = 'sys/mounts';
+			listRequest = { url: 'sys/mounts', method: 'GET' };
 			forbiddenMessage =
 				"Couldn't list mounts. Please give these credentials 'read' access to sys/mounts.";
 			failureMessage = () =>
 				"Couldn't list mounts but it wasn't a permissions issue. Please consult your Vault admin.";
 		}
 
-		const resp = await this.#http.get(listUrl, { validateStatus: () => true });
+		const resp = await this.requestFull(listRequest);
 
-		if (resp.status === 403) {
+		if (resp.statusCode === 403) {
 			return [false, forbiddenMessage];
 		}
-		// Vault returns 404 when listing an empty KV mount — this is valid, not an error
-		if (resp.status === 200 || (kvMountPath && resp.status === 404)) {
+		const { body } = resp;
+		// Vault answers a list on an empty KV mount with 404 and an empty `errors` array. A 404 for an
+		// unknown mount path carries an error message instead.
+		const isEmptyMount =
+			resp.statusCode === 404 &&
+			typeof body === 'object' &&
+			body !== null &&
+			'errors' in body &&
+			Array.isArray(body.errors) &&
+			body.errors.length === 0;
+		if (resp.statusCode === 200 || (manualMount?.subPath === '' && isEmptyMount)) {
 			return [true];
 		}
-		return [false, failureMessage(resp.status)];
+		return [false, failureMessage(resp.statusCode)];
 	}
 
 	async update(): Promise<void> {
-		const kvMounts = await this.discoverKvMounts();
+		try {
+			const kvMounts = await this.discoverKvMounts();
 
-		const secrets = Object.fromEntries(
-			(
-				await Promise.all(
-					kvMounts.map(async ({ path, version }): Promise<[string, IDataObject] | null> => {
-						const value = await this.getKVSecrets(path, version, '');
-						if (value === null) {
-							return null;
-						}
-						return [path.substring(0, path.length - 1), value[1]];
-					}),
-				)
-			).filter((entry): entry is [string, IDataObject] => entry !== null),
-		);
-		this.cachedSecrets = secrets;
-		this.logger.debug('Vault provider secrets updated');
+			const secrets = Object.fromEntries(
+				(
+					await Promise.all(
+						kvMounts.map(async (mount): Promise<[string, IDataObject] | null> => {
+							const value = await this.getKVSecrets(mount, mount.subPath);
+							if (value === null) {
+								return null;
+							}
+							const nested = mount.subPath
+								.split('/')
+								.filter(Boolean)
+								.reduceRight<IDataObject>((inner, folder) => ({ [folder]: inner }), value);
+							return [mount.path.substring(0, mount.path.length - 1), nested];
+						}),
+					)
+				).filter((entry): entry is [string, IDataObject] => entry !== null),
+			);
+			this.cachedSecrets = secrets;
+
+			this.logger.debug('Vault provider secrets updated');
+		} catch (error) {
+			this.logOperationFailure('Failed to update Vault provider secrets', {
+				operation: 'update',
+				error,
+				context: buildHttpProviderErrorContext(error),
+			});
+			throw error;
+		}
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {
@@ -564,7 +687,7 @@ export class VaultProvider extends SecretsProvider {
 			const [token, tokenResp] = await this.getTokenInfo();
 
 			if (token === null) {
-				if (tokenResp.status === 404) {
+				if (tokenResp.statusCode === 404) {
 					return [false, 'Could not find auth path. Try adding /v1/ to the end of your base URL.'];
 				}
 				return [false, 'Invalid credentials'];
@@ -572,13 +695,20 @@ export class VaultProvider extends SecretsProvider {
 
 			return await this.testSecretAccess();
 		} catch (error) {
-			if (axios.isAxiosError(error)) {
-				if (error.code === 'ECONNREFUSED') {
-					return [
-						false,
-						'Connection refused. Please check the host and port of the server are correct.',
-					];
-				}
+			this.logOperationFailure('Vault provider test failed', {
+				operation: 'test',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
+					vaultApiPath: 'auth/token/lookup-self',
+				},
+			});
+
+			if (isConnectionRefusedError(error)) {
+				return [
+					false,
+					'Connection refused. Please check the host and port of the server are correct.',
+				];
 			}
 
 			return [false];
@@ -610,5 +740,47 @@ export class VaultProvider extends SecretsProvider {
 			return [k];
 		};
 		return Object.entries(this.cachedSecrets).flatMap(getKeys);
+	}
+
+	private buildAuthHeaders(): Record<string, string> {
+		const headers: Record<string, string> = {};
+		if (this.settings.namespace) {
+			headers['X-Vault-Namespace'] = this.settings.namespace;
+		}
+		if (this.#currentToken) {
+			headers['X-Vault-Token'] = this.#currentToken;
+		}
+		return headers;
+	}
+
+	private async requestFull(options: IHttpRequestOptions): Promise<IN8nHttpFullResponse> {
+		return await this.#http.request({
+			...options,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true, // Resolve non-2xx responses instead of throwing so the status checks below can return tailored messages.
+		});
+	}
+
+	private isVaultAuthFailure(error: unknown): boolean {
+		return (
+			error instanceof Error &&
+			(error.message === 'Failed to authenticate with Username and Password' ||
+				error.message === 'Failed to authenticate with AppRole')
+		);
+	}
+
+	private logOperationFailure(
+		message: string,
+		params: SecretsProviderOperationFailureParams,
+	): void {
+		logSecretsProviderOperationFailure({
+			logger: this.logger,
+			message,
+			providerName: this.name,
+			providerDisplayName: this.displayName,
+			operation: params.operation,
+			error: params.error,
+			context: params.context ?? {},
+		});
 	}
 }

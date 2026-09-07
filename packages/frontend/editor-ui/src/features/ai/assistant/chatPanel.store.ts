@@ -13,7 +13,7 @@ import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';
@@ -63,11 +63,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const isAssistantModeActive = computed(() => chatPanelStateStore.activeMode === 'assistant');
 	const isBuilderModeActive = computed(() => chatPanelStateStore.activeMode === 'builder');
 
-	const canShowAiButtonOnCanvas = computed(
-		() =>
-			settingsStore.isAiAssistantOrBuilderEnabled &&
-			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
-	);
+	const isEditableCanvasView = computed(() => EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS));
 
 	// Actions
 	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
@@ -262,7 +258,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,
-		canShowAiButtonOnCanvas,
+		isEditableCanvasView,
 		// Actions
 		open,
 		close,

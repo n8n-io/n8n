@@ -11,33 +11,92 @@ import {
 	TabsList,
 	TabsTrigger,
 } from 'reka-ui';
-import { nextTick, watch } from 'vue';
-import { useClipboard } from '@/app/composables/useClipboard';
-import { useToast } from '@/app/composables/useToast';
+import { computed, nextTick, ref, watch } from 'vue';
+import { useClipboard } from '@n8n/composables/useClipboard';
+import { useToast } from '@n8n/composables/useToast';
 import type { ArtifactTab } from '../useCanvasPreview';
 
-const props = defineProps<{
-	tabs: ArtifactTab[];
-	activeTabId?: string;
-}>();
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue';
+
+const props = withDefaults(
+	defineProps<{
+		tabs: ArtifactTab[];
+		activeTabId?: string;
+		isExpanded?: boolean;
+		isExpandDisabled?: boolean;
+		previewToggleLabel?: string;
+	}>(),
+	{
+		isExpanded: false,
+		isExpandDisabled: false,
+		previewToggleLabel: undefined,
+	},
+);
 
 const emit = defineEmits<{
-	close: [];
+	togglePreview: [];
+	toggleExpanded: [];
 }>();
 
 const i18n = useI18n();
 const clipboard = useClipboard();
 const toast = useToast();
+const tabListRef = ref<HTMLElement | null>(null);
+const sizeToggleLabel = computed(() =>
+	i18n.baseText(
+		props.isExpanded ? 'instanceAi.previewTabBar.collapse' : 'instanceAi.previewTabBar.expand',
+	),
+);
+
+function handleToggleExpanded() {
+	if (props.isExpandDisabled) return;
+	emit('toggleExpanded');
+}
+
+function getTabListElement() {
+	const tabList = tabListRef.value;
+	if (tabList instanceof HTMLElement) return tabList;
+	return (tabList as { $el?: HTMLElement } | null)?.$el ?? null;
+}
+
+function scrollTabIntoView(tabId: string) {
+	const tabList = getTabListElement();
+	if (!tabList) return;
+
+	const activeTab = Array.from(tabList.querySelectorAll<HTMLElement>('[data-tab-id]')).find(
+		(tab) => tab.dataset.tabId === tabId,
+	);
+	if (!activeTab) return;
+
+	const tabLeft = activeTab.offsetLeft;
+	const tabRight = tabLeft + activeTab.offsetWidth;
+	const visibleLeft = tabList.scrollLeft;
+	const visibleRight = visibleLeft + tabList.clientWidth;
+
+	const nextScrollLeft =
+		tabLeft < visibleLeft
+			? tabLeft
+			: tabRight > visibleRight
+				? tabRight - tabList.clientWidth
+				: undefined;
+
+	if (nextScrollLeft === undefined) return;
+	if (typeof tabList.scrollTo === 'function') {
+		tabList.scrollTo({ left: nextScrollLeft, behavior: 'smooth' });
+	} else {
+		tabList.scrollLeft = nextScrollLeft;
+	}
+}
 
 // Bring the active tab into view when the selection changes (e.g. auto-switch
-// on execution). scrollIntoView walks up to the nearest scroll container.
+// on execution), without scrolling any outer app containers.
 watch(
 	() => props.activeTabId,
 	(tabId) => {
 		if (!tabId) return;
 		void nextTick(() => {
-			const el = document.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);
-			el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+			scrollTabIntoView(tabId);
 		});
 	},
 );
@@ -46,6 +105,9 @@ function tabHref(tab: ArtifactTab): string | undefined {
 	if (tab.type === 'workflow') return `/workflow/${tab.id}`;
 	if (tab.type === 'data-table') {
 		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
+	}
+	if (tab.type === 'agent') {
+		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
 	}
 	return undefined;
 }
@@ -68,15 +130,18 @@ async function handleCopyLink(tab: ArtifactTab) {
 <template>
 	<div :class="$style.header">
 		<N8nIconButton
-			icon="chevrons-right"
+			v-if="previewToggleLabel"
+			icon="panel-right"
 			variant="ghost"
 			size="medium"
-			:aria-label="i18n.baseText('instanceAi.previewTabBar.collapse')"
-			:title="i18n.baseText('instanceAi.previewTabBar.collapse')"
-			data-test-id="instance-ai-preview-close"
-			@click="emit('close')"
+			:aria-label="previewToggleLabel"
+			:title="previewToggleLabel"
+			:aria-pressed="true"
+			data-test-id="instance-ai-artifacts-preview-toggle"
+			@click="emit('togglePreview')"
 		/>
 		<TabsList
+			ref="tabListRef"
 			:aria-label="i18n.baseText('instanceAi.artifactsPanel.title')"
 			:class="$style.tabList"
 		>
@@ -86,7 +151,14 @@ async function handleCopyLink(tab: ArtifactTab) {
 			<ContextMenuRoot v-for="tab in tabs" :key="tab.id">
 				<ContextMenuTrigger as-child>
 					<TabsTrigger :value="tab.id" :data-tab-id="tab.id" :class="$style.tab">
-						<N8nIcon :icon="tab.icon" size="large" />
+						<N8nIcon
+							v-if="tab.building"
+							icon="spinner"
+							size="large"
+							spin
+							data-test-id="instance-ai-tab-building-spinner"
+						/>
+						<N8nIcon v-else :icon="tab.icon" size="large" />
 						<span :class="$style.label">{{ tab.name }}</span>
 					</TabsTrigger>
 				</ContextMenuTrigger>
@@ -104,16 +176,22 @@ async function handleCopyLink(tab: ArtifactTab) {
 				</ContextMenuPortal>
 			</ContextMenuRoot>
 		</TabsList>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<ManualEditorButton :tabs="tabs" :active-tab-id="activeTabId" />
+		<N8nIconButton
+			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
+			variant="ghost"
+			size="medium"
+			:disabled="isExpandDisabled"
+			:aria-label="sizeToggleLabel"
+			:title="isExpandDisabled ? undefined : sizeToggleLabel"
+			data-test-id="instance-ai-preview-expand-toggle"
+			@click="handleToggleExpanded"
+		/>
 	</div>
 </template>
 
 <style lang="scss" module>
-@property --left--fade {
-	syntax: '<length>';
-	inherits: false;
-	initial-value: 0;
-}
-
 @property --right--fade {
 	syntax: '<length>';
 	inherits: false;
@@ -121,47 +199,41 @@ async function handleCopyLink(tab: ArtifactTab) {
 }
 
 @keyframes scrollfade {
-	0% {
-		--left--fade: 0;
-	}
-	10%,
-	100% {
-		--left--fade: 3rem;
-	}
 	0%,
 	90% {
 		--right--fade: 3rem;
 	}
-	100% {
+	99.9% {
 		--right--fade: 0;
 	}
 }
 
 .header {
 	flex-shrink: 0;
+	height: 44px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding-left: var(--spacing--4xs);
+	padding: 0 var(--spacing--3xs) 0 var(--spacing--4xs);
 	border-bottom: var(--border);
 }
 
 .tabList {
 	flex: 1 1 0;
 	min-width: 0;
+	height: 100%;
 	display: flex;
 	overflow-x: auto;
 	scrollbar-width: none;
 	position: relative;
-	mask: linear-gradient(
-		to right,
-		#0000,
-		#ffff var(--left--fade) calc(100% - var(--right--fade)),
-		#0000
-	);
-	animation: scrollfade;
-	animation-timeline: --scrollfade;
-	scroll-timeline: --scrollfade x;
+
+	// Scroll-driven right edge fade only where supported.
+	@supports (animation-timeline: scroll()) {
+		mask: linear-gradient(to right, #ffff 0 calc(100% - var(--right--fade)), #0000);
+		animation: scrollfade;
+		animation-timeline: --scrollfade;
+		scroll-timeline: --scrollfade x;
+	}
 }
 
 .tab {
@@ -176,7 +248,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 	background-color: transparent;
 	border: none;
 	font-size: var(--font-size--2xs);
-	padding: var(--spacing--sm) var(--spacing--xs);
+	padding: 0 var(--spacing--xs);
 	cursor: pointer;
 
 	&:hover {

@@ -1,53 +1,62 @@
+import {
+	NodeSearchEngine,
+	suggestedNodesData,
+	type SearchableNodeType,
+} from '@n8n/ai-utilities/node-catalog';
+import type { Mock } from 'vitest';
+
+import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
+import { addSetupPreference } from '../nodes/setup-preference';
 import { createNodesTool } from '../nodes.tool';
 
 function createMockContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
 	return {
 		userId: 'user-1',
 		workflowService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			getAsWorkflowJSON: jest.fn(),
-			createFromWorkflowJSON: jest.fn(),
-			updateFromWorkflowJSON: jest.fn(),
-			archive: jest.fn(),
-			delete: jest.fn(),
-			publish: jest.fn(),
-			unpublish: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			getAsWorkflowJSON: vi.fn(),
+			createFromWorkflowJSON: vi.fn(),
+			updateFromWorkflowJSON: vi.fn(),
+			archive: vi.fn(),
+			delete: vi.fn(),
+			publish: vi.fn(),
+			unpublish: vi.fn(),
 		},
 		executionService: {
-			list: jest.fn(),
-			run: jest.fn(),
-			getStatus: jest.fn(),
-			getResult: jest.fn(),
-			stop: jest.fn(),
-			getDebugInfo: jest.fn(),
-			getNodeOutput: jest.fn(),
+			list: vi.fn(),
+			run: vi.fn(),
+			getStatus: vi.fn(),
+			getResult: vi.fn(),
+			stop: vi.fn(),
+			getDebugInfo: vi.fn(),
+			getNodeOutput: vi.fn(),
 		},
 		credentialService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			delete: jest.fn(),
-			test: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			delete: vi.fn(),
+			test: vi.fn(),
 		},
 		nodeService: {
-			listAvailable: jest.fn(),
-			getDescription: jest.fn(),
-			listSearchable: jest.fn(),
-			exploreResources: jest.fn(),
+			listAvailable: vi.fn(),
+			getDescription: vi.fn(),
+			listSearchable: vi.fn(),
+			exploreResources: vi.fn(),
 		},
 		dataTableService: {
-			list: jest.fn(),
-			create: jest.fn(),
-			delete: jest.fn(),
-			getSchema: jest.fn(),
-			addColumn: jest.fn(),
-			deleteColumn: jest.fn(),
-			renameColumn: jest.fn(),
-			queryRows: jest.fn(),
-			insertRows: jest.fn(),
-			updateRows: jest.fn(),
-			deleteRows: jest.fn(),
+			list: vi.fn(),
+			create: vi.fn(),
+			delete: vi.fn(),
+			getSchema: vi.fn(),
+			addColumn: vi.fn(),
+			deleteColumn: vi.fn(),
+			renameColumn: vi.fn(),
+			queryRows: vi.fn(),
+			insertRows: vi.fn(),
+			updateRows: vi.fn(),
+			deleteRows: vi.fn(),
 		},
 		permissions: {},
 		...overrides,
@@ -71,10 +80,11 @@ describe('nodes tool', () => {
 				results: [{ name: 'Sheet1', value: 'sheet-1' }],
 				paginationToken: undefined,
 			};
-			(context.nodeService.exploreResources as jest.Mock).mockResolvedValue(mockResult);
+			(context.nodeService.exploreResources as Mock).mockResolvedValue(mockResult);
 
 			const tool = createNodesTool(context, 'orchestrator');
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'explore-resources',
 					nodeType: 'n8n-nodes-base.googleSheets',
@@ -117,13 +127,342 @@ describe('nodes tool', () => {
 				},
 			];
 			const context = createMockContext();
-			(context.nodeService.listAvailable as jest.Mock).mockResolvedValue(nodes);
+			(context.nodeService.listAvailable as Mock).mockResolvedValue(nodes);
 
 			const tool = createNodesTool(context, 'full');
-			const result = await tool.execute!({ action: 'list', query: 'http' } as never, {} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'list', query: 'http' } as never,
+				{} as never,
+			);
 
-			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({ query: 'http' });
+			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+				query: 'http',
+				gatewayCreditsOnly: undefined,
+			});
 			expect(result).toEqual({ nodes });
+		});
+
+		it('should forward gatewayCreditsOnly to nodeService.listAvailable', async () => {
+			const nodes = [
+				{
+					name: 'n8n-nodes-base.openAi',
+					displayName: 'OpenAI',
+					description: 'Use OpenAI',
+					group: ['transform'],
+					version: 1,
+					aiGateway: { supported: true },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listAvailable as Mock).mockResolvedValue(nodes);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'list', gatewayCreditsOnly: true } as never,
+				{} as never,
+			);
+
+			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+				query: undefined,
+				gatewayCreditsOnly: true,
+			});
+			expect(result).toEqual({ nodes });
+		});
+	});
+
+	describe('search action', () => {
+		it('should search nodes by query and reuse the searchable node list reference', async () => {
+			const searchableNodes = [
+				{
+					name: 'n8n-nodes-base.httpRequest',
+					displayName: 'HTTP Request',
+					description: 'Make HTTP requests',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+					codex: { alias: ['api'] },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			(context.nodeService.getDescription as Mock).mockResolvedValue({
+				properties: [{ type: 'credentialsSelect' }],
+				credentials: [{ name: 'gmailOAuth2' }],
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const first = await executeTool(
+				tool,
+				{ action: 'search', query: 'http', limit: 5 } as never,
+				{} as never,
+			);
+			const second = await executeTool(
+				tool,
+				{ action: 'search', query: 'http', limit: 5 } as never,
+				{} as never,
+			);
+
+			expect(context.nodeService.listSearchable).toHaveBeenCalledTimes(2);
+			expect(first).toMatchObject({
+				totalResults: 1,
+				results: [expect.objectContaining({ name: 'n8n-nodes-base.httpRequest' })],
+			});
+			expect(second).toMatchObject({
+				totalResults: 1,
+				results: [expect.objectContaining({ name: 'n8n-nodes-base.httpRequest' })],
+			});
+			expect(context.nodeService.getDescription).toHaveBeenCalledTimes(2);
+			expect(first).not.toHaveProperty('results.0.setupPreference');
+		});
+
+		it('should search nodes by connection type and enrich results with discriminators', async () => {
+			const searchableNodes = [
+				{
+					name: 'n8n-nodes-base.slackTool',
+					displayName: 'Slack Tool',
+					description: 'Send messages to Slack from an AI agent',
+					inputs: ['main'],
+					outputs: ['ai_tool'],
+					version: 1,
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue({
+				resource: ['message'],
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'search', connectionType: 'ai_tool', limit: 5 } as never,
+				{} as never,
+			);
+
+			expect(context.nodeService.listDiscriminators).toHaveBeenCalledWith(
+				'n8n-nodes-base.slackTool',
+			);
+			expect(result).toMatchObject({
+				totalResults: 1,
+				results: [
+					expect.objectContaining({
+						name: 'n8n-nodes-base.slackTool',
+						discriminators: { resource: ['message'] },
+					}),
+				],
+			});
+		});
+
+		it('surfaces aiGateway meta from searchable nodes through the search handler', async () => {
+			const searchableNodes = [
+				{
+					name: 'n8n-nodes-base.firecrawl',
+					displayName: 'Firecrawl',
+					description: 'Scrape and crawl the web',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+					aiGateway: { supported: true, minVersion: 1 },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue(null);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'search', query: 'firecrawl', limit: 5 } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				results: [
+					expect.objectContaining({
+						name: 'n8n-nodes-base.firecrawl',
+						aiGateway: { supported: true, minVersion: 1 },
+					}),
+				],
+			});
+		});
+
+		it("suggests the chat model for the user's configured provider on ai_languageModel requirements", async () => {
+			const searchableNodes = [
+				{
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'Reasoning agent',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+					builderHint: { inputs: { ai_languageModel: { required: true } } },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-1', name: 'My Anthropic key', type: 'anthropicApi' },
+			]);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'search', query: 'agent', limit: 5 } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				results: [
+					expect.objectContaining({
+						subnodeRequirements: [
+							expect.objectContaining({
+								connectionType: 'ai_languageModel',
+								suggestedNode: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+							}),
+						],
+					}),
+				],
+			});
+		});
+
+		it('does not suggest a chat model when no LLM credential is configured', async () => {
+			const searchableNodes = [
+				{
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'Reasoning agent',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+					builderHint: { inputs: { ai_languageModel: { required: true } } },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'search', query: 'agent', limit: 5 } as never,
+				{} as never,
+			);
+
+			const [node] = (result as { results: Array<{ subnodeRequirements?: unknown[] }> }).results;
+			expect(node.subnodeRequirements).toEqual([
+				expect.not.objectContaining({ suggestedNode: expect.anything() }),
+			]);
+		});
+
+		it('should return no search results when neither query nor connection type is provided', async () => {
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue([]);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(tool, { action: 'search' } as never, {} as never);
+
+			expect(result).toEqual({ results: [], totalResults: 0 });
+		});
+	});
+
+	describe('setup preference', () => {
+		it('should expose credential preferences without changing existing data or order', async () => {
+			const expectedTelegram = addSetupPreference({}, ['telegramApi']).setupPreference;
+			const expectedGmail = addSetupPreference({}, ['gmailOAuth2', 'googleApi']).setupPreference;
+			const credentialsByNode = new Map([
+				['n8n-nodes-base.gmail', ['gmailOAuth2', 'googleApi']],
+				['n8n-nodes-base.httpRequest', ['gmailOAuth2']],
+				['n8n-nodes-base.telegram', ['telegramApi']],
+			]);
+			const searchableNodes = [
+				{
+					name: 'n8n-nodes-base.telegram',
+					displayName: 'Telegram',
+					description: 'Send a notification message',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+					aiGateway: { supported: true, minVersion: 1 },
+				},
+				{
+					name: 'n8n-nodes-base.unknownSetupability',
+					displayName: 'Unknown Setupability',
+					description: 'Send a notification message',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+				},
+			] satisfies SearchableNodeType[];
+			const expectedSearchResults = new NodeSearchEngine(searchableNodes).searchByName(
+				'message',
+				5,
+			);
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			(context.nodeService.getDescription as Mock).mockImplementation((nodeType: string) => ({
+				properties:
+					nodeType === 'n8n-nodes-base.httpRequest' ? [{ type: 'credentialsSelect' }] : [],
+				credentials: (credentialsByNode.get(nodeType) ?? []).map((name) => ({ name })),
+			}));
+			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue({
+				resource: ['message'],
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const searchResult = await executeTool<{
+				results: Array<{
+					name: string;
+					score: number;
+					note?: string;
+					aiGateway?: unknown;
+					discriminators?: unknown;
+					setupPreference?: unknown;
+				}>;
+			}>(tool, { action: 'search', query: 'message', limit: 5 } as never, {} as never);
+			const suggestedResult = await executeTool<{
+				results: Array<{
+					suggestedNodes: Array<{
+						name: string;
+						note?: string;
+						setupPreference?: unknown;
+					}>;
+				}>;
+			}>(tool, { action: 'suggested', categories: ['notification'] } as never, {} as never);
+
+			expect(searchResult.results.map(({ name, score }) => ({ name, score }))).toEqual(
+				expectedSearchResults.map(({ name, score }) => ({ name, score })),
+			);
+			const searchTelegram = searchResult.results.find(
+				(node) => node.name === 'n8n-nodes-base.telegram',
+			);
+			const searchUnknown = searchResult.results.find(
+				(node) => node.name === 'n8n-nodes-base.unknownSetupability',
+			);
+			const notificationNodes = suggestedResult.results[0]?.suggestedNodes;
+			const suggestedTelegram = notificationNodes?.find(
+				(node) => node.name === 'n8n-nodes-base.telegram',
+			);
+
+			expect(searchTelegram).toMatchObject({
+				aiGateway: { supported: true, minVersion: 1 },
+				discriminators: { resource: ['message'] },
+				setupPreference: expectedTelegram,
+			});
+			expect(suggestedTelegram?.setupPreference).toEqual(searchTelegram?.setupPreference);
+			expect(searchUnknown).not.toHaveProperty('setupPreference');
+			expect(notificationNodes?.map(({ name }) => name)).toEqual(
+				suggestedNodesData.notification.nodes.map(({ name }) => name),
+			);
+			expect(notificationNodes?.find((node) => node.name === 'n8n-nodes-base.gmail')).toEqual({
+				name: 'n8n-nodes-base.gmail',
+				note: "Default to this because it's easy for users to setup",
+				setupPreference: expectedGmail,
+			});
+			expect(
+				notificationNodes?.find((node) => node.name === 'n8n-nodes-base.httpRequest'),
+			).not.toHaveProperty('setupPreference');
 		});
 	});
 
@@ -133,7 +472,8 @@ describe('nodes tool', () => {
 			context.nodeService.exploreResources = undefined;
 
 			const tool = createNodesTool(context, 'full');
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'explore-resources',
 					nodeType: 'n8n-nodes-base.googleSheets',
@@ -154,12 +494,11 @@ describe('nodes tool', () => {
 
 		it('should handle errors from exploreResources gracefully', async () => {
 			const context = createMockContext();
-			(context.nodeService.exploreResources as jest.Mock).mockRejectedValue(
-				new Error('Auth failed'),
-			);
+			(context.nodeService.exploreResources as Mock).mockRejectedValue(new Error('Auth failed'));
 
 			const tool = createNodesTool(context, 'full');
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'explore-resources',
 					nodeType: 'n8n-nodes-base.googleSheets',
@@ -188,7 +527,7 @@ describe('nodes tool', () => {
 			const context = createMockContext();
 			const tool = createNodesTool(context, 'full');
 
-			const result = await tool.execute!({ action: 'type-definition' } as never, {} as never);
+			const result = await executeTool(tool, { action: 'type-definition' } as never, {} as never);
 
 			expect(result).toMatchObject({
 				definitions: [],
@@ -200,7 +539,8 @@ describe('nodes tool', () => {
 			const context = createMockContext();
 			const tool = createNodesTool(context, 'full');
 
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'type-definition', nodeTypes: [] } as never,
 				{} as never,
 			);
@@ -214,11 +554,11 @@ describe('nodes tool', () => {
 		it('should surface node-level builder hints from type definitions', async () => {
 			const context = createMockContext({
 				nodeService: {
-					listAvailable: jest.fn(),
-					getDescription: jest.fn(),
-					listSearchable: jest.fn(),
-					exploreResources: jest.fn(),
-					getNodeTypeDefinition: jest.fn().mockResolvedValue({
+					listAvailable: vi.fn(),
+					getDescription: vi.fn(),
+					listSearchable: vi.fn(),
+					exploreResources: vi.fn(),
+					getNodeTypeDefinition: vi.fn().mockResolvedValue({
 						content: 'export type IfNode = unknown;',
 						version: 'v23',
 						builderHint: 'Always include options, conditions, and combinator.',
@@ -227,7 +567,8 @@ describe('nodes tool', () => {
 			});
 
 			const tool = createNodesTool(context, 'full');
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.if'] } as never,
 				{} as never,
 			);
@@ -243,15 +584,56 @@ describe('nodes tool', () => {
 				],
 			});
 		});
+
+		it('should mark a retired node type as deprecated', async () => {
+			const context = createMockContext({
+				nodeService: {
+					listAvailable: vi.fn(),
+					getDescription: vi.fn(),
+					listSearchable: vi.fn(),
+					exploreResources: vi.fn(),
+					getNodeTypeDefinition: vi.fn().mockResolvedValue({
+						content: '/**\n * @deprecated This node type is retired.\n */',
+						version: '1.1',
+						builderHint: 'Use `n8n-nodes-base.httpRequestTool` instead.',
+						deprecated: true,
+					}),
+				},
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'type-definition',
+					nodeTypes: ['@n8n/n8n-nodes-langchain.toolHttpRequest'],
+				} as never,
+				{} as never,
+			);
+
+			// The definition is still returned. The caller decides what to do with it.
+			expect(result).toEqual({
+				definitions: [
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+						version: '1.1',
+						content: '/**\n * @deprecated This node type is retired.\n */',
+						builderHint: 'Use `n8n-nodes-base.httpRequestTool` instead.',
+						deprecated: true,
+					},
+				],
+			});
+		});
 	});
 
 	describe('describe action', () => {
 		it('should return found: false when node type is not found', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockRejectedValue(new Error('not found'));
+			(context.nodeService.getDescription as Mock).mockRejectedValue(new Error('not found'));
 
 			const tool = createNodesTool(context, 'full');
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'describe', nodeType: 'unknown.node' } as never,
 				{} as never,
 			);

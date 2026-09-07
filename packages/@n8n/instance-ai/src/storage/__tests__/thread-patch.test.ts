@@ -1,9 +1,13 @@
-import type { StorageThreadType } from '@mastra/core/memory';
-import type { Memory } from '@mastra/memory';
+import type { Mock } from 'vitest';
 
-import { patchThread } from '../thread-patch';
+import {
+	getThread,
+	patchThread,
+	type PatchableThreadMemory,
+	type ThreadRecord,
+} from '../thread-patch';
 
-const baseThread: StorageThreadType = {
+const baseThread: ThreadRecord = {
 	id: 'thread-1',
 	title: 'Original Title',
 	metadata: { key: 'value' },
@@ -12,35 +16,45 @@ const baseThread: StorageThreadType = {
 	updatedAt: new Date(),
 };
 
-function makeMemory(overrides: Partial<Memory> = {}): Memory {
+type TestMemory = PatchableThreadMemory & {
+	getThread: Mock;
+	saveThread: Mock;
+};
+
+function makeMemory(overrides: Partial<TestMemory> = {}): TestMemory {
 	return {
-		getThreadById: jest.fn().mockResolvedValue({ ...baseThread }),
-		updateThread: jest
-			.fn()
-			.mockImplementation(
-				(args: { id: string; title: string; metadata: Record<string, unknown> }) => ({
-					...baseThread,
-					id: args.id,
-					title: args.title,
-					metadata: args.metadata,
-				}),
-			),
-		saveThread: jest.fn(),
-		deleteThread: jest.fn(),
-		getThreadsByResourceId: jest.fn(),
-		saveMessages: jest.fn(),
-		getMessages: jest.fn(),
-		getContextWindow: jest.fn(),
 		...overrides,
-	} as unknown as Memory;
+		getThread: overrides.getThread ?? vi.fn().mockResolvedValue({ ...baseThread }),
+		saveThread:
+			overrides.saveThread ?? vi.fn().mockImplementation((thread: ThreadRecord) => thread),
+	};
 }
+
+describe('getThread', () => {
+	it('uses native getThread when available', async () => {
+		const memory = makeMemory({
+			getThread: vi.fn().mockResolvedValue({ ...baseThread, title: 'Native' }),
+		});
+
+		const result = await getThread(memory, 'thread-1');
+
+		expect(memory.getThread).toHaveBeenCalledWith('thread-1');
+		expect(result?.title).toBe('Native');
+	});
+
+	it('throws when native getThread is absent', async () => {
+		await expect(getThread({}, 'thread-1')).rejects.toThrow(
+			'Memory does not support reading threads',
+		);
+	});
+});
 
 describe('patchThread', () => {
 	describe('when memory has patchThread method', () => {
 		it('calls memory.patchThread directly', async () => {
-			const patchFn = jest.fn().mockResolvedValue({ ...baseThread, title: 'Patched' });
-			const memory = makeMemory({ patchThread: patchFn } as unknown as Partial<Memory>);
-			const update = jest.fn().mockReturnValue({ title: 'Patched' });
+			const patchFn = vi.fn().mockResolvedValue({ ...baseThread, title: 'Patched' });
+			const memory = makeMemory({ patchThread: patchFn });
+			const update = vi.fn().mockReturnValue({ title: 'Patched' });
 
 			const result = await patchThread(memory, { threadId: 'thread-1', update });
 
@@ -49,57 +63,45 @@ describe('patchThread', () => {
 		});
 	});
 
-	describe('when memory store has patchThread method', () => {
-		it('calls memoryStore.patchThread via getMemoryStore', async () => {
-			const storePatchFn = jest.fn().mockResolvedValue({ ...baseThread, title: 'Store Patched' });
-			const memory = makeMemory({
-				getMemoryStore: jest.fn().mockResolvedValue({
-					patchThread: storePatchFn,
-				}),
-			} as unknown as Partial<Memory>);
-			const update = jest.fn().mockReturnValue({ title: 'Store Patched' });
-
-			const result = await patchThread(memory, { threadId: 'thread-1', update });
-
-			expect(storePatchFn).toHaveBeenCalledWith({ threadId: 'thread-1', update });
-			expect(result?.title).toBe('Store Patched');
-		});
-	});
-
-	describe('fallback to getThreadById + updateThread', () => {
+	describe('native getThread + saveThread fallback', () => {
 		it('reads thread, calls update, then saves', async () => {
-			const memory = makeMemory();
-			const update = jest.fn().mockReturnValue({ title: 'Updated Title' });
+			const memory = makeMemory({
+				getThread: vi.fn().mockResolvedValue({ ...baseThread }),
+				saveThread: vi.fn(),
+			});
+			const update = vi.fn().mockReturnValue({ title: 'Updated Title' });
 
 			const result = await patchThread(memory, { threadId: 'thread-1', update });
 
-			expect(memory.getThreadById).toHaveBeenCalledWith({ threadId: 'thread-1' });
+			expect(memory.getThread).toHaveBeenCalledWith('thread-1');
 			expect(update).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'thread-1', title: 'Original Title' }),
 			);
-			expect(memory.updateThread).toHaveBeenCalledWith({
-				id: 'thread-1',
-				title: 'Updated Title',
-				metadata: { key: 'value' },
-			});
+			expect(memory.saveThread).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'thread-1',
+					title: 'Updated Title',
+					metadata: { key: 'value' },
+				}),
+			);
 			expect(result?.title).toBe('Updated Title');
 		});
 
 		it('returns unchanged thread when update returns null', async () => {
 			const memory = makeMemory();
-			const update = jest.fn().mockReturnValue(null);
+			const update = vi.fn().mockReturnValue(null);
 
 			const result = await patchThread(memory, { threadId: 'thread-1', update });
 
-			expect(memory.updateThread).not.toHaveBeenCalled();
+			expect(memory.saveThread).not.toHaveBeenCalled();
 			expect(result?.id).toBe('thread-1');
 		});
 
 		it('returns null when thread does not exist', async () => {
 			const memory = makeMemory({
-				getThreadById: jest.fn().mockResolvedValue(null),
+				getThread: vi.fn().mockResolvedValue(null),
 			});
-			const update = jest.fn();
+			const update = vi.fn();
 
 			const result = await patchThread(memory, { threadId: 'unknown', update });
 
@@ -109,43 +111,44 @@ describe('patchThread', () => {
 
 		it('uses threadId as title fallback when thread has no title', async () => {
 			const memory = makeMemory({
-				getThreadById: jest.fn().mockResolvedValue({
+				getThread: vi.fn().mockResolvedValue({
 					...baseThread,
 					title: undefined,
 				}),
 			});
-			const update = jest.fn().mockReturnValue({ metadata: { newKey: 'newVal' } });
+			const update = vi.fn().mockReturnValue({ metadata: { newKey: 'newVal' } });
 
 			await patchThread(memory, { threadId: 'thread-1', update });
 
-			expect(memory.updateThread).toHaveBeenCalledWith(
+			expect(memory.saveThread).toHaveBeenCalledWith(
 				expect.objectContaining({ title: 'thread-1' }),
 			);
 		});
 
 		it('applies metadata from patch when provided', async () => {
 			const memory = makeMemory();
-			const update = jest.fn().mockReturnValue({ metadata: { newKey: 'newVal' } });
+			const update = vi.fn().mockReturnValue({ metadata: { newKey: 'newVal' } });
 
 			await patchThread(memory, { threadId: 'thread-1', update });
 
-			expect(memory.updateThread).toHaveBeenCalledWith(
+			expect(memory.saveThread).toHaveBeenCalledWith(
 				expect.objectContaining({ metadata: { newKey: 'newVal' } }),
 			);
 		});
 
 		it('passes a defensive copy of metadata to update function', async () => {
 			const memory = makeMemory();
-			const update = jest.fn().mockImplementation((thread: StorageThreadType) => {
-				// Mutating the passed metadata should not affect the original
-				(thread.metadata as Record<string, unknown>).mutated = true;
+			const update = vi.fn().mockImplementation((thread: ThreadRecord) => {
+				thread.metadata = { ...(thread.metadata ?? {}), mutated: true };
 				return { title: 'Updated' };
 			});
 
 			await patchThread(memory, { threadId: 'thread-1', update });
 
-			// The update function received a copy, so mutation is safe
 			expect(update).toHaveBeenCalled();
+			expect(memory.saveThread).toHaveBeenCalledWith(
+				expect.objectContaining({ metadata: { key: 'value' } }),
+			);
 		});
 	});
 });

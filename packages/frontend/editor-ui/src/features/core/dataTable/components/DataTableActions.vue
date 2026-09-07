@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import {
 	DATA_TABLE_CARD_ACTIONS,
@@ -14,6 +14,7 @@ import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import type { IUser, UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { escapeHtml } from '@/app/utils/htmlUtils';
 
 import { N8nActionToggle } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -63,7 +64,7 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 		{
 			label: i18n.baseText('dataTable.download.csv'),
 			value: DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV,
-			disabled: false,
+			disabled: !dataTableStore.projectPermissions.dataTable.readRow,
 		},
 		{
 			label: favoritesStore.isFavorite(props.dataTable.id, 'dataTable')
@@ -114,7 +115,7 @@ const onAction = async (action: string) => {
 		case DATA_TABLE_CARD_ACTIONS.DELETE: {
 			const promptResponse = await message.confirm(
 				i18n.baseText('dataTable.delete.confirm.message', {
-					interpolate: { name: props.dataTable.name },
+					interpolate: { name: escapeHtml(props.dataTable.name) },
 				}),
 				i18n.baseText('dataTable.delete.confirm.title'),
 				{

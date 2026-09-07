@@ -1,9 +1,12 @@
+import { isValidTimeZone } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { sql } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { parseListQuerySortBy, sql, SharedWorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
+import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { getDateRangesCommonTableExpressionQuery } from './insights-by-period-query.helper';
@@ -72,16 +75,53 @@ const aggregatedInsightsByTimeParser = z
 	})
 	.array();
 
+/**
+ * Identifies a caller whose insights must be limited to the workflows they can
+ * read.
+ */
+export type InsightsAccessFilter = {
+	user: User;
+	projectRoles: string[];
+	workflowRoles: string[];
+};
+
 @Service()
 export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	private isRunningCompaction = false;
 
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+	) {
 		super(InsightsByPeriod, dataSource.manager);
 	}
 
 	private escapeField(fieldName: string) {
 		return this.manager.connection.driver.escape(fieldName);
+	}
+
+	/**
+	 * Limits a query to insights for workflows the caller can read, by
+	 * correlating against their workflow shares.
+	 */
+	private applyAccessFilter(
+		qb: SelectQueryBuilder<InsightsByPeriod>,
+		accessFilter: InsightsAccessFilter,
+	) {
+		// Ensure the metadata relation is joined, so we can correlate against workflowId
+		if (!qb.expressionMap.joinAttributes.some((join) => join.alias.name === 'metadata')) {
+			throw new UnexpectedError('The metadata relation must be joined before the access filter');
+		}
+
+		const subquery = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(
+			accessFilter.user,
+			{
+				projectRoles: accessFilter.projectRoles,
+				workflowRoles: accessFilter.workflowRoles,
+			},
+		);
+		subquery.andWhere('"sw"."workflowId" = metadata."workflowId"');
+		qb.andWhere(`EXISTS (${subquery.getQuery()})`).setParameters(subquery.getParameters());
 	}
 
 	private getPeriodFilterExpr(maxAgeInDays = 0) {
@@ -94,7 +134,20 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return periodStartExpr;
 	}
 
-	private getPeriodStartExpr(periodUnitToCompactInto: PeriodUnit) {
+	/**
+	 * Builds the SQL expression that truncates `periodStart` to the start of its period bucket.
+	 *
+	 * @param callerTimeZone Caller timezone to bucket in. Omit for internal compaction, which must
+	 * stay timezone-agnostic (UTC) since its boundaries define the stored/deduplicated period keys.
+	 * When set, day/week boundaries follow the caller's local wall-clock (LIGO-808), so a
+	 * positive-offset caller no longer gets an extra prior-day chart bar. `name` is the IANA zone;
+	 * `offsetMinutes` is that zone's UTC offset at the range start (e.g. 120 for Europe/Berlin in
+	 * summer), used only for the SQLite fallback.
+	 */
+	private getPeriodStartExpr(
+		periodUnitToCompactInto: PeriodUnit,
+		callerTimeZone?: { name: string; offsetMinutes: number },
+	) {
 		// Database-specific period start expression to truncate timestamp to the periodUnit
 		// SQLite by default
 		let periodStartExpr =
@@ -105,7 +158,37 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			periodStartExpr = `DATE_TRUNC('${periodUnitToCompactInto}', ${this.escapeField('periodStart')})`;
 		}
 
-		return periodStartExpr;
+		if (!callerTimeZone) {
+			return periodStartExpr;
+		}
+
+		// Truncating in UTC splits a caller-local day/week across two UTC buckets for non-UTC
+		// callers (e.g. an extra prior-day chart bar for positive offsets, LIGO-808).
+		if (dbType === 'postgresdb') {
+			// Postgres ships the IANA timezone database, so it can truncate directly in the caller's
+			// zone. The offset is resolved per row, so buckets stay correct even when the range spans
+			// a DST transition. `name` is a validated IANA zone (see below), so it cannot break out of
+			// the string literal; re-check at the boundary as defence in depth.
+			if (isValidTimeZone(callerTimeZone.name)) {
+				const periodField = this.escapeField('periodStart');
+				const zone = callerTimeZone.name;
+				return `DATE_TRUNC('${periodUnitToCompactInto}', ${periodField} AT TIME ZONE '${zone}') AT TIME ZONE '${zone}'`;
+			}
+			return periodStartExpr;
+		}
+
+		// SQLite has no IANA timezone database, so approximate with a single offset anchored on the
+		// range start: shift into local wall-clock time, truncate, then shift the boundary back to
+		// UTC. Exact for the common case, but can misplace rows in a ~1h window at a bucket edge when
+		// a range crosses a DST transition (the offset that applied at the range start no longer
+		// holds on the far side). Postgres above is exact; this is the documented SQLite limitation.
+		const offsetMinutes = callerTimeZone.offsetMinutes;
+		const localTruncatedExpr =
+			periodUnitToCompactInto === 'week'
+				? `date(periodStart, '${offsetMinutes} minutes', '-6 days', 'weekday 1')`
+				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00', periodStart, '${offsetMinutes} minutes')`;
+
+		return `strftime('%Y-%m-%d %H:%M:%f', datetime(${localTruncatedExpr}, '${-offsetMinutes} minutes'))`;
 	}
 
 	getPeriodInsightsBatchQuery({
@@ -260,14 +343,22 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		startDate,
 		endDate,
 		projectId,
-	}: { projectId?: string; startDate: Date; endDate: Date }): Promise<
+		timeZone,
+		accessFilter,
+	}: {
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
+		accessFilter?: InsightsAccessFilter;
+		timeZone?: string;
+	}): Promise<
 		Array<{
 			period: 'previous' | 'current';
 			type: 0 | 1 | 2 | 3;
 			total_value: string | number;
 		}>
 	> {
-		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
@@ -291,20 +382,22 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.groupBy('period')
 			.addGroupBy('insights.type');
 
+		// If we're filtering by projectId or accessFilter, we need a metadata join to access projectId and workflowId.
+		if (projectId || accessFilter) {
+			rawRowsQuery.innerJoin('insights.metadata', 'metadata');
+		}
+
 		if (projectId) {
-			rawRowsQuery
-				.innerJoin('insights.metadata', 'metadata')
-				.andWhere('metadata.projectId = :projectId', { projectId });
+			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
+		}
+
+		if (accessFilter) {
+			this.applyAccessFilter(rawRowsQuery, accessFilter);
 		}
 
 		const rawRows = await rawRowsQuery.getRawMany();
 
 		return summaryParser.parse(rawRows);
-	}
-
-	private parseSortingParams(sortBy: string): [string, 'ASC' | 'DESC'] {
-		const [column, order] = sortBy.split(':');
-		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
 	}
 
 	private async countInsightsByWorkflowGroups(
@@ -327,6 +420,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		take = 20,
 		sortBy = 'total:desc',
 		projectId,
+		timeZone,
+		accessFilter,
 	}: {
 		skip?: number;
 		take?: number;
@@ -334,11 +429,13 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
+		accessFilter?: InsightsAccessFilter;
 	}) {
-		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
+		const { column: sortField, direction: sortOrder } = parseListQuerySortBy(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
-		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
@@ -375,6 +472,10 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
 		}
 
+		if (accessFilter) {
+			this.applyAccessFilter(rawRowsQuery, accessFilter);
+		}
+
 		const paginatedQuery = rawRowsQuery
 			.clone()
 			.orderBy(this.escapeField(sortField), sortOrder)
@@ -395,32 +496,51 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		projectId,
 		startDate,
 		endDate,
+		timeZone,
+		accessFilter,
 	}: {
 		periodUnit: PeriodUnit;
 		insightTypes: TypeUnit[];
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
+		accessFilter?: InsightsAccessFilter;
 	}) {
-		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
 
 		const typesAggregation = insightTypes.map((type) => {
 			return `SUM(CASE WHEN insights.type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
 		});
 
+		// offsetMinutes is anchored on startDate so historical ranges bucket using the offset that
+		// applied then, rather than today's offset. It only feeds the SQLite fallback; Postgres
+		// resolves the offset per row from the IANA zone name and so also handles DST transitions.
+		const callerTimeZone = timeZone
+			? { name: timeZone, offsetMinutes: DateTime.fromJSDate(startDate).setZone(timeZone).offset }
+			: undefined;
+		const periodStartExpr = this.getPeriodStartExpr(periodUnit, callerTimeZone);
+
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
-			.select([`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`, ...typesAggregation])
+			.select([`${periodStartExpr} as "periodStart"`, ...typesAggregation])
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
 			.where(`${this.escapeField('periodStart')} >= date_ranges.start_date`)
 			.andWhere(`${this.escapeField('periodStart')} < date_ranges.end_date`)
-			.groupBy(this.getPeriodStartExpr(periodUnit))
-			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
+			.groupBy(periodStartExpr)
+			.orderBy(periodStartExpr, 'ASC');
+
+		// If we're filtering by projectId or accessFilter, we need a metadata join to access projectId and workflowId.
+		if (projectId || accessFilter) {
+			rawRowsQuery.innerJoin('insights.metadata', 'metadata');
+		}
 
 		if (projectId) {
-			rawRowsQuery
-				.innerJoin('insights.metadata', 'metadata')
-				.andWhere('metadata.projectId = :projectId', { projectId });
+			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
+		}
+
+		if (accessFilter) {
+			this.applyAccessFilter(rawRowsQuery, accessFilter);
 		}
 
 		const rawRows = await rawRowsQuery.getRawMany();
@@ -435,5 +555,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		});
 
 		return { affected: result.affected };
+	}
+
+	async getEarliestDataDate(): Promise<Date | null> {
+		const result = await this.createQueryBuilder('ibp')
+			.select('MIN(ibp.periodStart)', 'minDate')
+			.getRawOne<{ minDate: Date | string | null }>();
+		return result?.minDate ? new Date(result.minDate) : null;
 	}
 }

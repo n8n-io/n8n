@@ -15,11 +15,12 @@ import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command';
-
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
-import { ImportService } from '@/services/import.service';
+import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
+
+import { BaseCommand } from '../base-command';
 
 function assertHasWorkflowsToImport(
 	workflows: unknown[],
@@ -100,6 +101,9 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+	// (De)activating imported workflows evaluates webhook parameters, which may be expressions
+	override needsExpressionEngine = true;
+
 	async run(): Promise<void> {
 		const { flags } = this;
 
@@ -131,6 +135,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const project = await this.getProject(flags.userId, flags.projectId);
 
+		const ownerUser = await Container.get(UserRepository).findOneByOrFail({
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		});
+		// This userId will be used as the actor for publish/unpublish workflow actions
+		const userId = flags.userId ?? ownerUser.id;
+
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
 		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
@@ -141,11 +151,24 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id, {
-			activeState: flags.activeState,
-		});
+		const { violations } = await Container.get(ImportService).importWorkflows(
+			workflows,
+			project.id,
+			userId,
+			{ activeState: flags.activeState },
+		);
 
-		this.reportSuccess(workflows.length);
+		this.logSkippedWorkflows(violations);
+
+		const importedCount = workflows.length - violations.length;
+
+		this.reportSuccess(importedCount);
+
+		Container.get(EventService).emit('server-cli-import', {
+			activeState: flags.activeState,
+			workflowCount: importedCount,
+			separate: flags.separate,
+		});
 	}
 
 	private async checkRelations(workflows: IWorkflowBase[], projectId?: string, userId?: string) {
@@ -199,6 +222,15 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 	private reportSuccess(total: number) {
 		this.logger.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
+	}
+
+	private logSkippedWorkflows(skipped: WorkflowImportViolations[]) {
+		for (const { name, violations } of skipped) {
+			this.logger.warn(
+				`Skipped workflow "${name}": ${violations.length} content-import policy violation(s)`,
+				{ violations },
+			);
+		}
 	}
 
 	private async getWorkflowOwner(workflowId: WorkflowId) {

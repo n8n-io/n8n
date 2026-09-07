@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { ButtonSize, IUpdateInformation } from '@/Interface';
 import type { ButtonVariant } from '@n8n/design-system';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -82,7 +82,7 @@ const disabledHint = computed(() => {
 	// NDV-specific: when the button's node is a trigger with issues
 	// and the active NDV node is a different node, show "fix previous"
 	if (isTriggerNode.value && hasIssues.value) {
-		const activeNode = ndvStore.activeNode;
+		const activeNode = ndvStore.value.activeNode;
 		if (activeNode && activeNode.name !== props.nodeName) {
 			return i18n.baseText('ndv.execute.fixPrevious');
 		}

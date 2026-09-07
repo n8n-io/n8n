@@ -49,7 +49,7 @@ describe('Integration: toBuffer and isSerializedBuffer', () => {
 			const buffer = toBuffer(validSerializedBuffer);
 			expect(buffer.toString()).toBe('ABC');
 		} else {
-			fail('Expected validSerializedBuffer to be a SerializedBuffer');
+			expect.fail('Expected validSerializedBuffer to be a SerializedBuffer');
 		}
 	});
 });

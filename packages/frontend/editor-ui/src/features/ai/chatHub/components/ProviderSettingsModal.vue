@@ -24,7 +24,7 @@ import { useChatStore } from '../chat.store';
 import { providerDisplayNames } from '../constants';
 import { fetchChatModelsApi } from '../chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import TagsDropdown from '@/features/shared/tags/components/TagsDropdown.vue';
 import { type ITag } from '@n8n/rest-api-client';

@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+import type { Mock } from 'vitest';
+
 import { McpBrowserError } from '../errors';
 import { createSessionTools } from './session';
 import { createMockConnection, findTool, structuredOf, TOOL_CONTEXT } from './test-helpers';
@@ -86,7 +88,7 @@ describe('createSessionTools', () => {
 			});
 
 			it('returns error when McpBrowserError is thrown', async () => {
-				(freshConnection.connection.connect as jest.Mock).mockRejectedValue(
+				(freshConnection.connection.connect as Mock).mockRejectedValue(
 					new McpBrowserError('Already connected', 'Call browser_disconnect first'),
 				);
 				const freshTools = createSessionTools(freshConnection.connection);
@@ -101,7 +103,7 @@ describe('createSessionTools', () => {
 			});
 
 			it('wraps generic errors in McpBrowserError', async () => {
-				(freshConnection.connection.connect as jest.Mock).mockRejectedValue(
+				(freshConnection.connection.connect as Mock).mockRejectedValue(
 					new Error('Connection refused'),
 				);
 				const freshTools = createSessionTools(freshConnection.connection);
@@ -157,7 +159,7 @@ describe('createSessionTools', () => {
 
 			it('returns error when disconnect throws', async () => {
 				const fresh = createMockConnection();
-				(fresh.connection.disconnect as jest.Mock).mockRejectedValue(
+				(fresh.connection.disconnect as Mock).mockRejectedValue(
 					new McpBrowserError('Disconnect failed'),
 				);
 				const freshTools = createSessionTools(fresh.connection);

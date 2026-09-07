@@ -1,7 +1,12 @@
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import type { GoogleAISafetySetting } from '@langchain/google-common';
 import { ChatVertexAI, type ChatVertexAIInput } from '@langchain/google-vertexai';
-import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -10,17 +15,26 @@ import {
 	type SupplyData,
 	type ILoadOptionsFunctions,
 	type JsonObject,
+	type NodeError,
 	NodeOperationError,
 	validateNodeParameters,
 } from 'n8n-workflow';
 
-import { makeErrorFromStatus } from './error-handling';
+import { extractGoogleErrorMessage, makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
 import {
-	makeN8nLlmFailedAttemptHandler,
-	N8nLlmTracing,
-	getConnectionHintNoticeField,
-} from '@n8n/ai-utilities';
+	getVertexEndpoint,
+	resolveVertexLocation,
+	vertexLocationField,
+} from '../gemini-common/vertex-location';
+
+function errorDescriptionMapper(error: NodeError) {
+	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
+		return 'Google Vertex requires at least one <a href="https://docs.n8n.io/advanced-ai/examples/using-the-fromai-function/" target="_blank">dynamic parameter</a> when using tools';
+	}
+
+	return error.description ?? 'Unknown error';
+}
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {
@@ -96,6 +110,7 @@ export class LmChatGoogleVertex implements INodeType {
 						'Default to the latest flagship Gemini on Vertex (gemini-3.1-pro). Use gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
 				},
 			},
+			vertexLocationField,
 			getAdditionalOptions({ supportsThinkingBudget: true }),
 		],
 	};
@@ -106,7 +121,7 @@ export class LmChatGoogleVertex implements INodeType {
 				const results: Array<{ name: string; value: string }> = [];
 
 				const credentials = await this.getCredentials('googleApi');
-				const privateKey = formatPrivateKey(credentials.privateKey as string);
+				const privateKey = formatPemBlock(credentials.privateKey as string);
 				const email = (credentials.email as string).trim();
 
 				const client = new ProjectsClient({
@@ -134,9 +149,14 @@ export class LmChatGoogleVertex implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googleApi');
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
+		const privateKey = formatPemBlock(credentials.privateKey as string);
 		const email = (credentials.email as string).trim();
-		const region = credentials.region as string;
+
+		// A node-level location overrides the credential region; multi-region
+		// locations (eu/us) need a dedicated host the SDK doesn't build itself.
+		const locationOverride = this.getNodeParameter('location', itemIndex, '') as string;
+		const location = resolveVertexLocation(locationOverride, credentials.region as string);
+		const endpoint = getVertexEndpoint(location);
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 
@@ -179,23 +199,37 @@ export class LmChatGoogleVertex implements INodeType {
 						private_key: privateKey,
 					},
 				},
-				location: region,
+				location,
+				...(endpoint ? { endpoint } : {}),
 				model: modelName,
 				topK: options.topK,
 				topP: options.topP,
 				temperature: options.temperature,
 				maxOutputTokens: options.maxOutputTokens,
 				safetySettings,
-				callbacks: [new N8nLlmTracing(this)],
+				callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
 				// Handle ChatVertexAI invocation errors to provide better error messages
 				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error: any) => {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					const customError = makeErrorFromStatus(Number(error?.response?.status), {
+					const status = Number(error?.response?.status);
+					const customError = makeErrorFromStatus(status, {
 						modelName,
 					});
 
 					if (customError) {
 						throw new NodeOperationError(this.getNode(), error as JsonObject, customError);
+					}
+
+					if (status === 400) {
+						// Surface Google's error detail; a bare rethrow would hide it behind a
+						// generic "Bad request" wrapper
+						throw new NodeOperationError(this.getNode(), error as JsonObject, {
+							message: 'Bad request - please check your parameters',
+							description:
+								extractGoogleErrorMessage(error as { message?: string }) ??
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+								(typeof error?.message === 'string' ? (error.message as string) : undefined),
+						});
 					}
 
 					throw error;

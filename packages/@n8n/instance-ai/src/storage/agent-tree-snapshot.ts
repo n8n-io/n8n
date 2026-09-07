@@ -5,8 +5,6 @@ export interface AgentTreeSnapshot {
 	runId: string;
 	messageGroupId?: string;
 	runIds?: string[];
-	langsmithRunId?: string;
-	langsmithTraceId?: string;
 	createdAt?: Date;
 	updatedAt?: Date;
 }

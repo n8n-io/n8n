@@ -1,7 +1,8 @@
-import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
+import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
+	HitlResponseTelemetryPayload,
 	IPersonalizationSurveyAnswersV4,
 	IRun,
 	IWorkflowBase,
@@ -12,11 +13,28 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
+import type {
+	CredentialExportPolicy,
+	ExportPackageEventCounts,
+	ImportAuditCredentialIds,
+	ImportPackageEventCounts,
+	ImportPackageEventOptions,
+	PackageFailureReason,
+} from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
+import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
+import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { AiEventMap } from './ai.event-map';
 
-export type WorkflowActionSource = 'ui' | 'api' | 'n8n-mcp' | 'n8n-ai';
+export type WorkflowActionSource =
+	| 'ui'
+	| 'api'
+	| 'n8n-mcp'
+	| 'n8n-ai'
+	| 'import'
+	| 'review-approval';
 
 export type UserLike = {
 	id: string;
@@ -84,9 +102,54 @@ export type RelayEventMap = {
 		source?: WorkflowActionSource;
 	};
 
+	'n8n-package-imported': {
+		user: UserLike;
+		projectIds: string[];
+		folderId: string | null;
+		workflowIds: string[];
+		options: ImportPackageEventOptions;
+		packageSourceId: string;
+		packageVersion: string;
+		credentialIds: ImportAuditCredentialIds;
+		counts: ImportPackageEventCounts;
+	};
+
+	'n8n-package-exported': {
+		user: UserLike;
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
+		counts: ExportPackageEventCounts;
+		credentialExportPolicy: CredentialExportPolicy;
+		includeArchivedWorkflows: boolean;
+	};
+
+	'n8n-package-export-failed': {
+		user: UserLike;
+		reason: PackageFailureReason;
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
+	};
+
+	'n8n-package-import-failed': {
+		user: UserLike;
+		reason: PackageFailureReason;
+		projectId?: string;
+		folderId?: string;
+	};
+
 	'workflow-deleted': {
 		user: UserLike;
 		workflowId: string;
+		/**
+		 * Both resolved before the delete runs. The cascade takes the workflow row and its
+		 * `shared_workflow` rows with it, so a listener cannot recover either afterwards.
+		 * `projectId` stays required-to-pass but nullable, so a caller has to decide rather than
+		 * forget, and an unowned workflow is still expressible.
+		 */
+		workflowName: string;
+		projectId: string | undefined;
 		publicApi: boolean;
 	};
 
@@ -144,6 +207,8 @@ export type RelayEventMap = {
 		runData?: IRun;
 		projectId?: string;
 		projectName?: string;
+		source?: IWorkflowExecutionDataProcess['source'];
+		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
 	};
 
 	'workflow-sharing-updated': {
@@ -157,6 +222,8 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflowName: string;
 		executionId: string;
+		projectId: string;
+		projectName: string;
 		source:
 			| 'user-manual'
 			| 'user-retry'
@@ -197,6 +264,8 @@ export type RelayEventMap = {
 		nodeName: string;
 		nodeType?: string;
 	};
+
+	'hitl-response-actioned': HitlResponseTelemetryPayload;
 
 	// #endregion
 
@@ -349,6 +418,12 @@ export type RelayEventMap = {
 	'public-api-key-deleted': {
 		user: UserLike;
 		publicApi: boolean;
+		isOwn: boolean;
+	};
+
+	'public-api-key-rotated': {
+		user: UserLike;
+		publicApi: boolean;
 	};
 
 	'public-api-invoked': {
@@ -384,12 +459,16 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		credentialName: string;
 		publicApi: boolean;
 		projectId?: string;
 		projectType?: string;
 		uiContext?: string;
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
+		jweEnabled?: boolean;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	'credentials-shared': {
@@ -405,14 +484,84 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		credentialName: string;
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
+		jweEnabled?: boolean;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	'credentials-deleted': {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		/** Both resolved before the delete, which cascades away the rows that name the project. */
+		credentialName: string;
+		projectId: string | undefined;
+	};
+
+	'credentials-user-disconnected': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'credentials-probed': {
+		user: UserLike;
+		credentialId: string;
+		outcome: CredentialAuthProbeOutcome;
+	};
+
+	'oauth-callback-binding-rejected': {
+		reason: 'cookie-missing' | 'hash-mismatch';
+		credentialId?: string;
+		origin?: 'static-credential' | 'dynamic-credential';
+	};
+
+	'dynamic-credential-authorize-rejected': {
+		reason: 'unauthenticated' | 'user-mismatch';
+		credentialId?: string;
+	};
+
+	'private-credential-created': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+		projectId?: string;
+		projectType?: string;
+	};
+
+	'private-credential-toggled-to-private': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'private-credential-toggled-to-static': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'private-credential-connections-cleared': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'private-credential-deleted': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'private-credential-user-connected': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	// #endregion
@@ -514,8 +663,9 @@ export type RelayEventMap = {
 	'team-project-updated': {
 		userId: string;
 		role: string;
-		members: ProjectRelation[];
+		members?: ProjectRelation[];
 		projectId: string;
+		otelProjectCustomTagsCount?: number;
 	};
 
 	'team-project-deleted': {
@@ -549,6 +699,7 @@ export type RelayEventMap = {
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-pull-ui': {
@@ -568,6 +719,7 @@ export type RelayEventMap = {
 		credsEligible: number;
 		credsEligibleWithConflicts: number;
 		variablesEligible: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-push-ui': {
@@ -826,6 +978,13 @@ export type RelayEventMap = {
 		issuer: string;
 	};
 
+	'token-exchange-identity-rebound': {
+		userId: string;
+		sub: string;
+		kid: string;
+		issuer: string;
+	};
+
 	'token-exchange-user-provisioned': {
 		userId: string;
 		sub: string;
@@ -859,6 +1018,11 @@ export type RelayEventMap = {
 		nodeId: string;
 		workflowId: string;
 		executionId: string;
+	};
+
+	'runner-disconnected': {
+		reason: 'failed-heartbeat-check' | 'runner-unresponsive';
+		mode: 'internal' | 'external';
 	};
 
 	// #endregion
@@ -919,12 +1083,96 @@ export type RelayEventMap = {
 
 	// #endregion
 
+	// region Agents
+	'agent-saved': {
+		agentId: string;
+	};
+
+	'agent-deleted': {
+		agentId: string;
+		projectId: string;
+	};
+
 	// #region Instance Policies
 
-	'instance-policies-updated': {
+	'instance-policies-updated': { user: UserLike } & (
+		| {
+				settingName:
+					| '2fa_enforcement'
+					| 'workflow_publishing'
+					| 'workflow_sharing'
+					| 'workflow_reviews';
+				value: boolean;
+		  }
+		| {
+				settingName: 'data_redaction_enforcement_floor';
+				value: RedactionFloor;
+		  }
+	);
+
+	'redaction-enforcement-updated': {
 		user: UserLike;
-		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
-		value: boolean;
+		before: RedactionFloor;
+		after: RedactionFloor;
+	};
+
+	// #endregion
+
+	// #region Workflow Reviews
+
+	'workflow-review-requested': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		/** The project owning the review when it was opened. */
+		projectId: string;
+		workflowId: string;
+		workflowVersionId: string;
+		reviewerCount: number;
+	};
+
+	'workflow-review-version-updated': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		workflowId: string;
+		workflowVersionId: string;
+	};
+
+	'workflow-review-decided': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		workflowId: string;
+		/** Null when the pinned version was pruned before the decision. */
+		workflowVersionId: string | null;
+		decision: 'approved' | 'changes_requested';
+		decidedVia: 'assigned-reviewer' | 'admin-override';
+		reviewCreatedAt: Date;
+	};
+
+	/**
+	 * Closed without a decision, by the workflow lifecycle hooks or the reconciliation
+	 * sweep. An approval closes the request too but emits 'workflow-review-decided'
+	 * instead, never both: every close path filters `state = 'open'` and `decide()`
+	 * closes in-line.
+	 */
+	'workflow-review-closed': {
+		workflowReviewRequestId: string;
+		/**
+		 * What left the review with no reviewable workflow, and who caused that — not who
+		 * closed the review, which nobody does. `'unknown'` is not the activity feed's
+		 * `no-reviewable-workflows`: the feed records that value on every close, whatever the
+		 * trigger, while `'unknown'` says the trigger itself went unrecorded.
+		 */
+		cause: {
+			trigger: 'workflow-archived' | 'workflow-moved' | 'workflow-deleted' | 'unknown';
+			/** 'system' means no actor was recorded, not that automation acted. */
+			actorKind: 'user' | 'system';
+			userId: string | null;
+		};
+	};
+
+	'workflow-review-comment-created': {
+		user: UserLike;
+		workflowReviewRequestId: string;
 	};
 
 	// #endregion
@@ -954,6 +1202,86 @@ export type RelayEventMap = {
 
 	'instance-ai-settings-updated': {
 		mcpSettingsChanged: boolean;
+		/** Instance credential assignments before and after the save; absent when the update carried none (e.g. multi-main reload). Ids and model names only, never credential data. */
+		credentialSelections?: {
+			previous: InstanceAiCredentialSelection;
+			next: InstanceAiCredentialSelection;
+			/** Components whose connection payload was written in this save. Same-provider key rotations update the credential in place and keep its id, so an id diff alone cannot see them. */
+			connectionsUpdated: {
+				model: boolean;
+				sandbox: boolean;
+				search: boolean;
+			};
+		};
+	};
+
+	'instance-ai-mcp-registry-connection-created': {
+		userId: string;
+		serverSlug: string;
+	};
+
+	'instance-ai-mcp-registry-connection-deleted': {
+		userId: string;
+		serverSlug: string;
+	};
+
+	// #endregion
+
+	// #region Server CLI
+
+	'server-cli-import': {
+		activeState: 'false' | 'fromJson';
+		workflowCount: number;
+		separate: boolean;
+	};
+
+	'server-cli-export': {
+		selector: 'all' | 'id' | 'projectId';
+		published: boolean;
+		separate: boolean;
+		backup: boolean;
+		workflowCount: number;
+	};
+
+	// #endregion
+
+	// #region MCP server
+
+	'mcp-oauth-completed': {
+		userId: string;
+		clientId: string;
+		clientName?: string;
+	};
+
+	/**
+	 * `authType` reports how the call authenticated, so an absent `clientId` is
+	 * explicit rather than inferred. `api_key` covers every non-OAuth bearer
+	 * token the MCP server admits, including token-exchange scoped JWTs, which
+	 * is the same grouping the MCP connection telemetry uses.
+	 *
+	 * `clientId` is the OAuth client the call was authenticated with, as
+	 * registered with this instance. Unlike `clientName` (self-reported by the
+	 * client), it identifies the client, so it is what usage can be attributed
+	 * by. Treat it as opaque: a first-party client's id is a URL rather than a
+	 * generated id.
+	 *
+	 * The two travel paired because they are not independent: verification
+	 * rejects an OAuth token carrying no `client_id` claim, and an API key is
+	 * never issued to a client. The pair is absent only where no caller was
+	 * resolved.
+	 */
+	'mcp-tool-called': {
+		user: UserLike;
+		toolName: string;
+		workflowId?: string;
+		status: 'success' | 'error';
+		errorMessage?: string;
+		clientName?: string;
+	} & (McpCallerAuth | { authType?: undefined; clientId?: undefined });
+
+	'mcp-access-updated': {
+		user: UserLike;
+		enabled: boolean;
 	};
 
 	// #endregion

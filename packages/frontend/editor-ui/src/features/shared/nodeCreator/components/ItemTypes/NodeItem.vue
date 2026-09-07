@@ -6,6 +6,7 @@ import {
 	DRAG_EVENT_DATA_KEY,
 	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 } from '@/app/constants';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/communityNodes/communityNodes.constants';
 import { computed, ref } from 'vue';
@@ -17,7 +18,7 @@ import { isCommunityPackageName } from 'n8n-workflow';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 
 import { useNodeType } from '@/app/composables/useNodeType';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 import { useActions } from '../../composables/useActions';
@@ -56,7 +57,7 @@ const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
-	if (isCommunityNodePreview.value) {
+	if (isCommunityNodePreview.value || isCommunityNode.value) {
 		return props.nodeType.description;
 	}
 	if (isSendAndWaitCategory.value) {
@@ -64,7 +65,8 @@ const description = computed<string>(() => {
 	}
 	if (
 		props.subcategory === DEFAULT_SUBCATEGORY &&
-		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)
+		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX) &&
+		!activeViewStack.search
 	) {
 		return '';
 	}
@@ -80,8 +82,16 @@ const showActionArrow = computed(() => {
 		return true;
 	}
 
+	// Clicking opens the agent picker sub-panel; the arrow signals that and
+	// `!showActionArrow` disables dragging, so the picker can't be bypassed.
+	if (opensAgentSubPanel.value) {
+		return true;
+	}
+
 	return hasActions.value && !isSendAndWaitCategory.value;
 });
+
+const opensAgentSubPanel = computed(() => props.nodeType.name === MESSAGE_AN_AGENT_NODE_TYPE);
 const isSendAndWaitCategory = computed(
 	() =>
 		activeViewStack.subcategory === HITL_SUBCATEGORY ||
@@ -150,6 +160,10 @@ const tag = computed(() => {
 	return undefined;
 });
 
+// Only surface the "new" badge in search results — under the category itself
+// the parent subcategory tile already carries the badge.
+const showNewBadge = computed(() => Boolean(props.nodeType.isNew && activeViewStack.search));
+
 function onDragStart(event: DragEvent): void {
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'copy';
@@ -190,6 +204,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		:is-official="isOfficial"
 		:data-test-id="dataTestId"
 		:tag="tag"
+		:is-new="showNewBadge"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 	>

@@ -7,11 +7,10 @@ import type {
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
+import { logAiEvent, redactHeaderValues } from '@n8n/ai-utilities';
 import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
-
-import { logAiEvent } from '@n8n/ai-utilities';
 
 type RunDetail = {
 	index: number;
@@ -38,7 +37,10 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 	 */
 	runsMap: Record<string, RunDetail> = {};
 
-	options = {
+	options: {
+		errorDescriptionMapper: (error: NodeError) => string | null | undefined;
+		redactedHeaders?: string[];
+	} = {
 		// Default(OpenAI format) parser
 		errorDescriptionMapper: (error: NodeError) => error.description,
 	};
@@ -47,6 +49,7 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 		private executionFunctions: ISupplyDataFunctions,
 		options?: {
 			errorDescriptionMapper?: (error: NodeError) => string;
+			redactedHeaders?: string[];
 		},
 	) {
 		super();
@@ -111,7 +114,10 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 				? this.#parentRunIndex + this.executionFunctions.getNextRunIndex()
 				: undefined;
 
-		const options = llm.type === 'constructor' ? llm.kwargs : llm;
+		const options = redactHeaderValues(
+			llm.type === 'constructor' ? llm.kwargs : llm,
+			this.options.redactedHeaders ?? [],
+		);
 		const { index } = this.executionFunctions.addInputData(
 			this.connectionType,
 			[

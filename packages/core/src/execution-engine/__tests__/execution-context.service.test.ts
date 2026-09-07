@@ -1,6 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
 import type { IContextEstablishmentHook } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteData,
 	IExecutionContext,
@@ -10,6 +9,8 @@ import type {
 	PlaintextExecutionContext,
 	Workflow,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { Cipher } from '@/encryption';
 
@@ -17,15 +18,21 @@ import type { ExecutionContextHookRegistry } from '../execution-context-hook-reg
 import { ExecutionContextService } from '../execution-context.service';
 
 // Mock the helper functions from n8n-workflow
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	toCredentialContext: jest.fn((data: string) => JSON.parse(data)),
-	toSecureArtifacts: jest.fn((data: string) => JSON.parse(data)),
-	toExecutionContextEstablishmentHookParameter: jest.fn(),
+const mocks = vi.hoisted(() => ({
+	toCredentialContext: vi.fn((data: string) => JSON.parse(data)),
+	toSecureArtifacts: vi.fn((data: string) => JSON.parse(data)),
+	toExecutionContextEstablishmentHookParameter: vi.fn(),
+}));
+
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual('n8n-workflow')),
+	toCredentialContext: mocks.toCredentialContext,
+	toSecureArtifacts: mocks.toSecureArtifacts,
+	toExecutionContextEstablishmentHookParameter: mocks.toExecutionContextEstablishmentHookParameter,
 }));
 
 const { toCredentialContext, toSecureArtifacts, toExecutionContextEstablishmentHookParameter } =
-	jest.requireMock('n8n-workflow');
+	mocks;
 
 const sampleArtifacts: ISecureArtifacts = {
 	version: 1,
@@ -49,29 +56,31 @@ const sampleArtifacts: ISecureArtifacts = {
 
 describe('ExecutionContextService', () => {
 	let service: ExecutionContextService;
-	let mockLogger: jest.Mocked<Logger>;
-	let mockRegistry: jest.Mocked<ExecutionContextHookRegistry>;
-	let mockCipher: jest.Mocked<Cipher>;
+	let mockLogger: Mocked<Logger>;
+	let mockRegistry: Mocked<ExecutionContextHookRegistry>;
+	let mockCipher: Mocked<Cipher>;
 	let mockWorkflow: Workflow;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		mockRegistry = {
-			getHookByName: jest.fn(),
-		} as unknown as jest.Mocked<ExecutionContextHookRegistry>;
+			getHookByName: vi.fn(),
+			getGlobalHooks: vi.fn().mockReturnValue([]),
+			getSubExecutionHooks: vi.fn().mockReturnValue([]),
+		} as unknown as Mocked<ExecutionContextHookRegistry>;
 
 		mockCipher = {
-			decryptV2: jest.fn(),
-			encryptV2: jest.fn(),
-		} as unknown as jest.Mocked<Cipher>;
+			decryptV2: vi.fn(),
+			encryptV2: vi.fn(),
+		} as unknown as Mocked<Cipher>;
 
 		mockWorkflow = mock<Workflow>();
 
@@ -297,6 +306,273 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
+	describe('buildManualExecutionCredentials()', () => {
+		it('should encrypt the credential context with the cookie as identity', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const result = await service.buildManualExecutionCredentials('n8n-auth-cookie-jwt');
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'n8n-auth-cookie-jwt',
+				metadata: { source: 'manual-execution' },
+			});
+			expect(result).toBe('encrypted-credential-blob');
+		});
+
+		it('should propagate errors raised by the cipher', async () => {
+			mockCipher.encryptV2.mockRejectedValue(new Error('encryption key missing'));
+
+			await expect(service.buildManualExecutionCredentials('cookie')).rejects.toThrow(
+				'encryption key missing',
+			);
+		});
+	});
+
+	describe('buildRequestBoundCredentials()', () => {
+		it('should encrypt the credential context with the request context in metadata', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const result = await service.buildRequestBoundCredentials('n8n-auth-cookie-jwt', {
+				method: 'POST',
+				endpoint: '/rest/dynamic-node-parameters/resource-locator-results',
+				browserId: 'browser-abc',
+			});
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'n8n-auth-cookie-jwt',
+				metadata: {
+					source: 'cookie-source',
+					method: 'POST',
+					endpoint: '/rest/dynamic-node-parameters/resource-locator-results',
+					browserId: 'browser-abc',
+				},
+			});
+			expect(result).toBe('encrypted-credential-blob');
+		});
+
+		it('should omit an absent browser id', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			await service.buildRequestBoundCredentials('cookie', {
+				method: 'POST',
+				endpoint: '/rest/dynamic-node-parameters/options',
+			});
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith(
+				expect.objectContaining({
+					metadata: {
+						source: 'cookie-source',
+						method: 'POST',
+						endpoint: '/rest/dynamic-node-parameters/options',
+					},
+				}),
+			);
+		});
+	});
+
+	describe('buildTriggerIdentityCredentials()', () => {
+		it('keeps the token as identity and seals the subject + establishedAt in metadata', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const result = await service.buildTriggerIdentityCredentials(
+				'oauth-token-jwt',
+				'https://api.example.com/resource',
+				undefined,
+				'user-123',
+			);
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'oauth-token-jwt',
+				metadata: {
+					source: 'n8n-oauth',
+					subject: 'user-123',
+					resource: 'https://api.example.com/resource',
+					establishedAt: expect.any(Number),
+					executionPath: [],
+				},
+			});
+			expect(result).toBe('encrypted-credential-blob');
+		});
+
+		it('should seal the resource grant so the run can verify itself after the trigger is gone', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const grant = {
+				audiences: ['https://api.example.com/resource?method=POST'],
+				executeAccessWorkflowId: 'workflow-1',
+			};
+
+			await service.buildTriggerIdentityCredentials(
+				'oauth-token-jwt',
+				'https://api.example.com/resource',
+				grant,
+			);
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'oauth-token-jwt',
+				metadata: {
+					source: 'n8n-oauth',
+					resource: 'https://api.example.com/resource',
+					establishedAt: expect.any(Number),
+					executionPath: [],
+					grant,
+				},
+			});
+		});
+
+		it('omits the subject and grant when neither is provided (legacy token-only carrier)', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			await service.buildTriggerIdentityCredentials('oauth-token-jwt', 'https://api/r');
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'oauth-token-jwt',
+				metadata: {
+					source: 'n8n-oauth',
+					resource: 'https://api/r',
+					establishedAt: expect.any(Number),
+					executionPath: [],
+				},
+			});
+		});
+
+		it('should propagate errors raised by the cipher', async () => {
+			mockCipher.encryptV2.mockRejectedValue(new Error('encryption key missing'));
+
+			await expect(
+				service.buildTriggerIdentityCredentials('token', 'resource', undefined, 'user-123'),
+			).rejects.toThrow('encryption key missing');
+		});
+	});
+
+	describe('maybeBindExecutionId()', () => {
+		beforeEach(() => {
+			// Symmetric fakes: decrypt is identity, encrypt is JSON.stringify, so we can
+			// read the re-encrypted credentials back with JSON.parse.
+			mockCipher.decryptV2.mockImplementation(async (data: string) => data);
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+			toCredentialContext.mockImplementation((data: string) => JSON.parse(data));
+		});
+
+		const contextWith = (metadata: Record<string, unknown>): IExecutionContext => ({
+			version: 1,
+			establishedAt: 1,
+			source: 'webhook',
+			credentials: JSON.stringify({ version: 1, identity: 'oauth-token', metadata }),
+		});
+
+		const pathOf = (context: IExecutionContext) =>
+			JSON.parse(context.credentials as string).metadata.executionPath;
+
+		it('stamps the current execution id onto a freshly sealed carrier', async () => {
+			const bound = await service.maybeBindExecutionId(
+				contextWith({ source: 'n8n-oauth', resource: 'r', subject: 'user-123' }),
+				'exec-root',
+			);
+
+			expect(pathOf(bound)).toEqual(['exec-root']);
+		});
+
+		it('appends a child execution id, preserving the inherited path', async () => {
+			const bound = await service.maybeBindExecutionId(
+				contextWith({
+					source: 'n8n-oauth',
+					resource: 'r',
+					subject: 'user-123',
+					executionPath: ['exec-root'],
+				}),
+				'exec-child',
+				{ allowInherit: true },
+			);
+
+			expect(pathOf(bound)).toEqual(['exec-root', 'exec-child']);
+		});
+
+		it('leaves a populated path untouched for an unrelated execution', async () => {
+			const context = contextWith({
+				source: 'n8n-oauth',
+				resource: 'r',
+				subject: 'user-123',
+				executionPath: ['exec-other'],
+			});
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-current');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is idempotent when the execution id is already in the path (retry/resume)', async () => {
+			const context = contextWith({
+				source: 'n8n-oauth',
+				resource: 'r',
+				subject: 'user-123',
+				executionPath: ['exec-root'],
+			});
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op for a non-sealed carrier (no subject)', async () => {
+			const context = contextWith({ source: 'n8n-oauth', resource: 'r' });
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op when no execution id is provided', async () => {
+			const context = contextWith({ source: 'n8n-oauth', resource: 'r', subject: 'user-123' });
+
+			const bound = await service.maybeBindExecutionId(context, undefined);
+
+			expect(bound).toBe(context);
+			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op for a non-n8n-oauth carrier (schema mismatch)', async () => {
+			const context = contextWith({ source: 'manual-execution' });
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op for a carrier without metadata', async () => {
+			const context: IExecutionContext = {
+				version: 1,
+				establishedAt: 1,
+				source: 'webhook',
+				credentials: JSON.stringify({ version: 1, identity: 'oauth-token' }),
+			};
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op for a context without credentials', async () => {
+			const context: IExecutionContext = { version: 1, establishedAt: 1, source: 'webhook' };
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('encrypt → decrypt round-trip', () => {
 		it('should preserve secureArtifacts through a full round-trip', async () => {
 			// JSON-stringify on encrypt, identity on decrypt — simulates a symmetric cipher
@@ -305,7 +581,8 @@ describe('ExecutionContextService', () => {
 			mockCipher.decryptV2.mockImplementation(async (data: string) => data);
 
 			// Use the real toSecureArtifacts so the round-trip exercises actual schema parsing.
-			const realToSecureArtifacts = jest.requireActual('n8n-workflow').toSecureArtifacts;
+			const realToSecureArtifacts = (await vi.importActual('n8n-workflow')).toSecureArtifacts;
+			// @ts-expect-error - Mocking
 			toSecureArtifacts.mockImplementation(realToSecureArtifacts);
 
 			const plaintext: PlaintextExecutionContext = {
@@ -413,6 +690,63 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
+	describe('augmentSubExecutionContext()', () => {
+		const startItem: IExecuteData = {
+			node: { name: 'Execute Workflow Trigger', parameters: {} } as INode,
+			data: { main: [[{ json: { fromParent: true } }]] },
+			source: null,
+		};
+
+		it('returns the inherited context untouched (no round-trip) when no sub-execution hooks exist', async () => {
+			mockRegistry.getSubExecutionHooks.mockReturnValue([]);
+			const inherited: IExecutionContext = {
+				version: 1,
+				establishedAt: 100,
+				source: 'trigger',
+				credentials: 'inherited-encrypted-creds',
+			};
+
+			const result = await service.augmentSubExecutionContext(mockWorkflow, startItem, inherited);
+
+			expect(result).toBe(inherited);
+			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('runs sub-execution hooks with no trigger items, merges contextUpdate, and ignores returned items', async () => {
+			const subExecutionHook = mock<IContextEstablishmentHook>();
+			subExecutionHook.execute.mockResolvedValue({
+				// Items a hook returns must not leak into a sub-execution.
+				triggerItems: [{ json: { stripped: true } }],
+				contextUpdate: { redaction: { version: 2, production: true, manual: true } },
+			});
+			mockRegistry.getSubExecutionHooks.mockReturnValue([subExecutionHook]);
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+
+			const inherited: IExecutionContext = {
+				version: 1,
+				establishedAt: 100,
+				source: 'trigger',
+				redaction: { version: 2, production: false, manual: false },
+			};
+
+			const result = await service.augmentSubExecutionContext(mockWorkflow, startItem, inherited);
+
+			expect(subExecutionHook.execute).toHaveBeenCalledWith(
+				expect.objectContaining({
+					triggerNode: startItem.node,
+					workflow: mockWorkflow,
+					triggerItems: null,
+					context: expect.objectContaining({
+						redaction: { version: 2, production: false, manual: false },
+					}),
+					options: {},
+				}),
+			);
+			expect(result.redaction).toEqual({ version: 2, production: true, manual: true });
+		});
+	});
+
 	describe('augmentExecutionContextWithHooks()', () => {
 		const createMockStartItem = (
 			contextEstablishmentHooks?: unknown,
@@ -448,8 +782,9 @@ describe('ExecutionContextService', () => {
 
 		it('should handle node with contextEstablishmentHooks but undefined hooks array', async () => {
 			// Temporarily use real parsing function
-			const realModule = jest.requireActual('n8n-workflow');
+			const realModule = await vi.importActual('n8n-workflow');
 			toExecutionContextEstablishmentHookParameter.mockImplementationOnce(
+				// @ts-expect-error - Mocking
 				realModule.toExecutionContextEstablishmentHookParameter,
 			);
 
@@ -475,7 +810,7 @@ describe('ExecutionContextService', () => {
 			};
 
 			// Mock workflow.getNode to return null (service handles this gracefully)
-			mockWorkflow.getNode = jest.fn().mockReturnValue(null);
+			mockWorkflow.getNode = vi.fn().mockReturnValue(null);
 
 			const result = await service.augmentExecutionContextWithHooks(
 				mockWorkflow,
@@ -802,6 +1137,114 @@ describe('ExecutionContextService', () => {
 
 			// Verify encryptV2 was called for return
 			expect(mockCipher.encryptV2).toHaveBeenCalled();
+		});
+
+		describe('global hooks', () => {
+			const baseContext = (): IExecutionContext => ({
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual',
+			});
+
+			it('runs global hooks even when no per-node hook parameters are configured', async () => {
+				const startItem = createMockStartItem();
+				const context = baseContext();
+				const mockGlobalHook = mock<IContextEstablishmentHook>();
+				mockGlobalHook.execute.mockResolvedValue({});
+
+				mockRegistry.getGlobalHooks.mockReturnValue([mockGlobalHook]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				await service.augmentExecutionContextWithHooks(mockWorkflow, startItem, context);
+
+				expect(mockGlobalHook.execute).toHaveBeenCalledWith({
+					triggerNode: startItem.node,
+					workflow: mockWorkflow,
+					triggerItems: startItem.data.main[0],
+					context: expect.objectContaining({ version: 1, source: 'manual' }),
+					options: {},
+				});
+			});
+
+			it('propagates global hook triggerItems mutation to the returned result', async () => {
+				const startItem = createMockStartItem();
+				const stripped: INodeExecutionData[] = [{ json: { stripped: true } }];
+				const mockGlobalHook = mock<IContextEstablishmentHook>();
+				mockGlobalHook.execute.mockResolvedValue({ triggerItems: stripped });
+
+				mockRegistry.getGlobalHooks.mockReturnValue([mockGlobalHook]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				const result = await service.augmentExecutionContextWithHooks(
+					mockWorkflow,
+					startItem,
+					baseContext(),
+				);
+
+				expect(result.triggerItems).toEqual(stripped);
+			});
+
+			it('merges global hook contextUpdate into the returned context', async () => {
+				const startItem = createMockStartItem();
+				const mockGlobalHook = mock<IContextEstablishmentHook>();
+				mockGlobalHook.execute.mockResolvedValue({ contextUpdate: { source: 'webhook' } });
+
+				mockRegistry.getGlobalHooks.mockReturnValue([mockGlobalHook]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				const result = await service.augmentExecutionContextWithHooks(
+					mockWorkflow,
+					startItem,
+					baseContext(),
+				);
+
+				expect(result.context).toEqual(expect.objectContaining({ source: 'webhook' }));
+			});
+
+			it('chains multiple global hooks: second hook receives first hook output', async () => {
+				const startItem = createMockStartItem();
+				const fromA: INodeExecutionData[] = [{ json: { fromA: true } }];
+
+				const hookA = mock<IContextEstablishmentHook>();
+				hookA.execute.mockResolvedValue({ triggerItems: fromA });
+				const hookB = mock<IContextEstablishmentHook>();
+				hookB.execute.mockResolvedValue({});
+
+				mockRegistry.getGlobalHooks.mockReturnValue([hookA, hookB]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				await service.augmentExecutionContextWithHooks(mockWorkflow, startItem, baseContext());
+
+				expect(hookB.execute).toHaveBeenCalledWith(
+					expect.objectContaining({ triggerItems: fromA }),
+				);
+			});
+
+			it('leaves trigger items unchanged when no globals and no per-node hooks are registered', async () => {
+				const startItem = createMockStartItem();
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				const result = await service.augmentExecutionContextWithHooks(
+					mockWorkflow,
+					startItem,
+					baseContext(),
+				);
+
+				expect(result.triggerItems).toEqual(startItem.data.main[0]);
+			});
+
+			it('propagates global hook exceptions without swallowing', async () => {
+				const startItem = createMockStartItem();
+				const mockGlobalHook = mock<IContextEstablishmentHook>();
+				mockGlobalHook.execute.mockRejectedValue(new Error('boom'));
+
+				mockRegistry.getGlobalHooks.mockReturnValue([mockGlobalHook]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				await expect(
+					service.augmentExecutionContextWithHooks(mockWorkflow, startItem, baseContext()),
+				).rejects.toThrow('boom');
+			});
 		});
 	});
 });

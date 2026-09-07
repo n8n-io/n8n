@@ -1,14 +1,22 @@
 <script lang="ts" setup>
-import { N8nTooltip } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { truncate } from '@n8n/utils';
+import { truncate } from '@n8n/utils/string/truncate';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey } from '../session-timeline.utils';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import {
+	executionErrorLabel,
+	executionErrorMessage,
+	hitlRequestLabelKey,
+	hitlTimelineName,
+	isSubAgentTimelineItem,
+	timelineItemStatus,
+} from '../session-timeline.utils';
+import { delegateLabel } from '../utils/delegate-tool';
+import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
 
 const props = defineProps<{
@@ -21,6 +29,11 @@ const emit = defineEmits<{ select: [] }>();
 const router = useRouter();
 const i18n = useI18n();
 
+// A delegate_subagent call renders as a sub-agent (bot icon + "Sub-agent · name")
+// to match the chat, rather than as a plain tool.
+const isSubAgent = computed((): boolean => isSubAgentTimelineItem(props.item));
+const pillKind = computed(() => (isSubAgent.value ? 'subagent' : props.item.kind));
+
 const time = computed((): string => {
 	if (!props.item.timestamp) return '';
 	return convertToDisplayDate(new Date(props.item.timestamp).toISOString()).time;
@@ -28,7 +41,8 @@ const time = computed((): string => {
 
 const workflowHref = computed((): string => {
 	if (props.item.kind !== 'workflow' || !props.item.workflowId) return '';
-	return router.resolve({ name: VIEWS.WORKFLOW, params: { name: props.item.workflowId } }).href;
+	return router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId: props.item.workflowId } })
+		.href;
 });
 
 const infoText = computed((): string => {
@@ -38,23 +52,37 @@ const infoText = computed((): string => {
 		case 'agent':
 			return truncate(it.content ?? '', 500);
 		case 'tool': {
-			const key = builtinToolLabelKey(it.toolName, it.toolOutput);
-			return key ? i18n.baseText(key) : formatToolNameForDisplay(it.toolName);
+			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
+			return resolveToolNameForDisplay(it.toolName, i18n);
 		}
 		case 'workflow':
 			return it.workflowName ?? formatToolNameForDisplay(it.toolName);
 		case 'node':
 			return it.nodeDisplayName ?? formatToolNameForDisplay(it.toolName);
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memoryUpdated');
+		case 'execution-error':
+			return executionErrorMessage(it, i18n);
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
+		case 'hitl-response':
+			return hitlTimelineName(it, i18n);
 		default:
 			return '';
 	}
 });
 
+const status = computed(() => timelineItemStatus(props.item));
+
+const attachmentChip = computed((): { label: string; tooltip: string } | null => {
+	const attachments = props.item.attachments;
+	if (!attachments?.length) return null;
+	const extra = attachments.length - 1;
+	return {
+		label: extra > 0 ? `${attachments[0].fileName} +${extra}` : attachments[0].fileName,
+		tooltip: attachments.map((attachment) => attachment.fileName).join(', '),
+	};
+});
+
 const label = computed((): string => {
+	if (isSubAgent.value) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (props.item.kind) {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
@@ -66,10 +94,12 @@ const label = computed((): string => {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memory');
+		case 'execution-error':
+			return executionErrorLabel(props.item, i18n);
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspended');
+			return i18n.baseText(hitlRequestLabelKey(props.item.hitlRequestType));
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
 		default:
 			return '';
 	}
@@ -77,9 +107,9 @@ const label = computed((): string => {
 </script>
 
 <template>
-	<div :class="[$style.row, selected && $style.selected]" @click="emit('select')">
+	<div :class="[$style.row, selected && $style.selected]" role="gridcell" @click="emit('select')">
 		<N8nTooltip :content="label" placement="top">
-			<SessionTimelinePill :kind="item.kind" />
+			<SessionTimelinePill :kind="pillKind" />
 		</N8nTooltip>
 		<div :class="$style.info">
 			<template v-if="item.kind === 'workflow' && workflowHref">
@@ -95,6 +125,27 @@ const label = computed((): string => {
 			<template v-else>
 				<span>{{ infoText }}</span>
 			</template>
+			<N8nBadge
+				v-if="status"
+				:class="$style.statusBadge"
+				:theme="status.theme"
+				size="xsmall"
+				:data-test-id="
+					status.kind === 'hitl-response'
+						? 'timeline-hitl-response-badge'
+						: item.kind === 'execution-error'
+							? 'timeline-execution-error-badge'
+							: 'timeline-tool-error-badge'
+				"
+			>
+				{{ i18n.baseText(status.labelKey) }}
+			</N8nBadge>
+			<N8nTooltip v-if="attachmentChip" :content="attachmentChip.tooltip" placement="top">
+				<span :class="$style.attachmentChip" data-testid="timeline-attachment-chip">
+					<N8nIcon icon="paperclip" size="xsmall" />
+					{{ attachmentChip.label }}
+				</span>
+			</N8nTooltip>
 		</div>
 		<span :class="$style.time">{{ time }}</span>
 	</div>
@@ -132,16 +183,37 @@ const label = computed((): string => {
 
 	/* Apply ellipsis to text spans, not the flex container — the container's
 	   overflow:hidden combined with a tight line-box was clipping descenders. */
-	> span {
+	> span:not(.statusBadge) {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		line-height: var(--line-height--sm);
 	}
 }
 
+.statusBadge {
+	flex-shrink: 0;
+}
+
 .workflowLink {
 	color: var(--color--primary);
 	text-decoration: underline;
+}
+
+.attachmentChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	max-width: 200px;
+	padding: 0 var(--spacing--3xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--background--subtle);
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	flex-shrink: 0;
 }
 
 .time {

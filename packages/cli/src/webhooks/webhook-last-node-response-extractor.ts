@@ -1,8 +1,9 @@
 import { Container } from '@n8n/di';
 import get from 'lodash/get';
 import { BinaryDataService } from 'n8n-core';
-import type { INodeExecutionData, ITaskData, Result, WebhookResponseData } from 'n8n-workflow';
-import { BINARY_ENCODING, createResultError, createResultOk, OperationalError } from 'n8n-workflow';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
+import type { INodeExecutionData, ITaskData, WebhookResponseData } from 'n8n-workflow';
+import { BINARY_ENCODING, OperationalError } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 /** Response that is not a stream */

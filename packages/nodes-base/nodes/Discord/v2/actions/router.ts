@@ -6,7 +6,6 @@ import * as member from './member';
 import * as message from './message';
 import type { Discord } from './node.type';
 import * as webhook from './webhook';
-import { configureWaitTillDate } from '../../../../utils/sendAndWait/configureWaitTillDate.util';
 import { checkAccessToGuild } from '../helpers/utils';
 import { discordApiRequest } from '../transport';
 
@@ -48,11 +47,7 @@ export async function router(this: IExecuteFunctions) {
 	} as Discord;
 
 	if (discord.resource === 'message' && discord.operation === SEND_AND_WAIT_OPERATION) {
-		returnData = await message[discord.operation].execute.call(this, guildId, userGuilds);
-
-		const waitTill = configureWaitTillDate(this);
-
-		await this.putExecutionToWait(waitTill);
+		returnData = await message.sendAndWait.execute.call(this, guildId, userGuilds);
 		return [returnData];
 	}
 

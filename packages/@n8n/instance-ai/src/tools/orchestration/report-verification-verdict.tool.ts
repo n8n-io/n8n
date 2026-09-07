@@ -8,7 +8,7 @@
  * no infinite loops.
  */
 
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -34,6 +34,12 @@ export const reportVerificationVerdictInputSchema = z.object({
 			'"needs_user_input" if user action is required (e.g. missing credentials), ' +
 			'"failed_terminal" if the failure cannot be fixed automatically',
 	),
+	workflowInspection: z
+		.string()
+		.min(1)
+		.describe(
+			'Brief note from inspecting the persisted workflow JSON/code after save. Mention why the saved graph does or does not match the requested outcome.',
+		),
 	failureSignature: z
 		.string()
 		.optional()
@@ -99,17 +105,19 @@ function defaultRemediationForVerdict(
 }
 
 export function createReportVerificationVerdictTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'report-verification-verdict',
-		description:
-			'Report the result of verifying a workflow after building it. ' +
-			'Call this after running a workflow and (optionally) debugging a failed execution. ' +
-			'Returns deterministic guidance on what to do next (done, rebuild, or blocked).',
-		inputSchema: reportVerificationVerdictInputSchema,
-		outputSchema: z.object({
-			guidance: z.string(),
-		}),
-		execute: async (input: z.infer<typeof reportVerificationVerdictInputSchema>) => {
+	return new Tool('report-verification-verdict')
+		.description(
+			'Report the result of verifying a workflow after building it. Only call in checkpoint follow-up turns. ' +
+				'Call this after inspecting the persisted workflow, running it, and (optionally) debugging a failed execution. ' +
+				'Returns deterministic guidance on what to do next (done, rebuild, or blocked).',
+		)
+		.input(reportVerificationVerdictInputSchema)
+		.output(
+			z.object({
+				guidance: z.string(),
+			}),
+		)
+		.handler(async (input: z.infer<typeof reportVerificationVerdictInputSchema>) => {
 			if (!context.workflowTaskService) {
 				return { guidance: 'Error: verification verdict reporting not available.' };
 			}
@@ -142,6 +150,7 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 				workflowId: input.workflowId,
 				executionId: input.executionId,
 				verdict: forcedTerminalVerdict ?? input.verdict,
+				workflowInspection: input.workflowInspection,
 				failureSignature: forcedTerminalVerdict
 					? (remediation?.reason ?? input.failureSignature)
 					: input.failureSignature,
@@ -172,6 +181,6 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 			return {
 				guidance: formatWorkflowLoopGuidance(action, { workItemId: input.workItemId }),
 			};
-		},
-	});
+		})
+		.build();
 }

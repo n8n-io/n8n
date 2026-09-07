@@ -39,9 +39,63 @@ interface BatchSpanProcessorConstructor {
 	new (exporter: unknown): SpanProcessorLike;
 }
 
+interface ExportResultLike {
+	code: number;
+	error?: Error;
+}
+
+type ExportResultCallback = (result: ExportResultLike) => void;
+
+interface SpanExporterLike {
+	export(spans: unknown[], resultCallback: ExportResultCallback): void;
+	shutdown(): Promise<void>;
+}
+
+interface LangSmithOTLPTraceExporterConfig {
+	apiKey?: string;
+	projectName?: string;
+	url?: string;
+	headers?: Record<string, string>;
+	transformExportedSpan?: (span: unknown) => unknown;
+}
+
+interface LangSmithOTLPTraceExporterConstructor {
+	new (cfg?: LangSmithOTLPTraceExporterConfig): SpanExporterLike;
+}
+
 interface LangSmithRunTree {
 	getSharedClient(): {
 		awaitPendingTraceBatches(): Promise<void>;
+	};
+}
+
+const OTEL_EXPORT_RESULT_FAILED = 1;
+
+function toExportError(error: unknown): Error {
+	return error instanceof Error ? error : new Error(String(error));
+}
+
+function createHeaderRefreshingLangSmithExporter(
+	LangSmithOTLPTraceExporter: LangSmithOTLPTraceExporterConstructor,
+	getExporterConfig: (headers: Record<string, string>) => LangSmithOTLPTraceExporterConfig,
+	getHeaders: () => Promise<Record<string, string>>,
+): SpanExporterLike {
+	return {
+		export(spans, resultCallback) {
+			void (async () => {
+				try {
+					const headers = await getHeaders();
+					const exporter = new LangSmithOTLPTraceExporter(getExporterConfig(headers));
+					exporter.export(spans, resultCallback);
+				} catch (error) {
+					resultCallback({ code: OTEL_EXPORT_RESULT_FAILED, error: toExportError(error) });
+				}
+			})();
+		},
+
+		async shutdown() {
+			await Promise.resolve();
+		},
 	};
 }
 
@@ -71,19 +125,28 @@ function isTraceableSpan(span: OtelSpanLike): boolean {
 	);
 }
 
+/**
+ * Upper bound on concurrently tracked traces in the span processor. The
+ * provider is process-lived, so a trace whose spans never end would otherwise
+ * keep its bookkeeping forever. Evicting the oldest trace only degrades
+ * parent resolution for that trace's later spans — they still export (see
+ * the onEnd fallback), just without a resolved traceable parent.
+ */
+const MAX_TRACKED_TRACES = 1_000;
+
 function createLangSmithSpanProcessor(options: {
 	exporter: unknown;
 	BatchSpanProcessor: BatchSpanProcessorConstructor;
 	RunTree: LangSmithRunTree;
 }): SpanProcessorLike {
 	const delegate = new options.BatchSpanProcessor(options.exporter);
-	const traceMap: Record<
+	const traceMap = new Map<
 		string,
 		{
 			spanCount: number;
 			spanInfo: Record<string, { isTraceable: boolean; parentSpanId?: string }>;
 		}
-	> = {};
+	>();
 
 	return {
 		async forceFlush() {
@@ -97,12 +160,16 @@ function createLangSmithSpanProcessor(options: {
 			}
 
 			const spanContext = span.spanContext();
-			traceMap[spanContext.traceId] ??= {
-				spanCount: 0,
-				spanInfo: {},
-			};
-
-			const traceInfo = traceMap[spanContext.traceId];
+			let traceInfo = traceMap.get(spanContext.traceId);
+			if (!traceInfo) {
+				traceInfo = { spanCount: 0, spanInfo: {} };
+				traceMap.set(spanContext.traceId, traceInfo);
+				while (traceMap.size > MAX_TRACKED_TRACES) {
+					const oldestTraceId = traceMap.keys().next().value;
+					if (oldestTraceId === undefined) break;
+					traceMap.delete(oldestTraceId);
+				}
+			}
 			traceInfo.spanCount++;
 			const traceable = isTraceableSpan(span);
 			const parentSpanId = getParentSpanId(span);
@@ -141,13 +208,20 @@ function createLangSmithSpanProcessor(options: {
 			}
 
 			const spanContext = span.spanContext();
-			const traceInfo = traceMap[spanContext.traceId];
+			const traceInfo = traceMap.get(spanContext.traceId);
 			const spanInfo = traceInfo?.spanInfo[spanContext.spanId];
-			if (!traceInfo || !spanInfo) return;
+			if (!traceInfo || !spanInfo) {
+				// Trace bookkeeping was evicted (see MAX_TRACKED_TRACES): the span's
+				// attributes were already stamped in onStart, so it can still export.
+				if (isTraceableSpan(span)) {
+					delegate.onEnd(span);
+				}
+				return;
+			}
 
 			traceInfo.spanCount--;
 			if (traceInfo.spanCount <= 0) {
-				delete traceMap[spanContext.traceId];
+				traceMap.delete(spanContext.traceId);
 			}
 
 			if (spanInfo.isTraceable) {
@@ -174,7 +248,10 @@ export interface LangSmithTelemetryConfig {
 	 * as `${endpoint}/otel/v1/traces`. Use this for custom collectors or testing.
 	 */
 	url?: string;
-	/** Default headers to send with LangSmith OTLP export requests. */
+	/**
+	 * Default headers to send with LangSmith OTLP export requests.
+	 * Callback headers are resolved per export request.
+	 */
 	headers?: Record<string, string> | (() => Promise<Record<string, string>>);
 	/** Optional hook for redacting or annotating spans before LangSmith export. */
 	transformExportedSpan?: (span: unknown) => unknown;
@@ -199,13 +276,7 @@ async function createLangSmithTracer(
 	};
 
 	const { LangSmithOTLPTraceExporter } = (await import('langsmith/experimental/otel/exporter')) as {
-		LangSmithOTLPTraceExporter: new (cfg?: {
-			apiKey?: string;
-			projectName?: string;
-			url?: string;
-			headers?: Record<string, string>;
-			transformExportedSpan?: (span: unknown) => unknown;
-		}) => unknown;
+		LangSmithOTLPTraceExporter: LangSmithOTLPTraceExporterConstructor;
 	};
 	const { BatchSpanProcessor } = (await import('@opentelemetry/sdk-trace-base')) as {
 		BatchSpanProcessor: BatchSpanProcessorConstructor;
@@ -223,9 +294,10 @@ async function createLangSmithTracer(
 		? undefined
 		: (config?.url ??
 			(config?.endpoint ? `${config.endpoint.replace(/\/$/, '')}/otel/v1/traces` : undefined));
-	const headers = typeof config?.headers === 'function' ? await config.headers() : config?.headers;
 
-	const exporter = new LangSmithOTLPTraceExporter({
+	const buildExporterConfig = (
+		headers?: Record<string, string>,
+	): LangSmithOTLPTraceExporterConfig => ({
 		apiKey,
 		projectName: config?.project,
 		...(headers ? { headers } : {}),
@@ -234,6 +306,16 @@ async function createLangSmithTracer(
 			: {}),
 		...(url ? { url } : {}),
 	});
+
+	const headers = config?.headers;
+	const exporter =
+		typeof headers === 'function'
+			? createHeaderRefreshingLangSmithExporter(
+					LangSmithOTLPTraceExporter,
+					buildExporterConfig,
+					headers,
+				)
+			: new LangSmithOTLPTraceExporter(buildExporterConfig(headers));
 
 	const processor = createLangSmithSpanProcessor({
 		exporter,
@@ -308,7 +390,10 @@ export class LangSmithTelemetry extends Telemetry {
 		const built = await super.build();
 
 		// Attach the provider for flush/shutdown (parent build sets it from
-		// otlpEndpoint but not from .tracer(), so we add it here).
-		return { ...built, provider };
+		// otlpEndpoint but not from .tracer(), so we add it here). Mark this
+		// telemetry as LangSmith-flavored regardless of whether the caller
+		// declared a `.credential()` — many callers rely on the
+		// `LANGSMITH_API_KEY` env var instead and never call it.
+		return { ...built, provider, isLangSmith: true };
 	}
 }

@@ -8,6 +8,7 @@ test.use({ capability: benchConfig('burst-drain-capacity', { kafka: true, worker
 test.describe(
 	'How fast can we drain a backlog?',
 	{
+		tag: '@bench:kafka',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'burst-drain-capacity' },

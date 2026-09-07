@@ -3,6 +3,7 @@ import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vites
 import { ensureThread } from '../instanceAi.api';
 import { deleteThread as deleteThreadApi } from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -10,13 +11,17 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn(() => ({ addEventListener: vi.fn(() => () => {}) })),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showError: vi.fn(),
 	}),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({
 		track: vi.fn(),
 	}),
@@ -108,21 +113,6 @@ describe('useInstanceAiStore - runtime registry', () => {
 		expect(store.getRuntime('thread-1')).toBeUndefined();
 	});
 
-	it('disposes and removes all runtimes', () => {
-		const store = useInstanceAiStore();
-		const first = store.getOrCreateRuntime('thread-1');
-		const second = store.getOrCreateRuntime('thread-2');
-		const firstDisposeSpy = vi.spyOn(first, 'dispose');
-		const secondDisposeSpy = vi.spyOn(second, 'dispose');
-
-		store.disposeRuntimes();
-
-		expect(firstDisposeSpy).toHaveBeenCalledOnce();
-		expect(secondDisposeSpy).toHaveBeenCalledOnce();
-		expect(store.getRuntime('thread-1')).toBeUndefined();
-		expect(store.getRuntime('thread-2')).toBeUndefined();
-	});
-
 	it('syncs a thread into the sidebar list', async () => {
 		const store = useInstanceAiStore();
 		mockEnsureThread.mockResolvedValueOnce({
@@ -132,11 +122,15 @@ describe('useInstanceAiStore - runtime registry', () => {
 				resourceId: 'user-1',
 				createdAt: '2026-01-01T00:00:00.000Z',
 				updatedAt: '2026-01-02T00:00:00.000Z',
+				metadata: { source: 'assistant_page', origin: 'internal' },
 			},
 			created: true,
 		});
 
-		await store.syncThread('thread-1');
+		await store.syncThread('thread-1', 'project-1', {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 
 		expect(store.threads).toEqual([
 			{
@@ -144,13 +138,17 @@ describe('useInstanceAiStore - runtime registry', () => {
 				title: 'Thread title',
 				createdAt: '2026-01-01T00:00:00.000Z',
 				updatedAt: '2026-01-02T00:00:00.000Z',
+				metadata: { source: 'assistant_page', origin: 'internal' },
 			},
 		]);
 	});
 
 	it('deleteThread deletes persisted threads and disposes their runtime', async () => {
 		const store = useInstanceAiStore();
-		await store.syncThread('thread-1');
+		await store.syncThread('thread-1', 'project-1', {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 		const runtime = store.getOrCreateRuntime('thread-1');
 		const disposeSpy = vi.spyOn(runtime, 'dispose');
 
@@ -169,6 +167,119 @@ describe('useInstanceAiStore - runtime registry', () => {
 describe('useInstanceAiStore - credits', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		vi.clearAllMocks();
+	});
+
+	const makeThread = (id: string, metadata: Record<string, unknown>): InstanceAiThreadSummary =>
+		({ id, title: 'T', metadata }) as unknown as InstanceAiThreadSummary;
+
+	describe('threadCreditsUsed', () => {
+		it('returns the creditsUsed stored in the thread metadata', () => {
+			const store = useInstanceAiStore();
+			store.threads.push(makeThread('t1', { creditsUsed: 2.5 }));
+
+			expect(store.threadCreditsUsed('t1')).toBe(2.5);
+		});
+
+		it('returns undefined when the thread has no creditsUsed', () => {
+			const store = useInstanceAiStore();
+			store.threads.push(makeThread('t1', {}));
+
+			expect(store.threadCreditsUsed('t1')).toBeUndefined();
+			expect(store.threadCreditsUsed('missing')).toBeUndefined();
+		});
+	});
+
+	describe('credits push handling', () => {
+		it('writes creditsUsed onto the matching thread from the push payload', () => {
+			const store = useInstanceAiStore();
+			store.threads.push(makeThread('t1', {}));
+
+			store.handleCreditsPush({
+				creditsQuota: 100,
+				creditsClaimed: 5,
+				creditsPerThread: { threadId: 't1', totalCreditsUsed: 2.5 },
+			});
+
+			expect(store.creditsClaimed).toBe(5);
+			expect(store.threadCreditsUsed('t1')).toBe(2.5);
+		});
+
+		it('picks up the quota lock from the push payload', () => {
+			const store = useInstanceAiStore();
+
+			// What the activation-capped cohort receives: no usable figures, just the lock.
+			store.handleCreditsPush({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+				quotaLocked: true,
+			});
+
+			expect(store.quotaLocked).toBe(true);
+			expect(store.showCreditWarning).toBe(true);
+		});
+
+		// A claim push carries no lock state, and claims can land after the lock — a background
+		// memory task, or a fire-and-forget HITL segment claim from an earlier run. Treating the
+		// absent field as `false` would clear the warning the lock had just raised.
+		it('keeps the quota lock when a later push omits it', () => {
+			const store = useInstanceAiStore();
+
+			store.handleCreditsPush({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+				quotaLocked: true,
+			});
+			expect(store.showCreditWarning).toBe(true);
+
+			// What a claim pushes: figures only, no lock state.
+			store.handleCreditsPush({ creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 });
+
+			expect(store.quotaLocked).toBe(true);
+			expect(store.showCreditWarning).toBe(true);
+		});
+
+		// Absence means "no opinion", but an explicit false is still an answer — an upgraded
+		// account must be able to get its balance back.
+		it('clears the quota lock when a push says so explicitly', () => {
+			const store = useInstanceAiStore();
+
+			store.handleCreditsPush({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+				quotaLocked: true,
+			});
+			store.handleCreditsPush({ creditsQuota: 800, creditsClaimed: 12.5, quotaLocked: false });
+
+			expect(store.quotaLocked).toBe(false);
+			expect(store.showCreditWarning).toBe(false);
+		});
+	});
+
+	// For the activation-capped cohort the balance is masked, so `isLowCredits` can never fire.
+	describe('showCreditWarning', () => {
+		it('is false with no credit information', () => {
+			const store = useInstanceAiStore();
+			expect(store.showCreditWarning).toBe(false);
+		});
+
+		it('is true when credits are running low', () => {
+			const store = useInstanceAiStore();
+			store.creditsQuota = 100;
+			store.creditsClaimed = 95;
+
+			expect(store.showCreditWarning).toBe(true);
+		});
+
+		it('is true when the pool is locked despite a masked balance', () => {
+			const store = useInstanceAiStore();
+			store.creditsQuota = UNLIMITED_CREDITS;
+			store.creditsClaimed = 0;
+			store.quotaLocked = true;
+
+			expect(store.isLowCredits).toBe(false);
+			expect(store.showCreditWarning).toBe(true);
+		});
 	});
 
 	describe('isLowCredits', () => {

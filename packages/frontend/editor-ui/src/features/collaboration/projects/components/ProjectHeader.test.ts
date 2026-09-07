@@ -6,15 +6,15 @@ import * as router from 'vue-router';
 import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import ProjectHeader from './ProjectHeader.vue';
 import { useProjectsStore } from '../projects.store';
-import type { Project } from '../projects.types';
+import type { Project, ProjectListItem } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
-import { VIEWS } from '@/app/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
 
@@ -241,7 +241,7 @@ describe('ProjectHeader', () => {
 		);
 	});
 
-	it('should render ProjectTabs without Settings if no project update or externalSecretsProvider:read permission', () => {
+	it('should render ProjectTabs without Settings if no project update, manageMembers or externalSecretsProvider:read permission', () => {
 		route.params.projectId = '123';
 		projectsStore.currentProject = createTestProject({
 			scopes: ['project:read'],
@@ -251,6 +251,21 @@ describe('ProjectHeader', () => {
 		expect(projectTabsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
 				'show-settings': false,
+			}),
+			null,
+		);
+	});
+
+	it('should render ProjectTabs Settings if project member has project:manageMembers scope', () => {
+		route.params.projectId = '123';
+		projectsStore.currentProject = createTestProject({
+			scopes: ['project:read', 'project:manageMembers'],
+		});
+		renderComponent();
+
+		expect(projectTabsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'show-settings': true,
 			}),
 			null,
 		);
@@ -306,9 +321,11 @@ describe('ProjectHeader', () => {
 	describe('new agent telemetry', () => {
 		beforeEach(() => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
-			projectsStore.currentProject = createTestProject({
+			const project = createTestProject({
 				scopes: ['workflow:create', 'agent:create'],
 			});
+			projectsStore.currentProject = project;
+			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
 		});
 
 		it('tracks source=button when the agent main button is clicked', async () => {
@@ -317,7 +334,7 @@ describe('ProjectHeader', () => {
 			await userEvent.click(getByTestId('add-resource-agent'));
 
 			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
-			expect(trackClickedNewAgent).toHaveBeenCalledWith('button');
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('button', expect.any(String));
 		});
 
 		it('tracks source=dropdown when the agent action is selected from the dropdown', async () => {
@@ -328,7 +345,7 @@ describe('ProjectHeader', () => {
 			await userEvent.click(getByTestId('action-agent'));
 
 			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
-			expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown');
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown', expect.any(String));
 		});
 	});
 
@@ -499,7 +516,7 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(4);
+			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(5);
 		});
 
 		it('should pass empty array when no modules are active', () => {
@@ -606,6 +623,7 @@ describe('ProjectHeader', () => {
 				scopes: ['projectVariable:create'],
 			});
 			projectsStore.currentProject = project;
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables] = true;
 
 			const { getByTestId } = renderComponent({ props: { mainButton: 'variable' } });
 
@@ -617,6 +635,7 @@ describe('ProjectHeader', () => {
 			usersStore.currentUser = mock<IUser>({
 				globalScopes: ['variable:create'],
 			});
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables] = true;
 
 			const { getByTestId } = renderComponent({ props: { mainButton: 'variable' } });
 
@@ -629,6 +648,19 @@ describe('ProjectHeader', () => {
 				scopes: [],
 			});
 			projectsStore.currentProject = project;
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables] = true;
+
+			const { queryByTestId } = renderComponent({ props: { mainButton: 'variable' } });
+
+			expect(queryByTestId('add-resource-variable')).toBeDisabled();
+		});
+
+		it('should disable variable create button if Variables feature is not enabled', () => {
+			const project = createTestProject({
+				scopes: ['projectVariable:create'],
+			});
+			projectsStore.currentProject = project;
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables] = false;
 
 			const { queryByTestId } = renderComponent({ props: { mainButton: 'variable' } });
 
@@ -639,6 +671,7 @@ describe('ProjectHeader', () => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
 			const project = createTestProject({ scopes: ['agent:create'] });
 			projectsStore.currentProject = project;
+			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
 
 			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
 
@@ -650,6 +683,7 @@ describe('ProjectHeader', () => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
 			const project = createTestProject({ scopes: [] });
 			projectsStore.currentProject = project;
+			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
 
 			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
 

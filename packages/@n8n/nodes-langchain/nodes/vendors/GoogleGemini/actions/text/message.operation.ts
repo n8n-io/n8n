@@ -3,6 +3,7 @@ import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
+	NodeOperationError,
 	accumulateTokenUsage,
 	jsonParse,
 	updateDisplayOptions,
@@ -509,7 +510,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
-	const contents: Content[] = messages.map((m) => ({
+	const nonEmptyMessages = messages.filter((m) => m.content.trim() !== '');
+	if (!nonEmptyMessages.length) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
+	const contents: Content[] = nonEmptyMessages.map((m) => ({
 		parts: [{ text: m.content }],
 		role: m.role,
 	}));

@@ -31,7 +31,7 @@ describe('maybeSummarize', () => {
 
 	it('calls generateFn for content above threshold', async () => {
 		const page = createPage(20_000);
-		const generateFn = jest.fn().mockResolvedValue('Summarized content');
+		const generateFn = vi.fn().mockResolvedValue('Summarized content');
 
 		const result = await maybeSummarize(page, generateFn);
 
@@ -43,7 +43,7 @@ describe('maybeSummarize', () => {
 
 	it('does not call generateFn when content is below threshold', async () => {
 		const page = createPage(5000);
-		const generateFn = jest.fn();
+		const generateFn = vi.fn();
 
 		await maybeSummarize(page, generateFn);
 

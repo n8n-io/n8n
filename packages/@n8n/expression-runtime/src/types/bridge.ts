@@ -5,6 +5,8 @@
 // Start here for CLI/backend (IsolatedVmBridge) or frontend (WebWorkerBridge).
 // ============================================================================
 
+import type { WorkflowData } from './evaluator';
+
 /**
  * Abstract interface for runtime bridges.
  *
@@ -32,7 +34,7 @@ export interface RuntimeBridge {
 	 * Note: Synchronous for Node.js vm module (Slice 1).
 	 *       Will be async for isolated-vm (Slice 2).
 	 */
-	execute(code: string, data: Record<string, unknown>, options?: ExecuteOptions): unknown;
+	execute(code: string, data: WorkflowData, options?: ExecuteOptions): unknown;
 
 	/**
 	 * Dispose of the isolated context and free resources.
@@ -69,7 +71,9 @@ export interface BridgeConfig {
 	memoryLimit?: number;
 
 	/**
-	 * Timeout in milliseconds for expression execution.
+	 * Timeout in milliseconds for one expression evaluation. A chain of nested
+	 * evaluations (`$evaluateExpression`) shares this limit; a nested call does
+	 * not get a new one.
 	 * Default: 5000ms
 	 */
 	timeout?: number;
@@ -99,4 +103,11 @@ export interface ExecuteOptions {
 	 * Sets luxon Settings.defaultZone inside the isolate before execution.
 	 */
 	timezone?: string;
+
+	/**
+	 * Milliseconds already spent by the chain of evaluations this call belongs
+	 * to. Subtracted from the configured timeout so a chain shares one budget
+	 * instead of each call starting a fresh one. Omit for a standalone call.
+	 */
+	elapsedMs?: number;
 }

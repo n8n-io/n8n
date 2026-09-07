@@ -14,6 +14,25 @@ describe('OpenAiApi Credential', () => {
 		expect(openAiApi.test.request.url).toBe('/models');
 	});
 
+	it('should allow custom header expressions to be omitted during design-time resolution', () => {
+		expect(openAiApi.properties).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'headerName',
+					typeOptions: expect.objectContaining({
+						ignoreCredentialExpressionResolveError: true,
+					}),
+				}),
+				expect.objectContaining({
+					name: 'headerValue',
+					typeOptions: expect.objectContaining({
+						ignoreCredentialExpressionResolveError: true,
+					}),
+				}),
+			]),
+		);
+	});
+
 	describe('authenticate', () => {
 		it('should add Authorization header with API key only', async () => {
 			const credentials: ICredentialDataDecryptedObject = {

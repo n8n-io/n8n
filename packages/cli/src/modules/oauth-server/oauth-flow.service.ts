@@ -1,0 +1,185 @@
+import {
+	InvalidGrantError,
+	InvalidTargetError,
+} from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import { Time } from '@n8n/constants';
+import { Service } from '@n8n/di';
+import { UserError, type N8nOAuth2FlowResult, type N8nOAuth2RefreshResult } from 'n8n-workflow';
+import { createHash, randomBytes } from 'node:crypto';
+import pkceChallenge from 'pkce-challenge';
+
+import { CacheService } from '@/services/cache/cache.service';
+import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
+import type { N8nOAuth2Flow } from '@/services/oauth2-flow-proxy.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
+
+import { OAuthServerService } from './oauth-server.service';
+
+const FLOW_STATE_PREFIX = 'oauth-flow:';
+const FLOW_STATE_TTL = 5 * Time.minutes.toMilliseconds;
+
+type FlowState = { codeVerifier: string; resourceUrl: string; metadata?: Record<string, string> };
+
+@Service()
+export class OAuth2FlowService implements N8nOAuth2Flow {
+	constructor(
+		private readonly oauthServerService: OAuthServerService,
+		private readonly resourceRegistry: ProtectedResourceRegistry,
+		private readonly urlService: UrlService,
+		private readonly cacheService: CacheService,
+		private readonly tokenVerifier: OAuthTokenVerifierProxy,
+	) {}
+
+	/**
+	 * Begin authorization-code + PKCE for a form trigger: validate the resource is
+	 * first-party, stash the PKCE verifier under an unguessable single-use `state`,
+	 * and return the `/oauth/authorize` URL to redirect the browser to. For form
+	 * triggers client_id = redirect_uri = resource = the trigger URL.
+	 *
+	 * Optional `metadata` is stashed against the `state` (server-side, never sent to the
+	 * browser) and handed back by `complete` on success.
+	 */
+	async begin(resourceUrl: string, metadata?: Record<string, string>): Promise<string> {
+		const resource = await this.resourceRegistry.getByResourceUrl(resourceUrl);
+		if (!resource?.isFirstParty) {
+			throw new UserError(`Not a first-party protected resource: ${resourceUrl}`);
+		}
+
+		const { code_verifier, code_challenge } = await pkceChallenge();
+		const state = randomBytes(32).toString('hex');
+		await this.cacheService.set(
+			FLOW_STATE_PREFIX + state,
+			{ codeVerifier: code_verifier, resourceUrl, metadata } satisfies FlowState,
+			FLOW_STATE_TTL,
+		);
+
+		const url = new URL(`${this.urlService.getInstanceBaseUrl()}/oauth/authorize`);
+		url.searchParams.set('response_type', 'code');
+		url.searchParams.set('client_id', resourceUrl);
+		url.searchParams.set('redirect_uri', resourceUrl);
+		url.searchParams.set('resource', resourceUrl);
+		url.searchParams.set('code_challenge', code_challenge);
+		url.searchParams.set('code_challenge_method', 'S256');
+		url.searchParams.set('state', state);
+		return url.toString();
+	}
+
+	/**
+	 * Complete the flow: consume the cached state once, verify PKCE (the SDK token
+	 * handler normally does this — we exchange in-process, so replicate the S256
+	 * check), exchange the code for an AS token, and validate it against the form's
+	 * resource. Ends with a validated token (sub=submitter, aud=form resource).
+	 */
+	async complete(code: string, state: string): Promise<N8nOAuth2FlowResult> {
+		const cacheKey = FLOW_STATE_PREFIX + state;
+		const flow = await this.cacheService.get<FlowState>(cacheKey);
+		if (!flow) return { valid: false, reason: 'invalid_state' };
+		await this.cacheService.delete(cacheKey); // consume-once
+
+		const { codeVerifier, resourceUrl, metadata } = flow;
+
+		const client = await this.oauthServerService.clientsStore.getClient(resourceUrl);
+		if (!client) return { valid: false, reason: 'invalid_client' };
+
+		try {
+			const challenge = await this.oauthServerService.challengeForAuthorizationCode(client, code);
+			if (createHash('sha256').update(codeVerifier).digest('base64url') !== challenge) {
+				return { valid: false, reason: 'invalid_grant' };
+			}
+
+			const tokens = await this.oauthServerService.exchangeAuthorizationCode(
+				client,
+				code,
+				codeVerifier,
+				resourceUrl,
+				new URL(resourceUrl),
+			);
+
+			const result = await this.tokenVerifier.verifyOAuthAccessToken(
+				tokens.access_token,
+				resourceUrl,
+			);
+			if (!result.user) {
+				return { valid: false, reason: result.context?.reason ?? 'invalid_token' };
+			}
+			// Both are optional in the SDK's token shape but always set by our AS. Treat a
+			// missing one as a failed grant rather than throwing: a caller that can't refresh
+			// would silently stop working an hour later instead of restarting the flow now.
+			if (!tokens.refresh_token || tokens.expires_in === undefined) {
+				return { valid: false, reason: 'invalid_grant' };
+			}
+			return {
+				valid: true,
+				token: tokens.access_token,
+				refreshToken: tokens.refresh_token,
+				expiresIn: tokens.expires_in,
+				user: {
+					id: result.user.id,
+					email: result.user.email,
+					firstName: result.user.firstName,
+					lastName: result.user.lastName,
+				},
+				metadata,
+			};
+		} catch (error) {
+			// A concurrent completion (double-submitted callback) loses the atomic
+			// `markAuthorizationCodeAsUsed` race; a missing/used/expired code throws the
+			// same way. Surface it as a graceful invalid_grant rather than a thrown 500 —
+			// the return contract is a discriminated union, not an exception channel.
+			if (error instanceof InvalidGrantError) {
+				return { valid: false, reason: 'invalid_grant' };
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Trade a refresh token from a completed flow for a fresh pair on the same grant.
+	 * The client comes from `resourceUrl` alone, so this serves virtual clients only — the
+	 * first-party trigger resources where client_id = redirect_uri = resource. A registered
+	 * (DCR) client cannot refresh here; it uses the public `/oauth/token` endpoint.
+	 * The AS rotates: the returned refresh token replaces the one passed in, and the
+	 * old access token stays valid until its own expiry, so requests already in flight
+	 * survive the rotation.
+	 */
+	async refreshVirtualClientToken(
+		refreshToken: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2RefreshResult> {
+		const resource = await this.resourceRegistry.getByResourceUrl(resourceUrl);
+		if (!resource?.isFirstParty) {
+			throw new UserError(`Not a first-party protected resource: ${resourceUrl}`);
+		}
+
+		const client = await this.oauthServerService.clientsStore.getClient(resourceUrl);
+		if (!client) return { valid: false, reason: 'invalid_client' };
+
+		try {
+			const tokens = await this.oauthServerService.exchangeRefreshToken(
+				client,
+				refreshToken,
+				undefined,
+				new URL(resourceUrl),
+			);
+			if (!tokens.refresh_token || tokens.expires_in === undefined) {
+				return { valid: false, reason: 'invalid_grant' };
+			}
+			return {
+				valid: true,
+				token: tokens.access_token,
+				refreshToken: tokens.refresh_token,
+				expiresIn: tokens.expires_in,
+			};
+		} catch (error) {
+			// A token already consumed by a concurrent refresh loses the atomic
+			// `deleteValidByToken` race and arrives here; so does a request naming a
+			// resource outside the grant. Both are the caller's cue to restart the flow,
+			// not a server fault — surface them on the union, never as a silent reuse.
+			if (error instanceof InvalidGrantError || error instanceof InvalidTargetError) {
+				return { valid: false, reason: 'invalid_grant' };
+			}
+			throw error;
+		}
+	}
+}

@@ -21,13 +21,13 @@ describe('CalendlyTriggerHelpers', () => {
 		rawBody: Buffer | string | undefined;
 	}) {
 		return {
-			getWorkflowStaticData: jest
+			getWorkflowStaticData: vi
 				.fn()
 				.mockReturnValue(
 					opts.webhookSecret !== undefined ? { webhookSecret: opts.webhookSecret } : {},
 				),
-			getRequestObject: jest.fn().mockReturnValue({
-				header: jest
+			getRequestObject: vi.fn().mockReturnValue({
+				header: vi
 					.fn()
 					.mockImplementation((name: string) =>
 						name === 'calendly-webhook-signature' ? opts.headerValue : null,

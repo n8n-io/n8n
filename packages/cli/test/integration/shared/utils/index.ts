@@ -2,7 +2,6 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import {
 	BinaryDataConfig,
 	BinaryDataService,
@@ -22,12 +21,12 @@ import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
 import { Webhook as WebhookNode } from 'n8n-nodes-base/nodes/Webhook/Webhook.node';
-import type { INodeType, INodeTypeData, INode } from 'n8n-workflow';
+import type { INodeProperties, INodeType, INodeTypeData, INode } from 'n8n-workflow';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { ExecutionService } from '@/executions/execution.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 
@@ -48,8 +47,7 @@ export async function initActiveWorkflowManager() {
 	});
 
 	mockInstance(Push);
-	mockInstance(ExecutionService);
-	const { ActiveWorkflowManager } = await import('@/active-workflow-manager');
+	const { ActiveWorkflowManager } = await import('@/active-workflow-manager.js');
 	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 	await activeWorkflowManager.init();
 	return activeWorkflowManager;
@@ -84,10 +82,37 @@ export async function initCredentialsTypes(): Promise<void> {
 }
 
 /**
- * Initialize node types.
+ * A node type resolvable by name and version, and safe to publish. The empty arrays matter:
+ * publishing validates each node — resolving its parameters, scanning for webhooks and checking
+ * its credentials — and every one of those iterates a field on the description. `properties` must
+ * declare any parameter a test relies on: parameter resolution drops what the type doesn't declare.
  */
-export async function initNodeTypes(customNodes?: INodeTypeData) {
-	const defaultNodes: INodeTypeData = {
+function minimalNodeType(name: string, properties: INodeProperties[] = []): INodeTypeData[string] {
+	// A plain object, not `mock<INodeType>`: vitest-mock-extended deep-wraps `properties` in
+	// proxies, and parameter dependency resolution then fails to converge on them.
+	return {
+		type: {
+			description: {
+				displayName: name,
+				name,
+				group: [],
+				version: 1,
+				description: '',
+				defaults: {},
+				inputs: [],
+				outputs: [],
+				properties,
+				webhooks: [],
+				credentials: [],
+			},
+		} as unknown as INodeType,
+		sourcePath: '',
+	};
+}
+
+function buildDefaultNodes(): INodeTypeData {
+	ScheduleTrigger.prototype.trigger = async () => ({});
+	return {
 		'n8n-nodes-base.manualTrigger': {
 			type: new ManualTrigger(),
 			sourcePath: '',
@@ -109,19 +134,44 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 			sourcePath: '',
 		},
 		'n8n-nodes-base.webhook': {
-			type: mock<INodeType>({ description: new WebhookNode().description }),
+			// The real node: publishing resolves a webhook node's parameters against its
+			// description, which a mock-wrapped description does not survive.
+			type: new WebhookNode() as unknown as INodeType,
 			sourcePath: '',
 		},
+		// Minimal mocks for node types the package-import fixtures reference at typeVersion 1.
+		'n8n-nodes-base.httpRequest': minimalNodeType('n8n-nodes-base.httpRequest'),
+		'n8n-nodes-base.dataTable': minimalNodeType('n8n-nodes-base.dataTable'),
+		// `workflowId` is declared so the sub-workflow reference survives parameter resolution —
+		// publishing validates it, and a dropped parameter silently skips that check.
+		'n8n-nodes-base.executeWorkflow': minimalNodeType('n8n-nodes-base.executeWorkflow', [
+			{ displayName: 'Workflow', name: 'workflowId', type: 'workflowSelector', default: '' },
+		]),
 	};
+}
 
-	ScheduleTrigger.prototype.trigger = async () => ({});
-	const nodes = customNodes ?? defaultNodes;
+/**
+ * Initialize node types.
+ */
+export async function initNodeTypes(customNodes?: INodeTypeData) {
+	// Build the default mock node set only when the caller didn't supply its own. Building it
+	// eagerly is harmful even when unused: `mock<INodeType>({ description: new WebhookNode().description })`
+	// (vitest-mock-extended) deep-wraps the webhook description's property objects *in place*, and
+	// nodes that reuse those shared property definitions by reference (e.g. Wait) then inherit the
+	// mock-polluted `displayOptions`, which breaks parameter validation at execution time.
+	const nodes = customNodes ?? buildDefaultNodes();
 	const loader = mock<DirectoryLoader>();
 	loader.getNode.mockImplementation((nodeType) => {
 		const node = nodes[`n8n-nodes-base.${nodeType}`];
 		if (!node) throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeType);
 		return node;
 	});
+
+	// LoadNodesAndCredentials.getCredential() iterates all loaders and
+	// tries to check for `credentialType in loader.known.credentials`.
+	// The `in` operator throws if `known.credentials` is undefined. Set it to empty maps so
+	// the loop is safe to iterate (credentials are registered via loaded.credentials, not the loader).
+	Object.assign(loader, { known: { nodes: {}, credentials: {} } });
 
 	const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 	loadNodesAndCredentials.loaders = { 'n8n-nodes-base': loader };

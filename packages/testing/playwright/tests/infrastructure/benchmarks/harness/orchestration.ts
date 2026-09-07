@@ -575,7 +575,7 @@ function renderResultBlock(report: RunReport): void {
 		const backlog = t.backlogGrowthPerSec ?? 0;
 		console.log(
 			`[WEBHOOK RESULT] ${report.scenario.spec}\n` +
-				`  HTTP ingestion:    ${t.reqPerSec.toFixed(1)} req/s | p50: ${t.p50Ms ?? 'N/A'}ms | p99: ${t.p99Ms ?? 'N/A'}ms\n` +
+				`  HTTP ingestion:    ${t.reqPerSec.toFixed(1)} req/s | p50: ${t.p50Ms ?? 'N/A'}ms | p97.5: ${t.p97_5Ms ?? 'N/A'}ms | p99: ${t.p99Ms ?? 'N/A'}ms\n` +
 				`  n8n execution:     ${(t.tailExecPerSec ?? t.execPerSec ?? 0).toFixed(1)} exec/s (tail 60s)\n` +
 				`  Backlog growth:    ${backlog >= 0 ? '+' : ''}${backlog.toFixed(1)} msg/sec` +
 				` (ingestion is ${ratio}× execution)\n` +

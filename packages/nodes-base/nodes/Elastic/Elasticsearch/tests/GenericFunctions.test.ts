@@ -1,24 +1,24 @@
-import { type IExecuteFunctions, NodeApiError } from 'n8n-workflow';
+import { type IExecuteFunctions, NodeApiError, UserError } from 'n8n-workflow';
 
-import { elasticsearchApiRequest } from '../GenericFunctions';
+import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from '../GenericFunctions';
 
 describe('Elasticsearch -> elasticsearchApiRequest', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
 
-	const mockHttpRequestWithAuthentication = jest.fn();
+	const mockHttpRequestWithAuthentication = vi.fn();
 
 	const setupMockFunctions = () => {
 		mockExecuteFunctions = {
-			getCredentials: jest.fn().mockResolvedValue({
+			getCredentials: vi.fn().mockResolvedValue({
 				baseUrl: 'https://example.com',
 				ignoreSSLIssues: false,
 			}),
 			helpers: {
 				httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
 			},
-			getNode: jest.fn().mockReturnValue({}),
+			getNode: vi.fn().mockReturnValue({}),
 		} as unknown as IExecuteFunctions;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	};
 
 	beforeEach(() => {
@@ -96,7 +96,7 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 	it('should ignore trailing slashes in the base URL', async () => {
 		mockHttpRequestWithAuthentication.mockResolvedValue(response);
 
-		mockExecuteFunctions.getCredentials = jest.fn().mockResolvedValue({
+		mockExecuteFunctions.getCredentials = vi.fn().mockResolvedValue({
 			baseUrl: 'https://elastic.domain.com/',
 			ignoreSSLIssues: false,
 		});
@@ -108,5 +108,32 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 				url: 'https://elastic.domain.com/test-endpoint',
 			}),
 		);
+	});
+});
+
+describe('Elasticsearch -> elasticsearchApiRequestAllItems', () => {
+	let mockExecuteFunctions: IExecuteFunctions;
+	const mockHttpRequestWithAuthentication = vi.fn();
+
+	beforeEach(() => {
+		mockExecuteFunctions = {
+			getCredentials: vi.fn().mockResolvedValue({
+				baseUrl: 'https://example.com',
+				ignoreSSLIssues: false,
+			}),
+			helpers: {
+				httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
+			},
+			getNode: vi.fn().mockReturnValue({}),
+		} as unknown as IExecuteFunctions;
+		mockHttpRequestWithAuthentication.mockClear();
+	});
+
+	it('should reject an invalid index id before making any request', async () => {
+		await expect(
+			elasticsearchApiRequestAllItems.call(mockExecuteFunctions, '..', {}, {}),
+		).rejects.toThrow(UserError);
+
+		expect(mockHttpRequestWithAuthentication).not.toHaveBeenCalled();
 	});
 });

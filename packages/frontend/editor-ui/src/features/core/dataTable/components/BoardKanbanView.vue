@@ -20,7 +20,7 @@ import type { ComponentPublicInstance } from 'vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import Draggable from 'vuedraggable';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { TIME } from '@/app/constants/durations';
 import { useUIStore } from '@/app/stores/ui.store';

@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import type { TextSize, BadgeTheme } from '@n8n/design-system/types/';
-
+import type { TextSize, BadgeTheme } from '../../types';
 import N8nText from '../N8nText';
 
 interface BadgeProps {

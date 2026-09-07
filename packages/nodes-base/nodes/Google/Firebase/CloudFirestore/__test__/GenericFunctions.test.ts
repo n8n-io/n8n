@@ -1,4 +1,4 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -9,19 +9,20 @@ import {
 	documentToJson,
 	fullDocumentToJson,
 } from '../GenericFunctions';
+import type { Mocked, MockedFunction } from 'vitest';
 
 // Mock the getGoogleAccessToken function
-jest.mock('../../../GenericFunctions', () => ({
-	getGoogleAccessToken: jest.fn(),
+vi.mock('../../../GenericFunctions', () => ({
+	getGoogleAccessToken: vi.fn(),
 }));
 
-const mockGetGoogleAccessToken = getGoogleAccessToken as jest.MockedFunction<
+const mockGetGoogleAccessToken = getGoogleAccessToken as MockedFunction<
 	typeof getGoogleAccessToken
 >;
 
 describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 	let mockNode: INode;
 
 	beforeEach(() => {
@@ -39,11 +40,11 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockLoadOptionsFunctions.getNode.mockReturnValue(mockNode);
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('googleApiRequest', () => {
-		const mockRequestWithAuth = jest.fn();
+		const mockRequestWithAuth = vi.fn();
 
 		beforeEach(() => {
 			mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuth;

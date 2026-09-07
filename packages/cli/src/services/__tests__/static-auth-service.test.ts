@@ -1,5 +1,6 @@
-import { StaticAuthService } from '../static-auth-service';
 import type { Request, Response, NextFunction } from 'express';
+
+import { StaticAuthService } from '../static-auth-service';
 
 describe('StaticAuthService', () => {
 	describe('getStaticAuthMiddleware', () => {
@@ -21,9 +22,9 @@ describe('StaticAuthService', () => {
 			};
 			let middleware: null | ((req: Request, res: Response, next: NextFunction) => void);
 			beforeEach(() => {
-				next = jest.fn();
-				send = jest.fn();
-				status = jest.fn().mockImplementation(() => {
+				next = vi.fn();
+				send = vi.fn();
+				status = vi.fn().mockImplementation(() => {
 					return {
 						send,
 					};

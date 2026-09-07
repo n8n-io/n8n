@@ -1,17 +1,19 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import type { InstanceAiLivenessPolicy, InstanceAiLivenessTimeoutReason } from '@n8n/instance-ai';
+import {
+	orchestratorAgentId,
+	type InstanceAiLivenessPolicy,
+	type InstanceAiLivenessTimeoutReason,
+} from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
+import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details';
 
 export const INSTANCE_AI_RUN_TIMEOUT_REASON = 'timeout';
 
 const RUN_TIMEOUT_MESSAGE =
 	'The run stopped making progress, so I cancelled it. You can retry or adjust the request.';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 export type InstanceAiLivenessTimedOutActiveRun = {
 	runId: string;
@@ -39,6 +41,14 @@ export type InstanceAiLivenessSweepResult = {
 	activeThreadIds: string[];
 	suspendedThreadIds: string[];
 	confirmationRequestIds: string[];
+	activeTimeouts?: Record<string, InstanceAiRunTimeoutDetails>;
+	suspendedTimeouts?: Record<string, InstanceAiRunTimeoutDetails>;
+	confirmationTimeouts?: Record<string, InstanceAiRunTimeoutDetails>;
+};
+
+export type InstanceAiConsumedRunTimeout = {
+	timedOut: boolean;
+	details?: InstanceAiRunTimeoutDetails;
 };
 
 export type InstanceAiLivenessRunState<
@@ -49,6 +59,7 @@ export type InstanceAiLivenessRunState<
 	cancelSuspendedRun: (threadId: string) => TSuspendedRun | undefined;
 	getActiveRunId: (threadId: string) => string | undefined;
 	getPendingConfirmation: (requestId: string) => InstanceAiLivenessPendingConfirmation | undefined;
+	hasPendingConfirmationForThread: (threadId: string) => boolean;
 	rejectPendingConfirmation: (requestId: string) => boolean;
 };
 
@@ -56,17 +67,14 @@ export type InstanceAiLivenessBackgroundTasks = {
 	timeoutTimedOutTasks: (
 		policy: InstanceAiLivenessPolicy,
 		now?: number,
+		options?: {
+			shouldSkipTask?: (task: InstanceAiLivenessTimedOutTask) => boolean;
+		},
 	) => Promise<InstanceAiLivenessTimedOutTask[]>;
 };
 
 export type InstanceAiLivenessEventBus = {
-	getEventsForRun: (threadId: string, runId: string) => Pick<InstanceAiEvent, 'responseId'>[];
 	publish: (threadId: string, event: InstanceAiEvent) => void;
-};
-
-export type InstanceAiLivenessLogger = {
-	debug: (message: string, metadata?: Record<string, unknown>) => void;
-	warn: (message: string, metadata?: Record<string, unknown>) => void;
 };
 
 export type InstanceAiLivenessServiceOptions<
@@ -78,7 +86,8 @@ export type InstanceAiLivenessServiceOptions<
 	backgroundTasks: InstanceAiLivenessBackgroundTasks;
 	eventBus: InstanceAiLivenessEventBus;
 	finalizeCancelledSuspendedRun: (suspended: TSuspendedRun, reason: string) => void;
-	logger: InstanceAiLivenessLogger;
+	onPendingConfirmationRejected?: (requestId: string) => void;
+	logger: Logger;
 };
 
 export class InstanceAiLivenessService<
@@ -86,9 +95,21 @@ export class InstanceAiLivenessService<
 > {
 	private timeoutInterval?: NodeJS.Timeout;
 
-	private readonly timedOutRunIds = new Set<string>();
+	private readonly timedOutRunIds = new Map<string, InstanceAiRunTimeoutDetails | undefined>();
 
 	private readonly timedOutActiveRunThreads = new Set<string>();
+
+	/**
+	 * Runs whose timeout notice has already been published, so a run cancelled
+	 * by the sweep and then finalised by its own abort handler only gets the
+	 * notice once. Capped FIFO (see {@link NOTICE_DEDUPE_CACHE_SIZE}): dedupe
+	 * only has to hold across a single run's cancellation window, and a run
+	 * lives on one main for one process lifetime.
+	 */
+	private readonly noticedRunIds = new Set<string>();
+
+	/** Max retained run ids in {@link noticedRunIds}; oldest evicted first. */
+	static readonly NOTICE_DEDUPE_CACHE_SIZE = 1000;
 
 	constructor(private readonly options: InstanceAiLivenessServiceOptions<TSuspendedRun>) {}
 
@@ -111,14 +132,15 @@ export class InstanceAiLivenessService<
 		}
 		this.timedOutRunIds.clear();
 		this.timedOutActiveRunThreads.clear();
+		this.noticedRunIds.clear();
 	}
 
 	clearThreadState(threadId: string): void {
 		this.timedOutActiveRunThreads.delete(threadId);
 	}
 
-	markRunTimedOut(runId: string): void {
-		this.timedOutRunIds.add(runId);
+	markRunTimedOut(runId: string, details?: InstanceAiRunTimeoutDetails): void {
+		this.timedOutRunIds.set(runId, details);
 	}
 
 	consumeRunTimedOut(runId: string): boolean {
@@ -127,22 +149,37 @@ export class InstanceAiLivenessService<
 		return timedOut;
 	}
 
+	consumeRunTimeout(runId: string): InstanceAiConsumedRunTimeout {
+		const timedOut = this.timedOutRunIds.has(runId);
+		if (!timedOut) return { timedOut: false };
+
+		const details = this.timedOutRunIds.get(runId);
+		this.timedOutRunIds.delete(runId);
+		return details ? { timedOut: true, details } : { timedOut: true };
+	}
+
 	hasTimedOutActiveRunThread(threadId: string): boolean {
 		return this.timedOutActiveRunThreads.has(threadId);
 	}
 
 	async sweepTimedOutWork(now = Date.now()): Promise<void> {
-		const { activeThreadIds, suspendedThreadIds, confirmationRequestIds } =
-			this.options.runState.sweepTimedOut(this.options.policy, now);
+		const {
+			activeThreadIds,
+			suspendedThreadIds,
+			confirmationRequestIds,
+			activeTimeouts,
+			suspendedTimeouts,
+			confirmationTimeouts,
+		} = this.options.runState.sweepTimedOut(this.options.policy, now);
 
 		for (const threadId of activeThreadIds) {
 			this.options.logger.debug('Cancelling timed-out active run', { threadId });
-			this.cancelTimedOutActiveRun(threadId);
+			this.cancelTimedOutActiveRun(threadId, activeTimeouts?.[threadId]);
 		}
 
 		for (const threadId of suspendedThreadIds) {
 			this.options.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
-			this.cancelTimedOutSuspendedRun(threadId);
+			this.cancelTimedOutSuspendedRun(threadId, suspendedTimeouts?.[threadId]);
 		}
 
 		for (const reqId of confirmationRequestIds) {
@@ -152,15 +189,23 @@ export class InstanceAiLivenessService<
 			const pending = this.options.runState.getPendingConfirmation(reqId);
 			if (pending) {
 				const runId = this.options.runState.getActiveRunId(pending.threadId);
-				if (runId) this.publishRunTimeoutNotice(pending.threadId, runId);
+				if (runId) {
+					this.markRunTimedOut(runId, confirmationTimeouts?.[reqId]);
+					this.publishRunTimeoutNotice(pending.threadId, runId);
+				}
 			}
 			this.options.runState.rejectPendingConfirmation(reqId);
+			this.options.onPendingConfirmationRejected?.(reqId);
 		}
 
 		try {
 			const timedOutTasks = await this.options.backgroundTasks.timeoutTimedOutTasks(
 				this.options.policy,
 				now,
+				{
+					shouldSkipTask: (task) =>
+						this.options.runState.hasPendingConfirmationForThread(task.threadId),
+				},
 			);
 			for (const task of timedOutTasks) {
 				this.options.logger.debug('Timed out background task', {
@@ -177,38 +222,53 @@ export class InstanceAiLivenessService<
 		}
 	}
 
-	cancelTimedOutActiveRun(threadId: string): void {
+	cancelTimedOutActiveRun(threadId: string, details?: InstanceAiRunTimeoutDetails): void {
 		const active = this.options.runState.cancelActiveRun(threadId);
 		if (!active) return;
 
-		this.markRunTimedOut(active.runId);
+		this.markRunTimedOut(active.runId, details);
 		this.timedOutActiveRunThreads.add(threadId);
 		this.publishRunTimeoutNotice(threadId, active.runId);
 		active.abortController.abort();
 	}
 
-	cancelTimedOutSuspendedRun(threadId: string): void {
+	cancelTimedOutSuspendedRun(threadId: string, details?: InstanceAiRunTimeoutDetails): void {
 		const suspended = this.options.runState.cancelSuspendedRun(threadId);
 		if (!suspended) return;
 
-		this.markRunTimedOut(suspended.runId);
+		this.markRunTimedOut(suspended.runId, details);
 		suspended.abortController.abort();
 		this.options.finalizeCancelledSuspendedRun(suspended, INSTANCE_AI_RUN_TIMEOUT_REASON);
 	}
 
 	publishRunTimeoutNotice(threadId: string, runId: string): void {
-		const responseId = `run-timeout:${runId}`;
-		const alreadyPublished = this.options.eventBus
-			.getEventsForRun(threadId, runId)
-			.some((event) => event.responseId === responseId);
-		if (alreadyPublished) return;
+		// Deduped locally rather than by scanning the run's events: the notice is
+		// a delta, and under the durable log deltas are ephemeral (never stored,
+		// persisted only once their segment coalesces), so a read-back cannot see
+		// a notice published moments earlier.
+		if (this.noticedRunIds.has(runId)) return;
 
+		// Recorded only after the publish lands: marking first would suppress the
+		// notice permanently if publish threw.
 		this.options.eventBus.publish(threadId, {
 			type: 'text-delta',
 			runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
-			responseId,
+			agentId: orchestratorAgentId(runId),
+			responseId: `run-timeout:${runId}`,
 			payload: { text: RUN_TIMEOUT_MESSAGE },
 		});
+		this.rememberNoticedRunId(runId);
+	}
+
+	/**
+	 * Record a notified run id, evicting the oldest once the cap is reached. A
+	 * Set keeps insertion order, so the first value is the oldest entry.
+	 */
+	private rememberNoticedRunId(runId: string): void {
+		this.noticedRunIds.add(runId);
+		if (this.noticedRunIds.size > InstanceAiLivenessService.NOTICE_DEDUPE_CACHE_SIZE) {
+			const oldest = this.noticedRunIds.values().next().value;
+			if (oldest !== undefined) this.noticedRunIds.delete(oldest);
+		}
 	}
 }

@@ -1,6 +1,7 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { hoverToReveal } from '../utils/retry-utils';
 import { CredentialModal } from './components/CredentialModal';
 import { InstanceAiSidebar } from './components/InstanceAiSidebar';
 import { InstanceAiWorkflowSetup } from './components/InstanceAiWorkflowSetup';
@@ -16,7 +17,7 @@ export class InstanceAiPage extends BasePage {
 		this.workflowSetup = new InstanceAiWorkflowSetup(
 			page.getByTestId('instance-ai-workflow-setup'),
 		);
-		this.credentialModal = new CredentialModal(page.getByTestId('editCredential-modal'));
+		this.credentialModal = CredentialModal.fromPage(page);
 	}
 
 	private get container(): Locator {
@@ -24,11 +25,90 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async goto(): Promise<void> {
-		await this.page.goto('/instance-ai');
+		await this.page.goto('/');
+		await this.enableInstanceAiIfPrompted();
+		await this.getChatInput()
+			.waitFor({ state: 'visible', timeout: 10_000 })
+			.catch(async () => {
+				const aiMenuItem = this.page.getByRole('menuitem', { name: 'AI Assistant' });
+				await aiMenuItem.click({ timeout: 10_000 });
+				await this.enableInstanceAiIfPrompted();
+			});
+		await expect(this.getChatInput()).toBeVisible({ timeout: 30_000 });
+		await expect(this.getSendButton()).toBeVisible({ timeout: 30_000 });
+	}
+
+	async gotoOnboarding(): Promise<void> {
+		await this.page.goto('/assistant');
+		await expect(
+			this.container
+				.getByTestId('assistant-setup-intro')
+				.or(this.container.getByTestId('assistant-setup-incomplete')),
+		).toBeVisible({ timeout: 30_000 });
+	}
+
+	getSetupButton(): Locator {
+		return this.container
+			.getByTestId('assistant-setup-cta')
+			.or(this.container.getByTestId('assistant-finish-setup-cta'));
+	}
+
+	getOnboardingWizard(): Locator {
+		return this.page.getByRole('dialog', { name: 'Set up AI Assistant' });
+	}
+
+	getWizardPrimaryButton(): Locator {
+		return this.getOnboardingWizard().getByTestId('wizard-primary');
+	}
+
+	getSearchProvider(provider: 'searxng' | 'brave' | 'disabled'): Locator {
+		return this.getOnboardingWizard().getByTestId(`assistant-search-${provider}`);
+	}
+
+	getSearchValueInput(): Locator {
+		return this.getOnboardingWizard().getByTestId('assistant-search-value');
+	}
+
+	getVerificationError(): Locator {
+		return this.getOnboardingWizard().getByTestId('assistant-verification-error');
+	}
+
+	getOnboardingDoneHeading(): Locator {
+		return this.getOnboardingWizard().getByRole('heading', {
+			name: 'AI Assistant is on for everyone on this instance',
+		});
+	}
+
+	async mockSearchVerification(
+		response: { ok: true; resultCount: number } | { ok: false; failure: string },
+	): Promise<void> {
+		await this.page.route('**/rest/instance-ai/settings/verify/search', async (route) => {
+			await route.fulfill({ json: { data: response } });
+		});
+	}
+
+	async enableInstanceAiIfPrompted(): Promise<void> {
+		const dialog = this.page.getByRole('dialog').filter({ hasText: 'Try AI Assistant' });
+		try {
+			await dialog.waitFor({ state: 'visible', timeout: 3_000 });
+		} catch {
+			return;
+		}
+
+		await dialog.getByRole('button', { name: /Enable AI Assistant on this instance/ }).click();
+		await dialog.getByRole('button', { name: /^(Continue|Enable)$/ }).click();
+		await dialog.waitFor({ state: 'hidden' });
 	}
 
 	async gotoThread(threadId: string): Promise<void> {
-		await this.page.goto(`/instance-ai/${threadId}`);
+		await this.page.goto(`/assistant/${threadId}`);
+	}
+
+	/** Thread id of the conversation currently open, read from the URL. */
+	getCurrentThreadId(): string {
+		const threadId = new URL(this.page.url()).pathname.split('/').pop();
+		if (!threadId) throw new Error(`No thread id in URL: ${this.page.url()}`);
+		return threadId;
 	}
 
 	getContainer(): Locator {
@@ -48,11 +128,11 @@ export class InstanceAiPage extends BasePage {
 	 * query thread items without racing the 200ms slide-in transition.
 	 */
 	async openSidebar(): Promise<void> {
-		const toggle = this.getSidebarToggle();
-		if (await toggle.isVisible()) {
-			await toggle.click();
+		const threadList = this.page.getByTestId('instance-ai-thread-list');
+		if (!(await threadList.isVisible())) {
+			await this.getSidebarToggle().click({ timeout: 10_000 });
 		}
-		await this.getContainer().getByTestId('instance-ai-thread-list').waitFor({ state: 'visible' });
+		await threadList.waitFor({ state: 'visible' });
 	}
 
 	// ── Messages ──────────────────────────────────────────────────────
@@ -81,8 +161,23 @@ export class InstanceAiPage extends BasePage {
 		return this.getAssistantMessages().getByText(text);
 	}
 
-	getToolCallsButton(label: string): Locator {
-		return this.page.getByRole('button', { name: label });
+	/**
+	 * Text anywhere in the chat panel. Broader than `getAssistantMessageText`: a run's
+	 * output can land outside an assistant-message bubble (an error callout, a status
+	 * line), so use this when the assertion is "the panel says this" rather than "this
+	 * message says this".
+	 */
+	getPanelText(text: string | RegExp): Locator {
+		return this.getContainer().getByText(text);
+	}
+
+	/** Tailored out-of-credits error callout shown when a run fails due to exhausted quota. */
+	getOutOfCreditsError(): Locator {
+		return this.container.getByTestId('instance-ai-out-of-credits');
+	}
+
+	getOutOfCreditsUpgradeButton(): Locator {
+		return this.container.getByTestId('instance-ai-out-of-credits-upgrade');
 	}
 
 	getStatusBar(): Locator {
@@ -108,10 +203,27 @@ export class InstanceAiPage extends BasePage {
 		return this.getUserMessages().nth(messageIndex).getByTestId('chat-file');
 	}
 
+	/**
+	 * Files staged in the composer but not yet sent, counted via each preview's remove
+	 * control. Two markers are needed: `AttachmentPreview` renders
+	 * `attachment-preview-remove` for image thumbnails, while non-image files fall
+	 * through to `ChatFile`, whose control is `chat-file-remove`. Matching only the
+	 * first would silently count 0 for a staged PDF or CSV.
+	 */
+	getComposerAttachments(): Locator {
+		return this.getContainer().locator(
+			'[data-test-id="attachment-preview-remove"], [data-test-id="chat-file-remove"]',
+		);
+	}
+
 	// ── Confirmations ─────────────────────────────────────────────────
 
 	getConfirmApproveButton(): Locator {
 		return this.container.getByTestId('instance-ai-panel-confirm-approve');
+	}
+
+	getConfirmAlwaysAllowButton(): Locator {
+		return this.container.getByTestId('instance-ai-panel-confirm-always-allow');
 	}
 
 	getConfirmDenyButton(): Locator {
@@ -119,7 +231,15 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getDomainAccessApprove(): Locator {
-		return this.container.getByTestId('domain-access-primary');
+		return this.container.getByTestId('domain-access-allow-once');
+	}
+
+	getDomainAccessAlwaysAllow(): Locator {
+		return this.container.getByTestId('domain-access-allow-domain');
+	}
+
+	getGatewayDecisionApprove(): Locator {
+		return this.container.getByTestId('gateway-decision-approve');
 	}
 
 	getCredentialContinue(): Locator {
@@ -148,45 +268,163 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	// ── Preview ───────────────────────────────────────────────────────
+	//
+	// The artifact preview mounts the workflow editor directly in the page
+	// (no iframe), rooted at `[data-test-id="workflow-canvas-host"]`. Scope
+	// everything to that root so we don't accidentally match canvas elements
+	// that belong to the main editor on the same document.
 
-	getPreviewIframe() {
-		return this.getPreviewIframeLocator().contentFrame();
+	private getPreviewCanvas(): Locator {
+		return this.container.getByTestId('workflow-canvas-host');
 	}
 
 	getPreviewCanvasNodes(): Locator {
-		return this.getPreviewIframe().locator('[data-test-id="canvas-node"]');
+		return this.getPreviewCanvas().locator('[data-test-id="canvas-node"]');
 	}
 
 	getPreviewRunningNodes(): Locator {
-		return this.getPreviewIframe().locator(
+		return this.getPreviewCanvas().locator(
 			'[data-test-id="canvas-node"].running, [data-test-id="canvas-node"].waiting',
 		);
 	}
 
 	getPreviewSuccessIndicators(): Locator {
-		return this.getPreviewIframe().locator('[data-test-id="canvas-node-status-success"]');
+		return this.getPreviewCanvas().locator('[data-test-id="canvas-node-status-success"]');
 	}
 
-	getPreviewCloseButton(): Locator {
-		return this.container.getByTestId('instance-ai-preview-close');
+	getPreviewToggleButton(): Locator {
+		return this.getPreviewPanel().getByTestId('instance-ai-artifacts-preview-toggle');
 	}
 
+	getShowPreviewButton(): Locator {
+		return this.container.locator(
+			'[data-test-id="instance-ai-artifacts-preview-toggle"][aria-pressed="false"]',
+		);
+	}
+
+	getPreviewPanel(): Locator {
+		return this.container.getByTestId('instance-ai-preview-panel');
+	}
+
+	getPreviewTabByName(name: string | RegExp): Locator {
+		return this.getPreviewPanel().getByRole('tab', { name });
+	}
+
+	/**
+	 * Resolves to the preview's canvas root. Used by tests to assert the
+	 * preview is hidden (collapsing the panel removes the host from the DOM
+	 * via `v-if`, so the locator becomes hidden).
+	 */
 	getPreviewIframeLocator(): Locator {
-		return this.container.getByTestId('workflow-preview-iframe');
+		return this.getPreviewCanvas();
 	}
 
 	getPreviewRunWorkflowButton(): Locator {
-		return this.getPreviewIframe().getByTestId('execute-workflow-button');
+		return this.getPreviewCanvas().getByTestId('execute-workflow-button');
+	}
+
+	async runPreviewWorkflow(): Promise<void> {
+		const runButton = this.getPreviewRunWorkflowButton();
+		const approvalButton = this.getConfirmApproveButton();
+		let action: 'approve' | 'run' | undefined;
+		await expect
+			.poll(
+				async () => {
+					if (await approvalButton.isVisible().catch(() => false)) {
+						action = 'approve';
+						return action;
+					}
+					if (await runButton.isEnabled().catch(() => false)) {
+						action = 'run';
+						return action;
+					}
+					return undefined;
+				},
+				{ intervals: [500, 1_000, 2_000], timeout: 120_000 },
+			)
+			.toBeDefined();
+
+		if (action === 'approve') {
+			await approvalButton.dispatchEvent('click');
+		} else {
+			await runButton.click();
+		}
+	}
+
+	async waitForPreviewCanvasNode(nodeName?: string, timeout = 150_000): Promise<void> {
+		const node = nodeName
+			? this.getPreviewNodeByName(nodeName)
+			: this.getPreviewCanvasNodes().first();
+		await expect
+			.poll(
+				async () => {
+					for (const button of [
+						this.getConfirmAlwaysAllowButton(),
+						this.getDomainAccessAlwaysAllow(),
+						this.getConfirmApproveButton(),
+						this.getPlanApproveButton(),
+						this.getDomainAccessApprove(),
+						this.getGatewayDecisionApprove(),
+						this.getCredentialContinue(),
+					]) {
+						if (
+							(await button.isVisible().catch(() => false)) &&
+							(await button.isEnabled().catch(() => false))
+						) {
+							await button.dispatchEvent('click');
+							return false;
+						}
+					}
+
+					if (await node.isVisible().catch(() => false)) return true;
+
+					const showPreviewButton = this.getShowPreviewButton();
+					if (
+						(await showPreviewButton.isVisible().catch(() => false)) &&
+						(await showPreviewButton.isEnabled().catch(() => false))
+					) {
+						await showPreviewButton.dispatchEvent('click');
+					}
+
+					return await node.isVisible().catch(() => false);
+				},
+				{ intervals: [500, 1_000, 2_000, 5_000], timeout },
+			)
+			.toBe(true);
+		await expect(node).toBeVisible({ timeout: 10_000 });
 	}
 
 	getPreviewNodeByName(nodeName: string): Locator {
-		return this.getPreviewIframe().locator(
+		return this.getPreviewCanvas().locator(
 			`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`,
 		);
 	}
 
+	async openLastPreviewNode(): Promise<void> {
+		const node = this.getPreviewCanvasNodes().last();
+		await node.waitFor({ state: 'visible', timeout: 10_000 });
+		await node.dblclick();
+	}
+
+	async openPreviewNodeByName(nodeName: string): Promise<void> {
+		const node = this.getPreviewNodeByName(nodeName);
+		await node.waitFor({ state: 'visible', timeout: 10_000 });
+		await node.dblclick();
+	}
+
 	getPreviewExecuteNodeButton(nodeName: string): Locator {
 		return this.getPreviewNodeByName(nodeName).getByRole('button', { name: 'Execute step' });
+	}
+
+	/**
+	 * The "Execute step" toolbar button only renders once the AI build has
+	 * finished, and mid-stream canvas re-renders can dismiss an open toolbar,
+	 * so reveal it with a re-hovering poll.
+	 */
+	async executePreviewNodeByName(nodeName: string): Promise<void> {
+		const executeNodeButton = this.getPreviewExecuteNodeButton(nodeName);
+		await hoverToReveal(this.getPreviewNodeByName(nodeName), executeNodeButton);
+		await executeNodeButton.dispatchEvent('click');
 	}
 
 	getPreviewNodeSuccessIndicator(nodeName: string): Locator {
@@ -195,20 +433,30 @@ export class InstanceAiPage extends BasePage {
 		);
 	}
 
+	/**
+	 * NDV is rendered through a `<Teleport :to="#app-modals">`, and `#app-modals`
+	 * is mounted in `App.vue` as a sibling of the router view — i.e. OUTSIDE both
+	 * `workflow-canvas-host` and `instance-ai-container`. So unlike the canvas
+	 * content above, this must be page-scoped, not scoped to the preview canvas.
+	 * The rendered NDV uses a native dialog, so narrow the page-scoped lookup
+	 * through that dialog to avoid stale page-level matches.
+	 */
 	getPreviewNdvOutputPanel(): Locator {
-		return this.getPreviewIframe().getByTestId('output-panel');
+		return this.page.getByRole('dialog').getByTestId('output-panel');
 	}
 
 	// ── Artifacts ─────────────────────────────────────────────────────
 
-	getArtifactCards(): Locator {
-		return this.container.getByTestId('instance-ai-artifact-card');
+	getArtifactPanelLinkByName(name: string | RegExp): Locator {
+		return this.container.getByTestId('instance-ai-artifacts-sidebar').getByRole('link', { name });
 	}
 
 	// ── Convenience Actions ───────────────────────────────────────────
 
 	async sendMessage(text: string): Promise<void> {
+		await expect(this.getChatInput()).toBeVisible({ timeout: 30_000 });
 		await this.getChatInput().fill(text);
+		await expect(this.getSendButton()).toBeEnabled({ timeout: 30_000 });
 		await this.getSendButton().click();
 	}
 
@@ -231,9 +479,11 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	/**
-	 * Wait for the plan-review panel to appear and approve it. New workflow
-	 * builds now route through the planner and pause at `awaiting_approval`
-	 * until the user approves — without this step the build never starts.
+	 * Wait for the plan-review panel to appear and approve it. Since the
+	 * planning guardrails (#31984), the planner only engages for coordinated
+	 * multi-artifact work or when the prompt explicitly asks to review a plan
+	 * first — single-workflow builds skip plan review entirely, so only call
+	 * this from tests whose prompt requests a plan.
 	 */
 	async approveBuildPlan(timeout = 120_000): Promise<void> {
 		await this.getPlanApproveButton().waitFor({ state: 'visible', timeout });

@@ -1,8 +1,7 @@
-import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
 import type {
 	AiGatewayConfigDto,
 	AiGatewayUsageResponse,
-	CreateCredentialDto,
+	AiGatewayWalletResponse,
 } from '@n8n/api-types';
 import {
 	AiChatRequestDto,
@@ -20,20 +19,20 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
-import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
-import { CredentialsService } from '@/credentials/credentials.service';
+import { STREAM_SEPARATOR } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
-import { UserService } from '@/services/user.service';
+import { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -42,11 +41,25 @@ export class AiController {
 	constructor(
 		private readonly aiService: AiService,
 		private readonly workflowBuilderService: WorkflowBuilderService,
-		private readonly credentialsService: CredentialsService,
-		private readonly userService: UserService,
+		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly aiGatewayService: AiGatewayService,
 	) {}
+
+	private toAiAssistantResponseError(error: APIResponseError) {
+		switch (error.statusCode) {
+			case 413:
+				return new ContentTooLargeError(error.message);
+			case 429:
+				return new TooManyRequestsError(error.message);
+			case 404:
+				return new NotFoundError(error.message);
+			case 400:
+				return new BadRequestError(error.message);
+			default:
+				return new InternalServerError(error.message, error);
+		}
+	}
 
 	// Use usesTemplates flag to bypass the send() wrapper which would cause
 	// "Cannot set headers after they are sent" error for streaming responses.
@@ -166,6 +179,9 @@ export class AiController {
 			if (e instanceof DOMException && e.name === 'AbortError') {
 				return;
 			}
+			if (e instanceof APIResponseError) {
+				throw this.toAiAssistantResponseError(e);
+			}
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
 		}
@@ -185,7 +201,13 @@ export class AiController {
 		}
 	}
 
-	@Post('/ask-ai')
+	/**
+	 * @deprecated Both callers are deprecated: the Code node's "Ask AI" tab is
+	 * hidden, and the AI Transform node is hidden and has an automated migration
+	 * to the Code node. Removed in v3.
+	 */
+	@Licensed('feat:askAi')
+	@Post('/ask-ai', { ipRateLimit: { limit: 100 } })
 	async askAi(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -195,16 +217,7 @@ export class AiController {
 			return await this.aiService.askAi(payload, req.user);
 		} catch (e) {
 			if (e instanceof APIResponseError) {
-				switch (e.statusCode) {
-					case 413:
-						throw new ContentTooLargeError(e.message);
-					case 429:
-						throw new TooManyRequestsError(e.message);
-					case 400:
-						throw new BadRequestError(e.message);
-					default:
-						throw new InternalServerError(e.message, e);
-				}
+				throw this.toAiAssistantResponseError(e);
 			}
 
 			assert(e instanceof Error);
@@ -215,28 +228,7 @@ export class AiController {
 	@Post('/free-credits')
 	async aiCredits(req: AuthenticatedRequest, _: Response, @Body payload: AiFreeCreditsRequestDto) {
 		try {
-			const aiCredits = await this.aiService.createFreeAiCredits(req.user);
-
-			const credentialProperties: CreateCredentialDto = {
-				name: FREE_AI_CREDITS_CREDENTIAL_NAME,
-				type: OPEN_AI_API_CREDENTIAL_TYPE,
-				data: {
-					apiKey: aiCredits.apiKey,
-					url: aiCredits.url,
-				},
-				projectId: payload?.projectId,
-			};
-
-			const newCredential = await this.credentialsService.createManagedCredential(
-				credentialProperties,
-				req.user,
-			);
-
-			await this.userService.updateSettings(req.user.id, {
-				userClaimedAiCredits: true,
-			});
-
-			return newCredential;
+			return await this.freeAiCreditsService.claim(req.user, payload?.projectId);
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
@@ -251,7 +243,11 @@ export class AiController {
 		@Body payload: AiSessionRetrievalRequestDto,
 	) {
 		try {
-			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
+			const sessions = await this.workflowBuilderService.getSessions(
+				payload.workflowId,
+				req.user,
+				payload.codeBuilder,
+			);
 			return sessions;
 		} catch (e) {
 			assert(e instanceof Error);
@@ -262,6 +258,7 @@ export class AiController {
 	@Licensed('feat:aiGateway')
 	@Get('/gateway/config')
 	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
+		this.aiGatewayService.assertEnabled();
 		try {
 			return await this.aiGatewayService.getGatewayConfig();
 		} catch (e) {
@@ -272,7 +269,8 @@ export class AiController {
 
 	@Licensed('feat:aiGateway')
 	@Get('/gateway/wallet')
-	async getGatewayWallet(req: AuthenticatedRequest): Promise<{ budget: number; balance: number }> {
+	async getGatewayWallet(req: AuthenticatedRequest): Promise<AiGatewayWalletResponse> {
+		this.aiGatewayService.assertEnabled();
 		try {
 			return await this.aiGatewayService.getWallet(req.user.id);
 		} catch (e) {
@@ -288,6 +286,7 @@ export class AiController {
 		_: Response,
 		@Query query: AiGatewayUsageQueryDto,
 	): Promise<AiGatewayUsageResponse> {
+		this.aiGatewayService.assertEnabled();
 		try {
 			return await this.aiGatewayService.getUsage(req.user.id, query.offset, query.limit);
 		} catch (e) {

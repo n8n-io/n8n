@@ -1,14 +1,17 @@
-import type { GlobalConfig } from '@n8n/config';
 import type { LicenseState } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import type { GlobalConfig } from '@n8n/config';
+import type { Project, User, UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Project, User, UserRepository } from '@n8n/db';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@/services/url.service';
 
@@ -32,24 +35,39 @@ const MOCK_GATEWAY_CONFIG = {
 	},
 };
 
+/** A successful gateway response carrying the parsed body. */
+function ok(body: unknown) {
+	return { statusCode: 200, body };
+}
+
+/** A failed gateway response with the given status code. */
+function fail(statusCode: number) {
+	return { statusCode, body: {} };
+}
+
+let outboundHttp: Mocked<OutboundHttp>;
+let requestMock: Mock;
+
 function makeService({
 	baseUrl = BASE_URL as string | null,
+	aiGatewayEnabled = true,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
-	userRepository = mock<UserRepository>({ findOneBy: jest.fn().mockResolvedValue(null) }),
+	userRepository = mock<UserRepository>({ findOneBy: vi.fn().mockResolvedValue(null) }),
 	urlService = mock<UrlService>({
-		getInstanceBaseUrl: jest.fn().mockReturnValue(INSTANCE_BASE_URL),
+		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
+		aiGateway: { enabled: aiGatewayEnabled },
 	} as unknown as GlobalConfig;
 	const license = mock<License>({
-		loadCertStr: jest.fn().mockResolvedValue(LICENSE_CERT),
-		getConsumerId: jest.fn().mockReturnValue(CONSUMER_ID),
+		loadCertStr: vi.fn().mockResolvedValue(LICENSE_CERT),
+		getConsumerId: vi.fn().mockReturnValue(CONSUMER_ID),
 	});
 	const licenseState = mock<LicenseState>({
-		isAiGatewayLicensed: jest.fn().mockReturnValue(isAiGatewayLicensed),
+		isAiGatewayLicensed: vi.fn().mockReturnValue(isAiGatewayLicensed),
 	});
 	const instanceSettings = mock<InstanceSettings>({ instanceId: INSTANCE_ID });
 	return new AiGatewayService(
@@ -60,59 +78,63 @@ function makeService({
 		ownershipService,
 		userRepository,
 		urlService,
+		outboundHttp,
 	);
 }
 
 /** Mock: config fetch succeeds, then credentials fetch returns a token. */
-function mockConfigThenToken(fetchMock: jest.Mock, token = 'mock-jwt-token') {
-	fetchMock
-		.mockResolvedValueOnce({
-			ok: true,
-			json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
-		})
-		.mockResolvedValueOnce({
-			ok: true,
-			json: jest.fn().mockResolvedValue({ token, expiresIn: 3600 }),
-		});
+function mockConfigThenToken(token = 'mock-jwt-token') {
+	requestMock
+		.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG))
+		.mockResolvedValueOnce(ok({ token, expiresIn: 3600 }));
 }
 
 describe('AiGatewayService', () => {
-	let fetchMock: jest.Mock;
-
 	beforeEach(() => {
-		fetchMock = jest.fn();
-		global.fetch = fetchMock as unknown as typeof fetch;
+		const httpClient = mock<HttpRequestClient>();
+		requestMock = httpClient.request as Mock;
+		outboundHttp = mock<OutboundHttp>();
+		outboundHttp.requests.mockReturnValue(httpClient);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+	});
+
+	describe('assertEnabled()', () => {
+		it('allows licensed instances when the opt-out is not set', () => {
+			expect(() => makeService().assertEnabled()).not.toThrow();
+		});
+
+		it('rejects instances that opt out', () => {
+			expect(() => makeService({ aiGatewayEnabled: false }).assertEnabled()).toThrow(
+				BadRequestError,
+			);
+		});
 	});
 
 	describe('getGatewayConfig()', () => {
 		it('fetches and returns config from the gateway', async () => {
-			fetchMock.mockResolvedValueOnce({
-				ok: true,
-				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
-			});
+			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
 			const service = makeService();
 
 			const result = await service.getGatewayConfig();
 
 			expect(result).toEqual(MOCK_GATEWAY_CONFIG);
-			expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/v1/gateway/config`);
+			expect(outboundHttp.requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
+			expect(requestMock).toHaveBeenCalledWith(
+				expect.objectContaining({ method: 'GET', url: `${BASE_URL}/v1/gateway/config` }),
+			);
 		});
 
 		it('caches config and does not re-fetch within TTL', async () => {
-			fetchMock.mockResolvedValue({
-				ok: true,
-				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
-			});
+			requestMock.mockResolvedValue(ok(MOCK_GATEWAY_CONFIG));
 			const service = makeService();
 
 			await service.getGatewayConfig();
 			await service.getGatewayConfig();
 
-			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(requestMock).toHaveBeenCalledTimes(1);
 		});
 
 		it('throws UserError when baseUrl is not configured', async () => {
@@ -121,27 +143,85 @@ describe('AiGatewayService', () => {
 		});
 
 		it('throws UserError when gateway returns non-ok status', async () => {
-			fetchMock.mockResolvedValueOnce({ ok: false, status: 503 });
+			requestMock.mockResolvedValueOnce(fail(503));
 			const service = makeService();
 			await expect(service.getGatewayConfig()).rejects.toThrow(UserError);
 		});
 
 		it('throws UserError when gateway returns invalid config shape', async () => {
-			fetchMock.mockResolvedValueOnce({
-				ok: true,
-				json: jest.fn().mockResolvedValue({ nodes: 'not-an-array' }),
-			});
+			requestMock.mockResolvedValueOnce(ok({ nodes: 'not-an-array' }));
+			const service = makeService();
+			await expect(service.getGatewayConfig()).rejects.toThrow(UserError);
+		});
+
+		it('throws UserError when providerConfig is null', async () => {
+			requestMock.mockResolvedValueOnce(
+				ok({ nodes: [], credentialTypes: [], providerConfig: null }),
+			);
 			const service = makeService();
 			await expect(service.getGatewayConfig()).rejects.toThrow(UserError);
 		});
 	});
 
+	describe('isAvailable()', () => {
+		it('returns available:false when n8n Connect is not enabled', async () => {
+			const service = makeService({ aiGatewayEnabled: false });
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns available:false when the AI Gateway is not licensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns available:false when baseUrl is not configured', async () => {
+			const service = makeService({ baseUrl: null });
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+		});
+
+		it('returns available:false when the gateway request fails (fail open)', async () => {
+			requestMock.mockResolvedValueOnce(fail(503));
+			const service = makeService();
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+		});
+
+		it('returns available:true with config when enabled and gateway responds', async () => {
+			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
+			const service = makeService();
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: true, config: MOCK_GATEWAY_CONFIG });
+		});
+	});
+
 	describe('getSyntheticCredential()', () => {
-		it('throws FeatureNotLicensedError when not licensed and dev mode is off', async () => {
+		it('throws FeatureNotLicensedError when the AI Gateway is not licensed', async () => {
 			const service = makeService({ isAiGatewayLicensed: false });
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
 			).rejects.toThrow(FeatureNotLicensedError);
+		});
+
+		it('throws when n8n Connect is not enabled', async () => {
+			const service = makeService({ aiGatewayEnabled: false });
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
+			).rejects.toThrow('Gateway credits are not enabled on this instance.');
 		});
 
 		it('throws UserError when baseUrl is not configured', async () => {
@@ -152,10 +232,7 @@ describe('AiGatewayService', () => {
 		});
 
 		it('throws UserError for unsupported credential type', async () => {
-			fetchMock.mockResolvedValueOnce({
-				ok: true,
-				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
-			});
+			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
 			const service = makeService();
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'openAiApi', userId: USER_ID }),
@@ -163,7 +240,7 @@ describe('AiGatewayService', () => {
 		});
 
 		it('returns synthetic credential with apiKey (JWT) and host (gateway URL)', async () => {
-			mockConfigThenToken(fetchMock, 'mock-jwt-token');
+			mockConfigThenToken('mock-jwt-token');
 			const service = makeService();
 
 			const result = await service.getSyntheticCredential({
@@ -178,16 +255,16 @@ describe('AiGatewayService', () => {
 		});
 
 		it('fetches token from gateway with HeadersMetadataDto headers and licenseCert body', async () => {
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService();
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
-			expect(fetchMock).toHaveBeenNthCalledWith(
+			expect(requestMock).toHaveBeenNthCalledWith(
 				2,
-				`${BASE_URL}/v1/gateway/credentials`,
 				expect.objectContaining({
 					method: 'POST',
+					url: `${BASE_URL}/v1/gateway/credentials`,
 					headers: {
 						'Content-Type': 'application/json',
 						'x-user-id': USER_ID,
@@ -196,89 +273,89 @@ describe('AiGatewayService', () => {
 						'x-n8n-version': N8N_VERSION,
 						'x-instance-id': INSTANCE_ID,
 					},
-					body: JSON.stringify({ licenseCert: LICENSE_CERT, instanceUrl: INSTANCE_BASE_URL }),
+					body: { licenseCert: LICENSE_CERT, instanceUrl: INSTANCE_BASE_URL },
 				}),
 			);
 		});
 
 		it('includes instanceUrl in token body', async () => {
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService();
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
-			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+			const body = requestMock.mock.calls[1][0].body as { instanceUrl: string };
 			expect(body.instanceUrl).toBe(INSTANCE_BASE_URL);
 		});
 
 		it('includes userEmail and userName in token body when user exists', async () => {
 			const userRepository = mock<UserRepository>({
-				findOneBy: jest
+				findOneBy: vi
 					.fn()
 					.mockResolvedValue(
 						mock<User>({ email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' }),
 					),
 			});
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService({ userRepository });
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
-			expect(fetchMock).toHaveBeenNthCalledWith(
+			expect(requestMock).toHaveBeenNthCalledWith(
 				2,
-				`${BASE_URL}/v1/gateway/credentials`,
 				expect.objectContaining({
-					body: JSON.stringify({
+					url: `${BASE_URL}/v1/gateway/credentials`,
+					body: {
 						licenseCert: LICENSE_CERT,
 						userEmail: 'alice@example.com',
 						userName: 'Alice Smith',
 						instanceUrl: INSTANCE_BASE_URL,
-					}),
+					},
 				}),
 			);
 		});
 
 		it('omits userName from token body when user has no first or last name', async () => {
 			const userRepository = mock<UserRepository>({
-				findOneBy: jest
+				findOneBy: vi
 					.fn()
 					.mockResolvedValue(
 						mock<User>({ email: 'alice@example.com', firstName: '', lastName: '' }),
 					),
 			});
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService({ userRepository });
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
-			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+			const body = requestMock.mock.calls[1][0].body as { userEmail: string; userName?: string };
 			expect(body.userEmail).toBe('alice@example.com');
 			expect(body.userName).toBeUndefined();
 		});
 
 		it('omits userEmail and userName from token body when user is not found', async () => {
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService(); // userRepository returns null by default
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
-			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+			const body = requestMock.mock.calls[1][0].body as Record<string, unknown>;
 			expect(body).toEqual({ licenseCert: LICENSE_CERT, instanceUrl: INSTANCE_BASE_URL });
 		});
 
 		it('caches config and token — second call makes no additional fetches', async () => {
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService();
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
 			// Config + credentials fetched once each; both cached on second call
-			expect(fetchMock).toHaveBeenCalledTimes(2);
+			expect(requestMock).toHaveBeenCalledTimes(2);
 		});
 
 		it('throws UserError when config gateway returns non-ok status', async () => {
-			fetchMock.mockResolvedValueOnce({ ok: false, status: 503 });
+			requestMock.mockResolvedValueOnce(fail(503));
 			const service = makeService();
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
@@ -290,7 +367,7 @@ describe('AiGatewayService', () => {
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(
 				mock<User>({ id: 'owner-from-project' }),
 			);
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService({ ownershipService });
 
 			await service.getSyntheticCredential({
@@ -300,9 +377,9 @@ describe('AiGatewayService', () => {
 			});
 
 			expect(ownershipService.getPersonalProjectOwnerCached).toHaveBeenCalledWith('project-123');
-			expect(fetchMock).toHaveBeenCalledWith(
-				`${BASE_URL}/v1/gateway/credentials`,
+			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
+					url: `${BASE_URL}/v1/gateway/credentials`,
 					headers: expect.objectContaining({ 'x-user-id': 'owner-from-project' }),
 				}),
 			);
@@ -316,7 +393,7 @@ describe('AiGatewayService', () => {
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(
 				mock<User>({ id: 'owner-from-workflow' }),
 			);
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService({ ownershipService });
 
 			await service.getSyntheticCredential({
@@ -329,9 +406,9 @@ describe('AiGatewayService', () => {
 			expect(ownershipService.getPersonalProjectOwnerCached).toHaveBeenCalledWith(
 				'project-from-wf',
 			);
-			expect(fetchMock).toHaveBeenCalledWith(
-				`${BASE_URL}/v1/gateway/credentials`,
+			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
+					url: `${BASE_URL}/v1/gateway/credentials`,
 					headers: expect.objectContaining({ 'x-user-id': 'owner-from-workflow' }),
 				}),
 			);
@@ -341,7 +418,7 @@ describe('AiGatewayService', () => {
 			const ownershipService = mock<OwnershipService>();
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 			ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: 'instance-owner-id' }));
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService({ ownershipService });
 
 			await service.getSyntheticCredential({
@@ -351,9 +428,9 @@ describe('AiGatewayService', () => {
 			});
 
 			expect(ownershipService.getInstanceOwner).toHaveBeenCalled();
-			expect(fetchMock).toHaveBeenCalledWith(
-				`${BASE_URL}/v1/gateway/credentials`,
+			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
+					url: `${BASE_URL}/v1/gateway/credentials`,
 					headers: expect.objectContaining({ 'x-user-id': 'instance-owner-id' }),
 				}),
 			);
@@ -363,7 +440,7 @@ describe('AiGatewayService', () => {
 			const ownershipService = mock<OwnershipService>();
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 			ownershipService.getInstanceOwner.mockRejectedValue(new Error('No owner found'));
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService({ ownershipService });
 
 			await expect(
@@ -372,11 +449,11 @@ describe('AiGatewayService', () => {
 					userId: undefined,
 					projectId: 'project-123',
 				}),
-			).rejects.toThrow('Failed to resolve user for AI Gateway attribution.');
+			).rejects.toThrow('Failed to resolve user for Gateway credits attribution.');
 		});
 
 		it('embeds executionId and workflowId in gateway URL when both are provided', async () => {
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService();
 
 			const result = await service.getSyntheticCredential({
@@ -392,8 +469,68 @@ describe('AiGatewayService', () => {
 			});
 		});
 
+		it('appends an explicit projectId to the workflow segment (| encoded as %7C)', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: 'nr6r2FfB0mVeqZP1',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/google`,
+			});
+		});
+
+		it('derives projectId from workflow ownership when not explicitly provided', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-from-wf' }),
+			);
+			mockConfigThenToken();
+			const service = makeService({ ownershipService });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('R9JFXwkUCL1jZBuw');
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cproject-from-wf/google`,
+			});
+		});
+
+		it('keeps workflow-only gateway URL when workflow ownership lookup fails', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('Workflow not found'));
+			mockConfigThenToken();
+			const service = makeService({ ownershipService });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('R9JFXwkUCL1jZBuw');
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
+			});
+		});
+
 		it('uses standard gateway URL when executionId is absent', async () => {
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService();
 
 			const result = await service.getSyntheticCredential({
@@ -409,7 +546,7 @@ describe('AiGatewayService', () => {
 		});
 
 		it('uses standard gateway URL when workflowId is absent', async () => {
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService();
 
 			const result = await service.getSyntheticCredential({
@@ -425,7 +562,7 @@ describe('AiGatewayService', () => {
 		});
 
 		it('URL-encodes executionId and workflowId in the gateway URL', async () => {
-			mockConfigThenToken(fetchMock);
+			mockConfigThenToken();
 			const service = makeService();
 
 			const result = await service.getSyntheticCredential({
@@ -441,6 +578,74 @@ describe('AiGatewayService', () => {
 			});
 		});
 
+		it('fans a single credential out to multiple gateway URLs when routing is present', async () => {
+			const routingConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				credentialTypes: ['browserbaseApi'],
+				providerConfig: {
+					browserbaseApi: {
+						gatewayPath: '/v1/gateway/browserbase',
+						urlField: 'baseUrl',
+						apiKeyField: 'browserbaseApiKey',
+						routing: {
+							baseUrl: '/v1/gateway/browserbase',
+							stagehandBaseUrl: '/v1/gateway/browserbaseStagehand',
+						},
+					},
+				},
+			};
+			requestMock
+				.mockResolvedValueOnce(ok(routingConfig))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'browserbaseApi',
+				userId: USER_ID,
+			});
+
+			expect(result).toEqual({
+				browserbaseApiKey: 'mock-jwt-token',
+				baseUrl: `${BASE_URL}/v1/gateway/browserbase`,
+				stagehandBaseUrl: `${BASE_URL}/v1/gateway/browserbaseStagehand`,
+			});
+		});
+
+		it('embeds exec context in every routed gateway URL', async () => {
+			const routingConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				credentialTypes: ['browserbaseApi'],
+				providerConfig: {
+					browserbaseApi: {
+						gatewayPath: '/v1/gateway/browserbase',
+						urlField: 'baseUrl',
+						apiKeyField: 'browserbaseApiKey',
+						routing: {
+							baseUrl: '/v1/gateway/browserbase',
+							stagehandBaseUrl: '/v1/gateway/browserbaseStagehand',
+						},
+					},
+				},
+			};
+			requestMock
+				.mockResolvedValueOnce(ok(routingConfig))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'browserbaseApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(result).toEqual({
+				browserbaseApiKey: 'mock-jwt-token',
+				baseUrl: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/browserbase`,
+				stagehandBaseUrl: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/browserbaseStagehand`,
+			});
+		});
+
 		it('uses standard gateway URL when gatewayPath does not start with the gateway prefix', async () => {
 			const customConfig = {
 				...MOCK_GATEWAY_CONFIG,
@@ -451,12 +656,9 @@ describe('AiGatewayService', () => {
 					},
 				},
 			};
-			fetchMock
-				.mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue(customConfig) })
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
-				});
+			requestMock
+				.mockResolvedValueOnce(ok(customConfig))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
 			const service = makeService();
 
 			const result = await service.getSyntheticCredential({
@@ -484,12 +686,9 @@ describe('AiGatewayService', () => {
 					},
 				},
 			};
-			fetchMock
-				.mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue(customConfig) })
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
-				});
+			requestMock
+				.mockResolvedValueOnce(ok(customConfig))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
 			const service = makeService();
 
 			const result = await service.getSyntheticCredential({
@@ -507,15 +706,9 @@ describe('AiGatewayService', () => {
 		});
 
 		it('throws UserError when gateway token response is missing token field', async () => {
-			fetchMock
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ expiresIn: 3600 }), // token missing
-				});
+			requestMock
+				.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG))
+				.mockResolvedValueOnce(ok({ expiresIn: 3600 })); // token missing
 			const service = makeService();
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
@@ -529,72 +722,66 @@ describe('AiGatewayService', () => {
 			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
 
-		it('returns budget and balance from gateway wallet', async () => {
-			fetchMock
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ budget: 10, balance: 7 }),
-				});
+		it('returns budget, balance, and hasEverToppedUp from gateway wallet', async () => {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({ budget: 10, balance: 7, hasEverToppedUp: true }));
 			const service = makeService();
 
 			const result = await service.getWallet(USER_ID);
 
-			expect(result).toEqual({ budget: 10, balance: 7 });
+			expect(result).toEqual({ budget: 10, balance: 7, hasEverToppedUp: true });
+		});
+
+		it('defaults hasEverToppedUp to false when the gateway omits it', async () => {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({ budget: 10, balance: 7 }));
+			const service = makeService();
+
+			const result = await service.getWallet(USER_ID);
+
+			expect(result).toEqual({ budget: 10, balance: 7, hasEverToppedUp: false });
 		});
 
 		it('sends JWT Bearer token in Authorization header to credits endpoint', async () => {
-			fetchMock
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ budget: 10, balance: 7 }),
-				});
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({ budget: 10, balance: 7 }));
 			const service = makeService();
 
 			await service.getWallet(USER_ID);
 
-			expect(fetchMock).toHaveBeenNthCalledWith(
+			expect(requestMock).toHaveBeenNthCalledWith(
 				1,
-				`${BASE_URL}/v1/gateway/credentials`,
 				expect.objectContaining({
 					method: 'POST',
-					body: JSON.stringify({ licenseCert: LICENSE_CERT, instanceUrl: INSTANCE_BASE_URL }),
+					url: `${BASE_URL}/v1/gateway/credentials`,
+					body: { licenseCert: LICENSE_CERT, instanceUrl: INSTANCE_BASE_URL },
 				}),
 			);
-			expect(fetchMock).toHaveBeenNthCalledWith(2, `${BASE_URL}/v1/gateway/wallet`, {
-				method: 'GET',
-				headers: { Authorization: 'Bearer mock-jwt' },
-			});
+			expect(requestMock).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					method: 'GET',
+					url: `${BASE_URL}/v1/gateway/wallet`,
+					headers: { Authorization: 'Bearer mock-jwt' },
+				}),
+			);
 		});
 
 		it('throws UserError when wallet gateway returns non-ok status', async () => {
-			fetchMock
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
-				})
-				.mockResolvedValueOnce({ ok: false, status: 429 });
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(fail(429));
 			const service = makeService();
 			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
 
 		it('throws UserError when gateway returns invalid response shape', async () => {
-			fetchMock
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ budget: 'not-a-number' }),
-				});
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({ budget: 'not-a-number' }));
 			const service = makeService();
 			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
@@ -612,15 +799,9 @@ describe('AiGatewayService', () => {
 		});
 
 		it('returns usage entries and total from gateway', async () => {
-			fetchMock
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue(MOCK_USAGE_RESPONSE),
-				});
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok(MOCK_USAGE_RESPONSE));
 			const service = makeService();
 
 			const result = await service.getUsage(USER_ID, 0, 10);
@@ -629,49 +810,36 @@ describe('AiGatewayService', () => {
 		});
 
 		it('sends offset and limit as query params with Bearer token', async () => {
-			fetchMock
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue(MOCK_USAGE_RESPONSE),
-				});
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok(MOCK_USAGE_RESPONSE));
 			const service = makeService();
 
 			await service.getUsage(USER_ID, 5, 25);
 
-			const usageCall = fetchMock.mock.calls[1];
-			expect(usageCall[0]).toContain('offset=5');
-			expect(usageCall[0]).toContain('limit=25');
-			expect(usageCall[1]).toEqual({
-				method: 'GET',
-				headers: { Authorization: 'Bearer mock-jwt' },
-			});
+			const usageRequest = requestMock.mock.calls[1][0] as {
+				url: string;
+				method: string;
+				headers: Record<string, string>;
+			};
+			expect(usageRequest.url).toContain('offset=5');
+			expect(usageRequest.url).toContain('limit=25');
+			expect(usageRequest.method).toBe('GET');
+			expect(usageRequest.headers).toEqual({ Authorization: 'Bearer mock-jwt' });
 		});
 
 		it('throws UserError when gateway returns non-ok status', async () => {
-			fetchMock
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
-				})
-				.mockResolvedValueOnce({ ok: false, status: 500 });
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(fail(500));
 			const service = makeService();
 			await expect(service.getUsage(USER_ID, 0, 10)).rejects.toThrow(UserError);
 		});
 
 		it('throws UserError when response has invalid shape', async () => {
-			fetchMock
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ entries: 'not-an-array', total: 0 }),
-				});
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({ entries: 'not-an-array', total: 0 }));
 			const service = makeService();
 			await expect(service.getUsage(USER_ID, 0, 10)).rejects.toThrow(UserError);
 		});
@@ -679,26 +847,66 @@ describe('AiGatewayService', () => {
 
 	describe('config cache TTL', () => {
 		it('re-fetches config after TTL expires', async () => {
-			fetchMock.mockResolvedValue({
-				ok: true,
-				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
-			});
+			requestMock.mockResolvedValue(ok(MOCK_GATEWAY_CONFIG));
 			const service = makeService();
-			const dateSpy = jest.spyOn(Date, 'now');
+			const dateSpy = vi.spyOn(Date, 'now');
 
 			dateSpy.mockReturnValue(0);
 			await service.getGatewayConfig();
-			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(requestMock).toHaveBeenCalledTimes(1);
 
 			// Still within TTL — no re-fetch
 			dateSpy.mockReturnValue(30 * 60 * 1000);
 			await service.getGatewayConfig();
-			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(requestMock).toHaveBeenCalledTimes(1);
 
 			// Past TTL (1 hour + 1 ms)
 			dateSpy.mockReturnValue(60 * 60 * 1000 + 1);
 			await service.getGatewayConfig();
-			expect(fetchMock).toHaveBeenCalledTimes(2);
+			expect(requestMock).toHaveBeenCalledTimes(2);
+
+			dateSpy.mockRestore();
+		});
+
+		it('caches a failed fetch and does not re-fetch within the failure TTL', async () => {
+			requestMock.mockResolvedValue(fail(503));
+			const service = makeService();
+			const dateSpy = vi.spyOn(Date, 'now');
+			const now = 1_700_000_000_000;
+
+			dateSpy.mockReturnValue(now);
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(1);
+
+			// Within the 60s failure window — throttled, no new request
+			dateSpy.mockReturnValue(now + 30 * 1000);
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(1);
+
+			// Past the failure window — retries
+			dateSpy.mockReturnValue(now + 60 * 1000 + 1);
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(2);
+
+			dateSpy.mockRestore();
+		});
+
+		it('clears the failure throttle after a successful fetch', async () => {
+			const service = makeService();
+			const dateSpy = vi.spyOn(Date, 'now');
+			const now = 1_700_000_000_000;
+
+			dateSpy.mockReturnValue(now);
+			requestMock.mockResolvedValueOnce(fail(503));
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(1);
+
+			// Past the failure window — a retry succeeds and clears the marker
+			dateSpy.mockReturnValue(now + 60 * 1000 + 1);
+			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
+			const result = await service.getGatewayConfig();
+			expect(result).toEqual(MOCK_GATEWAY_CONFIG);
+			expect(requestMock).toHaveBeenCalledTimes(2);
 
 			dateSpy.mockRestore();
 		});
@@ -724,15 +932,9 @@ describe('AiGatewayService', () => {
 			expect(cache.size).toBe(500);
 
 			// Fetch for a new user — cache is at max, user-0 should be evicted
-			fetchMock
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'new-token', expiresIn: 3600 }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: jest.fn().mockResolvedValue({ entries: [], total: 0 }),
-				});
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'new-token', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({ entries: [], total: 0 }));
 
 			await service.getUsage('new-user', 0, 1);
 
@@ -747,17 +949,11 @@ describe('AiGatewayService', () => {
 			const service = makeService();
 
 			// Pre-warm config cache
-			fetchMock.mockResolvedValueOnce({
-				ok: true,
-				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
-			});
+			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
 			await service.getGatewayConfig();
 
 			// Only one token response queued — concurrent calls must share it
-			fetchMock.mockResolvedValueOnce({
-				ok: true,
-				json: jest.fn().mockResolvedValue({ token: 'shared-token', expiresIn: 3600 }),
-			});
+			requestMock.mockResolvedValueOnce(ok({ token: 'shared-token', expiresIn: 3600 }));
 
 			const [r1, r2, r3] = await Promise.all([
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
@@ -769,10 +965,128 @@ describe('AiGatewayService', () => {
 			expect(r2.apiKey).toBe('shared-token');
 			expect(r3.apiKey).toBe('shared-token');
 
-			const credentialsCalls = fetchMock.mock.calls.filter((c) =>
-				(c[0] as string).includes('/v1/gateway/credentials'),
+			const credentialsCalls = requestMock.mock.calls.filter((c) =>
+				(c[0].url as string).includes('/v1/gateway/credentials'),
 			);
 			expect(credentialsCalls).toHaveLength(1);
+		});
+	});
+
+	describe('getCredentialTypeForProvider()', () => {
+		const MULTI_PROVIDER_CONFIG = {
+			nodes: [],
+			credentialTypes: ['openAiApi', 'anthropicApi', 'googlePalmApi'],
+			providerConfig: {
+				openAiApi: { gatewayPath: '/v1/gateway/openai/v1', urlField: 'url', apiKeyField: 'apiKey' },
+				anthropicApi: {
+					gatewayPath: '/v1/gateway/anthropic',
+					urlField: 'url',
+					apiKeyField: 'apiKey',
+				},
+				googlePalmApi: {
+					gatewayPath: '/v1/gateway/google',
+					urlField: 'host',
+					apiKeyField: 'apiKey',
+				},
+			},
+		};
+
+		it.each([
+			['openai', 'openAiApi'],
+			['anthropic', 'anthropicApi'],
+			['google', 'googlePalmApi'],
+		])(
+			'maps model provider prefix "%s" to gateway credential type "%s"',
+			async (provider, credType) => {
+				requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+				const service = makeService();
+
+				await expect(service.getCredentialTypeForProvider(provider)).resolves.toBe(credType);
+			},
+		);
+
+		it('returns undefined for a provider the gateway does not serve', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+
+			await expect(service.getCredentialTypeForProvider('xai')).resolves.toBeUndefined();
+		});
+
+		it('maps a provider whose gateway path slug differs from the provider id', async () => {
+			// The gateway's URL slugs are its own naming scheme and need not match n8n's
+			// provider ids (Moonshot serves Kimi under `/moonshot`). Mapping must key on
+			// the providerConfig credential type, not on the path.
+			requestMock.mockResolvedValueOnce(
+				ok({
+					nodes: [],
+					credentialTypes: ['openAiApi'],
+					providerConfig: {
+						openAiApi: {
+							gatewayPath: '/v1/gateway/a-different-slug/v1',
+							urlField: 'url',
+							apiKeyField: 'apiKey',
+						},
+					},
+				}),
+			);
+			const service = makeService();
+
+			await expect(service.getCredentialTypeForProvider('openai')).resolves.toBe('openAiApi');
+		});
+
+		it('returns undefined (without fetching config) when n8n Connect is unlicensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			await expect(service.getCredentialTypeForProvider('openai')).resolves.toBeUndefined();
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getCredentialTypeForProviderCached()', () => {
+		const MULTI_PROVIDER_CONFIG = {
+			nodes: [],
+			credentialTypes: ['openAiApi', 'anthropicApi'],
+			providerConfig: {
+				openAiApi: { gatewayPath: '/v1/gateway/openai/v1', urlField: 'url', apiKeyField: 'apiKey' },
+				anthropicApi: {
+					gatewayPath: '/v1/gateway/anthropic',
+					urlField: 'url',
+					apiKeyField: 'apiKey',
+				},
+			},
+		};
+
+		it('returns undefined (unknown) without fetching when no config is cached', async () => {
+			const service = makeService();
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBeUndefined();
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns the credential type from the cached config without fetching', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+			// Warm the cache once.
+			await service.getGatewayConfig();
+			requestMock.mockClear();
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBe('openAiApi');
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns null (definitive no) when the cached config does not serve the provider', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+			await service.getGatewayConfig();
+
+			expect(service.getCredentialTypeForProviderCached('xai')).toBeNull();
+		});
+
+		it('returns null (definitive no) when n8n Connect is unlicensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBeNull();
+			expect(requestMock).not.toHaveBeenCalled();
 		});
 	});
 });

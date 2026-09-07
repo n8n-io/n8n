@@ -4,11 +4,12 @@ on:
   workflow_call:
   workflow_dispatch:
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   promote-github-releases:
+    permissions:
+      contents: write
     name: Promote current stable releases as latest
     runs-on: ubuntu-slim
     environment: release
@@ -25,6 +26,7 @@ jobs:
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Set npm packages to latest
         run: node ./.github/scripts/set-latest-for-monorepo-packages.mjs

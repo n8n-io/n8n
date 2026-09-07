@@ -1,8 +1,11 @@
 <script lang="ts" setup>
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
-import { DEBOUNCE_TIME, getDebounceTime, VIEWS } from '@/app/constants';
-import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, MIGRATE_WORKFLOW_MODAL_KEY, VIEWS } from '@/app/constants';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import type { BreakingChangeWorkflowIssue, BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import { useUIStore } from '@/app/stores/ui.store';
 import {
 	N8nButton,
 	N8nDataTableServer,
@@ -13,13 +16,15 @@ import {
 	N8nLoading,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsLayout,
 	N8nTag,
 	N8nText,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
 import { computed, ref } from 'vue';
@@ -27,6 +32,9 @@ import { useRouter } from 'vue-router';
 import SeverityTag from './components/SeverityTag.vue';
 
 const i18n = useI18n();
+const uiStore = useUIStore();
+
+useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const props = defineProps<{ migrationRuleId: string }>();
 
@@ -48,46 +56,87 @@ const { state, isLoading } = useAsyncState(
 		ruleSeverity: 'low',
 		affectedWorkflows: [],
 		recommendations: [],
+		migratable: false,
 	},
 );
 
 type AffectedWorkflow = BreakingChangeWorkflowRuleResult['affectedWorkflows'][number];
 
-const tableHeaders = ref<Array<TableHeader<AffectedWorkflow>>>([
-	{
-		title: i18n.baseText('settings.migrationReport.detail.table.name'),
-		key: 'name',
-		width: 200,
-	},
-	{
-		title: i18n.baseText('settings.migrationReport.detail.table.status'),
-		key: 'active',
-		value: (row: AffectedWorkflow) =>
-			row.active
-				? i18n.baseText('settings.migrationReport.detail.table.active')
-				: i18n.baseText('settings.migrationReport.detail.table.deactivated'),
-		width: 40,
-	},
-	{
-		title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
-		key: 'issues',
-	},
-	{
-		title: i18n.baseText('settings.migrationReport.detail.table.numberOfExecutions'),
-		key: 'numberOfExecutions',
-		width: 40,
-	},
-	{
-		title: i18n.baseText('settings.migrationReport.detail.table.lastExecuted'),
-		key: 'lastExecutedAt',
-		width: 40,
-	},
-	{
-		title: i18n.baseText('settings.migrationReport.detail.table.lastUpdated'),
-		key: 'lastUpdatedAt',
-		width: 40,
-	},
-]);
+const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
+	const headers: Array<TableHeader<AffectedWorkflow>> = [
+		{
+			title: i18n.baseText('settings.migrationReport.detail.table.name'),
+			key: 'name',
+			width: 200,
+		},
+		{
+			title: i18n.baseText('settings.migrationReport.detail.table.status'),
+			key: 'active',
+			value: (row: AffectedWorkflow) =>
+				row.active
+					? i18n.baseText('settings.migrationReport.detail.table.active')
+					: i18n.baseText('settings.migrationReport.detail.table.deactivated'),
+			width: 40,
+		},
+		{
+			title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
+			key: 'issues',
+		},
+		{
+			title: i18n.baseText('settings.migrationReport.detail.table.numberOfExecutions'),
+			key: 'numberOfExecutions',
+			width: 40,
+		},
+		{
+			title: i18n.baseText('settings.migrationReport.detail.table.lastExecuted'),
+			key: 'lastExecutedAt',
+			width: 40,
+		},
+		{
+			title: i18n.baseText('settings.migrationReport.detail.table.lastUpdated'),
+			key: 'lastUpdatedAt',
+			width: 40,
+		},
+	];
+
+	if (state.value.migratable) {
+		headers.push({
+			title: '',
+			key: 'actions',
+			value: () => '',
+			width: 40,
+			disableSort: true,
+		});
+	}
+
+	return headers;
+});
+
+/** Only node-anchored issues can link into the canvas; workflow-level issues carry no node. */
+const nodeIssues = (issues: BreakingChangeWorkflowIssue[]) =>
+	issues.filter((issue) => issue.nodeId !== undefined);
+
+// Workflows successfully migrated this session (the row shows a "Migrated" state).
+const migratedWorkflowIds = ref<Set<string>>(new Set());
+
+// The modal runs the migration (confirm → progress → result) and emits back when a
+// workflow was migrated so the row can reflect it.
+const migrateModalBus = createEventBus();
+migrateModalBus.on('migrated', ({ workflowId }: { workflowId: string }) => {
+	migratedWorkflowIds.value = new Set(migratedWorkflowIds.value).add(workflowId);
+});
+
+function openMigrateModal(workflow: AffectedWorkflow) {
+	uiStore.openModalWithData({
+		name: MIGRATE_WORKFLOW_MODAL_KEY,
+		data: {
+			ruleId: props.migrationRuleId,
+			workflow,
+			recommendations: state.value.recommendations,
+			eventBus: migrateModalBus,
+		},
+	});
+}
 
 function handleRowClick(_event: MouseEvent, { item }: { item: AffectedWorkflow }) {
 	window.open(
@@ -187,59 +236,58 @@ const sortedWorkflows = computed(() => {
 </script>
 
 <template>
-	<div>
-		<N8nButton
-			variant="ghost"
-			:class="$style.backButton"
-			icon="arrow-left"
-			:label="i18n.baseText('generic.back')"
-			class="mb-xs"
-			@click="router.push({ name: VIEWS.MIGRATION_REPORT })"
-		/>
-		<template v-if="isLoading">
-			<div class="mb-2xs">
-				<N8nLoading variant="h1" />
-			</div>
-			<div class="mb-2xl">
-				<N8nLoading variant="p" :rows="2" />
-			</div>
-		</template>
-		<template v-else>
-			<N8nText
-				tag="h2"
-				size="xlarge"
-				color="text-dark"
-				class="mb-2xs"
-				style="display: flex; align-items: center; gap: 4px"
-			>
-				{{ state.ruleTitle }}
-				<SeverityTag :severity="state.ruleSeverity" />
-				<N8nTag
-					:text="
-						i18n.baseText('settings.migrationReport.detail.affectedTag', {
-							interpolate: { count: String(state.affectedWorkflows.length) },
-						})
-					"
-					:clickable="false"
-				/>
-			</N8nText>
-			<N8nText tag="p" color="text-base" class="mb-2xl">
-				{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
-				<N8nLink
-					v-if="state.ruleDocumentationUrl"
-					theme="text"
-					:href="state.ruleDocumentationUrl"
-					target="_blank"
-					rel="noopener noreferrer"
-					:class="$style.NoLineBreak"
+	<N8nSettingsLayout
+		full-width
+		show-back
+		:back-label="i18n.baseText('generic.back')"
+		@back="router.push({ name: VIEWS.MIGRATION_REPORT })"
+	>
+		<header :class="$style.pageHeader">
+			<template v-if="isLoading">
+				<div class="mb-2xs">
+					<N8nLoading variant="h1" />
+				</div>
+				<div>
+					<N8nLoading variant="p" :rows="2" />
+				</div>
+			</template>
+			<template v-else>
+				<N8nText
+					tag="h2"
+					size="xlarge"
+					color="text-dark"
+					class="mb-2xs"
+					style="display: flex; align-items: center; gap: 4px"
 				>
-					<span :class="$style.UnderlinedText">{{
-						i18n.baseText('settings.migrationReport.documentation')
-					}}</span>
-					↗
-				</N8nLink>
-			</N8nText>
-		</template>
+					{{ state.ruleTitle }}
+					<SeverityTag :severity="state.ruleSeverity" />
+					<N8nTag
+						:text="
+							i18n.baseText('settings.migrationReport.detail.affectedTag', {
+								interpolate: { count: String(state.affectedWorkflows.length) },
+							})
+						"
+						:clickable="false"
+					/>
+				</N8nText>
+				<N8nText tag="p" color="text-base">
+					{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
+					<N8nLink
+						v-if="state.ruleDocumentationUrl"
+						theme="text"
+						:href="state.ruleDocumentationUrl"
+						target="_blank"
+						rel="noopener noreferrer"
+						:class="$style.NoLineBreak"
+					>
+						<span :class="$style.UnderlinedText">{{
+							i18n.baseText('settings.migrationReport.documentation')
+						}}</span>
+						↗
+					</N8nLink>
+				</N8nText>
+			</template>
+		</header>
 
 		<!-- Search and Filter Controls -->
 		<div :class="$style.filterControls">
@@ -289,6 +337,7 @@ const sortedWorkflows = computed(() => {
 		</div>
 
 		<N8nDataTableServer
+			:key="String(state.migratable)"
 			v-model:sort-by="sortBy"
 			:items-per-page="sortedWorkflows.length + 1"
 			:items="sortedWorkflows"
@@ -300,7 +349,9 @@ const sortedWorkflows = computed(() => {
 		>
 			<template #[`item.issues`]="{ item }">
 				<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
-					<template v-for="(issue, index) in item.issues" :key="issue.nodeId">
+					<!-- Workflow-level issues carry no node, so there is nothing to link to. -->
+					<template v-for="(issue, index) in nodeIssues(item.issues)" :key="issue.nodeId">
+						<template v-if="index > 0">, </template>
 						<N8nLink
 							theme="text"
 							:to="`/workflow/${item.id}/${issue.nodeId}`"
@@ -309,7 +360,6 @@ const sortedWorkflows = computed(() => {
 						>
 							{{ issue.nodeName }}
 						</N8nLink>
-						<template v-if="index < item.issues.length - 1">, </template>
 					</template>
 				</div>
 			</template>
@@ -320,13 +370,29 @@ const sortedWorkflows = computed(() => {
 			<template #[`item.lastUpdatedAt`]="{ item }">
 				<TimeAgo :date="item.lastUpdatedAt.toString()" />
 			</template>
+			<template #[`item.actions`]="{ item }">
+				<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
+					{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}
+				</N8nText>
+				<N8nButton
+					v-else
+					size="small"
+					:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
+					data-test-id="migrate-workflow-button"
+					@click.stop="openMigrateModal(item)"
+				/>
+			</template>
 		</N8nDataTableServer>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style module>
-.backButton {
-	padding-left: 0;
+/* Mirrors N8nSettingsPageHeader's self-capping so the header column stays centered
+   while the table below spans the full-width layout. */
+.pageHeader {
+	width: 100%;
+	max-width: var(--settings-content--max-width, 45rem);
+	margin-inline: auto;
 }
 
 .clickableRow {

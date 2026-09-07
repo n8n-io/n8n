@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
 import { SPLUNK } from '../../v1/types';

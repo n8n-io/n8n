@@ -1,19 +1,12 @@
 import { z } from 'zod';
 
+import { roleMemberSchema } from './role-member.schema';
 import { Z } from '../../zod-class';
 
-const roleProjectMemberSchema = z.object({
-	userId: z.string(),
-	firstName: z.string().nullable(),
-	lastName: z.string().nullable(),
-	email: z.string(),
-	role: z.string(),
-});
-
-export type RoleProjectMember = z.infer<typeof roleProjectMemberSchema>;
+export type RoleProjectMember = z.infer<typeof roleMemberSchema>;
 
 export class RoleProjectMembersResponseDto extends Z.class({
-	members: z.array(roleProjectMemberSchema),
+	members: z.array(roleMemberSchema),
 }) {}
 
 export type RoleProjectMembersResponse = InstanceType<typeof RoleProjectMembersResponseDto>;

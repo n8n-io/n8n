@@ -18,9 +18,11 @@ describe('permissions', () => {
 			externalSecret: {},
 			eventBusDestination: {},
 			execution: {},
+			testRun: {},
 			ldap: {},
 			license: {},
 			logStreaming: {},
+			nodeTypePolicy: {},
 			oidc: {},
 			orchestration: {},
 			project: {},
@@ -29,6 +31,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
+			gitConnection: {},
 			tag: {},
 			user: {},
 			variable: {},
@@ -50,6 +53,7 @@ describe('permissions', () => {
 			credentialResolver: {},
 			instanceAi: {},
 			roleMappingRule: {},
+			otel: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -114,6 +118,7 @@ describe('permissions', () => {
 			ldap: {},
 			license: {},
 			logStreaming: {},
+			nodeTypePolicy: {},
 			orchestration: {},
 			project: {
 				list: true,
@@ -127,6 +132,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
+			gitConnection: {},
 			tag: {
 				create: true,
 				list: true,
@@ -163,6 +169,7 @@ describe('permissions', () => {
 			},
 			dataTable: {},
 			execution: {},
+			testRun: {},
 			workflowTags: {},
 			role: {},
 			chatHub: {},
@@ -177,6 +184,7 @@ describe('permissions', () => {
 			credentialResolver: {},
 			instanceAi: {},
 			roleMappingRule: {},
+			otel: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

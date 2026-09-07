@@ -1,0 +1,43 @@
+import { type IDataObject, type IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
+
+import { microsoftApiRequest } from '../../transport';
+
+const isLocator = (value: unknown): value is { mode: unknown; value: unknown } =>
+	typeof value === 'object' && value !== null && 'mode' in value && 'value' in value;
+
+const asText = (value: unknown) =>
+	typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
+
+export function readMeetingLocator(
+	this: IExecuteFunctions,
+	i: number,
+): { mode: string; value: string } {
+	const raw = this.getNodeParameter('meetingId', i);
+	const locator = isLocator(raw) ? raw : { mode: 'id', value: raw };
+	return { mode: String(locator.mode), value: asText(locator.value) };
+}
+
+export async function fetchMeetingByJoinUrl(
+	this: IExecuteFunctions,
+	joinWebUrl: string,
+): Promise<IDataObject> {
+	if (!joinWebUrl) {
+		throw new NodeOperationError(this.getNode(), 'The meeting join URL is empty', {
+			description: "Enter the join URL in the 'Meeting' parameter and try again",
+		});
+	}
+	const response = await microsoftApiRequest.call(
+		this,
+		'GET',
+		'/v1.0/me/onlineMeetings',
+		{},
+		{ $filter: `JoinWebUrl eq '${joinWebUrl.replace(/'/g, "''")}'` },
+	);
+	const meeting = response?.value?.[0];
+	if (!meeting) {
+		throw new NodeOperationError(this.getNode(), 'No meeting was found for the provided join URL', {
+			description: "Check that the 'Meeting' parameter is correctly set",
+		});
+	}
+	return meeting;
+}

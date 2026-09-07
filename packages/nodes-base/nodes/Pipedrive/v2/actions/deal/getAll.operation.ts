@@ -154,8 +154,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				qs.status = filters.status;
 			}
 
+			// Pipedrive v2 deals filter param was renamed from `user_id` to `owner_id`;
+			// keep the UI field key as `user_id` for backward compatibility with saved workflows.
 			if (filters.user_id) {
-				qs.user_id = filters.user_id;
+				qs.owner_id = filters.user_id;
 			}
 
 			let responseData;

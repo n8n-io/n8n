@@ -1,5 +1,6 @@
 import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
+import { isRecord } from '@n8n/utils/is-record';
 import type { IConnections, NodeConnectionType } from 'n8n-workflow';
 import { isNodeConnectionType, mapConnectionsByDestination } from 'n8n-workflow';
 import { z } from 'zod';
@@ -14,13 +15,6 @@ import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getEffectiveWorkflow, getWorkflowState } from './helpers/state';
 
 const DISPLAY_TITLE = 'Getting node context';
-
-/**
- * Type guard to check if a value is a Record<string, unknown>
- */
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 /**
  * Safely gets node run data from execution data
