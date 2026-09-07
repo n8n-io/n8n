@@ -697,6 +697,12 @@ const composerContextChip = computed(() => {
 	const agentAttachment = currentAgentAttachment.value;
 	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
 		return {
+			type: 'agent-artifact' as const,
+			agentId: agentAttachment.id,
+			projectId: agentAttachment.projectId,
+			isNewAgent:
+				pendingAgentAttachment.value?.id === agentAttachment.id &&
+				pendingAgentAttachment.value.pending === true,
 			key: `pending-agent:${agentAttachment.id}`,
 			label: agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
 			icon: 'robot',
@@ -706,6 +712,10 @@ const composerContextChip = computed(() => {
 
 	if (pendingComposerContext.value?.source === 'agent-preview') {
 		return {
+			type: 'agent-preview-session' as const,
+			agentId: pendingComposerContext.value.agentId,
+			threadId: pendingComposerContext.value.threadId,
+			executionId: pendingComposerContext.value.executionId,
 			key: handoffContextKey(pendingComposerContext.value),
 			label: formatAgentPreviewContextLabel(
 				pendingComposerContext.value,
@@ -725,6 +735,10 @@ const composerContextChip = computed(() => {
 		if (dismissedKeys.has(key)) continue;
 
 		return {
+			type: 'agent-preview-session' as const,
+			agentId: message.context.agentId,
+			threadId: message.context.threadId,
+			executionId: message.context.executionId,
 			key,
 			label: formatAgentPreviewContextLabel(
 				message.context,
