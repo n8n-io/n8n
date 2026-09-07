@@ -4,8 +4,9 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| activeVersionId | varchar(36) |  | true |  |  | app_version served at /apps/\<namespace\>/; null falls back to pages |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.page](public.page.md) |  |  |
+| id | varchar(36) |  | false | [public.app_version](public.app_version.md) [public.page](public.page.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | namespace | varchar(128) |  | false |  |  | URL path segment under /apps/; unique per project |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
@@ -37,10 +38,12 @@
 ```mermaid
 erDiagram
 
+"public.app_version" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
 "public.page" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
 "public.app" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.app" {
+  varchar_36_ activeVersionId
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_128_ name
@@ -49,10 +52,20 @@ erDiagram
   json theme
   timestamp_3__with_time_zone updatedAt
 }
+"public.app_version" {
+  varchar_36_ appId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ distStorageKey
+  varchar_36_ id
+  varchar_255_ sourceStorageKey
+  varchar_8_ storedAt
+  timestamp_3__with_time_zone updatedAt
+}
 "public.page" {
   varchar_36_ appId FK
   json content
   timestamp_3__with_time_zone createdAt
+  varchar_36_ dataWorkflowId FK
   varchar_36_ id
   varchar_36_ parentPageId FK
   varchar_255_ route

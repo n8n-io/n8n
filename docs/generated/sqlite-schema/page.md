@@ -62,6 +62,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "app" {
+  varchar_36_ activeVersionId
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name

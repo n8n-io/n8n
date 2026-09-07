@@ -7,6 +7,7 @@
 | appId | varchar(36) |  | false |  | [public.app](public.app.md) |  |
 | content | json |  | true |  |  | Block tree (Editor.js-shaped); empty until the renderer lands |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| dataWorkflowId | varchar(36) |  | true |  | [public.workflow_entity](public.workflow_entity.md) | Workflow this page calls to fetch its data |
 | id | varchar(36) |  | false | [public.page](public.page.md) |  |  |
 | parentPageId | varchar(36) |  | true |  | [public.page](public.page.md) | Self-reference; null for a top-level page |
 | route | varchar(255) |  | false |  |  | Path segment under its parent, may contain :params |
@@ -21,6 +22,7 @@
 | PK_742f4117e065c5b6ad21b37ba1f | PRIMARY KEY | PRIMARY KEY (id) |
 | page_appId_not_null | n | NOT NULL "appId" |
 | page_createdAt_not_null | n | NOT NULL "createdAt" |
+| page_dataWorkflowId_foreign | FOREIGN KEY | FOREIGN KEY ("dataWorkflowId") REFERENCES workflow_entity(id) ON DELETE SET NULL |
 | page_id_not_null | n | NOT NULL id |
 | page_route_not_null | n | NOT NULL route |
 | page_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -39,18 +41,21 @@
 erDiagram
 
 "public.page" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
+"public.page" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;dataWorkflowId#quot;) REFERENCES workflow_entity(id) ON DELETE SET NULL"
 "public.page" }o--o| "public.page" : "FOREIGN KEY (#quot;parentPageId#quot;) REFERENCES page(id) ON DELETE CASCADE"
 
 "public.page" {
   varchar_36_ appId FK
   json content
   timestamp_3__with_time_zone createdAt
+  varchar_36_ dataWorkflowId FK
   varchar_36_ id
   varchar_36_ parentPageId FK
   varchar_255_ route
   timestamp_3__with_time_zone updatedAt
 }
 "public.app" {
+  varchar_36_ activeVersionId
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_128_ name
@@ -58,6 +63,28 @@ erDiagram
   varchar_36_ projectId FK
   json theme
   timestamp_3__with_time_zone updatedAt
+}
+"public.workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  json connections
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
+  json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
+  varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 

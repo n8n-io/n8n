@@ -39,7 +39,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agents_threads](agents_threads.md) | 6 |  | table |
 | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) | 4 |  | table |
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
-| [app](app.md) | 7 |  | table |
+| [app](app.md) | 8 |  | table |
+| [app_version](app_version.md) | 7 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -203,6 +204,7 @@ erDiagram
 "ai_builder_temporary_workflow" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "auth_identity" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_tools" : "FOREIGN KEY (toolId) REFERENCES chat_hub_tools (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_agents" : "FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -705,12 +707,22 @@ erDiagram
   datetime_3_ updatedAt
 }
 "app" {
+  varchar_36_ activeVersionId
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name
   varchar_128_ namespace
   varchar_36_ projectId FK
   TEXT theme
+  datetime_3_ updatedAt
+}
+"app_version" {
+  varchar_36_ appId FK
+  datetime_3_ createdAt
+  varchar_255_ distStorageKey
+  varchar_36_ id PK
+  varchar_255_ sourceStorageKey
+  varchar_8_ storedAt
   datetime_3_ updatedAt
 }
 "auth_identity" {

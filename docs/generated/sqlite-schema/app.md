@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "theme" text, "projectId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
+CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "theme" text, "projectId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -15,8 +15,9 @@ CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) N
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| activeVersionId | varchar(36) |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [page](page.md) |  |  |
+| id | varchar(36) |  | false | [app_version](app_version.md) [page](page.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | namespace | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
@@ -43,16 +44,27 @@ CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) N
 ```mermaid
 erDiagram
 
+"app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "page" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "app" {
+  varchar_36_ activeVersionId
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name
   varchar_128_ namespace
   varchar_36_ projectId FK
   TEXT theme
+  datetime_3_ updatedAt
+}
+"app_version" {
+  varchar_36_ appId FK
+  datetime_3_ createdAt
+  varchar_255_ distStorageKey
+  varchar_36_ id PK
+  varchar_255_ sourceStorageKey
+  varchar_8_ storedAt
   datetime_3_ updatedAt
 }
 "page" {
