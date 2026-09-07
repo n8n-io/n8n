@@ -23,6 +23,7 @@ import * as path from 'path';
 
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
 import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
+import { createDeclarativePoll } from '@/execution-engine/declarative-poll';
 
 import {
 	commonCORSParameters,
@@ -404,6 +405,12 @@ export abstract class DirectoryLoader implements NodeLoader {
 	}
 
 	private applySpecialNodeParameters(nodeType: INodeType): void {
+		const { trigger } = nodeType.description;
+		if (trigger?.type === 'polling' && !nodeType.poll) {
+			nodeType.description.polling = true;
+			nodeType.poll = createDeclarativePoll(nodeType, trigger);
+		}
+
 		const { properties, polling, supportsCORS } = nodeType.description;
 		if (polling) {
 			properties.unshift(...commonPollingParameters);

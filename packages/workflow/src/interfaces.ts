@@ -2789,6 +2789,41 @@ export interface INodePropertyRouting {
 	send?: INodeRequestSend;
 }
 
+/**
+ * How a declarative polling trigger derives the new items and the next cursor
+ * from one poll's items. The engine owns cursor storage.
+ *
+ * - `timestamp`: emit items whose `field` is after the cursor; cursor = latest
+ *   `field` seen. The first production poll seeds the cursor with "now" and
+ *   makes no request.
+ * - `id`: emit items whose `field` is above the cursor; cursor = highest
+ *   `field` seen. The first production poll seeds the cursor and emits nothing.
+ * - function: full control. Return the items to emit and the cursor to store.
+ *   `cursor` is `undefined` on the first poll.
+ */
+export type DeclarativePollingCursor =
+	| { type: 'timestamp'; field: string }
+	| { type: 'id'; field: string }
+	| ((
+			this: IPollFunctions,
+			items: INodeExecutionData[],
+			cursor: IDataObject | undefined,
+	  ) => Promise<{ items: INodeExecutionData[]; cursor: IDataObject | undefined }>);
+
+export interface IDeclarativePollingTrigger {
+	type: 'polling';
+	/**
+	 * The poll request. Same shape as an operation's `routing`: `request`,
+	 * `output.postReceive`, `operations` (pagination). Expressions see `$cursor`
+	 * (the stored cursor, `{}` on the first poll and in manual runs) next to
+	 * `$parameter` and `$credentials`.
+	 */
+	routing: INodePropertyRouting;
+	cursor: DeclarativePollingCursor;
+	/** Manual runs skip the cursor and return the last `maxResults` items (default 1). */
+	manual?: { maxResults?: number };
+}
+
 export type PostReceiveAction =
 	| ((
 			this: IExecuteSingleFunctions,
@@ -3028,6 +3063,11 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: true | undefined;
+	/**
+	 * Declarative trigger. The loader synthesizes `poll()` from it, so the node
+	 * class needs no trigger code. Ignored when the class defines `poll()`.
+	 */
+	trigger?: IDeclarativePollingTrigger;
 	supportsCORS?: true | undefined;
 	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;

@@ -48,6 +48,8 @@ export class RoutingNode {
 		private readonly context: ExecuteContext,
 		private readonly nodeType: INodeType,
 		private readonly credentialsDecrypted?: ICredentialsDecrypted,
+		/** Extra expression keys for request building, e.g. `$cursor` for declarative polling. */
+		private readonly extraAdditionalKeys: IWorkflowDataProxyAdditionalKeys = {},
 	) {}
 
 	// eslint-disable-next-line complexity
@@ -134,7 +136,10 @@ export class RoutingNode {
 				};
 			}
 
-			const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+			const additionalKeys = {
+				...getAdditionalKeys(additionalData, mode, runExecutionData),
+				...this.extraAdditionalKeys,
+			};
 
 			if (nodeType.description.requestDefaults) {
 				for (const key of Object.keys(nodeType.description.requestDefaults)) {
