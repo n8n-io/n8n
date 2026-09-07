@@ -88,6 +88,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
 | [instance_credential_assignment](instance_credential_assignment.md) | 4 |  | table |
+| [instance_monitoring_report](instance_monitoring_report.md) | 9 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
@@ -1170,6 +1171,17 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ credentialId FK
   varchar_128_ credentialUseId PK
+  datetime_3_ updatedAt
+}
+"instance_monitoring_report" {
+  INTEGER attempts
+  datetime_3_ createdAt
+  TEXT dataPoints
+  datetime_3_ deliveredAt
+  varchar id PK
+  datetime_3_ lastAttemptAt
+  TEXT lastError
+  varchar_64_ status
   datetime_3_ updatedAt
 }
 "instance_version_history" {
