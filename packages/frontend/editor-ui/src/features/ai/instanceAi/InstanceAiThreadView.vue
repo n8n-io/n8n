@@ -25,6 +25,7 @@ import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueus
 import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
+	InstanceAiAppAttachment,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
@@ -43,6 +44,7 @@ import {
 	getAgentBuilderTargetFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
+	getAppBuilderTargetFromThreadMetadata,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isPendingItemFloating } from './confirmationKinds';
@@ -52,14 +54,17 @@ import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	clearPendingAgentAttachment,
+	clearPendingAppAttachment,
 	consumePendingDraftAttachment,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
 	consumePendingFirstMessage,
 	getPendingAgentAttachment,
+	getPendingAppAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
+	stashPendingAppAttachment,
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
@@ -68,6 +73,7 @@ import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgent
 import { useTransitionGate } from './useTransitionGate';
 import {
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_VIEW,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
@@ -149,6 +155,26 @@ const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => 
 		id: queued.id,
 		projectId: queued.projectId,
 		...(name ? { name } : {}),
+	};
+});
+
+const pendingAppAttachment = ref<InstanceAiAppAttachment | null>(null);
+// A pending (new) app takes its id from the thread's bound target once the
+// agent's `apps.create` result has been recorded there.
+const currentAppAttachment = computed<InstanceAiAppAttachment | null>(() => {
+	const queued = pendingAppAttachment.value;
+	if (!queued) return null;
+	if (queued.appId) return queued;
+
+	const boundTarget = getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id));
+	if (!boundTarget || boundTarget.projectId !== queued.projectId) return queued;
+
+	return {
+		type: 'app',
+		appId: boundTarget.appId,
+		projectId: queued.projectId,
+		name: boundTarget.name ?? queued.name,
+		...(queued.namespace ? { namespace: queued.namespace } : {}),
 	};
 });
 
@@ -290,7 +316,75 @@ const preview = useCanvasPreview({
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
+	initialAppId: () =>
+		getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.appId,
 });
+
+// The namespace the user asked a new app to live under. Outlives the composer
+// chip (cleared on the first send) so the `apps.create` result can still be
+// matched to this thread when it arrives.
+const newAppNamespace = computed(() => {
+	const queued = pendingAppAttachment.value;
+	if (queued && !queued.appId && queued.namespace) return queued.namespace;
+	for (const message of thread.messages) {
+		for (const attachment of message.attachments ?? []) {
+			if (attachment.type === 'app' && !attachment.appId && attachment.namespace) {
+				return attachment.namespace;
+			}
+		}
+	}
+	return undefined;
+});
+
+const createdAppForNamespace = computed(() => {
+	const namespace = newAppNamespace.value;
+	if (!namespace) return undefined;
+	for (const entry of thread.producedArtifacts.values()) {
+		if (entry.type === 'app' && entry.namespace === namespace) return entry;
+	}
+	return undefined;
+});
+
+// Resolve the pending app chip and bind the thread once `apps.create` has
+// produced the row. `flush: 'sync'` for the same hydration-gate reason as the
+// auto-open watches in useCanvasPreview.
+watch(
+	() => createdAppForNamespace.value?.id,
+	(appId) => {
+		const created = createdAppForNamespace.value;
+		if (!appId || !created) return;
+		const projectId = created.projectId ?? pendingAppAttachment.value?.projectId;
+		if (!projectId) return;
+
+		const queued = pendingAppAttachment.value;
+		if (queued && !queued.appId) {
+			const resolved: InstanceAiAppAttachment = {
+				type: 'app',
+				appId,
+				projectId,
+				name: created.name,
+				...(created.namespace ? { namespace: created.namespace } : {}),
+			};
+			pendingAppAttachment.value = resolved;
+			stashPendingAppAttachment(props.threadId, resolved);
+		}
+
+		const boundTarget = getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id));
+		if (boundTarget?.appId !== appId) {
+			void store
+				.updateThreadMetadata(thread.id, {
+					[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: { appId, projectId, name: created.name },
+				})
+				.catch((error: unknown) => {
+					toast.showError(error, i18n.baseText('generic.error'));
+				});
+		}
+
+		if (thread.isHydratingThread) return;
+		preview.openAppPreview(appId, projectId);
+	},
+	{ flush: 'sync' },
+);
 const activeAgentPreviewSessionId = computed(() => {
 	const context = pendingComposerContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -712,6 +806,20 @@ const composerContextChip = computed(() => {
 		};
 	}
 
+	const appAttachment = currentAppAttachment.value;
+	if (appAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
+		return {
+			type: 'app-artifact' as const,
+			appId: appAttachment.appId,
+			projectId: appAttachment.projectId,
+			isNewApp: !appAttachment.appId,
+			key: `pending-app:${appAttachment.appId ?? appAttachment.namespace ?? appAttachment.name}`,
+			label: appAttachment.name,
+			icon: 'grid-2x2',
+			isPending: true,
+		};
+	}
+
 	if (pendingComposerContext.value?.source === 'agent-preview') {
 		return {
 			type: 'agent-preview-session' as const,
@@ -760,6 +868,12 @@ function reconnectThreadAfterHydration(): void {
 	if (agentAttachment) {
 		pendingAgentAttachment.value = agentAttachment;
 		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
+	}
+	const appAttachment = getPendingAppAttachment(props.threadId);
+	if (appAttachment) {
+		pendingAppAttachment.value = appAttachment;
+		const appId = currentAppAttachment.value?.appId;
+		if (appId) preview.openAppPreview(appId, appAttachment.projectId);
 	}
 	const draftAttachment = consumePendingDraftAttachment(props.threadId);
 	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
@@ -898,9 +1012,13 @@ function handleSubmit(
 	const submittedGeneratedDraft = generatedComposerDraft.value;
 	const queuedAgentAttachment = pendingAgentAttachment.value;
 	const agentAttachment = currentAgentAttachment.value;
-	const submittedAttachments = agentAttachment
-		? [...(attachments ?? []), agentAttachment]
-		: attachments;
+	const queuedAppAttachment = pendingAppAttachment.value;
+	const appAttachment = currentAppAttachment.value;
+	const resourceAttachments = [agentAttachment, appAttachment].filter(
+		(attachment) => attachment !== null,
+	);
+	const submittedAttachments =
+		resourceAttachments.length > 0 ? [...(attachments ?? []), ...resourceAttachments] : attachments;
 
 	const nodeCount = countAttachedNodes(attachments);
 
@@ -937,6 +1055,10 @@ function handleSubmit(
 			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
 				clearPendingAgentAttachment(props.threadId);
 				pendingAgentAttachment.value = null;
+			}
+			if (queuedAppAttachment && pendingAppAttachment.value === queuedAppAttachment) {
+				clearPendingAppAttachment(props.threadId);
+				pendingAppAttachment.value = null;
 			}
 		});
 }
@@ -1070,6 +1192,12 @@ async function dismissComposerContextChip() {
 	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
 		clearPendingAgentAttachment(props.threadId);
 		pendingAgentAttachment.value = null;
+		return;
+	}
+
+	if (pendingAppAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
+		clearPendingAppAttachment(props.threadId);
+		pendingAppAttachment.value = null;
 		return;
 	}
 

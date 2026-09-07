@@ -52,6 +52,7 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 } from './constants';
 import {
@@ -121,6 +122,20 @@ export function getAgentBuilderTargetFromThreadMetadata(
 	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
 	return {
 		agentId: target.agentId,
+		projectId: target.projectId,
+		...(typeof target.name === 'string' ? { name: target.name } : {}),
+	};
+}
+
+export function getAppBuilderTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const raw = metadata?.[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.appId !== 'string' || typeof target.projectId !== 'string') return undefined;
+	return {
+		appId: target.appId,
 		projectId: target.projectId,
 		...(typeof target.name === 'string' ? { name: target.name } : {}),
 	};
@@ -490,6 +505,7 @@ function setupThreadRuntime(
 			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
+		() => getAppBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
