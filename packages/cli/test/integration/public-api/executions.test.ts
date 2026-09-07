@@ -7,7 +7,7 @@ import {
 	shareWorkflowWithUsers,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { ExecutionEntity, User } from '@n8n/db';
+import type { ExecutionEntity, IExecutionResponse, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { type ExecutionStatus } from 'n8n-workflow';
@@ -337,6 +337,40 @@ describe('DELETE /executions/:id', () => {
 });
 
 describe('POST /executions/:id/retry', () => {
+	const retryServiceResponse = (overrides: Record<string, unknown> = {}) =>
+		({
+			id: '1001',
+			mode: 'retry',
+			startedAt: new Date('2026-01-01T00:00:00.000Z'),
+			workflowId: 'workflow-1',
+			finished: false,
+			retryOf: '1000',
+			status: 'waiting',
+			waitTill: new Date('2026-01-01T00:05:00.000Z'),
+			data: { resultData: { runData: {} } },
+			workflowData: { id: 'workflow-1', name: 'My workflow', nodes: [], connections: {} },
+			customData: { key: 'value' },
+			annotation: { id: 1, vote: 'up', tags: [{ id: 'tag-1', name: 'important' }] },
+			storedAt: 'db',
+			...overrides,
+		}) as unknown as Omit<IExecutionResponse, 'createdAt'>;
+
+	const retryResponseBody = {
+		id: '1001',
+		mode: 'retry',
+		startedAt: '2026-01-01T00:00:00.000Z',
+		workflowId: 'workflow-1',
+		finished: false,
+		retryOf: '1000',
+		status: 'waiting',
+		waitTill: '2026-01-01T00:05:00.000Z',
+		data: { resultData: { runData: {} } },
+		workflowData: { id: 'workflow-1', name: 'My workflow', nodes: [], connections: {} },
+		customData: { key: 'value' },
+		annotation: { id: 1, vote: 'up', tags: [{ id: 'tag-1', name: 'important' }] },
+		storedAt: 'db',
+	};
+
 	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/1/retry', null));
 
 	test(
@@ -344,11 +378,19 @@ describe('POST /executions/:id/retry', () => {
 		testWithAPIKey('post', '/executions/1/retry', 'abcXYZ'),
 	);
 
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authUser1Agent.post(`/executions/${executionId}/retry`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('should retry an execution', async () => {
-		const mockedExecutionResponse = { status: 'waiting' } as any;
 		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
-			.mockResolvedValue(mockedExecutionResponse);
+			.mockResolvedValue(retryServiceResponse());
 
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createSuccessfulExecution(workflow);
@@ -356,7 +398,47 @@ describe('POST /executions/:id/retry', () => {
 		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual(mockedExecutionResponse);
+		expect(response.body).toEqual(retryResponseBody);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should omit waitTill when the retried execution has none', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(retryServiceResponse({ waitTill: undefined, annotation: undefined }));
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('waitTill');
+		expect(response.body).not.toHaveProperty('annotation');
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should pass loadWorkflow from the request body to the service', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(retryServiceResponse());
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent
+			.post(`/executions/${execution.id}/retry`)
+			.send({ loadWorkflow: true });
+
+		expect(response.statusCode).toBe(200);
+		expect(executionServiceSpy).toHaveBeenCalledWith({
+			executionId: execution.id,
+			options: { loadWorkflow: true },
+			sharedWorkflowIds: expect.arrayContaining([workflow.id]),
+			user: expect.objectContaining({ id: user1.id }),
+		});
 
 		executionServiceSpy.mockRestore();
 	});
@@ -436,10 +518,9 @@ describe('POST /executions/:id/retry', () => {
 	test('should retry an execution when user has execute access via project editor role', async () => {
 		testServer.license.enable('feat:sharing');
 
-		const mockedExecutionResponse = { status: 'waiting' } as any;
 		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
-			.mockResolvedValue(mockedExecutionResponse);
+			.mockResolvedValue(retryServiceResponse());
 
 		const project = await createTeamProject('project with editor', owner);
 		await linkUserToProject(user1, project, 'project:editor');
@@ -450,7 +531,7 @@ describe('POST /executions/:id/retry', () => {
 		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual(mockedExecutionResponse);
+		expect(response.body).toEqual(retryResponseBody);
 
 		executionServiceSpy.mockRestore();
 	});
@@ -1275,6 +1356,15 @@ describe('POST /executions/:id/stop', () => {
 		testWithAPIKey('post', '/executions/1/stop', 'abcXYZ'),
 	);
 
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authUser1Agent.post(`/executions/${executionId}/stop`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('should stop a running execution', async () => {
 		const mockedStopResponse = {
 			mode: 'manual',
@@ -1356,6 +1446,83 @@ describe('POST /executions/:id/stop', () => {
 
 		executionServiceSpy.mockRestore();
 	});
+
+	test('should omit stoppedAt when the service returns none', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stop')
+			.mockResolvedValue({
+				mode: 'manual',
+				startedAt: new Date(),
+				stoppedAt: undefined,
+				finished: false,
+				status: 'canceled',
+			});
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('stoppedAt');
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 404 when the execution is missing but a workflow is accessible', async () => {
+		await createWorkflow({}, user1);
+
+		const response = await authUser1Agent.post('/executions/99999999/stop');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Failed to find execution to stop');
+	});
+
+	test('should return 409 when the execution is in a state that cannot be stopped', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.message).toContain('is currently success');
+	});
+
+	test('should stop when the API key has the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:stop'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stop')
+			.mockResolvedValue({
+				mode: 'manual',
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				finished: false,
+				status: 'canceled',
+			});
+
+		const workflow = await createWorkflow({}, scopedOwner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await scopedAgent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(200);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 403 when the API key lacks the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:read'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		const workflow = await createWorkflow({}, scopedOwner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await scopedAgent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(403);
+	});
 });
 
 describe('POST /executions/stop', () => {
@@ -1375,8 +1542,7 @@ describe('POST /executions/stop', () => {
 		const response = await authUser1Agent.post('/executions/stop').send({ status: [] });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain('Status filter is required');
-		expect(response.body.example).toBeDefined();
+		expect(response.body.message).toBe('request/body/status must include at least one status');
 	});
 
 	test('should stop multiple running executions', async () => {
@@ -1542,5 +1708,86 @@ describe('POST /executions/stop', () => {
 		expect(calledWithWorkflowIds).toContain(workflow3.id);
 
 		executionServiceSpy.mockRestore();
+	});
+
+	test('should map the queued status to the internal new status', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(1);
+
+		await createWorkflow({}, user1);
+
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['queued', 'running'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(executionServiceSpy.mock.calls[0][0].status).toEqual(['new', 'running']);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 400 for a status outside the stoppable set', async () => {
+		const response = await authUser1Agent.post('/executions/stop').send({ status: ['success'] });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 404 for a workflowId the caller cannot access', async () => {
+		await createWorkflow({}, user1);
+		const otherWorkflow = await createWorkflow({}, owner);
+
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['running'], workflowId: otherWorkflow.id });
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow not found or not accessible');
+	});
+
+	test('should accept "all" as the workflowId', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(4);
+
+		await createWorkflow({}, user1);
+
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['running'], workflowId: 'all' });
+
+		expect(response.statusCode).toBe(200);
+		expect(executionServiceSpy.mock.calls[0][0].workflowId).toBe('all');
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should stop many when the API key has the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:stop'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(2);
+
+		await createWorkflow({}, scopedOwner);
+
+		const response = await scopedAgent.post('/executions/stop').send({ status: ['running'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ stopped: 2 });
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 403 when the API key lacks the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:read'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		await createWorkflow({}, scopedOwner);
+
+		const response = await scopedAgent.post('/executions/stop').send({ status: ['running'] });
+
+		expect(response.statusCode).toBe(403);
 	});
 });

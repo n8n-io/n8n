@@ -1,6 +1,6 @@
 operationId: getExecutionTags
 tags:
-  - Execution
+  - Executions
 summary: Get execution tags
 description: Get annotation tags for an execution.
 x-required-scope: executionTags:list

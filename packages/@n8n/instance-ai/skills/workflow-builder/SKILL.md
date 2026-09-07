@@ -353,10 +353,17 @@ decision after testing.
   that the credential (or Gateway credits) is being used.
 - Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
   code; replace them with `newCredential()` when editing roundtripped code.
-- If a required credential type is not listed, call
-  `credentials(action="search-types")` with the service name. Pick in this
-  order:
+- `credentials(action="list")` returns connected credential instances, not all
+  supported credential types. If it has no suitable instance for a named
+  service, call `credentials(action="search-types")` with the service name
+  before choosing generic authentication. Pick in this order:
   1. A **dedicated credential type** whenever search finds one.
+     For an HTTP Request node, use the most specific type for the target service
+     and operation. Set `authentication` to `'predefinedCredentialType'` and
+     `nodeCredentialType` to the returned type. If no credential instance
+     exists, leave `newCredential('Suggested Name')` unresolved for setup. Do
+     not use generic authentication only because the user has not connected an
+     account.
   2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
      without a dedicated type whose auth is expressible as header/query/body
      values — this covers API keys and bearer tokens. When the provider
@@ -393,6 +400,41 @@ decision after testing.
   the user explicitly asks to authenticate inbound traffic.
 - Always declare `output` on nodes that use unresolved credentials when mock
   data is needed for verification.
+
+## Credential Setup Preference
+
+Discovery results can include a `setupPreference` array. Each entry has:
+
+- `type`, the credential type
+- `setupCompletionPercent`, a percentage from 0 to 100 rounded to the nearest
+  5 percentage points, or `null`
+- `popularityScore`, a relative adoption score from 0 to 1 rounded to one
+  decimal place, or `null`
+
+Setup completion measures completion of an Instance AI setup step containing
+the credential; it is not an activation or validity rate. For either metric,
+`null` means there was not enough data. Popularity is relative recent adoption,
+not a percentage. Treat both as coarse signals and ignore small differences.
+
+When choosing a service:
+
+1. Honor explicit intent and existing workflow choices.
+2. Prefer a semantically suitable service with a usable existing credential,
+	 then apply the existing Gateway credits rules.
+3. Compare setup preference only among the remaining semantically
+   interchangeable candidates. Before deciding, inspect discovery results for
+   every candidate the user named.
+
+- When setup completion and popularity clearly support one candidate, choose it
+  and continue without asking.
+- When the signals are close or conflict and the user has not delegated the
+  choice, ask exactly one `single` question. If skipped, choose a sensible default.
+- When the user explicitly asks you to choose, make a sensible choice and
+  continue without asking.
+
+Use judgment instead of calculating a combined score or applying a fixed
+threshold. Never let this metadata override stronger semantic relevance or use
+it to choose between authentication methods for the same service.
 
 ## Gateway credits Preference
 
