@@ -4003,15 +4003,6 @@ export class InstanceAiService {
 					checkpoint?.isCheckpointFollowUp === true ||
 					plannedBuild?.isPlannedBuildFollowUp === true,
 			});
-			if (instanceContext) {
-				await patchThread(memory, {
-					threadId,
-					update: ({ metadata }) => ({
-						metadata: { ...metadata, [INSTANCE_CONTEXT_CURSOR]: instanceContext.cursor },
-					}),
-				});
-			}
-
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {
 				this.eventBus.publish(threadId, {
@@ -4172,6 +4163,26 @@ export class InstanceAiService {
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
 
 			streamReached = true;
+			// Stored here, not where the block was built: the SDK persists the input on receipt, so
+			// only from this point is the block actually in the conversation. Advancing the cursor
+			// any earlier would let a failure between the two mark the opening context as shown
+			// when it never was, and the next turn would send a delta against nothing.
+			//
+			// Best-effort on purpose. The cursor is an optimisation — losing it re-sends a window,
+			// which is recoverable — so a metadata write must not fail the user's turn.
+			if (instanceContext) {
+				try {
+					await patchThread(memory, {
+						threadId,
+						update: ({ metadata }) => ({
+							metadata: { ...metadata, [INSTANCE_CONTEXT_CURSOR]: instanceContext.cursor },
+						}),
+					});
+				} catch (error) {
+					this.logger.warn('Failed to store the instance-context cursor', { error });
+				}
+			}
+
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
 						return await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {

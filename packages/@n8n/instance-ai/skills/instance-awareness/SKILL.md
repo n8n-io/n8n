@@ -49,9 +49,11 @@ extra entries, not a replacement — the earlier ones still stand.
 ### 1. `activity(action="list")` and `activity(action="expand", id=N)`
 
 `list` looks further back than the block, or filters to one category or one
-resource. `expand` opens a single entry in full **and returns everything else
-the log knows about the same resource** — which is how you see one workflow's
-change history in a single call.
+resource. `expand` opens a single entry in full **and returns up to 20 more
+recent entries for the same resource** — which is how you see a workflow's
+recent change history in a single call. Twenty is a cap, not a total: an older
+history continues past it, and `list` with that `resourceId` reads further
+back.
 
 Use `expand` when a line is interesting but thin: a save you want the detail of,
 or a workflow you want the history of. An id that no longer resolves is ordinary
@@ -62,10 +64,13 @@ come from the block, and `executions` has the detail.
 
 ### 2. One workflow, read in full
 
-`workflows(action="get", workflowId)` on **one** example — the one the block
-points at, or the one the user named. This rung is for what an entry cannot
-express: parameter values, naming, retry settings, error-workflow wiring, how a
-prompt is structured.
+`workflows(action="get", workflowId, full=true)` on **one** example — the one
+the block points at, or the one the user named. This rung is for what an entry
+cannot express: parameter values, naming, retry settings, error-workflow
+wiring, how a prompt is structured.
+
+Pass `full=true`. Without it a large workflow comes back as structure only,
+with its node parameters omitted — which is exactly what this rung is for.
 
 Read one, not several. If one example is not enough to see the pattern, there is
 probably no pattern to follow.

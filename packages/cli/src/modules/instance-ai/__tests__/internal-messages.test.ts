@@ -110,7 +110,7 @@ describe('cleanStoredUserMessage', () => {
 		expect(cleanStoredUserMessage(stored)).toBe('Why did it fail?');
 	});
 
-	it('leaves the project and clock blocks that follow the user text intact when stripping it', () => {
+	it('leaves the user text intact once the leading and trailing blocks are stripped', () => {
 		const stored = [
 			instanceContextMarker(),
 			'Carry on',

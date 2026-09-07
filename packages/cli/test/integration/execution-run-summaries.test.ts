@@ -18,6 +18,8 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 	/** Well inside every window the tests use, so a run counts unless a test excludes it. */
 	const recently = () => new Date(Date.now() - 60_000);
 	const windowStart = () => new Date(Date.now() - 60 * 60_000);
+	/** Closes every window at the read, so a caller cannot be handed a future run. */
+	const readTime = () => new Date(Date.now() + 1_000);
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -38,6 +40,7 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 		const [summary] = await repository.summariseRunsForProjects({
 			projectIds: [project.id],
 			stoppedAfter: windowStart(),
+			stoppedBefore: readTime(),
 			workflowLimit: 10,
 		});
 
@@ -62,6 +65,7 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 		const [summary] = await repository.summariseRunsForProjects({
 			projectIds: [project.id],
 			stoppedAfter: new Date(Date.now() - 24 * 60 * 60_000),
+			stoppedBefore: readTime(),
 			workflowLimit: 10,
 		});
 
@@ -80,6 +84,7 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 		const [summary] = await repository.summariseRunsForProjects({
 			projectIds: [project.id],
 			stoppedAfter: windowStart(),
+			stoppedBefore: readTime(),
 			workflowLimit: 10,
 		});
 
@@ -94,6 +99,7 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 		const [summary] = await repository.summariseRunsForProjects({
 			projectIds: [project.id],
 			stoppedAfter: windowStart(),
+			stoppedBefore: readTime(),
 			workflowLimit: 10,
 		});
 
@@ -109,6 +115,7 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 		const [summary] = await repository.summariseRunsForProjects({
 			projectIds: [project.id],
 			stoppedAfter: windowStart(),
+			stoppedBefore: readTime(),
 			workflowLimit: 10,
 		});
 
@@ -122,6 +129,7 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 		const summaries = await repository.summariseRunsForProjects({
 			projectIds: [project.id],
 			stoppedAfter: windowStart(),
+			stoppedBefore: readTime(),
 			workflowLimit: 10,
 		});
 
@@ -140,6 +148,7 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 		const summaries = await repository.summariseRunsForProjects({
 			projectIds: [project.id, otherProject.id],
 			stoppedAfter: windowStart(),
+			stoppedBefore: readTime(),
 			workflowLimit: 10,
 		});
 
@@ -160,6 +169,7 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 		const summaries = await repository.summariseRunsForProjects({
 			projectIds: [project.id],
 			stoppedAfter: windowStart(),
+			stoppedBefore: readTime(),
 			workflowLimit: 10,
 		});
 
@@ -175,10 +185,40 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 		const summaries = await repository.summariseRunsForProjects({
 			projectIds: [project.id],
 			stoppedAfter: windowStart(),
+			stoppedBefore: readTime(),
 			workflowLimit: 1,
 		});
 
 		expect(summaries.map((summary) => summary.workflowName)).toEqual(['Newer']);
+	});
+
+	/**
+	 * Abutting windows: the lower bound is exclusive, so a caller passing the previous window's
+	 * end is handed additions only rather than the same run twice.
+	 */
+	it('does not report a run twice across consecutive windows', async () => {
+		const workflow = await createWorkflow({}, project);
+		const stoppedAt = recently();
+		await createExecution({ status: 'error', stoppedAt }, workflow);
+
+		const firstRead = new Date();
+		const first = await repository.summariseRunsForProjects({
+			projectIds: [project.id],
+			stoppedAfter: windowStart(),
+			stoppedBefore: firstRead,
+			workflowLimit: 10,
+		});
+		expect(first[0]).toMatchObject({ total: 1, failed: 1 });
+
+		// The next window starts where that one ended.
+		const second = await repository.summariseRunsForProjects({
+			projectIds: [project.id],
+			stoppedAfter: firstRead,
+			stoppedBefore: new Date(Date.now() + 1_000),
+			workflowLimit: 10,
+		});
+
+		expect(second).toEqual([]);
 	});
 
 	it('reads nothing when no project is in scope', async () => {
@@ -189,6 +229,7 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 			await repository.summariseRunsForProjects({
 				projectIds: [],
 				stoppedAfter: windowStart(),
+				stoppedBefore: readTime(),
 				workflowLimit: 10,
 			}),
 		).toEqual([]);

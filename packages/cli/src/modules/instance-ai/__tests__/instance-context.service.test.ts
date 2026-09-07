@@ -30,7 +30,7 @@ function entry(overrides: Partial<ActivityEvent> = {}): ActivityEvent {
 		category: 'workflow',
 		action: 'saved',
 		typeVersion: 1,
-		user: USER,
+		userId: USER_ID,
 		projectId: PROJECT_ID,
 		resourceType: 'workflow',
 		resourceId: 'wf-1',
@@ -324,12 +324,11 @@ describe('InstanceContextService', () => {
 			 * The correctness property: ids are an ordering key, not a watermark, so a delta reads
 			 * below the mark and de-duplicates rather than trusting `> mark`.
 			 */
-			it('reads below the mark and shows an entry that committed behind it', async () => {
+			it('reads the band below the mark and shows an entry that committed behind it', async () => {
 				const service = serviceWith();
-				activityEventRepository.findFeed.mockResolvedValue([
-					entry({ id: 500 }),
-					entry({ id: 498, resourceName: 'Committed late' }),
-				]);
+				activityEventRepository.findFeed
+					.mockResolvedValueOnce([]) // arrivals above the mark
+					.mockResolvedValueOnce([entry({ id: 498, resourceName: 'Committed late' })]);
 
 				const built = await service.buildBlock({
 					user: USER,
@@ -338,15 +337,43 @@ describe('InstanceContextService', () => {
 					now: NOW,
 				});
 
-				expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
-					expect.objectContaining({ afterId: 300 }),
+				expect(activityEventRepository.findFeed).toHaveBeenNthCalledWith(
+					1,
+					expect.objectContaining({ afterId: 500 }),
 				);
-				// 498 was never shown, so it appears; 500 was, so it does not.
+				// The band is bounded by its own width and closed at the mark.
+				expect(activityEventRepository.findFeed).toHaveBeenNthCalledWith(
+					2,
+					expect.objectContaining({ afterId: 300, beforeId: 500, limit: 200 }),
+				);
 				expect(built?.block).toContain('[498]');
-				expect(built?.block).not.toContain('[500]');
 			});
 
-			it('bounds the runs read by the last block rather than the whole window', async () => {
+			/**
+			 * The band read is separate precisely so a busy turn cannot crowd it out: a full page of
+			 * arrivals must not stop an unseen straggler below the mark from being read.
+			 */
+			it('still reaches the band when arrivals fill their own page', async () => {
+				const service = serviceWith();
+				activityEventRepository.findFeed
+					.mockResolvedValueOnce(
+						Array.from({ length: 160 }, (_, index) => entry({ id: 1_000 + index })),
+					)
+					.mockResolvedValueOnce([entry({ id: 498, resourceName: 'Committed late' })]);
+
+				const built = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor,
+					now: NOW,
+				});
+
+				expect(activityEventRepository.findFeed).toHaveBeenCalledTimes(2);
+				expect(built?.block).toContain('and more than these');
+			});
+
+			/** Windows abut rather than overlap, so a run is never summarised in two blocks. */
+			it('starts the runs window exactly where the last one ended, and closes it at the read', async () => {
 				const service = serviceWith();
 				activityEventRepository.findFeed.mockResolvedValue([entry({ id: 501 })]);
 
@@ -357,18 +384,18 @@ describe('InstanceContextService', () => {
 					now: NOW,
 				});
 
-				const { stoppedAfter } = vi.mocked(executionRepository.summariseRunsForProjects).mock
-					.calls[0][0];
-				// The stated cursor, less the lag that absorbs clock skew and late commits.
-				expect(stoppedAfter).toEqual(new Date(Date.parse(cursor.runsThrough) - 120_000));
+				const { stoppedAfter, stoppedBefore } = vi.mocked(
+					executionRepository.summariseRunsForProjects,
+				).mock.calls[0][0];
+				expect(stoppedAfter).toEqual(new Date(Date.parse(cursor.runsThrough)));
+				expect(stoppedBefore).toEqual(NOW);
 			});
 
 			it('advances the mark past every entry it saw, and remembers only ids inside the band', async () => {
 				const service = serviceWith();
-				activityEventRepository.findFeed.mockResolvedValue([
-					entry({ id: 600 }),
-					entry({ id: 350 }),
-				]);
+				activityEventRepository.findFeed
+					.mockResolvedValueOnce([entry({ id: 600 })])
+					.mockResolvedValueOnce([entry({ id: 350 })]);
 
 				const built = await service.buildBlock({
 					user: USER,

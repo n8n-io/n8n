@@ -28,6 +28,7 @@ const activityRuntimeInputSchema = z.discriminatedUnion('action', [
 			.describe('Restrict to one kind of entry.'),
 		resourceId: z
 			.string()
+			.min(1)
 			.optional()
 			.describe('Restrict to one resource, e.g. a single workflow id.'),
 		beforeId: z
@@ -121,7 +122,7 @@ export function createActivityTool(context: InstanceAiContext) {
 			const entries = await service.list({
 				limit: input.limit ?? defaultListLimit,
 				...(input.category ? { category: input.category } : {}),
-				...(input.resourceId ? { resourceId: input.resourceId } : {}),
+				...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 				...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 			});
 			return { entries };

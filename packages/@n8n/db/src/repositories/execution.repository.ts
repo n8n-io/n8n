@@ -688,8 +688,13 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 */
 	async summariseRunsForProjects(query: {
 		projectIds: string[];
-		/** Only runs that finished at or after this. Outcomes are only known once a run stops. */
+		/**
+		 * Runs that finished strictly after this. Exclusive so consecutive windows cannot overlap:
+		 * a caller that passes the previous window's end gets additions only.
+		 */
 		stoppedAfter: Date;
+		/** Runs that finished at or before this — the caller's read time, closing the window. */
+		stoppedBefore: Date;
 		/** How many workflows may contribute, so schedules cannot crowd out everything else. */
 		workflowLimit: number;
 	}): Promise<
@@ -734,7 +739,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			// activity feed used to keep eval runs in their own category for the same reason.
 			.andWhere('execution.mode != :evaluationMode', { evaluationMode: 'evaluation' })
 			.andWhere('execution.stoppedAt IS NOT NULL')
-			.andWhere('execution.stoppedAt >= :stoppedAfter', { stoppedAfter: query.stoppedAfter })
+			.andWhere('execution.stoppedAt > :stoppedAfter', { stoppedAfter: query.stoppedAfter })
+			.andWhere('execution.stoppedAt <= :stoppedBefore', { stoppedBefore: query.stoppedBefore })
 			.setParameter('failureStatuses', failureStatuses)
 			.groupBy('execution.workflowId')
 			.orderBy('MAX(execution.stoppedAt)', 'DESC')

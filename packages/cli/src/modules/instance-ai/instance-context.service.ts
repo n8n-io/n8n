@@ -78,12 +78,6 @@ const seenIdsCap = activityLagIds;
  */
 const entryFetchLimit = windowSize * fetchMultiplier;
 
-/**
- * How far back a delta re-reads runs. Absorbs clock skew between writers and the gap between a
- * run finishing and its row committing.
- */
-const runLagMs = 2 * Time.minutes.toMilliseconds;
-
 /** Thread-metadata key holding what this thread has already been shown. */
 export const INSTANCE_CONTEXT_CURSOR = 'instanceContext';
 
@@ -308,13 +302,29 @@ export class InstanceContextService {
 		now: Date;
 	}): Promise<{ rows: ActivityEvent[]; mark: number; seen: number[]; truncated: boolean }> {
 		const cursor = input.cursor;
-		const floor = cursor ? Math.max(0, cursor.activityMark - activityLagIds) : undefined;
 
-		const rows = await this.activityEventRepository.findFeed({
+		// Newest first, and on a delta only what arrived above the mark.
+		const arrivals = await this.activityEventRepository.findFeed({
 			limit: entryFetchLimit,
 			projectIds: input.projectIds,
-			...(floor !== undefined ? { afterId: floor } : {}),
+			...(cursor ? { afterId: cursor.activityMark } : {}),
 		});
+
+		// The band below the mark is read separately, not folded into the query above. One capped
+		// read cannot cover both: arrivals are unbounded and come back first, so a busy turn would
+		// fill the page and push the band out — losing exactly the late commit the band exists for.
+		// Alone it is bounded by its own width, since it spans that many ids at most.
+		const band = cursor
+			? await this.activityEventRepository.findFeed({
+					limit: activityLagIds,
+					projectIds: input.projectIds,
+					afterId: Math.max(0, cursor.activityMark - activityLagIds),
+					beforeId: cursor.activityMark,
+				})
+			: [];
+
+		// Both are newest-first and every arrival outranks every band row, so this stays ordered.
+		const rows = [...arrivals, ...band];
 
 		const alreadyShown = new Set(cursor?.activitySeen ?? []);
 		const fresh = rows.filter(
@@ -341,7 +351,7 @@ export class InstanceContextService {
 			seen,
 			// Said out loud rather than left to inference. A cut list that does not say it is cut
 			// reads as the whole story, and the agent would draw conclusions from it.
-			truncated: fresh.length > windowSize || rows.length === entryFetchLimit,
+			truncated: fresh.length > windowSize || arrivals.length === entryFetchLimit,
 		};
 	}
 
@@ -350,13 +360,22 @@ export class InstanceContextService {
 		cursor: InstanceContextCursor | null;
 		now: Date;
 	}): Promise<RunSummary[]> {
+		// Consecutive windows abut rather than overlap: a delta starts exactly where the last one
+		// ended and closes at this read, so a run is summarised once and a second block carries
+		// additions only. Re-reading a lag window instead would report the same runs twice, and the
+		// counts of two blocks disagreeing is the failure the delta exists to avoid.
+		//
+		// The cost is stated rather than hidden: a run whose row commits after this read but whose
+		// `stoppedAt` precedes it is never summarised. Runs have no gap-tolerant cursor the way
+		// entries do, because the aggregate returns counts rather than the ids to de-duplicate on.
 		const stoppedAfter = input.cursor
-			? new Date(Date.parse(input.cursor.runsThrough) - runLagMs)
+			? new Date(Date.parse(input.cursor.runsThrough))
 			: new Date(input.now.getTime() - maxAgeMs);
 
 		return await this.executionRepository.summariseRunsForProjects({
 			projectIds: input.projectIds,
 			stoppedAfter,
+			stoppedBefore: input.now,
 			workflowLimit: runWorkflowCap,
 		});
 	}
