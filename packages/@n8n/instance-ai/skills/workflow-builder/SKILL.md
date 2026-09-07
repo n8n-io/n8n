@@ -259,6 +259,9 @@ follow its build → publish → assign steps.
     pass the real n8n `workflowId` on the first `build-workflow` call only when
     you wrote the file yourself. Never pass local SDK workflow IDs as n8n
     workflow IDs.
+    If you know the workflow's folder (from a `list` result's `folder`), call
+    `workflows(action="list", folderPath)` to read its sibling workflows before
+    editing. Match the project's existing naming, node choices, and structure.
 12. After a successful direct `build-workflow` result, if the tool output
     contains `postBuildFlow.required: true`, follow the inlined
     `postBuildFlow.instructions` from that output (do not load `post-build-flow`
