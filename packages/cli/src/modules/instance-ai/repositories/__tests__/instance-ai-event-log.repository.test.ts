@@ -216,4 +216,59 @@ describe('InstanceAiEventLogRepository', () => {
 			expect(createQueryBuilder).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('getSetupItemsSnapshots', () => {
+		it('keeps the latest snapshot per workflow and drops unparseable items', async () => {
+			const repo = Object.create(
+				InstanceAiEventLogRepository.prototype,
+			) as InstanceAiEventLogRepository;
+			const snapshot = (seq: number, workflowId: string, items: unknown[]) => ({
+				seq,
+				runId: 'run-1',
+				createdAt: new Date('2026-07-01T10:00:00.000Z'),
+				payload: JSON.stringify({
+					type: 'setup-items',
+					runId: 'run-1',
+					agentId: 'a1',
+					payload: { workflowId, items },
+				}),
+			});
+			const slack = {
+				id: 'wf-1:credential:slackApi',
+				kind: 'credential',
+				credentialType: 'slackApi',
+			};
+			const gmail = {
+				id: 'wf-1:credential:gmailOAuth2',
+				kind: 'credential',
+				credentialType: 'gmailOAuth2',
+			};
+			const find = vi
+				.fn()
+				.mockResolvedValue([
+					snapshot(1, 'wf-1', [slack]),
+					snapshot(2, 'wf-2', [
+						{ id: 'wf-2:parameters:N', kind: 'parameters', nodeName: 'N', parameterNames: [] },
+					]),
+					snapshot(3, 'wf-1', [slack, gmail, null]),
+				] as InstanceAiEventLogEntry[]);
+			Object.defineProperty(repo, 'find', { value: find, configurable: true });
+
+			const snapshots = await repo.getSetupItemsSnapshots('thread-1');
+
+			expect(find).toHaveBeenCalledWith({
+				where: { threadId: 'thread-1', type: 'setup-items' },
+				order: { seq: 'ASC' },
+			});
+			expect(snapshots).toEqual([
+				{
+					workflowId: 'wf-2',
+					items: [
+						{ id: 'wf-2:parameters:N', kind: 'parameters', nodeName: 'N', parameterNames: [] },
+					],
+				},
+				{ workflowId: 'wf-1', items: [slack, gmail] },
+			]);
+		});
+	});
 });

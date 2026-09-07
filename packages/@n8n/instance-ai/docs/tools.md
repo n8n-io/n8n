@@ -409,6 +409,18 @@ confirmation card.
 `nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
 actively dismissed and the agent must not re-open (see `reopenSkipped`).
 
+**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): the tool does not suspend.
+It analyzes the whole workflow (bound slots included), publishes the `setup-items`
+snapshot, tells the host the build's setup is handled, and returns
+`{ success: true, announced: true, workflowId, open, configured, message }`. `open`
+lists what the user still has to do in the panel, `configured` what is already
+bound. The agent summarizes `open` and ends its turn; the user completes items in
+the panel, and each new user turn carries a `<workflow-setup-state>` block that
+recomputes the state and names what settled since the agent's previous look. The
+validation steps (credential hints, plain generic auth, credential destination
+review) run before the announcement, and the resume paths (`apply`,
+`test-trigger`, decline) are unchanged for a card that was already open.
+
 ### `workflows(action="publish")`
 
 Publish a workflow version to production. Makes it active — it will run on triggers.

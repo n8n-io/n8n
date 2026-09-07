@@ -83,6 +83,12 @@ describe('cleanStoredUserMessage', () => {
 		expect(cleanStoredUserMessage(stored)).toBe('User reply');
 	});
 
+	it('strips <workflow-setup-state> block', () => {
+		const stored =
+			'<workflow-setup-state>\nSetup state.\n{"workflows":[]}\n</workflow-setup-state>\n\nUser reply';
+		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
 	it('returns null for auto-follow-up message', () => {
 		expect(cleanStoredUserMessage(AUTO_FOLLOW_UP_MESSAGE)).toBeNull();
 	});

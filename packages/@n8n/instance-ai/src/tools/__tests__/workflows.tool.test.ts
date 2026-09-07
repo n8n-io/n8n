@@ -3686,3 +3686,227 @@ describe('node usage', () => {
 		});
 	});
 });
+
+describe('workflows(action="setup") — setup panel', () => {
+	const openSlack = {
+		node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+		credentialType: 'slackApi',
+		credentialNeedsAction: true,
+		needsAction: true,
+	};
+	const boundGmail = {
+		node: {
+			name: 'Gmail',
+			type: 'n8n-nodes-base.gmail',
+			credentials: { gmailOAuth2: { id: 'cred-1', name: 'Work Gmail' } },
+		},
+		credentialType: 'gmailOAuth2',
+		credentialNeedsAction: false,
+		needsAction: false,
+	};
+	const sheetParams = {
+		node: { name: 'Sheet', type: 'n8n-nodes-base.googleSheets' },
+		parameterIssues: { documentId: ['missing'] },
+		needsAction: true,
+	};
+
+	function panelContext(overrides: Parameters<typeof createMockContext>[0] = {}) {
+		const emitter = {
+			emit: vi.fn(() => true),
+			merge: vi.fn(() => true),
+			workflowIds: vi.fn(() => []), lastWorkflowId: vi.fn(),
+		};
+		const markWorkflowSetupHandled = vi.fn().mockResolvedValue(undefined);
+		const context = createMockContext({
+			setupItemsEmitter: emitter,
+			markWorkflowSetupHandled,
+			...overrides,
+		});
+		return { context, emitter, markWorkflowSetupHandled };
+	}
+
+	beforeEach(() => {
+		(analyzeWorkflow as Mock).mockReset();
+	});
+
+	it('announces the whole checklist and returns instead of suspending', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([openSlack, boundGmail, sheetParams]);
+		const { context, emitter, markWorkflowSetupHandled } = panelContext();
+		const suspend = vi.fn();
+
+		const tool = createWorkflowsTool(context, 'full');
+		const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+			suspend,
+			resumeData: undefined,
+		} as never);
+
+		expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+			includeSettled: true,
+		});
+		expect(suspend).not.toHaveBeenCalled();
+		expect(emitter.emit).toHaveBeenCalledWith('wf1', [
+			expect.objectContaining({
+				id: 'wf1:credential:slackApi',
+				nodeBindings: [{ nodeName: 'Slack' }],
+			}),
+			expect.objectContaining({
+				id: 'wf1:credential:gmailOAuth2',
+				nodeBindings: [{ nodeName: 'Gmail' }],
+			}),
+			expect.objectContaining({ id: 'wf1:parameters:Sheet', parameterNames: ['documentId'] }),
+		]);
+		expect(markWorkflowSetupHandled).toHaveBeenCalledWith('wf1');
+		expect(result).toMatchObject({
+			success: true,
+			announced: true,
+			workflowId: 'wf1',
+			open: [
+				{ kind: 'credential', credentialType: 'slackApi', nodes: ['Slack'] },
+				{ kind: 'parameters', nodeName: 'Sheet', parameterNames: ['documentId'] },
+			],
+			configured: [{ kind: 'credential', credentialType: 'gmailOAuth2', nodes: ['Gmail'] }],
+		});
+		expect((result as { message: string }).message).toContain('Finish your turn now');
+	});
+
+	it('does not scope the announcement to the nodes the last build changed', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([openSlack, sheetParams]);
+		const { context, emitter } = panelContext({
+			workflowBuildContext: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workItemId: 'wi-1',
+				workflowTaskService: {
+					getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue({
+						workflowId: 'wf1',
+						runId: 'run-1',
+						changedNodeNames: ['Sheet'],
+					}),
+				},
+			} as never,
+			runId: 'run-1',
+		});
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend: vi.fn(), resumeData: undefined } as never,
+		);
+
+		expect((emitter.emit as Mock).mock.calls[0][1] as unknown[]).toHaveLength(2);
+		expect((result as { open: unknown[] }).open).toHaveLength(2);
+	});
+
+	it('tells the agent the workflow is ready when nothing is open', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([boundGmail]);
+		const { context, emitter } = panelContext();
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend: vi.fn(), resumeData: undefined } as never,
+		);
+
+		expect(emitter.emit).toHaveBeenCalledWith('wf1', [
+			expect.objectContaining({ id: 'wf1:credential:gmailOAuth2' }),
+		]);
+		expect(result).toMatchObject({ success: true, announced: true, open: [] });
+		expect((result as { message: string }).message).toContain('workflow is ready');
+	});
+
+	it('still reviews a templated credential destination before announcing', async () => {
+		const fixture = templatedSetupFixture({ testUrl: 'https://api.example.com/me' });
+		(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
+		const { context, emitter } = panelContext();
+		const suspend = vi.fn();
+
+		await executeTool(createWorkflowsTool(context, 'full'), fixture.input, {
+			suspend,
+			resumeData: undefined,
+		} as never);
+
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Review where this credential will be used' }),
+		);
+		expect(emitter.emit).not.toHaveBeenCalled();
+	});
+
+	it('announces once the credential destination is approved', async () => {
+		const fixture = templatedSetupFixture({ testUrl: 'https://api.example.com/me' });
+		(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
+		const { context, emitter } = panelContext({
+			grantSessionToolApproval: vi.fn().mockResolvedValue(undefined),
+		});
+		const suspend = vi.fn();
+
+		const result = await executeTool(createWorkflowsTool(context, 'full'), fixture.input, {
+			suspend,
+			resumeData: { approved: true, credentialDestination: { origin: 'https://api.example.com' } },
+		} as never);
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(emitter.emit).toHaveBeenCalledTimes(1);
+		expect(result).toMatchObject({ announced: true });
+	});
+
+	it('still rejects plain generic auth on a new HTTP credential before announcing', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([
+			{
+				node: { name: 'HTTP', type: 'n8n-nodes-base.httpRequest' },
+				credentialType: 'httpBearerAuth',
+				credentialNeedsAction: true,
+				needsAction: true,
+				existingCredentials: [],
+			},
+		]);
+		const { context, emitter } = panelContext();
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend: vi.fn(), resumeData: undefined } as never,
+		);
+
+		expect(result).toMatchObject({ error: 'plain_generic_auth' });
+		expect(emitter.emit).not.toHaveBeenCalled();
+	});
+
+	it('leaves the legacy resume paths untouched for an already-suspended card', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([]);
+		const { context, emitter } = panelContext();
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{
+				suspend: vi.fn(),
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					nodeParameters: { Slack: { channel: '#ops' } },
+				},
+			} as never,
+		);
+
+		expect(applyNodeChanges).toHaveBeenCalled();
+		expect(result).not.toMatchObject({ announced: true });
+		expect(emitter.emit).not.toHaveBeenCalled();
+	});
+
+	it('keeps the suspending card while the panel is off', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([openSlack]);
+		const suspend = vi.fn();
+
+		await executeTool(
+			createWorkflowsTool(createMockContext(), 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend, resumeData: undefined } as never,
+		);
+
+		expect(analyzeWorkflow).toHaveBeenCalledWith(expect.anything(), 'wf1', undefined, {});
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Configure credentials for your workflow' }),
+		);
+	});
+});

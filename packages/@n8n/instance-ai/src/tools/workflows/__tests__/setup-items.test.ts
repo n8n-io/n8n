@@ -484,3 +484,57 @@ describe('buildSetupItemsFromSetupRequests', () => {
 		expect(items[0]).toMatchObject({ credentialType: 'httpTemplatedCustomAuth', setupHint });
 	});
 });
+
+describe('createSetupItemsEmitter — seeded from persisted snapshots', () => {
+	const slack = {
+		id: 'wf-1:credential:slackApi',
+		kind: 'credential' as const,
+		credentialType: 'slackApi',
+		nodeBindings: [{ nodeName: 'Slack' }],
+	};
+
+	function seededEmitter() {
+		const published: InstanceAiEvent[] = [];
+		const emitter = createSetupItemsEmitter({
+			eventBus: { publish: (_threadId, event) => published.push(event) },
+			threadId: 'thread-1',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			initialSnapshots: [
+				{ workflowId: 'wf-0', items: [] },
+				{ workflowId: 'wf-1', items: [slack] },
+			],
+		});
+		return { emitter, published };
+	}
+
+	it('publishes nothing for a recomputed list that matches the persisted snapshot', () => {
+		const { emitter, published } = seededEmitter();
+
+		expect(emitter.emit('wf-1', [{ ...slack }])).toBe(false);
+		expect(published).toEqual([]);
+	});
+
+	it('merges onto the persisted snapshot from an earlier run', () => {
+		const { emitter, published } = seededEmitter();
+
+		emitter.merge('wf-1', [
+			{ id: 'wf-1:credential:gmailOAuth2', kind: 'credential', credentialType: 'gmailOAuth2' },
+		]);
+
+		expect(published).toHaveLength(1);
+		expect(published[0].type === 'setup-items' && published[0].payload.items).toEqual([
+			slack,
+			{ id: 'wf-1:credential:gmailOAuth2', kind: 'credential', credentialType: 'gmailOAuth2' },
+		]);
+	});
+
+	it('lists known workflows with the most recently announced last', () => {
+		const { emitter } = seededEmitter();
+		expect(emitter.workflowIds()).toEqual(['wf-0', 'wf-1']);
+
+		emitter.emit('wf-0', [{ ...slack, id: 'wf-0:credential:slackApi' }]);
+
+		expect(emitter.workflowIds()).toEqual(['wf-1', 'wf-0']);
+	});
+});

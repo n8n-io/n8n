@@ -249,6 +249,11 @@ export class DurableEventLog {
 		return await this.repo.getForRuns(threadId, runIds);
 	}
 
+	/** Latest persisted setup panel snapshot per workflow (see repository). */
+	async getSetupItemsSnapshots(threadId: string) {
+		return await this.repo.getSetupItemsSnapshots(threadId);
+	}
+
 	/**
 	 * The thread's still-open streamed segments, read from the coalesce buffers.
 	 * SYNCHRONOUS on purpose: the SSE bootstrap serves these in its synchronous

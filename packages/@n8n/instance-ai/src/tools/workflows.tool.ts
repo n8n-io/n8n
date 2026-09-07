@@ -32,6 +32,8 @@ import {
 	rememberCurrentWorkflowChecksum,
 	rememberObservedWorkflowChecksum,
 } from './workflows/observed-workflow-checksums';
+import { isSetupPanelEnabled } from './workflows/setup-items';
+import { describeSetupItem, recordWorkflowSetupState } from './workflows/setup-panel-state';
 import {
 	completedSetupSubjects,
 	describeSkippedSetup,
@@ -1371,6 +1373,49 @@ async function resolveSetupScopeNodeNames(
 	}
 }
 
+const SETUP_PANEL_ANNOUNCED_GUIDANCE =
+	'The setup panel next to the chat now lists what this workflow still needs (`open`); nothing is ' +
+	'waiting on you and no card is open. Finish your turn now: tell the user in one or two sentences ' +
+	'what to configure in the panel — name the services and any values — then stop. Do not call setup ' +
+	'again for this workflow, do not call `credentials(action="setup")`, and do not tell the user to ' +
+	'open the editor or canvas. Items under `configured` are already done; mention them only if asked.';
+
+const SETUP_PANEL_NOTHING_OPEN_GUIDANCE =
+	'Nothing in this workflow needs setup: every credential is connected and no parameter is ' +
+	'unresolved. Tell the user the workflow is ready and finish your turn. Do not call setup again ' +
+	'for this workflow.';
+
+/**
+ * Setup panel v2 replacement for the setup card: publish the workflow's
+ * checklist, tell the host this build's setup is handled, and hand the agent
+ * what to summarize. Run-independent on purpose — the panel shows the whole
+ * workflow, not the nodes the last build touched.
+ */
+async function announceWorkflowSetup(
+	context: InstanceAiContext,
+	workflowId: string,
+	analyzedRequests: readonly SetupRequest[],
+) {
+	const summary = await recordWorkflowSetupState(context, workflowId, analyzedRequests);
+	try {
+		await context.markWorkflowSetupHandled?.(workflowId);
+	} catch (error) {
+		context.logger?.warn('Failed to mark workflow setup as handled', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+	return {
+		success: true,
+		announced: true,
+		workflowId,
+		open: summary.open.map(describeSetupItem),
+		configured: summary.configured.map(describeSetupItem),
+		message:
+			summary.open.length > 0 ? SETUP_PANEL_ANNOUNCED_GUIDANCE : SETUP_PANEL_NOTHING_OPEN_GUIDANCE,
+	};
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
@@ -1397,12 +1442,16 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null || destinationDecision !== undefined) {
-		const allSetupRequests = await analyzeWorkflow(
-			context,
-			input.workflowId,
-			undefined,
-			preferNewCredentialOptions(input),
-		);
+		// The setup panel lists bound slots too (rendered as done), so its snapshot
+		// needs the settled requests the card logic below must not see.
+		const setupPanelEnabled = isSetupPanelEnabled(context);
+		const analyzedRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
+			...preferNewCredentialOptions(input),
+			...(setupPanelEnabled ? { includeSettled: true } : {}),
+		});
+		const allSetupRequests = setupPanelEnabled
+			? analyzedRequests.filter((request) => !!request.needsAction)
+			: analyzedRequests;
 
 		// The user asked to come back to something they skipped, so that decision no longer
 		// holds — drop it before partitioning so the card renders again. Scoped to what they
@@ -1541,6 +1590,12 @@ async function handleSetup(
 		);
 		if (destination) {
 			return await suspendForCredentialDestination(ctx, state, input.workflowId, destination);
+		}
+
+		// Setup panel v2: announce the final checklist and return. The user
+		// completes it in the panel; the turn ends with the agent's summary.
+		if (setupPanelEnabled) {
+			return await announceWorkflowSetup(context, input.workflowId, analyzedRequests);
 		}
 
 		if (setupRequests.length === 0) {

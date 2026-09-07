@@ -1313,6 +1313,13 @@ export interface InstanceAiContext {
 	 */
 	setupItemsEmitter?: SetupItemsEmitter;
 	/**
+	 * Setup panel v2: the setup tool announced a workflow's final checklist
+	 * instead of suspending, so the host must treat that build's setup as
+	 * handled and not route a `<workflow-setup-required>` follow-up for it.
+	 * Wired by the host only while the setup panel flag is on.
+	 */
+	markWorkflowSetupHandled?: (workflowId: string) => Promise<void>;
+	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
 	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
 	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
@@ -1395,6 +1402,8 @@ export interface SetupItemsEmitter {
 	 * artifact — the workflow the panel follows. Undefined before the first save.
 	 */
 	lastWorkflowId(): string | undefined;
+	/** Workflows with a known snapshot, most recently announced last. */
+	workflowIds(): string[];
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -1837,6 +1846,8 @@ export interface OrchestrationContext {
 	messageGroupId?: string;
 	userId: string;
 	projectId?: string;
+	/** Setup panel v2 flag, mirrored from the domain context's `setupItemsEmitter` presence. */
+	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
 	checkpointStore?: CheckpointStore;

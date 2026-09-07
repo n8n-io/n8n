@@ -35,10 +35,22 @@ export function createSetupItemsEmitter(options: {
 	threadId: string;
 	runId: string;
 	agentId: string;
+	/**
+	 * The thread's latest persisted snapshot per workflow, oldest first. Seeds
+	 * the dedupe cache so a run that recomputes an unchanged list publishes
+	 * nothing, and lets `merge` build on a snapshot from an earlier run.
+	 */
+	initialSnapshots?: ReadonlyArray<{ workflowId: string; items: InstanceAiSetupItem[] }>;
 }): SetupItemsEmitter {
 	const { eventBus, threadId, runId, agentId } = options;
 	const lastSnapshots = new Map<string, { fingerprint: string; items: InstanceAiSetupItem[] }>();
 	let lastWorkflowId: string | undefined;
+	for (const snapshot of options.initialSnapshots ?? []) {
+		lastSnapshots.set(snapshot.workflowId, {
+			fingerprint: fingerprint(snapshot.items),
+			items: snapshot.items,
+		});
+	}
 
 	const publish = (workflowId: string, items: InstanceAiSetupItem[]): boolean => {
 		const next = fingerprint(items);
@@ -51,6 +63,8 @@ export function createSetupItemsEmitter(options: {
 		});
 		// Cache only what was published, so a failed publish is retried by the
 		// next identical snapshot instead of being treated as already sent.
+		// Re-insert so the most recently announced workflow is last.
+		lastSnapshots.delete(workflowId);
 		lastSnapshots.set(workflowId, { fingerprint: next, items });
 		return true;
 	};
@@ -63,6 +77,7 @@ export function createSetupItemsEmitter(options: {
 			lastWorkflowId = workflowId;
 			return publish(workflowId, items);
 		},
+		workflowIds: () => [...lastSnapshots.keys()],
 		merge(workflowId, items) {
 			const byId = new Map<string, InstanceAiSetupItem>();
 			for (const item of lastSnapshots.get(workflowId)?.items ?? []) byId.set(item.id, item);

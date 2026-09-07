@@ -851,6 +851,7 @@ describe('credentials tool', () => {
 				emit: vi.fn(() => true),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn<() => string | undefined>(() => undefined),
+				workflowIds: vi.fn(() => []),
 			};
 			const context = createMockContext({
 				setupItemsEmitter: emitter,

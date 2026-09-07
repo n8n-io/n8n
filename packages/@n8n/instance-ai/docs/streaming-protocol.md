@@ -322,9 +322,12 @@ Emitted only while the setup panel flag is on, through the host-wired
 `setupItemsEmitter` on the domain context. `build-workflow` replaces the
 snapshot on every successful save (open credential slots fanned out to their
 nodes, slots already bound to a stored credential, and nodes with unresolved
-parameters); `credentials(action="setup")` re-analyses the saved workflow and
-merges the result, with the announced `reason`/`setupHint` applied, into the
-last snapshot. The emitter drops a snapshot whose content did not change.
+parameters); `workflows(action="setup")` publishes the same whole-workflow
+snapshot instead of opening a card; `credentials(action="setup")` re-analyses
+the saved workflow and merges the result, with the announced `reason`/`setupHint`
+applied, into the last snapshot. The emitter is seeded with the thread's
+persisted snapshots at run start and drops a snapshot whose content did not
+change, so a recomputed, unchanged list publishes nothing.
 
 ```json
 {

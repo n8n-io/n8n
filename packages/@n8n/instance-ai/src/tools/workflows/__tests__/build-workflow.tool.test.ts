@@ -700,6 +700,7 @@ describe('createBuildWorkflowTool', () => {
 				emit: vi.fn(() => true),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn(),
+				workflowIds: vi.fn(() => []),
 			};
 			const { context, filePath } = makeContext({
 				source: 'workflow source from workspace',
@@ -743,6 +744,7 @@ describe('createBuildWorkflowTool', () => {
 				emit: vi.fn(() => true),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn(),
+				workflowIds: vi.fn(() => []),
 			};
 			const { context, filePath } = makeContext({
 				source: 'workflow source from workspace',
@@ -792,6 +794,7 @@ describe('createBuildWorkflowTool', () => {
 				}),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn(),
+				workflowIds: vi.fn(() => []),
 			};
 			const { context, filePath } = makeContext({
 				source: 'workflow source from workspace',
