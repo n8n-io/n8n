@@ -24,6 +24,7 @@ import {
 	buildCollapsedGroupByNodeId,
 	fanBoundaryEdgesToInteriorEntries,
 	remapCollapsedGroupConnections,
+	remapGroupNodeConnections,
 } from './useCanvasMapping.groups';
 import {
 	applyOffset,
@@ -224,7 +225,16 @@ export function useCanvasMapping({
 
 	const mappedConnections = computed<CanvasConnection[]>(() => {
 		const raw = mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []);
-		const remapped = remapCollapsedGroupConnections(raw, collapsedGroupByNodeId.value);
+		// A connection to a group names the group's node id, but the card that
+		// draws the group is `group:<id>`. Re-point it, or VueFlow drops the edge.
+		const onCards =
+			getGroupEntryNodeNames === undefined
+				? raw
+				: remapGroupNodeConnections(raw, (id) => {
+						const node = nodes.value.find((candidate) => candidate.id === id);
+						return node !== undefined && isGroupNode(node);
+					});
+		const remapped = remapCollapsedGroupConnections(onCards, collapsedGroupByNodeId.value);
 		// An expanded group's boundary edge ends at the card, which says nothing
 		// about which interior nodes run. Fan it to the interior entry nodes.
 		const fanned =

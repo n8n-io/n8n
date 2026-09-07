@@ -3054,6 +3054,78 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('isConnectionAllowed', () => {
+		it('should allow a connection into a group node', () => {
+			// The group card carries the group's own main input, so a node must be
+			// able to connect to it. This is what a drag onto the card does.
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const sourceNode = mockNode({ id: '1', type: 'sourceType', name: 'Source Node' });
+			const groupNode = mockNode({ id: 'g1', type: GROUP_NODE_TYPE, name: 'Group' });
+
+			nodeTypesStore.getNodeType = vi.fn(
+				(nodeTypeName: string) =>
+					({
+						[sourceNode.type]: mockNodeTypeDescription({
+							name: sourceNode.type,
+							outputs: [NodeConnectionTypes.Main],
+						}),
+						[GROUP_NODE_TYPE]: mockNodeTypeDescription({
+							name: GROUP_NODE_TYPE,
+							inputs: [NodeConnectionTypes.Main],
+							outputs: [NodeConnectionTypes.Main],
+						}),
+					})[nodeTypeName],
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name: string) => ({ [sourceNode.name]: sourceNode, [groupNode.name]: groupNode })[name],
+			);
+
+			const { isConnectionAllowed } = useCanvasOperations();
+
+			expect(
+				isConnectionAllowed(
+					sourceNode,
+					groupNode,
+					{ node: sourceNode.name, type: NodeConnectionTypes.Main, index: 0 },
+					{ node: groupNode.name, type: NodeConnectionTypes.Main, index: 0 },
+				),
+			).toBe(true);
+		});
+
+		it('should allow a connection out of a group node', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const groupNode = mockNode({ id: 'g1', type: GROUP_NODE_TYPE, name: 'Group' });
+			const targetNode = mockNode({ id: '2', type: 'targetType', name: 'Target Node' });
+
+			nodeTypesStore.getNodeType = vi.fn(
+				(nodeTypeName: string) =>
+					({
+						[GROUP_NODE_TYPE]: mockNodeTypeDescription({
+							name: GROUP_NODE_TYPE,
+							inputs: [NodeConnectionTypes.Main],
+							outputs: [NodeConnectionTypes.Main],
+						}),
+						[targetNode.type]: mockNodeTypeDescription({
+							name: targetNode.type,
+							inputs: [NodeConnectionTypes.Main],
+						}),
+					})[nodeTypeName],
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name: string) => ({ [groupNode.name]: groupNode, [targetNode.name]: targetNode })[name],
+			);
+
+			const { isConnectionAllowed } = useCanvasOperations();
+
+			expect(
+				isConnectionAllowed(
+					groupNode,
+					targetNode,
+					{ node: groupNode.name, type: NodeConnectionTypes.Main, index: 0 },
+					{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 },
+				),
+			).toBe(true);
+		});
+
 		it('should return false if target node type does not have inputs', () => {
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 			const sourceNode = mockNode({

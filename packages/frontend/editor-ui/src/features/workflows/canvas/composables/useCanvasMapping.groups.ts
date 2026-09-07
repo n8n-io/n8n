@@ -374,6 +374,50 @@ export function buildCollapsedGroupByNodeId(
  * aggregate over all of them.
  */
 /**
+ * Re-points an edge that names a group node onto that group's card.
+ *
+ * A group node lives in `workflow.nodes`, so a connection to it stores the
+ * group's node id. The card that draws the group is a separate VueFlow node
+ * with the id `group:<id>`, and the group node itself is not on the canvas. An
+ * edge left pointing at the raw node id therefore names a node VueFlow does not
+ * have, and VueFlow drops it: the connection persists but nothing is drawn.
+ *
+ * Only the group-node path calls this.
+ */
+export function remapGroupNodeConnections(
+	connections: CanvasConnection[],
+	isGroupNodeId: (id: string) => boolean,
+): CanvasConnection[] {
+	return connections.map((conn) => {
+		const sourceIsGroup = isGroupNodeId(conn.source);
+		const targetIsGroup = isGroupNodeId(conn.target);
+		if (!sourceIsGroup && !targetIsGroup) return conn;
+
+		const remapped = {
+			source: sourceIsGroup ? createCanvasGroupNodeId(conn.source) : conn.source,
+			sourceHandle: sourceIsGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle,
+			target: targetIsGroup ? createCanvasGroupNodeId(conn.target) : conn.target,
+			targetHandle: targetIsGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle,
+		};
+
+		// Keep the real endpoints, so deleting the drawn edge deletes the stored one.
+		const canonical = {
+			source: conn.source,
+			target: conn.target,
+			sourceHandle: conn.sourceHandle,
+			targetHandle: conn.targetHandle,
+		};
+
+		return {
+			...conn,
+			id: createCanvasConnectionId(remapped),
+			...remapped,
+			data: conn.data ? { ...conn.data, canonicals: [canonical] } : undefined,
+		};
+	});
+}
+
+/**
  * Fans a boundary edge from an expanded group's card to the interior nodes it
  * really reaches.
  *

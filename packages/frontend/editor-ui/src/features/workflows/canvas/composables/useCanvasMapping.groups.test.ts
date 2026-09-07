@@ -16,6 +16,7 @@ import {
 	getGroupCardHeight,
 	mapGroupsToVueFlowNodes,
 	remapCollapsedGroupConnections,
+	remapGroupNodeConnections,
 	titleBarFromNodesRect,
 } from './useCanvasMapping.groups';
 import {
@@ -808,5 +809,82 @@ describe('fanBoundaryEdgesToInteriorEntries', () => {
 
 		// Two boundary edges to one group still fan to each entry once.
 		expect(out.filter((conn) => conn.target === 'entry-a')).toHaveLength(1);
+	});
+});
+
+describe('remapGroupNodeConnections', () => {
+	const isGroup = (id: string) => id === 'g1';
+
+	it('re-points an edge into a group onto the group card', () => {
+		// The connection stores the group's node id, but the card that draws the
+		// group is `group:<id>`. Left alone, VueFlow drops the edge: the
+		// connection persists and nothing is drawn.
+		const out = remapGroupNodeConnections(
+			[
+				{
+					id: 'a->g1',
+					source: 'a',
+					sourceHandle: 'outputs/main/0',
+					target: 'g1',
+					targetHandle: 'inputs/main/0',
+				},
+			],
+			isGroup,
+		);
+
+		expect(out[0].target).toBe(createCanvasGroupNodeId('g1'));
+		expect(out[0].targetHandle).toBe(CANVAS_NODE_GROUP_HANDLE_LEFT);
+		expect(out[0].source).toBe('a');
+	});
+
+	it('re-points an edge out of a group onto the group card', () => {
+		const out = remapGroupNodeConnections(
+			[
+				{
+					id: 'g1->b',
+					source: 'g1',
+					sourceHandle: 'outputs/main/0',
+					target: 'b',
+					targetHandle: 'inputs/main/0',
+				},
+			],
+			isGroup,
+		);
+
+		expect(out[0].source).toBe(createCanvasGroupNodeId('g1'));
+		expect(out[0].sourceHandle).toBe(CANVAS_NODE_GROUP_HANDLE_RIGHT);
+		expect(out[0].target).toBe('b');
+	});
+
+	it('keeps the real endpoints, so deleting the drawn edge deletes the stored one', () => {
+		const out = remapGroupNodeConnections(
+			[
+				{
+					id: 'a->g1',
+					source: 'a',
+					sourceHandle: 'outputs/main/0',
+					target: 'g1',
+					targetHandle: 'inputs/main/0',
+					data: { source: { type: 'main', index: 0 }, target: { type: 'main', index: 0 } },
+				},
+			],
+			isGroup,
+		);
+
+		expect(out[0].data?.canonicals).toEqual([
+			{ source: 'a', target: 'g1', sourceHandle: 'outputs/main/0', targetHandle: 'inputs/main/0' },
+		]);
+	});
+
+	it('leaves an edge between two ordinary nodes untouched', () => {
+		const plain = {
+			id: 'a->b',
+			source: 'a',
+			sourceHandle: 'outputs/main/0',
+			target: 'b',
+			targetHandle: 'inputs/main/0',
+		};
+
+		expect(remapGroupNodeConnections([plain], isGroup)[0]).toBe(plain);
 	});
 });
