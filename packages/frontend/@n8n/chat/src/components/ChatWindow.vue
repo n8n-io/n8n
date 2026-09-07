@@ -26,7 +26,7 @@ function toggle() {
 				<Chat />
 			</div>
 		</Transition>
-		<div class="chat-window-toggle" @click="toggle">
+		<button type="button" class="chat-window-toggle" @click="toggle">
 			<Transition name="chat-window-toggle-transition" mode="out-in">
 				<IconChat v-if="!isOpen" height="32" width="32" />
 				<IconChevronDown v-else height="32" width="32" />
@@ -36,6 +36,8 @@ function toggle() {
 </template>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion' as motion;
+
 .chat-window-wrapper {
 	position: fixed;
 	display: flex;
@@ -81,6 +83,7 @@ function toggle() {
 		transition:
 			transform var(--chat--transition-duration) ease,
 			background var(--chat--transition-duration) ease;
+		@include motion.reduced-motion;
 
 		&:hover,
 		&:focus {
@@ -101,6 +104,7 @@ function toggle() {
 		transition:
 			transform var(--chat--transition-duration) ease,
 			opacity var(--chat--transition-duration) ease;
+		@include motion.reduced-motion;
 	}
 
 	&-enter-from,
@@ -114,6 +118,7 @@ function toggle() {
 	&-enter-active,
 	&-leave-active {
 		transition: opacity var(--chat--transition-duration) ease;
+		@include motion.reduced-motion;
 	}
 
 	&-enter-from,

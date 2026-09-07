@@ -414,6 +414,7 @@ function adjustTextAreaHeight() {
 </template>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion' as motion;
 .chat-input {
 	display: flex;
 	justify-content: center;
@@ -475,6 +476,7 @@ function adjustTextAreaHeight() {
 	align-items: center;
 	justify-content: center;
 	transition: all var(--chat--transition-duration, 0.15s) ease;
+	@include motion.reduced-motion;
 	margin: 8px;
 
 	svg {
