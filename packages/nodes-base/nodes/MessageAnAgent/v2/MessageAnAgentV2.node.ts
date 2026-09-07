@@ -15,10 +15,11 @@ export class MessageAnAgentV2 implements INodeType {
 		this.description = {
 			...thisBaseDescription,
 			...sharedVersionDescription,
-			// v3 adds schema-from-example for structured output; the differences
+			// v3 adds schema-from-example for structured output; v3.1 adds the
+			// Session settings with a chat-trigger-aware default. The differences
 			// are gated via `@version` displayOptions and typeVersion checks in
-			// the shared execute, so one class serves both versions.
-			version: [2, 3],
+			// the shared execute, so one class serves all versions.
+			version: [2, 3, 3.1],
 			properties: [
 				// Set by the node-creator agent picker ('referenced' | 'inline'), not
 				// editable in the NDV. Kept hidden with no displayOptions so saves

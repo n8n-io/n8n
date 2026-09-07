@@ -1,9 +1,16 @@
+import { getCachedCatalog } from '@n8n/agents/catalog';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import type { InstanceAiContext, NodeDescription } from '../../../types';
 import { validateWorkflowConfig } from '../validate-workflow.service';
+
+vi.mock('@n8n/agents/catalog', () => ({
+	getCachedCatalog: vi.fn().mockResolvedValue(undefined),
+}));
+
+const getCachedCatalogMock = vi.mocked(getCachedCatalog);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -82,7 +89,7 @@ function makeNode(overrides: Partial<NodeJSON> = {}): NodeJSON {
  */
 const MANAGED_NODE_CREDENTIAL = {
 	id: null,
-	name: 'n8n credits',
+	name: 'Gateway credits',
 	__aiGatewayManaged: true,
 } as unknown as NonNullable<NodeJSON['credentials']>[string];
 
@@ -242,7 +249,7 @@ describe('validateWorkflowConfig', () => {
 			const node = makeNode({
 				type: 'n8n-nodes-base.openAi',
 				credentials: {
-					openAiApi: { id: AI_GATEWAY_MANAGED_TAG, name: 'n8n Connect' } as unknown as {
+					openAiApi: { id: AI_GATEWAY_MANAGED_TAG, name: 'Gateway credits' } as unknown as {
 						id: string;
 						name: string;
 					},
@@ -909,7 +916,7 @@ describe('validateWorkflowConfig', () => {
 			});
 			expect(
 				result.summary.some(
-					(line) => line.includes('unsupportedCredentialType') && line.includes('n8n credits'),
+					(line) => line.includes('unsupportedCredentialType') && line.includes('Gateway credits'),
 				),
 			).toBe(true);
 		});
@@ -1075,6 +1082,87 @@ describe('validateWorkflowConfig', () => {
 			});
 
 			expect(result.issues[node.name!]?.aiGateway).toBeUndefined();
+		});
+	});
+
+	describe('chat model validation', () => {
+		it('flags deprecated catalog models before execution', async () => {
+			getCachedCatalogMock.mockResolvedValueOnce({
+				google: {
+					id: 'google',
+					name: 'Google',
+					deprecatedModelIds: ['gemini-2.5-flash', 'models/gemini-2.5-flash'],
+					models: {
+						'gemini-3-flash-preview': {
+							id: 'gemini-3-flash-preview',
+							name: 'Gemini 3 Flash Preview',
+							releaseDate: '2025-12-01',
+							toolCall: true,
+						},
+					},
+				},
+			});
+
+			const context = createMockContext();
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
+				makeDescription({
+					name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					displayName: 'Google Gemini Chat Model',
+				}),
+			);
+			const node = makeNode({
+				name: 'Gemini Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				parameters: {
+					model: { __rl: true, mode: 'id', value: 'models/gemini-2.5-flash' },
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
+
+			expect(result.valid).toBe(false);
+			expect(result.summary.some((line) => line.includes('deprecated'))).toBe(true);
+		});
+
+		it('honors ignoreIssues: ["chatModel"] to suppress chat model validation issues', async () => {
+			getCachedCatalogMock.mockResolvedValueOnce({
+				google: {
+					id: 'google',
+					name: 'Google',
+					deprecatedModelIds: ['gemini-2.5-flash', 'models/gemini-2.5-flash'],
+					models: {
+						'gemini-3-flash-preview': {
+							id: 'gemini-3-flash-preview',
+							name: 'Gemini 3 Flash Preview',
+							releaseDate: '2025-12-01',
+							toolCall: true,
+						},
+					},
+				},
+			});
+
+			const context = createMockContext();
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
+				makeDescription({
+					name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					displayName: 'Google Gemini Chat Model',
+				}),
+			);
+			const node = makeNode({
+				name: 'Gemini Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				parameters: {
+					model: { __rl: true, mode: 'id', value: 'models/gemini-2.5-flash' },
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+				ignoreIssues: ['chatModel'],
+			});
+
+			expect(result.valid).toBe(true);
+			expect(result.issues).toEqual({});
 		});
 	});
 });

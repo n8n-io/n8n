@@ -21,6 +21,7 @@ import {
 import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
 
+import { INSTANCE_ACTIVATED_SETTINGS_KEY } from './instance-activation.service';
 import { OwnershipService } from './ownership.service';
 
 const isStatusRootExecution = {
@@ -226,6 +227,35 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			projectId: project.id,
 			workflowId,
 			userId,
+		});
+
+		await this.recordInstanceActivation(project.id, workflowId, userId, userActivatedAtMs);
+	}
+
+	/**
+	 * Record the instance's activation moment, exactly once, whatever the project type.
+	 *
+	 * The per-user `userActivated` flag above only covers personal projects, so an instance whose
+	 * first success happens in a team project would otherwise never look activated. Guarded by a
+	 * settings row, mirroring `instance.firstProductionFailure`. The row is the whole contract —
+	 * {@link InstanceActivationService} reads it — so there is no accompanying event.
+	 */
+	private async recordInstanceActivation(
+		projectId: string,
+		workflowId: string,
+		userId: string | null,
+		activatedAt: number,
+	): Promise<void> {
+		const alreadyActivated = await this.settingsRepository.findByKey(
+			INSTANCE_ACTIVATED_SETTINGS_KEY,
+		);
+
+		if (alreadyActivated) return;
+
+		await this.settingsRepository.save({
+			key: INSTANCE_ACTIVATED_SETTINGS_KEY,
+			value: JSON.stringify({ workflowId, projectId, userId, timestamp: activatedAt }),
+			loadOnStartup: false,
 		});
 	}
 

@@ -46,6 +46,10 @@ export const INSTANCE_OPTION_LABEL_KEYS: Record<string, BaseTextKey> = {
 	'Manage own': 'instanceRoles.option.manageOwn',
 	'Manage all': 'instanceRoles.option.manageAll',
 	'Manage project roles': 'instanceRoles.option.manageProjectRoles',
+	'Mcp use': 'instanceRoles.option.mcpUse',
+	'Mcp manage': 'instanceRoles.option.mcpManage',
+	'AiAssistant use': 'instanceRoles.option.aiAssistantUse',
+	'AiAssistant manage': 'instanceRoles.option.aiAssistantManage',
 };
 
 /**
@@ -57,6 +61,7 @@ export const INSTANCE_OPTION_LABEL_OVERRIDES: Partial<
 	Record<InstanceResource, Record<string, BaseTextKey>>
 > = {
 	role: { Manage: 'instanceRoles.option.manageAllRoles' },
+	settings: { Manage: 'instanceRoles.option.manageAllSettings' },
 };
 
 /**
@@ -67,8 +72,17 @@ export const INSTANCE_OPTION_LABEL_OVERRIDES: Partial<
 export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 	Record<InstanceResource, Record<string, BaseTextKey>>
 > = {
-	settings: { Manage: 'instanceRoles.description.settings.manage' },
-	user: { Manage: 'instanceRoles.description.user.manage' },
+	settings: {
+		Manage: 'instanceRoles.description.settings.manage',
+		'Mcp use': 'instanceRoles.description.settings.mcpUse',
+		'Mcp manage': 'instanceRoles.description.settings.mcpManage',
+		'AiAssistant use': 'instanceRoles.description.settings.aiAssistantUse',
+		'AiAssistant manage': 'instanceRoles.description.settings.aiAssistantManage',
+	},
+	user: {
+		View: 'instanceRoles.description.user.view',
+		Manage: 'instanceRoles.description.user.manage',
+	},
 	role: {
 		'Manage project roles': 'instanceRoles.description.role.manageProjectRoles',
 		Manage: 'instanceRoles.description.role.manage',
@@ -87,6 +101,10 @@ export const INSTANCE_OPTION_ORDER: string[] = [
 	'View',
 	'Create',
 	'Manage project roles',
+	'Mcp use',
+	'Mcp manage',
+	'AiAssistant use',
+	'AiAssistant manage',
 	'Manage',
 	'Manage own',
 	'Manage all',
@@ -137,6 +155,24 @@ export const ALL_INSTANCE_SCOPES: Scope[] = [
 	...new Set(INSTANCE_SCOPE_GROUP_LIST.flatMap((g) => g.options.flatMap((o) => o.scopes))),
 ];
 
+/**
+ * "Users: View" is baseline behavior every instance role carries — the default
+ * Member role already has it — not something a custom role can opt out of.
+ * Rendered checked and disabled in the editor. `withMandatoryInstanceScopes`
+ * is applied to the form (and on save), not the persisted snapshot, so a
+ * stored role that is missing these scopes stays unsaved until the next save.
+ */
+export function isOptionMandatory(resource: InstanceResource, option: InstanceScopeOption) {
+	return resource === 'user' && option.key === 'View';
+}
+
+const MANDATORY_INSTANCE_SCOPES: readonly Scope[] = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View;
+
+/** Unions in the mandatory scopes (see `isOptionMandatory`) on top of an already-filtered scope list. */
+export function withMandatoryInstanceScopes(scopes: readonly string[]): string[] {
+	return [...new Set([...scopes, ...MANDATORY_INSTANCE_SCOPES])];
+}
+
 export type OptionState = 'checked' | 'indeterminate' | 'unchecked';
 
 /**
@@ -148,6 +184,7 @@ export type OptionState = 'checked' | 'indeterminate' | 'unchecked';
 export const SUPERSEDED_BY: Partial<Record<string, string>> = {
 	'Manage own': 'Manage all',
 	'Manage project roles': 'Manage',
+	View: 'Manage',
 };
 
 /**
@@ -223,14 +260,16 @@ export function resolveOptionState(
 /**
  * Find the option that `option` supersedes within its group, if any. SUPERSEDED_BY
  * maps a sub-option to its superseding option, so the subordinate of a superseding
- * option is the key that points back to it.
+ * option is the key that points back to it. Different resources can reuse the same
+ * superseding key (e.g. "Manage" backs both role's "Manage project roles" and user's
+ * "View"), so the reverse lookup must only consider keys present in this group.
  */
 export function findSubordinateOption(
 	option: InstanceScopeOption,
 	groupOptions: InstanceScopeOption[],
 ): InstanceScopeOption | undefined {
 	const subordinateKey = Object.keys(SUPERSEDED_BY).find(
-		(key) => SUPERSEDED_BY[key] === option.key,
+		(key) => SUPERSEDED_BY[key] === option.key && groupOptions.some((o) => o.key === key),
 	);
 	return subordinateKey ? groupOptions.find((o) => o.key === subordinateKey) : undefined;
 }
@@ -266,20 +305,38 @@ export function toggleOptionInGroup(
 	return [...next];
 }
 
-/** Resource groups whose scopes enable privilege escalation, with the warning to show. */
+const userViewScopes: ReadonlySet<Scope> = new Set(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View);
+
+/**
+ * Resource groups whose scopes enable privilege escalation, with the warning to show.
+ * Entries are checked in order; the first matching scope's message wins.
+ */
 export const ESCALATION_WARNING_SCOPES: Partial<
-	Record<InstanceResource, { scopes: Scope[]; messageKey: BaseTextKey }>
+	Record<InstanceResource, Array<{ scopes: Scope[]; messageKey: BaseTextKey }>>
 > = {
-	user: {
-		scopes: [...GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.Manage],
-		messageKey: 'instanceRoles.warning.manageMembers',
-	},
-	role: {
-		// Only full instance-role management ("Manage all roles") enables self-escalation;
-		// managing project roles alone cannot edit the holder's own instance role.
-		scopes: ['role:manage'],
-		messageKey: 'instanceRoles.warning.manageRoles',
-	},
+	user: [
+		{
+			// Excludes View's `user:read`/`user:list` — looking users up isn't an
+			// escalation risk on its own, only Manage's write scopes are.
+			scopes: GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.Manage.filter(
+				(scope: Scope) => !userViewScopes.has(scope),
+			),
+			messageKey: 'instanceRoles.warning.manageMembers',
+		},
+	],
+	role: [
+		{
+			// Full instance-role management: can edit the holder's own instance role.
+			scopes: ['role:manage'],
+			messageKey: 'instanceRoles.warning.manageRoles',
+		},
+		{
+			// Project-role management alone: can edit the scopes of any custom
+			// project role, including one the holder is themselves assigned in a project.
+			scopes: ['role:manageProject'],
+			messageKey: 'instanceRoles.warning.manageProjectRoles',
+		},
+	],
 };
 
 /** Warning i18n key for a resource group given the current scopes, or undefined. */
@@ -287,8 +344,8 @@ export function getEscalationWarningKey(
 	resource: InstanceResource,
 	scopes: readonly string[],
 ): BaseTextKey | undefined {
-	const cfg = ESCALATION_WARNING_SCOPES[resource];
-	return cfg?.scopes.some((s) => scopes.includes(s)) ? cfg.messageKey : undefined;
+	const cfgs = ESCALATION_WARNING_SCOPES[resource];
+	return cfgs?.find((cfg) => cfg.scopes.some((s) => scopes.includes(s)))?.messageKey;
 }
 
 /** Total number of permission options shown in the instance role editor. */

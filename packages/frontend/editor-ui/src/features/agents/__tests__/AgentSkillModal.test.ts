@@ -5,7 +5,10 @@ import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent } from '@testing-library/vue';
 import { defineComponent, h, onMounted, watch } from 'vue';
-import { AGENT_SKILL_REFERENCE_MAX_COUNT } from '@n8n/api-types';
+import {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+} from '@n8n/api-types';
 
 import AgentSkillModal from '../components/AgentSkillModal.vue';
 import type { AgentSkill } from '../types';
@@ -18,6 +21,11 @@ vi.mock('@n8n/i18n', () => {
 const apiCreateSpy = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: (...args: unknown[]) => apiCreateSpy(...args),
+}));
+
+const { showMessage } = vi.hoisted(() => ({ showMessage: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage }),
 }));
 
 const ModalStub = defineComponent({
@@ -42,7 +50,8 @@ const SkillViewerStub = defineComponent({
 			return Boolean(
 				props.skill?.name?.trim() &&
 					props.skill?.description?.trim() &&
-					props.skill?.instructions?.trim(),
+					props.skill?.instructions?.trim() &&
+					props.skill.instructions.length <= AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 			);
 		}
 		onMounted(() => emit('update:valid', computeValid()));
@@ -139,6 +148,35 @@ describe('AgentSkillModal', () => {
 
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'agents.builder.skills.saveError',
+			message: 'agents.builder.skills.validation.descriptionRequired',
+			type: 'error',
+		});
+	});
+
+	it('explains why overlong instructions cannot be saved', async () => {
+		const onConfirm = vi.fn();
+		const { container } = renderModal({
+			onConfirm,
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'x'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+			},
+		});
+
+		await fireEvent.click(
+			container.querySelector('[data-testid="agent-skill-create-save"]') as Element,
+		);
+
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'agents.builder.skills.saveError',
+			message: 'agents.builder.skills.validation.instructionsMaxLength',
+			type: 'error',
+		});
 	});
 
 	it('adds and removes references from the file navigation', async () => {

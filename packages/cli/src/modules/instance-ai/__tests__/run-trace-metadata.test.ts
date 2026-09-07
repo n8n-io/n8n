@@ -61,6 +61,42 @@ describe('buildInstanceAiRunTraceMetadata', () => {
 		});
 	});
 
+	it('reads assistant text from a coalesced block, as the durable log persists it', () => {
+		const events: InstanceAiEvent[] = [
+			{
+				type: 'text-block',
+				...baseEvent,
+				payload: { text: 'I will check the workflow first.' },
+			},
+			{
+				type: 'tool-call',
+				...baseEvent,
+				payload: { toolCallId: 'tool-1', toolName: 'workflows', args: { action: 'get' } },
+			},
+		];
+
+		expect(buildInstanceAiRunTraceMetadata(events, { status: 'completed' })).toEqual({
+			first_visible_state: 'assistant_text',
+			first_tool_name: 'workflows',
+		});
+	});
+
+	it('ignores a whitespace-only block, same as a whitespace-only delta', () => {
+		const events: InstanceAiEvent[] = [
+			{ type: 'text-block', ...baseEvent, payload: { text: '  \n ' } },
+			{
+				type: 'tool-call',
+				...baseEvent,
+				payload: { toolCallId: 'tool-1', toolName: 'workflows', args: { action: 'get' } },
+			},
+		];
+
+		expect(buildInstanceAiRunTraceMetadata(events, { status: 'completed' })).toEqual({
+			first_visible_state: 'tool_call',
+			first_tool_name: 'workflows',
+		});
+	});
+
 	it('records timeout cancellation type and idle tail without extra fields', () => {
 		const metadata = buildInstanceAiRunTraceMetadata([], {
 			status: 'cancelled',

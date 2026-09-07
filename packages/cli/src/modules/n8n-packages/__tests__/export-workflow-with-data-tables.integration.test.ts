@@ -87,10 +87,12 @@ describe('workflow package export — with data tables', () => {
 
 			// The manifest also points at the schema file, so import can create the table.
 			expect(manifest.dataTables).toEqual([
-				{ id: dataTable.id, name: 'Customers', target: 'data-tables/customers' },
+				{ id: dataTable.id, name: 'Customers', target: `data-tables/customers-${dataTable.id}` },
 			]);
 
-			const dataTableFile = entries.find((e) => e.name === 'data-tables/customers/data-table.json');
+			const dataTableFile = entries.find(
+				(e) => e.name === `data-tables/customers-${dataTable.id}/data-table.json`,
+			);
 			expect(dataTableFile).toBeDefined();
 			const parsed = jsonParse<Record<string, unknown>>(dataTableFile!.content.toString());
 			expect(parsed).toEqual({
@@ -120,7 +122,7 @@ describe('workflow package export — with data tables', () => {
 			const { entries } = await readExport(stream);
 
 			const dataTableFile = entries.find(
-				(e) => e.name === 'data-tables/everything/data-table.json',
+				(e) => e.name === `data-tables/everything-${dataTable.id}/data-table.json`,
 			);
 			const parsed = jsonParse<{ columns: Array<{ name: string; type: string }> }>(
 				dataTableFile!.content.toString(),
@@ -150,7 +152,9 @@ describe('workflow package export — with data tables', () => {
 			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const { entries } = await readExport(stream);
 
-			const dataTableFile = entries.find((e) => e.name === 'data-tables/withrows/data-table.json');
+			const dataTableFile = entries.find(
+				(e) => e.name === `data-tables/withrows-${dataTable.id}/data-table.json`,
+			);
 			const raw = dataTableFile!.content.toString();
 			expect(raw).not.toContain('secret-user@example.com');
 			expect(jsonParse<Record<string, unknown>>(raw)).toEqual({
@@ -184,7 +188,9 @@ describe('workflow package export — with data tables', () => {
 					usedByWorkflows: [workflow.id],
 				},
 			]);
-			expect(entries.map((e) => e.name)).toContain('data-tables/customers/data-table.json');
+			expect(entries.map((e) => e.name)).toContain(
+				`data-tables/customers-${dataTable.id}/data-table.json`,
+			);
 		});
 
 		it('bundles table requirements from auto-included sub-workflows', async () => {
@@ -218,7 +224,9 @@ describe('workflow package export — with data tables', () => {
 					usedByWorkflows: [child.id],
 				},
 			]);
-			expect(entries.map((e) => e.name)).toContain('data-tables/customers/data-table.json');
+			expect(entries.map((e) => e.name)).toContain(
+				`data-tables/customers-${dataTable.id}/data-table.json`,
+			);
 		});
 
 		it('dedupes a table referenced by two workflows in a single export', async () => {
@@ -279,7 +287,7 @@ describe('workflow package export — with data tables', () => {
 	});
 
 	describe('package layout & namespacing', () => {
-		it('disambiguates same-named tables from two different projects with a suffix, instead of failing', async () => {
+		it('gives same-named tables from two different projects their own targets, instead of failing', async () => {
 			const projectB = await createTeamProject('Project B', owner);
 			const tableA = await dataTableService.createDataTable(project.id, {
 				name: 'Customers',
@@ -308,10 +316,12 @@ describe('workflow package export — with data tables', () => {
 
 			expect(manifest.requirements?.dataTables).toHaveLength(2);
 			const dataTableFiles = entries.filter((e) => e.name.endsWith('/data-table.json'));
-			expect(dataTableFiles.map((e) => e.name).sort()).toEqual([
-				'data-tables/customers-2/data-table.json',
-				'data-tables/customers/data-table.json',
-			]);
+			expect(dataTableFiles.map((e) => e.name).sort()).toEqual(
+				[
+					`data-tables/customers-${tableA.id}/data-table.json`,
+					`data-tables/customers-${tableB.id}/data-table.json`,
+				].sort(),
+			);
 		});
 
 		it('namespaces the table under its project path when exporting the whole project', async () => {
@@ -341,7 +351,7 @@ describe('workflow package export — with data tables', () => {
 				},
 			]);
 			expect(entries.map((e) => e.name)).toContain(
-				`${projectTarget}/data-tables/customers/data-table.json`,
+				`${projectTarget}/data-tables/customers-${dataTable.id}/data-table.json`,
 			);
 		});
 
@@ -374,7 +384,7 @@ describe('workflow package export — with data tables', () => {
 			]);
 			// Folder packages keep data tables top-level, unlike project packages.
 			const dataTableFile = entries.find((e) => e.name.endsWith('/data-table.json'));
-			expect(dataTableFile!.name).toBe('data-tables/customers/data-table.json');
+			expect(dataTableFile!.name).toBe(`data-tables/customers-${dataTable.id}/data-table.json`);
 		});
 	});
 

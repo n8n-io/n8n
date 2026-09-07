@@ -159,21 +159,42 @@ describe('createMessageParser', () => {
 			expect(registry.decode).toHaveBeenCalledWith(Buffer.from('{"a":1}'));
 		});
 
-		it('falls back to the original value and warns when decoding fails', async () => {
+		it('fails the message rather than handing the workflow undecoded bytes', async () => {
+			// v1 warns and passes the raw value through, then commits the offset, so an
+			// unreadable Avro message is lost for good. Throwing leaves the chunk
+			// unresolved instead, and Kafka redelivers it once the registry is healthy.
 			const registry = mock<SchemaRegistry>({
 				decode: vi.fn(async () => {
 					throw new Error('Request failed with status code 404 for https://user:pw@registry');
 				}),
 			});
 
-			expect(await parse({}, message(), registry)).toStrictEqual({
-				json: { message: '{"a":1}', topic: TOPIC },
-			});
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Could not decode message with Schema Registry, returning original message',
+			await expect(parse({}, message(), registry)).rejects.toThrow(
+				'Request failed with status code 404',
+			);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Could not decode message with Schema Registry, leaving it unread',
 				// The sanitizer redacts the URL userinfo the registry client embeds.
 				{ message: 'Request failed with status code 404 for https://***@registry' },
 			);
+		});
+
+		it('throws a sanitized error, since the consume loop logs whatever it is handed', async () => {
+			// The line above scrubs what this file logs, but the throw travels on: the
+			// consume loop logs the error when it leaves the chunk unresolved, so an
+			// unsanitized rethrow would put the registry password straight back in the
+			// log. The original is not attached as `cause` for the same reason.
+			const registry = mock<SchemaRegistry>({
+				decode: vi.fn(async () => {
+					throw new Error('Request failed for https://user:sup3r-secret@registry');
+				}),
+			});
+
+			const thrown = await parse({}, message(), registry).catch((error: Error) => error);
+
+			expect(thrown.message).not.toContain('sup3r-secret');
+			expect(thrown.message).toContain('https://***@registry');
+			expect(thrown.cause).toBeUndefined();
 		});
 
 		it('does not call the registry for an empty value', async () => {

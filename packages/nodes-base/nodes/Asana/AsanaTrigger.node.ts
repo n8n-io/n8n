@@ -160,6 +160,12 @@ export class AsanaTrigger implements INodeType {
 
 				webhookData.webhookId = responseData.data.gid as string;
 
+				// Asana also returns the webhook's verification secret in this response
+				const hookSecret = responseData['X-Hook-Secret'];
+				if (typeof hookSecret === 'string' && hookSecret.length > 0) {
+					webhookData.hookSecret = hookSecret;
+				}
+
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -191,14 +197,11 @@ export class AsanaTrigger implements INodeType {
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
 
-		const webhookData = this.getWorkflowStaticData('node');
-
 		if (headerData['x-hook-secret'] !== undefined) {
-			// Is a create webhook confirmation request
-			webhookData.hookSecret = headerData['x-hook-secret'];
-
+			// Is a create webhook confirmation request; the secret itself is
+			// captured from the create-webhook API response, not from this header
 			const res = this.getResponseObject();
-			res.set('X-Hook-Secret', webhookData.hookSecret as string);
+			res.set('X-Hook-Secret', headerData['x-hook-secret'] as string);
 			res.status(200).end();
 
 			return {

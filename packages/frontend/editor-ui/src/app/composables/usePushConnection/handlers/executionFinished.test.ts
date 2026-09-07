@@ -6,6 +6,7 @@ import {
 	getRunExecutionData,
 	handleExecutionFinishedWithSuccessOrOther,
 	handleExecutionFinishedWithErrorOrCanceled,
+	refreshWalletAfterBilledRun,
 	type SimplifiedExecution,
 } from './executionFinished';
 import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
@@ -28,6 +29,8 @@ import { mockedStore } from '@/__tests__/utils';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import type { PushHandlerOptions } from './types';
 
@@ -67,6 +70,52 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 		runWorkflow,
 	})),
 }));
+
+describe('refreshWalletAfterBilledRun()', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	function stubSnapshotNodes(nodes: INodeUi[]) {
+		vi.spyOn(useWorkflowDocumentStore(documentId), 'getSnapshot').mockReturnValue({
+			nodes,
+		} as IWorkflowDb);
+	}
+
+	it('does nothing when the AI gateway is disabled', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isAiGatewayEnabled = false;
+		const aiGatewayStore = mockedStore(useAiGatewayStore);
+
+		refreshWalletAfterBilledRun(documentId);
+
+		expect(aiGatewayStore.fetchWallet).not.toHaveBeenCalled();
+	});
+
+	it('does not refresh the wallet when no node used a managed credential', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isAiGatewayEnabled = true;
+		const aiGatewayStore = mockedStore(useAiGatewayStore);
+		aiGatewayStore.hasGatewayManagedCredential.mockReturnValue(false);
+		stubSnapshotNodes([mock<INodeUi>()]);
+
+		refreshWalletAfterBilledRun(documentId);
+
+		expect(aiGatewayStore.fetchWallet).not.toHaveBeenCalled();
+	});
+
+	it('force-refreshes the wallet when a node used a managed credential', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isAiGatewayEnabled = true;
+		const aiGatewayStore = mockedStore(useAiGatewayStore);
+		aiGatewayStore.hasGatewayManagedCredential.mockReturnValue(true);
+		stubSnapshotNodes([mock<INodeUi>()]);
+
+		refreshWalletAfterBilledRun(documentId);
+
+		expect(aiGatewayStore.fetchWallet).toHaveBeenCalledWith({ force: true });
+	});
+});
 
 describe('continueEvaluationLoop()', () => {
 	beforeEach(() => {

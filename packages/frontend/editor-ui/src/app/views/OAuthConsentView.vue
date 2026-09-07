@@ -2,6 +2,7 @@
 import { useConsentStore } from '@/app/stores/consent.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { onMounted, computed, ref, watch } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
 import {
@@ -49,9 +50,17 @@ const errorMessage = computed(() => {
 const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
 // Known clients get their brand mark on the left tile; unknown ones fall back to the MCP glyph.
 const clientBrandIcon = computed(() => getClientBrand(clientDetails.value?.clientName ?? '').icon);
+// Localized noun for first-party copy, driven by the resource's consentType hint.
+const firstPartyResourceType = computed(() =>
+	i18n.baseText(
+		`oauth.consentView.firstParty.type.${clientDetails.value?.uiHints?.consentType ?? 'default'}` as BaseTextKey,
+	),
+);
 const availableScopes = computed(() => clientDetails.value?.scopes ?? []);
 const hasScopes = computed(() => availableScopes.value.length > 0);
-const trustRequired = computed(() => !!clientDetails.value?.redirectUri);
+const trustRequired = computed(
+	() => !!clientDetails.value?.redirectUri && !clientDetails.value?.isFirstParty,
+);
 const noScopesSelected = computed(() => hasScopes.value && selectedScopes.value.length === 0);
 const allowDisabled = computed(
 	() =>
@@ -146,7 +155,17 @@ onMounted(async () => {
 		<div :class="$style['consent-dialog']">
 			<header :class="$style.header">
 				<div :class="$style.logo">
-					<component :is="clientBrandIcon" v-if="clientBrandIcon" :class="$style['brand-icon']" />
+					<N8nIcon
+						v-if="clientDetails?.uiHints?.icon"
+						:icon="clientDetails.uiHints.icon"
+						size="large"
+						color="text-dark"
+					/>
+					<component
+						:is="clientBrandIcon"
+						v-else-if="clientBrandIcon"
+						:class="$style['brand-icon']"
+					/>
 					<N8nIcon v-else icon="mcp" size="large" color="text-dark" />
 				</div>
 				<!-- Pending-connection connector: a dashed SVG line marching toward the n8n tile
@@ -196,7 +215,14 @@ onMounted(async () => {
 			</div>
 			<!-- Default content -->
 			<div v-else :class="$style.content" data-test-id="consent-content">
-				<N8nHeading v-if="resourceName" tag="h2" size="large" :bold="true">
+				<N8nHeading v-if="clientDetails?.isFirstParty" tag="h2" size="large" :bold="true">
+					{{
+						i18n.baseText('oauth.consentView.firstParty.heading', {
+							interpolate: { resourceName: resourceName ?? '' },
+						})
+					}}
+				</N8nHeading>
+				<N8nHeading v-else-if="resourceName" tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.headingWithWorkflow', {
 							interpolate: { clientName: clientDetails?.clientName ?? '', resourceName },
@@ -211,7 +237,14 @@ onMounted(async () => {
 					}}
 				</N8nHeading>
 				<div :class="$style['text-content']">
-					<N8nText v-if="resourceName" color="text-base" size="medium">
+					<N8nText v-if="clientDetails?.isFirstParty" color="text-base" size="medium">
+						{{
+							i18n.baseText('oauth.consentView.firstParty.description', {
+								interpolate: { resourceType: firstPartyResourceType },
+							})
+						}}
+					</N8nText>
+					<N8nText v-else-if="resourceName" color="text-base" size="medium">
 						{{
 							i18n.baseText('oauth.consentView.descriptionWithWorkflow', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
@@ -253,29 +286,34 @@ onMounted(async () => {
 				</div>
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
-				<!-- The trust acknowledgment lives inside the warning itself so it can't be missed:
-				     one block that says where access goes, shows the URL, and asks for the check. -->
-				<N8nCallout
-					v-if="!error && clientDetails?.redirectUri"
-					theme="warning"
-					data-test-id="consent-redirect-warning"
-				>
-					<div :class="$style['redirect-warning-content']">
-						<N8nText :bold="true" size="small">
+				<!-- Third-party clients: the redirect destination, with the trust acknowledgment
+				     below it in the action row so it reads as a step rather than banner small
+				     print. Both are gated on the same `trustRequired` as the Allow button, so the
+				     screen can never ask for a confirmation it doesn't show. First-party clients
+				     skip both — their redirect URI is the form itself. -->
+				<div v-if="!error && trustRequired" :class="$style.divided">
+					<N8nCallout
+						theme="secondary"
+						:iconless="true"
+						:class="$style['redirect-note']"
+						data-test-id="consent-redirect-warning"
+					>
+						<span :class="$style['redirect-note-title']">
 							{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
-						</N8nText>
-						<code :class="$style['redirect-warning-url']" data-test-id="consent-redirect-uri">
-							{{ clientDetails.redirectUri }}
+						</span>
+						<code :class="$style['redirect-url']" data-test-id="consent-redirect-uri">
+							{{ clientDetails?.redirectUri }}
 						</code>
-						<N8nCheckbox
-							v-model="redirectUriTrusted"
-							:class="$style['redirect-warning-confirm']"
-							:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
-							data-test-id="consent-redirect-confirm"
-						/>
-					</div>
-				</N8nCallout>
-				<div :class="$style['footer-actions']">
+					</N8nCallout>
+				</div>
+				<div :class="[$style['footer-actions'], $style.divided]">
+					<N8nCheckbox
+						v-if="!error && trustRequired"
+						v-model="redirectUriTrusted"
+						:class="$style['trust-confirm']"
+						:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
+						data-test-id="consent-redirect-confirm"
+					/>
 					<div :class="$style['button-group']">
 						<N8nButton
 							v-if="error"
@@ -474,6 +512,8 @@ onMounted(async () => {
 	}
 }
 
+/* The gap gives each separator the same breathing room above the line as the
+   `.divided` padding gives below it. */
 .footer {
 	width: 100%;
 	display: flex;
@@ -481,34 +521,60 @@ onMounted(async () => {
 	gap: var(--spacing--sm);
 }
 
-.redirect-warning-content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
+/* Hairline separators keep the redirect note and the action row as distinct steps
+   without adding more nested boxes. */
+.divided {
+	padding-block-start: var(--spacing--sm);
+	border-block-start: var(--border-width, 1px) solid var(--border-color--subtle);
 }
 
-.redirect-warning-url {
-	font-size: var(--font-size--2xs);
-	word-break: break-all;
+/* The `secondary` callout theme is purple; retint it to a neutral grey so the note
+   reads as information rather than as a banner users learn to skip. Retinting the
+   theme's own custom properties rather than the resolved colors keeps this working
+   regardless of whether the callout's CSS is bundled before or after this file. */
+.redirect-note {
+	--callout--border-color--secondary: var(--border-color--subtle);
+	--callout--color--background--secondary: var(--background--subtle);
+	--callout--color--text--secondary: var(--text-color--subtle);
 }
 
-.redirect-warning-confirm {
-	margin-top: var(--spacing--3xs);
-	margin-bottom: 0;
+/* Both lines size themselves rather than restyling the callout's inner N8nText,
+   which is an implementation detail of the component. */
+.redirect-note-title,
+.redirect-url {
+	display: block;
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 }
 
-/* CTAs sit at the right; the trust checkbox anchors the left edge of the row. */
+.redirect-url {
+	margin-block-start: var(--spacing--4xs);
+	font-family: var(--font-family--monospace);
+	overflow-wrap: anywhere;
+}
+
+/* The trust checkbox anchors the left edge of the row and keeps its full label
+   width, so the button group is what drops to a second line when space runs out. */
 .footer-actions {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	justify-content: flex-end;
-	gap: var(--spacing--sm);
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs) var(--spacing--sm);
 
+	/* The auto margin is what right-aligns the buttons, on both a shared line and a
+	   wrapped one, and when there is no checkbox at all (first-party, error). */
 	.button-group {
 		display: flex;
-		justify-content: flex-end;
+		align-items: center;
+		margin-inline-start: auto;
 		gap: var(--spacing--2xs);
 	}
+}
+
+/* Tone the label down to match the note it refers to; the checkbox's own default is
+   the darker body color. */
+.trust-confirm label {
+	color: var(--text-color--subtle);
 }
 </style>

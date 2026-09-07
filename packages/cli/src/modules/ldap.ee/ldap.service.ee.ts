@@ -10,7 +10,7 @@ import { Constructable, Container } from '@n8n/di';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -115,6 +115,13 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	}
 
 	async updateConfig(ldapConfig: LdapConfig): Promise<void> {
+		// The config GET blanks the bind password; when the editor round-trips it back,
+		// keep the currently-stored password instead of overwriting it with the placeholder.
+		if (ldapConfig.bindingAdminPassword === CREDENTIAL_BLANKING_VALUE) {
+			const stored = await this.loadConfig();
+			ldapConfig.bindingAdminPassword = stored.bindingAdminPassword;
+		}
+
 		const { valid, message } = validateLdapConfigurationSchema(ldapConfig);
 
 		if (!valid) {

@@ -68,6 +68,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_SCHEDULER_INTERVAL')
 	schedulerMetricsInterval: number = 20;
 
+	/** Whether to include poll-trigger metrics (poll duration, errors, overlapping ticks, cursor commits). */
+	@Env('N8N_METRICS_INCLUDE_POLL_TRIGGER_METRICS')
+	includePollTriggerMetrics: boolean = false;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;

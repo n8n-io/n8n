@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { SharedWorkflowRepository, User } from '@n8n/db';
+import { CredentialsRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { LoadOptionsContext, RoutingNode, LocalLoadOptionsContext, ExecuteContext } from 'n8n-core';
 import type {
@@ -25,7 +25,7 @@ import type {
 import {
 	Workflow,
 	UnexpectedError,
-	createEmptyRunExecutionData,
+	createRunExecutionData,
 	findDisplayedProperty,
 } from 'n8n-workflow';
 
@@ -68,6 +68,7 @@ export class DynamicNodeParametersService {
 		private workflowLoaderService: WorkflowLoaderService,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private credentialsFinderService: CredentialsFinderService,
+		private credentialsRepository: CredentialsRepository,
 	) {}
 
 	async refineResourceIds(
@@ -124,7 +125,36 @@ export class DynamicNodeParametersService {
 				if (forbiddenId !== undefined) {
 					throw new ForbiddenError();
 				}
+
+				await this.assertMayUseEndUserCredentials(user, credentialIds);
 			}
+		}
+	}
+
+	/**
+	 * Loading a list with an end-user credential resolves it against the requesting
+	 * user's own connection, so it requires `credential:connect` — the same scope the
+	 * connect flow itself demands — on top of the `credential:read` checked above.
+	 *
+	 * Read access alone is not enough: a project viewer holds `credential:read` but may
+	 * not connect an account, and should be told so rather than shown a list built from
+	 * a connection they are not allowed to hold.
+	 */
+	private async assertMayUseEndUserCredentials(user: User, credentialIds: string[]) {
+		const credentials = await this.credentialsRepository.getManyByIds(credentialIds);
+		const endUserIds = credentials.filter((c) => c.isResolvable).map((c) => c.id);
+		if (endUserIds.length === 0) return;
+
+		const connectableIds = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+			endUserIds,
+			user,
+			['credential:connect'],
+		);
+
+		if (endUserIds.some((id) => !connectableIds.has(id))) {
+			throw new ForbiddenError(
+				'You need permission to connect your own account to this end-user credential before you can load this list',
+			);
 		}
 	}
 
@@ -203,7 +233,12 @@ export class DynamicNodeParametersService {
 		const mode = 'internal';
 		const runIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData = createEmptyRunExecutionData();
+		// `runtimeData` is where `ExecuteContext` looks for the execution context, so the
+		// design-time context has to be threaded through it for declarative nodes to resolve
+		// end-user credentials. `LoadOptionsContext` reads `additionalData` directly instead.
+		const runExecutionData = createRunExecutionData({
+			executionData: { runtimeData: additionalData.executionContext },
+		});
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const node = workflow.nodes['Temp-Node'];
 

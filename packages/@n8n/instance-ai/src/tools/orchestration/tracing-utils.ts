@@ -3,6 +3,7 @@ import {
 	getCurrentOtelSpanContext,
 	getCurrentTraceToolCallId,
 	mergeCurrentTraceMetadata,
+	type BrowserExtensionTraceContext,
 } from '../../tracing/langsmith-tracing';
 import type {
 	InstanceAiTraceContext,
@@ -10,6 +11,19 @@ import type {
 	InstanceAiTraceRunFinishOptions,
 	OrchestrationContext,
 } from '../../types';
+
+/** Rebuilds the parent's browser-extension dimensions so sub-agent tool calls stay sliceable. */
+function readBrowserExtensionFromMetadata(
+	metadata: Record<string, unknown> | undefined,
+): BrowserExtensionTraceContext | undefined {
+	const state = metadata?.browser_connection_state;
+	if (state !== 'connected' && state !== 'disconnected') return undefined;
+	const version = metadata?.browser_extension_version;
+	return {
+		connectionState: state,
+		...(typeof version === 'string' ? { version } : {}),
+	};
+}
 
 type ToolRegistry = OrchestrationContext['domainTools'];
 
@@ -84,6 +98,9 @@ export function createDetachedSubAgentTraceFactory(
 		typeof context.tracing.actorRun.metadata?.workflow_sdk_version === 'string'
 			? context.tracing.actorRun.metadata.workflow_sdk_version
 			: undefined;
+	const parentBrowserExtension = readBrowserExtensionFromMetadata(
+		context.tracing.actorRun.metadata,
+	);
 	const activeSpanContext = getCurrentOtelSpanContext();
 	const spawnedByToolCallId = getCurrentTraceToolCallId();
 
@@ -102,6 +119,7 @@ export function createDetachedSubAgentTraceFactory(
 			metadata: options.metadata,
 			n8nVersion: parentN8nVersion,
 			workflowSdkVersion: parentWorkflowSdkVersion,
+			browserExtension: parentBrowserExtension,
 			agentId: options.agentId,
 			role: options.role,
 			kind: options.kind,

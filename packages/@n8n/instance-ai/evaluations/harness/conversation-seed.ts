@@ -31,6 +31,27 @@ const SeedWorkflowSchema = z.object({
 	connections: z.record(z.unknown()),
 });
 
+/** A project seeded before the live turn. Only the name is authored: the
+ *  case references the project the way a user would (by name), and nothing in a
+ *  seed's messages can refer to a project id, so there is no id to remap. */
+const SeedProjectSchema = z.object({
+	/** Trimmed, not merely non-empty. n8n's `projectNameSchema` has no trim, so
+	 *  `" Foobar "` is created VERBATIM as a project distinct from `"Foobar"` — two
+	 *  projects a human reads as identical, both visible to the agent, leaving a case
+	 *  that says "the Foobar project" in prose ambiguous. It would also slip past the
+	 *  unique-name refine below and past `evictLeftoverSeedProjects`, which matches a
+	 *  leftover by exact name. Refused rather than trimmed: silently rewriting an
+	 *  authored name is how the created project stops matching what the case says. */
+	name: z
+		.string()
+		.min(1)
+		// n8n's own `projectNameSchema` cap. Enforced here so an over-long name fails at
+		// case load rather than mid-run, where the create call returns a 400 that
+		// `createTeamProject` reports as a licensing/quota problem.
+		.max(255)
+		.refine((name) => name.trim() === name, { message: 'project name must be trimmed' }),
+});
+
 const SeedDataTableSchema = z.object({
 	/** The table's id as it appears in the trace — the value baked into the
 	 *  seed workflow's data-table node. Rewritten to the recreated table's id on
@@ -122,8 +143,14 @@ export const SeedMessageSchema = seedMessageObjectSchema.superRefine((message, c
 export const ConversationSeedSchema = z.object({
 	/** Provenance (thread id, instance, export time) — informational only. */
 	source: z.record(z.unknown()).optional(),
-	/** Native agent message log (user/assistant turns with resolved tool-call blocks). */
-	messages: z.array(SeedMessageSchema).min(1),
+	/** Native agent message log (user/assistant turns with resolved tool-call blocks).
+	 *  May be EMPTY: a seed can carry only instance fixtures (a seeded project) with no
+	 *  history at all. Emptiness is judged at the case level instead — a seed that
+	 *  carries nothing whatsoever is rejected there — because that is the only place
+	 *  that can see every slot at once. Kept permissive here so `remapSeedArtifactIds`
+	 *  can re-parse its own serialization: a fixture-only seed that also declares a
+	 *  workflow would otherwise throw mid-run on a min-1 it never violated. */
+	messages: z.array(SeedMessageSchema).default([]),
 	/** Workflows the history references, recreated on restore. Ids must be distinct:
 	 *  the restore index-aligns authored ids with their per-run remapped ones, and
 	 *  `remapSeedArtifactIds` rewrites references by sequential `replaceAll` — a
@@ -141,6 +168,20 @@ export const ConversationSeedSchema = z.object({
 	/** Agents the history built, recreated (and bound to the thread) on restore, so
 	 *  the live turn edits one that already exists. */
 	agents: z.array(instanceAiEvalSeedAgentSchema).default([]),
+	/** Team projects created before the live turn, so a project-scope case has a
+	 *  second project the user can SEE but must not be able to write to. Unlike
+	 *  every other artifact here these are instance-level, not thread-scoped, so
+	 *  they're created over the project API rather than by `restore-thread`.
+	 *  Names must be distinct — the case refers to them by name, and two projects
+	 *  sharing one would make "the Foobar project" ambiguous to the agent. */
+	projects: z
+		.array(SeedProjectSchema)
+		.max(5)
+		.default([])
+		.refine(
+			(projects) => new Set(projects.map((project) => project.name)).size === projects.length,
+			{ message: 'seed project names must be unique — a case refers to them by name' },
+		),
 });
 
 export type ConversationSeed = z.infer<typeof ConversationSeedSchema>;
@@ -434,7 +475,10 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 	}));
 
 	// Data table ids are remapped server-side on restore (id is generated, not
-	// pinnable), so carry them through untouched here.
+	// pinnable), so carry them through untouched here. `projects` likewise: the
+	// serialized blob above covers only the id-bearing artifacts, so anything not
+	// re-attached here comes back as the schema's `[]` default — silently dropping
+	// the fixture instead of failing.
 	return {
 		...remapped,
 		messages,
@@ -442,6 +486,7 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 		agents,
 		source: seed.source,
 		dataTables: seed.dataTables,
+		projects: seed.projects,
 	};
 }
 
@@ -520,7 +565,14 @@ const interpretPlan: SeedStepInterpreter = (call) => {
 // rendering as the live `workflows` result).
 const interpretSetupWizard: SeedStepInterpreter = (call) => {
 	const { output } = call;
-	if (!output || !(Array.isArray(output.completedNodes) || Array.isArray(output.skippedNodes))) {
+	// `skippedNodes` is the pre-split key, kept so seeded fixtures recorded then still parse.
+	const setupOutcomeKeys = [
+		'completedNodes',
+		'nodesStillNeedingSetup',
+		'skippedByUser',
+		'skippedNodes',
+	];
+	if (!output || !setupOutcomeKeys.some((key) => Array.isArray(output[key]))) {
 		return null;
 	}
 	return extractSetupWizardOutcome(output);

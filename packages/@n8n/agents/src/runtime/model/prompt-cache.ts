@@ -40,7 +40,7 @@ export function getEffectiveAnthropicCacheTtl(
 	config: PromptCachingConfig | undefined,
 	modelId: string,
 ): '5m' | '1h' | undefined {
-	if (getModelProvider(modelId) !== 'anthropic' || !isEnabledForProvider(config, 'anthropic')) {
+	if (!isAnthropicMessagesProvider(modelId) || !isEnabledForProvider(config, 'anthropic')) {
 		return undefined;
 	}
 	return getAnthropicCacheTtl(config);
@@ -57,6 +57,12 @@ function isEnabledForProvider(
 /** Provider prefix of a `provider/model` id (e.g. `anthropic` from `anthropic/claude-...`). */
 export function getModelProvider(modelId: string): string {
 	return modelId.split('/')[0];
+}
+
+/** Providers that speak the Anthropic Messages API (including Vertex Claude). */
+export function isAnthropicMessagesProvider(modelId: string): boolean {
+	const provider = getModelProvider(modelId);
+	return provider === 'anthropic' || provider === 'google-vertex-anthropic';
 }
 
 /**
@@ -144,7 +150,7 @@ export function buildInstructionPromptCacheOptions(
 	config: PromptCachingConfig | undefined,
 	modelId: string,
 ): ProviderOptions | undefined {
-	if (getModelProvider(modelId) !== 'anthropic' || !isEnabledForProvider(config, 'anthropic')) {
+	if (!isAnthropicMessagesProvider(modelId) || !isEnabledForProvider(config, 'anthropic')) {
 		return undefined;
 	}
 
@@ -201,10 +207,7 @@ export function applyRuntimeCacheBreakpoints(params: {
 	staticToolCacheName: string | undefined;
 }): { messages: ModelMessage[]; aiTools: ToolSet } {
 	const { system, messages, aiTools, promptCaching, modelId, staticToolCacheName } = params;
-	if (
-		getModelProvider(modelId) !== 'anthropic' ||
-		!isEnabledForProvider(promptCaching, 'anthropic')
-	) {
+	if (!isAnthropicMessagesProvider(modelId) || !isEnabledForProvider(promptCaching, 'anthropic')) {
 		return { messages, aiTools };
 	}
 

@@ -101,12 +101,14 @@ export * from './node-execution-context';
 export * from './node-execution-context/utils/execution-metadata';
 export { NoOpPollJobManager } from './noop-poll-job-manager';
 export * from './partial-execution-utils';
+export { commitStagedCursor, runPollInStagingScope } from './poll-cursor-hooks';
 export { PollJobManager } from './poll-job-manager';
 export { PollTriggerExecutor } from './poll-trigger-executor';
 export { isEngineRequest } from './requests-response';
 export * from './routing-node';
 export * from './scheduled-task-manager';
 export { TriggersAndPollers } from './triggers-and-pollers';
+export type { PollErrorKind, PollTickEventMap } from './triggers-and-pollers';
 export * from './workflow-execute';
 // Exposed so eval-mode credential helpers (e.g. `EvalMockedCredentialsHelper`)
 // can reuse the same schema-driven cred synthesizer the wire-server URL

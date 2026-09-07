@@ -1,6 +1,7 @@
 import { render, fireEvent } from '@testing-library/vue';
 import { describe, it, expect } from 'vitest';
 
+import * as stories from './ActionPill.stories';
 import ActionPill from './ActionPill.vue';
 
 describe('N8nActionPill', () => {
@@ -43,6 +44,20 @@ describe('N8nActionPill', () => {
 				props: { text: 'No credits', type: 'danger' },
 			});
 			expect(container).toMatchSnapshot();
+		});
+
+		it('renders info type correctly', () => {
+			const { container } = render(ActionPill, {
+				props: { text: 'Gateway credits', type: 'info' },
+			});
+			expect(container).toMatchSnapshot();
+		});
+
+		it('documents default, info, and danger variants in Storybook', () => {
+			expect(stories.default.title).toBe('Core/ActionPill');
+			expect(stories.default.argTypes?.type.options).toEqual(['default', 'info', 'danger']);
+			expect(stories.Variants).toBeDefined();
+			expect(stories.Sizes).toBeDefined();
 		});
 
 		it('renders small size correctly', () => {

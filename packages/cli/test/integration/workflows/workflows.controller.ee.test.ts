@@ -18,6 +18,7 @@ import {
 	WorkflowHistoryRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishedVersionRepository,
 	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -36,6 +37,7 @@ import config from '@/config';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 import { createFolder } from '@test-integration/db/folders';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 
 import {
 	affixRoleToSaveCredential,
@@ -1538,7 +1540,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						position: [240, 300],
 					},
 					{
-						id: 'uuid-1234',
+						id: 'uuid-5678',
 						parameters: {},
 						name: 'Cron',
 						type: 'n8n-nodes-base.cron',
@@ -2349,5 +2351,92 @@ describe('POST /workflows/:workflowId/run', () => {
 		// It should use the DB version, not the tampered one
 		expect(response.status).not.toBe(403);
 		expect(response.status).not.toBe(404);
+	});
+});
+
+// The editor saves through PATCH /workflows/:id, which never asks for publication, so an editor
+// holding workflow:update but not workflow:publish keeps working. Guards the editor against the
+// publish-on-save rules the public API needs.
+describe('PATCH /workflows/:workflowId as an editor who may not publish', () => {
+	const publishedWorkflowIds: string[] = [];
+
+	afterEach(async () => {
+		// The published-version row references the workflow, so it has to go before the next truncate.
+		const publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+		for (const workflowId of publishedWorkflowIds) {
+			await publishedVersionRepository.removePublishedVersion(workflowId);
+		}
+		publishedWorkflowIds.length = 0;
+	});
+
+	// One role for the whole block: the roles table is not truncated between tests, so creating one
+	// per test would leave a row behind each time. It outlives the block rather than being deleted,
+	// because the last test's project relation still references it when a suite teardown would run.
+	let editorWithoutPublishSlug: string;
+
+	beforeAll(async () => {
+		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Editor without publish',
+			description: 'Can edit workflows but not publish them',
+		});
+		editorWithoutPublishSlug = role.slug;
+	});
+
+	const publishedWorkflowMemberCanOnlyEdit = async (label: string) => {
+		const project = await createTeamProject(`Project ${label}`, owner);
+		await linkUserToProject(member, project, editorWithoutPublishSlug);
+
+		const workflow = await createActiveWorkflow({}, project);
+		await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+			workflow.id,
+			workflow.versionId,
+		);
+		publishedWorkflowIds.push(workflow.id);
+
+		return workflow;
+	};
+
+	test('saves a content change on a published workflow as a draft', async () => {
+		const workflow = await publishedWorkflowMemberCanOnlyEdit('content');
+
+		const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			nodes: workflow.nodes.map((node) =>
+				node.type === 'n8n-nodes-base.cron'
+					? { ...node, parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } } }
+					: node,
+			),
+			connections: workflow.connections,
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneBy({ id: workflow.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(stored?.versionId).not.toBe(workflow.versionId);
+		expect(stored?.activeVersionId).toBe(workflow.versionId);
+	});
+
+	test('saves a settings change on a published workflow', async () => {
+		const workflow = await publishedWorkflowMemberCanOnlyEdit('settings');
+
+		const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			settings: { ...(workflow.settings ?? {}), timezone: 'America/New_York' },
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneBy({ id: workflow.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(stored?.settings?.timezone).toBe('America/New_York');
+		expect(stored?.activeVersionId).toBe(workflow.versionId);
+	});
+
+	test('is still refused when it explicitly asks to publish', async () => {
+		const workflow = await publishedWorkflowMemberCanOnlyEdit('publish');
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`).send({});
+
+		expect(response.statusCode).toBe(403);
 	});
 });

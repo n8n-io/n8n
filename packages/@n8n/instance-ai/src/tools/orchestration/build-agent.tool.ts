@@ -41,10 +41,15 @@ import {
 	getSessionAgentByRef,
 	normalizeAgentRef,
 	readPendingAgentTarget,
+	rereadAgentBuilderTarget,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	type AgentBuilderTarget,
 } from './agent-target-binding';
+import {
+	builderRequiredArtifactsSchema,
+	type BuilderRequiredArtifact,
+} from './builder-required-artifact';
 import { instanceAiBuilderThreadPrefix } from './builder-thread-id';
 import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from './tracing-utils';
 import {
@@ -95,7 +100,8 @@ function isFriendlyMappableBuilderError(error: unknown): boolean {
 function didUpdateConfig(workSummary: WorkSummary): boolean {
 	const mutationToolNames = new Set<string>(CONFIG_MUTATION_TOOL_NAMES);
 	return workSummary.toolCalls.some(
-		(call) => call.succeeded && mutationToolNames.has(call.toolName),
+		(call) =>
+			call.succeeded && (call.configMutated === true || mutationToolNames.has(call.toolName)),
 	);
 }
 
@@ -117,9 +123,19 @@ function buildOutboundMessage(message: string, workflowContext?: SessionWorkflow
 	return `${message}\n\n${formatWorkflowContextEnvelope(workflowContext)}`;
 }
 
+async function collectRequiredArtifacts(
+	turn: BuilderTurnStream,
+	carriedRequiredArtifacts: BuilderRequiredArtifact[],
+): Promise<BuilderRequiredArtifact[]> {
+	const turnRequiredArtifacts = turn.requiredArtifacts ? await turn.requiredArtifacts : [];
+	return [...carriedRequiredArtifacts, ...turnRequiredArtifacts];
+}
+
 /** Builder sessions are keyed per assistant thread + target agent; the resume
  *  leg must reconstruct the same `threadId` byte-identically after a restart. */
 function builderSessionFor(context: OrchestrationContext, agentId: string) {
+	const mcpTools =
+		context.mcpTools instanceof Map && context.mcpTools.size > 0 ? context.mcpTools : undefined;
 	const telemetry = context.tracing?.getTelemetry?.({
 		agentRole: BUILDER_SUB_AGENT_ROLE,
 		functionId: 'instance-ai.subagent.agent-builder',
@@ -136,6 +152,7 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
 			: {}),
 		abortSignal: context.abortSignal,
+		...(mcpTools ? { mcpTools } : {}),
 	};
 }
 
@@ -217,6 +234,11 @@ const buildAgentOutputSchema = z.object({
 		.array(questionAnswerSchema)
 		.optional()
 		.describe('Answers submitted when resuming a cascaded questions request.'),
+	requiredArtifacts: builderRequiredArtifactsSchema
+		.optional()
+		.describe(
+			'Workflows or data tables Instance AI must create outside the Agent. An agent-entrypoint workflow invokes the Agent and must not be passed back as workflowContext.',
+		),
 });
 
 type BuildAgentOutput = z.infer<typeof buildAgentOutputSchema>;
@@ -229,6 +251,8 @@ const builderCheckpointRefSchema = z.object({
 	toolCallId: z.string(),
 	/** Whether any builder pass before this suspension already mutated the agent config. */
 	configUpdated: z.boolean(),
+	/** Host-owned artifacts reported before this suspension. */
+	requiredArtifacts: builderRequiredArtifactsSchema.optional(),
 	/** Target the suspended build belongs to; optional for checkpoints persisted before this field existed. */
 	target: z
 		.object({
@@ -379,6 +403,7 @@ async function finishTurn(
 	builderAgentId: string,
 	result: Extract<ConsumeStreamCascadingResult, { status: 'completed' | 'cancelled' | 'errored' }>,
 	carriedConfigUpdated: boolean,
+	requiredArtifacts: BuilderRequiredArtifact[],
 ): Promise<BuildAgentOutput> {
 	if (result.status === 'completed') {
 		const text = await result.text;
@@ -389,7 +414,12 @@ async function finishTurn(
 			agentId: builderAgentId,
 			payload: { role: BUILDER_SUB_AGENT_ROLE, result: text.slice(0, 200) },
 		});
-		return { ok: true, builderReply: text, configUpdated };
+		return {
+			ok: true,
+			builderReply: text,
+			configUpdated,
+			...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
+		};
 	}
 
 	const error = `The agent builder run ${result.status}.`;
@@ -400,7 +430,12 @@ async function finishTurn(
 		agentId: builderAgentId,
 		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error },
 	});
-	return { ok: false, error, configUpdated };
+	return {
+		ok: false,
+		error,
+		configUpdated,
+		...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
+	};
 }
 
 /** Target identity stamped on every output of a dispatched builder turn so the
@@ -431,6 +466,8 @@ async function runBuilderConsumeLoop(params: {
 	turn: BuilderTurnStream;
 	/** configUpdated already accumulated by passes before this one (false on the first leg; carried from the suspend payload on resume). */
 	carriedConfigUpdated: boolean;
+	/** Host-owned artifacts accumulated by passes before this one. */
+	carriedRequiredArtifacts: BuilderRequiredArtifact[];
 	/** Runs once the stream settles (any status) — used to persist a deferred agentId-path bind. */
 	onSettled?: () => Promise<void>;
 	/** Trace inputs recorded on the child run (distinct per leg: outbound message vs. resume marker). */
@@ -446,6 +483,7 @@ async function runBuilderConsumeLoop(params: {
 		builderAgentId,
 		turn,
 		carriedConfigUpdated,
+		carriedRequiredArtifacts,
 		onSettled,
 		traceInputs,
 		dedupeBase,
@@ -493,10 +531,12 @@ async function runBuilderConsumeLoop(params: {
 		// not from the `delegate.streamBuild`/`resumeBuild` call sites.
 		const message = publishAgentBuilderFailure(context, builderAgentId, error);
 		if (isFriendlyMappableBuilderError(error)) {
+			const requiredArtifacts = await collectRequiredArtifacts(turn, carriedRequiredArtifacts);
 			return await settle({
 				ok: false,
 				error: message,
 				configUpdated: carriedConfigUpdated,
+				...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
 				...targetIdentity(target),
 			});
 		}
@@ -507,6 +547,7 @@ async function runBuilderConsumeLoop(params: {
 	// the builder agent was constructed — scope check and existence check both
 	// passed — so a deferred agentId-path bind is now safe to persist.
 	await onSettled?.();
+	const requiredArtifacts = await collectRequiredArtifacts(turn, carriedRequiredArtifacts);
 
 	if (result.status === 'cancelled') {
 		const cancelled = createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
@@ -540,7 +581,13 @@ async function runBuilderConsumeLoop(params: {
 	}
 
 	if (result.status !== 'suspended') {
-		const output = await finishTurn(context, builderAgentId, result, carriedConfigUpdated);
+		const output = await finishTurn(
+			context,
+			builderAgentId,
+			result,
+			carriedConfigUpdated,
+			requiredArtifacts,
+		);
 		if (output.ok) {
 			await finishTraceRun(context, traceRun, { outputs: output });
 		} else {
@@ -580,6 +627,7 @@ async function runBuilderConsumeLoop(params: {
 			ok: false,
 			error: message,
 			configUpdated: configUpdatedSoFar,
+			...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
 			...targetIdentity(target),
 		});
 	}
@@ -599,6 +647,7 @@ async function runBuilderConsumeLoop(params: {
 			runId: builderRunId,
 			toolCallId: result.suspension.toolCallId,
 			configUpdated: configUpdatedSoFar,
+			...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
 			target: {
 				agentId: target.agentId,
 				projectId: target.projectId,
@@ -667,6 +716,7 @@ async function handleResume(
 			ok: false,
 			error: 'The builder question this answer belongs to is no longer open.',
 			configUpdated: ref.configUpdated,
+			...(ref.requiredArtifacts ? { requiredArtifacts: ref.requiredArtifacts } : {}),
 			...targetIdentity(target),
 		};
 	}
@@ -680,6 +730,7 @@ async function handleResume(
 			error:
 				"The answer does not match the builder's open question (stale or superseded suspension). Ask the user again with a fresh build-agent call.",
 			configUpdated: ref.configUpdated,
+			...(ref.requiredArtifacts ? { requiredArtifacts: ref.requiredArtifacts } : {}),
 			...targetIdentity(target),
 		};
 	}
@@ -711,6 +762,7 @@ async function handleResume(
 		builderAgentId,
 		turn,
 		carriedConfigUpdated: ref.configUpdated,
+		carriedRequiredArtifacts: ref.requiredArtifacts ?? [],
 		traceInputs: { resumed: true },
 		dedupeBase: `${context.runId}:${ctx.toolCallId ?? builderAgentId}:${ref.toolCallId}`,
 	});
@@ -880,19 +932,50 @@ async function resolveTargetForCall(
 					mode: 'continued',
 				};
 			}
+			// Adoption is authorized when the id came from this thread's
+			// own pending marker: the editor may have won the insert on it and
+			// already configured the row. Without a marker the backend mints the id,
+			// which cannot collide — so `adoptOnCollision` would be meaningless.
+			const pendingId = await pendingAgentIdFor(domainContext);
+			// `createNew` asks for a second agent explicitly, so it keeps creating.
+			if (!pendingId && !input.createNew) {
+				// No marker can also mean the editor persisted the artifact and bound it
+				// since this turn read its target — which deleted the marker. Creating
+				// now would mint a second agent beside that one and then overwrite its
+				// binding, so continue it instead (same policy as a target bound before
+				// the turn started).
+				const rebound = await rereadAgentBuilderTarget(domainContext);
+				if (rebound) {
+					return {
+						ok: true,
+						target: { ...rebound, ref: key },
+						bindAfterTurn: true,
+						mode: 'continued',
+					};
+				}
+			}
 			const created = await delegate.createAgent(
 				input.name,
-				await pendingAgentIdFor(domainContext),
+				pendingId ? { id: pendingId, adoptOnCollision: true } : undefined,
 			);
 			const target: AgentBuilderTarget = {
 				agentId: created.agentId,
 				projectId: created.projectId,
-				name: input.name,
+				// An adopted row keeps the name it was configured with; labelling the
+				// binding with the requested one would show a name nothing persisted.
+				name: created.name ?? input.name,
 				ref: key,
 			};
 			domainContext.agentBuilderTarget = target;
 			await saveAgentBuilderTarget(domainContext, target);
-			return { ok: true, target, bindAfterTurn: false, mode: 'create' };
+			// Adopting means the editor won the insert on the pending id, so this turn
+			// is editing an existing agent — which the pre-turn snapshot depends on.
+			return {
+				ok: true,
+				target,
+				bindAfterTurn: false,
+				mode: created.adopted ? 'edit' : 'create',
+			};
 		}
 
 		return { ok: false, error: UNKNOWN_REF_ERROR };
@@ -944,7 +1027,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
 				'provide, ask the user or use a placeholder; do not route around that by calling ' +
 				'`build-agent`. Returns the builder’s reply, the target `agentRef`/`agentId`, and ' +
-				'whether it updated the Agent config.',
+				'whether it updated the Agent config. It can also return structured ' +
+				'`requiredArtifacts` for workflows or data tables Instance AI must create. Build ' +
+				'an `agent-entrypoint` workflow around the returned Agent; never pass it back in ' +
+				'`workflowContext` or attach it as an Agent tool.',
 		)
 		.input(buildAgentInputSchema)
 		.output(buildAgentOutputSchema)
@@ -1020,6 +1106,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				builderAgentId,
 				turn,
 				carriedConfigUpdated: false,
+				carriedRequiredArtifacts: [],
 				traceInputs: { message: outboundMessage },
 				dedupeBase: `${context.runId}:${ctx.toolCallId ?? builderAgentId}`,
 				onSettled: bindAfterTurn

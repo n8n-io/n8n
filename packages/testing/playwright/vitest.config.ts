@@ -5,7 +5,12 @@ import { defineConfig } from 'vitest/config';
 // run by Playwright, not vitest).
 export default defineConfig({
 	test: {
-		include: ['scripts/**/*.test.ts', 'fixtures/**/*.test.ts', '*.test.ts'],
+		include: [
+			'scripts/**/*.test.ts',
+			'fixtures/**/*.test.ts',
+			'reporters/**/*.test.ts',
+			'*.test.ts',
+		],
 		exclude: ['tests/**'],
 	},
 });

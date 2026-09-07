@@ -8,7 +8,7 @@ import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regula
 import { NoPlainErrorsRule } from './no-plain-errors.js';
 import { NoDynamicImportTemplateRule } from './no-dynamic-import-template.js';
 import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
-import { NoMisplacedTypeormImportDisableRule } from './no-misplaced-typeorm-import-disable.js';
+import { NoGuardrailDisableRule } from './no-guardrail-disable.js';
 import { NoTypeUnsafeEventEmitterRule } from './no-type-unsafe-event-emitter.js';
 import { NoUntypedConfigClassFieldRule } from './no-untyped-config-class-field.js';
 import { NoTopLevelRelativeImportsInBackendModuleRule } from './no-top-level-relative-imports-in-backend-module.js';
@@ -24,11 +24,17 @@ import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 import { NoApplicationErrorRule } from './no-application-error.js';
 import { NoDynamicRegExpRule } from './no-dynamic-regexp.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
+import { NoRekaUiPaginationRule } from './no-reka-ui-pagination.js';
 import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
 import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
 import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
-import { NoPublicApiGuardrailDisableRule } from './no-public-api-guardrail-disable.js';
+import { NoLegacyCipherMethodsRule } from './no-legacy-cipher-methods.js';
+import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
+import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
+import { NoMisplacedCipherPrimitivesRule } from './no-misplaced-cipher-primitives.js';
+import { NoDeploymentKeyDeleteRule } from './no-deployment-key-delete.js';
+import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -41,7 +47,7 @@ export const rules = {
 	'no-plain-errors': NoPlainErrorsRule,
 	'no-dynamic-import-template': NoDynamicImportTemplateRule,
 	'misplaced-n8n-typeorm-import': MisplacedN8nTypeormImportRule,
-	'no-misplaced-typeorm-import-disable': NoMisplacedTypeormImportDisableRule,
+	'no-guardrail-disable': NoGuardrailDisableRule,
 	'no-type-unsafe-event-emitter': NoTypeUnsafeEventEmitterRule,
 	'no-untyped-config-class-field': NoUntypedConfigClassFieldRule,
 	'no-top-level-relative-imports-in-backend-module': NoTopLevelRelativeImportsInBackendModuleRule,
@@ -56,9 +62,15 @@ export const rules = {
 	'no-application-error': NoApplicationErrorRule,
 	'no-dynamic-regexp': NoDynamicRegExpRule,
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
+	'no-reka-ui-pagination': NoRekaUiPaginationRule,
 	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
 	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
 	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
 	'require-public-api-controller': RequirePublicApiControllerRule,
-	'no-public-api-guardrail-disable': NoPublicApiGuardrailDisableRule,
+	'no-legacy-cipher-methods': NoLegacyCipherMethodsRule,
+	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
+	'no-on-leader-takeover': NoOnLeaderTakeoverRule,
+	'no-misplaced-cipher-primitives': NoMisplacedCipherPrimitivesRule,
+	'no-deployment-key-delete': NoDeploymentKeyDeleteRule,
+	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
 } satisfies Record<string, AnyRuleModule>;

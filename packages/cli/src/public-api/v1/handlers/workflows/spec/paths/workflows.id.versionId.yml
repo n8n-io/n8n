@@ -5,7 +5,10 @@ get:
   tags:
     - Workflow
   summary: Retrieves a specific version of a workflow
-  description: Retrieves a specific version of a workflow from workflow history.
+  description: >-
+    Deprecated: use GET /workflows/{workflowId}/versions/{versionId} instead.
+    Retrieves a specific version of a workflow from workflow history.
+  deprecated: true
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
     - name: versionId

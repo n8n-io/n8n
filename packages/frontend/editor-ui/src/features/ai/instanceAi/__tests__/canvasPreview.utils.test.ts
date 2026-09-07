@@ -885,6 +885,53 @@ describe('getExecutionResultsByWorkflow', () => {
 		expect(results.get('wf-1')).toEqual({ executionId: 'exec-1', status: 'success' });
 	});
 
+	test('extracts simulated node names from a verify-built-workflow result', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'verify-built-workflow',
+					args: { workflowId: 'wf-1' },
+					result: {
+						executionId: 'exec-1',
+						status: 'success',
+						simulatedNodes: [
+							{ nodeName: 'Gmail', reason: 'Mocked credentials' },
+							{ nodeName: 'HTTP Request', reason: 'Declared output fixture' },
+						],
+					},
+				}),
+			],
+		});
+		const results = getExecutionResultsByWorkflow(node);
+		expect(results.get('wf-1')?.simulatedNodeNames).toEqual(['Gmail', 'HTTP Request']);
+	});
+
+	test('omits simulatedNodeNames when absent or malformed', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'verify-built-workflow',
+					args: { workflowId: 'wf-1' },
+					result: { executionId: 'exec-1', status: 'success' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-2',
+					toolName: 'verify-built-workflow',
+					args: { workflowId: 'wf-2' },
+					result: {
+						executionId: 'exec-2',
+						status: 'success',
+						simulatedNodes: ['not-an-object', { reason: 'missing nodeName' }, null],
+					},
+				}),
+			],
+		});
+		const results = getExecutionResultsByWorkflow(node);
+		expect(results.get('wf-1')).not.toHaveProperty('simulatedNodeNames');
+		expect(results.get('wf-2')).not.toHaveProperty('simulatedNodeNames');
+	});
+
 	test('extracts error run-workflow result', () => {
 		const node = makeAgentNode({
 			toolCalls: [

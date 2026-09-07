@@ -1,4 +1,5 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
+import { hoverToReveal } from '../../../utils/retry-utils';
 
 test.use(instanceAiTestConfig);
 test.describe(
@@ -100,9 +101,8 @@ test.describe(
 			const threadCountBefore = await n8n.instanceAi.sidebar.getThreadItems().count();
 
 			// Hover the target thread to reveal the three-dots button, then click it
-			await targetThread.hover();
 			const actionButton = n8n.instanceAi.sidebar.getThreadActionsTrigger(targetThread);
-			await expect(actionButton).toBeVisible({ timeout: 5_000 });
+			await hoverToReveal(targetThread, actionButton);
 			await actionButton.click();
 
 			// Click delete option in the dropdown

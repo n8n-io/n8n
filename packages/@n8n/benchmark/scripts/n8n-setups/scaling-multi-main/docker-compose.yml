@@ -17,7 +17,7 @@ services:
       timeout: 3s
 
   postgres:
-    image: postgres:16.4
+    image: postgres:18.4
     restart: always
     environment:
       - POSTGRES_DB=n8n

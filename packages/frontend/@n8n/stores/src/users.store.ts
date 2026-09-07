@@ -11,6 +11,7 @@ import {
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
 import { PERSONALIZATION_MODAL_KEY } from '@n8n/frontend-constants/users';
 import type { AssignableGlobalRole } from '@n8n/permissions';
+import { ResponseError } from '@n8n/rest-api-client';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 import * as mfaApi from '@n8n/rest-api-client/api/mfa';
 import * as ssoApi from '@n8n/rest-api-client/api/sso';
@@ -38,6 +39,10 @@ const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Own
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
 const _isAdmin = (user: IUserResponse | null) => user?.role === ROLE.Admin;
+
+// A 401 means the session was already dead server-side; any other error must still propagate.
+const _isSessionAlreadyInvalid = (error: unknown) =>
+	error instanceof ResponseError && error.httpStatusCode === 401;
 
 export type LoginHook = (user: CurrentUserResponse) => void | Promise<void>;
 type LogoutHook = () => void | Promise<void>;
@@ -240,6 +245,14 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		logoutHooks.value.push(hook);
 	};
 
+	const standardLogout = async () => {
+		try {
+			await usersApi.logout(rootStore.restApiContext);
+		} catch (error) {
+			if (!_isSessionAlreadyInvalid(error)) throw error;
+		}
+	};
+
 	const logout = async (options?: { viaOidc?: boolean }) => {
 		let redirectUrl: string | null = null;
 
@@ -250,10 +263,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 				// The OIDC logout endpoint may be unavailable (e.g. the license
 				// lapsed since login). Fall back to the standard logout so the
 				// n8n session is terminated in any case.
-				await usersApi.logout(rootStore.restApiContext);
+				await standardLogout();
 			}
 		} else {
-			await usersApi.logout(rootStore.restApiContext);
+			await standardLogout();
 		}
 
 		unsetCurrentUser();

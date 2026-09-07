@@ -57,7 +57,7 @@ describe('McpSettingsService', () => {
 			findByKey.mockResolvedValue(null);
 
 			await expect(service.getEnabled()).resolves.toBe(false);
-			expect(findByKey).toHaveBeenCalledWith('mcp.access.enabled');
+			expect(findByKey).toHaveBeenCalledWith('mcp.access.enabled', undefined);
 		});
 
 		test('returns true when setting value is "true"', async () => {
@@ -94,6 +94,74 @@ describe('McpSettingsService', () => {
 				{ key: 'mcp.access.enabled', value: 'false', loadOnStartup: true },
 				['key'],
 			);
+		});
+	});
+
+	describe('getAutoExposeNewWorkflows', () => {
+		beforeEach(() => {
+			vi.spyOn(service, 'getEnabled').mockResolvedValue(true);
+		});
+
+		test('returns false when MCP access is disabled, without reading the setting', async () => {
+			vi.spyOn(service, 'getEnabled').mockResolvedValue(false);
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(false);
+			expect(cacheService.get).not.toHaveBeenCalledWith('mcp.autoExposeNewWorkflows');
+			expect(findByKey).not.toHaveBeenCalled();
+		});
+
+		test('returns false by default when no setting exists', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			findByKey.mockResolvedValue(null);
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(false);
+			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', undefined);
+			expect(cacheService.set).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', 'false');
+		});
+
+		test('returns the cached value without hitting the database', async () => {
+			cacheService.get.mockResolvedValue('true');
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(true);
+			expect(findByKey).not.toHaveBeenCalled();
+		});
+
+		test('reads through to the database on a cache miss', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			findByKey.mockResolvedValue(
+				mock<Settings>({
+					key: 'mcp.autoExposeNewWorkflows',
+					value: 'true',
+					loadOnStartup: true,
+				}),
+			);
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(true);
+			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', undefined);
+		});
+
+		test('forwards the entity manager to both settings reads on a cache miss', async () => {
+			vi.spyOn(service, 'getEnabled').mockRestore();
+			cacheService.get.mockResolvedValue(undefined);
+			findByKey.mockResolvedValue(mock<Settings>({ key: 'x', value: 'true', loadOnStartup: true }));
+			const em = mock<EntityManager>();
+
+			await service.getAutoExposeNewWorkflows(em);
+
+			expect(findByKey).toHaveBeenCalledWith('mcp.access.enabled', em);
+			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', em);
+		});
+	});
+
+	describe('setAutoExposeNewWorkflows', () => {
+		test('persists with loadOnStartup and primes the cache', async () => {
+			await service.setAutoExposeNewWorkflows(true);
+
+			expect(upsert).toHaveBeenCalledWith(
+				{ key: 'mcp.autoExposeNewWorkflows', value: 'true', loadOnStartup: true },
+				['key'],
+			);
+			expect(cacheService.set).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', 'true');
 		});
 	});
 
@@ -684,6 +752,7 @@ describe('McpSettingsService', () => {
 			});
 			expect(result).not.toHaveProperty('updatedIds');
 			expect(result).not.toHaveProperty('unchangedIds');
+			expect(result).not.toHaveProperty('autoExposeNewWorkflows');
 		});
 
 		test('does not resolve folder-scoped workflows when folder project cannot be scoped', async () => {

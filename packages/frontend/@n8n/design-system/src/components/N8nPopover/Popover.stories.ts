@@ -62,7 +62,7 @@ const Template: StoryFn = (args) => ({
 		N8nInput,
 	},
 	template: `
-		<div style="padding: 50px;">
+		<div>
 			<N8nPopover v-model:open="isOpen" v-bind="args">
 				<template #trigger>
 					<N8nButton>Open Form</N8nButton>
@@ -92,9 +92,8 @@ const Template: StoryFn = (args) => ({
 	`,
 });
 
-export const SimpleExample = Template.bind({});
-SimpleExample.args = {};
-SimpleExample.storyName = 'With Form Inputs';
+export const Default = Template.bind({});
+Default.args = {};
 
 const ScrollableTemplate: StoryFn = (args) => ({
 	setup() {
@@ -106,7 +105,7 @@ const ScrollableTemplate: StoryFn = (args) => ({
 		N8nButton,
 	},
 	template: `
-		<div style="padding: 50px;">
+		<div>
 			<N8nPopover v-model:open="isOpen" v-bind="args">
 				<template #trigger>
 					<N8nButton>Open Scrollable Menu</N8nButton>
@@ -189,7 +188,7 @@ const AlignmentVariantsTemplate: StoryFn = (args) => ({
 		N8nButton,
 	},
 	template: `
-		<div style="padding: 80px; display: flex; flex-direction: column; gap: 16px; align-items: flex-start;">
+		<div style="display: flex; flex-direction: column; gap: 16px; align-items: flex-start">
 			<div v-for="side in sides" :key="side" style="display: flex; align-items: center; gap: 12px;">
 				<div style="width: 56px; text-transform: capitalize; font-size: 12px; color: var(--color--text--tint-1);">
 					{{ side }}

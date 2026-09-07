@@ -5,6 +5,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
+	N8nIconButton,
 	N8nHeading,
 	N8nInput,
 	N8nMarkdownEditor,
@@ -33,8 +34,9 @@ type AddSubAgentModalData = {
 
 type EditSubAgentModalData = {
 	selectedAgent: AgentSubAgentOption;
+	agentHref?: string;
 	useWhen?: string;
-	/** Reasons this sub-agent is flagged invalid (e.g. unpublished, deleted) — same strings as the capability chip's tooltip. */
+	/** Reasons this sub-agent is flagged invalid — same strings as the capability chip's tooltip. */
 	invalidReasons?: string[];
 	onConfirm: (payload: AgentSubAgentsModalConfirmPayload) => void;
 	onRemove?: (agentId: string) => void;
@@ -117,11 +119,27 @@ function onConfirm() {
 		data-testid="agent-sub-agents-modal"
 	>
 		<template #header>
-			<N8nHeading tag="h2" size="large">
-				{{
-					selectedAgent ? selectedAgent.name : i18n.baseText('agents.builder.subAgents.modal.title')
-				}}
-			</N8nHeading>
+			<div :class="$style.header">
+				<N8nHeading tag="h2" size="large">
+					{{
+						selectedAgent
+							? selectedAgent.name
+							: i18n.baseText('agents.builder.subAgents.modal.title')
+					}}
+				</N8nHeading>
+				<N8nIconButton
+					v-if="selectedAgent && 'agentHref' in data && data.agentHref"
+					icon="external-link"
+					variant="ghost"
+					size="small"
+					:href="data.agentHref"
+					target="_blank"
+					rel="noopener noreferrer"
+					:title="i18n.baseText('agents.builder.subAgents.open')"
+					:aria-label="i18n.baseText('agents.builder.subAgents.open')"
+					data-test-id="agent-sub-agents-modal-open"
+				/>
+			</div>
 		</template>
 
 		<template #content>
@@ -274,6 +292,12 @@ function onConfirm() {
 	:global(.modal-content) {
 		overflow: hidden;
 	}
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .content {

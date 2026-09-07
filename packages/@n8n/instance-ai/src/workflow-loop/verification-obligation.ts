@@ -27,6 +27,11 @@ export interface DeriveWorkflowVerificationObligationOptions {
 	updatedAt?: string;
 }
 
+/** Blocking-reason text for one-off builds whose verification is optional. */
+const ONE_OFF_VERIFICATION_GUIDANCE =
+	'One-off operation: verification is an optional pre-flight. Completion is a live run ' +
+	'whose actual node output was read back.';
+
 const UNSETTLED_OBLIGATION_STATUSES = new Set<WorkflowVerificationObligationStatus>([
 	'pending_build',
 	'ready_to_verify',
@@ -83,6 +88,16 @@ function deriveStatus(
 	// Without this the switch below falls through to `ready_to_verify` and the
 	// planned orchestrator re-issues verification forever.
 	if (hasFailedEvidence(outcome)) return 'not_verifiable';
+
+	// One-off builds: verification is optional, so the obligation settles
+	// immediately (after the evidence checks above, which still win). This must
+	// stay an explicit settled return — falling through to `ready_to_verify`
+	// would make the planned scheduler re-issue verification follow-ups forever
+	// for one-off builds. A blocked loop state still surfaces as blocked;
+	// 'blocked' is itself settled, so loop-safety holds either way.
+	if (outcome.executionIntent === 'one-off') {
+		return state.status === 'blocked' ? 'blocked' : 'not_verifiable';
+	}
 
 	switch (outcome.verificationReadiness?.status) {
 		case 'already_verified':
@@ -150,6 +165,12 @@ function deriveBlockingReason(
 	if (outcome.setupRequirement?.status === 'required' && hasFailedEvidence(outcome)) {
 		return outcome.setupRequirement.guidance;
 	}
+	// After the evidence checks: a one-off may have run an optional pre-flight
+	// verify, and a concrete failure message outranks the generic guidance. A
+	// verified one-off carries no blockingReason at all — nothing is blocked.
+	if (outcome.executionIntent === 'one-off' && !hasSuccessfulEvidence(outcome)) {
+		return ONE_OFF_VERIFICATION_GUIDANCE;
+	}
 	if (state.status === 'blocked') {
 		return state.lastRemediation?.guidance ?? outcome.blockingReason ?? outcome.failureSignature;
 	}
@@ -187,6 +208,7 @@ export function deriveWorkflowVerificationObligation(
 		readiness: outcome?.verificationReadiness,
 		setupRequirement: outcome?.setupRequirement,
 		evidence: outcome?.verification,
+		executionIntent: outcome?.executionIntent,
 		blockingReason: deriveBlockingReason(record.state, outcome),
 		updatedAt,
 	};
