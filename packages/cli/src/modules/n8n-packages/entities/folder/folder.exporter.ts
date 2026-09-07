@@ -29,9 +29,9 @@ export interface FolderExportRequest {
 	 */
 	basePrefix?: string;
 	/**
-	 * Export only these workflows and the folders on the path to them. Folder
-	 * and workflow file names are still allocated for the whole tree, so the
-	 * targets match a full export.
+	 * Export only these workflows and the folders on the path to them. Slug-based
+	 * targets are stable per entity, so a partial export names what it writes
+	 * exactly as a full export would.
 	 */
 	selectedWorkflowIds?: ReadonlySet<string>;
 }
@@ -200,18 +200,24 @@ export class FolderExporter {
 		basePrefix: string,
 		request: FolderExportRequest,
 	): Promise<WorkflowExportResult> {
-		if (workflowIds.length === 0) {
+		const { selectedWorkflowIds } = request;
+		// A folder on the path to a selection may hold none of it, so narrow before
+		// the empty check. Filtering the source list keeps the manifest order stable.
+		const selected = selectedWorkflowIds
+			? workflowIds.filter((id) => selectedWorkflowIds.has(id))
+			: workflowIds;
+
+		if (selected.length === 0) {
 			return { entries: [], requirements: mergeRequirements() };
 		}
 
 		return await this.workflowExporter.export({
 			user: request.user,
 			writer: request.writer,
-			workflowIds,
+			workflowIds: selected,
 			includeTags: request.includeTags,
 			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix,
-			selectedWorkflowIds: request.selectedWorkflowIds,
 		});
 	}
 

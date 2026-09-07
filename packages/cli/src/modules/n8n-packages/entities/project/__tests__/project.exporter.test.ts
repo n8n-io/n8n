@@ -295,11 +295,9 @@ describe('ProjectExporter', () => {
 			expect(folderExporter.export).toHaveBeenCalledWith(
 				expect.objectContaining({ folderIds: ['f1'], selectedWorkflowIds: selected }),
 			);
+			// The unselected root workflow never reaches the workflow exporter.
 			expect(workflowExporter.export).toHaveBeenCalledWith(
-				expect.objectContaining({
-					workflowIds: ['w-root', 'w-root-2'],
-					selectedWorkflowIds: selected,
-				}),
+				expect.objectContaining({ workflowIds: ['w-root'] }),
 			);
 			expect(result.workflowEntries.map((e) => e.id).sort()).toEqual(['w-in-f1', 'w-root']);
 		});
@@ -351,9 +349,7 @@ describe('ProjectExporter', () => {
 				includeArchivedWorkflows: false,
 			});
 
-			expect(workflowExporter.export).toHaveBeenCalledWith(
-				expect.objectContaining({ selectedWorkflowIds: new Set() }),
-			);
+			expect(workflowExporter.export).not.toHaveBeenCalled();
 			expect(result.entries).toEqual([
 				{ id: project.id, name: 'billing', target: 'projects/billing-projectbilling01' },
 			]);

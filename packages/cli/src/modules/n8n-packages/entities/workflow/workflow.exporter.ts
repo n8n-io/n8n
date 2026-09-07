@@ -33,13 +33,6 @@ export interface WorkflowExportRequest {
 	 * under `<basePrefix>/workflows/`. Empty for a top-level workflow export.
 	 */
 	basePrefix?: string;
-
-	/**
-	 * Write and report only these workflows; the other ids in `workflowIds` are
-	 * skipped. Slug-based file names are stable per workflow, so a partial export
-	 * names its workflows exactly as a full export would.
-	 */
-	selectedWorkflowIds?: ReadonlySet<string>;
 }
 
 export interface WorkflowExportResult {
@@ -59,13 +52,8 @@ export class WorkflowExporter {
 	) {}
 
 	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
-		const { selectedWorkflowIds } = request;
-		const selectedIds = selectedWorkflowIds
-			? request.workflowIds.filter((id) => selectedWorkflowIds.has(id))
-			: request.workflowIds;
-
 		const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
-			selectedIds,
+			request.workflowIds,
 			request.user,
 			['workflow:export'],
 			{
@@ -77,13 +65,13 @@ export class WorkflowExporter {
 
 		await assertEveryRequestedEntityAccessible(
 			'workflow',
-			selectedIds,
+			request.workflowIds,
 			workflows,
 			async (ids) => await this.workflowFinder.findExistingWorkflowIds(ids),
 		);
 
 		const workflowsForExport = this.orderWorkflowsByRequest(
-			selectedIds,
+			request.workflowIds,
 			applyWorkflowVersionPolicy(workflows, request.workflowVersionPolicy),
 		);
 		const entries: ManifestEntry[] = [];

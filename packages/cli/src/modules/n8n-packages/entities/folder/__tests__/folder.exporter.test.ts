@@ -161,16 +161,48 @@ describe('FolderExporter', () => {
 			'folders/ops-ops-b/nested-nested',
 		]);
 		expect(writer.directories).toEqual(['folders/ops-ops-b', 'folders/ops-ops-b/nested-nested']);
-		// The exporter still receives every workflow of the folder so file names stay stable.
+		// The unselected sibling never reaches the workflow exporter, so it is never fetched.
 		expect(workflowExporter.export).toHaveBeenCalledTimes(1);
 		expect(workflowExporter.export).toHaveBeenCalledWith(
 			expect.objectContaining({
-				workflowIds: ['w-n1', 'w-n2'],
-				selectedWorkflowIds: new Set(['w-n2']),
+				workflowIds: ['w-n2'],
 				basePrefix: 'folders/ops-ops-b/nested-nested',
 			}),
 		);
 		expect(result.workflowEntries.map((e) => e.id)).toEqual(['w-n2']);
+	});
+
+	it('skips the workflow exporter for a folder on the path that holds none of the selection', async () => {
+		const parent = makeFolder({ id: 'parent', name: 'Parent' });
+		const nested = makeFolder({ id: 'nested', name: 'Nested', parentFolderId: 'parent' });
+		const { exporter, workflowFinder, workflowExporter } = makeExporter([parent, nested]);
+		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(
+			new Map([
+				['parent', ['w-unselected']],
+				['nested', ['w-selected']],
+			]),
+		);
+		workflowExporter.export.mockResolvedValue({
+			entries: [
+				{ id: 'w-selected', name: 'Selected', target: 'folders/parent-parent/nested-nested/x' },
+			],
+			requirements: { credentials: [], dataTables: [], variables: [], tags: [], nodeTypes: [] },
+		});
+
+		await exporter.export({
+			user,
+			folderIds: ['parent'],
+			selectedWorkflowIds: new Set(['w-selected']),
+			writer: new CapturingWriter(),
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
+		});
+
+		expect(workflowExporter.export).toHaveBeenCalledTimes(1);
+		expect(workflowExporter.export).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowIds: ['w-selected'] }),
+		);
 	});
 
 	it('propagates a WorkflowExporter abort so the whole folder export rejects', async () => {

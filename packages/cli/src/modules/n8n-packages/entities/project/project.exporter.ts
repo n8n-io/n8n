@@ -164,18 +164,22 @@ export class ProjectExporter {
 		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId, {
 			includeArchived: request.includeArchivedWorkflows,
 		});
-		if (rootWorkflowIds.length === 0) {
+		// Filtering the source list keeps the manifest order stable.
+		const selected = selectedWorkflowIds
+			? rootWorkflowIds.filter((id) => selectedWorkflowIds.has(id))
+			: rootWorkflowIds;
+
+		if (selected.length === 0) {
 			return { entries: [], requirements: mergeRequirements() };
 		}
 
 		return await this.workflowExporter.export({
 			user: request.user,
-			workflowIds: rootWorkflowIds,
+			workflowIds: selected,
 			writer: request.writer,
 			includeTags: request.includeTags,
 			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix: target,
-			selectedWorkflowIds,
 		});
 	}
 
