@@ -98,7 +98,11 @@ const QUERY_FIELD_DESCRIPTION =
 
 // Shared-field descriptions live in constants: `sanitizeInputSchema` flattens the
 // action union into one object and throws when one field name carries two
-// different descriptions. Any other action that adds these fields must import them.
+// different descriptions. Any other action that adds these fields must import
+// them. That check only applies within one registered action set: `list` has
+// mutually exclusive variants (see `pickListAction`) and only one registers
+// per run, so `folderScopeFields.query` below can carry a different
+// description than `listActionBase.query` without ever conflicting.
 const FOLDER_PATH_FIELD_DESCRIPTION =
 	'Restrict to one folder, named the way the user named it — "logsearch", "personal/logsearch", "Clients/Acme". This is the ONLY correct way to address a folder: folder membership is stored, not encoded in workflow names, so a `query` prefix both misses members named differently and picks up non-members that share the prefix. Matched case-insensitively on the full path, then on the folder name. If it does not resolve, the result says so and lists the real folders — never assume the returned set is the folder.';
 
@@ -149,9 +153,9 @@ const folderScopeFields = {
 	recursive: z.boolean().optional().describe(RECURSIVE_FIELD_DESCRIPTION),
 };
 
-/** `list` as it looks without the dependency index behind it — the shape the agent saw before
- *  node usage existed. Advertised when node usage is off but folder exploration is on. */
-const listActionWithoutNodeTypes = listActionBase.extend(folderScopeFields);
+/** `list` with folder scope but without the dependency index. Advertised when
+ *  folder exploration is on and node usage is off. */
+const listActionWithFolderScope = listActionBase.extend(folderScopeFields);
 
 /**
  * The cheap rung of preference discovery. `list` filters on the workflow name only, so learning
@@ -190,7 +194,7 @@ function pickListAction(context: InstanceAiContext, hasNodeUsage: boolean) {
 	if (hasNodeUsage) {
 		return context.folderExplorationEnabled === true ? listAction : listActionWithoutFolderScope;
 	}
-	return context.folderExplorationEnabled === true ? listActionWithoutNodeTypes : listActionBase;
+	return context.folderExplorationEnabled === true ? listActionWithFolderScope : listActionBase;
 }
 
 const getAction = z.object({
