@@ -39,6 +39,12 @@ export type ParameterInputProps = {
 	 */
 	parameterIssues: string[];
 	droppable: boolean;
+	/**
+	 * The shell draws the field without its label, so an input of a fixed size can
+	 * render a smaller variant. Set for a repeated parameter (`MultipleParameter`),
+	 * for an inline parameter list, and for an assignment or filter row.
+	 */
+	hideLabel: boolean;
 	eventBus?: EventBus;
 };
 

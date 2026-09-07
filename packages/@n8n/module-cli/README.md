@@ -9,6 +9,11 @@ pnpm n8n-module-sdk create my-feature --stack=frontend
 
 `create` writes `packages/modules/<name>/<frontend|backend>`.
 
+**Pick `<name>` by class.** A module with a backend half takes its backend module directory
+name and no prefix (`otel`). A contribution-only module — no backend half, so its id never
+reaches `/rest/module-settings` — takes a prefix naming the descriptor contribution point it
+feeds (`parameter-input-icon` feeds `parameterInputs`). See `packages/modules/README.md`.
+
 ## Frontend
 
 A real, resolvable workspace package: source-only (`main: "src/index.ts"`, no
@@ -22,6 +27,20 @@ second copy of any of them.
 Biome runs over the new package and over every edited file at the end, because
 a registration line can be longer than the 100-column limit. Without that step
 the next `format:check` in CI fails on a module nobody touched by hand.
+
+## Running a module's checks
+
+```bash
+pnpm turbo typecheck --filter=@n8n/frontend-module-<name>
+pnpm turbo lint --filter=@n8n/frontend-module-<name>
+pnpm turbo test --filter=@n8n/frontend-module-<name>
+```
+
+Go through turbo, not the bare `pnpm --filter <pkg> <task>` form. A frontend module
+is consumed from source, so nothing builds its platform dependencies for it: on a cold
+tree `pnpm --filter <pkg> test` fails to resolve `n8n-workflow` and
+`@n8n/vitest-config/frontend`. Turbo builds them first. The generated README repeats
+this for the new package.
 
 ## Backend
 

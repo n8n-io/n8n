@@ -11,6 +11,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { STORES } from '@n8n/stores';
@@ -89,6 +90,7 @@ describe('Init', () => {
 	let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
 	let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 	let bannersStore: ReturnType<typeof mockedStore<typeof useBannersStore>>;
+	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 
 	beforeEach(() => {
 		setActivePinia(
@@ -109,6 +111,7 @@ describe('Init', () => {
 		ssoStore = mockedStore(useSSOStore);
 		rootStore = mockedStore(useRootStore);
 		bannersStore = mockedStore(useBannersStore);
+		projectsStore = mockedStore(useProjectsStore);
 	});
 
 	describe('initializeCore()', () => {
@@ -288,6 +291,35 @@ describe('Init', () => {
 			expect(sourceControlSpy).not.toHaveBeenCalled();
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
 			expect(versionsSpy).not.toHaveBeenCalled();
+		});
+
+		// The registry is what gives a claimed `parameter.type` something to render. This
+		// function tolerates its own failures — the router logs them and carries on — so a
+		// registration behind a rejected fetch would leave those fields empty.
+		it('should register parameter inputs before anything that can fail', async () => {
+			vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
+			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+
+			await initializeAuthenticatedFeatures(false);
+
+			expect(moduleInitializer.registerModuleParameterInputs).toHaveBeenCalledTimes(1);
+			expect(
+				vi.mocked(moduleInitializer.registerModuleParameterInputs).mock.invocationCallOrder[0],
+			).toBeLessThan(sourceControlSpy.mock.invocationCallOrder[0]);
+		});
+
+		// `getMyProjects` sits in a bare `Promise.all`, so its rejection leaves this function
+		// through the router's catch and every registration after it is skipped.
+		it('should register parameter inputs even when a later fetch rejects', async () => {
+			vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
+			vi.spyOn(projectsStore, 'getMyProjects').mockRejectedValue(new Error('offline'));
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+
+			await expect(initializeAuthenticatedFeatures(false)).rejects.toThrow('offline');
+
+			expect(moduleInitializer.registerModuleParameterInputs).toHaveBeenCalledTimes(1);
+			expect(moduleInitializer.registerModuleCommands).not.toHaveBeenCalled();
 		});
 
 		it('should init authenticated features only once if user is logged in', async () => {

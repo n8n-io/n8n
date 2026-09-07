@@ -9,6 +9,7 @@ import { WorkflowReviewsModule } from '@/features/workflow-reviews/module.descri
 import { InstanceRegistryModule } from '@n8n/frontend-module-instance-registry';
 import { OtelModule } from '@n8n/frontend-module-otel';
 import { PromotionsModule } from '@/features/integrations/promotions.ee/module.descriptor';
+import { ParameterInputIconModule } from '@n8n/frontend-module-parameter-input-icon';
 
 /**
  * Hard-coding modules list until we have a dynamic way to load modules.
@@ -24,4 +25,5 @@ export const modules: FrontendModuleDescription[] = [
 	WorkflowReviewsModule,
 	InstanceRegistryModule,
 	PromotionsModule,
+	ParameterInputIconModule,
 ];

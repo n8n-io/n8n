@@ -116,6 +116,13 @@ export async function initializeAuthenticatedFeatures(
 		return;
 	}
 
+	// Ahead of the other module registrations, and ahead of every await below. A
+	// parameter input is what draws a field: a claimed type with nothing registered
+	// renders an empty field, and this function tolerates its own failures — the
+	// router logs them and carries on. The registry reads the manifest only, so it
+	// needs none of the state the awaits fetch.
+	registerModuleParameterInputs();
+
 	const i18n = useI18n();
 	const toast = useToast();
 	const sourceControlStore = useSourceControlStore();
@@ -242,7 +249,6 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleSettingsPages();
 	registerModulePushHandlers();
 	registerModuleCommands();
-	registerModuleParameterInputs();
 
 	// Initialize run data worker and load node types
 	if (isDataWorkerEnabled()) {

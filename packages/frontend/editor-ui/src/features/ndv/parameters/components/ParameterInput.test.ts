@@ -1840,6 +1840,7 @@ describe('ParameterInput.vue', () => {
 			},
 			parameterIssues: { type: Array as PropType<string[]>, required: true as const },
 			droppable: { type: Boolean, required: true as const },
+			hideLabel: { type: Boolean, required: true as const },
 			eventBus: { type: Object as PropType<EventBus>, required: false as const },
 		};
 
@@ -1868,6 +1869,45 @@ describe('ParameterInput.vue', () => {
 
 		afterEach(() => {
 			parameterInputRegistry.clear();
+			delete window.n8nExternalHooks;
+		});
+
+		/**
+		 * `parameterInput.mount` is an external-hook surface, and a contributed input
+		 * resolves its chunk after this component mounts. A payload assembled in
+		 * `onMounted` therefore hands the hook `undefined` where a built-in branch hands
+		 * it the input.
+		 */
+		test('should hand the mount hook the contributed input once its chunk resolves', async () => {
+			const mount = vi.fn();
+			window.n8nExternalHooks = { parameterInput: { mount: [mount] } };
+			parameterInputRegistry.register({
+				type: 'string',
+				component: async () => ContributedInput,
+			});
+
+			const { getByTestId } = renderComponent({
+				props: { path: 'custom', parameter: stringParameter, modelValue: 'from-shell' },
+			});
+			await waitFor(() => expect(getByTestId('contributed-input')).toBeInTheDocument());
+
+			await waitFor(() => expect(mount).toHaveBeenCalledTimes(1));
+			expect(mount.mock.calls[0][1]).toMatchObject({ parameter: stringParameter });
+			expect(mount.mock.calls[0][1].inputFieldRef).toBeDefined();
+		});
+
+		test('should keep firing the mount hook from mount for a built-in input', async () => {
+			const mount = vi.fn();
+			window.n8nExternalHooks = { parameterInput: { mount: [mount] } };
+
+			const { container } = renderComponent({
+				props: { path: 'custom', parameter: stringParameter, modelValue: 'built-in' },
+			});
+			await nextTick();
+
+			expect(container.querySelector('input')).toBeInTheDocument();
+			expect(mount).toHaveBeenCalledTimes(1);
+			expect(mount.mock.calls[0][1].inputFieldRef).toBeDefined();
 		});
 
 		test('should render the built-in input when no module claims the type', () => {
@@ -1888,6 +1928,43 @@ describe('ParameterInput.vue', () => {
 			await nextTick();
 
 			expect(getByTestId('contributed-input')).toHaveTextContent('from-shell');
+		});
+
+		test.each([
+			[false, 'false'],
+			[true, 'true'],
+		])('should pass hideLabel=%s to a contributed input', async (hideLabel, expected) => {
+			const HideLabelProbe = defineComponent({
+				props: contractProps,
+				setup: (props) => () =>
+					h('span', { 'data-test-id': 'contributed-input' }, String(props.hideLabel)),
+			});
+			parameterInputRegistry.register({ type: 'string', component: HideLabelProbe });
+
+			const { getByTestId } = renderComponent({
+				props: { path: 'custom', parameter: stringParameter, modelValue: '', hideLabel },
+			});
+			await nextTick();
+
+			expect(getByTestId('contributed-input')).toHaveTextContent(expected);
+		});
+
+		/**
+		 * The contributed slot goes through `valueChangedDebounced`, which `useDebounce`
+		 * builds on the leading edge. A single update therefore reaches the shell in the
+		 * same tick, and only a second one inside the window waits for the trailing edge.
+		 */
+		test('should emit a single contributed update without waiting for the debounce', async () => {
+			parameterInputRegistry.register({ type: 'string', component: ContributedInput });
+
+			const { getByTestId, emitted } = renderComponent({
+				props: { path: 'custom', parameter: stringParameter, modelValue: '' },
+			});
+			await nextTick();
+
+			await fireEvent.click(getByTestId('contributed-input'));
+
+			expect(emitted().update).toHaveLength(1);
 		});
 
 		test('should emit the parameter update a contributed input sends', async () => {

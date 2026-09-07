@@ -1,12 +1,30 @@
-# @n8n/frontend-module-{{name}}
+# @n8n/frontend-module-parameter-input-icon
+
+Owns the **`icon` parameter input** — the icon and emoji picker the NDV draws for a
+node parameter of `type: 'icon'`. The module claims that type through the
+`parameterInputs` field of its descriptor; the shell resolves it by `parameter.type`
+at render time and holds no import of the component.
+
+The `parameter-input-` prefix marks a **contribution-only module**: no backend half,
+so the id is absent from `/rest/module-settings` and is free to name the contribution
+point the module feeds. A feature module carries no prefix, because its id has to
+equal its backend module directory name for `isModuleActive(id)` to work.
+
+It contributes nothing else: no route, no store, no settings page, and no backend
+half. `registerModuleParameterInputs` does not gate on `isModuleActive`, because a
+parameter input is a render primitive rather than a feature — a gated renderer would
+leave the field with nothing to draw it.
+
+The shell keeps expression rendering, the from-AI override and the drop target for
+this type, so the contribution declares no capabilities.
 
 Frontend feature module. Consumed from source by the editor-ui shell through
 `src/app/modules.manifest.ts`; there is no build step and no `dist`.
 
 ```bash
-pnpm turbo typecheck --filter=@n8n/frontend-module-{{name}}
-pnpm turbo lint --filter=@n8n/frontend-module-{{name}}
-pnpm turbo test --filter=@n8n/frontend-module-{{name}}
+pnpm turbo typecheck --filter=@n8n/frontend-module-parameter-input-icon
+pnpm turbo lint --filter=@n8n/frontend-module-parameter-input-icon
+pnpm turbo test --filter=@n8n/frontend-module-parameter-input-icon
 ```
 
 Go through turbo, not the bare `pnpm --filter <pkg> <task>` form: this package is
@@ -33,4 +51,4 @@ this as much as `typecheck` does** — `pnpm --filter <pkg> test` fails to resol
 
 `@vitejs/plugin-vue` is already wired into `vite.config.ts`, so a `.vue` file
 compiles in tests without further setup. Route components must load lazily —
-see the note in `src/{{name}}.module.ts`.
+see the note in `src/parameter-input-icon.module.ts`.

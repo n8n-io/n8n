@@ -136,6 +136,10 @@ export const registerModuleCommands = () => {
  * primitive, not a feature. A gated renderer leaves a parameter with nothing to
  * render it, which is a broken field rather than a hidden feature. Availability
  * is enforced backend-side.
+ *
+ * For the same reason `init.ts` calls this before the awaits the other module
+ * registrations sit behind: a failed projects or roles fetch must not decide
+ * whether a field has something to draw it.
  */
 export const registerModuleParameterInputs = () => {
 	modules.forEach((module) => {
