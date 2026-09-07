@@ -2,6 +2,7 @@ import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test
 import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { PromotionConfigRepository } from '@/modules/promotions.ee/database/repositories/promotion-config.repository';
@@ -437,16 +438,27 @@ describe('Promotions in Public API', () => {
 			});
 			const id = create.body.id as string;
 			const payload = { settings: { schemaVersion: 1, branchName: 'main' } };
+			const configRepository = Container.get(PromotionConfigRepository);
+			const originalFind = configRepository.findByConnectionAndDirection.bind(configRepository);
+			const bothReadsCompleted = createDeferredPromise();
+			let completedReads = 0;
+			const findSpy = vi
+				.spyOn(configRepository, 'findByConnectionAndDirection')
+				.mockImplementation(async (...args) => {
+					const config = await originalFind(...args);
+					completedReads += 1;
+					if (completedReads === 2) bothReadsCompleted.resolve();
+					await bothReadsCompleted.promise;
+					return config;
+				});
 
 			const responses = await Promise.all([
 				agent.put(`/promotions/connections/${id}/configs/apply`).send(payload),
 				agent.put(`/promotions/connections/${id}/configs/apply`).send(payload),
-			]);
+			]).finally(() => findSpy.mockRestore());
 
 			expect(responses.map(({ status }) => status).sort()).toEqual([200, 409]);
-			expect(await Container.get(PromotionConfigRepository).findByConnectionIds([id])).toHaveLength(
-				1,
-			);
+			expect(await configRepository.findByConnectionIds([id])).toHaveLength(1);
 		});
 
 		it('creates, replaces, and removes one direction', async () => {
