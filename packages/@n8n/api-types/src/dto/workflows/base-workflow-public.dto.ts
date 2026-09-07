@@ -3,6 +3,7 @@ import '../../openapi-extend';
 import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { readOnlyPublicSchema } from '../read-only-public-schema';
 import {
 	connectionsOpenApi,
 	readOnlyTimestampOpenApi,
@@ -12,7 +13,6 @@ import {
 	workflowNodeGroupFieldDocs,
 	workflowSettingsFieldDocs,
 } from './workflow-public.openapi';
-import { readOnlyPublicSchema } from '../../schemas/read-only-public.schema';
 
 const customTelemetryTagPublicSchema = z
 	.object({

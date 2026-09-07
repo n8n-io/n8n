@@ -37,7 +37,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import {
-	assertKnownCredentialType,
+	assertValidUpdateProperties,
 	buildSharedForCredential,
 	validateCredentialData,
 } from '@/public-api/v1/handlers/credentials/credentials.utils';
@@ -47,9 +47,7 @@ import {
 } from '@/public-api/v1/shared/services/pagination.service';
 
 /**
- * The fields `toCredentialPublicDto` reads. A plain `CredentialsEntity` satisfies this, and so
- * does the object `CredentialsService.createUnmanagedCredential` returns, which carries an extra
- * `scopes` field and omits `shared` (both irrelevant to the public response).
+ * Allows us to type the input to `toCredentialPublicDto` and have the return type of each service method satisfy that input type.
  */
 type CredentialPublicDtoSource = Pick<
 	CredentialsEntity,
@@ -175,7 +173,7 @@ export class CredentialsPublicController {
 		_res: Response,
 		@Body body: CreateCredentialPublicDto,
 	): Promise<CredentialPublicDto> {
-		assertKnownCredentialType(this.credentialTypes, body.type);
+		this.assertKnownCredentialType(body.type);
 		validateCredentialData(this.credentialsHelper, body.type, body.data);
 
 		const credential = await this.credentialsService.createUnmanagedCredential(
@@ -222,7 +220,7 @@ export class CredentialsPublicController {
 		@Body body: UpdateCredentialPublicDto,
 	): Promise<CredentialPublicDto> {
 		if (body.type !== undefined) {
-			assertKnownCredentialType(this.credentialTypes, body.type);
+			this.assertKnownCredentialType(body.type);
 		}
 
 		const existingCredential = await this.credentialsFinderService.findById(credentialId, {
@@ -232,17 +230,7 @@ export class CredentialsPublicController {
 			throw new NotFoundError('Credential not found');
 		}
 
-		if (body.data !== undefined) {
-			const effectiveType = body.type ?? existingCredential.type;
-			validateCredentialData(this.credentialsHelper, effectiveType, body.data, {
-				partialData: body.isPartialData === true,
-			});
-		} else if (body.type !== undefined && body.type !== existingCredential.type) {
-			throw new BadRequestError(
-				'req.body.data is required when changing credential type. The existing data cannot ' +
-					'be used with the new type.',
-			);
-		}
+		assertValidUpdateProperties(this.credentialsHelper, existingCredential, body);
 
 		if (existingCredential.isManaged) {
 			throw new BadRequestError('Managed credentials cannot be updated.');
@@ -297,6 +285,14 @@ export class CredentialsPublicController {
 		}
 
 		return toCredentialPublicDto(updatedCredential);
+	}
+
+	private assertKnownCredentialType(type: string): void {
+		try {
+			this.credentialTypes.getByName(type);
+		} catch {
+			throw new BadRequestError('req.body.type is not a known type');
+		}
 	}
 
 	/**
