@@ -10,6 +10,7 @@ import type {
 } from '@n8n/api-types';
 import type { AssignableGlobalRole, Scope } from '@n8n/permissions';
 import type {
+	FeatureFlagPayloads,
 	FeatureFlags,
 	IDataObject,
 	IPersonalizationSurveyAnswersV4,
@@ -72,6 +73,7 @@ export interface IUserResponse extends User {
 
 export interface CurrentUserResponse extends IUserResponse {
 	featureFlags?: FeatureFlags;
+	featureFlagPayloads?: FeatureFlagPayloads;
 }
 
 export interface IUser extends IUserResponse {

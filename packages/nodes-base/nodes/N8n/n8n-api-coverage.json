@@ -122,16 +122,16 @@
 		"POST /executions/{id}/retry": {
 			"status": "gap"
 		},
-		"POST /executions/{id}/stop": {
+		"POST /executions/{executionId}/stop": {
 			"status": "gap"
 		},
 		"POST /executions/stop": {
 			"status": "gap"
 		},
-		"GET /executions/{id}/tags": {
+		"GET /executions/{executionId}/tags": {
 			"status": "gap"
 		},
-		"PUT /executions/{id}/tags": {
+		"PUT /executions/{executionId}/tags": {
 			"status": "gap"
 		},
 		"GET /insights/summary": {
@@ -242,6 +242,9 @@
 			"status": "gap"
 		},
 		"POST /source-control/pull": {
+			"status": "gap"
+		},
+		"GET /source-control/status": {
 			"status": "gap"
 		},
 		"POST /git-connections/{id}/push": {

@@ -31,6 +31,7 @@ const notionResult: McpRegistrySearchResult = {
 	],
 	tools: [],
 	metadata: { nodeTypeName: '@n8n/mcp-registry.notion' },
+	isTemplated: false,
 };
 
 describe('buildResolveIntegrationTool', () => {

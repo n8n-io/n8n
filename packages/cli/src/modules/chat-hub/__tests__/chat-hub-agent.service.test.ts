@@ -499,14 +499,10 @@ describe('ChatHubAgentService', () => {
 				executionData: {} as IRunExecutionData,
 			});
 
-			const mockTransaction = vi.fn(
-				async (cb: (trx: never) => Promise<unknown>) => await cb(mock()),
+			agentRepository.runInTransaction.mockImplementation(
+				async (ctx: unknown, fn: (em: never, ctx: unknown) => Promise<unknown>) =>
+					await fn(mock(), ctx),
 			);
-
-			Object.defineProperty(agentRepository, 'manager', {
-				value: { transaction: mockTransaction },
-				configurable: true,
-			});
 			workflowExecutionService.executeChatWorkflow.mockResolvedValue({
 				executionId: 'exec-1',
 			} as never);

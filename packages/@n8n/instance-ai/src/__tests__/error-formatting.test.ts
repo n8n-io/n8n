@@ -65,6 +65,11 @@ describe('formatErrorForLog', () => {
 		expect(formatted.length).toBeLessThanOrEqual(1_003);
 	});
 
+	it('keeps messages at the length limit intact and truncates longer ones', () => {
+		expect(formatErrorForLog({ body: 'a'.repeat(1_000) })).toBe('a'.repeat(1_000));
+		expect(formatErrorForLog({ body: 'a'.repeat(1_001) })).toBe(`${'a'.repeat(1_000)}...`);
+	});
+
 	it('summarizes HTML errors from a bounded input sample', () => {
 		const formatted = formatErrorForLog({
 			body: `<!doctype html><html><head><title>Access denied</title></head><body>${'x'.repeat(

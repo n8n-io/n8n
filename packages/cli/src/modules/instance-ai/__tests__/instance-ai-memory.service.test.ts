@@ -1,5 +1,3 @@
-import type { InstanceAiAgentNode } from '@n8n/api-types';
-
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
 
 const mockListMessages = vi.fn();
@@ -26,7 +24,6 @@ const mockAgentMemory = {
 };
 
 // Mock GlobalConfig
-const mockDbSnapshotStorage = { getForWindow: vi.fn().mockResolvedValue([]) };
 const mockCheckpointRepository = { findActiveByThreadId: vi.fn().mockResolvedValue([]) };
 
 interface LogRow {
@@ -81,7 +78,7 @@ function installLogDouble(rows: LogRow[] = []): void {
 			logRows.filter((row) => runIds.includes(row.runId)),
 	);
 }
-const mockDurableLogMetrics = { recordFoldRead: vi.fn(), notifyParserFallbacks: vi.fn() };
+const mockDurableLogMetrics = { recordFoldRead: vi.fn() };
 
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
@@ -104,7 +101,6 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		mockLogger as never,
 		mockConfig as never,
 		mockAgentMemory as never,
-		mockDbSnapshotStorage as never,
 		mockCheckpointRepository as never,
 		mockPendingConfirmationRepository as never,
 		mockEventLogRepository as never,
@@ -115,20 +111,6 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 const mockPendingConfirmationRepository = {
 	findLiveRequestIds: vi.fn(async () => new Set<string>()),
 };
-
-function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode {
-	return {
-		agentId: 'agent-001',
-		role: 'orchestrator',
-		status: 'completed',
-		textContent: 'Done!',
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [{ type: 'text', content: 'Done!' }],
-		...overrides,
-	};
-}
 
 function makeThread(id: string, updatedAt: string) {
 	return {
@@ -144,90 +126,8 @@ function makeThread(id: string, updatedAt: string) {
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockDbSnapshotStorage.getForWindow.mockResolvedValue([]);
+		installLogDouble();
 		mockListMessages.mockResolvedValue({ messages: [] });
-	});
-
-	it('should return parsed rich messages with agent trees from snapshots', async () => {
-		const tree = makeTree();
-		mockListMessages.mockResolvedValue({
-			messages: [
-				{
-					id: 'msg-u',
-					role: 'user',
-					content: 'Hello',
-					createdAt: new Date('2026-01-01T00:00:00.000Z'),
-				},
-				{
-					id: 'msg-a',
-					role: 'assistant',
-					content: [{ type: 'text', text: 'Done!' }],
-					createdAt: new Date('2026-01-01T00:00:01.000Z'),
-				},
-			],
-		});
-		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
-			{
-				tree,
-				runId: 'run_abc',
-				createdAt: new Date('2026-01-01T00:00:01.000Z'),
-				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
-			},
-		]);
-
-		const service = createService();
-		const result = await service.getRichMessages('user-1', 'thread-1');
-
-		expect(result.messages).toHaveLength(2);
-		expect(result.messages[0].role).toBe('user');
-		expect(result.messages[0].content).toBe('Hello');
-		expect(result.messages[1].role).toBe('assistant');
-		expect(result.messages[1].agentTree).toStrictEqual(tree);
-		expect(result.messages[1].runId).toBe('run_abc');
-	});
-
-	it('should return parsed messages with flat tree when no snapshots exist', async () => {
-		mockListMessages.mockResolvedValue({
-			messages: [
-				{
-					id: 'msg-u',
-					role: 'user',
-					content: 'Hi',
-					createdAt: new Date('2026-01-01T00:00:00.000Z'),
-				},
-				{
-					id: 'msg-a',
-					role: 'assistant',
-					content: [
-						{ type: 'text', text: 'Here are your workflows' },
-						{
-							type: 'tool-call',
-							toolCallId: 'tc-1',
-							toolName: 'list-workflows',
-							input: {},
-							state: 'resolved',
-							output: { workflows: [] },
-						},
-					],
-					createdAt: new Date('2026-01-01T00:00:01.000Z'),
-				},
-			],
-		});
-		mockGetThread.mockResolvedValue({
-			id: 'thread-1',
-			title: 'Test',
-			metadata: {},
-		});
-
-		const service = createService();
-		const result = await service.getRichMessages('user-1', 'thread-1');
-
-		expect(result.messages).toHaveLength(2);
-		const assistant = result.messages[1];
-		expect(assistant.agentTree).toBeDefined();
-		expect(assistant.agentTree?.toolCalls).toHaveLength(1);
-		expect(assistant.agentTree?.toolCalls[0].toolName).toBe('list-workflows');
-		expect(assistant.agentTree?.toolCalls[0].isLoading).toBe(false);
 	});
 
 	it('should handle empty message list', async () => {
@@ -242,95 +142,6 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		expect(result.messages).toEqual([]);
-	});
-
-	it('surfaces in-flight checkpoint messages not yet committed to memory', async () => {
-		// A turn that suspended at HITL never gets `saveToMemory` called by the
-		// SDK. The inbound user message is persisted on receipt, but the
-		// intermediate assistant messages (and any pending tool-call) live only
-		// in `state.messageList.messages` until the turn resumes and completes.
-		// The /messages endpoint should surface them so a page reload doesn't
-		// drop in-flight artifacts.
-		mockListMessages.mockResolvedValue({ messages: [] });
-		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
-			{
-				key: 'run_abc',
-				runId: 'run_abc',
-				threadId: 'thread-1',
-				expiredAt: null,
-				state: {
-					messageList: {
-						messages: [
-							{
-								id: 'cp-user-1',
-								role: 'user',
-								content: [{ type: 'text', text: 'execute my workflow' }],
-								createdAt: '2026-01-01T00:00:00.000Z',
-							},
-							{
-								id: 'cp-assistant-1',
-								role: 'assistant',
-								content: [{ type: 'text', text: 'On it!' }],
-								createdAt: '2026-01-01T00:00:01.000Z',
-							},
-						],
-					},
-				},
-				createdAt: new Date('2026-01-01T00:00:01.000Z'),
-				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
-			},
-		]);
-
-		const service = createService();
-		const result = await service.getRichMessages('user-1', 'thread-1');
-
-		expect(result.messages).toHaveLength(2);
-		expect(result.messages[0]).toMatchObject({ id: 'cp-user-1', role: 'user' });
-		expect(result.messages[0].content).toBe('execute my workflow');
-		expect(result.messages[1]).toMatchObject({ id: 'cp-assistant-1', role: 'assistant' });
-	});
-
-	it('prefers stored messages over checkpoint duplicates with the same id', async () => {
-		// When a previously suspended turn resumes and commits its messages to
-		// memory, the same IDs appear in both places. The stored row wins so
-		// any post-suspension edits the SDK made (e.g. final tool outcomes)
-		// are not regressed by the stale checkpoint copy.
-		mockListMessages.mockResolvedValue({
-			messages: [
-				{
-					id: 'msg-1',
-					role: 'user',
-					content: [{ type: 'text', text: 'final version' }],
-					createdAt: new Date('2026-01-01T00:00:00.000Z'),
-				},
-			],
-		});
-		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
-			{
-				key: 'run_abc',
-				expiredAt: null,
-				state: {
-					messageList: {
-						messages: [
-							{
-								id: 'msg-1',
-								role: 'user',
-								content: [{ type: 'text', text: 'stale checkpoint copy' }],
-								createdAt: '2026-01-01T00:00:00.000Z',
-							},
-						],
-					},
-				},
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			},
-		]);
-
-		const service = createService();
-		const result = await service.getRichMessages('user-1', 'thread-1');
-
-		expect(result.messages).toHaveLength(1);
-		expect(result.messages[0].content).toBe('final version');
 	});
 
 	it('tolerates a missing or unreadable checkpoint store', async () => {
@@ -402,64 +213,11 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockDbSnapshotStorage.getForWindow.mockResolvedValue([]);
 		installLogDouble();
 		mockListMessages.mockResolvedValue({ messages: [userMessage, assistantMessage] });
 	});
 
-	it('derives the tree from the log even when the stored snapshot is degenerate', async () => {
-		// The stored snapshot was built over an evicted buffer: an empty
-		// cancelled tree with none of the run's work (the INS-595 bug family).
-		// Snapshot rows keep being written, but they are never read once the
-		// thread has log rows.
-		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
-			{
-				tree: makeTree({ status: 'cancelled', textContent: '', timeline: [], toolCalls: [] }),
-				runId: 'run_abc',
-				createdAt: at,
-				updatedAt: at,
-			},
-		]);
-		setLogRows([
-			eventRow(
-				{
-					type: 'run-start',
-					runId: 'run_abc',
-					agentId: 'agent-001',
-					payload: { messageId: 'm-1' },
-				},
-				at,
-			),
-			...toolCallRows('run_abc', 3),
-			eventRow(
-				{
-					type: 'run-finish',
-					runId: 'run_abc',
-					agentId: 'agent-001',
-					payload: { status: 'completed' },
-				},
-				at,
-			),
-		]);
-
-		const service = createService();
-		const result = await service.getRichMessages('user-1', 'thread-1');
-
-		const assistant = result.messages[1];
-		expect(assistant.agentTree?.toolCalls).toHaveLength(3);
-		expect(assistant.agentTree?.toolCalls.map((tc) => tc.toolName)).toEqual([
-			'tool-1',
-			'tool-2',
-			'tool-3',
-		]);
-		expect(assistant.agentTree?.status).toBe('completed');
-		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
-		// The stored rows are not even loaded: the snapshot query only runs when
-		// the fold needs its fallback.
-		expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
-	});
-
-	it('renders a run that crashed before its snapshot was written', async () => {
+	it('derives the agent tree for a completed run from the log', async () => {
 		setLogRows([
 			eventRow(
 				{
@@ -565,16 +323,11 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(result.messages[1].agentTree?.toolCalls).toHaveLength(1);
 	});
 
-	it('renders nothing for a fold emptied by exclusion instead of falling back to stored snapshots', async () => {
-		// The in-flight group is the thread's ONLY log content. Its completed
-		// sibling run_a has a stored snapshot that would survive the loader's
-		// exact-runId filter (only run_b is excluded) — falling back would
-		// resurrect exactly the in-flight group state the exclusion keeps out
-		// of history.
+	it('renders nothing for a fold emptied by exclusion', async () => {
+		// The in-flight group is the thread's ONLY log content. Excluding run_b
+		// poisons the whole group, so its completed sibling run_a must not derive
+		// a partial tree — the in-flight turn renders live via SSE, not history.
 		mockListMessages.mockResolvedValue({ messages: [userMessage] });
-		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
-			{ tree: makeTree(), runId: 'run_a', createdAt: at, updatedAt: at },
-		]);
 		setLogRows([
 			eventRow(
 				{
@@ -611,7 +364,6 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			excludeRunIds: ['run_b'],
 		});
 
-		expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
 		expect(result.messages).toHaveLength(1);
 		expect(result.messages[0].role).toBe('user');
 	});
@@ -651,7 +403,6 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		});
 
 		expect(mockDurableLogMetrics.recordFoldRead).not.toHaveBeenCalled();
-		expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
 		expect(result.messages).toHaveLength(1);
 		expect(result.messages[0].role).toBe('user');
 	});
@@ -706,10 +457,9 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		// Only run_done's entry is derived, exactly as the driving main would.
 		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
 		expect(result.messages[1].agentTree?.toolCalls).toHaveLength(1);
-		expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
 	});
 
-	it('renders nothing when the only group is in flight on another main instead of falling back', async () => {
+	it('renders nothing when the only group is in flight on another main', async () => {
 		mockListMessages.mockResolvedValue({ messages: [userMessage] });
 		setLogRows([
 			eventRow(
@@ -735,15 +485,15 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
-		expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
 		expect(result.messages).toHaveLength(1);
 		expect(result.messages[0].role).toBe('user');
 	});
 
 	it('keeps folding a HITL-suspended run without a run-finish', async () => {
 		// A suspended run legitimately never wrote its run-finish, but its turn
-		// must keep rendering: the fold entry pairs with the checkpoint-surfaced
-		// assistant message. The suspension is recognized by the run's own
+		// must keep rendering: with no assistant rows committed yet, the folded
+		// entry surfaces as a standalone assistant message carrying the
+		// confirmation card. The suspension is recognized by the run's own
 		// checkpoint — the same predicate that spares it from the interrupted-run
 		// sweep.
 		mockListMessages.mockResolvedValue({ messages: [userMessage] });
@@ -754,19 +504,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 				hostRunId: 'run_susp',
 				threadId: 'thread-1',
 				expiredAt: null,
-				state: {
-					status: 'suspended',
-					messageList: {
-						messages: [
-							{
-								id: 'cp-assistant-1',
-								role: 'assistant',
-								content: [{ type: 'text', text: 'Confirm before I continue' }],
-								createdAt: '2026-01-01T00:00:01.000Z',
-							},
-						],
-					},
-				},
+				state: { status: 'suspended' },
 				createdAt: new Date('2026-01-01T00:00:01.000Z'),
 				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
 			},
@@ -806,6 +544,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 
 		expect(result.messages).toHaveLength(2);
 		const assistant = result.messages[1];
+		expect(assistant.role).toBe('assistant');
 		expect(assistant.agentTree?.toolCalls[0]?.confirmation?.requestId).toBe('req-1');
 	});
 
@@ -989,39 +728,32 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(texts).toEqual(['one', 'two', 'three']);
 	});
 
-	it('keeps the stored snapshot tree for pre-log threads (no log rows)', async () => {
-		const tree = makeTree();
-		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
-			{ tree, runId: 'run_abc', createdAt: at, updatedAt: at },
-		]);
-
+	it('renders messages without trees for pre-log threads (no log rows)', async () => {
 		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
-		expect(result.messages[1].agentTree).toStrictEqual(tree);
+		// No run-start facts -> nothing folds; the assistant message renders from
+		// its own content blocks only (no fold-provided runIds).
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[1].runIds).toBeUndefined();
 		expect(mockDurableLogMetrics.recordFoldRead).not.toHaveBeenCalled();
 	});
 
-	it('falls back to stored snapshots when the log read fails', async () => {
-		const tree = makeTree();
-		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
-			{ tree, runId: 'run_abc', createdAt: at, updatedAt: at },
-		]);
+	it('renders messages without trees when the log read fails', async () => {
 		mockEventLogRepository.getRunStarts.mockRejectedValue(new Error('db down'));
 
 		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
-		expect(result.messages[1].agentTree).toStrictEqual(tree);
+		// Degrades to messages-without-trees rather than failing the page read.
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[1].runIds).toBeUndefined();
+		expect(mockDurableLogMetrics.recordFoldRead).not.toHaveBeenCalled();
 	});
 
-	it('falls back to stored snapshots when the log derives nothing renderable', async () => {
-		const tree = makeTree();
-		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
-			{ tree, runId: 'run_abc', createdAt: at, updatedAt: at },
-		]);
+	it('renders messages without trees when the log derives nothing renderable', async () => {
 		// The log holds only lifecycle facts — no renderable work, so no orphan
-		// card is derived and the stored snapshots keep rendering.
+		// card is derived.
 		setLogRows([
 			eventRow(
 				{
@@ -1046,7 +778,8 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
-		expect(result.messages[1].agentTree).toStrictEqual(tree);
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[1].runIds).toBeUndefined();
 		expect(mockDurableLogMetrics.recordFoldRead).not.toHaveBeenCalled();
 	});
 
@@ -1159,30 +892,6 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			});
 		});
 
-		it('keeps the tree of the turn an older page ends on', async () => {
-			// The stored-snapshot path (durable log off) reads by snapshot
-			// createdAt, which lands just after the assistant row it pairs with.
-			const snapshotAt = new Date('2026-01-01T00:00:01.300Z');
-			const nextPageAt = new Date('2026-01-01T00:00:05.000Z');
-			const tree = makeTree();
-			mockListMessages.mockResolvedValue({
-				messages: [userMessage, assistantMessage],
-				newerBoundaryAt: nextPageAt,
-			});
-			mockDbSnapshotStorage.getForWindow.mockResolvedValue([
-				{ tree, runId: 'run_abc', createdAt: snapshotAt, updatedAt: snapshotAt },
-			]);
-
-			const service = createService();
-			const result = await service.getRichMessages('user-1', 'thread-1', { page: 1 });
-
-			expect(mockDbSnapshotStorage.getForWindow).toHaveBeenCalledWith('thread-1', {
-				since: userMessage.createdAt,
-				before: nextPageAt,
-			});
-			expect(result.messages[1].agentTree).toBe(tree);
-		});
-
 		it('hydrates nothing for an out-of-range older page', async () => {
 			// No message rows to pair a tree with, and no bounds to read one
 			// with: an unbounded read here would hydrate the whole thread to
@@ -1194,7 +903,6 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			const result = await service.getRichMessages('user-1', 'thread-1', { page: 3 });
 
 			expect(mockEventLogRepository.findRunIdsInWindow).not.toHaveBeenCalled();
-			expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
 			expect(result.messages).toEqual([]);
 		});
 
@@ -1245,15 +953,6 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			await service.getRichMessages('user-1', 'thread-1');
 
 			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
-				since: userMessage.createdAt,
-			});
-		});
-
-		it('windows the stored-snapshot path too', async () => {
-			const service = createService();
-			await service.getRichMessages('user-1', 'thread-1');
-
-			expect(mockDbSnapshotStorage.getForWindow).toHaveBeenCalledWith('thread-1', {
 				since: userMessage.createdAt,
 			});
 		});

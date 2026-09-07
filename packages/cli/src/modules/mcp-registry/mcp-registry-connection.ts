@@ -1,5 +1,6 @@
 import { camelCase } from 'change-case';
 import {
+	getConfiguredEndpointUrl,
 	getMcpAuthHeaders,
 	type ICredentialsHelper,
 	type ICredentialTypes,
@@ -11,6 +12,8 @@ import {
 } from 'n8n-workflow';
 
 import type { McpRegistryServer, McpRegistryUsesCredential } from './registry/mcp-registry.types';
+
+export { getConfiguredEndpointUrl };
 
 export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
@@ -157,20 +160,39 @@ export function resolveMcpRegistryConnection(
 	server: McpRegistryServer,
 ): McpRegistryConnection | null {
 	const remote =
-		server.remotes.find(({ type }) => type === 'streamable-http') ??
-		server.remotes.find(({ type }) => type === 'sse');
+		server.remotes.find(
+			({ type }) => type === 'streamable-http' || type === 'streamable-http-templated',
+		) ?? server.remotes.find(({ type }) => type === 'sse');
 	if (!remote) return null;
+
+	const nodeTypeName = `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`;
+
+	// A templated remote's url is an unresolved `$self`-expression, not a
+	// literal URL, resolves per-credential once `prepareMcpRegistryConnection`
+	// has the decrypted credential data.
+	if (remote.type === 'streamable-http-templated') {
+		return {
+			nodeTypeName,
+			urlTemplate: remote.url,
+			transport: 'httpStreamable',
+			credentialBindings: getMcpRegistryCredentialOptions(server).map(
+				({ credentialType, value }) => ({ credentialType, selector: value }),
+			),
+			isTemplated: true,
+		};
+	}
 
 	try {
 		const endpoint = new URL(remote.url);
 		return {
-			nodeTypeName: `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`,
+			nodeTypeName,
 			endpointUrl: endpoint.toString(),
 			endpointHostname: endpoint.hostname,
 			transport: remote.type === 'streamable-http' ? 'httpStreamable' : 'sse',
 			credentialBindings: getMcpRegistryCredentialOptions(server).map(
 				({ credentialType, value }) => ({ credentialType, selector: value }),
 			),
+			isTemplated: false,
 		};
 	} catch {
 		return null;
@@ -221,21 +243,30 @@ export async function prepareMcpRegistryConnection(
 				},
 			};
 		}
+		const endpoint = resolveEndpoint(connection, credentialData);
+		if (!endpoint) return unresolvedServerUrl(credentialType);
 
 		return {
 			ok: true,
 			value: {
-				...connection,
+				nodeTypeName: connection.nodeTypeName,
 				credentialType,
+				transport: connection.transport,
+				endpointUrl: endpoint.toString(),
 				headers,
-				allowedDomains: connection.endpointHostname,
+				// Pinned to the host actually being called, so the restriction can
+				// never guard a different host than the request goes to.
+				allowedDomains: endpoint.hostname,
 			},
 		};
 	}
 
+	const endpoint = resolveEndpoint(connection, credentialData);
+	if (!endpoint) return unresolvedServerUrl(credentialType);
+
 	// prepare credential data of generic credentials
 	const authenticated = await credentialsHelper.authenticate(credentialData, credentialType, {
-		url: connection.endpointUrl,
+		url: endpoint.toString(),
 		headers: {},
 		qs: {},
 	});
@@ -257,13 +288,44 @@ export async function prepareMcpRegistryConnection(
 	return {
 		ok: true,
 		value: {
-			...connection,
+			nodeTypeName: connection.nodeTypeName,
 			credentialType,
+			transport: connection.transport,
+			endpointUrl: endpoint.toString(),
 			headers,
 			...(Object.keys(query).length > 0 ? { query } : {}),
-			allowedDomains: connection.endpointHostname,
+			allowedDomains: endpoint.hostname,
 		},
 	};
+}
+
+function resolveEndpoint(
+	connection: McpRegistryConnection,
+	credentialData: PrepareMcpRegistryConnectionInput['credentialData'],
+): URL | undefined {
+	if (!connection.isTemplated) return new URL(connection.endpointUrl);
+	return typeof credentialData.serverUrl === 'string'
+		? parseUrl(credentialData.serverUrl)
+		: undefined;
+}
+
+function unresolvedServerUrl(credentialType: string): PrepareMcpRegistryConnectionResult {
+	return {
+		ok: false,
+		error: {
+			code: 'unresolved_server_url',
+			message: `Credential type "${credentialType}" did not resolve a server URL`,
+		},
+	};
+}
+
+function parseUrl(value: string): URL | undefined {
+	try {
+		const url = new URL(value);
+		return /^https?:$/.test(url.protocol) ? url : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 export function toAgentMcpTransport(

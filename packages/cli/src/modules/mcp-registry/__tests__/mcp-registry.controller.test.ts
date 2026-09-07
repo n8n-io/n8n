@@ -2,7 +2,11 @@ import { mock } from 'vitest-mock-extended';
 
 import { McpRegistryController } from '../mcp-registry.controller';
 import type { McpRegistryService } from '../registry/mcp-registry.service';
-import { linearMockServer, notionMockServer } from '../registry/mock-servers';
+import {
+	databricksGenieTemplatedMockServer,
+	linearMockServer,
+	notionMockServer,
+} from '../registry/mock-servers';
 
 describe('McpRegistryController', () => {
 	const service = mock<McpRegistryService>();
@@ -33,6 +37,16 @@ describe('McpRegistryController', () => {
 			// Internal transport URLs must not leak.
 			expect(notion).not.toHaveProperty('remotes');
 			expect(notion).not.toHaveProperty('origin');
+		});
+
+		it('drops a server whose URL is a template', async () => {
+			// Instance AI fills its connection picker from here and cannot resolve a
+			// template, so offering the row would end at a refused connection.
+			service.getAll.mockResolvedValue([notionMockServer, databricksGenieTemplatedMockServer]);
+
+			const result = await controller.listServers();
+
+			expect(result.map((s) => s.slug)).toEqual(['notion']);
 		});
 
 		it('returns an empty array when the registry has no servers', async () => {

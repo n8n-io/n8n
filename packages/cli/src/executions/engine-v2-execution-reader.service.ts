@@ -1,12 +1,16 @@
-import type { IExecutionResponse } from '@n8n/db';
+import type { IExecutionResponse, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ExecutionMode, ExecutionSnapshot, ExecutionStatus } from '@n8n/engine';
-import type { ExecutionStatus as ExecutionStatusV1, WorkflowExecuteMode } from 'n8n-workflow';
-import { createEmptyRunExecutionData } from 'n8n-workflow';
+import type {
+	ExecutionStatus as ExecutionStatusV1,
+	IRunExecutionData,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
+import { toWorkflowSnapshot } from './execution-data/types';
 import type { ExecutionIdV2 } from './execution-id';
 
 /** A status added later reads as `unknown` rather than being guessed at. */
@@ -42,7 +46,7 @@ export class EngineV2ExecutionReader {
 	): Promise<IExecutionResponse | undefined> {
 		// TODO(CAT-4235): mirror this metadata on the control plane, so we can
 		// authorize before reading.
-		const snapshot = await this.dataPlane.getExecution(executionId);
+		const snapshot = await this.dataPlane.getExecution(executionId, { includeSteps: true });
 		if (!snapshot) return undefined;
 
 		// The `workflow:read` check.
@@ -51,12 +55,21 @@ export class EngineV2ExecutionReader {
 		const workflowData = await this.workflowRepository.findById(snapshot.workflowId);
 		if (!workflowData) return undefined;
 
-		return this.toExecutionResponse(snapshot, workflowData);
+		// Lazily imported: a top-level import would pull `@n8n/engine` into every
+		// n8n process, including ones with the module off.
+		const { toV1RunExecutionData } = await import('@n8n/node-engine-compatibility');
+
+		return this.toExecutionResponse(
+			snapshot,
+			workflowData,
+			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? []),
+		);
 	}
 
 	private toExecutionResponse(
 		snapshot: ExecutionSnapshot,
-		workflowData: IExecutionResponse['workflowData'],
+		workflow: WorkflowEntity,
+		data: IRunExecutionData,
 	): IExecutionResponse {
 		// No real run timing yet (CAT-4234), so both come from the row.
 		const startedAt = new Date(snapshot.createdAt);
@@ -71,9 +84,10 @@ export class EngineV2ExecutionReader {
 			startedAt,
 			stoppedAt: snapshot.finishedAt ? new Date(snapshot.finishedAt) : undefined,
 			storedAt: 'db',
-			// Step data is not mapped yet, so there is no run data to report.
-			data: createEmptyRunExecutionData(),
-			workflowData,
+			data,
+			// The same projection the v1 path reports, so the editor sees one shape.
+			// The cast: the declared type overstates what either path returns.
+			workflowData: toWorkflowSnapshot(workflow) as IExecutionResponse['workflowData'],
 			// The data plane stores neither.
 			customData: {},
 			annotation: { tags: [] },

@@ -1632,4 +1632,39 @@ describe('TriggerExecutionContextFactory', () => {
 			},
 		);
 	});
+
+	describe('findPublishedWorkflowData', () => {
+		it.each([
+			{
+				description: 'default (cached) path',
+				options: undefined,
+				calledMethod: 'getCachedPublishedWorkflowDataForExecution' as const,
+				skippedMethod: 'getPublishedWorkflowDataForExecution' as const,
+			},
+			{
+				description: 'bypassCache path',
+				options: { bypassCache: true },
+				calledMethod: 'getPublishedWorkflowDataForExecution' as const,
+				skippedMethod: 'getCachedPublishedWorkflowDataForExecution' as const,
+			},
+		])(
+			'returns null instead of throwing when the service returns null ($description)',
+			async ({ options, calledMethod, skippedMethod }) => {
+				workflowPublishedDataService[calledMethod].mockResolvedValue(null);
+
+				await expect(factory.findPublishedWorkflowData('wf-1', options)).resolves.toBeNull();
+				expect(workflowPublishedDataService[calledMethod]).toHaveBeenCalledWith('wf-1');
+				expect(workflowPublishedDataService[skippedMethod]).not.toHaveBeenCalled();
+			},
+		);
+
+		test('returns the published workflow data when it exists', async () => {
+			const workflowData = buildPublishedWorkflowData();
+			workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution.mockResolvedValue(
+				workflowData,
+			);
+
+			await expect(factory.findPublishedWorkflowData('wf-1')).resolves.toBe(workflowData);
+		});
+	});
 });

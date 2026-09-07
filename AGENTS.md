@@ -106,6 +106,26 @@ When changing directories, use `pushd` to navigate into the directory and
 `popd` to return to the previous directory. When in doubt, use `pwd` to check
 your current directory.
 
+### Seeding a local instance
+
+An empty instance is a bad place to test anything that reads a user's work.
+These commands fill one. They are dev tooling on the private root package, so
+they never reach a user.
+
+```bash
+N8N_API_KEY=<jwt> pnpm seed:preference   # 10 workflows in one house style, plus history
+N8N_API_KEY=<jwt> pnpm seed:account      # ~500 varied workflows across 30 projects
+pnpm inspect:activity                    # read-only activity_event viewer on 127.0.0.1
+```
+
+Both seed profiles delete their own prior output, so a re-run replaces it.
+That clear step deletes anything named `[seed]` and any empty team project,
+whoever made them, so do not point either at a shared instance. The viewer is
+unauthenticated and serves the whole table: keep it on loopback.
+
+See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md) for
+profiles, tokens, determinism, and the other commands.
+
 ### Code Quality
 - `pnpm lint` - Lint code
 - `pnpm typecheck` - Run type checks

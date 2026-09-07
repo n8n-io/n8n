@@ -185,6 +185,18 @@ describe('ExecutionRecorder', () => {
 			);
 		});
 
+		it('keeps the first stream error when a later wrapper error arrives', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'error', error: new Error('Thinking blocks cannot be modified') });
+			recorder.record({
+				type: 'error',
+				error: new Error('No output generated. Check the stream for errors.'),
+			});
+
+			expect(recorder.getMessageRecord().error).toBe('Thinking blocks cannot be modified');
+		});
+
 		it('captures text → tool call → text in order', () => {
 			const recorder = new ExecutionRecorder();
 

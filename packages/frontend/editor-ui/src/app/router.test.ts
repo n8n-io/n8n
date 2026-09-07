@@ -270,7 +270,9 @@ describe('router', () => {
 
 		test('allows enrolled users to reach the resource center view', async () => {
 			const posthog = usePostHog();
-			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+				value: RESOURCE_CENTER_EXPERIMENT.variant,
+			};
 
 			await router.push('/resource-center');
 			expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
@@ -278,7 +280,9 @@ describe('router', () => {
 
 		test('redirects control users away from the resource center view', async () => {
 			const posthog = usePostHog();
-			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.control;
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+				value: RESOURCE_CENTER_EXPERIMENT.control,
+			};
 
 			await router.push('/resource-center');
 			expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
@@ -297,7 +301,9 @@ describe('router', () => {
 			const waitForFeatureFlagsSpy = vi
 				.spyOn(posthog, 'waitForFeatureFlags')
 				.mockImplementation(async () => {
-					posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+					posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+						value: RESOURCE_CENTER_EXPERIMENT.variant,
+					};
 					return null;
 				});
 

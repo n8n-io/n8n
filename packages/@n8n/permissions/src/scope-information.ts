@@ -58,6 +58,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage AI Usage',
 		description: 'Allows managing AI Usage settings.',
 	},
+	'nodeTypePolicy:manage': {
+		displayName: 'Manage Node Type Policies',
+		description: 'Allows managing which node types are available on the instance.',
+	},
 	'encryptionKey:manage': {
 		displayName: 'Manage Encryption Keys',
 		description: 'Allows listing and rotating instance encryption keys.',

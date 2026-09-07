@@ -1,4 +1,5 @@
 import { Tool } from '@n8n/agents/tool';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentKnowledgeMirrorService } from '../../agent-knowledge-mirror.service';
 import {
@@ -44,10 +45,6 @@ async function runKnowledgeTool<T>(
 	} catch (error) {
 		return formatKnowledgeToolError(error);
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function truncateForModel(text: string, maxChars: number): { text: string; truncated: boolean } {

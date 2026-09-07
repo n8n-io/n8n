@@ -289,7 +289,7 @@ export interface ObservationLogMemoryConfig {
 }
 
 export interface ObservationalMemoryConfig {
-	/** Estimated tokens in unobserved transcript required before the Observer runs. */
+	/** Estimated visible-window tokens at which the Observer is scheduled mid-run and post-turn. */
 	observerThresholdTokens?: number;
 	/** Estimated active observation-log tokens required before the Reflector runs. */
 	reflectorThresholdTokens?: number;

@@ -33,6 +33,9 @@ export async function setupOAuth2Authentication(
 			azureOpenAIApiInstanceName: deploymentDetails.resourceName,
 			azureOpenAIApiVersion: deploymentDetails.apiVersion,
 			azureOpenAIEndpoint: deploymentDetails.endpoint,
+			...(deploymentDetails.endpointType === 'foundry' && deploymentDetails.foundryEndpoint
+				? { azureFoundryBaseURL: deploymentDetails.foundryEndpoint }
+				: {}),
 		};
 	} catch (error) {
 		this.logger.error(`Error setting up Entra ID authentication: ${error.message}`, error);

@@ -1,3 +1,10 @@
+import {
+	ActivityEvent,
+	activityEventCategories,
+	activityResourceTypes,
+	type ActivityEventCategory,
+	type ActivityResourceType,
+} from './activity-event';
 import { AgentEvalDataset, type AgentEvalColumnMapping } from './agent-eval-dataset.ee';
 import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
 import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
@@ -29,6 +36,7 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
+import { ProjectPoolSettings } from './project-pool-settings.ee';
 import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
@@ -39,6 +47,9 @@ import {
 	ScheduledJobKind,
 	ScheduledJobKindList,
 	ScheduledJobMisfirePolicy,
+	type ScheduledJobOwner,
+	type ScheduledJobOwnerRef,
+	ScheduledJobOwnerType,
 } from './scheduled-job';
 import {
 	ScheduledTask,
@@ -90,6 +101,11 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	ActivityEvent,
+	activityEventCategories,
+	activityResourceTypes,
+	type ActivityEventCategory,
+	type ActivityResourceType,
 	AgentEvalDataset,
 	type AgentEvalColumnMapping,
 	AgentEvalRun,
@@ -128,6 +144,9 @@ export {
 	ScheduledJobKind,
 	ScheduledJobKindList,
 	ScheduledJobMisfirePolicy,
+	type ScheduledJobOwner,
+	type ScheduledJobOwnerRef,
+	ScheduledJobOwnerType,
 	ScheduledTask,
 	ScheduledTaskStatus,
 	ScheduledTaskStatusList,
@@ -172,12 +191,14 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ProjectPoolSettings,
 	ProjectSecretsProviderAccess,
 	type SecretsProviderAccessRole,
 	SecretsProviderConnection,
 };
 
 export const entities = {
+	ActivityEvent,
 	AgentEvalDataset,
 	AgentEvalRun,
 	AgentEvalResult,
@@ -235,6 +256,7 @@ export const entities = {
 	Role,
 	ScheduledJob,
 	ScheduledTask,
+	ProjectPoolSettings,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
 };

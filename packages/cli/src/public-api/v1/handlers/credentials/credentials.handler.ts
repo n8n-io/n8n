@@ -219,6 +219,7 @@ const credentialsHandlers: CredentialsHandlers = {
 				user: req.user,
 				credentialType: credential.type,
 				credentialId: credential.id,
+				credentialName: credential.name,
 				publicApi: true,
 				projectId: project?.id,
 				projectType: project?.type,

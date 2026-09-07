@@ -21,6 +21,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { License } from '@/license';
@@ -68,6 +69,7 @@ const shutdownService = mockInstance(ShutdownService);
 shutdownService.validate.mockReturnValue(undefined);
 mockInstance(PostHogClient);
 mockInstance(TelemetryEventRelay);
+mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 mockInstance(MessageEventBus);
 mockInstance(CommunityPackagesConfig);
@@ -120,6 +122,7 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(AuthHandlerRegistry, authHandlerRegistry);
 		Container.set(PostHogClient, mockInstance(PostHogClient));
 		Container.set(TelemetryEventRelay, mockInstance(TelemetryEventRelay));
+		Container.set(ActivityEventRelay, mockInstance(ActivityEventRelay));
 		Container.set(
 			WorkflowFailureNotificationEventRelay,
 			mockInstance(WorkflowFailureNotificationEventRelay),

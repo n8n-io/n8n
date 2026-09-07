@@ -321,13 +321,15 @@ describe('webhookRequestSanitizer', () => {
 		it('should remove every disallowed cookie in one pass', () => {
 			mockRequest.headers = {
 				cookie:
-					'n8n-auth=a; n8n-browserId=b; n8n-form-auth-ex-12345=c; n8n-form-oauth=d; other-cookie=value',
+					'n8n-auth=a; n8n-browserId=b; n8n-form-auth-ex-12345=c; n8n-form-oauth=d; n8n-chat-oauth=e; n8n-chat-oauth-refresh=f; other-cookie=value',
 			};
 			mockRequest.cookies = {
 				'n8n-auth': 'a',
 				'n8n-browserId': 'b',
 				'n8n-form-auth-ex-12345': 'c',
 				'n8n-form-oauth': 'd',
+				'n8n-chat-oauth': 'e',
+				'n8n-chat-oauth-refresh': 'f',
 				'other-cookie': 'value',
 			};
 
@@ -361,6 +363,36 @@ describe('webhookRequestSanitizer', () => {
 			sanitizeWebhookRequest(mockRequest);
 
 			expect(mockRequest.cookies).toEqual({ 'other-cookie': 'value' });
+		});
+	});
+
+	// The chat endpoints skip sanitizing for their own node type, so the hosted page
+	// still receives these. Every other webhook must not see them — the `-refresh` one
+	// carries a 30-day credential.
+	describe('when the chat cookies are present', () => {
+		const chatCookieNames = ['n8n-chat-oauth', 'n8n-chat-oauth-refresh'];
+
+		it.each(chatCookieNames)('should remove %s from the header', (name) => {
+			mockRequest.headers = {
+				cookie: `${name}=abc123; other-cookie=value`,
+			};
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
+		});
+
+		it.each(chatCookieNames)('should remove %s from parsed cookies', (name) => {
+			mockRequest.cookies = {
+				[name]: 'abc123',
+				'other-cookie': 'value',
+			};
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.cookies).toEqual({
+				'other-cookie': 'value',
+			});
 		});
 	});
 });

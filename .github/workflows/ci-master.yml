@@ -46,6 +46,8 @@ jobs:
     with:
       ref: ${{ github.sha }}
 
+  # CodSpeed benchmarks run post-merge only. On PRs they failed for reasons
+  # unrelated to the change, so the red check gave authors no usable signal.
   performance:
     name: Performance
     uses: ./.github/workflows/test-bench-reusable.yml

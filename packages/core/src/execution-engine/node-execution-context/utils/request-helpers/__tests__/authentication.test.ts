@@ -12,9 +12,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import nock from 'nock';
+import { Readable } from 'stream';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { httpRequestWithAuthentication } from '../authentication';
+import { httpRequestWithAuthentication, requestWithAuthentication } from '../authentication';
+import { proxyRequestToAxios } from '../legacy-request-adapter';
+
+vi.mock('../legacy-request-adapter', () => ({
+	proxyRequestToAxios: vi.fn(),
+}));
 
 describe('httpRequestWithAuthentication', () => {
 	const baseUrl = 'https://api.example.com';
@@ -117,5 +123,174 @@ describe('httpRequestWithAuthentication', () => {
 			mockNode,
 			true,
 		);
+	});
+
+	test('refreshes but does NOT resend a drained form-data body on 401; the original error surfaces', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
+			async (_credentials, _type, requestOptions) => requestOptions as IHttpRequestOptions,
+		);
+
+		const error401 = Object.assign(new Error('401 - session expired'), {
+			response: { status: 401 },
+		});
+		request.mockRejectedValueOnce(error401);
+
+		const formData = new FormData();
+		formData.append('file', Buffer.from('content'), { filename: 'file.txt' });
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'testSessionAuth',
+				{ method: 'POST', url: `${baseUrl}/upload`, body: formData },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toSatisfy(
+			(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === error401,
+		);
+
+		expect(request).toHaveBeenCalledTimes(1);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
+			{ helpers: mockThis.helpers },
+			expect.anything(),
+			'testSessionAuth',
+			mockNode,
+			true,
+		);
+	});
+
+	test('still retries a form-data body when the 401 happened before any send', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const error401 = Object.assign(new Error('401 - mint rejected'), {
+			response: { status: 401 },
+		});
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockRejectedValueOnce(error401)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
+			async (_credentials, _type, requestOptions) => requestOptions as IHttpRequestOptions,
+		);
+		request.mockResolvedValueOnce({ ok: true });
+
+		const formData = new FormData();
+		formData.append('file', Buffer.from('content'), { filename: 'file.txt' });
+
+		const result = await httpRequestWithAuthentication.call(
+			mockThis,
+			'testSessionAuth',
+			{ method: 'POST', url: `${baseUrl}/upload`, body: formData },
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(request).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('requestWithAuthentication (legacy) — preAuthentication retry', () => {
+	const mockThis = mockDeep<IAllExecuteFunctions>();
+	const mockWorkflow = mock<Workflow>();
+	const mockNode = mockDeep<INode>();
+	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+	mockAdditionalData.evalLlmMockHandler = undefined;
+
+	const proxyRequestToAxiosMock = vi.mocked(proxyRequestToAxios);
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockNode.name = 'test-node';
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ accessToken: 'stale' });
+		mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue({
+			accessToken: 'fresh',
+		});
+		mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
+			async (_credentials, _type, requestOptions) => requestOptions as IHttpRequestOptions,
+		);
+	});
+
+	test('refreshes and resends a replayable request after a failure', async () => {
+		const requestError = Object.assign(new Error('401 - token expired'), {
+			response: { status: 401 },
+		});
+		proxyRequestToAxiosMock.mockRejectedValueOnce(requestError).mockResolvedValueOnce({ ok: true });
+
+		const result = await requestWithAuthentication.call(
+			mockThis,
+			'testPreAuth',
+			{ method: 'POST', uri: 'https://api.example.com/items', body: { name: 'x' } },
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+	});
+
+	test('refreshes but does NOT resend a drained stream body; the original error surfaces', async () => {
+		const requestError = Object.assign(new Error('401 - token expired'), {
+			response: { status: 401 },
+		});
+		proxyRequestToAxiosMock.mockRejectedValueOnce(requestError);
+
+		await expect(
+			requestWithAuthentication.call(
+				mockThis,
+				'testPreAuth',
+				{
+					method: 'POST',
+					uri: 'https://api.example.com/attachments',
+					formData: { file: { value: Readable.from(['content']), options: { filename: 'a.txt' } } },
+				},
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toSatisfy(
+			(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === requestError,
+		);
+
+		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
+			{ helpers: mockThis.helpers },
+			expect.anything(),
+			'testPreAuth',
+			mockNode,
+			true,
+		);
+	});
+
+	test('still retries a stream body when the failure happened before any send', async () => {
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockRejectedValueOnce(new Error('token endpoint hiccup'))
+			.mockResolvedValueOnce({ accessToken: 'fresh' });
+		proxyRequestToAxiosMock.mockResolvedValueOnce({ ok: true });
+
+		const result = await requestWithAuthentication.call(
+			mockThis,
+			'testPreAuth',
+			{
+				method: 'POST',
+				uri: 'https://api.example.com/attachments',
+				formData: { file: { value: Readable.from(['content']), options: { filename: 'a.txt' } } },
+			},
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
 	});
 });

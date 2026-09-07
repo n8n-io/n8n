@@ -18,6 +18,8 @@ describe('FavoritesEventRelay', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
 				user: mock(),
 				workflowId: 'wf1',
+				workflowName: 'Favourited Workflow',
+				projectId: 'project1',
 				publicApi: false,
 			};
 

@@ -502,6 +502,7 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 					endpointHostname: 'example.test',
 					transport: 'httpStreamable',
 					credentialBindings: [{ credentialType: 'notionMcpOAuth2Api', selector: 'oAuth2' }],
+					isTemplated: false,
 				}),
 			},
 		);
@@ -715,6 +716,49 @@ describe('buildMcpClientForServer — unresolvable credential', () => {
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
 		await expect(configs[0].fetch('https://example.test/mcp')).rejects.toThrow(
 			'Could not resolve the credential for MCP server "srv": Could not load secrets [Error resolving credentials]',
+		);
+		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+
+	it('keeps a templated URL parseable so the credential error is what surfaces', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		// No `oauthTokenData`, so `prepareMcpRegistryConnection` rejects before it
+		// substitutes the URL, leaving the raw `$self`-expression behind.
+		credentialProvider.resolve.mockResolvedValue({ host: 'https://tenant.test' } as never);
+		const oauthService = mock<OauthService>();
+
+		const templatedUrl = '={{$self["host"]}}/api/2.0/mcp/genie';
+
+		await buildMcpClientForServer(
+			makeServer({
+				url: templatedUrl,
+				authentication: 'databricksGenieMcpOAuth2Api' as never,
+				credential: 'cred-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.databricksGenie' },
+			}),
+			{
+				credentialProvider,
+				credentialsHelper: defaultCredentialsHelper,
+				oauthService,
+				projectId: 'proj-1',
+				proxyFetch,
+				resolveRegistryConnection: async () => ({
+					nodeTypeName: '@n8n/mcp-registry.databricksGenie',
+					urlTemplate: templatedUrl,
+					transport: 'httpStreamable',
+					credentialBindings: [
+						{ credentialType: 'databricksGenieMcpOAuth2Api', selector: 'oAuth2' },
+					],
+					isTemplated: true,
+				}),
+			},
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ url: string; fetch: typeof fetch }>];
+		expect(configs[0].url).not.toBe(templatedUrl);
+		expect(() => new URL(configs[0].url)).not.toThrow();
+		await expect(configs[0].fetch(configs[0].url)).rejects.toThrow(
+			'does not contain an OAuth2 access token',
 		);
 		expect(proxyFetchMock).not.toHaveBeenCalled();
 	});

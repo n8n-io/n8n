@@ -24,6 +24,7 @@ requestBody:
           properties:
             id:
               type: string
+              example: 2tUt1wbLX592XDdX
           required:
             - id
           additionalProperties: false

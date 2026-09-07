@@ -14,6 +14,13 @@ describe('WordpressOAuth2Api Credential', () => {
 		expect(accessTokenUrlProperty?.default).toBe('https://public-api.wordpress.com/oauth2/token');
 	});
 
+	it('should send client credentials in the token request body, not the Authorization header', () => {
+		const authenticationProperty = credential.properties.find((p) => p.name === 'authentication');
+		expect(authenticationProperty).toBeDefined();
+		expect(authenticationProperty?.type).toBe('hidden');
+		expect(authenticationProperty?.default).toBe('body');
+	});
+
 	it('should have a notice about WordPress.com-only support', () => {
 		const noticeProperty = credential.properties.find((p) => p.name === 'wordpressComNotice');
 		expect(noticeProperty).toBeDefined();

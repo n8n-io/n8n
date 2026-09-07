@@ -47,6 +47,9 @@ import {
 import { isPresent } from '@/app/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type {
@@ -60,7 +63,7 @@ import type {
 } from '@vue-flow/core';
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
-import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
+import { onKeyDown, onKeyUp, useThrottleFn, watchDebounced } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
 import { shouldIgnoreCanvasShortcut, type CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
@@ -100,6 +103,13 @@ import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
+import {
+	useAddNodesToChat,
+	type AddNodesToChatSource,
+} from '@/features/ai/instanceAi/composables/useAddNodesToChat';
+import type { NodeContextWorkflow } from '@/features/ai/instanceAi/utils/buildNodesAttachment';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
 const $style = useCssModule();
 
@@ -219,6 +229,11 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
+const { addSelectedNodesToChat, isNodeContextEnabled } = useAddNodesToChat();
+const instanceAiStore = useInstanceAiStore();
+const instanceAiCapability = useInstanceAiEditorCapability();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -556,7 +571,11 @@ const keyMap = computed(() => {
 		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
 		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),
 		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
-		alt_i: emitWithSelectedNodes((ids) => onAddSelectedNodesToAi(ids)),
+		// Alt+I adds the selected nodes to the AI chat. The two features are mutually
+		// exclusive (Focus AI requires !instanceAi), so they share the same key.
+		alt_i: emitWithSelectedNodes((ids) =>
+			isNodeContextEnabled.value ? onAddNodesToChat(ids) : onAddSelectedNodesToAi(ids),
+		),
 	};
 
 	fullKeymap.ctrl_g = {
@@ -600,6 +619,33 @@ const selectedNodeIdsWithGroupMembers = computed(() => {
 	return [...ids];
 });
 
+function buildNodeContextWorkflow(): NodeContextWorkflow {
+	const s = workflowDocumentStore.value;
+	return {
+		nodes: s.allNodes.map((n) => ({ id: n.id, name: n.name, type: n.type })),
+		connections: s.connectionsBySourceNode,
+		groupsById: new Map(s.allGroups.map((g) => [g.id, { id: g.id, name: g.name }])),
+		nodeIdToGroupId: s.nodeIdToGroupId,
+	};
+}
+
+async function onAddNodesToChat(
+	ids: string[] = selectedNodeIdsWithGroupMembers.value,
+	source: AddNodesToChatSource = 'keyboard',
+) {
+	const doc = workflowDocumentStore.value;
+	await addSelectedNodesToChat({
+		workflowId: doc.workflowId,
+		selectedNodeIds: ids,
+		workflow: buildNodeContextWorkflow(),
+		isInsideThread: !instanceAiCapability.openWorkflow,
+		onStaged: () => instanceAiStore.requestComposerFocus(),
+		workflowName: doc.name,
+		workflowSnapshot: doc.getSnapshot(),
+		source,
+	});
+}
+
 const lastSelectedNode = ref<GraphNode>();
 const triggerNodes = computed<CanvasNode[]>(() =>
 	props.nodes.filter((node): node is CanvasNode => {
@@ -623,6 +669,24 @@ watch(selectedNodes, (nodes) => {
 		lastSelectedNode.value = nodes[nodes.length - 1];
 	}
 });
+
+// Report a multi-selection once it settles. Debouncing keeps a rubber-band drag from emitting an
+// event for every node it sweeps over; keying the watch on the selected ids (not just the count)
+// means swapping one settled selection for a different one of the same size still reports.
+watchDebounced(
+	() => selectedNodeIds.value.join(','),
+	() => {
+		const nodeCount = selectedNodeIds.value.length;
+		if (nodeCount >= 2) {
+			telemetry.track(TELEMETRY_EVENT.WORKFLOW.MULTIPLE_NODES_SELECTED, {
+				workflow_id: workflowDocumentStore.value.workflowId,
+				node_count: nodeCount,
+				push_ref: rootStore.pushRef,
+			});
+		}
+	},
+	{ debounce: 500 },
+);
 
 watch(selectedNodeIds, (newIds) => {
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
@@ -923,6 +987,12 @@ function onCanvasGroupExtract(groupId: string) {
 	emit('extract-workflow', [...group.nodeIds]);
 }
 
+function onCanvasGroupAddNodesToChat(groupId: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	void onAddNodesToChat([...group.nodeIds], 'group_title_bar');
+}
+
 // Expand or collapse groups through the same path as the single toggle so
 // selection sync, push layout and telemetry stay consistent. Groups already
 // in the target state are left alone.
@@ -1077,6 +1147,11 @@ function onSetNodeDeactivated(id: string) {
 function clearSelectedNodes() {
 	removeSelectedNodes(selectedNodesAndGroups.value);
 }
+
+watch(
+	() => instanceAiStore.clearCanvasSelectionRequest,
+	() => clearSelectedNodes(),
+);
 
 function onSelectAllNodes() {
 	addSelectedNodes(selectableNodesAndGroups.value);
@@ -1537,6 +1612,10 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			void chatPanelStore.open({ mode: 'builder' });
 			return;
 		}
+		case 'add_nodes_to_chat': {
+			void onAddNodesToChat(nodeIds, 'context_menu');
+			return;
+		}
 	}
 }
 
@@ -1826,6 +1905,7 @@ defineExpose({
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
 				@extract="onCanvasGroupExtract"
+				@add-nodes-to-chat="onCanvasGroupAddNodesToChat"
 				@open:contextmenu="onOpenGroupContextMenu"
 			/>
 		</template>
@@ -1857,6 +1937,7 @@ defineExpose({
 					@focus="onFocusNode"
 					@replace:node="onReplaceNode"
 					@add:ai="onAddToAi"
+					@add-nodes-to-chat="onAddNodesToChat([$event], 'node_toolbar')"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
 						<slot name="nodeToolbar" v-bind="toolbarProps" />
@@ -1899,6 +1980,7 @@ defineExpose({
 			:read-only="readOnly || suppressInteraction"
 			@group-created="onNodeGroupCreated"
 			@extract-workflow="emit('extract-workflow', $event)"
+			@add-nodes-to-chat="onAddNodesToChat($event, 'selection_toolbar')"
 		/>
 
 		<Transition name="minimap">

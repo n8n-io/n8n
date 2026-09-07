@@ -197,6 +197,19 @@ describe('AgentKnowledgeMirrorService', () => {
 			expect(secondPage.hasMore).toBe(false);
 		});
 
+		it('matches regex metacharacters in the pattern literally', async () => {
+			const service = makeGlobService([
+				makeAgentFile({ id: 'file-grouped', fileName: 'report(v1).pdf' }),
+				makeAgentFile({ id: 'file-plain', fileName: 'reportv1-pdf' }),
+			]);
+
+			const result = await service.globKnowledgeFiles(projectId, agentId, {
+				pattern: 'report(v1).pdf',
+			});
+
+			expect(result.files.map((file) => file.displayName)).toEqual(['report(v1).pdf']);
+		});
+
 		it('rejects unsafe patterns', async () => {
 			const service = makeGlobService();
 

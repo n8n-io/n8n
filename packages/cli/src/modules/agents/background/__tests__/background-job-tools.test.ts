@@ -27,6 +27,7 @@ function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView 
 		createdAt: new Date('2026-08-26T10:00:00Z'),
 		timeoutAt: null,
 		settledAt: null,
+		childExecutionId: null,
 		...overrides,
 	};
 }
@@ -203,6 +204,20 @@ describe('check_background_jobs', () => {
 				expect.objectContaining({ jobId: 'job-1', status: 'running' }),
 				expect.objectContaining({ jobId: 'job-2', result: 'the answer' }),
 			],
+		});
+	});
+
+	it('surfaces a workflow job’s execution id', async () => {
+		const { jobService, options } = setup();
+		jobService.listForThread.mockResolvedValue([
+			jobView({ kind: 'workflow', childExecutionId: 'exec-1' }),
+		]);
+		const tool = createCheckBackgroundJobsTool(options.jobService);
+
+		const output = await tool.handler!({}, { persistence });
+
+		expect(output).toMatchObject({
+			jobs: [expect.objectContaining({ executionId: 'exec-1' })],
 		});
 	});
 

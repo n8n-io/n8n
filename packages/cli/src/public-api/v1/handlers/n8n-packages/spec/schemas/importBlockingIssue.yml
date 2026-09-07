@@ -402,3 +402,28 @@ oneOf:
         items:
           type: string
         description: Package workflow ids that reference any of the listed variables.
+  - type: object
+    description: >
+      A workflow the content-import policy refused. Takes down the whole package
+      rather than skipping the workflow: the import rewrites cross-workflow
+      references to the ids each workflow would get, so dropping one leaves the
+      workflows that call it pointing at a row nothing ever wrote.
+    required:
+      - type
+      - sourceWorkflowId
+      - name
+      - violations
+    properties:
+      type:
+        type: string
+        enum:
+          - policy-violation
+      sourceWorkflowId:
+        type: string
+        description: Workflow id as it appears in the package.
+      name:
+        type: string
+      violations:
+        type: array
+        items:
+          $ref: '../../../../shared/spec/schemas/policyViolation.yml'

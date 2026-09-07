@@ -783,6 +783,37 @@ between the two repos. They read asymmetrically — `inline` names where the see
 lives, `replay` names what the harness does with it — which is a cost we took
 knowingly: renaming `replay` would break a lang-tracer API contract.
 
+#### `seed.priorRuns` — execution history the agent must look up
+
+An `inline` seed can also **run** its workflows before the graded turn. Each run creates a
+real execution record, so the case can ask about "the last run" and the honest answer
+requires the agent to read it.
+
+```jsonc
+"seed": {
+  "mode": "inline",
+  "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [], "connections": {} }],
+  "priorRuns": [
+    { "workflow": "dS8xQ2mV6bTn4Kp1", "hints": "the HTTP Request node returns 500" }
+  ]
+}
+```
+
+- **A failing run is the point.** `hints` steers the mock layer exactly as
+  `executionScenarios[].dataSetup` does, so a case can stage one specific failure and then
+  say only "it broke again". Grade the behaviour that follows: did the agent check the
+  record, or did it ask the user?
+- **A prior run that fails does not fail the build.** Outcomes go to the log, named by the
+  workflow the case declared.
+- **`workflow` is the seed workflow's `id`**, the same key `conversation[0].attach.workflow`
+  uses. The schema rejects an id the seed does not declare, so a typo fails at load rather
+  than mid-build.
+- **A run that never happens is not a staged failure.** If no execution record lands, the
+  case is reported as a framework issue rather than scored — it would otherwise be graded
+  against history the instance does not have.
+- Runs execute sequentially in declared order, before the live turn, on a 120s budget —
+  tighter than a scenario execution, which gets the case's build budget (900s by default).
+
 #### `mode: "replay"` — reproduce a real conversation (no repo content)
 
 The case carries only a **thread id**. At run time the harness pulls that thread's runs from LangSmith, reconstructs the message log (user/assistant text + resolved tool-call blocks, deduped across suspend/resume), and splits at the **last user message**: everything before it is restored as the seed, that last message is sent live. The seed workflow is compiled from the build/patch tool's captured SDK code **as of the seed boundary**, so it matches what the live turn first saw.

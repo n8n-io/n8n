@@ -20,6 +20,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	N8nOAuth2FlowResult,
+	N8nOAuth2RefreshResult,
 } from 'n8n-workflow';
 import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
@@ -183,6 +184,14 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		});
 	}
 
+	async getTestWebhookUser(): Promise<IUser | undefined> {
+		// Only test-webhook registrations record the user who started the run, so this is
+		// `undefined` on a production webhook by construction.
+		const userId = this.webhookData.userId;
+		if (!userId) return undefined;
+		return await this.additionalData.getUserById?.(userId);
+	}
+
 	async validateCookieAuth(cookieValue: string): Promise<IUser> {
 		if (!this.additionalData.validateCookieAuth) {
 			throw new UnexpectedError('Cookie auth validation is not available');
@@ -205,6 +214,16 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			throw new UnexpectedError('OAuth2 flow is not available');
 		}
 		return await this.additionalData.completeN8nOAuth2Flow(code, state);
+	}
+
+	async refreshN8nOAuth2Flow(
+		refreshToken: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2RefreshResult> {
+		if (!this.additionalData.refreshN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.refreshN8nOAuth2Flow(refreshToken, resourceUrl);
 	}
 
 	async validateN8nOAuth2Token(

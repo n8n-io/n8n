@@ -1,7 +1,7 @@
 /**
  * Shared event reducer for Instance AI agent runs.
  *
- * Used by both the frontend (live SSE updates) and the backend (snapshot building).
+ * Used by both the frontend (live SSE updates) and the backend (history folds, run-sync bootstrap).
  * All state is plain objects/arrays — no Map/Set — so it's Pinia-safe and easy
  * to inspect in tests.
  *
@@ -457,7 +457,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				agent.result = event.payload.result;
 				agent.error = event.payload.error;
 				// A completed/errored agent can't have tool calls still in-flight.
-				// Clear isLoading so persisted snapshots don't show stale confirmations.
+				// Clear isLoading so folded history trees don't show stale confirmations.
 				for (const tc of agent.toolCalls) {
 					if (tc.isLoading) {
 						tc.isLoading = false;
@@ -547,7 +547,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				}
 			}
 			// A terminated run can't have tool calls still in-flight.
-			// Clear isLoading so persisted snapshots don't show stale confirmations.
+			// Clear isLoading so folded history trees don't show stale confirmations.
 			if (state.status === 'cancelled' || state.status === 'error') {
 				for (const tc of Object.values(state.toolCallsById)) {
 					if (tc.isLoading) {

@@ -1,5 +1,6 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { mount } from '@vue/test-utils';
+import type * as VueUse from '@vueuse/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
@@ -50,6 +51,14 @@ const { credsHolder } = vi.hoisted(() => ({
 	credsHolder: { value: { anthropic: 'credential-1' } as Record<string, string | null> },
 }));
 
+vi.mock('@vueuse/core', async (importOriginal) => {
+	const actual = await importOriginal<typeof VueUse>();
+	return {
+		...actual,
+		useDebounceFn: (fn: (...args: unknown[]) => unknown) => fn,
+	};
+});
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
@@ -74,6 +83,12 @@ vi.mock('@n8n/design-system', () => ({
 			'<div v-bind="$attrs" data-testid="markdown-editor">{{ modelValue }} {{ placeholder }}</div>',
 	},
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
+	N8nInput: {
+		name: 'N8nInput',
+		props: ['modelValue', 'placeholder', 'disabled'],
+		emits: ['update:modelValue', 'focus', 'blur'],
+		template: '<input v-bind="$attrs" />',
+	},
 	N8nCallout: {
 		name: 'N8nCallout',
 		props: ['theme', 'slim', 'icon'],
@@ -93,6 +108,13 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({ currentUserId: 'user-1' }),
+}));
+
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({
+		getCredentialById: () => undefined,
+		getCredentialData: async () => undefined,
+	}),
 }));
 
 vi.mock('../composables/useAgentProjectId', () => ({

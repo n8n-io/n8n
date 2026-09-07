@@ -63,9 +63,14 @@ function createContext(): InstanceAiContext {
 	} as unknown as InstanceAiContext;
 }
 
-/** Rebuild the way the sandbox does: run the source, then serialize. */
+/**
+ * Rebuild the way the sandbox does: run the source, then serialize. The sandbox
+ * compiles real TypeScript, so the import line get-as-code emits is fine there;
+ * the SDK parser used here rejects imports, so strip it first.
+ */
 function rebuild(code: string): WorkflowJSON {
-	return parseWorkflowCodeToBuilder(code).toJSON();
+	const body = code.replace(/^import\s[^\n]*\n+/gm, '');
+	return parseWorkflowCodeToBuilder(body).toJSON();
 }
 
 async function getAsCode(): Promise<string> {

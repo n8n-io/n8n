@@ -1,5 +1,5 @@
 ARG NODE_VERSION=26.7.0
-ARG PNPM_VERSION=11.22.0
+ARG PNPM_VERSION=11.25.0
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================

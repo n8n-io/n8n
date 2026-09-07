@@ -180,6 +180,7 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 					...(job.error !== null ? { error: truncateResult(job.error) } : {}),
 					startedAt: job.createdAt.toISOString(),
 					...(job.timeoutAt !== null ? { timeoutAt: job.timeoutAt.toISOString() } : {}),
+					...(job.childExecutionId !== null ? { executionId: job.childExecutionId } : {}),
 				})),
 				runningCount: jobs.filter((job) => job.status === 'running').length,
 			};

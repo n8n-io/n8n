@@ -45,6 +45,32 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
+	it('accepts a Discord integration with a session idle timeout', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'discord',
+			credentialId: 'cred-123',
+			settings: { sessionIdleTimeoutMinutes: 60 },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a Linear integration without settings', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'linear',
+			credentialId: 'cred-123',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a non-positive session idle timeout', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'telegram',
+			credentialId: 'cred-123',
+			settings: { accessMode: 'public', allowedUsers: [], sessionIdleTimeoutMinutes: 0 },
+		});
+		expect(result.success).toBe(false);
+	});
+
 	it('rejects the removed schedule integration type', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'schedule',

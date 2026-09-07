@@ -10,7 +10,11 @@ import type {
 } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 
-import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
+import {
+	getTokenRequestClient,
+	hasAccessToken,
+	TOKEN_REQUEST_TIMEOUT,
+} from './common/token-request';
 
 const DEFAULT_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 const DEFAULT_LOGIN_HOST = 'https://login.microsoftonline.com';
@@ -31,21 +35,6 @@ const LOGIN_HOSTS_BY_GRAPH_URL: Record<string, string> = {
 	'https://dod-graph.microsoft.us': 'https://login.microsoftonline.us',
 	'https://microsoftgraph.chinacloudapi.cn': 'https://login.partner.microsoftonline.cn',
 };
-
-interface TokenResponse {
-	access_token?: string;
-	token_type?: string;
-	expires_in?: number;
-}
-
-function hasAccessToken(response: unknown): response is TokenResponse & { access_token: string } {
-	return (
-		typeof response === 'object' &&
-		response !== null &&
-		typeof (response as { access_token?: unknown }).access_token === 'string' &&
-		(response as { access_token: string }).access_token.length > 0
-	);
-}
 
 // Reads + trims the credential fields the token exchange depends on. Pasted IDs
 // often carry whitespace, so trimming happens once here.

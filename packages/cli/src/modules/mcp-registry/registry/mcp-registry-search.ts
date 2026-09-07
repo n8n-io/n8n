@@ -9,6 +9,7 @@ import { camelCase } from 'change-case';
 import type { McpRegistryServer, McpRegistryUsesCredential } from './mcp-registry.types';
 import {
 	getMcpRegistryCredentialOptions,
+	getConfiguredEndpointUrl,
 	resolveMcpRegistryConnection,
 	toAgentMcpTransport,
 } from '../mcp-registry-connection';
@@ -25,6 +26,9 @@ export interface McpRegistrySearchResult {
 	credentials: McpRegistryUsesCredential[];
 	tools: Array<{ name: string; title?: string }>;
 	metadata: { nodeTypeName: string };
+	/** `url` is an unresolved `$self`-expression, not a literal endpoint. Consumers
+	 *  that cannot resolve it against a credential have to skip the row. */
+	isTemplated: boolean;
 }
 
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
@@ -38,7 +42,7 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 		name: camelCase(server.slug),
 		title: server.title,
 		description: server.tagline,
-		url: connection.endpointUrl,
+		url: getConfiguredEndpointUrl(connection),
 		transport: toAgentMcpTransport(connection.transport),
 		authentication: defaultCredential.credentialType,
 		credentialType: defaultCredential.credentialType,
@@ -48,6 +52,7 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 			...(tool.title ? { title: tool.title } : {}),
 		})),
 		metadata: { nodeTypeName: connection.nodeTypeName },
+		isTemplated: connection.isTemplated === true,
 	};
 }
 

@@ -63,7 +63,7 @@
     "prompts": "^2.4.2",
     "rimraf": "catalog:",
     "ts-morph": "catalog:",
-    "typescript-eslint": "^8.35.0"
+    "typescript-eslint": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

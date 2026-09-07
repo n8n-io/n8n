@@ -66,6 +66,7 @@ import type {
 	ResolvedImportFolderProperties,
 } from '../n8n-packages.types';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
+import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
 import { toImportBlockedError } from './import-blocked.error';
 import { assertVariableWritesAllowed } from './import-gates';
 
@@ -133,6 +134,7 @@ export class ImportOrchestrator {
 		private readonly workflowImporter: WorkflowImporter,
 		private readonly workflowRemover: WorkflowRemover,
 		private readonly workflowPublisher: WorkflowPublisher,
+		private readonly contentImportPolicyGate: ContentImportPolicyGate,
 		private readonly nodeTypes: NodeTypes,
 		private readonly licenseState: LicenseState,
 	) {}
@@ -248,6 +250,12 @@ export class ImportOrchestrator {
 			(nodeType) => this.nodeTypes.getSupportedVersions(nodeType),
 		);
 
+		const refusedByPolicy = await this.contentImportPolicyGate.refusedWorkflows(
+			workflowPlan.items,
+			context.projectId,
+			contentImportTransport(input.importSource),
+		);
+
 		const blockingIssues = this.collectBlockingIssues({
 			workflowPlan,
 			credentialPlan,
@@ -262,6 +270,8 @@ export class ImportOrchestrator {
 			missingNodeTypes,
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
+
+		blockingIssues.push(...refusedByPolicy);
 
 		return {
 			input,

@@ -63,6 +63,12 @@ export interface NodeTypeDefinitionResult {
 	version?: string;
 	error?: string;
 	builderHint?: string;
+	/**
+	 * The node is hidden in the node panel, so it is retired. The definition is
+	 * still returned — a caller that asks for it by name can still use the node —
+	 * but the caller must see that a supported node replaces it.
+	 */
+	deprecated?: boolean;
 }
 
 interface SearchState {
@@ -379,6 +385,9 @@ export class NodeCatalogService {
 			content: result.content,
 			...(result.version ? { version: result.version } : {}),
 			...(builderHint ? { builderHint } : {}),
+			// A hidden node normally takes the synthesized path. Flag it here too,
+			// so the two paths cannot drift.
+			...(description?.hidden ? { deprecated: true } : {}),
 		};
 	}
 
@@ -409,6 +418,7 @@ export class NodeCatalogService {
 				...(description.builderHint?.searchHint
 					? { builderHint: description.builderHint.searchHint }
 					: {}),
+				...(description.hidden ? { deprecated: true } : {}),
 			};
 		} catch (error) {
 			this.logger.debug('Could not synthesize node type definition', {

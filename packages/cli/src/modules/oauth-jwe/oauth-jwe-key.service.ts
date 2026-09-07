@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { DeploymentKeyRepository } from '@n8n/db';
+import { DeploymentKeyRepository, isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { QueryFailedError } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { CryptoKey, JWK } from 'jose';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
@@ -212,7 +211,7 @@ export class OAuthJweKeyService {
 
 			this.logger.info('Generated new instance OAuth JWE key pair', { algorithm, kid: id });
 		} catch (error) {
-			if (!isUniqueConstraintViolation(error)) throw error;
+			if (!isUniqueConstraintError(error)) throw error;
 
 			this.logger.debug(
 				'OAuth JWE key insert raced with another main; re-reading winner',
@@ -243,11 +242,4 @@ function toPublicJwk(privateJwk: JWK, algorithm: JweKeyAlgorithm): JWK {
 		.filter((field) => privateJwk[field] !== undefined)
 		.map((field) => [field, privateJwk[field]] as const);
 	return Object.fromEntries(entries) as JWK;
-}
-
-function isUniqueConstraintViolation(error: unknown): boolean {
-	if (!(error instanceof QueryFailedError)) return false;
-	const driverError = error.driverError as { code?: string };
-	const code = driverError?.code;
-	return code === '23505' /* postgres */ || code === 'SQLITE_CONSTRAINT_UNIQUE';
 }

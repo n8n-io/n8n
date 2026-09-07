@@ -156,10 +156,7 @@ function onSingleSelect(option: string) {
 	answer.skipped = false;
 }
 
-function onSingleSelectAndAdvance(
-	option: string,
-	_inputMethod: 'click' | 'keyboard_number' | 'keyboard_enter' = 'click',
-) {
+function onSingleSelectAndAdvance(option: string) {
 	onSingleSelect(option);
 	const idx = filteredOptions.value.indexOf(option);
 	selectedIndex.value = idx >= 0 ? idx : null;
@@ -273,7 +270,7 @@ function submitAnswers() {
 
 // Keyboard navigation
 
-function handleInputEnter(event: KeyboardEvent, _type: string) {
+function handleInputEnter(event: KeyboardEvent) {
 	if (event.key !== 'Enter' || event.shiftKey) return false;
 	event.preventDefault();
 	if (hasCustomText.value || isNextEnabled.value) {
@@ -315,7 +312,7 @@ function handleEnterKey(event: KeyboardEvent, type: string, optionCount: number)
 
 	if (type === 'single') {
 		if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
-			onSingleSelectAndAdvance(filteredOptions.value[highlightedIndex.value], 'keyboard_enter');
+			onSingleSelectAndAdvance(filteredOptions.value[highlightedIndex.value]);
 		}
 	} else if (type === 'multi') {
 		if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
@@ -338,7 +335,7 @@ function handleNumberShortcut(event: KeyboardEvent, type: string, optionCount: n
 	const num = parseInt(event.key, 10);
 	if (num >= 1 && num <= optionCount) {
 		event.preventDefault();
-		onSingleSelectAndAdvance(filteredOptions.value[num - 1], 'keyboard_number');
+		onSingleSelectAndAdvance(filteredOptions.value[num - 1]);
 		return true;
 	}
 	return false;
@@ -352,7 +349,7 @@ function onKeydown(event: KeyboardEvent) {
 	const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
 	if (isInputFocused) {
-		handleInputEnter(event, q.type) || handleInputArrow(event);
+		handleInputEnter(event) || handleInputArrow(event);
 		return;
 	}
 
@@ -503,7 +500,7 @@ function onOptionMouseEnter(idx: number) {
 						:class="$style.textareaInput"
 						:model-value="currentAnswer.customText"
 						type="textarea"
-						:rows="3"
+						:autosize="{ minRows: 3, maxRows: 8 }"
 						:disabled="disabled"
 						:placeholder="
 							i18n.baseText('aiAssistant.builder.planMode.questions.clarifyPlaceholder')
@@ -732,14 +729,6 @@ function onOptionMouseEnter(idx: number) {
 	display: flex;
 	gap: var(--spacing--2xs);
 	min-height: 28px;
-}
-
-.textareaInput {
-	textarea {
-		height: 5lh;
-		resize: none;
-		overflow-y: auto;
-	}
 }
 
 /* Question fade transition */

@@ -127,8 +127,16 @@ describe('project package export', () => {
 		expect(manifest.projects).toHaveLength(2);
 		expect(manifest.projects).toEqual(
 			expect.arrayContaining([
-				{ id: firstProject.id, name: 'Alpha Project', target: 'projects/alpha-project' },
-				{ id: secondProject.id, name: 'Beta Project', target: 'projects/beta-project' },
+				{
+					id: firstProject.id,
+					name: 'Alpha Project',
+					target: `projects/alpha-project-${firstProject.id}`,
+				},
+				{
+					id: secondProject.id,
+					name: 'Beta Project',
+					target: `projects/beta-project-${secondProject.id}`,
+				},
 			]),
 		);
 

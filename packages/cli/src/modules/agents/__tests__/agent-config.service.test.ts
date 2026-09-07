@@ -361,6 +361,55 @@ describe('AgentConfigService', () => {
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 
+		it('persists modelDeploymentName, retains it when omitted, and drops it on clearOmittedOptionalFields', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' },
+				user,
+				byUser,
+			);
+			let saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
+
+			// Omitting the field keeps the stored value (merge semantics).
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, byUser);
+			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
+
+			// An explicit empty value is a clear (the builder sends "" when the
+			// user blanks the deployment-name field).
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, modelDeploymentName: '' },
+				user,
+				byUser,
+			);
+			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' },
+				user,
+				byUser,
+			);
+
+			// Full-replace callers remove it when omitted.
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, {
+				clearOmittedOptionalFields: true,
+				...byUser,
+			});
+			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
+		});
+
 		it('drops stored optional fields omitted from the payload when clearOmittedOptionalFields is set', async () => {
 			const { service, agentRepository, credentialsService } = makeService();
 			const agent = makeAgent({

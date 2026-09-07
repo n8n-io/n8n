@@ -26,7 +26,7 @@ const filterSchema = z.object({
 	filters: z.array(
 		z.object({
 			columnName: z.string(),
-			condition: z.enum(['eq', 'neq', 'like', 'gt', 'gte', 'lt', 'lte']),
+			condition: z.enum(['eq', 'neq', 'like', 'ilike', 'gt', 'gte', 'lt', 'lte']),
 			value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		}),
 	),
@@ -38,7 +38,7 @@ const filterSchemaWithMinOne = z.object({
 		.array(
 			z.object({
 				columnName: z.string(),
-				condition: z.enum(['eq', 'neq', 'like', 'gt', 'gte', 'lt', 'lte']),
+				condition: z.enum(['eq', 'neq', 'like', 'ilike', 'gt', 'gte', 'lt', 'lte']),
 				value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 			}),
 		)
@@ -90,6 +90,18 @@ function isNameConflictError(error: unknown): boolean {
 
 // ── Action schemas ─────────────────────────────────────────────────────────
 
+/** Cells can hold arbitrarily large values (e.g. inline base64 images); cap what a
+ *  query feeds back to the model so one broad query cannot flood the conversation. */
+const MAX_CELL_CHARS = 1024;
+
+/** When full cell values are requested, cap rows per call — a few intact blob
+ *  cells are useful; dozens re-create the flood truncation exists to prevent. */
+const MAX_FULL_VALUE_ROWS = 5;
+
+const filterDescribe =
+	'Row filter conditions. For text matching use `ilike` (case-insensitive contains); `like` is ' +
+	'case-sensitive. Values without `%` are wrapped as `%value%`.';
+
 const projectIdDescribe =
 	'Project ID. Scopes list/create (defaults to personal); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.';
 
@@ -124,7 +136,12 @@ const schemaAction = z.object({
 });
 
 const queryAction = z.object({
-	action: z.literal('query').describe('Query rows from a data table with optional filtering'),
+	action: z
+		.literal('query')
+		.describe(
+			'Query rows from a data table. Prefer a column filter and a small limit over broad pulls; ' +
+				'results include the total matching `count`, so `limit: 1` is enough to check row existence.',
+		),
 	dataTableId: z
 		.string()
 		.describe(
@@ -132,7 +149,7 @@ const queryAction = z.object({
 		),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	filter: filterSchema.optional().describe('Row filter conditions'),
+	filter: filterSchema.optional().describe(filterDescribe),
 	limit: z
 		.number()
 		.int()
@@ -141,6 +158,15 @@ const queryAction = z.object({
 		.optional()
 		.describe('Max rows to return (default 50)'),
 	offset: z.number().int().min(0).optional().describe('Number of rows to skip'),
+	fullCellValues: z
+		.boolean()
+		.optional()
+		.describe(
+			`Return cell values untruncated. By default values longer than ${MAX_CELL_CHARS} characters ` +
+				'(e.g. inline base64 images) are truncated. Requires a filter matching the specific ' +
+				`row(s) whose full values are needed (ignored without one) and returns at most ${MAX_FULL_VALUE_ROWS} ` +
+				'rows per call (default 1) — paginate for more.',
+		),
 });
 
 const createAction = z.object({
@@ -232,7 +258,7 @@ const updateRowsAction = z.object({
 		),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	filter: filterSchema.describe('Row filter conditions'),
+	filter: filterSchema.describe(filterDescribe),
 	data: z.record(z.unknown()).describe('Column values to set on matching rows'),
 });
 
@@ -249,7 +275,7 @@ const deleteRowsAction = z.object({
 		),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	filter: filterSchemaWithMinOne.describe('Row filter conditions'),
+	filter: filterSchemaWithMinOne.describe(filterDescribe),
 });
 
 const allActions = [
@@ -316,14 +342,43 @@ async function handleSchema(
 	return { ...table, columns };
 }
 
+function truncateOversizedCells(rows: Array<Record<string, unknown>>): {
+	rows: Array<Record<string, unknown>>;
+	truncatedColumns: string[];
+} {
+	const truncatedColumns = new Set<string>();
+	const truncatedRows = rows.map((row) => {
+		const oversized = Object.entries(row).filter(
+			([, value]) => typeof value === 'string' && value.length > MAX_CELL_CHARS,
+		);
+		if (oversized.length === 0) return row;
+
+		const next = { ...row };
+		for (const [column, value] of oversized) {
+			if (typeof value !== 'string') continue;
+			next[column] =
+				`${value.slice(0, MAX_CELL_CHARS)}… [truncated, ${String(value.length)} chars total]`;
+			truncatedColumns.add(column);
+		}
+		return next;
+	});
+	return { rows: truncatedRows, truncatedColumns: [...truncatedColumns] };
+}
+
 async function handleQuery(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'query' }>,
 ) {
 	const table = await resolveDataTableReference(context, input, 'readRow');
+	// Honor fullCellValues only for filtered queries, and bound how many intact
+	// rows one call can return — an unfiltered "give me everything untruncated"
+	// is the exact flood shape truncation exists to prevent.
+	const hasFilter = (input.filter?.filters.length ?? 0) > 0;
+	const returnFullValues = input.fullCellValues === true && hasFilter;
+	const limit = returnFullValues ? Math.min(input.limit ?? 1, MAX_FULL_VALUE_ROWS) : input.limit;
 	const result = await context.dataTableService.queryRows(input.dataTableId, {
 		filter: input.filter,
-		limit: input.limit,
+		limit,
 		offset: input.offset,
 		projectId: input.projectId,
 	});
@@ -331,15 +386,27 @@ async function handleQuery(
 	const returnedRows = result.data.length;
 	const remaining = result.count - (input.offset ?? 0) - returnedRows;
 
+	const hints: string[] = [];
+	let data = result.data;
+	if (!returnFullValues) {
+		const truncation = truncateOversizedCells(result.data);
+		if (truncation.truncatedColumns.length > 0) {
+			data = truncation.rows;
+			hints.push(
+				input.fullCellValues === true
+					? `fullCellValues was ignored because the query has no filter. Values in column(s) ${truncation.truncatedColumns.join(', ')} were truncated to ${String(MAX_CELL_CHARS)} characters. Re-query with a filter matching only the specific row(s) to get full values.`
+					: `Values in column(s) ${truncation.truncatedColumns.join(', ')} were truncated to ${String(MAX_CELL_CHARS)} characters. If a full value is needed, re-query with fullCellValues: true and a filter matching only the specific row(s).`,
+			);
+		}
+	}
 	if (remaining > 0) {
-		return {
-			...table,
-			...result,
-			hint: `${remaining} more rows available. Use additional paginated data-tables queries for bulk operations.`,
-		};
+		hints.push(
+			`${remaining} more rows available. Use additional paginated data-tables queries for bulk operations.`,
+		);
 	}
 
-	return { ...table, ...result };
+	const response = { ...table, count: result.count, data };
+	return hints.length > 0 ? { ...response, hint: hints.join(' ') } : response;
 }
 
 async function handleCreate(
@@ -687,7 +754,9 @@ export function createDataTablesTool(context: InstanceAiContext) {
 				'list/show requests like "what data tables do I have?" or "show/list my tables". ' +
 				'For workflow builds that create or write Data Tables, load `data-table-manager` then ' +
 				'`workflow-builder` before `build-workflow`. Use list, create, and schema before ' +
-				'referencing tables in SDK code.',
+				'referencing tables in SDK code. Keep queries targeted (column filter and/or limit ≤ 5), ' +
+				'especially when diagnosing — never pull a table unfiltered, and after a failed or 0-row ' +
+				'query only retry strictly narrower.',
 		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)

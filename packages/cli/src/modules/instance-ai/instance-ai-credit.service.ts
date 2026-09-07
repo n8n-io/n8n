@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { BuilderUsageItem, TraceStatus } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
@@ -16,10 +17,6 @@ import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiMessageRepository } from './repositories/instance-ai-message.repository';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * Owns Instance AI credit accounting: claims decimal, token-based credits per

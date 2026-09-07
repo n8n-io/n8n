@@ -58,7 +58,7 @@ function isWorkflowJson(value: unknown): value is WorkflowJSON {
 	);
 }
 
-function isTypeScriptWorkflowSource(filePath: string): boolean {
+export function isTypeScriptWorkflowSource(filePath: string): boolean {
 	const normalized = filePath.toLowerCase();
 	return normalized.endsWith('.ts') || normalized.endsWith('.tsx');
 }

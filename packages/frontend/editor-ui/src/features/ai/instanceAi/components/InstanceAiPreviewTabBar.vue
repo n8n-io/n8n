@@ -151,7 +151,14 @@ async function handleCopyLink(tab: ArtifactTab) {
 			<ContextMenuRoot v-for="tab in tabs" :key="tab.id">
 				<ContextMenuTrigger as-child>
 					<TabsTrigger :value="tab.id" :data-tab-id="tab.id" :class="$style.tab">
-						<N8nIcon :icon="tab.icon" size="large" />
+						<N8nIcon
+							v-if="tab.building"
+							icon="spinner"
+							size="large"
+							spin
+							data-test-id="instance-ai-tab-building-spinner"
+						/>
+						<N8nIcon v-else :icon="tab.icon" size="large" />
 						<span :class="$style.label">{{ tab.name }}</span>
 					</TabsTrigger>
 				</ContextMenuTrigger>

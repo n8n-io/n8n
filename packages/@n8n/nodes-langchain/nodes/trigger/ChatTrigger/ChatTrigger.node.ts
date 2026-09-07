@@ -23,27 +23,72 @@ import type {
 	IBinaryData,
 	INodeProperties,
 	CredentialCheckResult,
+	IUser,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { ChatTriggerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
+import { buildChatShellViewModel, connectBarText } from './connect-panel';
 import { cssVariables } from './constants';
 import {
 	establishChatSessionIdentity,
+	handleChatTokenRefresh,
 	resolveInnerFrameIdentity,
 	validateAuth,
 } from './GenericFunctions';
 import {
+	buildChatRefreshUrl,
 	buildInnerFrameSrc,
 	CHAT_FRAME_SANDBOX,
 	isChatOAuth2Enabled,
+	isChatRefreshRequest,
 	isShellInnerRequest,
 } from './shell';
-import { createPage, createShellPage } from './templates';
+import { createPage } from './templates';
 import { assertValidLoadPreviousSessionOption, type ChatFrameIdentity } from './types';
 
 const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
+
+/**
+ * Merges the server-verified identity into the emitted item's `json`.
+ *
+ * Under `n8nUserAuth` the `user` key belongs to the server. The item's `json` starts as
+ * the caller's own request body, so any `user` the caller sent is dropped — whether or
+ * not a verified one replaces it, since a workflow reading `json.user` must never get an
+ * attacker-controlled value in the slot the trusted one occupies. That holds even when
+ * the rollout flag is off and no verified value is written: the flag can change under a
+ * workflow that already trusts the key. Under the other auth modes no server identity
+ * exists, `user` is ordinary body data, and the body passes through untouched.
+ *
+ * Only a plain object body is merged into. A string (`text/plain`), a scalar or an array
+ * body can carry no `user` key, and object rest would silently shred it into
+ * `{ 0: …, 1: … }`, so those pass through as they are.
+ */
+function isPlainObject(value: unknown): value is IDataObject {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function withAuthenticatedUser(
+	json: IDataObject,
+	user: IUser | undefined,
+	serverOwnsUserKey: boolean,
+): IDataObject {
+	if (!serverOwnsUserKey || !isPlainObject(json)) return json;
+	const { user: claimedUser, ...rest } = json;
+	if (!user) return rest;
+	// Field by field, so a future `IUser` field cannot leak into workflow data.
+	return {
+		...rest,
+		user: {
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName,
+			lastName: user.lastName,
+		},
+	};
+}
+
 const allowFileUploadsOption: INodeProperties = {
 	displayName: 'Allow File Uploads',
 	name: 'allowFileUploads',
@@ -51,6 +96,19 @@ const allowFileUploadsOption: INodeProperties = {
 	default: false,
 	description: 'Whether to allow file uploads in the chat',
 };
+const includeUserInOutputOption: INodeProperties = {
+	displayName: 'Include User in Output',
+	name: 'includeUserInOutput',
+	type: 'boolean',
+	default: true,
+	// Hidden until the chat OAuth2 rollout reaches GA. Display only — `webhook()`
+	// checks the same flag itself.
+	envFeatureFlag: 'CHAT_TRIGGER_OAUTH2',
+	// No `mode` gate, unlike its neighbour: `n8nUserAuth` also works in `webhook`
+	// mode through the cookie check, and that path emits an item too.
+	description: "Whether to include the logged-in user's ID, email and name in the trigger output",
+};
+
 const allowedFileMimeTypeOption: INodeProperties = {
 	displayName: 'Allowed File Mime Types',
 	name: 'allowedFilesMimeTypes',
@@ -244,8 +302,8 @@ export class ChatTrigger extends Node {
 		icon: 'node:chat-trigger',
 		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
-		defaultVersion: 1.4,
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		defaultVersion: 1.5,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
 			name: 'When chat message received',
@@ -454,6 +512,30 @@ export class ChatTrigger extends Node {
 				},
 				description:
 					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+			},
+			{
+				...includeUserInOutputOption,
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						public: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			{
+				...includeUserInOutputOption,
+				// Off below 1.5: `n8nUserAuth` has been selectable since the node shipped, so chats
+				// built long before this feature must keep their output shape. Still visible, so they
+				// can opt in without being rebuilt — which would change their public chat URL.
+				default: false,
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						public: [true],
+						'@version': [{ _cnd: { lt: 1.5 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Initial Message(s)',
@@ -886,25 +968,35 @@ export class ChatTrigger extends Node {
 		const webhookName = ctx.getWebhookName();
 		const bodyData = ctx.getBodyData() ?? {};
 
-		try {
-			// The editor's canvas chat can't supply webhook credentials, so its session-scoped
-			// test route (flagged by the backend at registration) is exempt from auth. Every
-			// other request — production or sessionless test — enforces the configured auth.
-			if (mode !== 'test' || !ctx.isChatSessionTest()) {
-				await validateAuth(ctx);
+		const authentication = ctx.getNodeParameter('authentication', 'none');
+		let authedUser: IUser | undefined;
+		// The editor's canvas chat can't supply webhook credentials, so its session-scoped
+		// test route (flagged by the backend at registration) is exempt from auth. Every
+		// other request — production or sessionless test — enforces the configured auth.
+		if (mode === 'test' && ctx.isChatSessionTest()) {
+			// Auth is skipped here, but the editor user who started the run is known, so
+			// report them under the same conditions production would. This lookup is identity,
+			// not authorization: it stays outside the `catch` below, which reads its error as
+			// an auth challenge and would answer with an undefined status code.
+			if (isChatOAuth2Enabled() && authentication === 'n8nUserAuth') {
+				authedUser = await ctx.getTestWebhookUser?.();
 			}
-		} catch (error) {
-			if (error) {
-				// Realm is scoped per webhook so browsers don't reuse cached credentials across chats sharing an origin
-				const webhookId = ctx.getNode().webhookId;
-				const realm = webhookId ? `Webhook ${webhookId}` : 'Webhook';
-				res.writeHead((error as IDataObject).responseCode as number, {
-					'www-authenticate': `Basic realm="${realm}"`,
-				});
-				res.end((error as IDataObject).message as string);
-				return { noWebhookResponse: true };
+		} else {
+			try {
+				authedUser = await validateAuth(ctx);
+			} catch (error) {
+				if (error) {
+					// Realm is scoped per webhook so browsers don't reuse cached credentials across chats sharing an origin
+					const webhookId = ctx.getNode().webhookId;
+					const realm = webhookId ? `Webhook ${webhookId}` : 'Webhook';
+					res.writeHead((error as IDataObject).responseCode as number, {
+						'www-authenticate': `Basic realm="${realm}"`,
+					});
+					res.end((error as IDataObject).message as string);
+					return { noWebhookResponse: true };
+				}
+				throw error;
 			}
-			throw error;
 		}
 		if (nodeMode === 'hostedChat') {
 			// Show the chat on GET request
@@ -943,21 +1035,56 @@ export class ChatTrigger extends Node {
 						throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
 					}
 
+					// The shell's token-refresh leg, ahead of any render: it answers with JSON,
+					// not a page, and authenticates itself from its own httpOnly cookie rather
+					// than from the handshake below. A GET because a POST to this path reaches
+					// the `default` webhook — the chat message endpoint — instead.
+					if (isChatRefreshRequest(req)) {
+						await handleChatTokenRefresh(ctx, resourceUrl);
+						return { noWebhookResponse: true };
+					}
+
 					if (!isShellInnerRequest(req)) {
 						// Outer shell: the AS handshake runs here — a normal top-level document with
 						// real cookies, unlike the sandboxed, opaque-origin frame this shell is about
 						// to create. It is the only gate: a visitor without an editor session is
 						// authenticated by the flow rather than bounced to sign-in ahead of it.
-						const ready = await establishChatSessionIdentity(ctx, resourceUrl);
-						if (!ready) {
+						const outerIdentity = await establishChatSessionIdentity(ctx, resourceUrl);
+						if (!outerIdentity) {
 							return { noWebhookResponse: true };
 						}
 
+						let credentialStatus: CredentialCheckResult | undefined;
+						try {
+							credentialStatus = await ctx.checkTriggerCredentialStatus();
+						} catch {
+							// No error object: may carry decrypted credential context.
+							ctx.logger.error('Chat trigger credential readiness check failed');
+							// `send` ends the response itself.
+							res.status(503).send('Chat is unavailable right now. Please try again later.');
+							return { noWebhookResponse: true };
+						}
+
+						const connect = credentialStatus?.credentials.length
+							? buildChatShellViewModel(credentialStatus.credentials, outerIdentity.visitor.email)
+							: undefined;
+
 						res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
-						res
-							.status(200)
-							.send(createShellPage({ iframeSrc: buildInnerFrameSrc(req) }))
-							.end();
+						// Express defaults to 200 for `render`; stated so the success status is
+						// not implicit next to the 503 branch above.
+						res.status(200).render('chat-shell', {
+							iframeSrc: buildInnerFrameSrc(req),
+							sandbox: CHAT_FRAME_SANDBOX,
+							refreshUrl: buildChatRefreshUrl(req),
+							refreshExpiresIn: Math.max(0, Math.round(outerIdentity.expiresIn)),
+							testMode: mode === 'test',
+							visitorEmail: outerIdentity.visitor.email,
+							hasCredentials: !!connect,
+							// Not forced in test mode: the send gate refuses builders too.
+							ready: connect ? connect.connectedCount >= connect.total : false,
+							barText: connect ? connectBarText(connect, mode === 'test') : '',
+							...connect,
+						});
 						return { noWebhookResponse: true };
 					}
 
@@ -1024,8 +1151,9 @@ export class ChatTrigger extends Node {
 			let readiness: CredentialCheckResult | undefined;
 			try {
 				readiness = await ctx.checkTriggerCredentialStatus();
-			} catch (error) {
-				ctx.logger.error('Chat trigger credential readiness check failed', { error });
+			} catch {
+				// No error object: may carry decrypted credential context.
+				ctx.logger.error('Chat trigger credential readiness check failed');
 				res.status(503).json({ status: 'credential_readiness_check_failed' });
 				return { noWebhookResponse: true };
 			}
@@ -1045,7 +1173,6 @@ export class ChatTrigger extends Node {
 			}
 		}
 
-		let returnData: INodeExecutionData[];
 		const webhookResponse: IDataObject = { status: 200 };
 
 		// Handle streaming responses
@@ -1069,27 +1196,49 @@ export class ChatTrigger extends Node {
 
 			// Flush headers immediately
 			res.flushHeaders();
+		}
 
-			if (req.contentType === 'multipart/form-data') {
-				returnData = [await this.handleFormData(ctx)];
-			} else {
-				returnData = [{ json: bodyData }];
-			}
+		const isMultipart = req.contentType === 'multipart/form-data';
+		const item = isMultipart ? await this.handleFormData(ctx) : { json: bodyData };
 
+		// Ownership of the `user` key follows the auth mode alone, never the rollout flag. A
+		// workflow built while the flag was on keeps trusting `json.user`, and it travels
+		// between instances — export/import, a rollback, drifted env on one main — while the
+		// env var does not. So a claimed `user` is dropped on every `n8nUserAuth` chat.
+		const serverOwnsUserKey = authentication === 'n8nUserAuth';
+		// Only writing the verified identity is gated until GA. The declared `default` drives
+		// the editor alone; an absent parameter resolves to this fallback, so it is what
+		// decides for a node that never had the key saved.
+		const includeUser =
+			serverOwnsUserKey &&
+			isChatOAuth2Enabled() &&
+			ctx.getNodeParameter('includeUserInOutput', ctx.getNode().typeVersion >= 1.5) !== false;
+
+		// The single merge point for all three emission paths — see `withAuthenticatedUser`.
+		// Spread so the multipart path keeps its `binary` attachments.
+		const returnItem: INodeExecutionData = {
+			...item,
+			json: withAuthenticatedUser(
+				item.json,
+				includeUser ? authedUser : undefined,
+				serverOwnsUserKey,
+			),
+		};
+
+		const returnData: INodeExecutionData[] = [returnItem];
+
+		if (enableStreaming) {
 			return {
 				workflowData: [ctx.helpers.returnJsonArray(returnData)],
 				noWebhookResponse: true,
 			};
 		}
 
-		if (req.contentType === 'multipart/form-data') {
-			returnData = [await this.handleFormData(ctx)];
+		if (isMultipart) {
 			return {
 				webhookResponse,
 				workflowData: [returnData],
 			};
-		} else {
-			returnData = [{ json: bodyData }];
 		}
 
 		return {

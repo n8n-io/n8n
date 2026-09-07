@@ -1,9 +1,9 @@
-import type { AgentsConfig } from '@n8n/config';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentInterruptedExecutionSweeper } from '../agent-interrupted-execution-sweeper';
 import type { AgentExecutionService } from '../agent-execution.service';
+import { AgentInterruptedExecutionSweeper } from '../agent-interrupted-execution-sweeper';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
@@ -60,15 +60,17 @@ describe('AgentInterruptedExecutionSweeper', () => {
 		expect(executionService.finalizeInterruptedExecution).not.toHaveBeenCalled();
 	});
 
-	it('reconciles background job rows only when the feature is enabled', async () => {
+	it('runs full reconciliation when the feature is on, and still reconciles workflow jobs when it is off', async () => {
 		const disabled = setup();
 		disabled.repository.findRunning.mockResolvedValue([]);
 		await disabled.sweeper.sweep();
 		expect(disabled.backgroundJobService.reconcile).not.toHaveBeenCalled();
+		expect(disabled.backgroundJobService.reconcileWorkflowJobs).toHaveBeenCalled();
 
 		const enabled = setup({ backgroundTasksEnabled: true });
 		enabled.repository.findRunning.mockResolvedValue([]);
 		await enabled.sweeper.sweep();
 		expect(enabled.backgroundJobService.reconcile).toHaveBeenCalled();
+		expect(enabled.backgroundJobService.reconcileWorkflowJobs).not.toHaveBeenCalled();
 	});
 });

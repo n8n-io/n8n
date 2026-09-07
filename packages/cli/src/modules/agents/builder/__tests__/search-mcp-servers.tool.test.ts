@@ -37,6 +37,7 @@ const notionResult: McpRegistrySearchResult = {
 		{ name: 'notion-create-pages', title: 'Create pages in Markdown' },
 	],
 	metadata: { nodeTypeName: '@n8n/mcp-registry.notion' },
+	isTemplated: false,
 };
 
 describe('buildSearchMcpServersTool', () => {

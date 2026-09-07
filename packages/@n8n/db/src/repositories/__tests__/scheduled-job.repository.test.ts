@@ -1,7 +1,7 @@
 import type { DatabaseConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
-import { In } from '@n8n/typeorm';
+import { In, IsNull, Not } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,10 +12,11 @@ import { ScheduledJobRepository } from '../scheduled-job.repository';
 
 const CLOCK = new Date('2026-01-05T09:00:00.000Z');
 
+const OWNER = { ownerType: 'workflow', ownerId: 'wf', ownerMemberId: 'node' };
+
 const newJob = (name: string): NewScheduledJob => ({
 	name,
-	workflowId: 'wf',
-	nodeId: 'node',
+	...OWNER,
 	taskType: 'schedule-trigger',
 	payload: {},
 	kind: 'cron',
@@ -30,6 +31,10 @@ const newJob = (name: string): NewScheduledJob => ({
 	misfirePolicy: 'coalesce',
 	misfireGraceSeconds: 60,
 });
+
+/** A row as the post-insert read-back returns it: id, name and the owner it belongs to. */
+const insertedRow = (id: number, name: string, owner = OWNER): ScheduledJob =>
+	({ id, name, ...owner }) as ScheduledJob;
 
 /** A chainable insert query-builder mock; `execute` is set per test. */
 const insertQb = () => ({
@@ -63,30 +68,41 @@ describe('ScheduledJobRepository', () => {
 		vi.resetAllMocks();
 	});
 
-	describe('findManyByWorkflowNode', () => {
-		it('returns the jobs owned by the workflow node', async () => {
+	describe('findManyByOwner', () => {
+		it('returns the jobs owned by the owner member', async () => {
 			const rows = [mock<ScheduledJob>({ id: 1 }), mock<ScheduledJob>({ id: 2 })];
 			entityManager.findBy.mockResolvedValueOnce(rows);
 
-			const result = await repository.findManyByWorkflowNode(entityManager, 'wf', 'node');
+			const result = await repository.findManyByOwner(entityManager, OWNER);
+
+			expect(entityManager.findBy).toHaveBeenCalledWith(ScheduledJob, OWNER);
+			expect(result).toBe(rows);
+		});
+
+		it('matches a member-less owner with IS NULL rather than = NULL', async () => {
+			entityManager.findBy.mockResolvedValueOnce([]);
+
+			await repository.findManyByOwner(entityManager, {
+				ownerType: 'system-task',
+				ownerId: 'system:prune',
+				ownerMemberId: null,
+			});
 
 			expect(entityManager.findBy).toHaveBeenCalledWith(ScheduledJob, {
-				workflowId: 'wf',
-				nodeId: 'node',
+				ownerType: 'system-task',
+				ownerId: 'system:prune',
+				ownerMemberId: IsNull(),
 			});
-			expect(result).toBe(rows);
 		});
 	});
 
-	describe('countByWorkflowNode', () => {
-		it('counts the jobs owned by the workflow node', async () => {
+	describe('countByOwner', () => {
+		it('counts the jobs owned by the owner member', async () => {
 			entityManager.count.mockResolvedValueOnce(3);
 
-			const result = await repository.countByWorkflowNode('wf', 'node');
+			const result = await repository.countByOwner(OWNER);
 
-			expect(entityManager.count).toHaveBeenCalledWith(ScheduledJob, {
-				where: { workflowId: 'wf', nodeId: 'node' },
-			});
+			expect(entityManager.count).toHaveBeenCalledWith(ScheduledJob, { where: OWNER });
 			expect(result).toBe(3);
 		});
 	});
@@ -97,14 +113,14 @@ describe('ScheduledJobRepository', () => {
 			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 
-			await repository.backdateNextRunAt('wf', 'node', 120);
+			await repository.backdateNextRunAt(OWNER, 120);
 
 			expect(qb.update).toHaveBeenCalledWith(ScheduledJob);
 			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
-			expect(qb.where).toHaveBeenCalledWith('"workflowId" = :workflowId AND "nodeId" = :nodeId', {
-				workflowId: 'wf',
-				nodeId: 'node',
-			});
+			expect(qb.where).toHaveBeenCalledWith(
+				'"ownerType" = :ownerType AND "ownerId" = :ownerId AND "ownerMemberId" = :ownerMemberId',
+				OWNER,
+			);
 			expect(qb.execute).toHaveBeenCalled();
 		});
 
@@ -113,10 +129,24 @@ describe('ScheduledJobRepository', () => {
 			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 
-			await repository.backdateNextRunAt('wf', 'node', 0);
+			await repository.backdateNextRunAt(OWNER, 0);
 
 			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
 			expect(qb.execute).toHaveBeenCalled();
+		});
+
+		it('matches a member-less owner with IS NULL', async () => {
+			const qb = updateQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+
+			const owner = { ownerType: 'system-task', ownerId: 'system:prune', ownerMemberId: null };
+			await repository.backdateNextRunAt(owner, 0);
+
+			expect(qb.where).toHaveBeenCalledWith(
+				'"ownerType" = :ownerType AND "ownerId" = :ownerId AND "ownerMemberId" IS NULL',
+				owner,
+			);
 		});
 	});
 
@@ -143,8 +173,8 @@ describe('ScheduledJobRepository', () => {
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			// Read-back deliberately out of input order to prove the result is reordered.
 			entityManager.find.mockResolvedValueOnce([
-				{ id: 20, name: 'wf:node:1' } as ScheduledJob,
-				{ id: 10, name: 'wf:node:0' } as ScheduledJob,
+				insertedRow(20, 'wf:node:1'),
+				insertedRow(10, 'wf:node:0'),
 			]);
 
 			const ids = await repository.insertMany(entityManager, jobs);
@@ -154,7 +184,7 @@ describe('ScheduledJobRepository', () => {
 			expect(qb.returning).not.toHaveBeenCalled();
 			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
 				where: { name: In(['wf:node:0', 'wf:node:1']) },
-				select: { id: true, name: true },
+				select: { id: true, name: true, ownerType: true, ownerId: true, ownerMemberId: true },
 			});
 			expect(ids).toEqual([10, 20]);
 		});
@@ -166,11 +196,8 @@ describe('ScheduledJobRepository', () => {
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			// Read-back is chunked too; each chunk resolves only its own rows.
 			entityManager.find
-				.mockResolvedValueOnce([
-					{ id: 10, name: 'wf:node:0' } as ScheduledJob,
-					{ id: 20, name: 'wf:node:1' } as ScheduledJob,
-				])
-				.mockResolvedValueOnce([{ id: 30, name: 'wf:node:2' } as ScheduledJob]);
+				.mockResolvedValueOnce([insertedRow(10, 'wf:node:0'), insertedRow(20, 'wf:node:1')])
+				.mockResolvedValueOnce([insertedRow(30, 'wf:node:2')]);
 
 			// 3 jobs at 2/chunk -> two insert statements and two read-back queries.
 			const ids = await repository.insertMany(entityManager, jobs, 2);
@@ -180,11 +207,11 @@ describe('ScheduledJobRepository', () => {
 			expect(qb.values).toHaveBeenNthCalledWith(2, [jobs[2]]);
 			expect(entityManager.find).toHaveBeenNthCalledWith(1, ScheduledJob, {
 				where: { name: In(['wf:node:0', 'wf:node:1']) },
-				select: { id: true, name: true },
+				select: { id: true, name: true, ownerType: true, ownerId: true, ownerMemberId: true },
 			});
 			expect(entityManager.find).toHaveBeenNthCalledWith(2, ScheduledJob, {
 				where: { name: In(['wf:node:2']) },
-				select: { id: true, name: true },
+				select: { id: true, name: true, ownerType: true, ownerId: true, ownerMemberId: true },
 			});
 			expect(ids).toEqual([10, 20, 30]);
 		});
@@ -197,12 +224,8 @@ describe('ScheduledJobRepository', () => {
 			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			entityManager.find
-				.mockResolvedValueOnce(
-					jobs.slice(0, 500).map((job, i) => ({ id: i + 1, name: job.name }) as ScheduledJob),
-				)
-				.mockResolvedValueOnce(
-					jobs.slice(500).map((job, i) => ({ id: 501 + i, name: job.name }) as ScheduledJob),
-				);
+				.mockResolvedValueOnce(jobs.slice(0, 500).map((job, i) => insertedRow(i + 1, job.name)))
+				.mockResolvedValueOnce(jobs.slice(500).map((job, i) => insertedRow(501 + i, job.name)));
 
 			const ids = await repository.insertMany(entityManager, jobs, 10_000_000);
 
@@ -217,8 +240,8 @@ describe('ScheduledJobRepository', () => {
 			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			entityManager.find.mockResolvedValueOnce([
-				{ id: 10, name: 'wf:node:0' } as ScheduledJob,
-				{ id: 20, name: 'wf:node:1' } as ScheduledJob,
+				insertedRow(10, 'wf:node:0'),
+				insertedRow(20, 'wf:node:1'),
 			]);
 
 			const ids = await postgresRepository.insertMany(entityManager, jobs);
@@ -226,7 +249,7 @@ describe('ScheduledJobRepository', () => {
 			expect(qb.returning).not.toHaveBeenCalled();
 			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
 				where: { name: In(['wf:node:0', 'wf:node:1']) },
-				select: { id: true, name: true },
+				select: { id: true, name: true, ownerType: true, ownerId: true, ownerMemberId: true },
 			});
 			expect(ids).toEqual([10, 20]);
 		});
@@ -239,13 +262,29 @@ describe('ScheduledJobRepository', () => {
 			// `wf:node:1` was already held by another writer; orIgnore skipped our row,
 			// but the read-back still finds every input name (id 99 is the other writer's).
 			entityManager.find.mockResolvedValueOnce([
-				{ id: 10, name: 'wf:node:0' } as ScheduledJob,
-				{ id: 99, name: 'wf:node:1' } as ScheduledJob,
+				insertedRow(10, 'wf:node:0'),
+				insertedRow(99, 'wf:node:1'),
 			]);
 
 			const ids = await repository.insertMany(entityManager, jobs);
 
 			expect(ids).toEqual([10, 99]);
+		});
+
+		it('throws when the row holding a name belongs to another owner', async () => {
+			// Job names are scoped by convention, not by the schema. Returning the other
+			// owner's id would have this call reseed and reschedule their job.
+			const jobs = [newJob('wf:node:0')];
+			const qb = insertQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+			entityManager.find.mockResolvedValueOnce([
+				insertedRow(10, 'wf:node:0', { ...OWNER, ownerMemberId: 'other-node' }),
+			]);
+
+			await expect(repository.insertMany(entityManager, jobs)).rejects.toThrow(
+				'Scheduled job name is already taken by another owner',
+			);
 		});
 
 		it('throws when a name has no row after insert', async () => {
@@ -255,7 +294,7 @@ describe('ScheduledJobRepository', () => {
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			// A name unexpectedly missing from the read-back must fail loud rather than
 			// return a short array that would misalign the caller's index-based zip.
-			entityManager.find.mockResolvedValueOnce([{ id: 10, name: 'wf:node:0' } as ScheduledJob]);
+			entityManager.find.mockResolvedValueOnce([insertedRow(10, 'wf:node:0')]);
 
 			await expect(repository.insertMany(entityManager, jobs)).rejects.toThrow(UnexpectedError);
 		});
@@ -296,25 +335,126 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
-	describe('deleteByWorkflowNode', () => {
-		it('deletes the node jobs and returns the affected count', async () => {
+	describe('deleteByOwnerMember', () => {
+		it('deletes the owner member jobs and returns the affected count', async () => {
 			entityManager.delete.mockResolvedValueOnce({ affected: 3, raw: [] });
 
-			const removed = await repository.deleteByWorkflowNode(entityManager, 'wf', 'node');
+			const removed = await repository.deleteByOwnerMember(entityManager, OWNER);
 
-			expect(entityManager.delete).toHaveBeenCalledWith(ScheduledJob, {
-				workflowId: 'wf',
-				nodeId: 'node',
-			});
+			expect(entityManager.delete).toHaveBeenCalledWith(ScheduledJob, OWNER);
 			expect(removed).toBe(3);
 		});
 
 		it('returns 0 when the driver does not report an affected count', async () => {
 			entityManager.delete.mockResolvedValueOnce({ affected: null, raw: [] });
 
-			const removed = await repository.deleteByWorkflowNode(entityManager, 'wf', 'node');
+			const removed = await repository.deleteByOwnerMember(entityManager, OWNER);
 
 			expect(removed).toBe(0);
+		});
+	});
+
+	describe('deleteByOwnerRef', () => {
+		it('deletes every job the owner holds, whichever member owns it', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 5, raw: [] });
+
+			const removed = await repository.deleteByOwnerRef(entityManager, {
+				ownerType: 'workflow',
+				ownerId: 'wf',
+			});
+
+			expect(entityManager.delete).toHaveBeenCalledWith(ScheduledJob, {
+				ownerType: 'workflow',
+				ownerId: 'wf',
+			});
+			expect(removed).toBe(5);
+		});
+	});
+
+	describe('deleteByOwnerTaskType', () => {
+		it("deletes the owner's jobs of one task type", async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 2, raw: [] });
+
+			const removed = await repository.deleteByOwnerTaskType(
+				entityManager,
+				{ ownerType: 'workflow', ownerId: 'wf' },
+				'workflow:schedule-trigger',
+			);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(ScheduledJob, {
+				ownerType: 'workflow',
+				ownerId: 'wf',
+				taskType: 'workflow:schedule-trigger',
+			});
+			expect(removed).toBe(2);
+		});
+	});
+
+	describe('quarantineByOwnerIds', () => {
+		it('is a no-op with no owner ids', async () => {
+			expect(await repository.quarantineByOwnerIds('workflow', [], CLOCK, CLOCK)).toBe(0);
+			expect(entityManager.transaction).not.toHaveBeenCalled();
+		});
+
+		it('withdraws the queued runs of quarantined rows only, so a row revived in between keeps its runs', async () => {
+			entityManager.transaction.mockImplementation(
+				async (work) =>
+					await (work as unknown as (manager: EntityManager) => Promise<unknown>)(entityManager),
+			);
+			const qb = {
+				update: vi.fn().mockReturnThis(),
+				set: vi.fn().mockReturnThis(),
+				delete: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue({ affected: 1, raw: [] }),
+			};
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+
+			const quarantined = await repository.quarantineByOwnerIds('workflow', ['wf'], CLOCK, CLOCK);
+
+			expect(quarantined).toBe(1);
+			const [withdrawal] = qb.andWhere.mock.calls
+				.map(([sql]) => sql as string)
+				.filter((sql) => sql.includes('"jobId" IN'));
+			expect(withdrawal).toContain('"orphanedAt" IS NOT NULL');
+			expect(withdrawal).not.toContain('"createdAt"');
+		});
+	});
+
+	describe('deleteQuarantinedByOwnerIds', () => {
+		it('is a no-op with no owner ids', async () => {
+			expect(await repository.deleteQuarantinedByOwnerIds('workflow', [], CLOCK)).toBe(0);
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findQuarantinedByOwnerIds', () => {
+		it('is a no-op with no owner ids', async () => {
+			expect(await repository.findQuarantinedByOwnerIds('workflow', [], 10)).toEqual([]);
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('liftQuarantine', () => {
+		it('clears the stamp and restarts the clock, only while still quarantined', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, raw: [], generatedMaps: [] });
+
+			const lifted = await repository.liftQuarantine(42, CLOCK);
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ScheduledJob,
+				{ id: 42, orphanedAt: Not(IsNull()) },
+				{ orphanedAt: null, nextRunAt: CLOCK },
+			);
+			expect(lifted).toBe(1);
+		});
+
+		it('reports nothing lifted when a concurrent lift or delete got there first', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 0, raw: [], generatedMaps: [] });
+
+			expect(await repository.liftQuarantine(42, CLOCK)).toBe(0);
 		});
 	});
 });

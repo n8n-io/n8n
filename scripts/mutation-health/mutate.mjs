@@ -47,7 +47,7 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -452,14 +452,77 @@ function resolveStrykerBin(pkgRoot, packageDir) {
 	);
 }
 
+// --- working-tree snapshot and cleanup ---
+//
 // Runs use `--inPlace`, because the sandbox copy breaks each package whose
 // vitest config finds a workspace dependency through a path alias. The alias
 // does not stay correct in the copy. See the README for the failure.
 //
 // Stryker restores the files after a usual exit and after SIGINT, but not after
-// a crash. In diff mode the files hold uncommitted work, thus `git checkout --`
-// is not a safe undo. Keep a copy of the bytes and write them back instead.
-function snapshotFiles(absPaths) {
+// a crash, a timeout, or a SIGTERM. Its preprocessing also reaches past the
+// mutate targets: it instruments the related test graph and drops a
+// `stryker-setup-<worker>.js` in the run cwd. A target-only snapshot therefore
+// left mutated files and setup files behind. Snapshot the whole working tree
+// instead, and run one cleanup routine on every exit path.
+
+// Glob `stryker-setup-*.js`, anchored to one path segment.
+const STRYKER_SETUP_FILE = /^stryker-setup-[^/\\]*\.js$/;
+
+// Directories the walk never enters. `node_modules` alone makes a full-repo
+// walk take minutes, and none of these hold working-tree state to clean.
+const UNWALKED_DIRS = new Set([
+	'.git',
+	'node_modules',
+	'dist',
+	'coverage',
+	'.turbo',
+	'.stryker-tmp',
+]);
+
+/**
+ * Every `stryker-setup-*.js` under `root`. The vitest runner writes one for
+ * each worker into the run cwd and does not always remove it, thus the search
+ * covers the whole repo, not only the package dir Stryker ran in.
+ */
+export function findStrykerSetupFiles(root) {
+	const found = [];
+	const queue = [root];
+	while (queue.length > 0) {
+		const dir = queue.pop();
+		let entries;
+		try {
+			entries = readdirSync(dir, { withFileTypes: true });
+		} catch {
+			continue; // unreadable directory — nothing to collect
+		}
+		for (const entry of entries) {
+			const full = path.join(dir, entry.name);
+			if (entry.isDirectory()) {
+				if (!UNWALKED_DIRS.has(entry.name)) queue.push(full);
+			} else if (STRYKER_SETUP_FILE.test(entry.name)) {
+				found.push(full);
+			}
+		}
+	}
+	return found;
+}
+
+/** Delete every `stryker-setup-*.js` under `root`. Returns the paths removed. */
+export function removeStrykerSetupFiles(root) {
+	const removed = [];
+	for (const file of findStrykerSetupFiles(root)) {
+		try {
+			unlinkSync(file);
+			removed.push(file);
+		} catch {
+			// Already gone. There is nothing to remove.
+		}
+	}
+	return removed;
+}
+
+/** Keep the exact bytes of each path, so a restore never needs git. */
+export function snapshotFiles(absPaths) {
 	const snap = new Map();
 	for (const p of absPaths) {
 		try {
@@ -471,19 +534,144 @@ function snapshotFiles(absPaths) {
 	return snap;
 }
 
-function restoreFiles(snap) {
+/** Write the snapshot back where it differs. Returns the paths restored. */
+export function restoreFiles(snap) {
 	const restored = [];
 	for (const [p, original] of snap) {
 		try {
 			if (!readFileSync(p).equals(original)) {
 				writeFileSync(p, original);
-				restored.push(path.relative(repoRoot, p));
+				restored.push(p);
 			}
 		} catch {
 			// The file is gone. There is nothing to restore.
 		}
 	}
 	return restored;
+}
+
+/**
+ * Tracked files that were clean before the run and are dirty after it. Stryker
+ * changed them, and git holds their pre-run state, thus `git checkout --` is
+ * the correct undo. A file that was already dirty is excluded: it carries the
+ * user's own uncommitted work, which the byte snapshot restores instead.
+ */
+export function filesToCheckout(dirtyBefore, dirtyAfter) {
+	const before = new Set(dirtyBefore);
+	return dirtyAfter.filter((f) => !before.has(f));
+}
+
+/**
+ * The one cleanup routine every exit path shares: restore the working tree,
+ * then delete the `stryker-setup-*.js` files. Idempotent — the normal path, a
+ * crash, SIGINT and SIGTERM all call it, and only the first call does the work.
+ * A failing restore must not keep the setup files on disk, so each half is
+ * guarded on its own.
+ */
+export function createCleanup({ restore, removeSetupFiles, report }) {
+	let result;
+	return function cleanup() {
+		if (result) return result;
+		result = { restored: [], removed: [] };
+		try {
+			result.restored = restore() ?? [];
+		} catch {
+			// Report what the second half did even when the restore fails.
+		}
+		try {
+			result.removed = removeSetupFiles() ?? [];
+		} catch {
+			// Nothing more to clean.
+		}
+		report?.(result);
+		return result;
+	};
+}
+
+/**
+ * Wire `cleanup` onto every exit path: the usual one (`exit`), a crash
+ * (`uncaughtException`), and a cancellation (`SIGINT` / `SIGTERM`).
+ *
+ * `onSignal` gets first refusal on a signal. It returns true when it told a
+ * live Stryker to stop; the run then unwinds and cleans up once the child is
+ * gone, because a restore that races Stryker's own writes fixes nothing.
+ * Otherwise this handler cleans up and leaves at once.
+ *
+ * `proc`, `exit` and `write` are injected so the unit tests can drive the
+ * handlers without signalling or ending the test runner.
+ */
+export function registerCleanupHandlers({
+	cleanup,
+	onSignal,
+	proc = process,
+	exit = (code) => process.exit(code),
+	write = (msg) => process.stderr.write(msg),
+}) {
+	const handleExit = () => cleanup();
+	const handleUncaught = (err) => {
+		cleanup();
+		write(`\n✗ mutate.mjs crashed: ${err?.stack ?? err}\n`);
+		exit(3);
+	};
+	const handleSignal = (signal) => {
+		if (onSignal?.(signal)) return;
+		cleanup();
+		exit(signal === 'SIGTERM' ? 143 : 130);
+	};
+	const handleSigint = () => handleSignal('SIGINT');
+	const handleSigterm = () => handleSignal('SIGTERM');
+
+	proc.on('exit', handleExit);
+	proc.on('uncaughtException', handleUncaught);
+	proc.on('SIGINT', handleSigint);
+	proc.on('SIGTERM', handleSigterm);
+
+	return {
+		dispose() {
+			proc.off('exit', handleExit);
+			proc.off('uncaughtException', handleUncaught);
+			proc.off('SIGINT', handleSigint);
+			proc.off('SIGTERM', handleSigterm);
+		},
+	};
+}
+
+// Tracked files that differ from HEAD, staged or not. Untracked files are left
+// out: they have no pre-run state to go back to. This never dies — it runs
+// inside the cleanup handlers, where exiting would skip the rest of the work.
+function listDirtyFiles() {
+	const res = spawnSync('git', ['diff', '--name-only', 'HEAD'], {
+		cwd: repoRoot,
+		encoding: 'utf8',
+		maxBuffer: 64 * 1024 * 1024,
+	});
+	if (res.error || res.status !== 0) return [];
+	return res.stdout
+		.split('\n')
+		.map((s) => s.trim())
+		.filter(Boolean);
+}
+
+// Bytes for every file that is already dirty plus the ones the run will touch,
+// and the dirty set itself so the restore can tell Stryker's edits from the
+// user's.
+function snapshotWorkingTree(extraAbsPaths = []) {
+	const dirtyBefore = listDirtyFiles();
+	const paths = new Set([...dirtyBefore.map((f) => path.join(repoRoot, f)), ...extraAbsPaths]);
+	return { bytes: snapshotFiles([...paths]), dirtyBefore };
+}
+
+function restoreWorkingTree({ bytes, dirtyBefore }) {
+	const restored = new Set(restoreFiles(bytes).map((p) => path.relative(repoRoot, p)));
+	const checkout = filesToCheckout(dirtyBefore, listDirtyFiles());
+	if (checkout.length > 0) {
+		const res = spawnSync('git', ['checkout', '--', ...checkout], {
+			cwd: repoRoot,
+			encoding: 'utf8',
+		});
+		if (!res.error && res.status === 0) for (const f of checkout) restored.add(f);
+	}
+	return [...restored];
 }
 
 async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
@@ -507,17 +695,42 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 			`(config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
 	);
 
-	const snap = snapshotFiles([
+	const snapshot = snapshotWorkingTree([
 		...new Set(targets.map((t) => path.join(pkgRoot, splitRange(t).file))),
 	]);
 
 	const strykerOutputChunks = [];
 	let child;
-	const onSignal = () => {
-		child?.kill('SIGINT');
-	};
-	process.on('SIGINT', onSignal);
-	process.on('SIGTERM', onSignal);
+	let signalled;
+	const cleanup = createCleanup({
+		restore: () => restoreWorkingTree(snapshot),
+		removeSetupFiles: () => removeStrykerSetupFiles(repoRoot),
+		report: ({ restored, removed }) => {
+			if (restored.length > 0) {
+				process.stderr.write(
+					`⚠ Stryker left changes behind; restored ${restored.length} file(s): ` +
+						`${restored.join(', ')}\n`,
+				);
+			}
+			if (removed.length > 0) {
+				process.stderr.write(
+					`  removed ${removed.length} stryker-setup file(s): ` +
+						`${removed.map((p) => path.relative(repoRoot, p)).join(', ')}\n`,
+				);
+			}
+		},
+	});
+	const handlers = registerCleanupHandlers({
+		cleanup,
+		onSignal: (signal) => {
+			// Pass the signal to Stryker so it unwinds its own state, then let the
+			// `finally` below clean up once the child is gone.
+			if (!child || child.exitCode !== null || child.signalCode !== null) return false;
+			signalled = signal;
+			child.kill('SIGINT');
+			return true;
+		},
+	});
 	let strykerExitCode;
 	try {
 		strykerExitCode = await new Promise((resolve) => {
@@ -538,14 +751,11 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 			child.on('error', (err) => die(3, `Stryker failed to start: ${err.message}`));
 		});
 	} finally {
-		process.off('SIGINT', onSignal);
-		process.off('SIGTERM', onSignal);
-		const restored = restoreFiles(snap);
-		if (restored.length > 0) {
-			process.stderr.write(
-				`⚠ Stryker left mutants behind; restored ${restored.length} file(s): ${restored.join(', ')}\n`,
-			);
-		}
+		handlers.dispose();
+		cleanup();
+		// The run was cancelled. The tree is clean again, so leave with the shell's
+		// code for the signal instead of reporting on a run that never finished.
+		if (signalled) process.exit(signalled === 'SIGTERM' ? 143 : 130);
 	}
 	const strykerOutput = Buffer.concat(strykerOutputChunks).toString('utf8');
 	const target = mutateArg;

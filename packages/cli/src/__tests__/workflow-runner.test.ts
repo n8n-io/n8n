@@ -516,6 +516,33 @@ describe('enqueueExecution', () => {
 		expect(setupQueue).toHaveBeenCalledTimes(1);
 	});
 
+	it('should finalize the execution when pool resolution fails', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+		});
+		const error = new Error('pool resolution failed');
+		const { PoolConfigService } = await import('@/scaling/pool-config.service.ee.js');
+		vi.spyOn(Container.get(PoolConfigService), 'resolvePoolForExecution').mockRejectedValueOnce(
+			error,
+		);
+
+		// @ts-expect-error Private method
+		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+
+		expect(processError).toHaveBeenCalledWith(
+			error,
+			expect.any(Date),
+			data.executionMode,
+			'1',
+			expect.anything(),
+		);
+		expect(addJob).not.toHaveBeenCalled();
+	});
+
 	it('should include restartExecutionId in job data when provided', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();

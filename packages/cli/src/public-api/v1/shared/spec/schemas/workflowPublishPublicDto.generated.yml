@@ -296,14 +296,19 @@ properties:
       properties:
         id:
           type: string
+          readOnly: true
+          example: 2tUt1wbLX592XDdX
         name:
           type: string
+          example: Production
         createdAt:
           type: string
           format: date-time
+          readOnly: true
         updatedAt:
           type: string
           format: date-time
+          readOnly: true
       required:
         - id
         - name

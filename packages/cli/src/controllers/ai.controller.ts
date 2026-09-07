@@ -201,7 +201,13 @@ export class AiController {
 		}
 	}
 
-	@Post('/ask-ai')
+	/**
+	 * @deprecated Both callers are deprecated: the Code node's "Ask AI" tab is
+	 * hidden, and the AI Transform node is hidden and has an automated migration
+	 * to the Code node. Removed in v3.
+	 */
+	@Licensed('feat:askAi')
+	@Post('/ask-ai', { ipRateLimit: { limit: 100 } })
 	async askAi(
 		req: AuthenticatedRequest,
 		_: Response,

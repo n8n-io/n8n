@@ -207,6 +207,7 @@ export class CredentialsController {
 			user: req.user,
 			credentialType: newCredential.type,
 			credentialId: newCredential.id,
+			credentialName: newCredential.name,
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
@@ -368,6 +369,8 @@ export class CredentialsController {
 			user: req.user,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			// The updated entity, so a rename records the new name rather than the one it replaced.
+			credentialName: responseData.name,
 			isDynamic: newCredentialData.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
 			jweEnabled: updatedData.jweEnabled === true,

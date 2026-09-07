@@ -3,7 +3,7 @@ import { IANAZone } from 'luxon';
 import type { CronExpression } from 'n8n-workflow';
 
 import { InvalidScheduleError } from '../../errors';
-import type { CronSchedule, RecurringCronSchedule, ScheduledJob } from '../../types';
+import type { CronSchedule, RecurringCronSchedule, StoredSchedule } from '../../types';
 import { required } from '../field';
 
 /**
@@ -124,7 +124,7 @@ export function* cronOccurrences(schedule: CronSchedule, first: Date): Generator
  * @returns The cron schedule.
  * @throws {CorruptStorageRowError} When the cron expression field is unset.
  */
-export function resolveCron(job: ScheduledJob, defaultTimezone: string): CronSchedule {
+export function resolveCron(job: StoredSchedule, defaultTimezone: string): CronSchedule {
 	return {
 		kind: 'cron',
 		// `cronExpression` is a plain string on the job, validated on write; narrow it here.

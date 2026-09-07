@@ -1,3 +1,4 @@
+import type { PolicyViolation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
@@ -499,6 +500,12 @@ export type BlockingIssue =
 			nodeType: string;
 			typeVersion: number;
 			usedByWorkflows: string[];
+	  }
+	| {
+			type: 'policy-violation';
+			sourceWorkflowId: string;
+			name: string;
+			violations: PolicyViolation[];
 	  };
 
 /**

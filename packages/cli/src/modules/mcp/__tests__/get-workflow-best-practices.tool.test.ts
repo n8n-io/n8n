@@ -48,6 +48,37 @@ describe('get-workflow-best-practices MCP tool', () => {
 		expect(tool.config.inputSchema?.technique).toBeDefined();
 	});
 
+	describe('technique input schema', () => {
+		const techniqueSchema = () => createTool().config.inputSchema!.technique;
+
+		test('accepts every technique key and the list sentinel', () => {
+			const schema = techniqueSchema();
+
+			for (const value of ['list', ...Object.values(WorkflowTechnique)]) {
+				expect(schema.safeParse(value).success).toBe(true);
+			}
+		});
+
+		test('names the accepted values when the technique is unknown', () => {
+			const result = techniqueSchema().safeParse('webhook');
+
+			expect(result.success).toBe(false);
+			const message = result.error?.issues[0]?.message ?? '';
+			expect(message).not.toBe('Invalid input');
+			expect(message).toContain('list');
+			expect(message).toContain(WorkflowTechnique.CHATBOT);
+			expect(message).toContain(WorkflowTechnique.WEB_APP);
+		});
+
+		test('lists the accepted values in the parameter description', () => {
+			const description = techniqueSchema().description ?? '';
+
+			for (const value of ['list', ...Object.values(WorkflowTechnique)]) {
+				expect(description).toContain(value);
+			}
+		});
+	});
+
 	test('returns the full technique catalog when technique="list"', async () => {
 		const tool = createTool();
 		const result = await tool.handler({ technique: 'list' }, {} as never);

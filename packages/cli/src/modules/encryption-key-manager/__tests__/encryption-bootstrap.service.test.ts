@@ -14,10 +14,17 @@ describe('EncryptionBootstrapService', () => {
 		keyManager.bootstrapGcmKey.mockResolvedValue(undefined);
 	});
 
-	const createService = (instanceType: InstanceSettings['instanceType'] = 'main') =>
+	const createService = (
+		instanceType: InstanceSettings['instanceType'] = 'main',
+		canSeedDeploymentState = true,
+	) =>
 		new EncryptionBootstrapService(
 			keyManager,
-			mockInstance(InstanceSettings, { encryptionKey: 'test-instance-key', instanceType }),
+			mockInstance(InstanceSettings, {
+				encryptionKey: 'test-instance-key',
+				instanceType,
+				canSeedDeploymentState,
+			}),
 			encryptionKeyProxy,
 			mockLogger(),
 		);
@@ -51,6 +58,14 @@ describe('EncryptionBootstrapService', () => {
 		}
 	});
 
+	it('skips key creation when the process may not seed deployment state, but still sets the provider', async () => {
+		await createService('main', false).run();
+
+		expect(keyManager.bootstrapLegacyCbcKey).not.toHaveBeenCalled();
+		expect(keyManager.bootstrapGcmKey).not.toHaveBeenCalled();
+		expect(encryptionKeyProxy.setProvider).toHaveBeenCalledWith(keyManager);
+	});
+
 	it('bootstraps CBC before GCM', async () => {
 		const order: string[] = [];
 		keyManager.bootstrapLegacyCbcKey.mockImplementation(async () => {
@@ -63,5 +78,28 @@ describe('EncryptionBootstrapService', () => {
 		await createService().run();
 
 		expect(order).toEqual(['cbc', 'gcm']);
+	});
+
+	describe('seeding failure', () => {
+		const seedError = new Error('no write access');
+
+		it('does not crash the instance while the rotation flag is off, and still sets the provider', async () => {
+			keyManager.bootstrapLegacyCbcKey.mockRejectedValue(seedError);
+
+			await expect(createService().run()).resolves.toBeUndefined();
+
+			expect(encryptionKeyProxy.setProvider).toHaveBeenCalledWith(keyManager);
+		});
+
+		it('rethrows while the rotation flag is on, because the keys are load-bearing', async () => {
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
+			try {
+				keyManager.bootstrapGcmKey.mockRejectedValue(seedError);
+
+				await expect(createService().run()).rejects.toThrow('no write access');
+			} finally {
+				delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			}
+		});
 	});
 });

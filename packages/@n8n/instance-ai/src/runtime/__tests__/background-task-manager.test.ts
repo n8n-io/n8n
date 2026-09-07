@@ -154,6 +154,56 @@ describe('BackgroundTaskManager', () => {
 			expect(createTraceContext).not.toHaveBeenCalled();
 		});
 
+		describe('instance-wide ceiling', () => {
+			const forever = async () => await new Promise<string>(() => {});
+
+			it('rejects a spawn once the total across threads is reached', () => {
+				// Per-thread 5 so it can't fire; the total of 2 is what we're exercising.
+				const capped = new BackgroundTaskManager(5, 2);
+				const onLimitReached = vi.fn();
+
+				capped.spawn(makeSpawnOptions({ taskId: 't1', threadId: 'thread-1', run: forever }));
+				capped.spawn(makeSpawnOptions({ taskId: 't2', threadId: 'thread-2', run: forever }));
+
+				const result = capped.spawn(
+					makeSpawnOptions({ taskId: 't3', threadId: 'thread-3', onLimitReached }),
+				);
+
+				expect(result.status).toBe('limit-reached');
+				expect(onLimitReached).toHaveBeenCalledWith(expect.stringContaining('this n8n instance'));
+			});
+
+			it('is unlimited when the ceiling is -1', () => {
+				const uncapped = new BackgroundTaskManager(5, -1);
+
+				uncapped.spawn(makeSpawnOptions({ taskId: 't1', threadId: 'thread-1', run: forever }));
+				uncapped.spawn(makeSpawnOptions({ taskId: 't2', threadId: 'thread-2', run: forever }));
+				const result = uncapped.spawn(makeSpawnOptions({ taskId: 't3', threadId: 'thread-3' }));
+
+				expect(result.status).toBe('started');
+			});
+
+			it('frees a slot when a task settles', async () => {
+				const capped = new BackgroundTaskManager(5, 1);
+
+				capped.spawn(makeSpawnOptions({ taskId: 't1', threadId: 'thread-1' }));
+				await vi.waitFor(() => expect(capped.runningTaskCount()).toBe(0));
+
+				const result = capped.spawn(makeSpawnOptions({ taskId: 't2', threadId: 'thread-2' }));
+
+				expect(result.status).toBe('started');
+			});
+
+			it('counts running tasks across every thread', () => {
+				const capped = new BackgroundTaskManager(5, 10);
+
+				capped.spawn(makeSpawnOptions({ taskId: 't1', threadId: 'thread-1', run: forever }));
+				capped.spawn(makeSpawnOptions({ taskId: 't2', threadId: 'thread-2', run: forever }));
+
+				expect(capped.runningTaskCount()).toBe(2);
+			});
+		});
+
 		it('creates lazy trace context only after a task is accepted', async () => {
 			const traceContext = { projectName: 'instance-ai' } as never;
 			const createTraceContext = vi.fn().mockResolvedValue(traceContext);

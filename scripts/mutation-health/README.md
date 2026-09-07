@@ -109,10 +109,24 @@ Runs use Stryker's `--inPlace`. Its default sandbox copy breaks on any package w
 config resolves a workspace dependency through a path alias — the alias doesn't survive the
 copy, and `packages/cli` dies on `ERR_LOAD_URL … .stryker-tmp/@n8n/backend-test-utils`.
 
-Stryker restores your files on a clean exit and on `Ctrl-C`. Because a hard crash would not,
-and because in `--diff` mode those files hold *uncommitted work* (so `git checkout --` is not a
-safe undo), `mutate.mjs` snapshots the exact bytes of every target before the run and writes
-them back if they differ afterwards.
+Stryker restores your files on a clean exit and on `Ctrl-C`, but not after a crash, a timeout or
+a `SIGTERM` — and its preprocessing reaches past the mutate targets, so a target-only snapshot
+left mutated files behind.
+
+`mutate.mjs` therefore snapshots the **whole working tree** before the run:
+
+- the exact bytes of every tracked file that is already dirty, plus every target. In `--diff`
+  mode those files hold *uncommitted work*, so `git checkout --` is not a safe undo.
+- the dirty set itself. Anything dirty *after* the run that was clean before it was changed by
+  Stryker, and git holds its pre-run state, so `git checkout --` is the right undo there.
+
+One cleanup routine restores that snapshot and deletes every `stryker-setup-*.js` the vitest
+runner left under the repo root. It is idempotent and registered on every exit path: the usual
+one, an uncaught exception, `SIGINT` and `SIGTERM`. A cancelled run exits `130` (`143` for
+`SIGTERM`) with a clean `git status`.
+
+One caveat: files you edit in another terminal *while a run is in flight* look like Stryker's
+work and are reverted. Don't edit the repo during a run.
 
 ## Which packages can be scored
 

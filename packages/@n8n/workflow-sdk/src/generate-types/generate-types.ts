@@ -29,6 +29,7 @@ import {
 	isPropertyOptional,
 	planSplitVersionSchemaFiles,
 } from './generate-zod-schemas';
+import { NODE_DEPRECATION_NOTICE } from '../node-deprecation';
 import { checkConditions } from '../validation/display-options';
 
 // =============================================================================
@@ -2320,6 +2321,15 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 	const lines: string[] = ['/**'];
 	lines.push(` * ${node.displayName} Node Types`);
 	lines.push(' *');
+
+	// A hidden node is retired. On-disk generation skips it, so this only lands
+	// on a definition synthesized at run time — the one path that still hands a
+	// retired built-in to a builder. Keep it above the description: the reader
+	// must see it before it reads the parameters.
+	if (node.hidden) {
+		lines.push(` * @deprecated ${NODE_DEPRECATION_NOTICE}`);
+		lines.push(' *');
+	}
 
 	if (node.description) {
 		lines.push(` * ${node.description}`);

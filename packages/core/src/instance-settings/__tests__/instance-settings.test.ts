@@ -374,6 +374,16 @@ describe('InstanceSettings', () => {
 				expect(settings.hmacSignatureSecret).toEqual(derivedHmac);
 			});
 
+			it('should expose the seeding permission as canSeedDeploymentState', async () => {
+				expect(settings.canSeedDeploymentState).toBe(true);
+
+				await settings.initialize(mockRepo, { canSeed: false });
+				expect(settings.canSeedDeploymentState).toBe(false);
+
+				await settings.initialize(mockRepo, { canSeed: true });
+				expect(settings.canSeedDeploymentState).toBe(true);
+			});
+
 			it('should still adopt env vars and existing DB rows', async () => {
 				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
 				mockRepo.findActiveByType.mockImplementation(async (type: string) =>

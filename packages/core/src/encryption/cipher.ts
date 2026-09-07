@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 import { assertUnreachable } from '@/utils/assertions';
@@ -9,8 +10,23 @@ import { CipherAes256GCM } from './aes-256-gcm';
 import { EncryptionKeyProxy } from './encryption-key-proxy';
 import { CipherAlgorithm } from './interface';
 
+/**
+ * Matches the id shape of stored deployment keys (nanoid charset). A colon
+ * prefix that cannot be a key id is treated as ciphertext content, so junk
+ * or foreign input never reaches the key store and never lands in an error
+ * message unvalidated.
+ */
+const KEY_ID_PATTERN = /^[A-Za-z0-9_-]{1,36}$/;
+
 @Service()
 export class Cipher {
+	/**
+	 * No-prefix descriptors whose key material was already verified to unwrap
+	 * to the instance key. The module memoizes its descriptor, so verifying
+	 * once per object spares a DEK unwrap on every legacy-format write.
+	 */
+	private readonly verifiedLegacyDescriptors = new WeakSet<object>();
+
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly cipherAES256GCM: CipherAes256GCM,
@@ -31,15 +47,40 @@ export class Cipher {
 		return this.decryptWithKey(data, key, 'aes-256-cbc');
 	}
 
+	/**
+	 * Encrypts with whatever active key the provider's descriptor names. The
+	 * descriptor carries the key, the algorithm, and the output format — the
+	 * rotation on/off decision lives in the key-manager module, not here.
+	 * An explicit `customEncryptionKey` stays a short-circuit: raw key, no
+	 * unwrap, no prefix.
+	 */
 	async encryptV2(data: string | object, customEncryptionKey?: string): Promise<string> {
 		const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
 
-		if (
-			!customEncryptionKey &&
-			this.encryptionKeyProxy.isConfigured() &&
-			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION === 'true'
-		) {
+		if (customEncryptionKey !== undefined) {
+			return this.encryptWithKey(plaintext, customEncryptionKey, 'aes-256-cbc');
+		}
+
+		if (this.encryptionKeyProxy.isConfigured()) {
 			const keyInfo = await this.encryptionKeyProxy.getActiveKey();
+
+			if (keyInfo.format === 'no-prefix') {
+				// No-prefix output must stay byte-compatible with the pre-rotation
+				// format, which readers decrypt with the instance key directly.
+				if (!this.verifiedLegacyDescriptors.has(keyInfo)) {
+					if (
+						this.decryptDEKWithInstanceKey(keyInfo.value) !== this.instanceSettings.encryptionKey ||
+						keyInfo.algorithm !== 'aes-256-cbc'
+					) {
+						throw new UnexpectedError(
+							'A no-prefix encryption descriptor must resolve to the instance key',
+						);
+					}
+					this.verifiedLegacyDescriptors.add(keyInfo);
+				}
+				return this.encryptWithKey(plaintext, this.instanceSettings.encryptionKey, 'aes-256-cbc');
+			}
+
 			const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
 			const ciphertext = this.encryptWithKey(
 				plaintext,
@@ -49,32 +90,38 @@ export class Cipher {
 			return `${keyInfo.id}:${ciphertext}`;
 		}
 
-		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
-		return this.encryptWithKey(plaintext, key, 'aes-256-cbc');
+		return this.encryptWithKey(plaintext, this.instanceSettings.encryptionKey, 'aes-256-cbc');
 	}
 
+	/**
+	 * Decrypts data of either format: `keyId:ciphertext` resolves the key by id
+	 * through the provider; ciphertext without a key-id prefix is legacy-format
+	 * data and always decrypts with the instance key.
+	 */
 	async decryptV2(data: string, customEncryptionKey?: string): Promise<string> {
-		if (
-			!customEncryptionKey &&
-			this.encryptionKeyProxy.isConfigured() &&
-			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION === 'true'
-		) {
+		if (customEncryptionKey !== undefined) {
+			return this.decryptWithKey(data, customEncryptionKey, 'aes-256-cbc');
+		}
+
+		if (this.encryptionKeyProxy.isConfigured()) {
 			const colonIdx = data.indexOf(':');
 			if (colonIdx !== -1) {
 				const keyId = data.slice(0, colonIdx);
-				const ciphertext = data.slice(colonIdx + 1);
-				const keyInfo = await this.encryptionKeyProxy.getKeyById(keyId);
-				if (!keyInfo) throw new Error(`Encryption key not found: ${keyId}`);
-				const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
-				return this.decryptWithKey(ciphertext, plaintextKey, keyInfo.algorithm as CipherAlgorithm);
+				if (KEY_ID_PATTERN.test(keyId)) {
+					const ciphertext = data.slice(colonIdx + 1);
+					const keyInfo = await this.encryptionKeyProxy.getKeyById(keyId);
+					if (!keyInfo) throw new UnexpectedError(`Encryption key not found: ${keyId}`);
+					const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
+					return this.decryptWithKey(
+						ciphertext,
+						plaintextKey,
+						keyInfo.algorithm as CipherAlgorithm,
+					);
+				}
 			}
-			const keyInfo = await this.encryptionKeyProxy.getLegacyKey();
-			const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
-			return this.decryptWithKey(data, plaintextKey, keyInfo.algorithm as CipherAlgorithm);
 		}
 
-		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
-		return this.decryptWithKey(data, key, 'aes-256-cbc');
+		return this.decryptWithKey(data, this.instanceSettings.encryptionKey, 'aes-256-cbc');
 	}
 
 	/**

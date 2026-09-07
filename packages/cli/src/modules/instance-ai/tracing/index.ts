@@ -3,8 +3,8 @@ export {
 	type InstanceAiTracingAiService,
 	type InstanceAiTracingEventReader,
 	type InstanceAiTracingRunState,
+	type InstanceAiTracingEventLog,
 	type InstanceAiTracingServiceOptions,
-	type InstanceAiTracingSnapshotStorage,
 	type MessageTraceFinalization,
 	type OrchestratorResumeReason,
 } from './instance-ai-tracing.service';

@@ -89,11 +89,20 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			return report.notDispatched();
 		}
 
-		// bypassCache: the poll cursor in staticData must be read live, not from the publish-time cache.
-		const workflowData = await this.triggerExecutionContextFactory.loadPublishedWorkflowData(
+		const workflowData = await this.triggerExecutionContextFactory.findPublishedWorkflowData(
 			workflowId,
-			{ bypassCache: true },
+			{ bypassCache: true }, // the poll cursor in staticData must be read live, not from the publish-time cache.
 		);
+
+		if (workflowData === null) {
+			this.logger.debug('Workflow has no published version. Skipping the occurrence.', {
+				taskId: task.id,
+				jobId: task.jobId,
+				workflowId,
+				nodeId,
+			});
+			return report.notDispatched();
+		}
 
 		// A due task persisted for a version with duplicate or missing node ids can
 		// fire before the healed version's outbox record replaces the jobs.

@@ -24,7 +24,7 @@ const makeJob = (id: number): ScheduledJob => ({
 	maxAttempts: 1,
 	misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 	misfireGraceSeconds: 60,
-	ownerKey: null,
+	ownerKey: 'owner-1',
 });
 
 const makeSkipJob = (id: number): ScheduledJob => ({

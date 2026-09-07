@@ -37,6 +37,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		ldap: {},
 		license: {},
 		logStreaming: {},
+		nodeTypePolicy: {},
 		saml: {},
 		oidc: {},
 		provisioning: {},

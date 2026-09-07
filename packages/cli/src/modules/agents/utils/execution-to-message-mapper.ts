@@ -6,7 +6,7 @@ import type { TimelineEvent } from '../execution-recorder';
 
 type ExecutionTranscript = Pick<
 	AgentExecution,
-	'id' | 'userMessage' | 'timeline' | 'attachments' | 'status'
+	'id' | 'userMessage' | 'timeline' | 'attachments' | 'status' | 'error'
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
@@ -167,6 +167,10 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 	}
 
 	const assistantContent = assistantContentFromExecution(execution);
+	if (execution.status === 'error' && execution.error) {
+		const error = textPart(execution.error);
+		if (error) assistantContent.push(error);
+	}
 	if (assistantContent.length > 0) {
 		messages.push({
 			id: `${execution.id}:assistant`,

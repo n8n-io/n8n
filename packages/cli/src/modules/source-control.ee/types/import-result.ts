@@ -6,7 +6,11 @@ export interface WorkflowImportResult {
 	name: string;
 	publishingError?: string;
 	publishingErrorDetails?: WorkflowPublishBlockedDetails;
-	/** Advisory only — never blocks the import. */
+	/**
+	 * Present when the content-import policy blocked this workflow, which means it was not
+	 * imported. `checkErrors` stays empty: a check that cannot answer fails the whole pull, so
+	 * it never lands on a single workflow's report.
+	 */
 	contentImportPolicy?: ContentImportPolicyResult;
 }
 

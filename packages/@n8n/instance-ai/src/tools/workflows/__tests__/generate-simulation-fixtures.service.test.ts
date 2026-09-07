@@ -8,7 +8,11 @@ vi.mock('../../../utils/eval-agents', async () => {
 
 import { SONNET_MODEL, createEvalAgent, extractText } from '../../../utils/eval-agents';
 import type { NodeSimulationVerdict } from '../../../workflow-loop/workflow-loop-state';
-import { generateSimulationFixtures } from '../generate-simulation-fixtures.service';
+import {
+	buildPlaceholderFixtures,
+	generateSimulationFixtures,
+	withPassThroughFloor,
+} from '../generate-simulation-fixtures.service';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
 const mockExtractText = extractText as MockedFunction<typeof extractText>;
@@ -36,6 +40,21 @@ const wf = (nodes: Array<{ name: string; type: string }>): WorkflowJSON =>
 		pinData: {},
 		settings: {},
 	}) as unknown as WorkflowJSON;
+
+/** `wf` plus main-flow connections, given as source -> target node names. */
+const connected = (
+	nodes: Array<{ name: string; type: string }>,
+	edges: Record<string, string>,
+): WorkflowJSON => {
+	const workflow = wf(nodes);
+	workflow.connections = Object.fromEntries(
+		Object.entries(edges).map(([source, target]) => [
+			source,
+			{ main: [[{ node: target, type: 'main', index: 0 }]] },
+		]),
+	) as unknown as WorkflowJSON['connections'];
+	return workflow;
+};
 
 const simulateVerdict = (nodeName: string): NodeSimulationVerdict => ({
 	nodeName,
@@ -86,7 +105,7 @@ describe('generateSimulationFixtures', () => {
 		);
 	});
 
-	it('fills empty fixtures for nodes the LLM omitted', async () => {
+	it('falls back to a placeholder for nodes the LLM omitted', async () => {
 		setupAgentMock(JSON.stringify({ A: [{ json: { id: 1 } }] }));
 		const result = await generateSimulationFixtures({
 			workflow: wf([
@@ -99,7 +118,7 @@ describe('generateSimulationFixtures', () => {
 		expect(result.B).toEqual([{}]);
 	});
 
-	it('returns empty fixtures for every node on malformed LLM output', async () => {
+	it('falls back to a placeholder for every node on malformed LLM output', async () => {
 		setupAgentMock('not json');
 		const result = await generateSimulationFixtures({
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
@@ -108,7 +127,7 @@ describe('generateSimulationFixtures', () => {
 		expect(result).toEqual({ A: [{}] });
 	});
 
-	it('returns empty fixtures for every node when the LLM call throws', async () => {
+	it('falls back to a placeholder for every node when the LLM call throws', async () => {
 		const generate = vi.fn().mockRejectedValue(new Error('boom'));
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
@@ -120,7 +139,7 @@ describe('generateSimulationFixtures', () => {
 		expect(result).toEqual({ A: [{}] });
 	});
 
-	it('warns on generation failure so the empty-fixture degrade is visible', async () => {
+	it('warns on generation failure so the placeholder degrade is visible', async () => {
 		mockCreateEvalAgent.mockImplementation(() => {
 			throw new Error('Missing API key');
 		});
@@ -269,6 +288,171 @@ describe('generateSimulationFixtures', () => {
 		expect(result['AI Root']).toEqual([{ output: { summary: 'hi' } }]);
 	});
 
+	it('shapes the fallback item from the node schema when generation fails', async () => {
+		setupAgentMock('not json');
+		const workflow = wf([{ name: 'Send Slack', type: 'n8n-nodes-base.slack' }]);
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Send Slack')],
+			outputSchemaLookup: () => ({
+				type: 'object',
+				properties: { ok: { type: 'boolean' }, channel: { type: 'string' } },
+			}),
+		});
+
+		expect(result).toEqual({ 'Send Slack': [{ ok: true, channel: 'sample' }] });
+	});
+
+	it('shapes the fallback item from the node schema when the LLM omits the node', async () => {
+		setupAgentMock(JSON.stringify({ A: [{ json: { id: 1 } }] }));
+
+		const result = await generateSimulationFixtures({
+			workflow: wf([
+				{ name: 'A', type: 'n8n-nodes-base.slack' },
+				{ name: 'B', type: 'n8n-nodes-base.gmail' },
+			]),
+			plan: [simulateVerdict('A'), simulateVerdict('B')],
+			outputSchemaLookup: (node) =>
+				node.type === 'n8n-nodes-base.gmail'
+					? { type: 'object', properties: { messageId: { type: 'string' } } }
+					: undefined,
+		});
+
+		expect(result.A).toEqual([{ id: 1 }]);
+		expect(result.B).toEqual([{ messageId: 'sample' }]);
+	});
+
+	it('replaces items the LLM returned with no fields at all', async () => {
+		// A phantom `{}` reaches downstream nodes with nothing to read, which is
+		// the failure this floor exists to stop.
+		setupAgentMock(JSON.stringify({ A: [{ json: {} }] }));
+
+		const result = await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+			outputSchemaLookup: () => ({ type: 'object', properties: { ts: { type: 'string' } } }),
+		});
+
+		expect(result.A).toEqual([{ ts: 'sample' }]);
+	});
+
+	it('keeps the real items when only some of them are empty', async () => {
+		setupAgentMock(JSON.stringify({ A: [{ json: {} }, { json: { id: 2 } }] }));
+
+		const result = await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+		});
+
+		expect(result.A).toEqual([{ id: 2 }]);
+	});
+
+	it('never emits zero items for a simulated node', async () => {
+		setupAgentMock(JSON.stringify({ A: [], B: [] }));
+
+		const result = await generateSimulationFixtures({
+			workflow: wf([
+				{ name: 'A', type: 'n8n-nodes-base.slack' },
+				{ name: 'B', type: 'n8n-nodes-base.gmail' },
+			]),
+			plan: [simulateVerdict('A'), simulateVerdict('B')],
+		});
+
+		expect(result.A).toHaveLength(1);
+		expect(result.B).toHaveLength(1);
+	});
+
+	it('anchors placeholder timestamps to the current clock, not training data', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-09-01T10:30:00.000Z'));
+		setupAgentMock('not json');
+
+		const result = await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+			outputSchemaLookup: () => ({
+				type: 'object',
+				properties: { sentAt: { type: 'string', format: 'date-time' } },
+			}),
+		});
+
+		expect(result.A).toEqual([{ sentAt: '2026-09-01T10:30:00.000Z' }]);
+		vi.useRealTimers();
+	});
+
+	it('does not borrow upstream data for a node that has its own output shape', async () => {
+		// A Slack post emits an API response, not its input. Borrowing would
+		// fabricate fields the real node never returns.
+		setupAgentMock('not json');
+		const workflow = wf([
+			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Send Slack', type: 'n8n-nodes-base.slack' },
+		]);
+		workflow.connections = {
+			'Get Contact': { main: [[{ node: 'Send Slack', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Get Contact'), simulateVerdict('Send Slack')],
+			outputSchemaLookup: (node) =>
+				node.type === 'n8n-nodes-base.brevo'
+					? { type: 'object', properties: { email: { type: 'string' } } }
+					: { type: 'object', properties: { ok: { type: 'boolean' } } },
+		});
+
+		expect(result['Send Slack']).toEqual([{ ok: true }]);
+	});
+
+	it('gives a fixture-less simulated node a placeholder without an LLM call', () => {
+		const workflow = wf([
+			{ name: 'Send Slack', type: 'n8n-nodes-base.slack' },
+			{ name: 'Unknown', type: 'n8n-nodes-base.noOp' },
+		]);
+
+		const result = buildPlaceholderFixtures(
+			workflow,
+			['Send Slack', 'Unknown', 'Not In Workflow'],
+			(node) =>
+				node.type === 'n8n-nodes-base.slack'
+					? { type: 'object', properties: { ok: { type: 'boolean' } } }
+					: undefined,
+			new Date('2026-09-01T10:30:00.000Z'),
+		);
+
+		expect(result).toEqual({
+			'Send Slack': [{ ok: true }],
+			Unknown: [{}],
+			'Not In Workflow': [{}],
+		});
+		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
+	});
+
+	it('gives pass-through AI roots the upstream context their prompt block needs', async () => {
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(JSON.stringify({ 'Route Ticket': [{ json: {} }] }));
+
+		await generateSimulationFixtures({
+			workflow: connected(
+				[
+					{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+					{ name: 'Route Ticket', type: '@n8n/n8n-nodes-langchain.textClassifier' },
+				],
+				{ 'Get Contact': 'Route Ticket' },
+			),
+			plan: [simulateVerdict('Route Ticket')],
+		});
+
+		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
+			.content[0].text;
+		expect(promptText).toContain('Immediate upstream nodes (this node passes their data through)');
+		expect(promptText).toContain('"Get Contact" (n8n-nodes-base.brevo)');
+	});
+
 	it('embeds the node output schema in the prompt when the lookup resolves one', async () => {
 		const generate = vi.fn().mockResolvedValue({ messages: [] });
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
@@ -358,5 +542,236 @@ describe('generateSimulationFixtures', () => {
 		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
 			.content[0].text;
 		expect(promptText).not.toContain('Output JSON Schema:');
+	});
+});
+
+describe('withPassThroughFloor', () => {
+	const brevoSchema = { type: 'object', properties: { email: { type: 'string' } } };
+	const lookupBrevoOnly = (node: { type: string }) =>
+		node.type === 'n8n-nodes-base.brevo' ? brevoSchema : undefined;
+
+	const chain = (waitType = 'n8n-nodes-base.wait') =>
+		connected(
+			[
+				{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+				{ name: 'Hold', type: waitType },
+			],
+			{ 'Get Contact': 'Hold' },
+		);
+
+	it("rebuilds a pure pass-through from its parent's real fixture", () => {
+		// The regression this precedence exists for: a declared-output parent's
+		// items are merged in above the generator, so the floor must prefer them
+		// over the parent's schema placeholder.
+		const result = withPassThroughFloor(
+			{
+				'Get Contact': [{ email: 'ada@example.com', id: 7 }],
+				Hold: [{ invented: 'wrong' }],
+			},
+			chain(),
+			{ outputSchemaLookup: lookupBrevoOnly },
+		);
+
+		expect(result.Hold).toEqual([{ email: 'ada@example.com', id: 7 }]);
+	});
+
+	it('leaves a declared fixture on a pass-through node exactly as the source wrote it', () => {
+		// A declared fixture is explicit author intent — the scenario the run is
+		// meant to exercise — so it outranks anything derived from upstream.
+		const result = withPassThroughFloor(
+			{
+				'Get Contact': [{ email: 'ada@example.com' }],
+				Hold: [{ approved: true, decidedBy: 'ops' }],
+			},
+			chain(),
+			{ outputSchemaLookup: lookupBrevoOnly, declaredNodeNames: new Set(['Hold']) },
+		);
+
+		expect(result.Hold).toEqual([{ approved: true, decidedBy: 'ops' }]);
+	});
+
+	it.each([
+		['webhook', 'a webhook call'],
+		['form', 'a form submission'],
+	])('does not rebuild a wait that resumes on %s', (resume) => {
+		// Such a wait emits whatever resumed it — the request body, or the values
+		// submitted to its own formFields — never its input. Both modes are
+		// always simulated, so rebuilding would destroy their only real output.
+		const workflow = chain();
+		workflow.nodes[1].parameters = { resume };
+
+		const result = withPassThroughFloor(
+			{
+				'Get Contact': [{ email: 'ada@example.com' }],
+				Hold: [{ submittedAt: '2026-09-01T10:30:00.000Z', decision: 'approve' }],
+			},
+			workflow,
+			{ outputSchemaLookup: lookupBrevoOnly },
+		);
+
+		expect(result.Hold).toEqual([{ submittedAt: '2026-09-01T10:30:00.000Z', decision: 'approve' }]);
+	});
+
+	it.each(['timeInterval', 'specificTime', undefined])(
+		'still rebuilds a timer wait (resume=%s)',
+		(resume) => {
+			const workflow = chain();
+			workflow.nodes[1].parameters = resume ? { resume } : {};
+
+			const result = withPassThroughFloor(
+				{ 'Get Contact': [{ email: 'ada@example.com' }], Hold: [{ invented: 'wrong' }] },
+				workflow,
+				{ outputSchemaLookup: lookupBrevoOnly },
+			);
+
+			expect(result.Hold).toEqual([{ email: 'ada@example.com' }]);
+		},
+	);
+
+	it("falls back to the parent's schema placeholder when the node has nothing", () => {
+		const result = withPassThroughFloor({ Hold: [{}] }, chain(), {
+			outputSchemaLookup: lookupBrevoOnly,
+		});
+
+		expect(result.Hold).toEqual([{ email: 'sample' }]);
+	});
+
+	it("keeps the node's own items rather than downgrading to a placeholder", () => {
+		// A placeholder is neither realistic nor consistent, so swapping a
+		// model-written fixture for one would make the run worse.
+		const result = withPassThroughFloor({ Hold: [{ email: 'ada@example.com' }] }, chain(), {
+			outputSchemaLookup: lookupBrevoOnly,
+		});
+
+		expect(result.Hold).toEqual([{ email: 'ada@example.com' }]);
+	});
+
+	it('walks past an upstream node that has no shape of its own', () => {
+		const workflow = connected(
+			[
+				{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+				{ name: 'Edit Fields', type: 'n8n-nodes-base.noOp' },
+				{ name: 'Hold', type: 'n8n-nodes-base.wait' },
+			],
+			{ 'Get Contact': 'Edit Fields', 'Edit Fields': 'Hold' },
+		);
+
+		const result = withPassThroughFloor({ Hold: [{}] }, workflow, {
+			outputSchemaLookup: lookupBrevoOnly,
+		});
+
+		expect(result.Hold).toEqual([{ email: 'sample' }]);
+	});
+
+	it('rebuilds a pass-through AI root from its input', () => {
+		// textClassifier routes items to a branch without reshaping them, so a
+		// `category` field is not something the real node emits.
+		const result = withPassThroughFloor(
+			{
+				'Get Contact': [{ email: 'ada@example.com' }],
+				Hold: [{ category: 'billing' }],
+			},
+			chain('@n8n/n8n-nodes-langchain.textClassifier'),
+			{ outputSchemaLookup: lookupBrevoOnly },
+		);
+
+		expect(result.Hold).toEqual([{ email: 'ada@example.com' }]);
+	});
+
+	it('keeps the marker object a partial pass-through adds on top', () => {
+		const result = withPassThroughFloor(
+			{
+				'Get Contact': [{ email: 'ada@example.com' }],
+				Hold: [{ sentimentAnalysis: { category: 'positive' }, channel: 'invented' }],
+			},
+			chain('@n8n/n8n-nodes-langchain.sentimentAnalysis'),
+			{ outputSchemaLookup: lookupBrevoOnly },
+		);
+
+		expect(result.Hold).toEqual([
+			{ email: 'ada@example.com', sentimentAnalysis: { category: 'positive' } },
+		]);
+	});
+
+	it('synthesizes the marker object when the model left it out', () => {
+		const result = withPassThroughFloor(
+			{ 'Get Contact': [{ email: 'ada@example.com' }], Hold: [{}] },
+			chain('@n8n/n8n-nodes-langchain.sentimentAnalysis'),
+			{ outputSchemaLookup: lookupBrevoOnly },
+		);
+
+		expect(result.Hold).toEqual([
+			{ email: 'ada@example.com', sentimentAnalysis: { category: 'sample' } },
+		]);
+	});
+
+	it('emits one item per upstream item', () => {
+		const result = withPassThroughFloor(
+			{
+				'Get Contact': [{ email: 'a@example.com' }, { email: 'b@example.com' }],
+				Hold: [{}],
+			},
+			chain(),
+			{ outputSchemaLookup: lookupBrevoOnly },
+		);
+
+		expect(result.Hold).toEqual([{ email: 'a@example.com' }, { email: 'b@example.com' }]);
+	});
+
+	it('leaves a pass-through node on a cycle alone instead of spinning', () => {
+		const workflow = connected(
+			[
+				{ name: 'Hold', type: 'n8n-nodes-base.wait' },
+				{ name: 'Edit Fields', type: 'n8n-nodes-base.noOp' },
+			],
+			{ Hold: 'Edit Fields', 'Edit Fields': 'Hold' },
+		);
+
+		const result = withPassThroughFloor({ Hold: [{}] }, workflow);
+
+		expect(result.Hold).toEqual([{}]);
+	});
+
+	// An upstream node with no fixture of its own is looked up by name in the
+	// fixture map. When the name is one a plain object already carries, the
+	// lookup used to hand back that inherited method and the walk then treated
+	// it as an item list. `itemsForNode` covers the lookup contract itself.
+	it.each(['toString', 'valueOf'])(
+		'borrows the schema shape of an upstream node named %s',
+		(upstreamName) => {
+			const result = withPassThroughFloor(
+				{ Hold: [{}] },
+				connected(
+					[
+						{ name: upstreamName, type: 'n8n-nodes-base.brevo' },
+						{ name: 'Hold', type: 'n8n-nodes-base.wait' },
+					],
+					{ [upstreamName]: 'Hold' },
+				),
+				{ outputSchemaLookup: lookupBrevoOnly },
+			);
+
+			expect(result.Hold).toEqual([{ email: 'sample' }]);
+		},
+	);
+
+	it('never touches a node that has its own output shape', () => {
+		// A Slack post emits an API response, not its input.
+		const result = withPassThroughFloor(
+			{
+				'Get Contact': [{ email: 'ada@example.com' }],
+				'Send Slack': [{ ok: true }],
+			},
+			connected(
+				[
+					{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+					{ name: 'Send Slack', type: 'n8n-nodes-base.slack' },
+				],
+				{ 'Get Contact': 'Send Slack' },
+			),
+			{ outputSchemaLookup: lookupBrevoOnly },
+		);
+
+		expect(result['Send Slack']).toEqual([{ ok: true }]);
 	});
 });

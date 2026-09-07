@@ -164,6 +164,29 @@ describe('Posthog store', () => {
 			);
 		});
 
+		it('bootstraps remote config payloads and clears them on reset', () => {
+			const flags = { 'config-form-url': true };
+			const payloads = { 'config-form-url': 'https://example.com/form' };
+			const posthog = usePostHog();
+
+			posthog.init(flags, payloads);
+
+			expect(posthog.getFeatureFlagPayload('config-form-url')).toBe(payloads['config-form-url']);
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					bootstrap: {
+						distinctID: `${CURRENT_INSTANCE_ID}#${CURRENT_USER_ID}`,
+						featureFlags: flags,
+						featureFlagPayloads: payloads,
+					},
+				}),
+			);
+
+			posthog.reset();
+			expect(posthog.getFeatureFlagPayload('config-form-url')).toBeUndefined();
+		});
+
 		it('disables client-side flag refetch when flags are bootstrapped', () => {
 			const posthog = usePostHog();
 			posthog.init({ test: 'variant' });
@@ -270,31 +293,54 @@ describe('Posthog store', () => {
 			});
 		});
 
-		it('sets override feature flags', async () => {
-			const TEST = 'test';
+		it('overrides feature flag values and payloads', async () => {
 			const flags = {
-				[TEST]: 'variant',
+				test: 'variant',
+				'value-only': 'variant',
+			};
+			const payloads = {
+				test: 'server-payload',
+				'value-only': 'server-payload',
 			};
 			const posthog = usePostHog();
-			posthog.init(flags);
+			posthog.init(flags, payloads);
 
-			window.featureFlags?.override(TEST, 'override');
+			window.featureFlags?.override('test', 'override', 'override-payload');
+			await nextTick();
+			window.featureFlags?.override('value-only', 'variant');
 			await nextTick();
 
 			expect(posthog.getVariant('test')).toEqual('override');
+			expect(posthog.getFeatureFlagPayload('test')).toEqual('override-payload');
+			expect(posthog.getFeatureFlagPayload('value-only')).toBeUndefined();
 			expect(window.posthog?.init).toHaveBeenCalled();
 			expect(window.localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES)).toEqual(
-				JSON.stringify({ test: 'override' }),
-			);
-
-			window.featureFlags?.override('other_test', 'override');
-			await nextTick();
-			expect(window.localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES)).toEqual(
-				JSON.stringify({ test: 'override', other_test: 'override' }),
+				JSON.stringify({
+					test: { value: 'override', payload: 'override-payload' },
+					'value-only': { value: 'variant' },
+				}),
 			);
 		});
 
-		it('waits for client-side flag evaluation when server flags are unavailable', async () => {
+		it('loads legacy value-only overrides', () => {
+			window.localStorage.setItem(
+				LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
+				JSON.stringify({ test: 'override' }),
+			);
+
+			const posthog = usePostHog();
+			posthog.init({ test: 'variant' }, { test: 'server-payload' });
+
+			expect(posthog.getVariant('test')).toEqual('override');
+			expect(posthog.getFeatureFlagPayload('test')).toBeUndefined();
+		});
+
+		it('loads flags and payloads from client-side evaluation when server flags are unavailable', async () => {
+			const remoteConfigKey = 'config-form-url';
+			const remoteUrl = 'https://example.com/form';
+			window.posthog!.getFeatureFlagPayload = vi.fn((key) =>
+				key === remoteConfigKey ? remoteUrl : null,
+			);
 			const posthog = usePostHog();
 			posthog.init();
 
@@ -309,11 +355,17 @@ describe('Posthog store', () => {
 			await Promise.resolve();
 			expect(resolved).toBe(false);
 
-			onFeatureFlagsCallback?.([], { test: 'variant' });
+			onFeatureFlagsCallback?.([], {
+				test: 'variant',
+				[remoteConfigKey]: true,
+				'flag-without-payload': true,
+			});
 			await waitForFlags;
 
 			expect(posthog.hasPendingFeatureFlags()).toBe(false);
 			expect(posthog.getVariant('test')).toEqual('variant');
+			expect(posthog.getFeatureFlagPayload(remoteConfigKey)).toBe(remoteUrl);
+			expect(posthog.getFeatureFlagPayload('flag-without-payload')).toBeUndefined();
 		});
 
 		describe('trackExposure', () => {
@@ -344,7 +396,7 @@ describe('Posthog store', () => {
 				posthog.init({ test: 'variant' });
 
 				posthog.trackExposure('test');
-				posthog.overrides.test = 'variant-2';
+				posthog.overrides.test = { value: 'variant-2' };
 				posthog.trackExposure('test');
 
 				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
@@ -366,7 +418,7 @@ describe('Posthog store', () => {
 
 			it('re-fires the exposure event after reset clears the dedupe cache', () => {
 				const posthog = usePostHog();
-				posthog.overrides.test = 'variant';
+				posthog.overrides.test = { value: 'variant' };
 
 				posthog.trackExposure('test');
 				posthog.trackExposure('test');

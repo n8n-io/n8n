@@ -5,12 +5,20 @@ import {
 	ExecutionNotFoundError,
 	type ExecutionQueryService,
 	type ExecutionView,
+	type ExecutionWithStepsView,
 	type StepView,
 } from '../../execution';
-import type { ExecutionSnapshot, ExecutionStepsResponse, StepDetail } from '../api.types';
+import type { ExecutionSnapshot, StepDetail } from '../api.types';
 import { fail } from '../error-response';
 
 const ExecutionIdParams = z.object({ id: z.string().uuid() });
+
+/**
+ * `strict`, because `z.object` strips an unknown key. A misspelled flag would
+ * otherwise answer 200 with no steps, which a caller cannot tell from an
+ * execution that ran none.
+ */
+const GetExecutionQuery = z.object({ includeSteps: z.enum(['true', 'false']).optional() }).strict();
 
 /** The validated `:id`, or `null` once the 400 has been sent. */
 function parseExecutionId(req: Request, res: Response): string | null {
@@ -20,7 +28,7 @@ function parseExecutionId(req: Request, res: Response): string | null {
 	return null;
 }
 
-function toExecutionSnapshot(record: ExecutionView): ExecutionSnapshot {
+function toExecutionSnapshot(record: ExecutionView | ExecutionWithStepsView): ExecutionSnapshot {
 	return {
 		id: record.id,
 		workflowId: record.workflowId,
@@ -30,6 +38,9 @@ function toExecutionSnapshot(record: ExecutionView): ExecutionSnapshot {
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
 		finishedAt: record.finishedAt?.toISOString() ?? null,
+		// Absent unless the request asked for steps, which a caller cannot tell
+		// from an execution that ran none.
+		...('steps' in record ? { steps: record.steps.map(toStepDetail) } : {}),
 	};
 }
 
@@ -51,9 +62,20 @@ export function createGetExecutionHandler(executionQuery: ExecutionQueryService)
 		const id = parseExecutionId(req, res);
 		if (id === null) return;
 
+		const query = GetExecutionQuery.safeParse(req.query);
+		if (!query.success) {
+			fail(res, 400, { error: 'invalid_request', details: query.error.flatten() });
+			return;
+		}
+
+		// The steps ride along, to save the caller a second round trip, and are read
+		// in the same query so the status cannot predate them.
+		let execution: ExecutionView | ExecutionWithStepsView;
 		try {
-			const execution = await executionQuery.getExecution(id);
-			res.status(200).json(toExecutionSnapshot(execution));
+			execution =
+				query.data.includeSteps === 'true'
+					? await executionQuery.getExecutionWithSteps(id)
+					: await executionQuery.getExecution(id);
 		} catch (error) {
 			if (error instanceof ExecutionNotFoundError) {
 				fail(res, 404, { error: 'not_found' });
@@ -61,18 +83,7 @@ export function createGetExecutionHandler(executionQuery: ExecutionQueryService)
 			}
 			throw error;
 		}
-	};
-}
 
-export function createGetExecutionStepsHandler(
-	executionQuery: ExecutionQueryService,
-): RequestHandler {
-	return async (req, res) => {
-		const id = parseExecutionId(req, res);
-		if (id === null) return;
-
-		const steps = await executionQuery.getSteps(id);
-		const body: ExecutionStepsResponse = { steps: steps.map(toStepDetail) };
-		res.status(200).json(body);
+		res.status(200).json(toExecutionSnapshot(execution));
 	};
 }

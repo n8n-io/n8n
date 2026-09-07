@@ -38,7 +38,7 @@ test.describe(
 			await n8n.canvas.nodeCreator.searchFor('manual123');
 			await expect(n8n.canvas.nodeCreator.getNoResults()).toBeVisible();
 			await expect(n8n.canvas.nodeCreator.getNoResults()).toContainText(
-				"We didn't make that... yet",
+				'No results for "manual123"',
 			);
 			await expect(n8n.canvas.nodeCreator.getItem('Manual Trigger')).toBeHidden();
 

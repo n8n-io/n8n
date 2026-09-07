@@ -605,15 +605,8 @@ export class SourceControlService {
 
 			if (contentImportPolicy?.violations.length) {
 				this.logger.warn(
-					`Workflow ${id} has ${contentImportPolicy.violations.length} content-import policy violation(s)`,
+					`Skipped workflow ${id}: ${contentImportPolicy.violations.length} content-import policy violation(s)`,
 					{ violations: contentImportPolicy.violations },
-				);
-			}
-
-			if (contentImportPolicy?.checkErrors.length) {
-				this.logger.warn(
-					`Workflow ${id} has ${contentImportPolicy.checkErrors.length} content-import policy check(s) that failed to run`,
-					{ checkErrors: contentImportPolicy.checkErrors },
 				);
 			}
 
