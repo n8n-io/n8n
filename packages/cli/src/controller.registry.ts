@@ -99,8 +99,6 @@ export class ControllerRegistry {
 				for (let index = 0; index < route.args.length; index++) {
 					const arg = route.args[index];
 					if (!arg) continue;
-					// A `@Param` schema is only honoured on the public API, which validates it in
-					// PublicApiControllerRegistry. Internal routes take the raw segment.
 					if (arg.type === 'param') args.push(req.params[arg.key]);
 					else if (['body', 'query'].includes(arg.type)) {
 						const paramType = argTypes[index] as ZodClass;

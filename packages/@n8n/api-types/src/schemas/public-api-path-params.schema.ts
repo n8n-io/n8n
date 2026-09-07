@@ -2,10 +2,8 @@ import '../openapi-extend';
 import { z } from 'zod';
 
 /**
- * The value stays a string. Path segments arrive as strings and the services below these routes
- * take the id as one, so coercing to a number here would only force it back at every call site.
- * `.openapi({ type })` replaces the derived `string` schema rather than merging into it, so the
- * digit check stays out of the published document while `type: integer` describes the parameter.
+ * Ids stay strings because the services below these routes take them as strings. `.openapi({ type })`
+ * replaces the derived schema, so the document reads `integer` over a string check.
  */
 const numericIdParamSchema = (description: string) =>
 	z

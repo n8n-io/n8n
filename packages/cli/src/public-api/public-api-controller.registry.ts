@@ -27,11 +27,6 @@ import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-res
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
-/**
- * Parses one path parameter against its `@Param` schema. The schema is wrapped in an object so a
- * failure carries the parameter name in `issue.path`, which `formatValidationError` needs to name
- * the offending field.
- */
 function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {
 	const output = z.object({ [key]: schema }).safeParse(params);
 
