@@ -59,5 +59,48 @@ describe('components', () => {
 				}
 			}
 		});
+
+		it('keeps positions finite when the item keys are all replaced', async () => {
+			const originalOffsetHeight = Object.getOwnPropertyDescriptor(
+				HTMLElement.prototype,
+				'offsetHeight',
+			);
+			Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+				configurable: true,
+				value: itemSize,
+			});
+
+			try {
+				const wrapper = mount(N8nRecycleScroller, {
+					props: {
+						itemSize,
+						itemKey,
+						items,
+					},
+				});
+
+				await nextTick();
+
+				const replacedItems = items.map((item) => ({
+					id: `replaced-${item.id}`,
+					name: `Replaced ${item.name}`,
+				}));
+				await wrapper.setProps({ items: replacedItems });
+
+				// Unmeasured keys must fall back to itemSize, otherwise the positions turn
+				// NaN and every item is rendered instead of the visible window.
+				expect(wrapper.findAll('.recycle-scroller-item').length).toBeLessThan(replacedItems.length);
+				expect(wrapper.find('.recycle-scroller').attributes('style')).not.toContain('NaN');
+				expect(wrapper.find('.recycle-scroller-items-wrapper').attributes('style')).not.toContain(
+					'NaN',
+				);
+			} finally {
+				if (originalOffsetHeight) {
+					Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight);
+				} else {
+					Reflect.deleteProperty(HTMLElement.prototype, 'offsetHeight');
+				}
+			}
+		});
 	});
 });

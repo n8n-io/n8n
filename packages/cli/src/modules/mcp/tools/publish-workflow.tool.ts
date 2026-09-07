@@ -1,16 +1,26 @@
+import {
+	type WorkflowPublishBlockedDetails,
+	type WorkflowPublishBlockedReason,
+	workflowPublishBlockedDetailsShape,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonStringify } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import type {
+	ToolDefinition,
+	UserCalledMCPToolEventPayload,
+	WorkflowNotFoundReason,
+} from '../mcp.types';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
@@ -28,14 +38,25 @@ type PublishWorkflowOutput = {
 	workflowId: string;
 	activeVersionId: string | null;
 	error?: string;
-};
+} & Partial<WorkflowPublishBlockedDetails>;
 
 const outputSchema = {
 	success: z.boolean(),
 	workflowId: z.string(),
 	activeVersionId: z.string().nullable(),
 	error: z.string().optional(),
+	reason: workflowPublishBlockedDetailsShape.reason.optional(),
+	workflowReviewRequestId: workflowPublishBlockedDetailsShape.workflowReviewRequestId.optional(),
 } satisfies z.ZodRawShape;
+
+/** Only these two failures carry a machine-readable reason; anything else reports just its message. */
+const extractErrorReason = (
+	error: Error,
+): WorkflowPublishBlockedReason | WorkflowNotFoundReason | undefined => {
+	if (error instanceof WorkflowPublishBlockedError) return error.details.reason;
+	if (error instanceof WorkflowAccessError) return error.reason;
+	return undefined;
+};
 
 export const createPublishWorkflowTool = (
 	user: User,
@@ -98,19 +119,21 @@ export const createPublishWorkflowTool = (
 			};
 		} catch (er) {
 			const error = ensureError(er);
-			const isAccessError = error instanceof WorkflowAccessError;
+			const publishBlockedDetails =
+				error instanceof WorkflowPublishBlockedError ? error.details : undefined;
 
 			const output: PublishWorkflowOutput = {
 				success: false,
 				workflowId,
 				activeVersionId: null,
 				error: error.message,
+				...publishBlockedDetails,
 			};
 
 			telemetryPayload.results = {
 				success: false,
 				error: error.message,
-				error_reason: isAccessError ? error.reason : undefined,
+				error_reason: extractErrorReason(error),
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 

@@ -1,5 +1,6 @@
 import type {
 	AgentBuilder,
+	AgentMessage,
 	BuiltMemory,
 	BuiltProviderTool,
 	BuiltTool,
@@ -52,17 +53,24 @@ const WEB_SEARCH_INPUT_SCHEMA = z.object({
 	excludeDomains: z.array(z.string()).optional().describe('Exclude results from these domains'),
 });
 
+const WEB_SEARCH_PLAN_INSTRUCTION =
+	'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.';
+
+export type FallbackWebSearchArgs = z.infer<typeof WEB_SEARCH_INPUT_SCHEMA>;
+export type FallbackWebSearchHandler = (args: FallbackWebSearchArgs) => Promise<unknown>;
+
 const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
 	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
+/** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
 ) => Promise<BuiltTool | null | undefined>;
 
 export interface ToolExecutor {
 	executeTool(toolName: string, input: unknown, ctx: unknown): Promise<unknown>;
-	executeToMessageSync?(toolName: string, output: unknown): unknown;
+	executeToMessage(toolName: string, output: unknown): Promise<AgentMessage | undefined>;
 }
 
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
@@ -103,6 +111,20 @@ export interface BuildFromJsonOptions {
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
 	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
 	modelFetch?: FetchFn;
+	/** Policy-aware `fetch` for fallback web-search calls (see `createWebSearchFetch`). */
+	webSearchFetch?: FetchFn;
+	/**
+	 * Replaces the live Brave/SearXNG call behind the fallback `web_search`
+	 * tool. When set, the tool is attached without requiring a search provider
+	 * or credential in the config (eval instrumentation only).
+	 */
+	fallbackWebSearch?: FallbackWebSearchHandler;
+	/**
+	 * Attach MCP servers whose credential is still pending instead of skipping
+	 * them. Only safe when MCP traffic cannot reach the real server — set by
+	 * the eval path when its mock MCP transport is injected.
+	 */
+	attachAuthPendingMcpServers?: boolean;
 }
 
 /**
@@ -151,7 +173,12 @@ export async function buildFromJson(
 			// requires auth, so treat either as an incomplete draft and skip
 			// attaching it rather than risk a connection attempt.
 			if (!server.url.trim()) continue;
-			if (server.authentication !== 'none' && !server.credential) continue;
+			if (
+				server.authentication !== 'none' &&
+				!server.credential &&
+				!options.attachAuthPendingMcpServers
+			)
+				continue;
 
 			const client = await options.buildMcpClient(server);
 			agent.mcp(client);
@@ -178,7 +205,12 @@ export async function buildFromJson(
 			agent.providerTool({ name: resolved as `${string}.${string}`, args });
 		}
 	}
-	const fallbackWebSearchTool = buildFallbackWebSearchTool(config, options.credentialProvider);
+	const fallbackWebSearchTool = buildFallbackWebSearchTool(
+		config,
+		options.credentialProvider,
+		options.webSearchFetch,
+		options.fallbackWebSearch,
+	);
 	if (fallbackWebSearchTool) {
 		agent.tool(fallbackWebSearchTool);
 	}
@@ -196,9 +228,8 @@ export async function buildFromJson(
 
 	// Config options
 	if (config.config) {
-		if (config.config.thinking) {
-			const { provider, ...rest } = config.config.thinking;
-			agent.thinking(provider, rest);
+		if (config.config.reasoning) {
+			agent.reasoning(config.config.reasoning);
 		}
 		if (config.config.promptCaching) {
 			agent.promptCaching(config.config.promptCaching);
@@ -272,11 +303,22 @@ export function buildProviderToolsForModel(
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
+	webSearchFetch?: FetchFn,
+	fallbackWebSearch?: FallbackWebSearchHandler,
 ): BuiltTool | null {
 	const webSearchConfig = config.config?.webSearch;
 
 	if (!webSearchConfig?.enabled) return null;
 	if (isNativeWebSearchRequested(config) && hasNativeWebSearchProvider(config.model)) return null;
+	if (fallbackWebSearch) {
+		return {
+			name: WEB_SEARCH_TOOL_NAME,
+			description: 'Search the web for current information.',
+			systemInstruction: WEB_SEARCH_PLAN_INSTRUCTION,
+			inputSchema: WEB_SEARCH_INPUT_SCHEMA,
+			handler: async (input) => await fallbackWebSearch(WEB_SEARCH_INPUT_SCHEMA.parse(input)),
+		};
+	}
 	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
 		throw new Error('Web search is enabled but no fallback search provider is configured.');
 	}
@@ -288,8 +330,7 @@ function buildFallbackWebSearchTool(
 	return {
 		name: WEB_SEARCH_TOOL_NAME,
 		description: 'Search the web for current information.',
-		systemInstruction:
-			'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.',
+		systemInstruction: WEB_SEARCH_PLAN_INSTRUCTION,
 		inputSchema: WEB_SEARCH_INPUT_SCHEMA,
 		handler: async (input) => {
 			const args = WEB_SEARCH_INPUT_SCHEMA.parse(input);
@@ -310,11 +351,16 @@ function buildFallbackWebSearchTool(
 			if (typeof credential.apiUrl !== 'string') {
 				throw new Error('SearXNG credential is missing an API URL.');
 			}
-			return await searxngSearch(credential.apiUrl, args.query, {
-				maxResults: args.maxResults,
-				includeDomains: args.includeDomains,
-				excludeDomains: args.excludeDomains,
-			});
+			return await searxngSearch(
+				credential.apiUrl,
+				args.query,
+				{
+					maxResults: args.maxResults,
+					includeDomains: args.includeDomains,
+					excludeDomains: args.excludeDomains,
+				},
+				webSearchFetch,
+			);
 		},
 	};
 }
@@ -395,7 +441,6 @@ async function resolveToolRef(
 			if (!descriptor) {
 				throw new Error(`Custom tool "${ref.id}" not found in tool descriptors`);
 			}
-
 			const builtTool: BuiltTool = {
 				name: descriptor.name,
 				description: descriptor.description,
@@ -407,6 +452,12 @@ async function resolveToolRef(
 						parentTelemetry: ctx.parentTelemetry,
 					});
 				},
+				...(descriptor.hasToMessage
+					? {
+							toMessage: async (output: unknown) =>
+								await options.toolExecutor.executeToMessage(descriptor.name, output),
+						}
+					: {}),
 				providerOptions: descriptor.providerOptions as Record<string, JSONObject> | undefined,
 			};
 
@@ -427,7 +478,9 @@ async function resolveToolRef(
 					options: { name: ref.name, description: ref.description },
 				},
 			};
-			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			const resolved = await options.resolveTool?.(ref);
+			if (resolved === null) return null;
+			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}
@@ -441,7 +494,9 @@ async function resolveToolRef(
 				editable: false,
 				metadata: { nodeTool: true, ...ref.node },
 			};
-			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			const resolved = await options.resolveTool?.(ref);
+			if (resolved === null) return null;
+			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}
@@ -572,6 +627,7 @@ async function resolveModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
+		config.modelDeploymentName,
 	);
 }
 
@@ -579,6 +635,10 @@ async function resolveMemoryWorkerModelConfig(
 	config: MemoryWorkerModelConfig,
 	credentialProvider: CredentialProvider,
 ): Promise<ModelConfig> {
+	// Mirrors `resolveModelConfig`: an empty credential means "not configured",
+	// which must not reach `resolve('')` and surface as a credential-not-found error.
+	if (!config.credential) return config.model;
+
 	return await resolveCredentialAwareModelConfig(
 		config.model,
 		config.credential,

@@ -1,6 +1,5 @@
-import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 import type { IHttpRequestOptions } from 'n8n-workflow';
@@ -60,13 +59,7 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request }));
-		const httpClient = new OAuth2MetadataHttpClient(
-			logger,
-			cache,
-			outboundHttp,
-			mock<SsrfProtectionService>(),
-			mock<SsrfProtectionConfig>({ enabled: true }),
-		);
+		const httpClient = new OAuth2MetadataHttpClient(logger, cache, outboundHttp);
 		identifier = new OAuth2TokenIntrospectionIdentifier(logger, cache, httpClient);
 		cache.get.mockResolvedValue(undefined);
 		cache.set.mockResolvedValue();
@@ -184,7 +177,11 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		});
 
 		test('should throw IdentifierValidationError when subject claim is missing', async () => {
-			const responseWithoutSub = { active: true, exp: validIntrospectionResponse.exp };
+			const responseWithoutSub = {
+				active: true,
+				exp: validIntrospectionResponse.exp,
+				client_id: 'test-client',
+			};
 			stubFlow(validMetadata, responseWithoutSub);
 
 			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
@@ -193,6 +190,106 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				'missing subject claim',
 			);
+		});
+	});
+
+	describe('Audience', () => {
+		test('should not check the audience when none is configured', async () => {
+			// Opt-in: the client id is not an audience, so there is nothing to compare to.
+			const response = { active: true, sub: 'user-123', aud: 'someone-else' };
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('no expected audience configured'),
+				expect.any(Object),
+			);
+		});
+
+		test('should treat a blank expectedAudience as not configured', async () => {
+			// The form sends every rendered property, so an untouched field arrives as ''.
+			const options = { ...validOptions, expectedAudience: '   ' };
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'someone-else' });
+
+			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
+		});
+
+		test('should accept a token whose aud matches the expected audience', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'https://api.example.com' });
+
+			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
+		});
+
+		test('should accept a token whose aud array contains the expected audience', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			const response = {
+				active: true,
+				sub: 'user-123',
+				aud: ['other-app', 'https://api.example.com'],
+			};
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
+		});
+
+		test('should reject a token addressed to a different party', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'other-app' });
+
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
+				IdentifierValidationError,
+			);
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
+				'Token was not issued for the expected audience',
+			);
+		});
+
+		test('should reject a token that declares no audience', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			stubFlow(validMetadata, { active: true, sub: 'user-123' });
+
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
+				'Token declares no audience',
+			);
+		});
+
+		test('should not accept azp or client_id in place of an audience', async () => {
+			// They name the client that requested the token, not who it is for. Honouring
+			// them would admit a token minted for another application of the same client.
+			const options = { ...validOptions, expectedAudience: 'test-client' };
+			const response = {
+				active: true,
+				sub: 'user-123',
+				aud: 'https://other-service.example.com',
+				azp: 'test-client',
+				client_id: 'test-client',
+			};
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
+				'Token was not issued for the expected audience',
+			);
+		});
+
+		test('should not reuse a cached subject after expectedAudience changes', async () => {
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'https://api.example.com' });
+			await identifier.resolve(mockContext, {
+				...validOptions,
+				expectedAudience: 'https://api.example.com',
+			});
+
+			const firstKey = cache.set.mock.calls.find((call) => call[0].includes(':subject:'))![0];
+			cache.set.mockClear();
+
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'https://other.example.com' });
+			await identifier.resolve(mockContext, {
+				...validOptions,
+				expectedAudience: 'https://other.example.com',
+			});
+
+			const secondKey = cache.set.mock.calls.find((call) => call[0].includes(':subject:'))![0];
+			expect(secondKey).not.toBe(firstKey);
 		});
 	});
 
@@ -298,7 +395,9 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			expect(subjectCacheCall![2]).toBe(5 * Time.minutes.toMilliseconds);
 		});
 
-		test('should use MIN_TOKEN_CACHE_TIMEOUT for expired but active token', async () => {
+		test('should not cache the subject of an expired but active token', async () => {
+			// `resolve` serves a cached subject without re-introspecting, so caching a
+			// spent token would keep resolving it past its expiry.
 			const expiredButActiveResponse = {
 				...validIntrospectionResponse,
 				exp: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
@@ -308,12 +407,25 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 
 			await identifier.resolve(mockContext, validOptions);
 
-			// Check that the subject cache was set with the min TTL
-			// Find the call that sets the subject (not metadata)
+			const subjectCacheCall = cache.set.mock.calls.find((call) => call[0].includes(':subject:'));
+
+			expect(subjectCacheCall).toBeUndefined();
+		});
+
+		test('should not cache a subject for longer than the token has left', async () => {
+			const soonToExpire = {
+				...validIntrospectionResponse,
+				exp: Math.floor(Date.now() / 1000) + 5, // shorter than the old 30s floor
+			};
+
+			stubFlow(validMetadata, soonToExpire);
+
+			await identifier.resolve(mockContext, validOptions);
+
 			const subjectCacheCall = cache.set.mock.calls.find((call) => call[0].includes(':subject:'));
 
 			expect(subjectCacheCall).toBeDefined();
-			expect(subjectCacheCall![2]).toBe(30 * Time.seconds.toMilliseconds);
+			expect(subjectCacheCall![2]).toBeLessThanOrEqual(5 * Time.seconds.toMilliseconds);
 		});
 	});
 });

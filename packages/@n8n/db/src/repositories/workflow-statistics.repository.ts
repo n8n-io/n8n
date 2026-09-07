@@ -35,7 +35,7 @@ type FoldRow = {
 	name: StatisticsNames;
 	inserted: boolean;
 	workflowName: string | null;
-	firstEvent: Date; // timestamptz -> pg driver parses to a JS Date
+	firstEvent: Date | string;
 };
 
 @Service()
@@ -203,7 +203,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				name: r.name,
 				workflowId: r.workflowId,
 				workflowName: r.workflowName,
-				firstEventMs: r.firstEvent.getTime(),
+				firstEventMs: new Date(r.firstEvent).getTime(),
 			}));
 
 		return { increments: rows[0].delta_rows, firstOccurrences };

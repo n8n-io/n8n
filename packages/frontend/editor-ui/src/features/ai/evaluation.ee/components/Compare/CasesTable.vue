@@ -11,6 +11,9 @@ import { versionColorVar } from '../shared/versionPalette';
 const props = defineProps<{
 	versions: CompareVersion[];
 	caseRows: CompareCaseRow[];
+	// While the run is in progress, a case whose input hasn't loaded yet shows a
+	// skeleton rather than a blank cell.
+	isRunning?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,6 +38,12 @@ function toggleSort(key: SortKey) {
 	} else {
 		sort.value = { key, dir: key === 'index' ? 'asc' : 'desc' };
 	}
+}
+
+// `aria-sort` for a sortable header: the active direction, or 'none' otherwise.
+function ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
+	if (sort.value.key !== key) return 'none';
+	return sort.value.dir === 'asc' ? 'ascending' : 'descending';
 }
 
 function bestScore(row: CompareCaseRow): number | null {
@@ -92,17 +101,39 @@ function deltas(row: CompareCaseRow) {
 	<table :class="$style.table" data-test-id="compare-cases-table">
 		<thead>
 			<tr>
-				<th :class="$style.num" role="button" @click="toggleSort('index')">
+				<th
+					:class="$style.num"
+					role="button"
+					tabindex="0"
+					:aria-sort="ariaSort('index')"
+					@click="toggleSort('index')"
+					@keydown.enter="toggleSort('index')"
+					@keydown.space.prevent="toggleSort('index')"
+				>
 					{{ i18n.baseText('evaluation.compare.cases.col.index') }}
 				</th>
 				<th>{{ i18n.baseText('evaluation.compare.cases.col.input') }}</th>
 				<th v-for="version in versions" :key="version.testRunId" :class="$style.score">
 					{{ version.letter }}
 				</th>
-				<th role="button" @click="toggleSort('best')">
+				<th
+					role="button"
+					tabindex="0"
+					:aria-sort="ariaSort('best')"
+					@click="toggleSort('best')"
+					@keydown.enter="toggleSort('best')"
+					@keydown.space.prevent="toggleSort('best')"
+				>
 					{{ i18n.baseText('evaluation.compare.cases.col.best') }}
 				</th>
-				<th role="button" @click="toggleSort('spread')">
+				<th
+					role="button"
+					tabindex="0"
+					:aria-sort="ariaSort('spread')"
+					@click="toggleSort('spread')"
+					@keydown.enter="toggleSort('spread')"
+					@keydown.space.prevent="toggleSort('spread')"
+				>
 					{{ i18n.baseText('evaluation.compare.cases.col.deltaVsBest') }}
 				</th>
 				<th :class="$style.chevronCol" />
@@ -119,7 +150,15 @@ function deltas(row: CompareCaseRow) {
 				@keydown.enter="emit('drilldown', row.index)"
 			>
 				<td :class="$style.num">{{ row.displayIndex }}</td>
-				<td :class="$style.input" :title="row.inputPreview">{{ row.inputPreview }}</td>
+				<td :class="$style.input" :title="row.inputPreview">
+					<span v-if="row.inputPreview">{{ row.inputPreview }}</span>
+					<span
+						v-else-if="isRunning"
+						:class="$style.inputSkeleton"
+						data-test-id="compare-cases-input-skeleton"
+						aria-hidden="true"
+					/>
+				</td>
 				<td v-for="cell in row.cells" :key="cell.versionIndex" :class="$style.score">
 					<span :class="$style.chip">
 						<span :class="$style.dot" :style="{ background: versionColorVar(cell.versionIndex) }" />
@@ -160,6 +199,8 @@ function deltas(row: CompareCaseRow) {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .table {
 	width: 100%;
 	border-collapse: collapse;
@@ -204,6 +245,18 @@ function deltas(row: CompareCaseRow) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.inputSkeleton {
+	display: inline-block;
+	width: 60%;
+	min-width: 80px;
+	height: 0.9em;
+	vertical-align: middle;
+	border-radius: var(--radius);
+	background: var(--background--subtle);
+	// Shared design-system pulse (reduced-motion handled by the mixin).
+	@include motion.skeleton-pulse;
 }
 
 .score {

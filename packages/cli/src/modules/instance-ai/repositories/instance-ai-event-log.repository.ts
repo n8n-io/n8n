@@ -32,9 +32,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 * in one transaction. The (threadId, seq) PK makes a concurrent-writer race
 	 * fail loudly instead of silently interleaving — the caller re-reads maxSeq
 	 * and retries. Returns the serialized payload bytes written (instrumentation).
-	 *
-	 * INS-844 (compose with the shared-sequence drain): the live-id Redis INCRBY
-	 * merges into this call, so id assignment and durable insert become one round trip.
+	 * Id assignment and the durable insert are one round trip.
 	 */
 	async appendBatch(
 		threadId: string,
@@ -84,17 +82,103 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		return rows.map((r) => this.toEvent(r));
 	}
 
-	/** Every fact of a thread in seq order, with the run and write-time context
-	 *  the fold-on-read history derivation needs. */
-	async getForThread(
+	/** Facts for specific runs in seq order, with the run and write-time context
+	 *  the fold-on-read history derivation needs. Scoped rather than
+	 *  whole-thread: a paged history read folds only the runs behind the page it
+	 *  returns. */
+	async getForThreadRuns(
 		threadId: string,
+		runIds: string[],
 	): Promise<Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>> {
-		const rows = await this.find({ where: { threadId }, order: { seq: 'ASC' } });
+		if (runIds.length === 0) return [];
+		const rows = await this.createQueryBuilder('e')
+			.where('e.threadId = :threadId', { threadId })
+			.andWhere('e.runId IN (:...runIds)', { runIds })
+			.orderBy('e.seq', 'ASC')
+			.getMany();
 		return rows.map((r) => ({
 			runId: r.runId,
 			createdAt: r.createdAt,
 			event: this.toEvent(r),
 		}));
+	}
+
+	/**
+	 * Distinct runs with at least one fact inside the half-open window
+	 * `[since, before)` — the runs whose trees a paged history read may need. A
+	 * run that straddles a bound is included, so the caller can widen to whole
+	 * runs rather than folding half of one.
+	 *
+	 * Selects no `payload`, so it does not pay the JSON cost of the rows it
+	 * scans. The scan itself is bounded by the thread (PK-led); if it ever shows
+	 * up in a profile, a `(threadId, createdAt)` index is the next lever.
+	 */
+	async findRunIdsInWindow(
+		threadId: string,
+		window: { since?: Date; before?: Date },
+	): Promise<string[]> {
+		const qb = this.createQueryBuilder('e')
+			.select('e.runId', 'runId')
+			.distinct(true)
+			.where('e.threadId = :threadId', { threadId });
+		if (window.since) qb.andWhere('e.createdAt >= :since', { since: window.since });
+		if (window.before) qb.andWhere('e.createdAt < :before', { before: window.before });
+		const rows = await qb.getRawMany<{ runId: string }>();
+		return rows.map((r) => r.runId);
+	}
+
+	/**
+	 * Each run's `run-start` fact: the cheapest complete run-to-messageGroupId
+	 * map for a thread, one row per run. The windowed read needs the whole map
+	 * even though it folds a slice, because a group's runs must fold together.
+	 */
+	async getRunStarts(threadId: string): Promise<Array<{ runId: string; messageGroupId?: string }>> {
+		const rows = await this.find({
+			where: { threadId, type: 'run-start' },
+			order: { seq: 'ASC' },
+		});
+		return rows.map((r) => {
+			const event = this.toEvent(r);
+			const groupId = event.type === 'run-start' ? event.payload.messageGroupId : undefined;
+			return {
+				runId: r.runId,
+				messageGroupId: typeof groupId === 'string' && groupId ? groupId : undefined,
+			};
+		});
+	}
+
+	/**
+	 * Resolve the LangSmith root-run anchor for a responseId (UI sends
+	 * `messageGroupId ?? runId`). The ids ride on the run-start fact; prefer the
+	 * earliest run-start in the message group THAT CARRIES the ids, falling back
+	 * to the run whose id matches. Sibling runs of one turn share the
+	 * `message_turn` root, but not every sibling's run-start is anchored — a
+	 * segment without tracing leaves the ids to a later one — mirroring the
+	 * snapshot store, which kept the group's first non-null ids. Runs recorded
+	 * before the anchor rode on run-start (the snapshot table carried it and
+	 * dropped without a copy), and genuinely untraced runs, resolve undefined.
+	 */
+	async findLangsmithAnchor(
+		threadId: string,
+		responseId: string,
+	): Promise<{ langsmithRunId: string; langsmithTraceId: string } | undefined> {
+		const rows = await this.find({
+			where: { threadId, type: 'run-start' },
+			order: { seq: 'ASC' },
+		});
+		const starts = rows.map((r) => this.toEvent(r));
+		const isAnchoredRunStart = (
+			e: InstanceAiEvent,
+		): e is Extract<InstanceAiEvent, { type: 'run-start' }> =>
+			e.type === 'run-start' && Boolean(e.payload.langsmithRunId && e.payload.langsmithTraceId);
+		const byGroup = starts.find(
+			(e) => isAnchoredRunStart(e) && e.payload.messageGroupId === responseId,
+		);
+		const anchor = byGroup ?? starts.find((e) => e.runId === responseId);
+		if (anchor?.type !== 'run-start') return undefined;
+		const { langsmithRunId, langsmithTraceId } = anchor.payload;
+		if (!langsmithRunId || !langsmithTraceId) return undefined;
+		return { langsmithRunId, langsmithTraceId };
 	}
 
 	/** Timestamp of the run's most recent durable fact (sweep liveness proxy). */
@@ -112,9 +196,11 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 * Interrupted-run sweep source: runs whose log has a `run-start` but no
 	 * `run-finish`, as distinct (threadId, runId) pairs. Pure log query —
 	 * liveness (is a main still driving it?) is the caller's concern.
+	 * Instance-wide for the boot sweep; pass `threadId` to scope a single
+	 * thread (cancel-time zombie resolution) to its (threadId, runId) index.
 	 */
-	async findUnfinishedRuns(): Promise<UnfinishedRun[]> {
-		const rows = await this.createQueryBuilder('e')
+	async findUnfinishedRuns(threadId?: string): Promise<UnfinishedRun[]> {
+		const qb = this.createQueryBuilder('e')
 			.select('e.threadId', 'threadId')
 			.addSelect('e.runId', 'runId')
 			.distinct(true)
@@ -130,9 +216,9 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 						.andWhere('f.runId = e.runId')
 						.andWhere("f.type = 'run-finish'")
 						.getQuery(),
-			)
-			.getRawMany<UnfinishedRun>();
-		return rows;
+			);
+		if (threadId) qb.andWhere('e.threadId = :threadId', { threadId });
+		return await qb.getRawMany<UnfinishedRun>();
 	}
 
 	/** Parse a row's event, defaulting the publish timestamp to the row's write

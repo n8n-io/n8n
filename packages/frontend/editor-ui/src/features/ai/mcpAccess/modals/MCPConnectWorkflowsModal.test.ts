@@ -8,10 +8,10 @@ import MCPConnectWorkflowsModal from '@/features/ai/mcpAccess/modals/MCPConnectW
 import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { type Mock } from 'vitest';
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({
@@ -51,7 +51,7 @@ const ModalStub = defineComponent({
 
 const initialState = {
 	ui: {
-		modalsById: {
+		modalStateById: {
 			[MCP_CONNECT_WORKFLOWS_MODAL_KEY]: {
 				open: true,
 			},

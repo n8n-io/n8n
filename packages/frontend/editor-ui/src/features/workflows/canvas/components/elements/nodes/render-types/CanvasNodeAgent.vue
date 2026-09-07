@@ -10,7 +10,7 @@ import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgen
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
 import {
-	AGENT_MODEL_PROVIDER_DEFINITIONS,
+	getProviderCredentialTypes,
 	isAgentModelProvider,
 } from '@/features/agents/model-providers';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
@@ -20,6 +20,7 @@ import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
 import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
 import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 // Width comes from the shared constant so canvas placement and tidy-up layout
 // stay in sync with the rendered card.
@@ -35,6 +36,7 @@ const $style = useCssModule();
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const nav = useAgentNavigation();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const { catalog: modelCatalog, ensureLoaded: ensureModelsLoaded } = useModelCatalog();
 
 const {
@@ -108,9 +110,7 @@ const modelProvider = computed(() => {
 });
 
 const modelCredentialType = computed(() =>
-	modelProvider.value
-		? AGENT_MODEL_PROVIDER_DEFINITIONS[modelProvider.value].credentialTypes[0]
-		: null,
+	modelProvider.value ? getProviderCredentialTypes(modelProvider.value)[0] : null,
 );
 
 const modelName = computed(() => {
@@ -132,6 +132,11 @@ function resolveNodeTypeLabel(nodeType: string, version?: number): string | unde
 
 const chips = computed(() =>
 	summary.value ? buildAgentCardChips(summary.value, resolveNodeTypeLabel) : [],
+);
+const activeCapabilityKeys = computed(
+	() =>
+		workflowExecutionStateStore.value.activeAgentCapabilityKeysByNodeId.get(id.value) ??
+		new Set<string>(),
 );
 
 // The picker is NDV-parameter-input shaped; it only reads `parameter.name`, so a
@@ -232,7 +237,11 @@ watch(
 									{{ modelName || i18n.baseText('agentNode.card.noModel') }}
 								</N8nText>
 							</div>
-							<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
+							<CanvasNodeAgentChips
+								v-if="chips.length"
+								:chips="chips"
+								:active-capability-keys="activeCapabilityKeys"
+							/>
 						</template>
 					</template>
 					<div v-else :class="[$style.picker, 'nodrag', 'nowheel']">

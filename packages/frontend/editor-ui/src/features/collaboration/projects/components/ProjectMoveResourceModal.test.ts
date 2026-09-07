@@ -7,12 +7,13 @@ import { getDropdownItems, mockedStore } from '@/__tests__/utils';
 import type { MockedStore } from '@/__tests__/utils';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '../projects.constants';
 import ProjectMoveResourceModal from './ProjectMoveResourceModal.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '../projects.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { ResourceType } from '../projects.utils';
+import { ProjectTypes } from '../projects.types';
 import type { ProjectSharingData } from 'n8n-workflow';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
@@ -308,6 +309,50 @@ describe('ProjectMoveResourceModal', () => {
 			await vi.waitFor(() => expect(projectsStore.searchProjects).toHaveBeenCalled());
 
 			expect(queryByTestId('project-move-resource-modal-resolvable-warning')).toBeNull();
+		});
+
+		describe('destination filter', () => {
+			const personalProject = createProjectListItem(ProjectTypes.Personal);
+			const teamProject = {
+				...createProjectListItem(ProjectTypes.Team),
+				name: 'Team destination',
+			};
+
+			beforeEach(() => {
+				projectsStore.searchProjects.mockResolvedValue({
+					count: 2,
+					data: [personalProject, teamProject],
+				});
+			});
+
+			it('hides personal projects for a resolvable credential', async () => {
+				const { getByTestId } = renderComponent({ props: props(true) });
+
+				const dropdownItems = await getDropdownItems(getByTestId('project-sharing-select'));
+
+				expect(dropdownItems).toHaveLength(1);
+				expect(dropdownItems[0]).toHaveTextContent('Team destination');
+			});
+
+			it('hides personal projects even when private credentials are disabled', async () => {
+				// the backend rejects the move on `isResolvable` alone, regardless of the module
+				isPrivateCredentialsEnabled.value = false;
+
+				const { getByTestId } = renderComponent({ props: props(true) });
+
+				const dropdownItems = await getDropdownItems(getByTestId('project-sharing-select'));
+
+				expect(dropdownItems).toHaveLength(1);
+				expect(dropdownItems[0]).toHaveTextContent('Team destination');
+			});
+
+			it('keeps personal projects for a non-resolvable credential', async () => {
+				const { getByTestId } = renderComponent({ props: props(false) });
+
+				const dropdownItems = await getDropdownItems(getByTestId('project-sharing-select'));
+
+				expect(dropdownItems).toHaveLength(2);
+			});
 		});
 	});
 

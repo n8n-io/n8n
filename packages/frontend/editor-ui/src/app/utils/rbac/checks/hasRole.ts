@@ -1,4 +1,4 @@
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { RBACPermissionCheck, RolePermissionOptions } from '@/app/types/rbac';
 import { ROLE, type Role } from '@n8n/api-types';
 

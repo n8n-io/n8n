@@ -244,7 +244,7 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 			});
 			mockedReadFile.mockImplementation((p) => {
 				const filename = String(p);
-				const parsed = jsonParse(STUB_TEST_CASE);
+				const parsed = jsonParse<Record<string, unknown>>(STUB_TEST_CASE);
 				if (filename.includes('agent-intent')) {
 					return JSON.stringify({
 						...parsed,

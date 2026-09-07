@@ -30,7 +30,7 @@ Based on the affected area, pick the test layer and pattern:
 | Binary data | Vitest unit | NodeTestHarness assertBinaryData | `packages/core/nodes-testing/` |
 | Execution engine | Vitest integration | WorkflowRunner + DI container | `packages/cli/src/__tests__/` |
 | CLI / API | Vitest integration | setupTestServer + supertest | `packages/cli/test/integration/` |
-| Config | Vitest unit | GlobalConfig + Container | `packages/@n8n/config/src/__tests__/` |
+| Config | Vitest unit | GlobalConfig + Container | `packages/@n8n/config/src/configs/__tests__/` |
 | Editor UI | Vitest | Vue Test Utils + Pinia | `packages/frontend/editor-ui/src/**/__tests__/` |
 | E2E / Canvas | Playwright | Test containers + composables | `packages/testing/playwright/` |
 

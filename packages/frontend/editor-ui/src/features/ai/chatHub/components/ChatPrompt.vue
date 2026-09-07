@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { ChatHubLLMProvider, ChatModelDto, ChatSessionId } from '@n8n/api-types';
 import { useSpeechRecognition } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';

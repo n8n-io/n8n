@@ -18,6 +18,7 @@
  * @generated - This file generates code, but is itself manually maintained.
  */
 
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import { deepCopy } from 'n8n-workflow';
 import * as path from 'path';
@@ -28,6 +29,7 @@ import {
 	isPropertyOptional,
 	planSplitVersionSchemaFiles,
 } from './generate-zod-schemas';
+import { NODE_DEPRECATION_NOTICE } from '../node-deprecation';
 import { checkConditions } from '../validation/display-options';
 
 // =============================================================================
@@ -37,7 +39,10 @@ import { checkConditions } from '../validation/display-options';
 /** Indentation string for generated code (2 spaces per level) */
 const INDENT = '  ';
 
-const NODES_BASE_TYPES = path.resolve(__dirname, '../../../../nodes-base/dist/types/nodes.json');
+export const NODES_BASE_TYPES = path.resolve(
+	__dirname,
+	'../../../../nodes-base/dist/types/nodes.json',
+);
 const NODES_LANGCHAIN_TYPES = path.resolve(
 	__dirname,
 	'../../../nodes-langchain/dist/types/nodes.json',
@@ -134,7 +139,7 @@ ${prefix} ResourceMapperCommon = { matchingColumns?: string[]; cachedResultName?
 ${prefix} ResourceMapperValue = ResourceMapperCommon & { mappingMode: string; value?: null | Record<string, unknown>; schema?: ResourceMapperField[] };`;
 }
 
-function isCustomApiCall(operation: string): boolean {
+export function isCustomApiCall(operation: string): boolean {
 	return operation === CUSTOM_API_CALL_KEY;
 }
 
@@ -190,6 +195,7 @@ const GENERIC_AUTH_TYPE_VALUES = [
 	'httpHeaderAuth',
 	'httpQueryAuth',
 	'httpCustomAuth',
+	'httpTemplatedCustomAuth',
 	'oAuth1Api',
 	'oAuth2Api',
 ] as const;
@@ -550,13 +556,18 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
 		return undefined;
 	}
 
+	// Case-insensitive: node names don't round-trip folder casing reliably
+	// (chainLlm -> ChainLLM), and exact matching only appeared to work on
+	// macOS because APFS ignores case.
+	const targetsLower = targetNames.map((n) => n.toLowerCase());
+
 	for (const entry of entries) {
 		if (!entry.isDirectory()) continue;
 
 		const entryPath = path.join(dir, entry.name);
 
 		// Check if this directory matches our target and has __schema__
-		if (targetNames.includes(entry.name)) {
+		if (targetsLower.includes(entry.name.toLowerCase())) {
 			const schemaPath = path.join(entryPath, '__schema__');
 			if (fs.existsSync(schemaPath)) {
 				return schemaPath;
@@ -574,17 +585,35 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
 }
 
 /**
+ * Schema roots to search, in priority order: the package currently being
+ * generated (generate-node-defs-cli runs with CWD = that package, so e.g.
+ * nodes-langchain's own `__schema__` dirs resolve), then nodes-base as the
+ * shared fallback.
+ */
+export function schemaSearchRoots(): string[] {
+	const cwdRoot = path.resolve(process.cwd(), 'dist', 'nodes');
+	if (cwdRoot !== NODES_BASE_DIST && fs.existsSync(cwdRoot)) {
+		return [cwdRoot, NODES_BASE_DIST];
+	}
+	return [NODES_BASE_DIST];
+}
+
+/**
  * Find the schema directory for a node, searching both flat and nested paths
  *
  * @param baseName The base node name (e.g., 'gmail')
  * @returns Path to the __schema__ directory, or undefined if not found
  */
 function findSchemaDirectory(baseName: string, schemaPath?: string): string | undefined {
+	const roots = schemaSearchRoots();
+
 	// If explicit schemaPath is provided, use it directly
 	if (schemaPath) {
-		const explicitPath = path.join(NODES_BASE_DIST, schemaPath, '__schema__');
-		if (fs.existsSync(explicitPath)) {
-			return explicitPath;
+		for (const root of roots) {
+			const explicitPath = path.join(root, schemaPath, '__schema__');
+			if (fs.existsSync(explicitPath)) {
+				return explicitPath;
+			}
 		}
 	}
 
@@ -594,16 +623,32 @@ function findSchemaDirectory(baseName: string, schemaPath?: string): string | un
 		baseName.toUpperCase(), // GMAIL
 	];
 
-	// Try flat paths first (most common case)
-	for (const folderName of possibleNames) {
-		const flatPath = path.join(NODES_BASE_DIST, folderName, '__schema__');
-		if (fs.existsSync(flatPath)) {
-			return flatPath;
+	// Try flat paths first (most common case). Match folder names
+	// case-insensitively — fs.existsSync with a guessed casing only works on
+	// case-insensitive filesystems (macOS), not on Linux CI.
+	const namesLower = possibleNames.map((n) => n.toLowerCase());
+	for (const root of roots) {
+		let entries: fs.Dirent[];
+		try {
+			entries = fs.readdirSync(root, { withFileTypes: true });
+		} catch {
+			continue;
+		}
+		for (const entry of entries) {
+			if (!entry.isDirectory() || !namesLower.includes(entry.name.toLowerCase())) continue;
+			const flatPath = path.join(root, entry.name, '__schema__');
+			if (fs.existsSync(flatPath)) {
+				return flatPath;
+			}
 		}
 	}
 
 	// Search recursively for nested paths (e.g., Google/Gmail/__schema__)
-	return findNestedSchemaDir(NODES_BASE_DIST, possibleNames);
+	for (const root of roots) {
+		const found = findNestedSchemaDir(root, possibleNames);
+		if (found) return found;
+	}
+	return undefined;
 }
 
 /**
@@ -639,14 +684,24 @@ export function discoverSchemasForNode(
 		return schemas;
 	}
 
-	// Try to find version directory - try exact match first, then closest lower version
-	const versionDir = findVersionDirectory(schemaDir, version);
-	if (!versionDir) {
-		schemaCache.set(cacheKey, schemas);
-		return schemas;
+	// Per-file fallback across version directories: the best-matching dir wins
+	// for every (resource, operation) it covers, and older dirs only fill the
+	// gaps. Without this, a sparse exact-version dir (e.g. Slack v2.7.0 holding
+	// only message/search.json) hides every schema a lower minor already has.
+	const seen = new Set<string>();
+	for (const versionDir of orderedVersionDirectories(schemaDir, version)) {
+		collectSchemasFromVersionDir(versionDir, schemas, seen);
 	}
 
-	// Scan version directory entries
+	schemaCache.set(cacheKey, schemas);
+	return schemas;
+}
+
+function collectSchemasFromVersionDir(
+	versionDir: string,
+	schemas: OutputSchema[],
+	seen: Set<string>,
+): void {
 	try {
 		const entries = fs.readdirSync(versionDir, { withFileTypes: true });
 
@@ -657,6 +712,7 @@ export function discoverSchemasForNode(
 				// `output.<variant>.json` files are context-conditional layout
 				// variants (e.g. with-parser), not operations — skip them here.
 				if (operationName.includes('.')) continue;
+				if (seen.has(`/${operationName}`)) continue;
 				const filePath = path.join(versionDir, entry.name);
 
 				try {
@@ -667,6 +723,7 @@ export function discoverSchemasForNode(
 						operation: operationName,
 						schema,
 					});
+					seen.add(`/${operationName}`);
 				} catch {
 					// Skip invalid JSON files
 				}
@@ -683,6 +740,7 @@ export function discoverSchemasForNode(
 				if (!opEntry.isFile() || !opEntry.name.endsWith('.json')) continue;
 
 				const operationName = opEntry.name.replace('.json', '');
+				if (seen.has(`${entry.name}/${operationName}`)) continue;
 				const schemaPath = path.join(resourceDir, opEntry.name);
 
 				try {
@@ -693,6 +751,7 @@ export function discoverSchemasForNode(
 						operation: operationName,
 						schema,
 					});
+					seen.add(`${entry.name}/${operationName}`);
 				} catch {
 					// Skip invalid JSON files
 				}
@@ -701,14 +760,70 @@ export function discoverSchemasForNode(
 	} catch {
 		// Skip if directory can't be read
 	}
-
-	schemaCache.set(cacheKey, schemas);
-	return schemas;
 }
 
 /** Pad "1" / "2.3" to the on-disk "1.0.0" / "2.3.0" directory format. */
-function padVersion(version: number): string {
+export function padVersion(version: number): string {
 	return String(version).split('.').concat(['0', '0']).slice(0, 3).join('.');
+}
+
+/**
+ * Hash every `__schema__/**\/*.json` file under the given roots (default: the
+ * same roots schema discovery searches). Schema content isn't part of
+ * `nodes.json`, so the build-time hash-skip in generate-node-defs-cli needs
+ * this to notice schema-only changes (e.g. a newly harvested output schema)
+ * and regenerate.
+ */
+export function computeSchemaCorpusHash(baseDirs: string[] = schemaSearchRoots()): string {
+	const hash = createHash('sha256');
+	for (const baseDir of baseDirs) {
+		const files: string[] = [];
+		collectSchemaDirs(baseDir, files);
+		files.sort();
+
+		for (const file of files) {
+			hash.update(path.relative(baseDir, file));
+			hash.update(fs.readFileSync(file));
+		}
+	}
+	return hash.digest('hex');
+}
+
+function collectSchemaDirs(dir: string, results: string[]): void {
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return;
+	}
+
+	for (const entry of entries) {
+		if (!entry.isDirectory()) continue;
+		const entryPath = path.join(dir, entry.name);
+		if (entry.name === '__schema__') {
+			collectJsonFiles(entryPath, results);
+		} else {
+			collectSchemaDirs(entryPath, results);
+		}
+	}
+}
+
+function collectJsonFiles(dir: string, results: string[]): void {
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return;
+	}
+
+	for (const entry of entries) {
+		const entryPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			collectJsonFiles(entryPath, results);
+		} else if (entry.name.endsWith('.json')) {
+			results.push(entryPath);
+		}
+	}
 }
 
 /** Parse a `vX.Y.Z` directory name into a comparable [X, Y, Z] tuple. */
@@ -725,26 +840,17 @@ function compareVersionTuplesDesc(a: number[], b: number[]): number {
 }
 
 /**
- * Find the best matching version directory for a given version.
- * Tries an exact full-semver match first (2.3 → v2.3.0), then the nearest
- * same-major dir (closest below, then closest above — a v2.x node must not
- * lose its schemas just because only a higher v2 minor was recorded), then
- * the newest lower-major dir.
+ * Order version directories by how well they match the target version:
+ * exact/nearest same-major below first, then nearest same-major above (a v2.x
+ * node must not lose its schemas just because only a higher v2 minor was
+ * recorded), then lower majors newest-first. Schemas resolve per file across
+ * this list — the first directory covering a (resource, operation) wins.
  *
  * NOTE: unlike n8n-core's runtime resolver this never falls forward to a
  * NEWER major — generated types should not describe a next-generation API
  * shape; converging the two is tracked in the harmonization spec.
- *
- * @param schemaDir Path to the __schema__ directory
- * @param version Target version number
- * @returns Path to version directory, or undefined if not found
  */
-function findVersionDirectory(schemaDir: string, version: number): string | undefined {
-	const exactPath = path.join(schemaDir, `v${padVersion(version)}`);
-	if (fs.existsSync(exactPath)) {
-		return exactPath;
-	}
-
+function orderedVersionDirectories(schemaDir: string, version: number): string[] {
 	const target = padVersion(version).split('.').map(Number);
 	try {
 		const entries = fs.readdirSync(schemaDir, { withFileTypes: true });
@@ -753,25 +859,21 @@ function findVersionDirectory(schemaDir: string, version: number): string | unde
 			.map((e) => ({ name: e.name, tuple: parseVersionDir(e.name) }));
 
 		const sameMajor = versionDirs.filter((v) => v.tuple[0] === target[0]);
-		const best =
-			sameMajor
+		const ordered = [
+			...sameMajor
 				.filter((v) => compareVersionTuplesDesc(v.tuple, target) >= 0)
-				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple))[0] ??
-			sameMajor
+				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple)),
+			...sameMajor
 				.filter((v) => compareVersionTuplesDesc(v.tuple, target) < 0)
-				.sort((a, b) => compareVersionTuplesDesc(b.tuple, a.tuple))[0] ??
-			versionDirs
+				.sort((a, b) => compareVersionTuplesDesc(b.tuple, a.tuple)),
+			...versionDirs
 				.filter((v) => v.tuple[0] < target[0])
-				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple))[0];
-
-		if (best) {
-			return path.join(schemaDir, best.name);
-		}
+				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple)),
+		];
+		return ordered.map((v) => path.join(schemaDir, v.name));
 	} catch {
-		// Ignore read errors
+		return [];
 	}
-
-	return undefined;
 }
 
 /**
@@ -2220,6 +2322,15 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 	lines.push(` * ${node.displayName} Node Types`);
 	lines.push(' *');
 
+	// A hidden node is retired. On-disk generation skips it, so this only lands
+	// on a definition synthesized at run time — the one path that still hands a
+	// retired built-in to a builder. Keep it above the description: the reader
+	// must see it before it reads the parameters.
+	if (node.hidden) {
+		lines.push(` * @deprecated ${NODE_DEPRECATION_NOTICE}`);
+		lines.push(' *');
+	}
+
 	if (node.description) {
 		lines.push(` * ${node.description}`);
 	}
@@ -2255,6 +2366,17 @@ export function generatePropertyLine(
 	optional: boolean,
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
+	// Steer generic-auth selection at the moment the model reads this type: a
+	// bare union invites httpBearerAuth for any provider documenting
+	// `Authorization: Bearer <token>`.
+	if (prop.type === 'credentialsSelect' && prop.name === 'genericAuthType' && !prop.description) {
+		prop = {
+			...prop,
+			description:
+				'For NEW credentials prefer \'httpTemplatedCustomAuth\' whenever the auth fits header/query/body values — `Authorization: Bearer <token>` becomes the template {"headers":{"Authorization":"Bearer {{api_key}}"}}; do NOT use httpBearerAuth for it. Plain generic types are only for reusing an existing credential or for what a template cannot express (basic, digest, OAuth).',
+		};
+	}
+
 	const tsType = mapPropertyType(prop, discriminatorContext);
 	if (!tsType) {
 		return ''; // Skip this property

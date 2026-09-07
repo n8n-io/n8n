@@ -1,5 +1,5 @@
 import { useDataSchema } from '@/app/composables/useDataSchema';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { autocompletableNodeNames } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
@@ -72,15 +72,16 @@ export function useTypescript(
 					const inputData: INodeExecutionData[] = getInputDataWithPinned(node);
 					const schema = getSchemaForExecutionData(executionDataToJson(inputData), true);
 					const execution = workflowExecutionStateStore.value.activeExecution;
+
+					const runIndex =
+						toValue(targetNodeParameterContext) === undefined
+							? (ndvStore.value.ndvInputRunIndex ?? 0)
+							: 0;
+
+					const runDataOfNode = execution?.data?.resultData?.runData?.[node.name]?.[runIndex]?.data;
+
 					const binaryData = useNodeHelpers()
-						.getBinaryData(
-							execution?.data?.resultData?.runData ?? null,
-							node.name,
-							toValue(targetNodeParameterContext) === undefined
-								? (ndvStore.value.ndvInputRunIndex ?? 0)
-								: 0,
-							0,
-						)
+						.getBinaryData(runDataOfNode, 0)
 						.filter((data) => Boolean(data && Object.keys(data).length));
 
 					return {

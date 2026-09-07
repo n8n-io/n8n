@@ -11,6 +11,9 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- Write all technical text (code comments, PR descriptions, issue and ticket
+  descriptions, docs) in ASD-STE100 Simplified Technical English: use short
+  sentences, the active voice, and one instruction for each sentence
 - **Secrets on the command line:** if a developer opted into anonymous dev
   metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
   of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a
@@ -22,6 +25,10 @@ frontend, and extensible node-based workflow engine.
   relevant to the surrounding code, not just to the current task
 - We use Linear as a ticket tracking system
 - We use Posthog for feature flags
+- To find registered telemetry events (names, descriptions, properties), run
+  `pnpm --filter @n8n/telemetry catalog` (`--json` for structured output). The
+  registry is being adopted incrementally, so search call sites if the catalog
+  has no match. The `n8n:telemetry` skill covers adding or changing events
 - When starting to work on a new ticket – create a new branch from fresh
   master with the name specified in Linear ticket
 - When creating a new branch for a ticket in Linear - use the branch name
@@ -31,6 +38,9 @@ frontend, and extensible node-based workflow engine.
 - **Developing v3 features:** land normal feature work on `master` behind an
   opt-in flag; introduce breaking changes only on the `3.x` branch. See
   [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
+- The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
+  error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
+  comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
 
 ## Agent Skills and Claude Code Plugin
 
@@ -96,6 +106,26 @@ When changing directories, use `pushd` to navigate into the directory and
 `popd` to return to the previous directory. When in doubt, use `pwd` to check
 your current directory.
 
+### Seeding a local instance
+
+An empty instance is a bad place to test anything that reads a user's work.
+These commands fill one. They are dev tooling on the private root package, so
+they never reach a user.
+
+```bash
+N8N_API_KEY=<jwt> pnpm seed:preference   # 10 workflows in one house style, plus history
+N8N_API_KEY=<jwt> pnpm seed:account      # ~500 varied workflows across 30 projects
+pnpm inspect:activity                    # read-only activity_event viewer on 127.0.0.1
+```
+
+Both seed profiles delete their own prior output, so a re-run replaces it.
+That clear step deletes anything named `[seed]` and any empty team project,
+whoever made them, so do not point either at a shared instance. The viewer is
+unauthenticated and serves the whole table: keep it on loopback.
+
+See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md) for
+profiles, tokens, determinism, and the other commands.
+
 ### Code Quality
 - `pnpm lint` - Lint code
 - `pnpm typecheck` - Run type checks
@@ -119,8 +149,8 @@ The monorepo is organized into these key packages:
 - **`packages/workflow`**: Core workflow interfaces and types
 - **`packages/core`**: Workflow execution engine
 - **`packages/cli`**: Express server, REST API, and CLI commands
-- **`packages/editor-ui`**: Vue 3 frontend application
-- **`packages/@n8n/i18n`**: Internationalization for UI text
+- **`packages/frontend/editor-ui`**: Vue 3 frontend application
+- **`packages/frontend/@n8n/i18n`**: Internationalization for UI text
 - **`packages/nodes-base`**: Built-in nodes for integrations
 - **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
 - **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
@@ -193,12 +223,71 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
     failed assertion) that developers need to fix.
 - Import from appropriate error classes in each package
 
+### Persistence layer & the TypeORM boundary
+
+TypeORM (`@n8n/typeorm`) must stay in the **persistence layer** — the `@n8n/db`
+package or a backend module's own `database/` folder (entity/repository files).
+Business logic — services, controllers, handlers, commands, factories — must not
+import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). In
+`packages/cli` this is enforced by the `misplaced-n8n-typeorm-import` lint rule;
+a new import (or an inline `eslint-disable` of the rule) fails CI.
+
+- **Pattern:** when a query needs operators (`In`, `IsNull`, `LessThan`,
+  `FindOptionsWhere`, …), put it behind a **use-case-named repository method**
+  that takes plain parameters and returns domain-shaped values — not a generic
+  `find(options)` passthrough.
+- **Transactions:** transaction orchestration belongs in the persistence layer.
+  Don't reach for `.manager` / `.manager.transaction(...)` or
+  `createQueryBuilder(...)` in business logic. Use the sanctioned primitive in
+  `@n8n/db`: inject the abstract `TransactionRunner` and wrap the unit of work in
+  `txRunner.run(ctx, async (ctx) => …)`. The callback receives an
+  `OperationContext` carrying the active transaction; thread that `ctx` into the
+  repository methods you call. `run` **requires** a context — pass an empty `{}`
+  at the operation entry point, and reuse the one you were handed everywhere
+  below it (a context that already carries a transaction is joined, not nested).
+  Repositories extend `BaseRepository` and resolve the right `EntityManager` with
+  `this.managerFor(ctx)`; the `Transaction` handle is opaque and never exposes a
+  driver type to business logic. See `oauth-token.service.ts` +
+  `oauth-*-token.repository.ts` for a worked example.
+- **Anti-patterns reviewers reject** — they hide the dependency instead of
+  removing it:
+  - String-matching TypeORM errors, e.g. `error.name === 'QueryFailedError'`.
+  - Relabeling the import from `@n8n/typeorm` to `@n8n/db` to silence the rule
+    (`@n8n/db` re-exports several operators/types, but this relabels the
+    dependency rather than removing it).
+  - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
+    operator import — trades a visible leak for an invisible one.
+
+### Encryption boundary
+
+New code encrypts and decrypts only through `cipher.encryptV2()` /
+`cipher.decryptV2()` — the key-manager module decides which key is used and in
+which output format. Enforced in CI by the rules in
+`packages/@n8n/eslint-config/src/configs/encryption-boundary.ts` (part of
+`nodeConfig`; baseConfig packages that depend on `n8n-core` or `@n8n/db`
+compose it directly):
+
+- The deprecated `Cipher.encrypt` / `Cipher.decrypt` are banned outside tests.
+- The raw AES classes and `encryptWithKey` / `decryptWithKey` stay inside
+  `packages/core/src/encryption/` and database migrations.
+- **Deployment keys are never deleted** — data encrypted with a key becomes
+  unreadable without it. Deactivate keys instead; the repository's delete
+  surface throws at runtime and the lint rule rejects call sites.
+- Inline disables that name these rules, and bare line-form disables, are
+  themselves lint errors. The code-health rule `encryption-boundary` (CI
+  "Static Analysis") is the enforcement layer: it checks that every package
+  that depends on `n8n-core` or `@n8n/db` composes the boundary config at
+  `error` severity, and rejects every directive form that would silence the
+  rules in non-test code (`eslint-disable*` and inline `eslint` configuration
+  comments). Widening the boundary happens in `encryption-boundary.ts` only;
+  that file and the rule files require security (IAM) approval via OWNERS.
+
 ### Frontend Development
 - Refer to `packages/frontend/AGENTS.md`
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- Always use `design-system-rules` skill in reviews
+- Always use the `design-system` skill in reviews
 
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests
@@ -216,18 +305,26 @@ What we use for testing and writing tests:
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
   See `packages/testing/playwright/README.md` for details.
 - **To iterate on a feature without docker rebuilds**, boot service containers
-  and run `pnpm dev` locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
-  then `pnpm dev`. See [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
-- **For Playwright test maintenance/cleanup**, see @packages/testing/playwright/AGENTS.md (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
+  and run the dev servers locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
+  then `pnpm dev:be` (backend on 5678). For frontend hot reload, also run
+  `pnpm dev:fe:editor` (8080). The root `pnpm dev` does not exist: it prints a
+  notice and exits with code 0, thus `pnpm dev && …` looks successful but no
+  server runs. See
+  [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
+- **In a codespace agent session**, use `pnpm dev:up`. It installs the missing
+  dependencies, starts the backend, waits for health, shares the port with the
+  org, and prints the URL. See
+  [.devcontainer/codespaces/README.md](.devcontainer/codespaces/README.md).
+- **For Playwright test maintenance/cleanup**, see `packages/testing/playwright/AGENTS.md` (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
 
 ### Common Development Tasks
 
 When implementing features:
 1. Define API types in `packages/@n8n/api-types`
 2. Implement backend logic in `packages/cli` module, follow
-   `@packages/cli/scripts/backend-module/backend-module-guide.md`
+   `scripts/backend-module/backend-module-guide.md`
 3. Add API endpoints via controllers
-4. Update frontend in `packages/editor-ui` with i18n support
+4. Update frontend in `packages/frontend/editor-ui` with i18n support
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types
 

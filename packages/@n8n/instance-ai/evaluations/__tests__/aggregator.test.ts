@@ -1,4 +1,4 @@
-import { aggregateResults } from '../cli/aggregator';
+import { aggregateResults } from '../run/aggregator';
 import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 const scenario: ExecutionScenario = {
@@ -237,6 +237,39 @@ describe('aggregateResults — build expectations as units', () => {
 
 		expect(process).toMatchObject({ evaluatedCount: 1, passCount: 1 });
 		expect(outcome).toMatchObject({ evaluatedCount: 1, passCount: 1 });
+	});
+
+	it('counts harness-injected verdicts the case never declared', () => {
+		// The deterministic credential-setup checks are graded units but appear on
+		// no case. Driving aggregation off the case alone computed them and then
+		// silently dropped them from the pass rate, the summary and the status.
+		const allRuns = [
+			[
+				expectationRun([
+					{ expectation: 'asks before building', pass: true },
+					{ expectation: 'workflow has a trigger', pass: true },
+					{ expectation: 'A anthropicApi credential is created in n8n', pass: true },
+				]),
+			],
+			[
+				expectationRun([
+					{ expectation: 'asks before building', pass: true },
+					{ expectation: 'workflow has a trigger', pass: true },
+					{ expectation: 'A anthropicApi credential is created in n8n', pass: false },
+				]),
+			],
+		];
+
+		const evaluation = aggregateResults(allRuns, 2);
+		const units = evaluation.testCases[0].buildExpectations;
+
+		// Declared first, injected appended — and each injected text only once.
+		expect(units.map((u) => u.expectation)).toEqual([
+			'asks before building',
+			'workflow has a trigger',
+			'A anthropicApi credential is created in n8n',
+		]);
+		expect(units[2]).toMatchObject({ evaluatedCount: 2, passCount: 1 });
 	});
 
 	it('reports evaluatedCount 0 for an expectation the judge never evaluated', () => {

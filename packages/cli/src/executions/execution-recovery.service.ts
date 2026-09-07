@@ -8,11 +8,13 @@ import {
 	User,
 } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
 import type { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import { createEmptyRunExecutionData, sleep } from 'n8n-workflow';
+import { createEmptyRunExecutionData } from 'n8n-workflow';
 import { ExecutionStatus, type IRun, type ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
@@ -23,6 +25,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 
 import { isNodeEventMessage, type EventMessageTypes } from '../eventbus/event-message-classes';
 
@@ -42,6 +45,7 @@ export class ExecutionRecoveryService {
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly ownershipService: OwnershipService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly workflowPushNotifier: WorkflowPushNotifier,
 	) {}
 
 	async autoDeactivateWorkflowsIfNeeded(workflowIds: Set<string>) {
@@ -69,21 +73,37 @@ export class ExecutionRecoveryService {
 				}
 
 				if (workflow.activeVersionId !== null) {
-					await this.workflowRepository.updateActiveState(workflowId, false);
-					this.logger.warn(
-						`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
-					);
+					try {
+						// Lazy resolution breaks the DI cycle: WorkflowService →
+						// ActiveWorkflowManager → MessageEventBus → this service
+						const { WorkflowService } = await import('@/workflows/workflow.service.js');
+						await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId);
+						this.logger.warn(
+							`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
+						);
 
-					const recipient = await this.getAutodeactivationRecipient(workflow);
-					await this.userManagementMailer.notifyWorkflowAutodeactivated({
-						recipient,
-						workflow,
-					});
+						const recipient = await this.getAutodeactivationRecipient(workflow);
+						await this.userManagementMailer.notifyWorkflowAutodeactivated({
+							recipient,
+							workflow,
+						});
 
-					this.push.once('editorUiConnected', async () => {
-						await sleep(1000);
-						this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
-					});
+						this.push.once('editorUiConnected', async () => {
+							await sleep(1000);
+							await this.workflowPushNotifier.notify(workflowId, {
+								type: 'workflowAutoDeactivated',
+								data: { workflowId },
+							});
+						});
+					} catch (error) {
+						// A throw here would abort startup recovery for the remaining
+						// workflows and leave the event bus's recovery-in-progress marker
+						// behind, making every future startup skip recovery entirely.
+						this.logger.error(`Failed to auto-deactivate workflow ${workflowId}`, {
+							workflowId,
+							error: ensureError(error),
+						});
+					}
 				}
 
 				await this.executionRepository.update(
@@ -112,9 +132,14 @@ export class ExecutionRecoveryService {
 
 		await this.runHooks(amendedExecution);
 
+		const { workflowId } = amendedExecution;
+
 		this.push.once('editorUiConnected', async () => {
 			await sleep(1000);
-			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
+			await this.workflowPushNotifier.notify(workflowId, {
+				type: 'executionRecovered',
+				data: { executionId },
+			});
 		});
 
 		return amendedExecution;

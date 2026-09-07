@@ -12,14 +12,19 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 
 ### Workflow
 
-1. Use \`resolve_llm\` when the request contains enough provider/model detail, otherwise ask via \`ask_questions\` and call \`resolve_llm\` with the answer.
-2. If \`resolve_llm\` succeeds, persist \`model = "{provider}/{model}"\` and \`credential = credentialId\`.
+1. For fresh agents, call \`read_config\` first. If \`model\` and \`credential\` are already set (the system auto-selected a sensible default at creation), keep them and mention the choice as changeable in your summary — do not call \`resolve_llm\`. Otherwise call \`resolve_llm\` once, silently, before the first config write — with provider/model when the user named them, otherwise with no arguments.
+2. If \`resolve_llm\` succeeds, persist \`model = "{provider}/{model}"\` and \`credential = credentialId\`. If the result has \`claimedFreeOpenAiCredits: true\`, tell the user you set them up with free OpenAI credits. If the result's \`credentialName\` is "Gateway credits" (its \`credentialId\` is the managed tag), persist it like any credential and tell the user the model runs on Gateway credits — never surface the internal "n8n Connect" or "AI Gateway" names. If it has \`autoPicked: true\`, tell the user which provider and model you picked and that they can ask to change it — do not ask for confirmation and do not raise a trailing model question.
 3. If the user asks to pick, change, confirm, or configure a model or main credential, ask via \`ask_questions\`; do not ask in prose.
-4. If \`resolve_llm\` reports missing or ambiguous credentials/provider, ask via \`ask_questions\` then retry \`resolve_llm\` with the answer.
-5. If \`resolve_llm\` reports \`unknown_model\`, retry with a plausible returned model value or ask via \`ask_questions\`.
+   - Exception — when the user explicitly asks to use Gateway credits for the main model, do NOT ask: call \`resolve_llm\` with \`useGatewayCredits: true\` (and \`provider\` when the user named one). It resolves Gateway credits for that provider even if the user already has their own credential for it; persist the result (\`credentialName\` "Gateway credits") and tell the user the model runs on Gateway credits. If it returns \`gateway_credits_unsupported_provider\`, tell the user Gateway credits do not cover that provider and offer their own credential; if \`ambiguous_gateway_credits_provider\`, ask which provider via \`ask_questions\` using the returned \`providers\`; if \`gateway_credits_unavailable\`, tell the user Gateway credits are not available on this instance and resolve their own credential instead. On \`unknown_model\`, retry with a value from the returned \`availableModels\` or surface those options.
+4. During an initial build, if \`resolve_llm\` reports missing or ambiguous credentials/provider, do not ask: mark the model task \`blocked\`, keep building with \`model: ""\` and no \`credential\`, and include the model choice as a question in the trailing \`finish_setup\` call — for ambiguity between multiple credentials of one provider, use the credential names from the resolve_llm result as the question's options — when it resolves, call \`resolve_llm\` with the answer (pass \`credentialId\` when the user picked a specific credential) and patch \`/model\` and \`/credential\` — after \`read_config\`, since the user may have already set the model in the panel. For a model change on an existing agent, ask immediately instead, and never write \`model: ""\` over an existing model — keep the current model and credential until the new one is resolved.
+5. If \`resolve_llm\` reports \`unknown_model\`, retry with a plausible value from the returned \`availableModels\` or ask via \`ask_questions\`. This can happen on the default no-model path too, when the credential cannot reach the provider's default model — the returned \`availableModels\` is that credential's live list, so pick from it rather than guessing or reusing the id you just tried. That list is capped — when \`availableModelsTruncated: true\` it is only a sample of \`totalAvailableModels\`, so ask via \`ask_questions\` instead of assuming the model the user wants is absent. If it reports \`model_lookup_failed\` (the provider's model list could not be fetched, e.g. a transient error — possible even on the default no-model path), retry \`resolve_llm\`; do not guess a model.
+6. If \`call_agent\` fails with \`code: "invalid_model"\`, the provider rejected the model id, not the credential. Do not tell the user to check, revoke, or regenerate their API key. Call \`resolve_llm\` for that provider again, persist a model from its result, and retry the test run.
+7. If the model is still unresolved when the user asks to run or publish the agent, leave the draft with \`model: ""\`, do not guess a model, and tell the user the agent needs a model and credential first — in the panel or here in chat. If they dismiss a model-change question on an existing agent, keep the current model and credential unchanged.
 
 ### Rules
 
+- Do not enable \`config.webSearch\` before the model is resolved; set it in
+  the same mutation that writes the resolved model.
 - Only OpenAI and Anthropic models support native web search. Use native web
   search by default for those providers only, and only for
   fresh agents or agents with no existing \`config.webSearch\`. Persist
@@ -42,8 +47,9 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 ### Gotchas
 
 - Use \`resolve_llm\` only for the target agent's main model credential.
-- Use \`ask_credential\` for node tools and integrations. For Episodic Memory,
-  load \`agent-builder-memory\` and use \`ask_embedding_credential\` instead.
+- Use \`ask_credential\` for node tools, MCP servers, and fallback web-search credentials.
+  Never use it for chat-channel credentials. For Episodic Memory, load
+  \`agent-builder-memory\` and use \`ask_embedding_credential\` instead.
 - For OpenRouter, \`provider\` is \`"openrouter"\`; the model can be a routed id such as \`anthropic/...\`.
 - Do not recommend current, best, latest, or fallback model IDs from memory when the recommendation catalog is unavailable.
 

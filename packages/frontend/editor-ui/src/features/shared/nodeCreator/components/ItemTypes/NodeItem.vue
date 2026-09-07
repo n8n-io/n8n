@@ -18,7 +18,7 @@ import { isCommunityPackageName } from 'n8n-workflow';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 
 import { useNodeType } from '@/app/composables/useNodeType';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 import { useActions } from '../../composables/useActions';
@@ -57,7 +57,7 @@ const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
-	if (isCommunityNodePreview.value) {
+	if (isCommunityNodePreview.value || isCommunityNode.value) {
 		return props.nodeType.description;
 	}
 	if (isSendAndWaitCategory.value) {
@@ -65,7 +65,8 @@ const description = computed<string>(() => {
 	}
 	if (
 		props.subcategory === DEFAULT_SUBCATEGORY &&
-		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)
+		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX) &&
+		!activeViewStack.search
 	) {
 		return '';
 	}

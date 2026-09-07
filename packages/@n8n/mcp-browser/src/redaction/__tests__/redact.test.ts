@@ -125,6 +125,87 @@ describe('BUILTIN_PATTERNS coverage', () => {
 	});
 });
 
+describe('pattern cost', () => {
+	// Page text includes inline script/style, which is one long run with no
+	// delimiters. An unanchored pattern that backtracks over such a run turns
+	// every tool call into a stall.
+	it('scans a long undelimited run without backtracking', () => {
+		const blob = 'a1B2c3D4e5F6g7H8i9J0'.repeat(5000);
+
+		const started = performance.now();
+		findRegexSecretHits(blob);
+
+		expect(performance.now() - started).toBeLessThan(1000);
+	});
+});
+
+describe('variable-length provider shapes', () => {
+	// Google keys are not a fixed length. A pattern that matches a fixed count of
+	// one leaves the rest of the key in the text the model reads.
+	it('redacts an over-long google key completely', () => {
+		const key = `AIza${'SyC7mQ2xR9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1Bc'}`;
+
+		expect(redactString(`Your key is ${key} keep it`)).toBe(
+			'Your key is [REDACTED:google_api_key:1] keep it',
+		);
+	});
+
+	// Real legacy openai keys run past the 48 characters the pattern used to count.
+	it('redacts a real-length legacy openai key completely', () => {
+		const key = `sk-${'aB3xY9zQ7wE2rT5yU8iO1pL4kJ6hG0fDaB3xY9zQ7wE2rT5yU8i'}`;
+
+		expect(redactString(`key ${key} end`)).toBe('key [REDACTED:openai_legacy_api_key:1] end');
+	});
+
+	// A console that lists a key truncated beside the full one must not let the
+	// short rendering decide what gets stored.
+	it('keeps a truncated rendering separate from the full key', () => {
+		const truncated = `AIza${'B'.repeat(35)}`;
+		const full = `${truncated}EXTRA12`;
+
+		const hits = findRegexSecretHits(`Keys: ${truncated} Detail: ${full} end`);
+
+		expect(hits.map((hit) => (hit.captureValue ?? hit.value).length).sort()).toEqual([
+			truncated.length,
+			full.length,
+		]);
+	});
+});
+
+describe('capture safety', () => {
+	// Long secrets are exactly the ones worth capturing; a PEM match carries its
+	// own boundaries, so its length must not make it uncapturable.
+	// An occurrence inside an undelimitable run says nothing about the token's
+	// extent, so it must not overrule what a delimited occurrence established.
+	it('ignores an undelimited occurrence when a delimited one exists', () => {
+		const key = `ghp_${'B'.repeat(36)}`;
+		const run = 'x'.repeat(600);
+
+		const [hit] = findRegexSecretHits(`id.${key} and ${run}${key}${run}`);
+
+		expect(hit.captureValue).toBe(`id.${key}`);
+		expect(hit.captureBlocked).toBeUndefined();
+	});
+
+	it('blocks capture when every occurrence is undelimited', () => {
+		const key = `ghp_${'B'.repeat(36)}`;
+		const run = 'x'.repeat(600);
+
+		const [hit] = findRegexSecretHits(`${run}${key}${run} and ${run}${key}${run}`);
+
+		expect(hit.captureBlocked).toBeTruthy();
+	});
+
+	it('does not block capture of a PEM key longer than the span cap', () => {
+		const pem = `-----BEGIN RSA PRIVATE KEY-----\n${'MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSj\n'.repeat(14)}-----END RSA PRIVATE KEY-----`;
+
+		const [hit] = findRegexSecretHits(`Here is the key:\n${pem}\nkeep it safe`);
+
+		expect(pem.length).toBeGreaterThan(512);
+		expect(hit.captureBlocked).toBeUndefined();
+	});
+});
+
 describe('redactString', () => {
 	it('redacts issuer-shaped secrets', () => {
 		expect(redactString(`key=${ANTHROPIC}`)).toBe('key=[REDACTED:anthropic_api_key:1]');
@@ -153,6 +234,11 @@ describe('redactString', () => {
 		);
 	});
 
+	it('redacts the dot-prefixed google key shape', () => {
+		const key = `AQ.${'Ab8RN6Jr7xQfP2mKdW9tZsLyVc4hEuNgT3iBoXaQwMzRkJvSpH'}`;
+		expect(redactString(`key=${key}`)).toBe('key=[REDACTED:google_api_key:1]');
+	});
+
 	it('does not redact common browser trace strings', () => {
 		const input = 'commit a1b2c3d4e5f60718293a4b5c6d7e8f9012345678 by alice';
 		expect(redactString(input)).toBe(input);
@@ -176,6 +262,16 @@ describe('redactString', () => {
 });
 
 describe('findRegexSecretHits', () => {
+	// A console often shows the same key twice — bare, and inside a curl or env
+	// snippet. The bare one is the span that can be stored as a credential.
+	it('prefers the narrowest span when a key appears in more than one context', () => {
+		const key = `AIza${'B'.repeat(35)}`;
+
+		expect(findRegexSecretHits(`id.${key} and bare ${key}`)).toEqual([
+			{ type: 'google_api_key', value: key },
+		]);
+	});
+
 	it('dedupes matches by type and value', () => {
 		expect(findRegexSecretHits(`${ANTHROPIC} ${ANTHROPIC}`)).toEqual([
 			{ type: 'anthropic_api_key', value: ANTHROPIC },

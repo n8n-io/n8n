@@ -1,4 +1,7 @@
+import { toShellCommand } from './shell-command';
+import { raceWithAbort } from '../../sdk/abort';
 import type {
+	AbortableOptions,
 	ProviderStatus,
 	WorkspaceSandbox,
 	BaseSandboxOptions,
@@ -6,16 +9,6 @@ import type {
 	ExecuteCommandOptions,
 	SandboxProcessManager,
 } from '../types';
-
-/**
- * Shell-quote an argument for safe interpolation into a shell command string.
- * Safe characters (alphanumeric, `.`, `_`, `-`, `/`, `=`, `:`, `@`) pass through.
- * Everything else is wrapped in single quotes with embedded quotes escaped.
- */
-export function shellQuote(arg: string): string {
-	if (/^[a-zA-Z0-9._\-/=:@]+$/.test(arg)) return arg;
-	return `'${arg.replace(/'/g, "'\\''")}'`;
-}
 
 export abstract class BaseSandbox implements WorkspaceSandbox {
 	abstract readonly id: string;
@@ -44,6 +37,15 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 	abstract start(): Promise<void>;
 	abstract stop(): Promise<void>;
 	abstract destroy(): Promise<void>;
+
+	/**
+	 * Delete the provider-side sandbox this instance names, regardless of whether this
+	 * instance created it. For explicit teardown paths; defaults to destroy(). Providers
+	 * whose destroy() is scoped to remotes the instance acquired override this.
+	 */
+	async deleteRemote(): Promise<void> {
+		await this.destroy();
+	}
 
 	async _start(): Promise<void> {
 		if (this.status === 'running') return;
@@ -118,7 +120,7 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 		this.status = 'pending';
 	}
 
-	async ensureRunning(): Promise<void> {
+	async ensureRunning(options?: AbortableOptions): Promise<void> {
 		if (this.status === 'destroyed') {
 			throw new Error(`Sandbox "${this.name}" has been destroyed`);
 		}
@@ -130,7 +132,7 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 			if (this.stopPromise) await this.stopPromise.catch(() => {});
 		}
 		if (this.status !== 'running') {
-			await this._start();
+			await raceWithAbort(async () => await this._start(), options?.abortSignal);
 		}
 		if (this.status !== 'running') {
 			throw new Error(`Sandbox "${this.name}" failed to start (status: ${this.status})`);
@@ -142,16 +144,19 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 		args?: string[],
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
-		await this.ensureRunning();
+		await this.ensureRunning({ abortSignal: options?.abortSignal });
 		if (!this.processes) {
 			throw new Error(`Sandbox "${this.name}" has no process manager`);
 		}
-		const fullCommand = args?.length ? `${command} ${args.map(shellQuote).join(' ')}` : command;
-		const handle = await this.processes.spawn(fullCommand, options);
-		return await handle.wait({
-			onStdout: options?.onStdout,
-			onStderr: options?.onStderr,
-		});
+		const handle = await this.processes.spawn(toShellCommand(command, args), options);
+		return await raceWithAbort(
+			async () =>
+				await handle.wait({
+					onStdout: options?.onStdout,
+					onStderr: options?.onStderr,
+				}),
+			options?.abortSignal,
+		);
 	}
 
 	getInstructions(): string {

@@ -8,33 +8,30 @@ import {
 	USERS_LIST_SORT_OPTIONS,
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
-import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import {
-	DEBOUNCE_TIME,
-	EnterpriseEditionFeature,
-	getDebounceTime,
-	MODAL_CONFIRM,
-} from '@/app/constants';
+import type { TableOptions } from '@n8n/design-system';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
 import type { InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useUsersStore } from '../users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { copyInviteLink } from '../invite-link.utils';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
-import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
 import {
-	N8nActionBox,
+	N8nAlert,
+	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -88,6 +85,11 @@ onMounted(async () => {
 
 	if (!showUMSetupWarning.value) {
 		await updateUsersTableData(usersTableState.value);
+	}
+
+	// Needed for the projects dialog to map project role slugs to display names.
+	if (!rolesStore.roles.project.length) {
+		void rolesStore.fetchRoles();
 	}
 
 	await userRoleProvisioningStore.getProvisioningConfig();
@@ -254,8 +256,7 @@ async function onGenerateInviteLink(userId: string) {
 	try {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 		if (user) {
-			const url = await usersStore.generateInviteLink({ id: userId });
-			void clipboard.copy(url.link);
+			await copyInviteLink(clipboard, usersStore, userId);
 
 			showToast({
 				type: 'success',
@@ -449,7 +450,7 @@ const onSearch = (value: string) => {
 			}}</N8nText>
 		</N8nHeading>
 		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
-			<N8nActionBox
+			<N8nEmptyState
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
 				"

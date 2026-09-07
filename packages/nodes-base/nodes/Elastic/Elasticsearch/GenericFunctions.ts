@@ -7,6 +7,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { toPathSegment } from '@utils/url';
+
 import type { ElasticsearchApiCredentials } from './types';
 
 export async function elasticsearchBulkApiRequest(this: IExecuteFunctions, body: IDataObject) {
@@ -91,10 +93,20 @@ export async function elasticsearchApiRequestAllItems(
 	qs: IDataObject = {},
 ): Promise<any> {
 	//https://www.elastic.co/guide/en/elasticsearch/reference/7.16/paginate-search-results.html#search-after
+	// Validated up front so an invalid id surfaces as itself rather than being
+	// caught below and rewrapped as an Elasticsearch API failure.
+	const indexSegment = toPathSegment(indexId);
+
 	try {
 		//create a point in time (PIT) to preserve the current index state over your searches
 		let pit = (
-			await elasticsearchApiRequest.call(this, 'POST', `/${indexId}/_pit`, {}, { keep_alive: '1m' })
+			await elasticsearchApiRequest.call(
+				this,
+				'POST',
+				`/${indexSegment}/_pit`,
+				{},
+				{ keep_alive: '1m' },
+			)
 		)?.id as string;
 
 		let returnData: IDataObject[] = [];

@@ -49,6 +49,8 @@ describe('SSEPush', () => {
 			);
 			expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-cache');
 			expect(res.setHeader).toHaveBeenCalledWith('Connection', 'keep-alive');
+			expect(res.setHeader).toHaveBeenCalledWith('Incremental', '?1');
+			expect(res.setHeader).toHaveBeenCalledWith('X-Accel-Buffering', 'no');
 			expect(res.writeHead).toHaveBeenCalledWith(200);
 
 			expect(res.write).toHaveBeenCalledWith(':ok\n\n');

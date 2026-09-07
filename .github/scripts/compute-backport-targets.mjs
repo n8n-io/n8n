@@ -1,6 +1,7 @@
 // Creates backport PR's according to labels on merged PR
 
 import {
+	getEventFromGithubEventPath,
 	getPullRequestById,
 	readPrLabels,
 	resolveRcBranchForTrack,
@@ -85,7 +86,19 @@ async function fetchPossiblePullRequestFromEnv() {
 
 export async function getLabels() {
 	const pullRequest = await fetchPossiblePullRequestFromEnv();
-	return new Set(readPrLabels(pullRequest));
+	if (pullRequest) {
+		return new Set(readPrLabels(pullRequest));
+	}
+
+	const event = getEventFromGithubEventPath();
+	// On a `labeled` event only the added label counts — other backport labels
+	// on the PR were already handled when they were added (or on merge), and
+	// reprocessing them would recreate those backport PRs.
+	if (event.action === 'labeled' && event.label?.name) {
+		return new Set([event.label.name]);
+	}
+
+	return new Set(readPrLabels(event.pull_request));
 }
 
 async function main() {

@@ -1,15 +1,16 @@
-import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
 	AgentJsonConfig,
 	FrontendSettings,
+	InstanceAiCredentialSetupHint,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
+	WorkflowListPublicationStatus,
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
-import type { Scope } from '@n8n/permissions';
+import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
 import type { ModalState } from '@n8n/frontend-module-sdk';
 import type {
@@ -27,6 +28,7 @@ import type {
 	NodeParameterValueType,
 	IDisplayOptions,
 	FeatureFlags,
+	FeatureFlagPayloads,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	WorkflowSettingsBinaryMode,
@@ -69,7 +71,31 @@ import type {
 } from '@/features/core/folders/folders.types';
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 
-export * from '@n8n/design-system/types';
+// Enumerated rather than `export *` from the package root: the root also exports
+// every component, so a wildcard here would pull the whole library into the module
+// graph of every file that imports from `@/Interface`. These are the design-system
+// types actually consumed through this module.
+export type {
+	ActionDropdownItem,
+	BinaryMetadata,
+	ButtonSize,
+	DatatableColumn,
+	Direction,
+	FormFieldValueUpdate,
+	FormValues,
+	IFormBoxConfig,
+	IFormInput,
+	IFormInputs,
+	IMenuItem,
+	InputAutocompletePropType,
+	InputSize,
+	KeyboardShortcut,
+	ResizeData,
+	Rule,
+	RuleGroup,
+	TabOptions,
+	UserAction,
+} from '@n8n/design-system';
 
 declare global {
 	interface Window {
@@ -78,13 +104,16 @@ declare global {
 				key: string,
 				options?: {
 					api_host?: string;
+					tracing_headers?: string[];
 					autocapture?: boolean;
 					disable_session_recording?: boolean;
+					advanced_disable_feature_flags?: boolean;
 					debug?: boolean;
 					bootstrap?: {
 						distinctID?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
+						featureFlagPayloads?: FeatureFlagPayloads;
 					};
 					session_recording?: {
 						maskAllInputs?: boolean;
@@ -95,6 +124,7 @@ declare global {
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;
 			getFeatureFlag?(flagName: string): boolean | string;
+			getFeatureFlagPayload?(flagName: string): FeatureFlagPayloads[string] | undefined;
 			identify?(
 				id: string,
 				userProperties?: Record<string, string | number>,
@@ -120,7 +150,11 @@ declare global {
 		featureFlags?: {
 			getAll: () => FeatureFlags;
 			getVariant: (name: string) => string | boolean | undefined;
-			override: (name: string, value: string) => void;
+			override: (
+				name: string,
+				value: string | boolean,
+				payload?: FeatureFlagPayloads[string],
+			) => void;
 		};
 	}
 }
@@ -258,6 +292,11 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
+	// Raw ownership relation returned by `GET /workflows/:id` only when the
+	// sharing license is inactive (the licensed path assembles `homeProject`
+	// instead). Kept so the client can derive `homeProject` from it — see the
+	// workflowDocument store hydration.
+	shared?: Array<{ role: WorkflowSharingRole; project: ProjectSharingData }>;
 	scopes?: Scope[];
 	versionId: string;
 	activeVersionId: string | null;
@@ -298,6 +337,7 @@ export type WorkflowResource = BaseResource & {
 	parentFolder?: ResourceParentFolder;
 	settings?: Partial<IWorkflowSettings>;
 	hasResolvableCredentials?: boolean;
+	publicationStatus?: WorkflowListPublicationStatus;
 };
 
 export type VariableResource = BaseResource & {
@@ -320,6 +360,7 @@ export type CredentialsResource = BaseResource & {
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;
+	connectedAccountIdentifier?: string;
 };
 
 // Base resource types that are always available
@@ -355,6 +396,7 @@ export type WorkflowListItem = Omit<
 	resource?: 'workflow'; // only included if list may contain folders
 	description?: string;
 	hasResolvableCredentials?: boolean;
+	publicationStatus?: WorkflowListPublicationStatus;
 };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
@@ -389,13 +431,6 @@ export interface IActivationError {
 
 export interface IShareWorkflowsPayload {
 	shareWithIds: string[];
-}
-
-export const enum UserManagementAuthenticationMethod {
-	Email = 'email',
-	Ldap = 'ldap',
-	Saml = 'saml',
-	Oidc = 'oidc',
 }
 
 export interface IPermissionGroup {
@@ -669,12 +704,21 @@ export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
 	closeOnSave?: boolean;
+	onCredentialCreated?: (credential: { id: string }) => void;
 	projectId?: string;
 	suggestedName?: string;
+	/** Workflow the credential is being set up for, supplied by workflow-scoped
+	 * surfaces (NDV, Instance AI workflow setup) for telemetry attribution — the
+	 * modal itself can open where no workflow document is loaded. */
+	workflowId?: string;
+	/** Agent-supplied Templated Custom Auth recipe — pre-fills the credential's
+	 * template fields so the modal opens on the guided simple view. */
+	credentialSetupHint?: InstanceAiCredentialSetupHint;
 	nodeName?: string;
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
 	appendToBody?: boolean;
+	usageScope?: 'project' | 'instance';
 	/** Behavior for the Instance AI credential setup-help button, supplied by the
 	 * surface that opened the modal (an editor capability, or the credentials list).
 	 * Resolves to whether the credential modal should close (false keeps it open for
@@ -685,6 +729,8 @@ export interface NewCredentialsModal extends ModalState {
 		nodeName?: string;
 		nodeType?: string;
 		id?: string;
+		placeholderTitles?: string[];
+		docsUrl?: string;
 		documentationUrl?: string;
 		oauthRedirectUrl?: string;
 	}) => Promise<boolean>;
@@ -703,10 +749,6 @@ export type TargetNodeParameterContext = {
 	nodeName: string;
 	parameterPath: string;
 };
-
-export interface NotificationOptions extends Partial<ElementNotificationOptions> {
-	message: string | ElementNotificationOptions['message'];
-}
 
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW
@@ -880,80 +922,7 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
-export interface CloudPlanState {
-	initialized: boolean;
-	data: Cloud.PlanData | null;
-	usage: InstanceUsage | null;
-	loadingPlan: boolean;
-}
-
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
-
-export type CloudUpdateLinkSourceType =
-	| 'advanced-permissions'
-	| 'canvas-nav'
-	| 'concurrency'
-	| 'custom-data-filter'
-	| 'workflow_sharing'
-	| 'credential_sharing'
-	| 'settings-n8n-api'
-	| 'audit-logs'
-	| 'ldap'
-	| 'log-streaming'
-	| 'source-control'
-	| 'sso'
-	| 'usage_page'
-	| 'settings-users'
-	| 'variables'
-	| 'community-nodes'
-	| 'workflow-history'
-	| 'worker-view'
-	| 'external-secrets'
-	| 'rbac'
-	| 'debug'
-	| 'insights'
-	| 'evaluations'
-	| 'ai-builder-sidebar'
-	| 'ai-builder-canvas'
-	| 'custom-roles'
-	| 'custom-roles-selector'
-	| 'custom-roles-list'
-	| 'main-sidebar'
-	| 'chat-hub'
-	| 'empty-state-builder-prompt'
-	| 'instance-ai'
-	| 'data-redaction'
-	| 'workflow-settings';
-
-export type UTMCampaign =
-	| 'upgrade-custom-data-filter'
-	| 'upgrade-concurrency'
-	| 'upgrade-workflow-sharing'
-	| 'upgrade-credentials-sharing'
-	| 'upgrade-api'
-	| 'upgrade-audit-logs'
-	| 'upgrade-ldap'
-	| 'upgrade-log-streaming'
-	| 'upgrade-source-control'
-	| 'upgrade-sso'
-	| 'open'
-	| 'upgrade-users'
-	| 'upgrade-variables'
-	| 'upgrade-community-nodes'
-	| 'upgrade-workflow-history'
-	| 'upgrade-advanced-permissions'
-	| 'upgrade-worker-view'
-	| 'upgrade-external-secrets'
-	| 'upgrade-rbac'
-	| 'upgrade-debug'
-	| 'upgrade-insights'
-	| 'upgrade-evaluations'
-	| 'upgrade-builder'
-	| 'upgrade-custom-roles'
-	| 'upgrade-canvas-nav'
-	| 'upgrade-main-sidebar'
-	| 'upgrade-instance-ai'
-	| 'upgrade-data-redaction';
 
 export type AddedNode = {
 	type: string;

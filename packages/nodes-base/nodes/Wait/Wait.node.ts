@@ -531,7 +531,7 @@ export class Wait extends Webhook {
 			const returnData = await this.configureAndPutToWait(context);
 
 			if (resume === 'form' && hasFormTrigger) {
-				context.sendResponse({
+				await context.sendResponse({
 					headers: {
 						location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
 					},

@@ -175,6 +175,24 @@ describe('toAiSdkTools — JSON Schema / fixSchema', () => {
 		expect(firstCall.type).toBe('object');
 		expect(secondCall.type).toBe('object');
 	});
+
+	it('disables provider strict mode for MCP tools without changing optional properties', () => {
+		const rawSchema: JSONSchema7 = {
+			type: 'object',
+			properties: {
+				team: { type: 'string' },
+				query: { type: 'string' },
+				priority: { type: 'number' },
+			},
+			required: ['team'],
+		};
+
+		const result = toAiSdkTools([makeJsonSchemaTool(rawSchema, { mcpTool: true })]);
+
+		expect(result.testTool).toMatchObject({ strict: false });
+		expect(jsonSchemaMock).toHaveBeenCalledWith(rawSchema);
+		expect(jsonSchemaMock.mock.calls[0][0].required).toEqual(['team']);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -197,6 +215,21 @@ describe('toAiSdkTools — description forwarding', () => {
 // ---------------------------------------------------------------------------
 
 describe('executeTool — context propagation', () => {
+	it('passes MCP tool input to the handler unchanged', async () => {
+		const handler = vi.fn().mockResolvedValue('ok');
+		const tool: BuiltTool = {
+			name: 'linear_list_issues',
+			description: 'List Linear issues',
+			mcpTool: true,
+			handler,
+		};
+		const input = { team: 'Agent', query: '', priority: 0 };
+
+		await executeTool(input, tool);
+
+		expect(handler.mock.calls[0][0]).toBe(input);
+	});
+
 	it('passes the run abort signal to the tool handler', async () => {
 		const handler = vi.fn().mockResolvedValue('ok');
 		const tool: BuiltTool = { name: 'cancellable', description: 'd', handler };

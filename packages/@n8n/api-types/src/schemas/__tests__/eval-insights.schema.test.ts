@@ -31,6 +31,20 @@ describe('aiInsightsPayloadSchema (strict)', () => {
 		expect(parsed).toEqual(payload);
 	});
 
+	it('rejects an over-long headline (bounded so a drifting model cannot flood strings)', () => {
+		const payload = makeValidPayload({
+			winner: { versionLabel: 'A', headline: 'x'.repeat(121), body: 'ok' },
+		});
+		expect(aiInsightsPayloadSchema.safeParse(payload).success).toBe(false);
+	});
+
+	it('rejects an over-long body', () => {
+		const payload = makeValidPayload({
+			winner: { versionLabel: 'A', headline: 'A wins', body: 'x'.repeat(281) },
+		});
+		expect(aiInsightsPayloadSchema.safeParse(payload).success).toBe(false);
+	});
+
 	it('rejects unknown keys at the payload root', () => {
 		const result = aiInsightsPayloadSchema.safeParse({
 			...makeValidPayload(),
@@ -80,19 +94,6 @@ describe('aiInsightsPayloadSchema (strict)', () => {
 			},
 		});
 		expect(result.success).toBe(false);
-	});
-
-	it('accepts long strings (no max-length limits — LLMs would trip them)', () => {
-		// Length limits force false rejections on LLM outputs that are
-		// otherwise semantically correct; UI truncation handles overruns.
-		const payload = makeValidPayload({
-			winner: {
-				versionLabel: 'A',
-				headline: 'h'.repeat(500),
-				body: 'b'.repeat(2000),
-			},
-		});
-		expect(aiInsightsPayloadSchema.safeParse(payload).success).toBe(true);
 	});
 });
 

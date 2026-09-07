@@ -779,6 +779,78 @@ describe('RoutingNode', () => {
 				expect(result).toEqual(testData.output);
 			});
 		}
+
+		describe('when a routed property name is an inherited object member', () => {
+			// Guard the shared prototype so a regression here cannot cascade to other tests.
+			const hadOwnCall = Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call');
+			afterEach(() => {
+				if (!hadOwnCall) {
+					delete (Object.prototype.toString as unknown as { call?: unknown }).call;
+				}
+			});
+
+			it('keeps built-in object prototypes intact', () => {
+				const nodeTypeProperties: INodeProperties = {
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					routing: {
+						send: {
+							property: 'toString.call',
+							type: 'body',
+							value: 'x',
+						},
+					},
+					default: '',
+				};
+				node.parameters = {};
+				nodeType.description.properties = [nodeTypeProperties];
+
+				const workflow = new Workflow({
+					nodes: workflowData.nodes,
+					connections: workflowData.connections,
+					active: false,
+					nodeTypes,
+				});
+
+				const executeFunctions = mock<executionContexts.ExecuteContext>();
+				Object.assign(executeFunctions, {
+					runIndex,
+					additionalData,
+					workflow,
+					node,
+					mode,
+					connectionInputData,
+					runExecutionData,
+					nodeType,
+				});
+				const routingNode = new RoutingNode(executeFunctions, nodeType);
+
+				const executeSingleFunctions = getExecuteSingleFunctions(
+					workflow,
+					runExecutionData,
+					runIndex,
+					node,
+					itemIndex,
+				);
+
+				const result = routingNode.getRequestOptionsFromParameters(
+					executeSingleFunctions,
+					nodeTypeProperties,
+					itemIndex,
+					runIndex,
+					path,
+					{},
+				);
+
+				// Prototype untouched; the value lands as an own property on the request body.
+				expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
+				expect(Object.prototype.toString.call([])).toBe('[object Array]');
+				expect((result?.options.body as { toString?: { call?: unknown } }).toString?.call).toBe(
+					'x',
+				);
+			});
+		});
 	});
 
 	describe('runNode', () => {
@@ -2265,8 +2337,8 @@ describe('RoutingNode', () => {
 					}
 				}
 
-				const workflowPackage = await import('n8n-workflow');
-				const spy = vi.spyOn(workflowPackage, 'sleep').mockReturnValue(
+				const sleepModule = await import('@n8n/utils/sleep');
+				const spy = vi.spyOn(sleepModule, 'sleep').mockReturnValue(
 					new Promise((resolve) => {
 						resolve();
 					}),
@@ -2459,11 +2531,16 @@ describe('RoutingNode', () => {
 			position: [0, 0],
 		};
 
-		const buildNodeType = (): INodeType => {
+		// `null` means the node declares no base URL; a default parameter cannot express that,
+		// since an explicit `undefined` triggers the default.
+		const buildNodeType = (
+			baseURL: string | null = 'https://api.example.com',
+			routedUrl = 'https://other-host.example.com/path',
+		): INodeType => {
 			const routingNodeType = nodeTypes.getByNameAndVersion(baseNode.type);
 			routingNodeType.description = {
 				credentials: [{ name: 'testCredential', required: true }],
-				requestDefaults: { baseURL: 'https://api.example.com' },
+				requestDefaults: { baseURL: baseURL ?? undefined },
 				properties: [
 					{
 						displayName: 'Endpoint',
@@ -2472,7 +2549,7 @@ describe('RoutingNode', () => {
 						default: '',
 						routing: {
 							request: {
-								url: 'https://attacker.com/exfiltrate',
+								url: routedUrl,
 							},
 						},
 					},
@@ -2481,9 +2558,12 @@ describe('RoutingNode', () => {
 			return routingNodeType;
 		};
 
-		const runWithCredential = async (data: Record<string, unknown>) => {
+		const runWithCredential = async (
+			data: Record<string, unknown>,
+			options: { baseURL?: string | null; routedUrl?: string } = {},
+		) => {
 			const credentialData = data as unknown as ICredentialDataDecryptedObject;
-			const nodeType = buildNodeType();
+			const nodeType = buildNodeType(options.baseURL, options.routedUrl);
 			const workflow = new Workflow({
 				nodes: [baseNode],
 				connections: {},
@@ -2556,32 +2636,69 @@ describe('RoutingNode', () => {
 			expect(requestOptions.allowedDomains).toBeUndefined();
 		});
 
-		test("throws when mode is 'none'", async () => {
-			await expect(
-				runWithCredential({
-					apiKey: 'testApiKey',
-					allowedHttpRequestDomains: 'none',
-				}),
-			).rejects.toThrow('This credential is configured to prevent use within an HTTP Request node');
+		test("adds the node's own host when mode is 'domains' and the list omits it", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'other.example.com',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com, other.example.com');
 		});
 
-		test("throws when mode is 'domains' but the list is empty", async () => {
-			await expect(
-				runWithCredential({
+		test.each([
+			['the node declares no base URL', null],
+			['the base URL resolves to an empty string', ''],
+		])('does not widen the allowlist from the routed URL when %s', async (_label, baseURL) => {
+			// The routed URL can interpolate a node parameter, so its host is the user's choice.
+			const result = await runWithCredential(
+				{
 					apiKey: 'testApiKey',
 					allowedHttpRequestDomains: 'domains',
-					allowedDomains: '   ',
-				}),
-			).rejects.toThrow('No allowed domains specified');
+					allowedDomains: 'other.example.com',
+				},
+				{ baseURL, routedUrl: 'https://user-chosen.example.net/path' },
+			);
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('other.example.com');
 		});
 
-		test("throws when mode is 'domains' but the list is missing", async () => {
-			await expect(
-				runWithCredential({
-					apiKey: 'testApiKey',
-					allowedHttpRequestDomains: 'domains',
-				}),
-			).rejects.toThrow('No allowed domains specified');
+		test("does not block a declarative node when mode is 'none'", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'none',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
+
+		test("falls back to the node's own host when the 'domains' list is empty", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: '   ',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com');
+		});
+
+		test("falls back to the node's own host when the 'domains' list is missing", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com');
 		});
 
 		test('does not set allowedDomains when restriction field is absent', async () => {

@@ -24,6 +24,19 @@ export function incrementMessageCount(counter: AgentExecutionCounter | undefined
 	recordExecutionCounter(() => counter.incrementMessageCount());
 }
 
+/**
+ * Counter view for delegated child runs. A delegation is not a fresh user turn,
+ * so children roll up tokens and tool calls to the parent but must not add to
+ * its message count.
+ */
+export function withoutMessageCount(counter: AgentExecutionCounter): AgentExecutionCounter {
+	return {
+		incrementMessageCount: () => {},
+		incrementToolCallCount: () => counter.incrementToolCallCount(),
+		incrementTokenCount: (tokenCount: number) => counter.incrementTokenCount(tokenCount),
+	};
+}
+
 export function incrementToolCallCount(counter: AgentExecutionCounter | undefined): void {
 	if (!counter) return;
 	recordExecutionCounter(() => counter.incrementToolCallCount());

@@ -1,7 +1,13 @@
 {
     "type": "object",
     "properties": {
+        "admin_graphql_api_id": {
+            "type": "string"
+        },
         "created_at": {
+            "type": "string"
+        },
+        "financial_status": {
             "type": "string"
         },
         "id": {
@@ -110,6 +116,9 @@
                     "product_exists": {
                         "type": "boolean"
                     },
+                    "product_id": {
+                        "type": "integer"
+                    },
                     "properties": {
                         "type": "array",
                         "items": {
@@ -165,6 +174,9 @@
                                         }
                                     }
                                 },
+                                "rate": {
+                                    "type": "number"
+                                },
                                 "title": {
                                     "type": "string"
                                 }
@@ -207,12 +219,24 @@
                             }
                         }
                     },
+                    "variant_id": {
+                        "type": "integer"
+                    },
                     "vendor": {
                         "type": "string"
                     }
                 }
             }
+        },
+        "name": {
+            "type": "string"
+        },
+        "order_number": {
+            "type": "integer"
+        },
+        "total_price": {
+            "type": "string"
         }
     },
-    "version": 6
+    "version": 8
 }

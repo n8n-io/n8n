@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { sleep } from '@n8n/utils/sleep';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
@@ -10,7 +11,6 @@ import {
 	NodeHelpers,
 	NodeApiError,
 	NodeOperationError,
-	sleep,
 	NodeConnectionTypes,
 	getCredentialAllowedDomains,
 } from 'n8n-workflow';
@@ -227,8 +227,16 @@ export class RoutingNode {
 				itemContext[itemIndex].requestData.options.timeout = 300_000;
 			}
 
+			// A declarative node's URL comes from its own routing, not from the user. Only
+			// `baseURL` is safe to widen the allowlist with: a per-operation `url` can
+			// interpolate a node parameter, and that host is the user's choice, not the node's.
 			const allowedDomains = credentials
-				? getCredentialAllowedDomains({ node, credentialData: credentials })
+				? getCredentialAllowedDomains({
+						node,
+						credentialData: credentials,
+						credentialOwnedSurface: true,
+						nodeEndpointUrl: itemContext[itemIndex].requestData.options.baseURL,
+					})
 				: undefined;
 			if (allowedDomains) {
 				itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;

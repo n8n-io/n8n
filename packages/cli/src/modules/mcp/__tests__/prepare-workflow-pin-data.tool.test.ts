@@ -95,7 +95,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				logger,
 			);
 
-			expect(tool.name).toBe('prepare_test_pin_data');
+			expect(tool.name).toBe('prepare_workflow_pin_data');
 			expect(tool.config).toBeDefined();
 			expect(typeof tool.config.description).toBe('string');
 			expect(tool.config.inputSchema).toBeDefined();
@@ -804,7 +804,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				'User called mcp tool',
 				expect.objectContaining({
 					user_id: 'user-1',
-					tool_name: 'prepare_test_pin_data',
+					tool_name: 'prepare_workflow_pin_data',
 					parameters: { workflowId: 'wf-1' },
 					results: expect.objectContaining({
 						success: true,
@@ -831,7 +831,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User called mcp tool',
 				expect.objectContaining({
-					tool_name: 'prepare_test_pin_data',
+					tool_name: 'prepare_workflow_pin_data',
 					results: expect.objectContaining({
 						success: false,
 						error: expect.any(String),

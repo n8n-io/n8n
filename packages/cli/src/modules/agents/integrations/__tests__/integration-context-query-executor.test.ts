@@ -2,12 +2,13 @@ import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentRepository } from '../../repositories/agent.repository';
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 const slack: AgentIntegrationConfig = {
@@ -22,7 +23,7 @@ const linear: AgentIntegrationConfig = {
 
 function buildRegistry(): ChatIntegrationRegistry {
 	const registry = new ChatIntegrationRegistry();
-	registry.register(new SlackIntegration());
+	registry.register(new SlackIntegration(mock<AgentRepository>()));
 	registry.register(new LinearIntegration(mock<Logger>(), mock<OutboundHttp>()));
 	return registry;
 }
@@ -61,7 +62,8 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue(slackAdapter);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -78,6 +80,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			type: 'slack',
 			credentialId: 'cred-a',
 		});
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', slack);
 		expect(chat.getAdapter).toHaveBeenCalledWith('slack');
 		expect(usersList).toHaveBeenCalledWith({ limit: 10, token: 'xoxb-token' });
 		expect(result).toEqual({

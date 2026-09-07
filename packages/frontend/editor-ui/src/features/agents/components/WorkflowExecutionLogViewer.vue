@@ -1,18 +1,13 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { Workflow } from 'n8n-workflow';
-import { ChatSymbol } from '@n8n/chat/constants';
-import type { Chat } from '@n8n/chat/types';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import LogsOverviewRow from '@/features/execution/logs/components/LogsOverviewRow.vue';
-import RunData from '@/features/ndv/runData/components/RunData.vue';
+import StandaloneRunData from '@/features/ndv/runData/components/StandaloneRunData.vue';
+import StandaloneRunDataHost from '@/features/ndv/runData/components/StandaloneRunDataHost.vue';
 import NodeErrorView from '@/features/ndv/runData/components/error/NodeErrorView.vue';
 import {
 	createLogTree,
@@ -25,7 +20,6 @@ import {
 	isNodeLog,
 } from '@/features/execution/logs/logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 const props = defineProps<{
 	workflowId: string;
@@ -34,23 +28,8 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const executionsStore = useExecutionsStore();
-const workflowsStore = useWorkflowsStore();
 const workflowHelpers = useWorkflowHelpers();
 const nodeTypesStore = useNodeTypesStore();
-
-// `RunData` (rendered inside `LogsViewRunData`) reads the workflow id via
-// `useInjectWorkflowId()`, which throws when nothing is provided. Provide it
-// here so the editor's run-data renderer works inside this side panel.
-provide(
-	WorkflowIdKey,
-	computed(() => props.workflowId),
-);
-
-// `RunData` -> `useRunWorkflow` -> `useChat` injects `ChatSymbol`. Outside the
-// chat-enabled layout it's missing and Vue logs a noisy "injection 'Chat' not
-// found" warning. The consuming code only reads `chatStore?.ws` via optional
-// chaining, so a null provider is functionally safe and silences the warning.
-provide(ChatSymbol, null as unknown as Chat);
 
 const loading = ref(true);
 const errorMessage = ref<string | null>(null);
@@ -106,6 +85,10 @@ function toggleSelected(entry: LogEntry): void {
 	selected.value = selected.value?.id === entry.id ? null : entry;
 }
 
+function handleRunDataSetupError(): void {
+	errorMessage.value = i18n.baseText('agentSessions.workflowLog.unavailable');
+}
+
 const selectedNode = computed(() => (selected.value?.type === 'node' ? selected.value : null));
 
 function getLatestInfo(entry: LogEntry): LatestNodeInfo | undefined {
@@ -118,17 +101,6 @@ const isTriggerSelected = computed((): boolean => {
 	const type = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 	return type?.group?.includes('trigger') ?? false;
 });
-
-// Non-null view of the selected entry; only read inside the `v-if="selected"` branch
-// of the template. Helps vue-tsc's inferer pick the right LogEntry type when
-// passing to child components — n8n-workflow's `Workflow` types deep-recurse and can
-// trip up template type-narrowing of refs across module boundaries.
-// vue-tsc can't reconcile the deeply-recursive `Workflow` / `WorkflowExpression`
-// types across reactive ref boundaries; cast through `unknown` so the prop
-// bindings to `RunData` line up.
-const selectedWorkflow = computed(
-	() => selected.value?.workflow as unknown as WorkflowObjectAccessors,
-);
 
 // Resolve the source-node binding for the input pane — for non-trigger nodes,
 // `RunData`'s input mode walks back to the previous node's output, so we point
@@ -161,38 +133,16 @@ const selectedError = computed((): NodeErrorViewError | null => {
 	return err as unknown as NodeErrorViewError;
 });
 
-// Snapshot of the workflowsStore's execution data before we hijack it on mount.
-// We restore it on unmount so navigating back to the editor doesn't surprise the user.
-let previousWorkflowExecutionData: ReturnType<
-	typeof useWorkflowExecutionStateStore
->['activeExecution'] = null;
 let unmounted = false;
 
 onMounted(async () => {
-	previousWorkflowExecutionData = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	).activeExecution;
 	try {
-		// RunData / NodeErrorView need node-type metadata to render properly — load
-		// before fetching the execution so the panes are ready when data arrives.
-		await nodeTypesStore.loadNodeTypesIfNotLoaded();
-		if (unmounted) return;
 		const result = await executionsStore.fetchExecution(props.workflowExecutionId);
-		// If the user closed the panel or selected another row while the fetch
-		// was in flight, the unmount hook has already restored the previous
-		// execution data — writing it now would clobber the real workflow state.
 		if (unmounted) return;
 		if (!result) {
 			errorMessage.value = i18n.baseText('agentSessions.workflowLog.unavailable');
 		} else {
 			execution.value = result;
-			// Populate the workflow execution data into the store. RunDataTable,
-			// pairedItemMappings, and various NodeErrorView code paths read from the
-			// store rather than the prop, so the prop alone isn't enough to make the
-			// table/JSON views render correctly for non-trivial nodes.
-			useWorkflowExecutionStateStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
-			).setWorkflowExecutionData(result);
 			// Default-select the first entry (the trigger) so the user sees data immediately.
 			const first = flatEntries.value[0];
 			if (first) selected.value = first;
@@ -207,10 +157,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
 	unmounted = true;
-	// Restore whatever execution data was in the store before we hijacked it.
-	useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	).setWorkflowExecutionData(previousWorkflowExecutionData);
 });
 </script>
 
@@ -241,66 +187,51 @@ onBeforeUnmount(() => {
 					@toggle-selected="toggleSelected(entry)"
 				/>
 			</div>
-			<div v-if="selectedNode" :class="$style.detail">
-				<div :class="$style.detailHeader">{{ selectedNode.node.name }}</div>
-				<div v-if="!isTriggerSelected && inputBinding" :class="$style.pane">
-					<div :class="$style.paneTitle">
-						{{ i18n.baseText('agentSessions.timeline.input') }}
+			<StandaloneRunDataHost
+				v-if="selectedNode && execution"
+				v-slot="{ workflowObject, workflowExecution }"
+				:execution="execution"
+				@setup-error="handleRunDataSetupError"
+			>
+				<div :class="$style.detail">
+					<div :class="$style.detailHeader">{{ selectedNode.node.name }}</div>
+					<div
+						v-if="!isTriggerSelected && inputBinding"
+						:class="$style.pane"
+						data-test-id="agent-session-run-data-input"
+					>
+						<div :class="$style.paneTitle">
+							{{ i18n.baseText('agentSessions.timeline.input') }}
+						</div>
+						<StandaloneRunData
+							:key="`input-${selectedNode.id}`"
+							:node="inputBinding.node"
+							:run-index="inputBinding.runIndex"
+							:override-outputs="inputBinding.overrideOutputs"
+							:workflow-object="workflowObject"
+							:workflow-execution="workflowExecution"
+							pane-type="input"
+						/>
 					</div>
-					<RunData
-						:key="`input-${selectedNode.id}`"
-						:node="inputBinding.node"
-						:run-index="inputBinding.runIndex"
-						:override-outputs="inputBinding.overrideOutputs"
-						:workflow-object="selectedWorkflow"
-						:workflow-execution="selectedNode.execution"
-						pane-type="input"
-						display-mode="schema"
-						:disable-display-mode-selection="true"
-						:disable-run-index-selection="true"
-						:compact="true"
-						:show-actions-on-hover="true"
-						:disable-pin="true"
-						:disable-edit="true"
-						:disable-hover-highlight="true"
-						:disable-settings-hint="true"
-						:collapsing-table-column-name="null"
-						table-header-bg-color="light"
-						executing-message=""
-						no-data-in-branch-message=""
-					/>
+					<div :class="$style.pane" data-test-id="agent-session-run-data-output">
+						<div :class="$style.paneTitle">
+							{{ i18n.baseText('agentSessions.timeline.output') }}
+						</div>
+						<div v-if="selectedError" :class="$style.errorPaneBody" data-test-id="node-error-card">
+							<NodeErrorView :error="selectedError" :compact="true" show-details />
+						</div>
+						<StandaloneRunData
+							v-else
+							:key="`output-${selectedNode.id}`"
+							:node="selectedNode.node"
+							:run-index="selectedNode.runIndex"
+							:workflow-object="workflowObject"
+							:workflow-execution="workflowExecution"
+							pane-type="output"
+						/>
+					</div>
 				</div>
-				<div :class="$style.pane">
-					<div :class="$style.paneTitle">
-						{{ i18n.baseText('agentSessions.timeline.output') }}
-					</div>
-					<div v-if="selectedError" :class="$style.errorPaneBody" data-test-id="node-error-card">
-						<NodeErrorView :error="selectedError" :compact="true" show-details />
-					</div>
-					<RunData
-						v-else
-						:key="`output-${selectedNode.id}`"
-						:node="selectedNode.node"
-						:run-index="selectedNode.runIndex"
-						:workflow-object="selectedWorkflow"
-						:workflow-execution="selectedNode.execution"
-						pane-type="output"
-						display-mode="schema"
-						:disable-display-mode-selection="true"
-						:disable-run-index-selection="true"
-						:compact="true"
-						:show-actions-on-hover="true"
-						:disable-pin="true"
-						:disable-edit="true"
-						:disable-hover-highlight="true"
-						:disable-settings-hint="true"
-						:collapsing-table-column-name="null"
-						table-header-bg-color="light"
-						executing-message=""
-						no-data-in-branch-message=""
-					/>
-				</div>
-			</div>
+			</StandaloneRunDataHost>
 		</template>
 	</div>
 </template>

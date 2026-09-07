@@ -6,6 +6,10 @@ import {
 	revokeDynamicCredential,
 } from '@/features/ai/chatHub/chat.api';
 import type { WorkflowExecutionStatus } from '@n8n/api-types';
+import {
+	getTrustedOAuthOrigins,
+	waitForOAuthCallback,
+} from '@/features/credentials/composables/oauthCallback';
 
 export interface DynamicCredentialItem {
 	credentialId: string;
@@ -57,13 +61,19 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 				id,
 			);
 
+			// Refreshing must not reset in-flight connection state: authorize()
+			// verifies pending OAuth flows by re-fetching the status, and dropping
+			// `isConnecting` here would re-enable Connect mid-flow.
+			const connecting = new Set(
+				credentials.value.filter((c) => c.isConnecting).map((c) => c.credentialId),
+			);
 			credentials.value = (status.credentials ?? []).map((c) => ({
 				credentialId: c.credentialId,
 				credentialName: c.credentialName,
 				credentialType: c.credentialType,
 				credentialStatus: c.credentialStatus,
 				resolverId: parseResolverId(c.authorizationUrl),
-				isConnecting: false,
+				isConnecting: connecting.has(c.credentialId),
 				error: null,
 			}));
 		} catch {
@@ -71,6 +81,16 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 		} finally {
 			isLoading.value = false;
 		}
+	}
+
+	// fetchStatus() replaces the credential objects, so long-running flows must
+	// update state by id instead of holding on to a stale array item.
+	function updateCredentialState(
+		credentialId: string,
+		update: Partial<Pick<DynamicCredentialItem, 'isConnecting' | 'error'>>,
+	) {
+		const cred = credentials.value.find((c) => c.credentialId === credentialId);
+		if (cred) Object.assign(cred, update);
 	}
 
 	async function pollUntilConfigured(credentialId: string, maxAttempts = 10, intervalMs = 1000) {
@@ -84,10 +104,9 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 
 	async function authorize(credentialId: string) {
 		const cred = credentials.value.find((c) => c.credentialId === credentialId);
-		if (!cred) return;
+		if (!cred || cred.isConnecting) return;
 
-		cred.isConnecting = true;
-		cred.error = null;
+		updateCredentialState(credentialId, { isConnecting: true, error: null });
 
 		try {
 			const oauthUrl = await authorizeDynamicCredential(
@@ -101,13 +120,17 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 			try {
 				const parsedUrl = new URL(oauthUrl);
 				if (!allowedProtocols.includes(parsedUrl.protocol)) {
-					cred.error = 'Invalid authorization URL';
-					cred.isConnecting = false;
+					updateCredentialState(credentialId, {
+						error: 'Invalid authorization URL',
+						isConnecting: false,
+					});
 					return;
 				}
 			} catch {
-				cred.error = 'Invalid authorization URL';
-				cred.isConnecting = false;
+				updateCredentialState(credentialId, {
+					error: 'Invalid authorization URL',
+					isConnecting: false,
+				});
 				return;
 			}
 
@@ -116,52 +139,55 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 				'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
 			const oauthPopup = window.open(oauthUrl, 'OAuth Authorization', params);
 
-			// Listen for OAuth callback via BroadcastChannel
-			const oauthChannel = new BroadcastChannel('oauth-callback');
-			let settled = false;
+			if (!oauthPopup) {
+				updateCredentialState(credentialId, {
+					error: 'Failed to start authorization',
+					isConnecting: false,
+				});
+				return;
+			}
 
-			const settle = async () => {
-				if (settled) return;
-				settled = true;
-				oauthChannel.close();
-				clearInterval(pollInterval);
-				await pollUntilConfigured(credentialId);
-				cred.isConnecting = false;
-			};
-
-			oauthChannel.addEventListener('message', async (event: MessageEvent) => {
-				if (event.data === 'success') {
-					if (oauthPopup) oauthPopup.close();
-					await settle();
-				}
+			const outcome = await waitForOAuthCallback({
+				popup: oauthPopup,
+				trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
+				verifyConnected: async () => {
+					await fetchStatus();
+					return (
+						credentials.value.find((c) => c.credentialId === credentialId)?.credentialStatus ===
+						'configured'
+					);
+				},
 			});
 
-			// Fallback: poll for popup closed (handles cross-origin dev env)
-			const pollInterval = setInterval(() => {
-				if (oauthPopup?.closed) {
-					void settle();
-				}
-			}, 500);
+			oauthPopup.close();
+
+			if (outcome === 'success') {
+				await pollUntilConfigured(credentialId);
+			} else {
+				await fetchStatus();
+			}
+			updateCredentialState(credentialId, { isConnecting: false });
 		} catch {
-			cred.error = 'Failed to start authorization';
-			cred.isConnecting = false;
+			updateCredentialState(credentialId, {
+				error: 'Failed to start authorization',
+				isConnecting: false,
+			});
 		}
 	}
 
 	async function revoke(credentialId: string) {
 		const cred = credentials.value.find((c) => c.credentialId === credentialId);
-		if (!cred) return;
+		if (!cred || cred.isConnecting) return;
 
-		cred.isConnecting = true;
-		cred.error = null;
+		updateCredentialState(credentialId, { isConnecting: true, error: null });
 
 		try {
 			await revokeDynamicCredential(rootStore.restApiContext, credentialId, cred.resolverId);
 			await fetchStatus();
 		} catch {
-			cred.error = 'Failed to disconnect credential';
+			updateCredentialState(credentialId, { error: 'Failed to disconnect credential' });
 		} finally {
-			cred.isConnecting = false;
+			updateCredentialState(credentialId, { isConnecting: false });
 		}
 	}
 

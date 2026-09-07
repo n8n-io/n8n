@@ -5,7 +5,11 @@ import type { InstanceAiToolRegistry } from './types';
 export function createToolRegistry(
 	entries: Iterable<readonly [string, BuiltTool]> = [],
 ): InstanceAiToolRegistry {
-	return new Map(entries);
+	const registry = new Map<string, BuiltTool>();
+	for (const [name, tool] of entries) {
+		registry.set(name, tool);
+	}
+	return registry;
 }
 
 export function createToolRegistryFromTools(tools: Iterable<BuiltTool>): InstanceAiToolRegistry {

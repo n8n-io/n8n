@@ -29,11 +29,11 @@ describe('github issues > #3857 Schema inheritance when STI pattern is used', ()
 				const personMetadata = connection.getMetadata(Person);
 				const menMetadata = connection.getMetadata(Men);
 				const womenMetadata = connection.getMetadata(Women);
-				// @ts-ignore
+				// @ts-expect-error schema is set for these entities
 				personMetadata.schema.should.be.eq('custom');
-				// @ts-ignore
+				// @ts-expect-error schema is set for these entities
 				menMetadata.schema.should.be.eq(personMetadata.schema);
-				// @ts-ignore
+				// @ts-expect-error schema is set for these entities
 				womenMetadata.schema.should.be.eq(personMetadata.schema);
 			}),
 		));

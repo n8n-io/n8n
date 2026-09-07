@@ -5,7 +5,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -290,7 +290,6 @@ function moveResource() {
 						{{ locale.baseText('credentials.item.connect.tooltip') }}
 					</template>
 					<N8nButton
-						type="primary"
 						size="mini"
 						:loading="isConnecting"
 						data-test-id="credential-card-connect"

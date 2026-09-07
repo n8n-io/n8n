@@ -115,6 +115,18 @@ export type AnthropicThinkingMetadata = {
 };
 
 /**
+ * DeepSeek-specific thinking metadata.
+ */
+export type DeepSeekThinkingMetadata = {
+	/**
+	 * Reasoning content from DeepSeek's thinking mode. Must be echoed back on the
+	 * assistant message that requested a tool call, or the next turn is rejected with
+	 * "The reasoning_content in the thinking mode must be passed back to the API."
+	 */
+	reasoningContent?: string;
+};
+
+/**
  * HITL (Human-in-the-Loop) metadata - presence indicates this is an HITL tool action.
  */
 export type HitlMetadata = {
@@ -132,6 +144,7 @@ export type HitlMetadata = {
 export type ThinkingMetadata = {
 	google?: GoogleThinkingMetadata;
 	anthropic?: AnthropicThinkingMetadata;
+	deepseek?: DeepSeekThinkingMetadata;
 };
 
 /**
@@ -150,6 +163,8 @@ export type RequestResponseMetadata = {
 	google?: GoogleThinkingMetadata;
 	/** Anthropic-specific metadata */
 	anthropic?: AnthropicThinkingMetadata;
+	/** DeepSeek-specific metadata */
+	deepseek?: DeepSeekThinkingMetadata;
 	/** HITL (Human-in-the-Loop) metadata - presence indicates this is an HITL tool action */
 	hitl?: HitlMetadata;
 	/** LangChain tool name (preserves the LLM's chosen tool for reverse-lookup). */

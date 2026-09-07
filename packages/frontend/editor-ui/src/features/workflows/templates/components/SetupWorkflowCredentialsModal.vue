@@ -5,7 +5,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
 import { computed, onMounted, onUnmounted } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import { N8nButton, N8nHeading } from '@n8n/design-system';

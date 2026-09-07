@@ -14,12 +14,13 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   backport:
+    permissions:
+      contents: write
+      pull-requests: write
     if: |
       github.repository == 'n8n-io/n8n-private' &&
       (github.event.pull_request.merged == true ||

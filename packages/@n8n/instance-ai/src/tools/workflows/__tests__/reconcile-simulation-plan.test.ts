@@ -380,3 +380,81 @@ describe('reconcileSimulationPlan', () => {
 		expect(patch?.setupRequirement).toBeUndefined();
 	});
 });
+
+describe('reconcileSimulationPlan — wait-gate halt re-derivation', () => {
+	it('re-applies haltBranch to a still-simulated gate on a loop after an AI-root refresh', async () => {
+		const workflow = {
+			name: 'approval loop',
+			nodes: [
+				{
+					id: 'id-0',
+					name: 'Generate',
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'id-1',
+					name: 'Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 100],
+					parameters: {},
+					credentials: { openAiApi: { id: 'cred-1', name: 'OpenAI' } },
+				},
+				{
+					id: 'id-2',
+					name: 'Gate',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 2,
+					position: [100, 0],
+					parameters: { operation: 'sendAndWait' },
+				},
+				{
+					id: 'id-3',
+					name: 'Revise',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Model: { ai_languageModel: [[{ node: 'Generate', type: 'ai_languageModel', index: 0 }]] },
+				Generate: { main: [[{ node: 'Gate', type: 'main', index: 0 }]] },
+				Gate: { main: [[{ node: 'Revise', type: 'main', index: 0 }]] },
+				Revise: { main: [[{ node: 'Gate', type: 'main', index: 0 }]] },
+			},
+		} as unknown as WorkflowJSON;
+
+		const patch = await reconcileSimulationPlan({
+			buildOutcome: makeBuildOutcome({
+				nodeSimulationPlan: [
+					{
+						nodeName: 'Generate',
+						verdict: 'simulate',
+						reason: CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
+						confidence: 'high',
+						source: 'deterministic',
+					},
+					mockedVerdict('Gate'),
+				],
+				mockedCredentialsByNode: { Gate: ['gmailOAuth2'] },
+				mockedNodeNames: ['Gate'],
+			}),
+			workflow,
+			availableCredentials: makeCredentialMap([]),
+		});
+
+		// The AI root regained credentials, so the plan was refreshed…
+		expect(patch?.nodeSimulationPlan?.find((v) => v.nodeName === 'Generate')?.verdict).toBe(
+			'execute',
+		);
+		// …and the still-simulated gate on the loop keeps halting.
+		expect(patch?.nodeSimulationPlan?.find((v) => v.nodeName === 'Gate')).toMatchObject({
+			verdict: 'simulate',
+			haltBranch: true,
+		});
+	});
+});

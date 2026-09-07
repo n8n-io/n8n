@@ -31,6 +31,20 @@ const workflowDocumentStoreRef = vi.hoisted(() => ({
 const nodeCredentialsMock = vi.hoisted(() => ({
 	emitCredentialSelected: null as ((update: unknown) => void) | null,
 	lastNodeProp: null as unknown,
+	lastFieldLabel: undefined as string | undefined,
+	lastSetupHint: undefined as unknown,
+	lastSkipAutoSelect: undefined as boolean | undefined,
+	lastPreferNewCredential: undefined as boolean | undefined,
+	lastCredentialHelp: undefined as
+		| ((credential: {
+				credentialType: string;
+				displayName: string;
+				placeholderTitles?: string[];
+		  }) => Promise<boolean>)
+		| undefined,
+}));
+const instanceAiHandoffMock = vi.hoisted(() => ({
+	startThread: vi.fn(),
 }));
 const parameterListMock = vi.hoisted(() => ({
 	lastHiddenIssuesInputs: undefined as string[] | undefined,
@@ -48,18 +62,62 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => nodeTypesStore,
 }));
 
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: { value: false },
+		isNodeTypeVersionSupported: () => false,
+		isCredentialTypeSupported: () => false,
+	}),
+}));
+
 vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 	const { defineComponent, h } = await import('vue');
 	return {
 		default: defineComponent({
-			props: ['node'],
+			props: [
+				'node',
+				'credentialsFieldLabel',
+				'credentialSetupHint',
+				'instanceAiCredentialHelp',
+				'skipAutoSelect',
+				'preferNewCredential',
+			],
 			emits: ['credentialSelected'],
 			setup(props, { emit, slots }) {
 				nodeCredentialsMock.emitCredentialSelected = (update) => emit('credentialSelected', update);
 				nodeCredentialsMock.lastNodeProp = props.node;
+				nodeCredentialsMock.lastFieldLabel = props.credentialsFieldLabel as string | undefined;
+				nodeCredentialsMock.lastSetupHint = props.credentialSetupHint;
+				nodeCredentialsMock.lastSkipAutoSelect = props.skipAutoSelect as boolean | undefined;
+				nodeCredentialsMock.lastPreferNewCredential = props.preferNewCredential as
+					| boolean
+					| undefined;
+				nodeCredentialsMock.lastCredentialHelp = props.instanceAiCredentialHelp as
+					| ((credential: {
+							credentialType: string;
+							displayName: string;
+							placeholderTitles?: string[];
+					  }) => Promise<boolean>)
+					| undefined;
 				return () => h('div', { 'data-test-id': 'node-credentials' }, slots['label-postfix']?.());
 			},
 		}),
+	};
+});
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', async () => {
+	const { computed } = await import('vue');
+	return { useInstanceAiAvailable: () => computed(() => true) };
+});
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', async (importOriginal) => {
+	const original =
+		await importOriginal<
+			typeof import('@/features/ai/instanceAi/composables/useInstanceAiHandoff')
+		>();
+	return {
+		...original,
+		useInstanceAiHandoff: () => ({ startThread: instanceAiHandoffMock.startThread }),
 	};
 });
 
@@ -153,6 +211,8 @@ describe('WorkflowSetupSectionBody', () => {
 		workflowDocumentStoreRef.current = null;
 		nodeCredentialsMock.emitCredentialSelected = null;
 		nodeCredentialsMock.lastNodeProp = null;
+		nodeCredentialsMock.lastFieldLabel = undefined;
+		nodeCredentialsMock.lastSetupHint = undefined;
 		parameterListMock.lastHiddenIssuesInputs = undefined;
 		credentialsStore.getCredentialById.mockReturnValue({ id: 'cred-1', name: 'Typeform account' });
 		nodeTypesStore.getNodeType.mockReturnValue({
@@ -220,6 +280,58 @@ describe('WorkflowSetupSectionBody', () => {
 
 		// Empty => nothing hidden => the "required" issue is shown without interaction.
 		expect(parameterListMock.lastHiddenIssuesInputs).toEqual([]);
+	});
+
+	// INS-361: the picker otherwise preselects the most recently updated
+	// credential of the type, contradicting a user who asked for a new one.
+	it('stops the picker preselecting an existing credential when the user asked for a new one', async () => {
+		const section = makeWorkflowSetupSection({
+			targetNodeName: 'Send Hello Message',
+			credentialType: 'slackApi',
+			preferNewCredential: true,
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		expect(nodeCredentialsMock.lastSkipAutoSelect).toBe(true);
+		expect(nodeCredentialsMock.lastPreferNewCredential).toBe(true);
+	});
+
+	it('leaves auto-select on for a credential the user did not ask to recreate', async () => {
+		const section = makeWorkflowSetupSection({
+			targetNodeName: 'Send Hello Message',
+			credentialType: 'slackApi',
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		expect(nodeCredentialsMock.lastSkipAutoSelect).toBe(false);
+		expect(nodeCredentialsMock.lastPreferNewCredential).toBe(false);
+	});
+
+	it('labels the credential selector after the recipe service instead of the generic type', async () => {
+		const section = makeWorkflowSetupSection({
+			targetNodeName: 'HTTP Request',
+			credentialType: 'httpTemplatedCustomAuth',
+			setupHint: {
+				suggestedName: 'fal.ai API Key',
+				template: { headers: { Authorization: 'Key {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		expect(nodeCredentialsMock.lastFieldLabel).toBe('fal.ai API Key credentials');
+		// The recipe rides into NodeCredentials so a CREATE opens the credential
+		// modal pre-filled on the guided simple view.
+		expect(nodeCredentialsMock.lastSetupHint).toEqual(section.setupHint);
 	});
 
 	it('stores the AI Gateway-managed tag when selected in NodeCredentials', async () => {
@@ -296,6 +408,55 @@ describe('WorkflowSetupSectionBody', () => {
 
 		expect(workflowDocumentStoreRef.current?.getNodeByName('Typeform Trigger')?.parameters).toEqual(
 			{ formId: 'form-1' },
+		);
+	});
+
+	it('hands NodeCredentials a help handler that opens a new thread named after the recipe service', async () => {
+		instanceAiHandoffMock.startThread.mockClear();
+		const section = makeWorkflowSetupSection({
+			credentialType: 'httpTemplatedCustomAuth',
+			setupHint: {
+				template: { headers: { Authorization: 'Key {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+				suggestedName: 'fal.ai API Key',
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		const help = nodeCredentialsMock.lastCredentialHelp;
+		expect(help).toBeTypeOf('function');
+
+		// The modal reports the generic type name; the recipe's service name replaces
+		// it, and the pre-filled form's labels turn the question into a natural
+		// where-do-I-find ask — the paste-only steering rides invisibly in the
+		// handoff context, not in the user-visible message.
+		const shouldCloseModal = await help!({
+			credentialType: 'httpTemplatedCustomAuth',
+			displayName: 'Simplified Custom Auth',
+			placeholderTitles: ['fal.ai API key'],
+		});
+
+		// New tab → the credential modal stays open.
+		expect(shouldCloseModal).toBe(false);
+		expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
+			'project-1',
+			'Where do I find the "fal.ai API key" for my "fal.ai API Key" credential?',
+			{ source: 'credential_edit', origin: 'internal' },
+			undefined,
+			undefined,
+			expect.objectContaining({
+				newTab: true,
+				context: expect.objectContaining({
+					source: 'credential-modal',
+					credential: expect.objectContaining({
+						displayName: 'fal.ai API Key',
+						placeholderTitles: ['fal.ai API key'],
+					}),
+				}),
+			}),
 		);
 	});
 });

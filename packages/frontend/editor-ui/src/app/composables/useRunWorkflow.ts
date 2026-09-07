@@ -22,9 +22,10 @@ import {
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
+import { until } from '@vueuse/core';
 import { computed, getCurrentInstance, type Ref } from 'vue';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
@@ -53,8 +54,8 @@ import { isEmpty } from '@/app/utils/typesUtils';
 import { useI18n } from '@n8n/i18n';
 import get from 'lodash/get';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useTelemetry } from './useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
@@ -561,8 +562,17 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	async function stopCurrentExecution() {
-		const executionId = workflowExecutionState.value.activeExecutionId;
+		let executionId = workflowExecutionState.value.activeExecutionId;
 		let stopData: IExecutionsStopData | undefined;
+
+		// null means the run started but the backend id is not yet known.
+		// Wait for it instead of dropping the click.
+		if (executionId === null) {
+			executionId = await until(() => workflowExecutionState.value.activeExecutionId).toMatch(
+				(id) => id !== null,
+				{ timeout: 10_000 },
+			);
+		}
 
 		if (!executionId) {
 			return;

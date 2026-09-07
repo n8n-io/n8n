@@ -4,6 +4,13 @@ import type { IconName } from '@n8n/design-system';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
 const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'task-control']);
+const SKILL_TOOLS = new Set([
+	'create_skills',
+	'list_skills',
+	'read_skill',
+	'update_skill',
+	'load_skill',
+]);
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
 type I18n = ReturnType<typeof useI18n>;
 type SkillFileGroup = 'references' | 'scripts' | 'templates' | 'examples' | 'assets';
@@ -98,14 +105,17 @@ function extractSkillScriptPath(command: string): string | undefined {
 export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'complete-checkpoint') return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
-	if (toolName === 'list_skills' || toolName === 'load_skill' || toolName === 'n8n-docs')
-		return 'book-open';
+	if (toolName === 'resolve_integration') return 'share';
+	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
 	if (toolName === 'data-tables') return 'table';
+	if (toolName === 'mcp-servers') return 'plug';
 	if (
 		toolName === 'workflows' ||
 		toolName === 'executions' ||
 		toolName === 'nodes' ||
-		toolName === 'templates'
+		toolName === 'templates' ||
+		toolName === 'search_nodes' ||
+		toolName === 'get_node_types'
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';

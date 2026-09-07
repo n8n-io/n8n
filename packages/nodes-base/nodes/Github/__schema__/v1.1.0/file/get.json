@@ -15,6 +15,9 @@
                 }
             }
         },
+        "content": {
+            "type": "string"
+        },
         "download_url": {
             "type": "string"
         },
@@ -46,5 +49,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

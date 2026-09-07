@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Exception, Span } from '@opentelemetry/api';
+import type { Context, Exception, Span } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
 import type { ExecutionStatus } from 'n8n-workflow';
 
@@ -194,6 +194,19 @@ export class ExecutionLevelTracer {
 			});
 			throw error;
 		}
+	}
+
+	/**
+	 * Returns the OTel context of the most specific active span for an
+	 * execution — its running node, falling back to the workflow span — so
+	 * callers outside this module (e.g. an agent run invoked from a workflow
+	 * node) can nest their own spans under it instead of starting a
+	 * disconnected trace. Undefined when neither span is active (e.g. otel
+	 * disabled, or the execution/node isn't tracked here).
+	 */
+	getActiveContext(executionId: string, nodeName?: string): Context | undefined {
+		const span = this.findMostSpecificSpan(executionId, nodeName);
+		return span ? trace.setSpan(context.active(), span) : undefined;
 	}
 
 	injectTraceHeaders(

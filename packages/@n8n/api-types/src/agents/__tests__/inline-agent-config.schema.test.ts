@@ -20,7 +20,7 @@ describe('InlineAgentJsonConfigSchema', () => {
 		const result = InlineAgentJsonConfigSchema.safeParse({
 			...baseConfig,
 			tools: [
-				{ type: 'workflow', workflow: 'Lookup Orders' },
+				{ type: 'workflow', workflowId: 'wf-1', workflow: 'Lookup Orders' },
 				{
 					type: 'node',
 					name: 'HTTP Request',

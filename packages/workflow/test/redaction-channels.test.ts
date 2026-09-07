@@ -1,5 +1,10 @@
 import type { WorkflowSettings } from '../src/interfaces';
-import { channelsToPolicy, policyToChannels } from '../src/redaction-channels';
+import {
+	channelsToPolicy,
+	policyToChannels,
+	redactionSettingToChannels,
+	shouldRedactConsoleOutput,
+} from '../src/redaction-channels';
 
 describe('redaction-channels', () => {
 	describe('policyToChannels', () => {
@@ -37,6 +42,66 @@ describe('redaction-channels', () => {
 	describe('round-trip for invariant-respecting policies', () => {
 		it.each(['none', 'non-manual', 'all'] as const)('policy %s survives a round-trip', (policy) => {
 			expect(channelsToPolicy(policyToChannels(policy))).toBe(policy);
+		});
+	});
+
+	describe('redactionSettingToChannels', () => {
+		it('returns no redaction for an absent snapshot', () => {
+			expect(redactionSettingToChannels(undefined)).toEqual({ production: false, manual: false });
+		});
+
+		it('reads V2 per-channel booleans directly', () => {
+			expect(redactionSettingToChannels({ version: 2, production: true, manual: false })).toEqual({
+				production: true,
+				manual: false,
+			});
+		});
+
+		it('projects a V1 policy enum onto channels', () => {
+			expect(redactionSettingToChannels({ version: 1, policy: 'all' })).toEqual({
+				production: true,
+				manual: true,
+			});
+		});
+	});
+
+	describe('shouldRedactConsoleOutput', () => {
+		it.each([
+			[{ version: 2, production: true, manual: false }, 'manual', false],
+			[{ version: 2, production: true, manual: false }, 'trigger', true],
+			[{ version: 2, production: true, manual: true }, 'manual', true],
+			[{ version: 2, production: true, manual: true }, 'webhook', true],
+			[{ version: 2, production: false, manual: false }, 'manual', false],
+			[{ version: 2, production: false, manual: false }, 'trigger', false],
+			[{ version: 2, production: false, manual: true }, 'manual', true],
+			[{ version: 2, production: false, manual: true }, 'trigger', true],
+		] as const)('V2 snapshot %j in mode %s → %s', (redaction, mode, expected) => {
+			expect(shouldRedactConsoleOutput(redaction, undefined, mode)).toBe(expected);
+		});
+
+		it.each([
+			['all', 'manual', true],
+			['all', 'trigger', true],
+			['non-manual', 'manual', false],
+			['non-manual', 'webhook', true],
+			['manual-only', 'manual', true],
+			['manual-only', 'trigger', false],
+			['none', 'manual', false],
+			['none', 'trigger', false],
+		] as const)('V1 snapshot policy %s in mode %s → %s', (policy, mode, expected) => {
+			expect(shouldRedactConsoleOutput({ version: 1, policy }, undefined, mode)).toBe(expected);
+		});
+
+		it('falls back to the workflow setting when the snapshot is absent', () => {
+			expect(shouldRedactConsoleOutput(undefined, { redactionPolicy: 'all' }, 'trigger')).toBe(
+				true,
+			);
+			expect(shouldRedactConsoleOutput(undefined, { redactionPolicy: 'all' }, 'manual')).toBe(true);
+			expect(
+				shouldRedactConsoleOutput(undefined, { redactionPolicy: 'non-manual' }, 'manual'),
+			).toBe(false);
+			expect(shouldRedactConsoleOutput(undefined, {}, 'manual')).toBe(false);
+			expect(shouldRedactConsoleOutput(undefined, undefined, 'trigger')).toBe(false);
 		});
 	});
 });

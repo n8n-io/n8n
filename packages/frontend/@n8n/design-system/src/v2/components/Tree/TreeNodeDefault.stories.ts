@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 import treeVariables from './Tree.variables.module.css';
 import TreeNodeDefault from './TreeNodeDefault.vue';
+import type { IconName } from '../../../components/N8nIcon/icons';
 import Checkbox from '../Checkbox/Checkbox.vue';
 
 const noop = () => undefined;

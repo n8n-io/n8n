@@ -16,31 +16,29 @@ import { ChildProcess, ExitReason, TaskRunnerProcessBase } from './task-runner-p
  */
 @Service()
 export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
-	readonly name = 'runnner:js';
-
-	readonly loggerScope = 'task-runner-js';
+	protected readonly name = 'runner:js';
 
 	private oomDetector: NodeProcessOomDetector | null = null;
 
 	constructor(
-		readonly logger: Logger,
-		readonly runnerConfig: TaskRunnersConfig,
-		readonly authService: TaskBrokerAuthService,
-		readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
+		logger: Logger,
+		runnerConfig: TaskRunnersConfig,
+		authService: TaskBrokerAuthService,
+		runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
-		super(logger, runnerConfig, authService, runnerLifecycleEvents);
+		super('task-runner-js', logger, runnerConfig, authService, runnerLifecycleEvents);
 
 		assert(this.isInternal, `${this.constructor.name} cannot be used in external mode`);
 	}
 
-	async startProcess(grantToken: string, taskBrokerUri: string): Promise<ChildProcess> {
+	startProcess(grantToken: string, taskBrokerUri: string, runnerId: string): ChildProcess {
 		const startScript = require.resolve('@n8n/task-runner/start');
 		const flags = this.runnerConfig.insecureMode
 			? []
 			: ['--disallow-code-generation-from-strings', '--disable-proto=delete'];
 
 		return spawn('node', [...flags, startScript], {
-			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
+			env: this.getProcessEnvVars(grantToken, taskBrokerUri, runnerId),
 		});
 	}
 
@@ -52,7 +50,7 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 		return { reason: this.oomDetector?.didProcessOom ? 'oom' : 'unknown' };
 	}
 
-	private getProcessEnvVars(grantToken: string, taskBrokerUri: string) {
+	private getProcessEnvVars(grantToken: string, taskBrokerUri: string, runnerId: string) {
 		const envVars: Record<string, string | undefined> = Object.assign(Object.create(null), {
 			// system environment
 			PATH: process.env.PATH,
@@ -71,6 +69,7 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 			DEPLOYMENT_NAME: process.env.DEPLOYMENT_NAME,
 
 			// runner
+			N8N_RUNNERS_ID: runnerId,
 			N8N_RUNNERS_GRANT_TOKEN: grantToken,
 			N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 			N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),

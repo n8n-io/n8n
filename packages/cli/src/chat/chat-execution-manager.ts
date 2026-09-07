@@ -11,8 +11,10 @@ import {
 	Workflow,
 	BINARY_ENCODING,
 	UnexpectedError,
+	CHAT_NODE_TYPE,
 	CHAT_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
+	isHitlToolType,
 } from 'n8n-workflow';
 
 import { NotFoundError } from '../errors/response-errors/not-found.error';
@@ -21,9 +23,10 @@ import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-d
 import { preserveInputOverride } from '../workflow-helpers';
 import { WorkflowRunner } from '../workflow-runner';
 import type { ChatMessage } from './chat-service.types';
-import { redirectIfToolExecutor } from './utils';
+import { findResumeNode, redirectIfToolExecutor } from './utils';
 import { NodeTypes } from '../node-types';
 import { OwnershipService } from '../services/ownership.service';
+import { stripToolSuffix } from '../utils';
 
 @Service()
 export class ChatExecutionManager {
@@ -36,12 +39,24 @@ export class ChatExecutionManager {
 	) {}
 
 	async runWorkflow(execution: IExecutionResponse, message: ChatMessage) {
-		await this.workflowRunner.run(
-			await this.getRunData(execution, message),
-			true,
-			true,
-			execution.id,
-		);
+		// Sink guard shared by every chat resume caller (chat websocket, Chat Hub,
+		// the auto-resume watcher): only a node a chat mechanism drives — one that
+		// implements onMessage — may be resumed here. This makes the allowlist
+		// un-skippable so no caller can resume, e.g., a Send-and-Wait gate. Callers
+		// are expected to refuse earlier with a user-facing message; reaching this
+		// throw means a caller skipped its check. blockUserInput is a per-message
+		// policy enforced by the resume-path callers, not here, so auto-resume of
+		// chat nodes keeps working.
+		if (!this.isChatDrivenExecution(execution)) {
+			throw new UnexpectedError('Refusing to resume a non-chat node over chat', {
+				extra: { executionId: execution.id },
+			});
+		}
+
+		await this.workflowRunner.run(await this.getRunData(execution, message), true, true, {
+			executionId: execution.id,
+			expectedStatus: 'waiting',
+		});
 	}
 
 	async cancelExecution(executionId: string) {
@@ -51,6 +66,8 @@ export class ChatExecutionManager {
 		});
 
 		if (!execution) return;
+
+		if (!this.isChatDrivenExecution(execution)) return;
 
 		if (['running', 'waiting', 'unknown'].includes(execution.status)) {
 			await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
@@ -92,26 +109,101 @@ export class ChatExecutionManager {
 		return binary;
 	}
 
-	private async runNode(execution: IExecutionResponse, message: ChatMessage) {
-		const workflow = this.getWorkflow(execution);
-		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-		let node = workflow.getNode(lastNodeExecuted);
-		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId: workflow.id });
+	/**
+	 * Resolves the node a chat message would resume and its (version-resolved)
+	 * node type, without mutating the execution. Shared by the resume guard and
+	 * `runNode` so the authorization decision can never drift from what runs.
+	 */
+	private resolveResumeTarget(execution: IExecutionResponse, workflow: Workflow) {
 		const executionData = execution.data.executionData?.nodeExecutionStack[0];
-
 		if (!executionData) return null;
 
-		// PartialExecutionToolExecutor is a virtual node not present in the workflow —
-		// redirect to the real tool and wraps so onMessage() if present runs on the right node.
-		if (!node) {
-			node = redirectIfToolExecutor(execution, executionData, workflow);
-		}
-
+		const node = findResumeNode(executionData, workflow);
 		if (!node) return null;
+
+		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		return { node, nodeType, executionData };
+	}
+
+	/**
+	 * `resolveResumeTarget` wrapped to fail closed. Building the workflow / resolving
+	 * the parked node's type throws if a node type is unavailable (e.g. an
+	 * uninstalled community node). The guards below must never throw — a resume
+	 * decision that blows up would, on the heartbeat path, abort the whole
+	 * `checkHeartbeats` loop and leave the session uncleaned — so an unresolvable
+	 * node is simply treated as not chat-resumable.
+	 */
+	private tryResolveResumeTarget(execution: IExecutionResponse) {
+		try {
+			return this.resolveResumeTarget(execution, this.getWorkflow(execution));
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * A chat message may only resume a node that implements the `onMessage` hook:
+	 * the Chat node and the tools that inherit it (chatTool, chatHitlTool), plus
+	 * RespondToWebhook. Send-and-Wait gates, non-chat HITL tools and Wait nodes
+	 * have no `onMessage` and must not be resumable over the socket, whatever
+	 * token is presented.
+	 */
+	canResumeOverChat(execution: IExecutionResponse): boolean {
+		const target = this.tryResolveResumeTarget(execution);
+		if (!target) return false;
+
+		const { node, nodeType } = target;
+		if (typeof nodeType.onMessage !== 'function') return false;
+
+		// A chat node is chat-resumable by type but still refuses input when the
+		// builder opted out via blockUserInput. This covers the Chat node and its
+		// tool variants (chatTool, chatHitlTool) — all resolve to the base chat type
+		// and carry the same parameter.
+		const isChatBasedNode = stripToolSuffix(node.type) === CHAT_NODE_TYPE;
+		if (isChatBasedNode && node.parameters?.blockUserInput === true) return false;
+
+		return true;
+	}
+
+	/**
+	 * The resolved type of the node a chat message would resume, for diagnostics.
+	 * Uses the same resolution as canResumeOverChat — so a PartialExecutionToolExecutor
+	 * entry reports the wrapped tool node, not the virtual executor — and fails closed
+	 * (undefined) when the node type can't be resolved.
+	 */
+	resolveResumeNodeType(execution: IExecutionResponse): string | undefined {
+		return this.tryResolveResumeTarget(execution)?.node.type;
+	}
+
+	/**
+	 * Whether the parked node is one a chat socket legitimately drives.
+	 * Unlike canResumeOverChat this ignores blockUserInput: a chat node that
+	 * opted out of input is still a chat execution owned by its socket, so an
+	 * abandoned one should still be cleaned up. Used to decide whether losing the
+	 * socket should cancel the execution.
+	 */
+	private isChatDrivenExecution(execution: IExecutionResponse): boolean {
+		const target = this.tryResolveResumeTarget(execution);
+		return !!target && typeof target.nodeType.onMessage === 'function';
+	}
+
+	private async runNode(execution: IExecutionResponse, message: ChatMessage) {
+		const workflow = this.getWorkflow(execution);
+		const target = this.resolveResumeTarget(execution, workflow);
+
+		if (!target) return null;
+
+		const { node, nodeType, executionData } = target;
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId: workflow.id });
+
+		// PartialExecutionToolExecutor is a virtual node not present in the workflow.
+		// `node`/`nodeType` already point at the real tool via findResumeNode; this
+		// applies the execution-state redirect so onMessage() runs on it (no-op for
+		// an ordinary parked node).
+		redirectIfToolExecutor(execution, executionData, workflow);
 
 		const inputData = executionData.data;
 		const connectionInputData = executionData.data.main[0];
-		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		const context = new ExecuteContext(
 			workflow,
 			node,
@@ -158,11 +250,20 @@ export class ChatExecutionManager {
 			[{ json: message }],
 		];
 
-		if (runExecutionData.executionData!.nodeExecutionStack[0].node.type === CHAT_TOOL_NODE_TYPE) {
+		// The chat-based HITL tool resumes here too, but carries the generated
+		// `chatHitlTool` type rather than `chatTool`. Without this its output stays on
+		// the `main` channel instead of `ai_tool`, so the agent never sees the approval
+		// and the gated tool is never executed. Scope this to chat-based tools only:
+		// non-chat HITL tools (e.g. telegramHitlTool) are not chat-resumable and must
+		// not receive the approval fix-up, so the suffix check is paired with a base
+		// type check.
+		const resumingNode = runExecutionData.executionData!.nodeExecutionStack[0].node;
+		const isChatBasedHitlTool =
+			isHitlToolType(resumingNode.type) && stripToolSuffix(resumingNode.type) === CHAT_NODE_TYPE;
+		if (resumingNode.type === CHAT_TOOL_NODE_TYPE || isChatBasedHitlTool) {
 			runExecutionData.waitTill = undefined;
-			runExecutionData.executionData!.nodeExecutionStack[0].node.disabled = true;
-			runExecutionData.executionData!.nodeExecutionStack[0].node.rewireOutputLogTo =
-				NodeConnectionTypes.AiTool;
+			resumingNode.disabled = true;
+			resumingNode.rewireOutputLogTo = NodeConnectionTypes.AiTool;
 
 			const lastNodeExecuted = runExecutionData.resultData.lastNodeExecuted as string;
 			const runDataArray = runExecutionData.resultData.runData[lastNodeExecuted];

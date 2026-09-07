@@ -1,9 +1,9 @@
-export { default as N8nActionBox } from './N8nActionBox';
 export { default as N8nAskAssistantButton } from './AskAssistantButton';
 export {
 	default as N8nAskAssistantChat,
 	MessageWrapper,
 	ThinkingMessage,
+	RestoreVersionConfirm,
 } from './AskAssistantChat';
 export { default as N8nAssistantIcon } from './AskAssistantIcon';
 export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
@@ -32,6 +32,8 @@ export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
 export { default as N8nBlockUi } from './N8nBlockUi';
 export { default as N8nButton } from './N8nButton';
+export { default as N8nButtonList } from './N8nButtonList';
+export type { ButtonListOrientation, ButtonListProps } from './N8nButtonList';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
 export { default as N8nCanvasCollaborationPill } from './CanvasCollaborationPill';
@@ -39,7 +41,10 @@ export { default as N8nCard } from './N8nCard';
 export { default as N8nCircleLoader } from './N8nCircleLoader';
 export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';
+export { default as N8nCopyInput } from './N8nCopyInput';
 export { default as N8nDatatable } from './N8nDatatable';
+export { default as N8nEmptyState } from './N8nEmptyState';
+export type { EmptyStateCardIcon, EmptyStateIconCards } from './N8nEmptyState';
 export { default as N8nExternalLink } from './N8nExternalLink';
 export { default as N8nFloatingWindow } from './N8nFloatingWindow';
 export { default as N8nFormBox } from './N8nFormBox';
@@ -58,10 +63,12 @@ export {
 export { default as N8nIconButton } from './N8nIconButton';
 export { default as N8nInlineAskAssistantButton } from './InlineAskAssistantButton';
 export { default as N8nInfoAccordion } from './N8nInfoAccordion';
+export type { IAccordionItem } from './N8nInfoAccordion';
 export { default as N8nInfoTip } from './N8nInfoTip';
 export { default as N8nInput } from './N8nInput';
 export { default as N8nInputLabel } from './N8nInputLabel';
 export { default as N8nInputNumber } from './N8nInputNumber';
+export type * from './N8nInputNumber/InputNumber.types';
 export { default as N8nLink } from './N8nLink';
 export { default as N8nLogo } from './N8nLogo';
 export { default as N8nLoading } from './N8nLoading';
@@ -100,14 +107,23 @@ export {
 	type ChatInputAutoFocusOptions,
 	type ChatInputAutoFocusTarget,
 } from './N8nChatInput';
+export { default as N8nChatMessage } from './N8nChatMessage';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
-export { default as N8nRadioButtons } from './N8nRadioButtons';
+export { default as N8nSegmentControl } from './N8nSegmentControl';
+export type {
+	SegmentControlProps,
+	SegmentControlSize,
+	SegmentOption,
+} from './N8nSegmentControl';
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
+export { default as N8nStatusDot } from './N8nStatusDot';
+export type { StatusDotProps, StatusDotVariant } from './N8nStatusDot';
+export { default as N8nStepper } from './N8nStepper/Stepper.vue';
 export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
 export { default as N8nSuggestedActions } from './N8nSuggestedActions';
@@ -117,6 +133,7 @@ export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
 export { default as N8nText } from './N8nText';
 export { default as N8nTooltip } from './N8nTooltip';
+export type { N8nTooltipProps, N8nTooltipSlots } from './N8nTooltip';
 export { default as N8nAiActivityStepButton } from './N8nAiActivityStepButton';
 export { default as N8nAiActivityStepChevron } from './N8nAiActivityStepChevron';
 export { default as N8nAiActivityStepGroup } from './N8nAiActivityStepGroup';
@@ -128,6 +145,7 @@ export { default as N8nToggleGroup } from './N8nToggleGroup';
 export { default as N8nTree } from './N8nTree';
 export { default as N8nUserStack } from './N8nUserStack';
 export { default as N8nUserInfo } from './N8nUserInfo';
+export type { UsersInfoProps } from './N8nUserInfo';
 export { default as N8nUserSelect } from './N8nUserSelect';
 export { default as N8nUsersList } from './N8nUsersList';
 export { default as N8nPromptInputSuggestions } from './N8nPromptInputSuggestions';
@@ -135,8 +153,10 @@ export { default as N8nResizeObserver } from './ResizeObserver';
 export { N8nKeyboardShortcut } from './N8nKeyboardShortcut';
 export { default as N8nIconPicker } from './N8nIconPicker';
 export { default as N8nBreadcrumbs } from './N8nBreadcrumbs';
+export type { PathItem } from './N8nBreadcrumbs';
 export { default as N8nTableBase } from './TableBase';
 export { default as N8nDataTableServer } from './N8nDataTableServer';
+export type { TableHeader, TableOptions } from './N8nDataTableServer';
 export { default as N8nTableHeaderControlsButton } from './TableHeaderControlsButton';
 export { default as N8nInlineTextEdit } from './N8nInlineTextEdit';
 export { default as N8nScrollArea } from './N8nScrollArea';

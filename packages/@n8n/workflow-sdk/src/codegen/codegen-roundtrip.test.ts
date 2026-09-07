@@ -12,7 +12,7 @@ import {
 } from '../__tests__/fixtures-download';
 import type { WorkflowJSON } from '../types/base';
 import { foldLegacyErrorConnections, normalizeConnections } from '../types/base';
-import { validateWorkflow } from '../validation';
+import { validateWorkflow, validateWorkflowBuilder } from '../validation';
 import {
 	escapeNewlinesInExpressionStrings,
 	isPlaceholderValue,
@@ -28,6 +28,11 @@ interface ExpectedError {
 	nodeName?: string;
 }
 
+interface ExpectedLintIssue {
+	code: string;
+	nodeName?: string;
+}
+
 interface TestWorkflow {
 	id: string;
 	name: string;
@@ -39,6 +44,11 @@ interface TestWorkflow {
 	expectedValidationWarnings?: ExpectedWarning[];
 	/** Errors expected from WorkflowBuilder.validate() (plugin validator pipeline). */
 	expectedBuilderErrors?: ExpectedError[];
+	/**
+	 * When present (including `[]`), codegen source is linted via
+	 * `validateWorkflowBuilder({ lint: true })` and must match exactly.
+	 */
+	expectedLintIssues?: ExpectedLintIssue[];
 }
 
 function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
@@ -59,6 +69,7 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 			expectedErrors?: ExpectedError[];
 			expectedValidationWarnings?: ExpectedWarning[];
 			expectedBuilderErrors?: ExpectedError[];
+			expectedLintIssues?: ExpectedLintIssue[];
 		}>;
 	};
 
@@ -78,6 +89,7 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 				expectedErrors: entry.expectedErrors,
 				expectedValidationWarnings: entry.expectedValidationWarnings,
 				expectedBuilderErrors: entry.expectedBuilderErrors,
+				expectedLintIssues: entry.expectedLintIssues,
 			});
 		}
 	}
@@ -2905,6 +2917,44 @@ describe('Committed workflows — builder validator errors', () => {
 
 				expect(actualErrors).toEqual(expected);
 				expect(result.valid).toBe(false);
+			});
+		});
+	}
+});
+
+describe('Committed workflows — source lint via validateWorkflowBuilder', () => {
+	const normalizeLint = (issue: ExpectedLintIssue): string =>
+		`${issue.code}:${issue.nodeName ?? ''}`;
+
+	const workflowsWithLintExpectations = workflows.filter((w) => w.expectedLintIssues !== undefined);
+
+	if (workflowsWithLintExpectations.length === 0) {
+		it('has at least one fixture with expectedLintIssues declared', () => {
+			expect(workflowsWithLintExpectations.length).toBeGreaterThan(0);
+		});
+	} else {
+		workflowsWithLintExpectations.forEach(({ id, name, json, expectedLintIssues }) => {
+			it(`emits expected lint issues for workflow ${id}: "${name}"`, () => {
+				const code = generateWorkflowCode(json);
+				const builder = parseWorkflowCodeToBuilder(code);
+				const result = validateWorkflowBuilder(builder, {
+					lint: true,
+					source: code,
+					allowDisconnectedNodes: true,
+				});
+
+				const actual: ExpectedLintIssue[] = result.lint
+					.map((issue) => ({ code: issue.code, nodeName: issue.nodeName }))
+					.sort((a, b) => normalizeLint(a).localeCompare(normalizeLint(b)));
+
+				const expected = (expectedLintIssues ?? [])
+					.slice()
+					.sort((a, b) => normalizeLint(a).localeCompare(normalizeLint(b)));
+
+				expect(actual).toEqual(expected);
+				// Lint findings are informational — they must not block ok.
+				expect(result.ok).toBe(true);
+				expect(result.lint.every((issue) => issue.severity === 'informational')).toBe(true);
 			});
 		});
 	}

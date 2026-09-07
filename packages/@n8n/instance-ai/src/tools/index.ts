@@ -17,6 +17,9 @@ const loadParseFileTool = lazyMod(
 const loadCredentialsTool = lazyMod(
 	() => require('./credentials.tool') as typeof import('./credentials.tool'),
 );
+const loadConversationHistoryTool = lazyMod(
+	() => require('./conversation-history.tool') as typeof import('./conversation-history.tool'),
+);
 const loadDataTablesTool = lazyMod(
 	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
 );
@@ -30,6 +33,9 @@ const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
+const loadMcpServersTool = lazyMod(
+	() => require('./mcp-servers.tool') as typeof import('./mcp-servers.tool'),
+);
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
@@ -37,6 +43,10 @@ const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('
 const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
+);
+const loadListAgentCapabilitiesTool = lazyMod(
+	() =>
+		require('./orchestration/list-agent-capabilities.tool') as typeof import('./orchestration/list-agent-capabilities.tool'),
 );
 const loadGetSessionTool = lazyMod(
 	() =>
@@ -85,9 +95,6 @@ const loadBuildWorkflowTool = lazyMod(
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
 );
-const loadTemplatesTool = lazyMod(
-	() => require('./templates.tool') as typeof import('./templates.tool'),
-);
 const loadWorkspaceTool = lazyMod(
 	() => require('./workspace.tool') as typeof import('./workspace.tool'),
 );
@@ -109,7 +116,6 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
-		[DOMAIN_TOOL_IDS.TEMPLATES, loadTemplatesTool().createTemplatesTool(context)],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
@@ -128,7 +134,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 /**
  * Creates orchestrator domain tools. Skills run in the orchestrator now, so
  * domain tools keep their workflow-building surface while hiding raw full
- * WorkflowJSON update actions.
+ * WorkflowJSON read and update actions.
  */
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
@@ -143,13 +149,29 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
-		[DOMAIN_TOOL_IDS.TEMPLATES, loadTemplatesTool().createTemplatesTool(context)],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
 	// when `088_config_evaluations` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
+	}
+
+	// Same pattern: the adapter only wires mcpService when MCP access is enabled
+	// instance-wide and the user is in the MCP-connections experiment. Orchestrator
+	// only — sub-agents can't offer the user a connection.
+	if (context.mcpService) {
+		tools.push([DOMAIN_TOOL_IDS.MCP_SERVERS, loadMcpServersTool().createMcpServersTool(context)]);
+	}
+
+	// Orchestrator-only: sub-agents receive context via briefings, and cross-thread
+	// reads stay with the agent the user talks to. The adapter only wires
+	// conversationHistoryService when the run has a bound project.
+	if (context.conversationHistoryService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
+			loadConversationHistoryTool().createConversationHistoryTool(context),
+		]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -200,6 +222,10 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 			loadBuildAgentTool().createBuildAgentTool(context),
+		]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
+			loadListAgentCapabilitiesTool().createListAgentCapabilitiesTool(context),
 		]);
 		tools.push([DOMAIN_TOOL_IDS.AGENTS, loadAgentsTool().createAgentsTool(context)]);
 	}

@@ -15,7 +15,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agent_chat_subscriptions_integrationType | CHECK | CHECK ((("integrationType")::text = ANY ((ARRAY['telegram'::character varying, 'slack'::character varying, 'linear'::character varying])::text[]))) |
+| CHK_agent_chat_subscriptions_integrationType | CHECK | CHECK ((("integrationType")::text = ANY ((ARRAY['telegram'::character varying, 'slack'::character varying, 'linear'::character varying, 'discord'::character varying])::text[]))) |
 | FK_e79153bd179c011e779d5016796 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_76598cf91038bee1f3ac94c94bc | PRIMARY KEY | PRIMARY KEY ("agentId", "integrationType", "credentialId", "threadId") |
 | agent_chat_subscriptions_agentId_not_null | n | NOT NULL "agentId" |
@@ -48,12 +48,15 @@ erDiagram
 }
 "public.agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer revision
   json schema
+  timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools
   timestamp_3__with_time_zone updatedAt

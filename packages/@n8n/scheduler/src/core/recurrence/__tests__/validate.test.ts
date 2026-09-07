@@ -21,11 +21,21 @@ describe('validateSchedule', () => {
 			).not.toThrow();
 		});
 
-		it('rejects a 5-field expression (seconds field required)', () => {
+		it('accepts a 5-field expression (seconds default to 0)', () => {
 			expect(() =>
 				validateSchedule({
 					kind: 'cron',
-					cronExpression: '0 12 * * *' as unknown as CronExpression,
+					cronExpression: '0 12 * * 1-5' as unknown as CronExpression,
+					timezone: 'UTC',
+				}),
+			).not.toThrow();
+		});
+
+		it('rejects a 4-field expression (too few fields)', () => {
+			expect(() =>
+				validateSchedule({
+					kind: 'cron',
+					cronExpression: '12 * * *' as unknown as CronExpression,
 					timezone: 'UTC',
 				}),
 			).toThrow(InvalidScheduleError);
@@ -103,7 +113,7 @@ describe('validateSchedule', () => {
 			expect(() =>
 				validateSchedule({
 					...valid,
-					cronExpression: '0 9 * * 1' as unknown as CronExpression,
+					cronExpression: '9 * * 1' as unknown as CronExpression,
 				}),
 			).toThrow(InvalidScheduleError);
 			expect(() => validateSchedule({ ...valid, timezone: 'Mars/Phobos' })).toThrow(/timezone/);

@@ -201,6 +201,34 @@ describe('classifyNodesForSimulation', () => {
 		expect(mockCreateEvalAgent).toHaveBeenCalledTimes(1);
 	});
 
+	it('forwards the fallback model config to the LLM call', async () => {
+		setupAgentMock(
+			JSON.stringify({
+				Search: { verdict: 'execute', reason: 'POST to a search endpoint', confidence: 'high' },
+			}),
+		);
+		const fallbackModelConfig = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+		await classifyNodesForSimulation({
+			workflow: chainWorkflow([
+				trigger,
+				{
+					name: 'Search',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: { method: 'POST', url: 'https://api.example.com/search' },
+				},
+			]),
+			fallbackModelConfig,
+		});
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'verification-destructiveness-classifier',
+			expect.objectContaining({ fallbackModelConfig }),
+		);
+	});
+
 	it('classifies IO-free Code nodes as execute deterministically', async () => {
 		const verdicts = await classify([
 			trigger,

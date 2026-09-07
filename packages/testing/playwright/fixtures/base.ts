@@ -5,6 +5,7 @@ import type { ServiceHelpers } from 'n8n-containers/services/types';
 import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
 
+import { a11yFixtures, type A11yTestFixtures } from './a11y';
 import { CAPABILITIES, type Capability } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
 import { N8N_AUTH_COOKIE } from '../config/constants';
@@ -51,6 +52,7 @@ type WorkerFixtures = {
 	n8nUrl: string;
 	backendUrl: string;
 	frontendUrl: string;
+	internalUrl: string;
 	dbSetup: undefined;
 	n8nStackConfig: N8NConfig;
 	n8nContainer: N8NStack;
@@ -80,7 +82,11 @@ function logKeepalive(container: N8NStack): void {
 }
 
 export const test = base.extend<
-	TestFixtures & CurrentsFixtures & ObservabilityTestFixtures & QuarantineTestFixtures,
+	TestFixtures &
+		CurrentsFixtures &
+		ObservabilityTestFixtures &
+		QuarantineTestFixtures &
+		A11yTestFixtures,
 	WorkerFixtures & CurrentsWorkerFixtures & QuarantineWorkerFixtures
 >({
 	...currentsFixtures.baseFixtures,
@@ -90,6 +96,7 @@ export const test = base.extend<
 	...observabilityFixtures,
 	...consoleErrorFixtures,
 	...quarantineFixtures,
+	...a11yFixtures,
 
 	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
 	capability: [undefined, { scope: 'worker', option: true }],
@@ -171,6 +178,18 @@ export const test = base.extend<
 		async ({ n8nContainer }, use) => {
 			const envFrontendURL = getFrontendUrl() ?? n8nContainer?.baseUrl;
 			await use(envFrontendURL);
+		},
+		{ scope: 'worker' },
+	],
+
+	// The n8n URL as seen from *inside* the stack, for specs that make n8n itself
+	// call it (an HTTP Request node, a webhook destination). Under container
+	// projects the node runs in a main or worker container, where the host-mapped
+	// `backendUrl` port does not exist - use the network alias instead. Locally
+	// there are no containers and n8n shares the host's loopback, so they match.
+	internalUrl: [
+		async ({ n8nContainer, backendUrl }, use) => {
+			await use(n8nContainer?.internalMainUrls[0] ?? backendUrl);
 		},
 		{ scope: 'worker' },
 	],
@@ -336,6 +355,8 @@ export const test = base.extend<
 });
 
 export { expect };
+export { A11Y_BUCKETS, DEFAULT_A11Y_TAGS } from './a11y';
+export type { A11yBucket, A11yCheckOptions, A11yViolation } from './a11y';
 
 /*
 Fixture Dependency Graph:
@@ -343,6 +364,7 @@ Worker: capability + project.containerConfig → n8nStackConfig → n8nContainer
 Test:   frontendUrl + dbSetup → baseURL → n8n (uses backendUrl for API calls)
         backendUrl → api
         n8nContainer → services
+        n8n → a11y
 
 n8nStackConfig: Resolved N8NConfig (topology-neutral, always produced)
 n8nContainer:   Container lifecycle (stop, containers, mainUrls, etc.)

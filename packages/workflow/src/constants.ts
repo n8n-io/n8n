@@ -105,8 +105,11 @@ export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 export const AGENT_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentTool';
 export const CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
+export const RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.retrieverWorkflow';
 export const HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
+/** Trailing segment of the path a Chat trigger registers its webhooks under: `{webhookId}/chat`. */
+export const CHAT_TRIGGER_PATH_SUFFIX = 'chat';
 export const CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const CHAT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTool';
 export const MEMORY_MANAGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryManager';
@@ -122,13 +125,13 @@ export const ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.aliba
 export const MOONSHOT_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.moonshot';
 export const MINIMAX_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.minimax';
 
-// Trigger types that execute with a manual-user identity. Used to gate
-// features (like private credentials) that depend on per-user runtime state.
+// Trigger types that always run with the manually-executing n8n user's identity.
+// Chat and MCP triggers are deliberately not listed: they only establish an
+// identity in specific configurations (Chat Hub availability, n8n OAuth2), which
+// `classifyTriggerIdentity` checks parameter-by-parameter (IAM-1238).
 export const MANUAL_TRIGGER_NODE_TYPES: readonly string[] = [
 	MANUAL_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	MCP_TRIGGER_NODE_TYPE,
 ];
 
 export const AI_VENDOR_NODE_TYPES = [

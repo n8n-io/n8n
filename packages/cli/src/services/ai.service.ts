@@ -65,6 +65,7 @@ export class AiService {
 		return await client.applySuggestion(payload, { id: user.id });
 	}
 
+	/** @deprecated Serves `POST /rest/ai/ask-ai`. Removed in v3. */
 	async askAi(payload: AiAskRequestDto, user: IUser) {
 		const client = await this.getClient();
 		return await client.askAi(payload, { id: user.id });
@@ -90,12 +91,18 @@ export class AiService {
 
 	async createFreeAiCredits(user: IUser) {
 		const client = await this.getClient();
-		// Retrying the claim is no worse than the user clicking again; already-claimed is a definite 4xx.
 		return await callAiServiceWithRetry(
 			'AI credits credential generation',
 			async () => await client.generateAiCreditsCredentials(user),
 			this.logger,
 			this.errorReporter,
+			{ retryOnTimeout: false },
 		);
+	}
+
+	/** Forfeit the remaining Instance AI quota for this instance. Idempotent server-side. */
+	async lockInstanceAiQuota(user: IUser, activatedAt?: number) {
+		const client = await this.getClient();
+		return await client.lockInstanceAiQuota(user, { activatedAt });
 	}
 }

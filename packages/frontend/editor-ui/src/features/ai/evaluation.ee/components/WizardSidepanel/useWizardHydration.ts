@@ -9,7 +9,7 @@ import { useEvaluationStore } from '../../evaluation.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { getDataTableRowsApi } from '@/features/core/dataTable/dataTable.api';
 import { listEvaluationConfigs } from '../../evaluation.api';
 import { useAiRootNodes } from '../../composables/useAiRootNodes';

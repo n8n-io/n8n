@@ -1,13 +1,12 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
+
+import { sleep } from '@n8n/utils/sleep';
 
 import { discordApiMultiPartRequest, discordApiRequest } from '../../../v2/transport/discord.api';
 import { handleRateLimitHeaders, requestApi } from '../../../v2/transport/helpers';
 import type { Mock, Mocked } from 'vitest';
-import type * as _importType0 from 'n8n-workflow';
 
-vi.mock('n8n-workflow', async () => ({
-	...(await vi.importActual<typeof _importType0>('n8n-workflow')),
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -261,6 +260,22 @@ describe('Discord v2 > transport', () => {
 			expect(result).toEqual({ id: '1' });
 			expect(sleepMock).toHaveBeenNthCalledWith(1, 1000); // retry-after
 			expect(sleepMock).toHaveBeenNthCalledWith(2, 3000); // post-success reset-after
+		});
+
+		it('forwards custom headers (e.g. audit-log reason) to the request', async () => {
+			const { context, requestWithAuthentication } = createMockContext();
+			requestWithAuthentication.mockResolvedValueOnce({ body: { success: true }, headers: {} });
+
+			await discordApiRequest.call(context, 'PUT', '/guilds/1/bans/2', undefined, undefined, {
+				'X-Audit-Log-Reason': 'Suspicious%20or%20spam%20account',
+			});
+
+			expect(requestWithAuthentication).toHaveBeenCalledWith(
+				'discordBotApi',
+				expect.objectContaining({
+					headers: { 'X-Audit-Log-Reason': 'Suspicious%20or%20spam%20account' },
+				}),
+			);
 		});
 
 		it('wraps non-429 errors as NodeApiError', async () => {

@@ -131,9 +131,15 @@ describe('telegram-bridge-behavior', () => {
 				chat: mock(),
 				thread,
 				message: mock(),
+				integration: {
+					type: 'telegram',
+					credentialId: 'cred-1',
+					settings: { accessMode: 'public', allowedUsers: [] },
+				},
 				logger,
 				agentId: 'agent-1',
 				isNewMention: false,
+				replyExpectation: 'required',
 			});
 
 			expect(context.platformAgentContext).toEqual({});

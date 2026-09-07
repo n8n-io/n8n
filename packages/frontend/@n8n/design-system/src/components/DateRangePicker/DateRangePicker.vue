@@ -20,12 +20,13 @@ import {
 
 import N8nButton from '../N8nButton';
 import IconButton from '../N8nIconButton';
+import { DEFAULT_WEEKDAY_FORMAT } from './DateRangePicker.constants';
 import N8nDateRangePickerField from './DateRangePickerField.vue';
 import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
 
 const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
 	weekStartsOn: 1,
-	weekdayFormat: 'short',
+	weekdayFormat: DEFAULT_WEEKDAY_FORMAT,
 	fixedWeeks: true,
 	hourCycle: 24,
 });

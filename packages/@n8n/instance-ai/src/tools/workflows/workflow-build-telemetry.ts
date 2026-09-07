@@ -27,6 +27,7 @@ export function trackWorkflowSourceBuild(
 		remediation?: RemediationMetadata;
 		errorCount?: number;
 		warningCount?: number;
+		droppedGroupCount?: number;
 	},
 ): void {
 	const buildContext = context.workflowBuildContext;
@@ -44,6 +45,7 @@ export function trackWorkflowSourceBuild(
 		is_auxiliary_supporting_workflow: input.isAuxiliarySupportingWorkflow === true,
 		error_count: input.errorCount ?? 0,
 		warning_count: input.warningCount ?? 0,
+		dropped_group_count: input.droppedGroupCount ?? 0,
 		...(input.targetWorkflowId ? { target_workflow_id: input.targetWorkflowId } : {}),
 		...(input.savedWorkflowId ? { workflow_id: input.savedWorkflowId } : {}),
 		...(input.binding.sourceHash ? { source_hash: input.binding.sourceHash } : {}),
@@ -55,5 +57,31 @@ export function trackWorkflowSourceBuild(
 					...(input.remediation.reason ? { remediation_reason: input.remediation.reason } : {}),
 				}
 			: {}),
+	});
+}
+
+/**
+ * Emitted once per successful build whose plan halts wait gates, so we learn
+ * how often scripted verification applies and whether multi-gate loop shapes
+ * (currently always halt-fallback) occur in the wild.
+ */
+export function trackWaitGateVerificationPlan(
+	context: InstanceAiContext,
+	input: {
+		haltedGateCount: number;
+		scriptedGateCount: number;
+		savedWorkflowId: string;
+	},
+): void {
+	if (input.haltedGateCount === 0) return;
+	const buildContext = context.workflowBuildContext;
+	context.trackTelemetry?.('instance_ai_wait_gate_verification_plan', {
+		halted_gate_count: input.haltedGateCount,
+		scripted_gate_count: input.scriptedGateCount,
+		multi_gate: input.haltedGateCount >= 2,
+		scripted: input.scriptedGateCount > 0,
+		workflow_id: input.savedWorkflowId,
+		thread_id: context.threadId ?? buildContext?.threadId ?? 'unknown',
+		run_id: buildContext?.runId ?? context.runId ?? 'unknown',
 	});
 }

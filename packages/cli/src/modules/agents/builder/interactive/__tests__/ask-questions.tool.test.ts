@@ -1,4 +1,5 @@
 import type { InterruptibleToolContext } from '@n8n/agents';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 
 import { buildAskQuestionsTool } from '../ask-questions.tool';
@@ -16,7 +17,12 @@ function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 }
 
 describe('ask_questions tool', () => {
-	const tool = buildAskQuestionsTool();
+	const track: Mock = vi.fn();
+	const tool = buildAskQuestionsTool({ track });
+
+	beforeEach(() => {
+		track.mockClear();
+	});
 
 	it('suspends a single single-select question with exactly one option', async () => {
 		const ctx = makeCtx();
@@ -55,6 +61,10 @@ describe('ask_questions tool', () => {
 				],
 			}),
 		);
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ASKED_QUESTIONS, {
+			question_count: 2,
+			question_types: ['single', 'text'],
+		});
 	});
 
 	it('defaults missing question ids to q1..qN while preserving explicit ids', async () => {
@@ -153,6 +163,11 @@ describe('ask_questions tool', () => {
 		);
 
 		expect(result).toEqual({ answered: false });
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_ANSWERED_BUILDER_QUESTIONS, {
+			outcome: 'dismissed',
+			answered_count: 0,
+			skipped_count: 0,
+		});
 	});
 
 	it('returns answered: false when resume has no answers', async () => {
@@ -164,11 +179,21 @@ describe('ask_questions tool', () => {
 		);
 
 		expect(result).toEqual({ answered: false });
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_ANSWERED_BUILDER_QUESTIONS, {
+			outcome: 'skipped',
+			answered_count: 0,
+			skipped_count: 0,
+		});
 	});
 
 	it('returns answered: false when every answer is explicitly skipped', async () => {
 		const ctx = makeCtx({
-			resumeData: { answers: [{ questionId: 'q1', selectedOptions: [], skipped: true }] },
+			resumeData: {
+				answers: [
+					{ questionId: 'q1', selectedOptions: [], skipped: true },
+					{ questionId: 'q2', selectedOptions: [], skipped: true },
+				],
+			},
 		});
 
 		const result = await tool.handler!(
@@ -177,6 +202,11 @@ describe('ask_questions tool', () => {
 		);
 
 		expect(result).toEqual({ answered: false });
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_ANSWERED_BUILDER_QUESTIONS, {
+			outcome: 'skipped',
+			answered_count: 0,
+			skipped_count: 2,
+		});
 	});
 
 	it('returns answered: true with question text merged into each answer on resume', async () => {
@@ -210,6 +240,11 @@ describe('ask_questions tool', () => {
 					question: 'Any notes?',
 				},
 			],
+		});
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_ANSWERED_BUILDER_QUESTIONS, {
+			outcome: 'answered',
+			answered_count: 2,
+			skipped_count: 0,
 		});
 	});
 });

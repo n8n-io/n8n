@@ -172,10 +172,16 @@ export function handleBuildOutcome(
 			: undefined;
 	const hasUnresolvedPlaceholders = outcome.hasUnresolvedPlaceholders ?? undefined;
 	const sourceFilePath = outcome.sourceFilePath ?? normalizedState.sourceFilePath;
+	// Deliberately not carried over from the previous build: a credential added since then
+	// must still route setup, even if an earlier build had nothing but skipped ones left.
+	const setupSkippedByUser =
+		outcome.setupRequirement?.status === 'not_required' &&
+		outcome.setupRequirement.reason === 'skipped-by-user';
 	const updatedState: WorkflowLoopState = {
 		...normalizedState,
 		workflowId: outcome.workflowId ?? normalizedState.workflowId,
 		...(sourceFilePath ? { sourceFilePath } : {}),
+		setupSkippedByUser,
 		lastTaskId: outcome.taskId,
 		mockedCredentialTypes: mockedCredentialTypes ?? normalizedState.mockedCredentialTypes,
 		hasUnresolvedPlaceholders:
@@ -205,6 +211,7 @@ export function handleBuildOutcome(
 				summary: outcome.summary,
 				mockedCredentialTypes,
 				hasUnresolvedPlaceholders: updatedState.hasUnresolvedPlaceholders,
+				setupSkippedByUser: updatedState.setupSkippedByUser,
 			},
 			attempt,
 		};
@@ -282,6 +289,7 @@ export function handleVerificationVerdict(
 					summary: verdict.summary,
 					mockedCredentialTypes: normalizedState.mockedCredentialTypes,
 					hasUnresolvedPlaceholders: normalizedState.hasUnresolvedPlaceholders,
+					setupSkippedByUser: normalizedState.setupSkippedByUser,
 				},
 				attempt,
 			};
@@ -303,6 +311,7 @@ export function handleVerificationVerdict(
 					summary: verdict.summary,
 					mockedCredentialTypes: normalizedState.mockedCredentialTypes,
 					hasUnresolvedPlaceholders: normalizedState.hasUnresolvedPlaceholders,
+					setupSkippedByUser: normalizedState.setupSkippedByUser,
 				},
 				attempt,
 			};

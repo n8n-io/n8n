@@ -12,7 +12,7 @@
 			"Bash(popd)",
 			"Bash(pushd:*)",
 			"Bash(mkdir -p .claude/plans)",
-			"Write(.claude/plans/*)"
+			"Edit(.claude/plans/*)"
 		]
 	},
 	"hooks": {

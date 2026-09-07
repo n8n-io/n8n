@@ -13,6 +13,7 @@ import {
 } from '../shared/constants';
 import { NotionTrigger } from '../NotionTrigger.node';
 import {
+	extractDatabaseMentionRLC,
 	extractPageId,
 	formatBlocks,
 	getPageId,
@@ -255,6 +256,43 @@ describe('Test Notion resource locator generated URLs', () => {
 		expect(urlExpressions).not.toContain(
 			'=https://www.notion.(?:so|com)/{{$value.replace(/-/g, "")}}',
 		);
+	});
+});
+
+describe('Test Notion, extractDatabaseMentionRLC', () => {
+	it('extracts database IDs with resource-locator regex metadata', () => {
+		const blockValues: Array<{
+			richText: boolean;
+			text: {
+				text: Array<{
+					textType: string;
+					mentionType: string;
+					database: string | { __rl: boolean; mode: string; value: string; __regex: string };
+				}>;
+			};
+		}> = [
+			{
+				richText: true,
+				text: {
+					text: [
+						{
+							textType: 'mention',
+							mentionType: 'database',
+							database: {
+								__rl: true,
+								mode: 'url',
+								value: 'https://www.notion.com/workspace/database-3ab5bc794647496dac48feca926813fd',
+								__regex: '([0-9a-f]{32})$',
+							},
+						},
+					],
+				},
+			},
+		];
+
+		extractDatabaseMentionRLC(blockValues);
+
+		expect(blockValues[0].text.text[0].database).toBe('3ab5bc794647496dac48feca926813fd');
 	});
 });
 

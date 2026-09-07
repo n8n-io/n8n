@@ -1,5 +1,6 @@
 import { defineConfig } from 'eslint/config';
 import { baseConfig } from '@n8n/eslint-config/base';
+import { encryptionBoundaryConfig } from '@n8n/eslint-config/encryption-boundary';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -15,6 +16,9 @@ export default defineConfig(
 		ignores: ['scripts/**'],
 	},
 	baseConfig,
+	// This package holds the DeploymentKey entity/repository, so the
+	// encryption guardrails must run here even though it is not on nodeConfig.
+	encryptionBoundaryConfig,
 	{
 		rules: {
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],

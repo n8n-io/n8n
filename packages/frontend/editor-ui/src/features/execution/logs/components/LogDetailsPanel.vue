@@ -137,7 +137,6 @@ function handleResizeEnd() {
 	<div ref="container" :class="$style.container" data-test-id="log-details">
 		<LogsPanelHeader
 			data-test-id="log-details-header"
-			:class="$style.header"
 			:is-clickable="isHeaderClickable"
 			@click="emit('clickHeader')"
 		>
@@ -356,10 +355,6 @@ function handleResizeEnd() {
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
-}
-
-.header {
-	padding: var(--spacing--2xs);
 }
 
 .actions {

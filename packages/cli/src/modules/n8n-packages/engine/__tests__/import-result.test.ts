@@ -1,7 +1,11 @@
 import type { PreparedWorkflow } from '../../entities/workflow/workflow-import.types';
 import type { ImportBindingMap } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
-import { identifyRequirements, scopeCredentialBindingsToRequirements } from '../import-result';
+import {
+	identifyRequirements,
+	reconcileVariableSummary,
+	scopeCredentialBindingsToRequirements,
+} from '../import-result';
 
 const requirement = (id: string, usedByWorkflows: string[]): PackageCredentialRequirement => ({
 	id,
@@ -59,5 +63,22 @@ describe('scopeCredentialBindingsToRequirements', () => {
 		]);
 
 		expect(scoped).toEqual(bindings);
+	});
+});
+
+describe('reconcileVariableSummary', () => {
+	// The only case the import integration suites cannot reach: a destination occupied by an
+	// external writer between plan and apply, which no scope of this import created.
+	it('counts a skip that no scope stubbed as matched', () => {
+		expect(
+			reconcileVariableSummary({
+				matched: [],
+				missing: ['API_URL'],
+				created: [],
+				stubbed: [],
+				skipped: ['API_URL'],
+				updated: [],
+			}),
+		).toEqual({ matched: ['API_URL'], missing: [], created: [], stubbed: [], updated: [] });
 	});
 });

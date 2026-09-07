@@ -361,8 +361,11 @@ describe('workflowDocument.store orchestration', () => {
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
 			const workflow = buildFullWorkflow();
 
+			expect(store.hydrated).toBe(false);
+
 			store.hydrate(workflow);
 
+			expect(store.hydrated).toBe(true);
 			expect(store.name).toBe('My Workflow');
 			expect(store.description).toBe('Sample description');
 			expect(store.activeVersionId).toBe('ver-123');
@@ -433,6 +436,63 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.allNodes).toHaveLength(0);
 			expect(store.connectionsBySourceNode).toEqual({});
 			expect(store.pinnedDataByNodeName).toEqual({});
+		});
+
+		it('clears hydrated state on reset', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+
+			store.hydrate(buildFullWorkflow());
+			store.reset();
+
+			expect(store.hydrated).toBe(false);
+		});
+
+		it('derives homeProject from the shared owner relation when homeProject is absent', () => {
+			// `GET /workflows/:id` omits the assembled `homeProject` when the sharing
+			// license is inactive, returning the raw `shared` relation instead.
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-shared'));
+			const ownerProject = { id: 'p-owner' } as ProjectSharingData;
+
+			store.hydrate({
+				id: 'wf-shared',
+				name: 'FromShared',
+				active: false,
+				isArchived: false,
+				createdAt: -1,
+				updatedAt: -1,
+				nodes: [],
+				connections: {},
+				versionId: '',
+				activeVersionId: null,
+				shared: [
+					{ role: 'workflow:editor', project: { id: 'p-editor' } as ProjectSharingData },
+					{ role: 'workflow:owner', project: ownerProject },
+				],
+			});
+
+			expect(store.homeProject).toEqual(ownerProject);
+		});
+
+		it('prefers an assembled homeProject over the shared owner relation', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-both'));
+			const homeProject = { id: 'p-home' } as ProjectSharingData;
+
+			store.hydrate({
+				id: 'wf-both',
+				name: 'Both',
+				active: false,
+				isArchived: false,
+				createdAt: -1,
+				updatedAt: -1,
+				nodes: [],
+				connections: {},
+				versionId: '',
+				activeVersionId: null,
+				homeProject,
+				shared: [{ role: 'workflow:owner', project: { id: 'p-owner' } as ProjectSharingData }],
+			});
+
+			expect(store.homeProject).toEqual(homeProject);
 		});
 
 		it('normalizes ITag[] tags to string[]', () => {

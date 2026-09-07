@@ -54,7 +54,7 @@ Use the canonical owners script at `.github/scripts/owners.mjs`. It parses `.git
 | `design`                  | Design                  | `team:design`      |
 | `iam`                     | Identity & Access       | `team:identity`    |
 | `ligo`                    | Lifecycle & Governance  | `team:lifecycle`   |
-| `instance-ai`             | instanceAI              | `team:instance-ai` |
+| `instance-ai`             | AI Assistant            | `team:instance-ai` |
 | `frontend`                | Adore                   | `team:adore`       |
 | `qa-dx`                   | Developer Platform      | `team:qa-dx`       |
 | `migrations-review`       | Catalysts               | `team:cats`        |

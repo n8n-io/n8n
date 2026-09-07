@@ -21,6 +21,7 @@ export class AiTransform implements INodeType {
 		group: ['transform'],
 		version: 1,
 		description: 'Modify data based on instructions written in plain english',
+		hidden: true,
 		defaults: {
 			name: 'AI Transform',
 		},

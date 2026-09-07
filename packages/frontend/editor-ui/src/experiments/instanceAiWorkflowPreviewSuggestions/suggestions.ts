@@ -31,16 +31,6 @@ export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS: readonly WorkflowPreviewS
 	},
 	{
 		type: 'prompt',
-		id: 'whatsapp-support',
-		icon: 'message-circle' as IconName,
-		labelKey:
-			'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.whatsappSupport.label' as BaseTextKey,
-		promptKey:
-			'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.whatsappSupport.prompt' as BaseTextKey,
-		workflowFile: 'whatsapp-support',
-	},
-	{
-		type: 'prompt',
 		id: 'schedule-social-posts',
 		icon: 'calendar' as IconName,
 		labelKey:
@@ -48,5 +38,15 @@ export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS: readonly WorkflowPreviewS
 		promptKey:
 			'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.scheduleSocialPosts.prompt' as BaseTextKey,
 		workflowFile: 'schedule-social-posts',
+	},
+	{
+		type: 'prompt',
+		id: 'telegram-agent',
+		icon: 'bot' as IconName,
+		labelKey:
+			'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.telegramAgent.label' as BaseTextKey,
+		promptKey:
+			'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.telegramAgent.prompt' as BaseTextKey,
+		workflowFile: 'telegram-agent',
 	},
 ];

@@ -20,22 +20,12 @@ type CollectionRunParam = { workflowId: string; collectionId: string; runId: str
 type EvalVersionsQuery = { evaluationConfigId?: string };
 
 /**
- * Scope choice notes:
- *  - List / get / versions → `workflow:read`. Collection metadata is workflow-
- *    adjacent and the body never includes execution state.
- *  - Create → `workflow:execute`. Creating a collection schedules new test
- *    runs for any version without a reusable existing run, so it's not just
- *    a metadata operation — it kicks off workflow executions.
- *  - Update / delete / curate runs → `workflow:update`. Renaming a collection,
- *    deleting it (which broadcasts cancel-collection for active runs but
- *    does not start new ones), and adding/removing run membership are all
- *    metadata mutations on a workflow-owned resource.
+ * Scope choices: read for list/get/versions, execute for create/rerun (both
+ * schedule test runs), update for metadata mutations (rename/delete/curate).
  *
- * Workflow → project resolution is done by `@ProjectScope` itself via the
- * `:workflowId` URL param (see `check-access.ts:93`), so we don't need a
- * separate `findWorkflowForUser` call: the middleware throws 404 before the
- * handler runs if the user lacks the scope on the workflow's project. The
- * service layer still filters by `workflowId` for defense-in-depth.
+ * `@ProjectScope` resolves workflow → project via the `:workflowId` param and
+ * throws 404 before the handler if the user lacks the scope, so no separate
+ * access check is needed; the service still filters by `workflowId` in depth.
  */
 @RestController('/workflows')
 export class EvaluationCollectionsController {
@@ -46,16 +36,10 @@ export class EvaluationCollectionsController {
 	) {}
 
 	/**
-	 * PostHog rollout gate for the eval-collections feature surface. Returns
-	 * 404 when off so the route looks exactly like an unknown endpoint — no
-	 * flag id leaks into responses, no 403 → 200 transition visible to a
-	 * stale tab when the rollout flips. Fail-open semantics mirror
-	 * {@link TestRunsController.isParallelExecutionFlagEnabled}: PostHog
-	 * outage degrades to flag-off rather than 500ing.
-	 *
-	 * Runs *inside* the handler (after the `@ProjectScope` middleware) so a
-	 * user without workflow access still gets the standard 404 from the
-	 * scope check, not a flag-off 404 that might leak rollout state.
+	 * PostHog rollout gate. Returns 404 when off so the route looks like an
+	 * unknown endpoint and leaks no flag state; a PostHog outage degrades to
+	 * flag-off rather than 500ing. Runs after `@ProjectScope` so a user without
+	 * access gets the scope check's 404, not this one.
 	 */
 	private async assertFlagEnabled(user: User): Promise<void> {
 		let enabled = false;
@@ -96,6 +80,18 @@ export class EvaluationCollectionsController {
 			req.user,
 			req.params.workflowId,
 			payload,
+		);
+		return { ...record, runsStartedIds };
+	}
+
+	@Post('/:workflowId/eval-collections/:collectionId/rerun')
+	@ProjectScope('workflow:execute')
+	async rerun(req: AuthenticatedRequest<CollectionParam>) {
+		await this.assertFlagEnabled(req.user);
+		const { record, runsStartedIds } = await this.service.rerunCollection(
+			req.user,
+			req.params.workflowId,
+			req.params.collectionId,
 		);
 		return { ...record, runsStartedIds };
 	}

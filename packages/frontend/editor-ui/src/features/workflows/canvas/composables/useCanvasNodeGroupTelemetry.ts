@@ -1,6 +1,6 @@
 import type { IWorkflowGroup } from 'n8n-workflow';
 
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -9,7 +9,8 @@ export type CanvasNodeGroupEventSource =
 	| 'group-header'
 	| 'keyboard-shortcut'
 	| 'context-menu'
-	| 'update-blocked-toast';
+	| 'update-blocked-toast'
+	| 'sub-workflow-extraction';
 
 /**
  * Telemetry for canvas node groups: capturing how users

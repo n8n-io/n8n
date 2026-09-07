@@ -10,7 +10,7 @@ const { mockTelemetry } = vi.hoisted(() => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => mockTelemetry,
 }));
 

@@ -1,6 +1,7 @@
 import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
 
 import { appendAttributionOption } from '../../../../utils/descriptions';
+import { simplifyMemoryNotice } from '../utils/descriptions';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -299,7 +300,14 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			propertyHint:
+				'Keep true by default. When true, returns lightweight metadata (labels, subject, from, to, snippet). When false, fetches and parses the full raw email (adds html, text, textAsHtml, headers, attachments), which uses much more memory and is a common cause of out-of-memory crashes. Only set false when the email body is actually required, e.g. for AI classification, summarization, or content processing.',
+		},
 	},
+	simplifyMemoryNotice({
+		displayOptions: { show: { operation: ['get'], resource: ['message'], simple: [false] } },
+	}),
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -381,7 +389,14 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			propertyHint:
+				'Keep true by default. When true, returns lightweight metadata (labels, subject, from, to, snippet) per message. When false, fetches and parses the full raw email for every message (adds html, text, textAsHtml, headers, attachments), which uses much more memory and is a common cause of out-of-memory crashes. Only set false when the email body is actually required, e.g. for AI classification, summarization, or content processing.',
+		},
 	},
+	simplifyMemoryNotice({
+		displayOptions: { show: { operation: ['getAll'], resource: ['message'], simple: [false] } },
+	}),
 	{
 		displayName:
 			'Fetching a lot of messages may take a long time. Consider using filters to speed things up',

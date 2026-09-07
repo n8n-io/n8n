@@ -29,6 +29,7 @@ build a config eval instead and briefly say that is how you set up evaluations.
 
 - `name` — a human-readable evaluation name.
 - `startNodeName` — the node where a run begins; it is fed one test-input row.
+  Must be a node with an incoming connection — **never a trigger** (see step 2).
 - `endNodeName` — the node whose output is judged.
 - `dataTableId` — a Data Table holding the test dataset. Create and populate it
   with the `data-tables` tool first, then link it here by id.
@@ -39,8 +40,11 @@ build a config eval instead and briefly say that is how you set up evaluations.
 1. Identify the target workflow and read it. Trace the main path from trigger to
    the node that produces the answer.
 2. Pick the nodes:
-   - `startNodeName` is normally the node that receives the input the dataset
-     varies (often the trigger or the first node after it).
+   - `startNodeName` is the first node **after** the trigger — the node that
+     receives the input the dataset varies. Never use the trigger itself: an
+     eval run swaps the trigger for a dataset-driven one, so the start node must
+     have an incoming connection or the run fails to compile. For a chat/agent
+     workflow this is usually the agent node (often the same as `endNodeName`).
    - `endNodeName` is the node whose output you want scored (usually the AI agent
      or the final response node).
 3. Resolve the dataset. Call `data-tables(action="list")` to find an existing
@@ -68,13 +72,33 @@ Two presets are available:
 
 - **`correctness`** — compares the produced answer to a ground-truth answer.
   Requires `expectedAnswer` (an n8n expression resolving to the ground-truth
-  value, typically a dataset column, e.g. `{{ $json.expected_output }}`).
+  value, typically a dataset column, e.g. `={{ $json.expected_output }}`).
 - **`helpfulness`** — judges the produced answer against the user's query.
   Requires `userQuery` (an n8n expression for the input the user asked, e.g.
-  `{{ $json.input }}`).
+  `={{ $json.input }}`).
 
 Every metric also needs `actualAnswer`: an n8n expression resolving to the
-workflow's produced answer at the end node, e.g. `{{ $json.output }}`.
+workflow's produced answer at the end node, e.g. `={{ $json.output }}`.
+
+`userQuery` and `expectedAnswer` name **dataset columns** (the input the user
+asked; the ground-truth answer). `actualAnswer` names a field of the workflow's
+**produced output**. Write all of them as `={{ $json.<name> }}` — the evaluation
+reads dataset columns from the dataset row and `actualAnswer` from the end node
+automatically. Do not reference the trigger or any node by name.
+
+### Expression fields must begin with `=`
+
+`actualAnswer`, `userQuery`, and `expectedAnswer` are n8n **expressions** — they
+read a value out of each test row at runtime. The leading `=` is what tells n8n
+to evaluate the `{{ … }}` template. **Without it the string is stored as literal
+text**: the field shows `{{ $json.output }}` verbatim and the judge scores that
+raw string instead of the resolved value.
+
+- Correct: `={{ $json.output }}`, `={{ $json.expected_output }}`
+- Wrong: `{{ $json.output }}` (no `=` → treated as fixed text)
+
+Only add `=` when the value references workflow data via `{{ … }}`. A genuinely
+fixed constant (rare for these fields) is written as plain text without `=`.
 
 Pick `correctness` when the dataset has a known right answer to compare against;
 pick `helpfulness` when there is no single ground truth and quality is judged

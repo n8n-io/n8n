@@ -279,4 +279,114 @@ describe('ExecutionRepository', () => {
 			expect(successExec?.status).toBe('success');
 		});
 	});
+
+	describe('cancelManyRunning', () => {
+		const createExecution = async (status: ExecutionStatus, extra: { waitTill?: Date } = {}) => {
+			const workflow = await createWorkflow();
+			const { identifiers } = await Container.get(ExecutionRepository).insert({
+				workflowId: workflow.id,
+				mode: 'manual',
+				startedAt: new Date(),
+				status,
+				finished: status === 'success',
+				createdAt: new Date(),
+				...extra,
+			});
+			return identifiers[0].id as string;
+		};
+
+		it('should cancel a running execution and clear its waitTill', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const runningId = await createExecution('running', {
+				waitTill: new Date(Date.now() + 1000 * 60 * 60),
+			});
+
+			await executionRepo.cancelManyRunning([runningId]);
+
+			const runningExec = await executionRepo.findOneBy({ id: runningId });
+			expect(runningExec?.status).toBe('canceled');
+			expect(runningExec?.stoppedAt).toBeInstanceOf(Date);
+			expect(runningExec?.waitTill).toBeNull();
+		});
+
+		it('should not overwrite executions in a terminal status', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const successId = await createExecution('success');
+			const errorId = await createExecution('error');
+			const crashedId = await createExecution('crashed');
+
+			await executionRepo.cancelManyRunning([successId, errorId, crashedId]);
+
+			const [successExec, errorExec, crashedExec] = await Promise.all([
+				executionRepo.findOneBy({ id: successId }),
+				executionRepo.findOneBy({ id: errorId }),
+				executionRepo.findOneBy({ id: crashedId }),
+			]);
+
+			expect(successExec?.status).toBe('success');
+			expect(errorExec?.status).toBe('error');
+			expect(crashedExec?.status).toBe('crashed');
+		});
+
+		it('should cancel only the running executions in a mixed batch', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const waitTill = new Date(Date.now() + 1000 * 60 * 60);
+			const runningId = await createExecution('running');
+			const waitingId = await createExecution('waiting', { waitTill });
+			const successId = await createExecution('success');
+
+			await executionRepo.cancelManyRunning([runningId, waitingId, successId]);
+
+			const [runningExec, waitingExec, successExec] = await Promise.all([
+				executionRepo.findOneBy({ id: runningId }),
+				executionRepo.findOneBy({ id: waitingId }),
+				executionRepo.findOneBy({ id: successId }),
+			]);
+
+			expect(runningExec?.status).toBe('canceled');
+			expect(waitingExec?.status).toBe('waiting');
+			expect(waitingExec?.waitTill?.getTime()).toBe(waitTill.getTime());
+			expect(successExec?.status).toBe('success');
+		});
+	});
+
+	describe('getWorkflowIdsWithExecutionsSince', () => {
+		const insertExecution = async (workflowId: string, startedAt: Date) =>
+			await Container.get(ExecutionRepository).insert({
+				workflowId,
+				mode: 'manual',
+				startedAt,
+				status: 'success',
+				finished: true,
+				createdAt: startedAt,
+			});
+
+		it('should return distinct workflow ids for executions started at or after the date', async () => {
+			const executionRepository = Container.get(ExecutionRepository);
+			const [workflow1, workflow2] = await Promise.all([createWorkflow(), createWorkflow()]);
+			const since = new Date('2024-01-01T00:00:00.000Z');
+
+			await insertExecution(workflow1.id, since); // inclusive boundary
+			await insertExecution(workflow1.id, new Date('2024-06-01T00:00:00.000Z')); // same workflow again
+			await insertExecution(workflow2.id, new Date('2024-03-01T00:00:00.000Z'));
+
+			const result = await executionRepository.getWorkflowIdsWithExecutionsSince(since);
+
+			expect(result).toHaveLength(2);
+			expect(result).toEqual(expect.arrayContaining([workflow1.id, workflow2.id]));
+		});
+
+		it('should exclude workflows whose executions all started before the date', async () => {
+			const executionRepository = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow();
+
+			await insertExecution(workflow.id, new Date('2023-12-31T23:59:59.000Z'));
+
+			const result = await executionRepository.getWorkflowIdsWithExecutionsSince(
+				new Date('2024-01-01T00:00:00.000Z'),
+			);
+
+			expect(result).toEqual([]);
+		});
+	});
 });

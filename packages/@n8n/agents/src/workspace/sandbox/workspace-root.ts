@@ -7,45 +7,17 @@ export const DAYTONA_WORKSPACE_ROOT = `${DAYTONA_HOME}/${WORKSPACE_DIR}`;
 export const N8N_SANDBOX_HOME = '/home/user';
 export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
 
-export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
+export function getSandboxHome(provider: SandboxProvider): string {
 	switch (provider) {
 		case 'daytona':
-			return DAYTONA_WORKSPACE_ROOT;
+			return DAYTONA_HOME;
 		case 'n8n-sandbox':
-			return N8N_SANDBOX_WORKSPACE_ROOT;
+			return N8N_SANDBOX_HOME;
 	}
 }
 
-/**
- * Stable, cache-safe sandbox description for the agent's system prompt.
- *
- * MUST NOT vary across agent rebuilds/resumes: the orchestrator prompt is
- * rebuilt on every resume, so any change here shifts the cached prompt prefix
- * and busts Anthropic prompt caching for the rest of the thread. The live
- * sandbox's `getInstructions()` is deliberately NOT used here because a
- * lazily-resolved workspace reports different text depending on whether its
- * (per-build, in-memory) handle happens to be resolved yet — the workspace is
- * available regardless. Runtime-varying details (resolution state, live command
- * timeout) are excluded; the workspace root is added to the prompt separately.
- */
-export function getPromptSandboxInstructions(_provider: SandboxProvider): string {
-	return 'Cloud sandbox with isolated execution (TypeScript runtime).';
-}
-
-/**
- * Stable, cache-safe filesystem description for the agent's system prompt.
- *
- * Same rationale as {@link getPromptSandboxInstructions}: the lazily-resolved
- * (and scoped) filesystem reports different text before vs after its per-build
- * handle resolves, which would shift the cached prompt prefix across resumes.
- * Derived from the (static) workspace root so it matches the resolved scoped
- * filesystem's own instructions while staying byte-stable.
- */
-export function getPromptFilesystemInstructions(provider: SandboxProvider): string {
-	return [
-		`Filesystem access is scoped to ${getPromptWorkspaceRoot(provider)}.`,
-		'Paths are relative to the workspace root unless you pass an absolute path under that root.',
-	].join(' ');
+export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
+	return `${getSandboxHome(provider)}/${WORKSPACE_DIR}`;
 }
 
 export interface SandboxWorkspace extends SandboxCommandTarget {
@@ -77,15 +49,8 @@ async function initializeLazyFilesystem(workspace: SandboxWorkspace): Promise<vo
 }
 
 function getFallbackHome(workspace: SandboxWorkspace): string {
-	switch (workspace.sandbox?.provider) {
-		case 'n8n-sandbox':
-			return N8N_SANDBOX_HOME;
-		case 'daytona':
-			return DAYTONA_HOME;
-		case undefined:
-		default:
-			return DAYTONA_HOME;
-	}
+	const provider = workspace.sandbox?.provider;
+	return getSandboxHome(provider === 'n8n-sandbox' ? provider : 'daytona');
 }
 
 export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {

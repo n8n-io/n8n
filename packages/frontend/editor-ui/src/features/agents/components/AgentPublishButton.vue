@@ -1,19 +1,38 @@
 <script setup lang="ts">
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { computed } from 'vue';
 import { N8nActionDropdown, N8nButton, N8nIconButton } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import type { AgentResource } from '../types';
+import AgentValidationTooltip from './AgentValidationTooltip.vue';
 
-const props = defineProps<{
-	agent: AgentResource | null;
-	projectId: string;
-	agentId: string;
-	isSaving?: boolean;
-	beforeRevertToPublished?: () => Promise<void> | void;
-}>();
+const props = withDefaults(
+	defineProps<{
+		agent: AgentResource | null;
+		projectId: string;
+		agentId: string;
+		isSaving?: boolean;
+		beforeRevertToPublished?: () => Promise<void> | void;
+		/**
+		 * Static, authoritative readiness result. `null` means unknown/stale
+		 * (e.g. still loading, or invalidated by a local edit) and is treated as
+		 * not publishable. Defaults to `'valid'` for callers that don't opt into
+		 * validation gating.
+		 */
+		configValidationStatus?: 'valid' | 'invalid' | null;
+		configValidationIssues?: AgentConfigValidationIssue[];
+		/**
+		 * Runs immediately before the publish request: flushes pending edits and
+		 * refreshes the readiness result. Returning `false` aborts the publish —
+		 * the backend re-validates independently regardless.
+		 */
+		beforePublish?: () => Promise<boolean>;
+	}>(),
+	{ configValidationStatus: 'valid', configValidationIssues: () => [] },
+);
 
 const { canUpdate, canPublish, canUnpublish } = useAgentPermissions(() => props.projectId);
 
@@ -33,6 +52,14 @@ const publishState = computed((): AgentPublishState => {
 	if (props.agent.versionId !== props.agent.activeVersionId) return 'published-with-changes';
 	return 'published-no-changes';
 });
+
+// `null` (unknown/stale, e.g. still loading or invalidated by a local edit
+// that hasn't been re-validated yet) is treated as not publishable — Publish
+// must never stay enabled against a result that predates the working copy.
+const isConfigInvalid = computed(() => props.configValidationStatus !== 'valid');
+const invalidConfigTooltip = computed(() =>
+	locale.baseText('agents.publish.button.invalidConfigTooltip'),
+);
 
 const buttonConfig = computed(() => {
 	switch (publishState.value) {
@@ -67,7 +94,11 @@ const dropdownActions = computed(() => {
 			id: 'publish',
 			label: locale.baseText('agents.publish.dropdown.publish'),
 			disabled:
-				!buttonConfig.value.enabled || publishing.value || props.isSaving || !canPublish.value,
+				!buttonConfig.value.enabled ||
+				publishing.value ||
+				props.isSaving ||
+				!canPublish.value ||
+				isConfigInvalid.value,
 		},
 	];
 
@@ -95,7 +126,10 @@ const dropdownActions = computed(() => {
 });
 
 async function onPublishClick() {
-	if (!buttonConfig.value.enabled || props.isSaving || !canPublish.value) return;
+	if (!buttonConfig.value.enabled || props.isSaving || !canPublish.value || isConfigInvalid.value) {
+		return;
+	}
+	if (props.beforePublish && !(await props.beforePublish())) return;
 	const updated = await publish(props.projectId, props.agentId);
 	if (updated) emit('published', updated);
 }
@@ -121,28 +155,37 @@ async function onDropdownSelect(action: string) {
 
 <template>
 	<div :class="$style.buttonGroup">
-		<N8nButton
-			:class="$style.groupButtonLeft"
-			:loading="publishing"
-			:disabled="!buttonConfig.enabled || isSaving || !canPublish"
-			variant="ghost"
-			data-testid="publish-agent-button"
-			@click="onPublishClick"
+		<AgentValidationTooltip
+			:disabled="!(buttonConfig.enabled && !isSaving && canPublish && isConfigInvalid)"
+			:fallback="invalidConfigTooltip"
+			action="publish"
+			:issues="configValidationIssues"
 		>
-			<div :class="$style.flex">
-				<span
-					v-if="buttonConfig.showIndicator"
-					:class="{
-						[$style.indicatorDot]: true,
-						[$style.indicatorPublished]: buttonConfig.indicatorClass === 'published',
-						[$style.indicatorChanges]: buttonConfig.indicatorClass === 'changes',
-					}"
-				/>
-				<span :class="{ [$style.indicatorPublishedText]: publishState === 'published-no-changes' }">
-					{{ buttonConfig.text }}
-				</span>
-			</div>
-		</N8nButton>
+			<N8nButton
+				:class="$style.groupButtonLeft"
+				:loading="publishing"
+				:disabled="!buttonConfig.enabled || isSaving || !canPublish || isConfigInvalid"
+				variant="ghost"
+				data-testid="publish-agent-button"
+				@click="onPublishClick"
+			>
+				<div :class="$style.flex">
+					<span
+						v-if="buttonConfig.showIndicator"
+						:class="{
+							[$style.indicatorDot]: true,
+							[$style.indicatorPublished]: buttonConfig.indicatorClass === 'published',
+							[$style.indicatorChanges]: buttonConfig.indicatorClass === 'changes',
+						}"
+					/>
+					<span
+						:class="{ [$style.indicatorPublishedText]: publishState === 'published-no-changes' }"
+					>
+						{{ buttonConfig.text }}
+					</span>
+				</div>
+			</N8nButton>
+		</AgentValidationTooltip>
 		<N8nActionDropdown
 			:items="dropdownActions"
 			placement="bottom-end"

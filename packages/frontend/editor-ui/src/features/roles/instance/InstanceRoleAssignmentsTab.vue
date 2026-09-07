@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { RoleMember } from '@n8n/api-types';
 import { N8nLoading, N8nTableBase, N8nText, N8nUserInfo } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';

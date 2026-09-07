@@ -1,8 +1,7 @@
 import type { RuntimeSkill } from '@n8n/agents';
 
 import { customToolsSkill } from './custom-tools.skill';
-import { integrationsSkill } from './integrations.skill';
-import { mcpSkill } from './mcp.skill';
+import { externalServicesSkill } from './external-services.skill';
 import { memorySkill } from './memory.skill';
 import { nodeToolsSkill } from './node-tools.skill';
 import { resourceLocatorsSkill } from './resource-locators.skill';
@@ -13,8 +12,7 @@ import { targetTasksSkill } from './target-tasks.skill';
 export function getBuilderRuntimeSkills(): RuntimeSkill[] {
 	return [
 		customToolsSkill(),
-		integrationsSkill(),
-		mcpSkill(),
+		externalServicesSkill(),
 		memorySkill(),
 		nodeToolsSkill(),
 		resourceLocatorsSkill(),

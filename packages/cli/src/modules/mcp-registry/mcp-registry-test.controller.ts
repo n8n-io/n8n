@@ -10,7 +10,7 @@ import { notionMockServer, linearMockServer } from './registry/mock-servers';
 
 /**
  * Test-only endpoints for seeding MCP registry data in E2E tests.
- * Only registered when E2E_TESTS is set.
+ * Only registered when E2E_TESTS is set; callers must be authenticated.
  */
 @RestController('/mcp-registry')
 export class McpRegistryTestController {
@@ -19,7 +19,7 @@ export class McpRegistryTestController {
 		private readonly service: McpRegistryService,
 	) {}
 
-	@Post('/test/seed', { skipAuth: true })
+	@Post('/test/seed')
 	async seed() {
 		this.assertE2ETestsEnabled();
 
@@ -36,7 +36,7 @@ export class McpRegistryTestController {
 	}
 
 	private assertE2ETestsEnabled(): void {
-		if (process.env.E2E_TESTS !== 'true' || process.env.NODE_ENV === 'production') {
+		if (process.env.E2E_TESTS !== 'true') {
 			throw new ForbiddenError('MCP registry test endpoints are not enabled');
 		}
 	}

@@ -762,6 +762,13 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('create-tasks')).toBe('planner');
 		});
 
+		test.each(['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'])(
+			'returns skill render hint for %s',
+			(toolName) => {
+				expect(getRenderHint(toolName)).toBe('skill');
+			},
+		);
+
 		test('does not keep the removed plan tool as a render fallback', () => {
 			expect(getRenderHint('plan')).toBe('default');
 		});

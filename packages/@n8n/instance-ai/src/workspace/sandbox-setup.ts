@@ -30,14 +30,15 @@
  */
 
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
 import {
 	isLinkWorkspaceSdkEnabled,
-	packWorkspaceSdk,
-	type WorkspaceSdkTarball,
+	packSandboxLinkedWorkspacePackages,
+	type WorkspacePackageTarball,
 } from './pack-workspace-sdk';
 import {
 	runInSandbox,
@@ -60,10 +61,6 @@ type SandboxWorkspaceSetupStep =
 	| 'install-dependencies'
 	| 'link-workspace-sdk'
 	| 'write-initialization-marker';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 export class SandboxWorkspaceSetupError extends Error {
 	constructor(
@@ -96,6 +93,16 @@ function resolveHostDepVersion(name: string): string {
 		return '*';
 	}
 }
+
+/**
+ * Flags for every `npm install` that runs inside a sandbox or a snapshot build.
+ * `--no-audit` matters most: npm otherwise posts the whole tree to the registry's
+ * advisories endpoint and blocks until it answers or its 300s fetch timeout expires,
+ * so a slow registry turns a 10s install into minutes. Nobody reads the audit or
+ * funding output in a sandbox. `--prefer-offline` lets a warm npm cache skip
+ * freshness checks against the registry.
+ */
+export const NPM_INSTALL_FLAGS = '--ignore-scripts --no-audit --no-fund --prefer-offline';
 
 /**
  * Versions pinned from the host's installed packages. Pinning is load-bearing
@@ -173,7 +180,7 @@ export const PACKAGE_JSON = buildPackageJson(
 	isLinkWorkspaceSdkEnabled() ? null : SANDBOX_SDK_VERSION,
 );
 
-let sdkTarballPromise: Promise<WorkspaceSdkTarball | null> | null = null;
+let linkedPackagesPromise: Promise<WorkspacePackageTarball[] | null> | null = null;
 
 export async function linkWorkspaceSdkIfEnabled(
 	workspace: SandboxWorkspace,
@@ -182,41 +189,51 @@ export async function linkWorkspaceSdkIfEnabled(
 ): Promise<void> {
 	if (!isLinkWorkspaceSdkEnabled()) return;
 
-	sdkTarballPromise ??= packWorkspaceSdk(logger).catch((error: unknown) => {
-		sdkTarballPromise = null;
+	linkedPackagesPromise ??= packSandboxLinkedWorkspacePackages(logger).catch((error: unknown) => {
+		linkedPackagesPromise = null;
 		throw error;
 	});
-	const packed = await sdkTarballPromise;
-	if (!packed) {
-		sdkTarballPromise = null;
+	const packedPackages = await linkedPackagesPromise;
+	if (!packedPackages?.length) {
+		linkedPackagesPromise = null;
 		throw new Error(
-			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but the workspace SDK could not be packed. Run `pnpm build` in packages/@n8n/workflow-sdk or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but workspace packages could not be packed. Run `pnpm build` in packages/@n8n/utils, packages/workflow, and packages/@n8n/workflow-sdk, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
 		);
 	}
 
-	const remotePath = joinWorkspacePath(root, packed.filename);
-	if (workspace.filesystem) {
-		await writeWorkspaceFile(workspace, workspace.filesystem, remotePath, packed.tarball);
-	} else {
-		await writeFileViaSandbox(workspace, remotePath, packed.tarball);
+	const remotePaths: string[] = [];
+	for (const packed of packedPackages) {
+		const remotePath = joinWorkspacePath(root, packed.filename);
+		remotePaths.push(remotePath);
+		if (workspace.filesystem) {
+			await writeWorkspaceFile(workspace, workspace.filesystem, remotePath, packed.tarball);
+		} else {
+			await writeFileViaSandbox(workspace, remotePath, packed.tarball);
+		}
 	}
 
+	const tarballArgs = remotePaths
+		.map((remotePath) => `'${escapeSingleQuotes(remotePath)}'`)
+		.join(' ');
 	const install = await runInSandbox(
 		workspace,
-		`npm install '${escapeSingleQuotes(remotePath)}' --no-save --ignore-scripts --force`,
+		`npm install ${tarballArgs} --no-save --force ${NPM_INSTALL_FLAGS}`,
 		root,
 	);
 	if (install.exitCode !== 0) {
-		logger.error('Failed to link workspace SDK into sandbox', {
+		logger.error('Failed to link workspace packages into sandbox', {
 			exitCode: install.exitCode,
 			stderr: install.stderr,
 		});
-		throw new Error(`Failed to install workspace SDK tarball: ${install.stderr}`);
+		throw new Error(`Failed to install workspace package tarballs: ${install.stderr}`);
 	}
 
-	logger.info('Linked workspace SDK into sandbox', {
-		version: packed.version,
-		sdkPath: packed.sdkPath,
+	logger.info('Linked workspace packages into sandbox', {
+		packages: packedPackages.map((packed) => ({
+			name: packed.packageName,
+			version: packed.version,
+			path: packed.packagePath,
+		})),
 	});
 }
 
@@ -449,7 +466,7 @@ export async function setupSandboxWorkspace(
 
 	// Existing workflows as JSON (fetch in parallel)
 	try {
-		const workflows = await context.workflowService.list({ limit: 100 });
+		const { workflows } = await context.workflowService.list({ limit: 100 });
 		const results = await Promise.allSettled(
 			workflows.map(async (summary) => {
 				const detail = await context.workflowService.get(summary.id);
@@ -475,7 +492,7 @@ export async function setupSandboxWorkspace(
 
 	// npm install (must run after package.json is in place)
 	await setupStep('install-dependencies', async () => {
-		const npmResult = await runInSandbox(workspace, 'npm install --ignore-scripts', root);
+		const npmResult = await runInSandbox(workspace, `npm install ${NPM_INSTALL_FLAGS}`, root);
 		if (npmResult.exitCode !== 0) {
 			throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
 		}

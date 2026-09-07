@@ -2,26 +2,30 @@
 import {
 	AGENT_TASK_NAME_MAX_LENGTH,
 	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
+	StrictTimeZoneSchema,
 	type AgentTaskDto,
 } from '@n8n/api-types';
 import {
 	N8nButton,
+	N8nFormInput,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
 	N8nMarkdownEditor,
+	N8nOption,
+	N8nSelect,
 	N8nSwitch2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import N8nOption from '@n8n/design-system/components/N8nOption';
-import N8nSelect from '@n8n/design-system/components/N8nSelect';
+import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref } from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import Modal from '@/app/components/Modal.vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
@@ -63,6 +67,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const toast = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
@@ -84,9 +89,34 @@ const hour = ref(DEFAULT_SCHEDULE_PARTS.hour);
 const dayOfWeek = ref(DEFAULT_SCHEDULE_PARTS.dayOfWeek);
 const dayOfMonth = ref(DEFAULT_SCHEDULE_PARTS.dayOfMonth);
 const customCron = ref('');
-const submitted = ref(false);
+const timezone = ref(browserTimezone());
+const timezoneOptions = ref<Array<{ value: string; label: string }>>([]);
+// A task stored without a timezone follows the instance timezone. The selector has
+// to show a concrete zone, so remember that the task was on the default and keep
+// it there unless the user picks one — otherwise saving an unrelated edit would
+// silently pin it, and a later instance timezone change would stop applying.
+const followsInstanceTimezone = ref(false);
 const saving = ref(false);
 const errorMessage = ref('');
+// Save is always clickable; clicking with invalid data reveals every field's
+// error instead of silently no-op'ing behind a disabled button.
+const saveAttempted = ref(false);
+const nameValid = ref(false);
+const objectiveTouched = ref(false);
+// Non-custom frequencies always build a well-formed cron (see `cronExpression`
+// below), so only the custom field's own validator can make this false.
+const cronValid = ref(true);
+
+/**
+ * Zone a new task is authored in — the clock the user is actually reading. A host
+ * that cannot determine its zone reports `Etc/Unknown`, which `Intl` itself then
+ * refuses, so check against the same schema the API validates with and fall back
+ * to the instance timezone rather than sending a value that cannot be saved.
+ */
+function browserTimezone(): string {
+	const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	return StrictTimeZoneSchema.safeParse(browserZone).success ? browserZone : rootStore.timezone;
+}
 
 const cronExpression = computed(() => {
 	const freq = frequency.value;
@@ -104,6 +134,11 @@ function applyTask() {
 	const current = task.value;
 	name.value = current?.name ?? '';
 	objective.value = current?.objective ?? '';
+	// A task saved before schedules carried their own timezone runs in the
+	// instance timezone, so keep showing that instead of the viewer's zone.
+	// Absent and null both mean "no zone stored", so treat them alike.
+	followsInstanceTimezone.value = current !== null && !current.timezone;
+	timezone.value = current ? (current.timezone ?? rootStore.timezone) : browserTimezone();
 
 	const parts = current ? parseCron(current.cronExpression) : { ...DEFAULT_SCHEDULE_PARTS };
 	if (parts) {
@@ -120,6 +155,25 @@ function applyTask() {
 }
 
 applyTask();
+
+// Snapshot of whether each field was already invalid when an existing task
+// opened, so its error shows immediately instead of only after a touch/save.
+// A pristine new-task field stays quiet until the user interacts with it.
+const initialNameInvalid = isEditing.value && !name.value.trim();
+const initialObjectiveInvalid = isEditing.value && !objective.value.trim();
+const initialCronInvalid =
+	isEditing.value && !getNextScheduleOccurrence(cronExpression.value, timezone.value);
+
+const cronValidator: IValidator = {
+	validate: (value: Validatable) =>
+		getNextScheduleOccurrence(typeof value === 'string' ? value : '', timezone.value)
+			? false
+			: { message: i18n.baseText('agents.builder.tasks.validation.cronInvalid' as BaseTextKey) },
+};
+
+watch(frequency, (value) => {
+	if (value !== 'custom') cronValid.value = true;
+});
 
 const frequencyOptions = computed<Array<{ label: string; value: FrequencyOption }>>(() => [
 	{ value: 'hourly', label: i18n.baseText('agents.builder.tasks.schedule.frequency.hourly') },
@@ -169,44 +223,73 @@ function onMinuteInput(value: string) {
 	minute.value = Number.isFinite(parsed) ? Math.min(59, Math.max(0, Math.trunc(parsed))) : 0;
 }
 
-function getUserTimezone(): string {
-	return Intl.DateTimeFormat().resolvedOptions().timeZone ?? rootStore.timezone;
-}
+/**
+ * Same timezone list the workflow settings offer. Kept renderable while it
+ * loads (and if it fails) by always including the selected zone, since a
+ * filterable select shows the raw value for an option it doesn't know.
+ */
+const timezoneSelectOptions = computed(() => {
+	const options = timezoneOptions.value;
+	if (options.some((option) => option.value === timezone.value)) return options;
+	return [{ value: timezone.value, label: timezone.value }, ...options];
+});
+
+onMounted(async () => {
+	try {
+		const timezones = await settingsStore.getTimezones();
+		timezoneOptions.value = Object.entries(timezones).map(([value, label]) => ({
+			value,
+			label: typeof label === 'string' ? label : value,
+		}));
+	} catch {
+		// Selector keeps the current zone as its only option; saving still works.
+	}
+});
 
 const nextOccurrenceText = computed(() => {
-	const next = getNextScheduleOccurrence(cronExpression.value, rootStore.timezone);
+	const next = getNextScheduleOccurrence(cronExpression.value, timezone.value);
 	if (!next) return '';
-	return formatScheduleDateTime(next, getUserTimezone());
+	return formatScheduleDateTime(next, timezone.value);
 });
 
-const errors = computed<{ name?: string; objective?: string; cron?: string }>(() => {
-	const result: { name?: string; objective?: string; cron?: string } = {};
-	const trimmedName = name.value.trim();
-	if (!trimmedName) {
-		result.name = i18n.baseText('agents.builder.tasks.validation.nameRequired');
-	} else if (trimmedName.length > AGENT_TASK_NAME_MAX_LENGTH) {
-		result.name = i18n.baseText('agents.builder.tasks.validation.nameMaxLength', {
-			interpolate: { max: String(AGENT_TASK_NAME_MAX_LENGTH) },
+const objectiveError = computed(() => {
+	if (!objective.value.trim()) {
+		return i18n.baseText('agents.builder.tasks.validation.objectiveRequired');
+	}
+	if (objective.value.trim().length > AGENT_TASK_OBJECTIVE_MAX_LENGTH) {
+		return i18n.baseText('agents.builder.tasks.validation.objectiveMaxLength' as BaseTextKey, {
+			interpolate: { max: String(AGENT_TASK_OBJECTIVE_MAX_LENGTH) },
 		});
 	}
-	if (!objective.value.trim()) {
-		result.objective = i18n.baseText('agents.builder.tasks.validation.objectiveRequired');
-	} else if (objective.value.trim().length > AGENT_TASK_OBJECTIVE_MAX_LENGTH) {
-		result.objective = i18n.baseText(
-			'agents.builder.tasks.validation.objectiveMaxLength' as BaseTextKey,
-			{
-				interpolate: { max: String(AGENT_TASK_OBJECTIVE_MAX_LENGTH) },
-			},
-		);
-	}
-	if (!cronExpression.value.trim()) {
-		result.cron = i18n.baseText('agents.builder.tasks.validation.cronRequired');
-	}
-	return result;
+	return '';
 });
+const visibleObjectiveError = computed(() =>
+	saveAttempted.value || initialObjectiveInvalid || objectiveTouched.value
+		? objectiveError.value
+		: '',
+);
 
-const visibleErrors = computed(() => (submitted.value ? errors.value : {}));
-const canSave = computed(() => Object.keys(errors.value).length === 0 && !saving.value);
+const canSave = computed(
+	() => nameValid.value && !objectiveError.value && cronValid.value && !saving.value,
+);
+
+function onObjectiveInput(value: string) {
+	objective.value = value;
+	objectiveTouched.value = true;
+}
+
+function onNameInput(value: Validatable) {
+	name.value = typeof value === 'string' ? value : '';
+}
+
+function onCronInput(value: Validatable) {
+	customCron.value = typeof value === 'string' ? value : '';
+}
+
+function onTimezoneChange(value: unknown) {
+	timezone.value = String(value);
+	followsInstanceTimezone.value = false;
+}
 
 function closeModal() {
 	uiStore.closeModal(props.modalName);
@@ -274,7 +357,7 @@ async function onDelete() {
 }
 
 async function onSave() {
-	submitted.value = true;
+	saveAttempted.value = true;
 	if (!canSave.value) return;
 
 	saving.value = true;
@@ -284,6 +367,7 @@ async function onSave() {
 		name: name.value.trim(),
 		objective: objective.value.trim(),
 		cronExpression: cronExpression.value,
+		timezone: followsInstanceTimezone.value ? null : timezone.value,
 	};
 
 	try {
@@ -362,18 +446,21 @@ async function onSave() {
 		<template #content>
 			<div :class="$style.content">
 				<div :class="$style.field">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.builder.tasks.name.label') }}
-						<N8nText color="primary" bold size="small">*</N8nText>
-					</N8nText>
-					<N8nInput
-						v-model="name"
+					<N8nFormInput
+						:model-value="name"
+						:label="i18n.baseText('agents.builder.tasks.name.label')"
+						name="task-name"
+						required
+						label-size="small"
 						:placeholder="i18n.baseText('agents.builder.tasks.name.placeholder')"
+						:validation-rules="[
+							{ name: 'MAX_LENGTH', config: { maximum: AGENT_TASK_NAME_MAX_LENGTH } },
+						]"
+						:show-validation-warnings="saveAttempted || initialNameInvalid"
 						data-testid="agent-task-name-input"
+						@update:model-value="onNameInput"
+						@validate="nameValid = $event"
 					/>
-					<N8nText v-if="visibleErrors.name" :class="$style.error" size="small">
-						{{ visibleErrors.name }}
-					</N8nText>
 				</div>
 
 				<div :class="$style.field">
@@ -387,10 +474,10 @@ async function onSave() {
 						:placeholder="i18n.baseText('agents.builder.tasks.objective.placeholder')"
 						max-height="100%"
 						data-testid="agent-task-objective-input"
-						@update:model-value="objective = $event"
+						@update:model-value="onObjectiveInput"
 					/>
-					<N8nText v-if="visibleErrors.objective" :class="$style.error" size="small">
-						{{ visibleErrors.objective }}
+					<N8nText v-if="visibleObjectiveError" :class="$style.error" size="small">
+						{{ visibleObjectiveError }}
 					</N8nText>
 				</div>
 
@@ -484,13 +571,41 @@ async function onSave() {
 							/>
 						</template>
 
-						<N8nInput
+						<N8nFormInput
 							v-if="frequency === 'custom'"
-							v-model="customCron"
+							:model-value="customCron"
+							label=""
+							name="task-cron"
+							required
 							:placeholder="i18n.baseText('agents.builder.tasks.schedule.cron.placeholder')"
+							:validators="{ VALID_CRON: cronValidator }"
+							:validation-rules="[{ name: 'VALID_CRON' }]"
+							:show-validation-warnings="saveAttempted || initialCronInvalid"
 							:class="$style.cronInput"
 							data-testid="agent-task-schedule-cron"
+							@update:model-value="onCronInput"
+							@validate="cronValid = $event"
 						/>
+
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('agents.builder.tasks.schedule.in') }}
+						</N8nText>
+						<N8nSelect
+							:model-value="timezone"
+							:class="$style.timezoneSelect"
+							:placeholder="i18n.baseText('agents.builder.tasks.schedule.timezone.placeholder')"
+							filterable
+							:limit-popper-width="true"
+							data-testid="agent-task-timezone"
+							@update:model-value="onTimezoneChange"
+						>
+							<N8nOption
+								v-for="option in timezoneSelectOptions"
+								:key="option.value"
+								:value="option.value"
+								:label="option.label"
+							/>
+						</N8nSelect>
 					</div>
 					<N8nText v-if="nextOccurrenceText" :class="$style.help" size="small">
 						{{
@@ -498,9 +613,6 @@ async function onSave() {
 								interpolate: { occurrence: nextOccurrenceText },
 							})
 						}}
-					</N8nText>
-					<N8nText v-if="visibleErrors.cron" :class="$style.error" size="small">
-						{{ visibleErrors.cron }}
 					</N8nText>
 				</div>
 
@@ -537,7 +649,7 @@ async function onSave() {
 					</N8nButton>
 					<N8nButton
 						variant="solid"
-						:disabled="!canSave"
+						:disabled="saving"
 						:loading="saving"
 						data-testid="agent-task-save"
 						@click="onSave"
@@ -608,6 +720,10 @@ async function onSave() {
 
 .timeSelect {
 	width: 8rem;
+}
+
+.timezoneSelect {
+	width: 14rem;
 }
 
 .help {

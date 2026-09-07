@@ -1,14 +1,25 @@
 {
 	"extends": [
-		"@n8n/typescript-config/tsconfig.common.json",
-		"@n8n/typescript-config/tsconfig.backend.json"
+		"@n8n/typescript-config/tsconfig.common.go.json",
+		"@n8n/typescript-config/tsconfig.backend.go.json"
 	],
 	"compilerOptions": {
 		"target": "es2023",
 		"lib": ["es2023"],
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"types": ["node", "vitest/globals"]
+		"types": ["node", "vitest/globals"],
+		"noEmit": true,
+		// tsgo is fast enough to skip incremental state; avoids a stray tsbuildinfo in dist/.
+		"incremental": false,
+		// evaluations/ itself never uses `@/`; this maps it for the ../src files that
+		// enter this program through direct imports, mirroring the package root config.
+		"paths": {
+			"@/*": ["../src/*"]
+		}
 	},
-	"include": ["**/*.ts"]
+	"include": ["**/*.ts"],
+	// cli/pairwise.ts deep-imports ai-workflow-builder.ee's evaluations source (its own
+	// `@/` alias can't resolve here); it's a leaf entrypoint, still linted by eslint.
+	"exclude": ["dist/**", ".data/**", "computer-use/data/**", "cli/pairwise.ts"]
 }

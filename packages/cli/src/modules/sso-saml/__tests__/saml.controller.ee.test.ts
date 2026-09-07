@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
+import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
@@ -302,6 +303,24 @@ describe('SAML Login Flow', () => {
 
 		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
 		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/custom/redirect');
+	});
+
+	test('Should redirect a login denied by role mapping to the sign-in page', async () => {
+		const req = mock<AuthlessRequest>({ browserId: 'test-browser-id' });
+		const res = mock<Response>();
+
+		samlService.handleSamlLogin.mockRejectedValueOnce(new SsoAccessDeniedError());
+
+		await controller.acsPost(req, res, { RelayState: '/' });
+
+		expect(res.redirect).toHaveBeenCalledWith(
+			'http://localhost:5678/signin?ssoError=access-denied',
+		);
+		expect(authService.issueCookie).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith('user-login-failed', {
+			userEmail: 'unknown',
+			authenticationMethod: 'saml',
+		});
 	});
 
 	describe('Redirect URL Validation', () => {

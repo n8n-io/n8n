@@ -3,9 +3,10 @@ import {
 	convertJsonToSpreadsheetBinary,
 	extractDataFromPDF,
 	prepareBinariesDataList,
+	routeBinaryProperties,
 } from '@utils/binary';
-import type { IBinaryData, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING } from 'n8n-workflow';
+import type { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -285,5 +286,66 @@ describe('prepareBinariesDataList', () => {
 			expect(result).toEqual([input]);
 			expect(result[0]).toMatchObject(input);
 		});
+	});
+});
+
+describe('routeBinaryProperties', () => {
+	const helpers = mock<IExecuteFunctions['helpers']>();
+	const executeFunctions = mock<IExecuteFunctions>({ helpers });
+	const binaryData = mock<IBinaryData>({ id: 'binaryId' });
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		helpers.prepareBinaryData.mockResolvedValue(binaryData);
+	});
+
+	it('should deep-serialize non-binary fields so Dates become ISO strings', async () => {
+		const { json, binary } = await routeBinaryProperties.call(executeFunctions, {
+			id: 1,
+			createdAt: new Date('2020-01-01T12:00:00.000Z'),
+		});
+
+		expect(json).toEqual({ id: 1, createdAt: '2020-01-01T12:00:00.000Z' });
+		expect(binary).toEqual({});
+	});
+
+	it('should route Buffer fields to binary via prepareBinaryData', async () => {
+		const buffer = Buffer.from('file-bytes');
+		const { json, binary } = await routeBinaryProperties.call(executeFunctions, {
+			name: 'doc',
+			file: buffer,
+		});
+
+		expect(json).toEqual({ name: 'doc' });
+		expect(helpers.prepareBinaryData).toHaveBeenCalledWith(buffer, 'file');
+		expect(binary.file).toBe(binaryData);
+	});
+
+	it('should keep unsafe field names as own properties without touching the prototype', async () => {
+		const row = jsonParse<IDataObject>('{"id":1,"__proto__":{"polluted":true},"file":null}');
+		row.file = Buffer.from('file-bytes');
+
+		const { json, binary } = await routeBinaryProperties.call(executeFunctions, row);
+
+		expect(Object.getPrototypeOf(json)).toBe(Object.prototype);
+		expect(Object.getPrototypeOf(binary)).toBe(Object.prototype);
+		expect(({} as IDataObject).polluted).toBeUndefined();
+		expect(Object.getOwnPropertyDescriptor(json, '__proto__')?.value).toEqual({ polluted: true });
+		expect(json.id).toBe(1);
+		expect(binary.file).toBe(binaryData);
+	});
+
+	it('should recognize custom binary wrappers via toBuffer', async () => {
+		const buffer = Buffer.from('wrapped');
+		const wrapped = { buffer };
+		const { json, binary } = await routeBinaryProperties.call(
+			executeFunctions,
+			{ id: 1, blob: wrapped },
+			(value) => (value === wrapped ? buffer : undefined),
+		);
+
+		expect(json).toEqual({ id: 1 });
+		expect(helpers.prepareBinaryData).toHaveBeenCalledWith(buffer, 'blob');
+		expect(binary.blob).toBe(binaryData);
 	});
 });

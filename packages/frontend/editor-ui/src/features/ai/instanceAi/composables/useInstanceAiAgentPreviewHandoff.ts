@@ -1,4 +1,5 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { useInstanceAiAvailable } from './useInstanceAiAvailability';
 import {
@@ -6,19 +7,21 @@ import {
 	useInstanceAiHandoff,
 } from './useInstanceAiHandoff';
 
-interface AgentPreviewHandoffParams {
+export interface AgentPreviewHandoffParams {
 	projectId: string;
 	agentId: string;
 	threadId: string;
 	agentName?: string;
 	agentIcon?: string;
 	sessionTitle?: string;
+	executionId?: string;
+	initialDraft?: string;
 }
 
 export function useInstanceAiAgentPreviewHandoff() {
 	const telemetry = useTelemetry();
 	const canSendPreviewToInstanceAi = useInstanceAiAvailable();
-	const { openThreadWithContext } = useInstanceAiHandoff();
+	const { openAgentArtifactThread } = useInstanceAiHandoff();
 
 	async function sendPreviewSessionToInstanceAi({
 		projectId,
@@ -27,25 +30,42 @@ export function useInstanceAiAgentPreviewHandoff() {
 		agentName,
 		agentIcon,
 		sessionTitle,
+		executionId,
+		initialDraft,
 	}: AgentPreviewHandoffParams): Promise<void> {
 		if (!canSendPreviewToInstanceAi.value || !projectId || !agentId || !threadId) return;
 
-		const opened = await openThreadWithContext(
-			projectId,
-			buildInstanceAiAgentPreviewHandoffContext({
-				agentId,
-				threadId,
-				agentName,
-				agentIcon,
-				sessionTitle,
-			}),
-			{ newTab: true },
+		const context = buildInstanceAiAgentPreviewHandoffContext({
+			agentId,
+			threadId,
+			agentName,
+			agentIcon,
+			sessionTitle,
+			executionId,
+		});
+		const opened = await openAgentArtifactThread(
+			{
+				type: 'agent',
+				id: agentId,
+				projectId,
+				...(agentName ? { name: agentName } : {}),
+			},
+			{
+				source: 'agent_preview',
+				origin: 'internal',
+				sourceContext: { agentId, previewThreadId: threadId },
+			},
+			{
+				context,
+				...(initialDraft ? { initialDraft } : {}),
+			},
 		);
 		if (!opened) return;
 
-		telemetry.track('Instance AI opened from agent preview', {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW, {
 			agent_id: agentId,
 			preview_thread_id: threadId,
+			...(executionId ? { preview_execution_id: executionId } : {}),
 		});
 	}
 

@@ -70,6 +70,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_32_ type
   datetime_3_ updatedAt
+  VARCHAR_16_ usageScope
 }
 "mcp_registry_server" {
   datetime_3_ createdAt

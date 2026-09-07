@@ -18,23 +18,69 @@ import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
 } from './constants';
-import { LIST_N8N_CONNECT_SERVICES_TOOL_NAME } from '../../mcp.constants';
+import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME } from '../../mcp.constants';
 
-export function getMcpInstructions(
-	isBuilderEnabled: boolean,
-	isN8nConnectAvailable = false,
-): string {
+export type McpInstructionsOptions = {
+	/**
+	 * Whether the workflow builder tools are enabled on this MCP server.
+	 * If false, the instructions will be limited to a brief intro.
+	 */
+	isBuilderEnabled: boolean;
+
+	/**
+	 * Whether n8n Connect is available on this instance.
+	 * If true, the instructions will include a hint about n8n Connect coverage.
+	 */
+	isN8nConnectAvailable?: boolean;
+
+	/**
+	 * Whether canvas node groups are enabled for this user.
+	 * If true, the builder instructions point the client at the groups docs.
+	 */
+	canvasGroupsEnabled?: boolean;
+
+	/**
+	 * Whether first-class Agent tools are enabled on this MCP server.
+	 * If true, the instructions include Agent build guidance and artifact routing.
+	 */
+	isAgentsEnabled?: boolean;
+};
+export function getMcpInstructions(options: McpInstructionsOptions): string {
+	const {
+		isBuilderEnabled,
+		isN8nConnectAvailable = false,
+		canvasGroupsEnabled = false,
+		isAgentsEnabled = false,
+	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
+
+	// Only appended when the flag is on; keeps the paid-per-session string short.
+	const GROUPS_HINT = canvasGroupsEnabled
+		? `
+
+Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group.`
+		: '';
 
 	const N8N_CONNECT_HINT = isN8nConnectAvailable
 		? `
 
-   Explore nodes covered by n8n credits when the user has not specified a particular integration. n8n credits let users consume LLMs and third-party services directly through n8n with usage-based billing, so they can skip credential setup. Discovery tools (${CODE_BUILDER_SEARCH_NODES_TOOL.toolName}, ${CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName}) and list_credentials return an optional \`n8nConnect.nodes\` array when the instance has n8n credits available. Nodes in that array can attach a managed credential automatically — the workflow runs without the user configuring keys. If the user asked for a specific integration or none of the covered nodes fit, use the requested integration with regular credentials. Call ${LIST_N8N_CONNECT_SERVICES_TOOL_NAME} if you need details (per-node supported resource+operation combos, min type versions, hidden properties).`
+   Explore nodes covered by Gateway credits when the user has not specified a particular integration. Gateway credits let users consume LLMs and third-party services directly through n8n with usage-based billing, so they can skip credential setup. Discovery tools (${CODE_BUILDER_SEARCH_NODES_TOOL.toolName}, ${CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName}) and list_credentials return an optional \`gatewayCredits.nodes\` array when the instance has Gateway credits available. Nodes in that array can attach a managed credential automatically — the workflow runs without the user configuring keys. If the user asked for a specific integration or none of the covered nodes fit, use the requested integration with regular credentials. Call ${LIST_N8N_GATEWAY_SERVICES_TOOL_NAME} if you need details (per-node supported resource+operation combos, min type versions, hidden properties).`
+		: '';
+
+	const ARTIFACT_ROUTING_INSTRUCTIONS = `Choose the artifact before choosing build tools. Treat an explicit artifact request as a routing instruction: if the user asks to build or create an "agent" or "assistant", default to a first-class n8n Agent; if they explicitly ask for a workflow or an AI Agent node, use the workflow tools.
+
+Only deviate when the requested artifact is an unmistakably poor fit. A fixed trigger or schedule followed by enumerable, repeatable steps and fixed actions is usually a workflow. Never silently substitute one artifact for another: explain the mismatch and ask before building the alternative.
+
+Prefer an Agent when the model owns runtime decisions, conversations, investigation, iteration, proactive work, memory, or learning. Prefer a workflow when control flow is fixed and any LLM usage is a bounded step. A Chat Trigger plus an AI Agent node is not a substitute for a requested first-class Agent. If the intended artifact is genuinely ambiguous, clarify it before creating anything.`;
+
+	// Only reference Agents when the agent walkthrough is actually shown.
+	const WORKFLOWS_ONLY_CLAUSE = isAgentsEnabled
+		? ' (not standalone n8n Agents — those never use the Workflow SDK; see the Agent instructions above)'
 		: '';
 
 	const BUILDER_INSTRUCTIONS = `This MCP server provides tools to build n8n workflows programmatically using the n8n Workflow SDK.
 
-To build n8n workflows, follow these steps in order:
+To build n8n workflows${WORKFLOWS_ONLY_CLAUSE}, follow these steps in order:
 
 1. Read the SDK reference: You MUST call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} (or use the n8n://workflow-sdk/reference resource) before writing workflow code. Do not guess SDK syntax.
 
@@ -58,7 +104,24 @@ To build n8n workflows, follow these steps in order:
 
 11. Archive: Call ${MCP_ARCHIVE_WORKFLOW_TOOL.toolName} with the workflow ID.
 
-Error handling has two complementary layers. (1) Per-node: set onError ("continueRegularOutput" / "continueErrorOutput"), retryOnFail, and maxTries via setNodeSettings on ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. (2) Failure notifications via an Error Trigger node, which can be wired two ways: (a) Dedicated/shared error workflow — point settings.errorWorkflow (via the setWorkflowSettings operation) at a SEPARATE workflow whose first node is an Error Trigger; this is the common best practice and lets one handler cover many workflows. (b) Same-workflow — add an Error Trigger node (→ a notification node such as Send Email or Slack) INTO this workflow; n8n runs it automatically when the workflow fails, with no settings change needed. Caveats: both fire only for production executions (not manual/test runs), and a configured settings.errorWorkflow takes precedence over a same-workflow Error Trigger for the failing run. When a user asks to "add error handling", "get notified on failure", or "make this reliable", briefly explain both patterns — most users do not know Error Triggers exist — and ask which they prefer before setting one up; do not enable error handling silently. For the shared pattern, reuse an existing handler (find its ID with search_workflows) or create a new one — but a dedicated error workflow must be PUBLISHED before it can be linked, in this order: (1) create it (${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName}, first node = Error Trigger → a notification node), (2) publish it (publish_workflow), (3) set settings.errorWorkflow via ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. Setting settings.errorWorkflow is rejected if the target has no published version, or no Error Trigger in that published version.`;
+Credentials: when a node needs a credential and another node in the workflow already uses a credential of the same type (e.g. adding a second Slack node next to an existing Slack trigger), reuse that credential — get_workflow_details (with detailLevel 'full', the default) and get_workflow_version include each node's credentials as { id, name } per credential type. Only pick from list_credentials when the workflow does not yet use that credential type, and if more than one credential of that type is available, ask the user which one to use rather than picking one yourself.
 
-	return isBuilderEnabled ? `${INTRO}\n\n${BUILDER_INSTRUCTIONS}` : INTRO;
+Error handling has two complementary layers. (1) Per-node: set onError ("continueRegularOutput" / "continueErrorOutput"), retryOnFail, and maxTries via setNodeSettings on ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. (2) Failure notifications via an Error Trigger node, which can be wired two ways: (a) Dedicated/shared error workflow — point settings.errorWorkflow (via the setWorkflowSettings operation) at a SEPARATE workflow whose first node is an Error Trigger; this is the common best practice and lets one handler cover many workflows. (b) Same-workflow — add an Error Trigger node (→ a notification node such as Send Email or Slack) INTO this workflow; n8n runs it automatically when the workflow fails, with no settings change needed. Caveats: both fire only for production executions (not manual/test runs), and a configured settings.errorWorkflow takes precedence over a same-workflow Error Trigger for the failing run. When a user asks to "add error handling", "get notified on failure", or "make this reliable", briefly explain both patterns — most users do not know Error Triggers exist — and ask which they prefer before setting one up; do not enable error handling silently. For the shared pattern, reuse an existing handler (find its ID with search_workflows) or create a new one — but a dedicated error workflow must be PUBLISHED before it can be linked, in this order: (1) create it (${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName}, first node = Error Trigger → a notification node), (2) publish it (publish_workflow), (3) set settings.errorWorkflow via ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. Setting settings.errorWorkflow is rejected if the target has no published version, or no Error Trigger in that published version.${GROUPS_HINT}`;
+
+	const AGENT_INSTRUCTIONS = `This MCP server provides tools to build and manage n8n Agents.
+
+An n8n Agent is a first-class persisted Agent artifact, not an AI Agent node inside a workflow.
+
+To build an Agent, first call get_agent_builder_reference (or read n8n://agents/reference), then discover the required assets, create the Agent, apply one mutation at a time using the latest configHash, and validate it. Agents are configured as JSON, not Workflow SDK code: the workflow-building steps do not apply to Agents, and ${MCP_GET_SDK_REFERENCE_TOOL.toolName} and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} are never needed for an Agent build — get_agent_builder_reference is the only required reference. After validation succeeds, run one representative call_agent test when call_agent is available and authorized; otherwise, report the successfully validated draft ready without a test run. This tests Agent behavior, not channel integrations, and may cause side effects through real tools. Human approval is required for every returned approval; if the test exposes errors, report them and ask before fixing the draft. A completed build is a saved draft, not a published Agent. Report that the draft is ready, include a clickable link using the \`url\` returned by validate_agent, and ask whether to publish it. Call publish_agent only if the user explicitly requested publication or confirms it after the build. Configuring a chat integration never publishes the Agent: a draft channel stays inactive until explicit publication, while a channel added to an already-published Agent connects immediately and therefore needs confirmation for that external connection. Use search_nodes with usage="agentTool" when configuring node-backed Agent tools.
+
+Agent conversations and runs are not workflow executions: get_workflow_execution and search_workflow_executions cover workflow executions only, including workflows an Agent invokes as tools.`;
+
+	return [
+		INTRO,
+		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
+		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
+		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
+	]
+		.filter(Boolean)
+		.join('\n\n');
 }

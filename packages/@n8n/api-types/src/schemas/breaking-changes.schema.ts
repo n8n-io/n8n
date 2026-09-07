@@ -59,6 +59,9 @@ const ruleResultBaseSchema = z.object({
 	ruleSeverity: breakingChangeRuleSeveritySchema,
 	ruleDocumentationUrl: z.string().optional(),
 	recommendations: z.array(recommendationSchema),
+	// True when an automated migration is registered for this rule, so the UI
+	// can offer a "Migrate" action instead of prose-only advice.
+	migratable: z.boolean(),
 });
 
 const instanceRuleResultsSchema = ruleResultBaseSchema.extend({
@@ -110,3 +113,21 @@ const breakingChangeLightReportResultDataSchema = z.object({
 export type BreakingChangeLightReportResult = z.infer<
 	typeof breakingChangeLightReportResultDataSchema
 >;
+
+// Result of applying an automated node migration to a single workflow.
+const workflowMigrationResultSchema = z.object({
+	workflowId: z.string(),
+	// versionId of the new workflow version created by the migration.
+	newVersionId: z.string(),
+	// Ids of the nodes that were rewritten.
+	migratedNodeIds: z.array(z.string()),
+	// Parameters that could not be carried over (empty for lossless migrations).
+	unmapped: z.array(z.string()),
+	// Behavior/output changes the user should be aware of.
+	notes: z.array(z.string()),
+	// True when the migration can be published in one click: it was lossless (no
+	// unmapped/notes), the migrated version was the one currently published, and
+	// the result still validates for activation (real trigger, no node errors).
+	republishable: z.boolean(),
+});
+export type WorkflowMigrationResult = z.infer<typeof workflowMigrationResultSchema>;
