@@ -1,4 +1,5 @@
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -14,7 +15,7 @@ export function useCanvasSelectionTelemetry() {
 
 	return {
 		trackMultipleNodesSelected(nodeIds: string[]) {
-			telemetry.track('User selected multiple nodes', {
+			telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_SELECTED_MULTIPLE_NODES, {
 				workflow_id: workflowDocumentStore.value.workflowId,
 				node_ids: nodeIds,
 				node_count: nodeIds.length,

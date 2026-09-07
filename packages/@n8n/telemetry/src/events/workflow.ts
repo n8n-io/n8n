@@ -3,6 +3,17 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
+	USER_SELECTED_MULTIPLE_NODES: {
+		name: 'User selected multiple nodes',
+		description:
+			'The user selected more than one canvas element (node or group) at once, regardless of whether they went on to act on the selection. Debounced to one event per multi-select gesture.',
+		properties: z.object({
+			workflow_id: z.string(),
+			node_ids: z.array(z.string()).describe('Selected node ids, including group member ids'),
+			node_count: z.number(),
+			push_ref: z.string(),
+		}),
+	},
 	NODE_IDS_HEALED: {
 		name: 'Workflow node ids healed',
 		description:

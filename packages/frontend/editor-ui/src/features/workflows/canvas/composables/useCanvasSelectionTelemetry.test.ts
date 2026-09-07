@@ -1,3 +1,4 @@
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed } from 'vue';
 
@@ -27,7 +28,7 @@ describe('useCanvasSelectionTelemetry', () => {
 
 		telemetry.trackMultipleNodesSelected(['a', 'b', 'c']);
 
-		expect(trackSpy).toHaveBeenCalledWith('User selected multiple nodes', {
+		expect(trackSpy).toHaveBeenCalledWith(TELEMETRY_EVENT.WORKFLOW.USER_SELECTED_MULTIPLE_NODES, {
 			workflow_id: 'wf-test',
 			node_ids: ['a', 'b', 'c'],
 			node_count: 3,
