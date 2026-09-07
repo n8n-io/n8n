@@ -325,6 +325,73 @@ describe('POST /credentials', () => {
 			'Lacking permissions to reference external secrets in credentials',
 		);
 	});
+
+	test('should not include credential data in the response', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('data');
+		expect(JSON.stringify(response.body)).not.toContain(payload.data.accessToken);
+	});
+
+	test('should reject an unknown body key', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: { accessToken: 'abcdefghijklmnopqrstuvwxyz', user: 'test', server: 'testServer' },
+			notAField: 'nope',
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject a read-only id field in the body', async () => {
+		const payload = {
+			id: 'someId',
+			name: 'test credential',
+			type: 'githubApi',
+			data: { accessToken: 'abcdefghijklmnopqrstuvwxyz', user: 'test', server: 'testServer' },
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('is read-only');
+	});
+
+	test('should reject for member without the credential:create scope', async () => {
+		const memberWithoutCreateScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
+		const agent = testServer.publicApiAgentFor(memberWithoutCreateScope);
+
+		const response = await agent.post('/credentials').send({
+			name: 'test credential',
+			type: 'githubApi',
+			data: { accessToken: 'abcdefghijklmnopqrstuvwxyz', user: 'test', server: 'testServer' },
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 403, not 400, when an unauthorized caller sends an invalid body', async () => {
+		const memberWithoutCreateScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
+		const agent = testServer.publicApiAgentFor(memberWithoutCreateScope);
+
+		const response = await agent.post('/credentials').send({ type: randomName() });
+
+		expect(response.statusCode).toBe(403);
+	});
 });
 
 describe('GET /credentials', () => {
@@ -1472,6 +1539,88 @@ describe('PATCH /credentials/:id', () => {
 		expect(updatedData.authentication).toBe('keyPair');
 		expect(updatedData.privateKey).toBeUndefined();
 		expect(updatedData.password).toBe('oldPassword');
+	});
+
+	test('should fail when changing type without providing data', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ type: 'ftp' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			'req.body.data is required when changing credential type. The existing data cannot be used with the new type.',
+		);
+	});
+
+	test('should not include credential data in the response', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ name: 'Renamed' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('data');
+	});
+
+	test('should reject an unknown body key', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ notAField: 'nope' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject for member without the credential:update scope', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const memberWithoutUpdateScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
+		const agent = testServer.publicApiAgentFor(memberWithoutUpdateScope);
+
+		const response = await agent.patch(`/credentials/${savedCredential.id}`).send({ name: 'Nope' });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 403, not 400, when an unauthorized caller sends an invalid body', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const memberWithoutUpdateScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
+		const agent = testServer.publicApiAgentFor(memberWithoutUpdateScope);
+
+		const response = await agent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ type: randomName() });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	// Measures the current contract for an empty JSON body: `{}` with a JSON content type is a
+	// documented no-op update today, and this must not change across the migration.
+	test('should accept an empty JSON body as a no-op update', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.set('Content-Type', 'application/json')
+			.send({});
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	// Pins a deliberate contract shift from API-253: on unmodified master this was 415
+	// ("unsupported media type undefined"), because the hand-written spec marked the request
+	// body required. Every field in `UpdateCredentialPublicDto` is optional, so an empty object
+	// is a valid body and the body is no longer required; a bodyless request now falls through
+	// to a 200 no-op update instead of being rejected for its missing content type.
+	test('should accept a request with no body and no content type as a no-op update', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.patch(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
 	});
 });
 
