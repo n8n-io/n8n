@@ -291,6 +291,28 @@ describe('workspace tool', () => {
 			);
 			expect(result).toEqual({ id: 'f1', name: 'Reports', parentFolderId: null });
 		});
+
+		it('creates the folder with the trimmed name, not the raw input', async () => {
+			const context = contextWithFolderActions({
+				permissions: { createFolder: 'always_allow' },
+			});
+			(context.workspaceService!.createFolder as Mock).mockResolvedValue({
+				id: 'f1',
+				name: 'Reports',
+				parentFolderId: null,
+			});
+			const tool = createWorkspaceTool(context);
+
+			await executeTool(tool, { action: 'create-folder', name: '  Reports  ', projectId: 'p1' }, {
+				resumeData: undefined,
+			} as never);
+
+			expect(context.workspaceService!.createFolder).toHaveBeenCalledWith(
+				'Reports',
+				'p1',
+				undefined,
+			);
+		});
 	});
 
 	describe('delete-folder', () => {

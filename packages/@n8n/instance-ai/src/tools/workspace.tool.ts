@@ -252,6 +252,7 @@ async function handleCreateFolder(
 	if (!nameCheck.success) {
 		return { error: nameCheck.error.issues[0]?.message ?? 'Invalid folder name' };
 	}
+	const name = nameCheck.data;
 
 	if (context.permissions?.createFolder === 'blocked') {
 		return {
@@ -269,7 +270,7 @@ async function handleCreateFolder(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Create ${input.name} in project ${input.projectId}`,
+			message: `Create ${name} in project ${input.projectId}`,
 			severity: 'info' as const,
 		});
 	}
@@ -287,7 +288,7 @@ async function handleCreateFolder(
 
 	// State 3: Approved or always_allow — execute
 	const folder = await context.workspaceService!.createFolder!(
-		input.name,
+		name,
 		input.projectId,
 		input.parentFolderId,
 	);
