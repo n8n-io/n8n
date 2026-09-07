@@ -243,7 +243,7 @@ describe('dataTableAggregate', () => {
 			expect([ds1.id, ds2.id, ds3.id]).toContain(result.data[0].id);
 			expect(result.count).toBe(3);
 		});
-		it('should not return data tables for project chat users', async () => {
+		it('should return an empty array when the projectId filter targets a project the user cannot access', async () => {
 			const currentUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
 
 			await dataTableService.createDataTable(project1.id, {
@@ -251,8 +251,6 @@ describe('dataTableAggregate', () => {
 				columns: [],
 			});
 
-			// project:chatUser doesn't grant dataTable:listProject, so the repository
-			// wouldn't return this project as accessible for that scope.
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValueOnce([]);
 
 			const result = await dataTableAggregateService.getManyAndCount(currentUser, {
