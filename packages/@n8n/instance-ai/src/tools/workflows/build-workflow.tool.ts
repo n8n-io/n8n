@@ -87,7 +87,7 @@ import { FolderResolutionError } from '../../errors/folder-resolution.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
-import type { InstanceAiContext, WorkflowFolderRef } from '../../types';
+import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
 import {
@@ -230,11 +230,7 @@ function pickBuildWorkflowInputSchema(context: InstanceAiContext) {
  * note: a workflow quietly left at the root when the user named a folder is
  * the failure `folderPath` exists to remove.
  */
-function formatFolderPlacementFailure(failure: {
-	requested: string;
-	reason: string;
-	candidates: string[];
-}): string {
+function formatFolderPlacementFailure(failure: FolderResolutionFailure): string {
 	const candidates =
 		failure.candidates.length > 0
 			? ` Folders in this project: ${failure.candidates.map((path) => `"${path}"`).join(', ')}.`
