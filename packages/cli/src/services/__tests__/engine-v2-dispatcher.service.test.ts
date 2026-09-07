@@ -158,6 +158,16 @@ describe('EngineV2Dispatcher', () => {
 			);
 		});
 
+		it('passes the v1 mode and the caller to the data plane', async () => {
+			await dispatcher.start(runData({ userId: 'user-1', projectId: 'project-1' }));
+
+			expect(proxy.startExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					callerContext: { hostMode: 'manual', userId: 'user-1', projectId: 'project-1' },
+				}),
+			);
+		});
+
 		it('converts the workflow to a graph', async () => {
 			await dispatcher.start(runData());
 
