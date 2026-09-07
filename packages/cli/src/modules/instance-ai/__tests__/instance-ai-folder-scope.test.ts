@@ -113,4 +113,15 @@ describe('resolveRequestedFolder', () => {
 			candidates: ['Ops/Reports'],
 		});
 	});
+
+	it('confirms a multi-segment suffix match instead of downgrading it via the leaf-name stage', () => {
+		const nested: FolderInScope[] = [folder('finance-reports', 'Ops/Finance/Reports')];
+
+		// "Finance/Reports" matches this folder's own last two segments exactly.
+		// The leaf-name stage also matches on bare "Reports", but the fuller,
+		// suffix-confirmed match must win instead of being downgraded to ambiguous.
+		expect(resolveRequestedFolder({ folderPath: 'Finance/Reports' }, nested)).toEqual({
+			folderId: 'finance-reports',
+		});
+	});
 });

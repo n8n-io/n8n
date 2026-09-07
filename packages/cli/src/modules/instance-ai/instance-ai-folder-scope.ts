@@ -41,8 +41,8 @@ export function listCandidatePaths(folders: FolderInScope[]): string[] {
 /**
  * Resolve a folder the caller named to exactly one folder id.
  *
- * Staged and strict: exact path → exact folder name → last requested segment as
- * folder name → "/"-boundary path suffix. It never falls back to a fuzzy or
+ * Staged and strict: exact path → exact folder name → "/"-boundary path suffix
+ * → last requested segment as folder name. It never falls back to a fuzzy or
  * partial match. The failure this exists to remove is a folder request that
  * quietly becomes a wider set, so an unresolved name comes back as unresolved
  * with the real folders listed.
@@ -75,11 +75,14 @@ export function resolveRequestedFolder(
 	const stages: Array<{ matches: (folder: FolderInScope) => boolean; leafNameOnly?: boolean }> = [
 		{ matches: (folder) => normalizeFolderPath(folder.path) === wanted },
 		{ matches: (folder) => folder.name.trim().toLowerCase() === wanted },
+		// A full-path suffix confirms every requested segment, including the
+		// parent, so it must be tried before the weaker bare-leaf-name stage
+		// gets a chance to downgrade the same folder to "ambiguous".
+		{ matches: (folder) => normalizeFolderPath(folder.path).endsWith(`/${wanted}`) },
 		// A bare-leaf-name hit discarded everything before the last "/", so a
 		// same-named folder under a different parent matches just as well. Never
 		// trust it alone, even when it is the only hit.
 		{ matches: (folder) => folder.name.trim().toLowerCase() === wantedLeaf, leafNameOnly: true },
-		{ matches: (folder) => normalizeFolderPath(folder.path).endsWith(`/${wanted}`) },
 	];
 
 	for (const stage of stages) {
