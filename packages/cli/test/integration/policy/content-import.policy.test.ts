@@ -1,10 +1,12 @@
 /**
- * Pins the `contentImport` host wiring's advisory posture through the real policy decision
- * pipeline. Unit tests mock `PolicyEnforcementService`, so they prove the service method is
- * called with the right arguments but not that a registered check actually runs, or that a
- * regression turning `evaluate` into something that can fail the batch would be caught — which
- * is the one failure mode this host point exists to rule out (a single violating workflow must
- * never take down a multi-artifact import).
+ * Pins the `contentImport` host wiring through the real policy decision pipeline. Unit tests mock
+ * `PolicyEnforcementService`, so they prove the service method is called with the right arguments
+ * but not that a registered check actually runs.
+ *
+ * Both hosts enforce the same way: a denied workflow is skipped and reported, and the rest of the
+ * batch or pull still lands, so one bad artifact cannot cost an operator a whole restore. A check
+ * that cannot answer is an infrastructure fault rather than a property of one workflow, so it
+ * fails the whole operation instead of silently skipping every workflow in turn.
  */
 import type { SourceControlledFile } from '@n8n/api-types';
 import { getPersonalProject, getWorkflowById, newWorkflow, testDb } from '@n8n/backend-test-utils';
@@ -128,6 +130,7 @@ describe('contentImport policy wiring', () => {
 			mock(),
 			Container.get(PolicyEnforcementService),
 			Container.get(SharedWorkflowRepository),
+			Container.get(WorkflowRepository),
 		);
 
 		// Same idea, mirroring `test/integration/environments/source-control-import.service.test.ts`,
@@ -189,7 +192,7 @@ describe('contentImport policy wiring', () => {
 	});
 
 	describe('ImportService.importWorkflows()', () => {
-		test('flags only the denied workflow in the report and leaves the rest of the batch unaffected', async () => {
+		test('skips the denied workflow and imports the rest of the batch', async () => {
 			const clean = newWorkflow({ id: uuid(), name: 'Clean workflow' });
 			const flagged = newWorkflow({ id: uuid(), name: 'Denied workflow' });
 			deniedWorkflowNames.add(flagged.name);
@@ -205,26 +208,21 @@ describe('contentImport policy wiring', () => {
 				{
 					workflowId: flagged.id,
 					name: flagged.name,
-					contentImportPolicy: {
-						violations: [
-							{
-								kind: VIOLATION_KIND,
-								checkId: CHECK_ID,
-								message: deniedMessage(flagged.name),
-								subject: flagged.name,
-								subjectType: 'workflow',
-								scope: 'instance',
-							},
-						],
-						checkErrors: [],
-					},
+					violations: [
+						{
+							kind: VIOLATION_KIND,
+							checkId: CHECK_ID,
+							message: deniedMessage(flagged.name),
+							subject: flagged.name,
+							subjectType: 'workflow',
+							scope: 'instance',
+						},
+					],
 				},
 			]);
 
-			// The batch completes for every workflow regardless of the violation: `evaluate`
-			// reports, it never blocks.
 			await expect(getWorkflowById(clean.id)).resolves.toBeDefined();
-			await expect(getWorkflowById(flagged.id)).resolves.toBeDefined();
+			await expect(getWorkflowById(flagged.id)).resolves.toBeNull();
 		});
 
 		test('imports normally when no check objects', async () => {
@@ -241,32 +239,19 @@ describe('contentImport policy wiring', () => {
 			await expect(getWorkflowById(workflow.id)).resolves.toBeDefined();
 		});
 
-		test('does not fail the batch when the registered check throws for one workflow', async () => {
+		// A check that cannot answer is an infrastructure fault, not a property of one workflow.
+		// Skipping per workflow would silently skip every workflow and still report success.
+		test('fails the whole import when the registered check throws', async () => {
 			const clean = newWorkflow({ id: uuid(), name: 'Clean workflow' });
 			const broken = newWorkflow({ id: uuid(), name: 'Broken workflow' });
 			throwingWorkflowNames.add(broken.name);
 
-			const { violations } = await importService.importWorkflows(
-				[clean, broken],
-				ownerProject.id,
-				owner.id,
-				{},
-			);
+			await expect(
+				importService.importWorkflows([clean, broken], ownerProject.id, owner.id, {}),
+			).rejects.toThrow();
 
-			// A check that errors instead of answering surfaces as a `checkError`, not a
-			// violation — but either way nothing here fails the import.
-			expect(violations).toStrictEqual([
-				{
-					workflowId: broken.id,
-					name: broken.name,
-					contentImportPolicy: {
-						violations: [],
-						checkErrors: [{ checkId: CHECK_ID, correlationId: expect.any(String) }],
-					},
-				},
-			]);
-			await expect(getWorkflowById(clean.id)).resolves.toBeDefined();
-			await expect(getWorkflowById(broken.id)).resolves.toBeDefined();
+			await expect(getWorkflowById(clean.id)).resolves.toBeNull();
+			await expect(getWorkflowById(broken.id)).resolves.toBeNull();
 		});
 	});
 
@@ -316,7 +301,7 @@ describe('contentImport policy wiring', () => {
 			});
 		});
 
-		test('flags only the denied workflow in the result and leaves the rest of the batch unaffected', async () => {
+		test('skips the denied workflow and pulls the rest', async () => {
 			const clean = makeWorkflowImport({ name: 'Clean workflow' });
 			const flagged = makeWorkflowImport({ name: 'Denied workflow' });
 			deniedWorkflowNames.add(flagged.name);
@@ -353,9 +338,8 @@ describe('contentImport policy wiring', () => {
 			]);
 			expect(result[0]).not.toHaveProperty('contentImportPolicy');
 
-			// The pull completes for every workflow regardless of the violation.
 			await expect(workflowRepository.findOne({ where: { id: clean.id } })).resolves.toBeTruthy();
-			await expect(workflowRepository.findOne({ where: { id: flagged.id } })).resolves.toBeTruthy();
+			await expect(workflowRepository.findOne({ where: { id: flagged.id } })).resolves.toBeNull();
 		});
 
 		test('imports normally when no check objects', async () => {
@@ -371,28 +355,19 @@ describe('contentImport policy wiring', () => {
 			expect(result[0]).not.toHaveProperty('contentImportPolicy');
 		});
 
-		test('does not fail the pull when the registered check throws for one workflow', async () => {
+		test('fails the whole pull when the registered check throws', async () => {
 			const broken = makeWorkflowImport({ name: 'Broken workflow' });
 			throwingWorkflowNames.add(broken.name);
 			const file = putWorkflowFile(broken.id, broken);
 
-			const result = await sourceControlImportService.importWorkflowFromWorkFolder(
-				[mock<SourceControlledFile>({ id: broken.id, file })],
-				owner.id,
-			);
+			await expect(
+				sourceControlImportService.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: broken.id, file })],
+					owner.id,
+				),
+			).rejects.toThrow();
 
-			// A check that errors instead of answering surfaces as a `checkError`, not a
-			// violation — but either way nothing here fails the pull.
-			expect(result).toEqual([
-				expect.objectContaining({
-					id: broken.id,
-					contentImportPolicy: {
-						violations: [],
-						checkErrors: [{ checkId: CHECK_ID, correlationId: expect.any(String) }],
-					},
-				}),
-			]);
-			await expect(workflowRepository.findOne({ where: { id: broken.id } })).resolves.toBeTruthy();
+			await expect(workflowRepository.findOne({ where: { id: broken.id } })).resolves.toBeNull();
 		});
 	});
 });

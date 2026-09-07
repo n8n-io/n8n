@@ -85,9 +85,9 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
-    "test:integration": "vitest run --config vitest.integration.config.mjs",
-    "test:integration:replay": "cross-env CI=1 vitest run --config vitest.integration.config.mjs",
-    "test:integration:record": "cross-env VCR_MODE=record vitest run --config vitest.integration.config.mjs",
+    "test:integration": "cross-env TZ=UTC vitest run --config vitest.integration.config.mjs",
+    "test:integration:replay": "cross-env TZ=UTC CI=1 vitest run --config vitest.integration.config.mjs",
+    "test:integration:record": "cross-env TZ=UTC VCR_MODE=record vitest run --config vitest.integration.config.mjs",
     "fixtures:generate": "tsx src/__tests__/fixtures/generate-bulk-vector-fixture.ts"
   },
   "dependencies": {

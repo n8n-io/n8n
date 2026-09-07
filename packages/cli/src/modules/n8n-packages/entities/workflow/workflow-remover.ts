@@ -16,9 +16,8 @@ import type { ImportContext, RemovedWorkflowSummary } from '../../n8n-packages.t
 
 /**
  * Reconciles a project scope against the package under `folderConflictPolicy=overwrite`: a workflow
- * the package does not account for is removed, per `overwriteDeletionPolicy`. Confined to the
- * containers the package describes — the project root and the folders it defines — so a target-only
- * folder shelters its contents.
+ * the package does not account for is removed, per `overwriteDeletionPolicy`. Package imports are
+ * confined to represented folders; Git directory imports can make the whole project authoritative.
  */
 @Service()
 export class WorkflowRemover {
@@ -145,6 +144,7 @@ function candidatesFor(
 ): RemovableWorkflow[] {
 	const retained = retainedWorkflowIds(request);
 	const packageFolderIds = new Set(request.packageFolderIds);
+	const isGitPull = request.importSource === 'git-pull';
 
 	return placements
 		.filter(
@@ -152,8 +152,7 @@ function candidatesFor(
 				// Already archived means already removed.
 				!isArchived &&
 				!retained.has(id) &&
-				// `null` is the project root, which a project package always describes.
-				(parentFolderId === null || packageFolderIds.has(parentFolderId)),
+				(isGitPull || parentFolderId === null || packageFolderIds.has(parentFolderId)),
 		)
 		.map(({ id, name, parentFolderId }) => ({ id, name, parentFolderId }));
 }

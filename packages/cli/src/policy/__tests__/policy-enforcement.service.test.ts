@@ -41,7 +41,11 @@ const enforceCalls = (service: PolicyEnforcementService) => ({
 			projectId: 'proj-1',
 		}),
 	contentImport: async () =>
-		await service.enforceContentImport({ workflow: savedWorkflow, projectId: 'proj-1' }),
+		await service.enforceContentImport({
+			workflow: savedWorkflow,
+			projectId: 'proj-1',
+			transport: 'cli',
+		}),
 });
 
 const evaluateCalls = (service: PolicyEnforcementService) => ({
@@ -68,7 +72,11 @@ const evaluateCalls = (service: PolicyEnforcementService) => ({
 			projectId: 'proj-1',
 		}),
 	contentImport: async () =>
-		await service.evaluateContentImport({ workflow: savedWorkflow, projectId: 'proj-1' }),
+		await service.evaluateContentImport({
+			workflow: savedWorkflow,
+			projectId: 'proj-1',
+			transport: 'cli',
+		}),
 });
 
 describe('PolicyEnforcementService', () => {
@@ -174,7 +182,7 @@ describe('PolicyEnforcementService', () => {
 				checkErrors: [{ checkId: 'flaky', correlationId: 'abc' }],
 			};
 			backend.evaluate.mockResolvedValue(decision);
-			const context = { workflow: savedWorkflow, projectId: null };
+			const context = { workflow: savedWorkflow, projectId: null, transport: 'cli' } as const;
 
 			expect(await service.evaluateContentImport(context)).toBe(decision);
 			expect(backend.evaluate).toHaveBeenCalledWith('contentImport', context);
@@ -204,6 +212,21 @@ describe('PolicyEnforcementService', () => {
 
 			expect(token.subject.type).toBe('workflow');
 			expect(token.subject.id).toMatch(/^[0-9a-f]{64}$/);
+		});
+
+		// A create can carry a client-supplied id (POST /workflows allows it), but that id is no
+		// proof of what was checked, so the save still binds to the content.
+		it('binds a create with a supplied id to a hash of its nodes', async () => {
+			const withClientId: PolicedWorkflow = { id: 'wf-client', name: 'New', nodes: [] };
+
+			const token = await service.enforceWorkflowSave({
+				workflow: withClientId,
+				storedWorkflow: null,
+				projectId: null,
+			});
+
+			expect(token.subject.id).toMatch(/^[0-9a-f]{64}$/);
+			expect(token.subject.id).not.toBe('wf-client');
 		});
 
 		it('gives two unsaved workflows with different nodes different subjects', async () => {

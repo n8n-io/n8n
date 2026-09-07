@@ -73,6 +73,21 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
+// Nodes that let the user pick their own predefined credential type via a
+// parameter ("Authentication" → "Predefined Credential Type") rather than
+// declaring a fixed credential in their node type. Gateway credits mints a
+// managed credential for a specific, known provider — it can't stand in for
+// an arbitrary user-chosen one, so these nodes never offer it. Includes the
+// AI-Agent-tool variants ("Tool" suffix) generated from the same node types.
+const AI_GATEWAY_UNSUPPORTED_NODE_TYPES: readonly string[] = [
+	'n8n-nodes-base.httpRequest',
+	'n8n-nodes-base.httpRequestTool',
+	'@n8n/n8n-nodes-langchain.toolHttpRequest',
+	'n8n-nodes-base.graphql',
+	'n8n-nodes-base.graphqlTool',
+];
+
 type Props = {
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;
@@ -85,6 +100,10 @@ type Props = {
 	 *  instead of reading as a list to choose from. Existing credentials stay
 	 *  selectable — the user may change their mind once they see them. */
 	preferNewCredential?: boolean;
+	/** Workflow this credential slot belongs to, for telemetry attribution. Standalone
+	 *  hosts (Instance AI setup card) must pass it — they render without a provided
+	 *  workflow document; other hosts fall back to the injected document. */
+	workflowId?: string;
 	/** When true, skip all global store writes (workflowsStore, nodeHelpers).
 	 *  Used by Instance AI to render credential selection without polluting the active workflow. */
 	standalone?: boolean;
@@ -157,6 +176,9 @@ const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
+const telemetryWorkflowId = computed(
+	() => props.workflowId ?? (props.standalone ? '' : workflowDocumentStore?.value.workflowId),
+);
 const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 
 // Quick connect
@@ -389,7 +411,8 @@ watch(
 
 		if (
 			aiGateway.isEnabled.value &&
-			!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+			(AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type) ||
+				!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion))
 		) {
 			for (const { type } of types) {
 				if (selected.value[type.name]?.__aiGatewayManaged) {
@@ -422,6 +445,7 @@ watch(
 					resolveGatewayActivation(type.name) !== undefined;
 				if (
 					gatewaySupported &&
+					!AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type) &&
 					aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
 					isCurrentActionSupported.value
 				) {
@@ -625,13 +649,14 @@ function createNewCredential(
 			...(isToolContext ? { appendToBody: true } : {}),
 			instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
 			credentialSetupHint: props.credentialSetupHint,
+			workflowId: telemetryWorkflowId.value || undefined,
 		},
 	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
 		new_credential: true,
-		workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
+		workflow_id: telemetryWorkflowId.value,
 	});
 }
 
@@ -660,7 +685,7 @@ function onCredentialSelected(
 		credential_type: credentialType,
 		node_type: props.node.type,
 		...(hasProxyAuth(props.node) ? { is_service_specific: true } : {}),
-		workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
+		workflow_id: telemetryWorkflowId.value,
 		credential_id: credentialId,
 	});
 
@@ -673,6 +698,7 @@ function onCredentialSelected(
 			credential_type: credentialType,
 			node_type: props.node.type,
 			workflow_id: workflowDocumentStore?.value.workflowId,
+			credential_id: credentialId,
 			credential_kind: 'own',
 			source: 'user',
 		});
@@ -816,6 +842,7 @@ function resolveGatewayActivation(credentialType: string) {
 
 function showAiGatewaySelector(credentialType: string): boolean {
 	if (!aiGateway.isEnabled.value) return false;
+	if (AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type)) return false;
 	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
 	// Shown type supported → toggle directly; otherwise fall back to a sibling.
@@ -854,6 +881,8 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 	// Track the credential kind actually assigned, or null when the slot is cleared
 	// (toggle-off with no credential to restore) so no false assignment is recorded.
 	let assignedKind: 'n8n_connect' | 'own' | null = null;
+	// The stored credential restored on toggle-off; n8n Connect slots have none.
+	let assignedCredentialId: string | null = null;
 
 	if (enable) {
 		// Moving the managed slot to a sibling: drop a stale managed sentinel from the
@@ -877,6 +906,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 			const restoredCredential = credentialsStore.getCredentialById(mostRecent.id);
 			credentials[credentialType] = { id: restoredCredential.id, name: restoredCredential.name };
 			assignedKind = 'own';
+			assignedCredentialId = restoredCredential.id;
 		} else {
 			delete credentials[credentialType];
 		}
@@ -887,7 +917,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 			credential_type: effectiveType,
 			node_type: props.node.type,
 			mode: enable ? 'n8n_connect' : 'own',
-			workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
+			workflow_id: telemetryWorkflowId.value,
 		});
 		// Only the manual canvas is attributed to the user here; standalone
 		// (Instance AI) assignments are counted by the backend as `instance-ai-*`.
@@ -896,6 +926,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 				credential_type: effectiveType,
 				node_type: props.node.type,
 				workflow_id: workflowDocumentStore?.value.workflowId,
+				credential_id: assignedCredentialId,
 				credential_kind: assignedKind,
 				source: 'user',
 			});
@@ -938,13 +969,14 @@ function editCredential(credentialType: string): void {
 		hideAskAssistant: hideAskAssistant.value,
 		...(isToolContext ? { appendToBody: true } : {}),
 		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
+		workflowId: telemetryWorkflowId.value || undefined,
 	});
 
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
 		new_credential: false,
-		workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
+		workflow_id: telemetryWorkflowId.value,
 	});
 	subscribedToCredentialType.value = credentialType;
 }

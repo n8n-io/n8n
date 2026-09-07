@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as query from './query.operation';
+import { siteRLC } from '../common';
 
 export { query };
 
@@ -24,6 +25,14 @@ export const description: INodeProperties[] = [
 			},
 		],
 		default: 'query',
+	},
+	{
+		...siteRLC,
+		displayOptions: {
+			show: {
+				resource: ['search'],
+			},
+		},
 	},
 	...query.description,
 ];

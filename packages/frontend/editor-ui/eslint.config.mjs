@@ -366,5 +366,18 @@ export default defineConfig(
 			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
+	{
+		// Vite bundles everything this package imports and nothing resolves it from
+		// node_modules at runtime, so every dependency is a devDependency. That keeps
+		// the frontend libraries out of the server image, which installs editor-ui's
+		// production closure via packages/cli. The rule still catches imports of
+		// packages the manifest does not declare at all.
+		rules: {
+			'import-x/no-extraneous-dependencies': [
+				'error',
+				{ devDependencies: true, optionalDependencies: false },
+			],
+		},
+	},
 	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 );
