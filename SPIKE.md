@@ -51,17 +51,31 @@ further, against the real sandbox API (not just the client library):
 - **Vite's WebSocket HMR channel connected successfully** through that hacky
   relay (`[vite] connected.` in the console) — so a raw byte-level relay
   doesn't break the HMR protocol itself.
-- **But live updates didn't actually push to the browser** — even after
-  confirming (via direct in-sandbox requests) that Vite's dev server *did*
-  pick up and re-transform an edited file, the connected browser tab never
-  received an HMR update, and a hard reload sometimes still showed stale
-  content one edit behind. Tried the standard fix for container filesystems
-  not firing inotify events (`server.watch.usePolling: true`) — didn't
-  resolve it either. This looks like a real, separate issue (possibly in how
-  this specific sandbox image's filesystem/writes interact with a watcher, or
-  a caching quirk introduced by the spike's own relay hack) that needs actual
-  debugging time, not more spike-level poking — flagged as an open risk for
-  whoever picks up Phase 7, not resolved here.
+- **Root-caused the "live updates don't push" symptom — and it's good news.**
+  The first attempts edited the file either before any browser had loaded the
+  page through that Vite instance, or after restarting Vite (which wipes its
+  module graph) — in both cases Vite logs `[no modules matched] src/App.jsx`
+  and correctly has nothing to push. Redone in the right order (start Vite
+  once → load the page for real in a browser, which registers the module via
+  React Fast Refresh's `[self-accepts]` → edit the file, no restart) Vite's
+  own debug log (`DEBUG=vite:hmr`, streamed through the executions API) shows
+  the full correct sequence: `[file change]` → `[vite] hmr update /src/App.jsx`.
+  **Vite's HMR pipeline (detect → compute → send) genuinely works inside this
+  sandbox once exercised correctly.**
+  - The remaining gap is narrower than it looked: the computed update still
+    didn't visibly reach the browser through the spike's own relay. The most
+    likely cause is that `docker exec -i <container> nc <ip> <port>` buffers
+    the small binary WebSocket push frame somewhere in Docker's non-tty attach
+    stream — `stdbuf` (the usual fix) isn't installed in this minimal
+    container image, so the exact buffering point wasn't isolated further.
+    A real proxy — Elias's own research already specifies Go's
+    `httputil.ReverseProxy`, which explicitly passes WebSocket upgrades
+    without this kind of ad-hoc buffering — should not hit this at all.
+  - **Net effect: hot reload is substantially de-risked, not blocked.** The
+    piece that was genuinely unverified (does the HMR mechanism work at all
+    in this sandbox environment) now has direct, positive evidence. What's
+    left is exactly the already-scoped Phase 7 engineering work (a real
+    port-proxy, not a relay hack) — there's no new fundamental blocker found.
 
 ## What's real, committable code (not just validation scripts)
 
