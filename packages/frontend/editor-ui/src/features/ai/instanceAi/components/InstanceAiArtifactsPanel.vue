@@ -10,6 +10,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, type Ref } from 'vue';
+import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import {
@@ -102,6 +103,8 @@ const statusIconMap: Record<
 };
 
 // --- Artifacts ---
+const buildingArtifactIds = useBuildingArtifactIds();
+
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
 	for (const entry of thread.producedArtifacts.values()) {
@@ -138,8 +141,11 @@ function openArtifactLabel(name: string) {
 	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
 }
 
-function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry {
+function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry | undefined {
 	const key = handoffContextKey(context);
+
+	// A control signal, not user-added context — no sidebar entry.
+	if (context.source === 'setup-panel-execute') return undefined;
 
 	if (context.source === 'agent-preview') {
 		return {
@@ -170,10 +176,10 @@ const contextEntries = computed<ContextEntry[]>(() => {
 	// Pending handoff (preview "Send to Assistant") lives on the composer until
 	// the first send — include it so the sidebar matches the input chip.
 	const pending = pendingComposerContext?.value;
-	if (pending) {
-		const key = handoffContextKey(pending);
-		seen.add(key);
-		entries.push(contextEntryFor(pending));
+	const pendingEntry = pending ? contextEntryFor(pending) : undefined;
+	if (pendingEntry) {
+		seen.add(pendingEntry.key);
+		entries.push(pendingEntry);
 	}
 
 	for (const message of [...thread.messages].reverse()) {
@@ -181,8 +187,10 @@ const contextEntries = computed<ContextEntry[]>(() => {
 
 		const key = handoffContextKey(message.context);
 		if (seen.has(key) || dismissedKeys.has(key)) continue;
+		const entry = contextEntryFor(message.context);
+		if (!entry) continue;
 		seen.add(key);
-		entries.push(contextEntryFor(message.context));
+		entries.push(entry);
 	}
 
 	return entries;
@@ -279,6 +287,15 @@ async function dismissContext(key: string) {
 					>
 						<span :class="$style.artifactIconWrap">
 							<N8nIcon
+								v-if="buildingArtifactIds.has(artifact.id)"
+								icon="spinner"
+								spin
+								size="large"
+								:class="$style.artifactIcon"
+								data-test-id="instance-ai-artifact-building-spinner"
+							/>
+							<N8nIcon
+								v-else
 								:icon="artifactIconMap[artifact.type] ?? 'file'"
 								size="large"
 								:class="$style.artifactIcon"

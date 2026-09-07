@@ -83,6 +83,14 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Service Origin',
+			name: 'serviceOrigin',
+			type: 'string',
+			description:
+				'Exact API origin used for credential verification. Set from the workflow when the credential is created.',
+			default: '',
+		},
+		{
 			displayName: 'Accepted Status Codes',
 			name: 'acceptedStatusCodes',
 			type: 'string',

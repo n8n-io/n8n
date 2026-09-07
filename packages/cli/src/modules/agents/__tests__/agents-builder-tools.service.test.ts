@@ -404,7 +404,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(description).toContain('never use `ask_credential` for chat-channel credentials');
 		});
 
-		it('list_sub_agents returns published same-project agents except the target agent', async () => {
+		it('list_sub_agents returns saved same-project agents except the target agent', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.findByProjectId.mockResolvedValue([
 				{
@@ -437,6 +437,10 @@ describe('AgentsBuilderToolsService', () => {
 					{
 						agentId: 'agent-research',
 						name: 'Research Agent',
+					},
+					{
+						agentId: 'agent-draft',
+						name: 'Draft Agent',
 					},
 					{
 						agentId: 'agent-risk',
@@ -1361,14 +1365,21 @@ describe('AgentsBuilderToolsService', () => {
 		it('passes the search term to the attachable workflows service', async () => {
 			const { service, attachableWorkflowsService } = makeService();
 			attachableWorkflowsService.list.mockResolvedValue([
-				{ id: 'wf-1', name: 'Billing follow-up', active: true, triggerType: 'manual' },
+				{ id: 'wf-1', name: 'Billing follow-up', published: true, triggerType: 'executeWorkflow' },
 			]);
 
 			const result = await getListWorkflowsTool(service).handler!({ searchTerm: 'billing' }, ctx);
 
 			expect(attachableWorkflowsService.list).toHaveBeenCalledWith(user, projectId, 'billing');
 			expect(result).toEqual({
-				workflows: [{ id: 'wf-1', name: 'Billing follow-up', active: true, triggerType: 'manual' }],
+				workflows: [
+					{
+						id: 'wf-1',
+						name: 'Billing follow-up',
+						published: true,
+						triggerType: 'executeWorkflow',
+					},
+				],
 			});
 		});
 	});
@@ -1639,7 +1650,7 @@ describe('AgentsBuilderToolsService', () => {
 					description: 'Use when creating or updating tickets',
 					instructions: 'Create clear, actionable tickets.',
 					allowedTools: ['create_ticket'],
-					references: [{ path: 'references/ticket-template.md', sizeBytes: 18 }],
+					references: [{ path: 'references/ticket-template.md', characterCount: 17 }],
 				},
 			});
 		});
@@ -1678,10 +1689,10 @@ describe('AgentsBuilderToolsService', () => {
 					description: 'Use when creating or updating tickets',
 					instructions: 'Create clear, actionable tickets.',
 					references: [
-						{ path: 'references/ticket-template.md', sizeBytes: 17 },
+						{ path: 'references/ticket-template.md', characterCount: 17 },
 						{
 							path: 'references/escalation.md',
-							sizeBytes: 12,
+							characterCount: 12,
 							content: '# Escalation',
 						},
 					],
