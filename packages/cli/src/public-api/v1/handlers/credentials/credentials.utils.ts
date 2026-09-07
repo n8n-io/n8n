@@ -1,3 +1,4 @@
+import type { UpdateCredentialPublicDto } from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
 import { validate } from 'jsonschema';
 import {
@@ -7,7 +8,6 @@ import {
 	type INodePropertyOptions,
 } from 'n8n-workflow';
 
-import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -59,24 +59,7 @@ export function sanitizeCredentials(credential: CredentialsEntity): Partial<Cred
 }
 
 /**
- * Rejects an unknown credential type. Throws instead of writing to a response, so a controller
- * can call it directly.
- */
-export function assertKnownCredentialType(credentialTypes: CredentialTypes, type: string): void {
-	try {
-		credentialTypes.getByName(type);
-	} catch {
-		throw new BadRequestError('req.body.type is not a known type');
-	}
-}
-
-/**
- * Validates credential data against the JSON Schema derived from its type's properties. Throws
- * instead of writing to a response, so a controller can call it directly.
- *
- * A partial payload is merged into the stored data after validation, so key-presence requirements
- * (top-level `required` and conditional `allOf` blocks) cannot be checked against the payload
- * alone; per-key type checks still apply.
+ * Validates credential data against the JSON Schema derived from its type's properties.
  */
 export function validateCredentialData(
 	credentialsHelper: CredentialsHelper,
@@ -100,6 +83,28 @@ export function validateCredentialData(
 	if (!valid) {
 		throw new BadRequestError(
 			errors.map((error) => `request.body.data ${error.message}`).join(','),
+		);
+	}
+}
+
+/**
+ * Validates an update body's `data` against the effective type's JSON Schema. A type change with
+ * no `data` is rejected, since the existing encrypted data cannot be reused under a different type.
+ */
+export function assertValidUpdateProperties(
+	credentialsHelper: CredentialsHelper,
+	existingCredential: CredentialsEntity,
+	body: UpdateCredentialPublicDto,
+): void {
+	if (body.data !== undefined) {
+		const effectiveType = body.type ?? existingCredential.type;
+		validateCredentialData(credentialsHelper, effectiveType, body.data, {
+			partialData: body.isPartialData === true,
+		});
+	} else if (body.type !== undefined && body.type !== existingCredential.type) {
+		throw new BadRequestError(
+			'req.body.data is required when changing credential type. The existing data cannot ' +
+				'be used with the new type.',
 		);
 	}
 }

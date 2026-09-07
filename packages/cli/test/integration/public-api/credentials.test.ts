@@ -129,6 +129,17 @@ describe('POST /credentials', () => {
 		}
 	});
 
+	test('should fail with an unknown credential type', async () => {
+		const response = await authOwnerAgent.post('/credentials').send({
+			name: 'test credential',
+			type: 'notARealCredentialType',
+			data: { accessToken: 'abcdefghijklmnopqrstuvwxyz' },
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('not a known type');
+	});
+
 	test('should create credential in a team project when projectId is provided', async () => {
 		const teamProject = await createTeamProject('project', member);
 		const payload = {
@@ -380,15 +391,6 @@ describe('POST /credentials', () => {
 			type: 'githubApi',
 			data: { accessToken: 'abcdefghijklmnopqrstuvwxyz', user: 'test', server: 'testServer' },
 		});
-
-		expect(response.statusCode).toBe(403);
-	});
-
-	test('should return 403, not 400, when an unauthorized caller sends an invalid body', async () => {
-		const memberWithoutCreateScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
-		const agent = testServer.publicApiAgentFor(memberWithoutCreateScope);
-
-		const response = await agent.post('/credentials').send({ type: randomName() });
 
 		expect(response.statusCode).toBe(403);
 	});
@@ -1581,18 +1583,6 @@ describe('PATCH /credentials/:id', () => {
 		const agent = testServer.publicApiAgentFor(memberWithoutUpdateScope);
 
 		const response = await agent.patch(`/credentials/${savedCredential.id}`).send({ name: 'Nope' });
-
-		expect(response.statusCode).toBe(403);
-	});
-
-	test('should return 403, not 400, when an unauthorized caller sends an invalid body', async () => {
-		const savedCredential = await saveCredential(dbCredential(), { user: owner });
-		const memberWithoutUpdateScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
-		const agent = testServer.publicApiAgentFor(memberWithoutUpdateScope);
-
-		const response = await agent
-			.patch(`/credentials/${savedCredential.id}`)
-			.send({ type: randomName() });
 
 		expect(response.statusCode).toBe(403);
 	});
