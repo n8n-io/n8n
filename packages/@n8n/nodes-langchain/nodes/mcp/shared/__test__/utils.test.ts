@@ -6,6 +6,7 @@ import { createResultError, createResultOk } from '@n8n/utils/result';
 import type {
 	IExecuteFunctions,
 	INode,
+	LiteralMcpRegistryConnection,
 	NodeEgressFilter,
 	PrepareMcpRegistryConnectionInput,
 } from 'n8n-workflow';
@@ -34,6 +35,12 @@ vi.mock('@n8n/ai-utilities', async () => {
 });
 
 const MockedClient = Client as MockedClass<typeof Client>;
+
+const createTestEgressFilter = (): NodeEgressFilter => ({
+	validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+	createSecureLookup: vi.fn(),
+	validateRedirectSync: vi.fn(),
+});
 
 describe('utils', () => {
 	afterEach(() => {
@@ -218,6 +225,26 @@ describe('utils', () => {
 			expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('mcpOAuth2Api');
 		});
 
+		it('should refresh an expiring client credentials token without a refresh token', async () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({
+				grantType: 'clientCredentials',
+				oauthTokenData: {
+					access_token: 'access-token',
+					expires_in: 3600,
+					n8n_expires_at: String(now + 60_000),
+				},
+			});
+			ctx.helpers.refreshOAuth2Token.mockResolvedValue({ access_token: 'new-access-token' });
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer new-access-token' });
+			expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('mcpOAuth2Api');
+		});
+
 		it('should not refresh mcpOAuth2Api credentials when the access token is still valid', async () => {
 			const now = 1_700_000_000_000;
 			vi.spyOn(Date, 'now').mockReturnValue(now);
@@ -321,6 +348,19 @@ describe('utils', () => {
 			expect(result).toEqual({});
 		});
 
+		it('should apply a native OAuth2 credential', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = { oauthTokenData: { access_token: 'github-token' } };
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'githubOAuth2Api');
+
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer github-token' },
+				credentials,
+			});
+		});
+
 		it.each([
 			'headerAuth',
 			'bearerAuth',
@@ -368,6 +408,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
@@ -391,6 +432,7 @@ describe('utils', () => {
 
 				await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer token' },
 					name: 'test-client',
@@ -408,6 +450,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
@@ -424,6 +467,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
@@ -446,6 +490,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
@@ -474,6 +519,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
@@ -497,6 +543,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer token' },
 					name: 'test-client',
@@ -514,6 +561,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
@@ -532,6 +580,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
@@ -552,6 +601,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
@@ -573,6 +623,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
@@ -595,6 +646,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
@@ -614,6 +666,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
@@ -631,6 +684,7 @@ describe('utils', () => {
 
 				await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer my-token' },
 					name: 'test-client',
@@ -644,10 +698,39 @@ describe('utils', () => {
 
 				expect(mockedProxyFetch).toHaveBeenCalled();
 
-				const call = mockedProxyFetch.mock.calls[0];
+				const [options] = mockedProxyFetch.mock.calls[0];
 
-				expect(call[0]).toBe('https://example.com/mcp');
-				expect(new Headers(call[1]?.headers).get('authorization')).toBe('Bearer my-token');
+				expect(options.input).toBe('https://example.com/mcp');
+				expect(new Headers(options.init?.headers).get('authorization')).toBe('Bearer my-token');
+			});
+
+			it('should not send auth headers to a cross-origin redirect target', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				mockedProxyFetch
+					.mockResolvedValueOnce(
+						new Response(null, {
+							status: 307,
+							headers: { location: 'https://other.example.com/moved' },
+						}),
+					)
+					.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+
+				await connectMcpClient({
+					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
+					endpointUrl: 'https://example.com',
+					headers: { Authorization: 'Bearer my-token' },
+					name: 'test-client',
+					version: 1,
+				});
+
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				await opts.fetch('https://example.com/mcp', {});
+
+				expect(mockedProxyFetch).toHaveBeenCalledTimes(2);
+				const [secondCallOptions] = mockedProxyFetch.mock.calls[1];
+				expect(secondCallOptions.input.toString()).toBe('https://other.example.com/moved');
+				expect(new Headers(secondCallOptions.init?.headers).get('authorization')).toBeNull();
 			});
 
 			it('should preserve SDK headers passed as Headers instance', async () => {
@@ -662,6 +745,7 @@ describe('utils', () => {
 
 				await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer my-token' },
 					name: 'test-client',
@@ -673,7 +757,7 @@ describe('utils', () => {
 				const [, opts] = (TransportClass as Mock).mock.calls[0];
 				await opts.fetch('https://example.com', { headers: sdkHeaders });
 
-				const [, callOpts] = mockedProxyFetch.mock.calls[0];
+				const [{ init: callOpts }] = mockedProxyFetch.mock.calls[0];
 
 				expect(new Headers(callOpts?.headers).get('accept')).toBe('text/event-stream');
 			});
@@ -691,6 +775,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer old-token' },
 					name: 'test-client',
@@ -717,6 +802,7 @@ describe('utils', () => {
 
 				await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer old-token' },
 					name: 'test-client',
@@ -739,6 +825,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer token' },
 					name: 'test-client',
@@ -761,6 +848,7 @@ describe('utils', () => {
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer token' },
 					name: 'test-client',
@@ -788,27 +876,33 @@ describe('utils', () => {
 				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
 					access_token: 'refreshed-token',
 				});
-				const connection = {
+				const credentialType = 'testMcpOAuth2Api' as const;
+				ctx.helpers.getSecureEgressFilter.mockReturnValue(createTestEgressFilter());
+				const connection: LiteralMcpRegistryConnection = {
 					nodeTypeName: '@n8n/mcp-registry.test',
-					credentialType: 'testMcpOAuth2Api' as const,
 					endpointUrl: 'https://example.com/mcp',
 					endpointHostname: 'example.com',
-					transport: 'httpStreamable' as const,
+					transport: 'httpStreamable',
+					credentialBindings: [{ credentialType, selector: 'oAuth2' }],
+					isTemplated: false,
 				};
 				const prepareConnection = vi.fn((input: PrepareMcpRegistryConnectionInput) => ({
 					ok: true as const,
 					value: {
-						...connection,
+						nodeTypeName: connection.nodeTypeName,
+						credentialType,
+						transport: connection.transport,
+						endpointUrl: connection.endpointUrl,
 						headers: input.headers ?? {},
 						allowedDomains: connection.endpointHostname,
 					},
 				}));
 
 				await connectMcpClientForCredential(ctx, {
-					authentication: connection.credentialType,
+					authentication: credentialType,
 					serverTransport: transport,
 					endpointUrl: connection.endpointUrl,
-					registryCredential: { connection, prepareConnection },
+					registryCredential: { connection, credentialType, prepareConnection },
 					surface: 'MCP Client Tool',
 				});
 
@@ -826,6 +920,7 @@ describe('utils', () => {
 				const secureLookup = vi.fn();
 				const egressFilter: NodeEgressFilter = {
 					validateUrl: vi.fn().mockResolvedValue(createResultError(new Error('Egress blocked'))),
+					validateRedirectSync: vi.fn(),
 					createSecureLookup: vi.fn().mockReturnValue(secureLookup),
 				};
 
@@ -859,6 +954,7 @@ describe('utils', () => {
 				const secureLookup = vi.fn();
 				const egressFilter: NodeEgressFilter = {
 					validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+					validateRedirectSync: vi.fn(),
 					createSecureLookup: vi.fn().mockReturnValue(secureLookup),
 				};
 

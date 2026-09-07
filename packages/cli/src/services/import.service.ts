@@ -1,5 +1,4 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import type { ContentImportPolicyResult } from '@n8n/api-types';
 import type { TagEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	Project,
@@ -11,10 +10,11 @@ import {
 	TagRepository,
 	UserRepository,
 	WorkflowHistory,
+	WorkflowRepository,
 } from '@n8n/db';
+import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
-import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { readdir, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -31,8 +31,8 @@ import {
 	toTableName,
 } from '@/modules/data-table/utils/sql-utils';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { evaluateContentImportSafely } from '@/policy/evaluate-content-import-safely';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { decompressFolder } from '@/utils/compression.util';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import {
@@ -44,11 +44,14 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
 
-/** Advisory content-import policy result for one imported workflow, never blocking the import. */
+/**
+ * One workflow the content-import policy blocked. It was skipped — the rest of the batch still
+ * imports, so a single bad workflow cannot cost an operator a whole restore.
+ */
 export interface WorkflowImportViolations {
 	workflowId: string | null;
 	name: string;
-	contentImportPolicy: ContentImportPolicyResult;
+	violations: PolicyViolation[];
 }
 
 @Service()
@@ -86,6 +89,7 @@ export class ImportService {
 		private readonly workflowService: WorkflowService,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	async initRecords() {
@@ -141,6 +145,10 @@ export class ImportService {
 		}
 
 		const violations: WorkflowImportViolations[] = [];
+		const admitted: Array<{
+			workflow: IWorkflowWithVersionMetadata;
+			cleared: PolicyCleared<'contentImport'>;
+		}> = [];
 
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
@@ -158,29 +166,39 @@ export class ImportService {
 				this.logger.warn(`Workflow "${workflow.name}": ${warning}`);
 			}
 
-			// Advisory only — never blocks the import, per contentImport being `evaluate`, not `enforce`.
 			// Use the workflow's own project when it already has one — re-importing never moves it.
-			const evaluationProjectId = workflow.id
+			const policyProjectId = workflow.id
 				? (existingOwnerProjects.get(workflow.id)?.id ?? projectId)
 				: projectId;
-			const contentImportPolicy = await evaluateContentImportSafely(
-				this.policyEnforcementService,
-				{
+
+			let cleared: PolicyCleared<'contentImport'>;
+			try {
+				cleared = await this.policyEnforcementService.enforceContentImport({
 					workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
-					projectId: evaluationProjectId,
-				},
-				this.logger,
-			);
-			if (contentImportPolicy.violations.length || contentImportPolicy.checkErrors.length) {
+					projectId: policyProjectId,
+					transport: 'cli',
+				});
+			} catch (error) {
+				// A blocked workflow is skipped, not fatal — the operator gets the rest of the batch.
+				// A check that broke is not scoped to one workflow, so it fails the whole import
+				// rather than silently skipping every workflow in turn.
+				if (!(error instanceof PolicyViolationError)) throw error;
+
 				violations.push({
 					workflowId: workflow.id ?? null,
 					name: workflow.name,
-					contentImportPolicy,
+					violations: error.violations,
 				});
+				continue;
 			}
 
-			// Deactivate BEFORE the transaction to prevent orphaned trigger listeners.
-			// Only applies to workflows that are currently active in the database.
+			admitted.push({ workflow, cleared });
+		}
+
+		// Nothing is deactivated until the whole batch is admitted: admission can abort the import,
+		// and a workflow stopped by then would stay stopped with nothing imported in its place.
+		// Still before the transaction, to prevent orphaned trigger listeners.
+		for (const { workflow } of admitted) {
 			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
 				await this.workflowService.deactivateWorkflow(user, workflow.id, { source: 'import' });
 			}
@@ -188,9 +206,9 @@ export class ImportService {
 
 		const insertedWorkflows: IWorkflowWithVersionMetadata[] = [];
 		const workflowsToActivate: Array<{ workflowId: string; versionId: string }> = [];
-		await dbManager.transaction(async (tx) => {
+		await this.workflowRepository.runInTransaction({}, async (tx, ctx) => {
 			// Upsert all workflows
-			for (const workflow of workflows) {
+			for (const { workflow, cleared } of admitted) {
 				// Always generate a new versionId on import to ensure proper history ordering
 				workflow.versionId = uuid();
 
@@ -211,9 +229,12 @@ export class ImportService {
 				workflow.active = false;
 				workflow.activeVersionId = null;
 
-				const workflowToUpsert = workflow as QueryDeepPartialEntity<WorkflowEntity>;
-				const upsertResult = await tx.upsert(WorkflowEntity, workflowToUpsert, ['id']);
-				const workflowId = upsertResult.identifiers.at(0)?.id as string;
+				// Each workflow carries its own clearance: one token per subject, so a batch cannot
+				// have one cleared workflow vouch for another.
+				const workflowId = await this.workflowRepository.upsertImportedContent(workflow, {
+					...ctx,
+					policyCleared: cleared,
+				});
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
 
 				if (shouldActivate) {

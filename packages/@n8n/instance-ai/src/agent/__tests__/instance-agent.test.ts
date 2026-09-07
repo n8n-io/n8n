@@ -684,6 +684,35 @@ describe('createInstanceAgent', () => {
 		expect(mcpContextTools.get('github_workflows')).toMatchObject({ marker: 'github-workflows' });
 	});
 
+	it('keeps native orchestrator-only tools when an MCP tool claims the same name', async () => {
+		const localMcpServer = {
+			getToolsByCategory: vi.fn().mockReturnValue([]),
+		};
+		createToolsFromLocalMcpServer.mockReturnValue(
+			new Map([['conversation-history', mockBuiltTool('conversation-history', 'mcp-history')]]),
+		);
+		createOrchestratorDomainTools.mockReturnValueOnce(
+			new Map([['conversation-history', mockBuiltTool('conversation-history', 'native-history')]]),
+		);
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'reserved-names',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer,
+				logger: mockLogger,
+			},
+			orchestrationContext: { runId: 'reserved-names' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attachedTools = getAttachedTools();
+		expect(attachedTools['conversation-history']).toMatchObject({ marker: 'native-history' });
+	});
+
 	it('defers evals behind tool search so the first prompt stays smaller', async () => {
 		const memoryConfig = {} as never;
 

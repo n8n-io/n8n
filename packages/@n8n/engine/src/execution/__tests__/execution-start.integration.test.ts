@@ -99,6 +99,7 @@ describe('execution start (integration)', () => {
 			graph,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: generateId(),
+			callerContext: {},
 		});
 		await ready;
 
@@ -144,6 +145,7 @@ describe('execution start (integration)', () => {
 			mode: 'production',
 			graph,
 			triggerOutputs: null,
+			callerContext: {},
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

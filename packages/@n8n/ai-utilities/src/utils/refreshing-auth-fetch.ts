@@ -4,6 +4,7 @@ export interface RefreshingAuthFetchOptions {
 	baseFetch: typeof fetch;
 	initialHeaders?: HeadersInit;
 	refreshHeaders?: (current: Headers) => Promise<HeadersInit | null>;
+	shouldRefresh?: () => boolean;
 	assertAllowedUrl?: (url: string) => void | Promise<void>;
 }
 
@@ -21,6 +22,7 @@ export function createRefreshingAuthFetch({
 	baseFetch,
 	initialHeaders,
 	refreshHeaders,
+	shouldRefresh,
 	assertAllowedUrl,
 }: RefreshingAuthFetchOptions): typeof fetch {
 	let authHeaders = new Headers(initialHeaders);
@@ -44,20 +46,28 @@ export function createRefreshingAuthFetch({
 
 	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 		let retried = false;
+		// Auth headers follow redirects within the starting origin, but per fetch
+		// spec are withheld once a hop crosses origins, even to an allowed host
+		let sendAuth = true;
 		const authedFetch = async (
 			requestInput: RequestInfo | URL,
 			requestInit?: RequestInit,
 		): Promise<Response> => {
+			if (sendAuth && refreshHeaders && shouldRefresh?.()) {
+				await refresh();
+			}
+
 			const requestAuthVersion = authVersion;
 			const execute = async () =>
 				await baseFetch(requestInput instanceof Request ? requestInput.clone() : requestInput, {
 					...requestInit,
-					// Include auth headers for redirect requests too
-					headers: mergeHeaders(getInputHeaders(requestInput, requestInit), authHeaders),
+					headers: sendAuth
+						? mergeHeaders(getInputHeaders(requestInput, requestInit), authHeaders)
+						: getInputHeaders(requestInput, requestInit),
 				});
 
 			const response = await execute();
-			if (response.status !== 401 || !refreshHeaders || retried) return response;
+			if (response.status !== 401 || !refreshHeaders || retried || !sendAuth) return response;
 
 			retried = true;
 			const canRetry = authVersion !== requestAuthVersion || (await refresh());
@@ -73,7 +83,10 @@ export function createRefreshingAuthFetch({
 		// unwrapped to their URL so the redirect loop can carry a stable input.
 		const startUrl = input instanceof Request ? input.url : input;
 		return await fetchFollowingRedirects(authedFetch, startUrl, init, {
-			onBeforeHop: assertAllowedUrl,
+			onBeforeHop: async (hopUrl, { crossedOrigin }) => {
+				sendAuth = !crossedOrigin;
+				await assertAllowedUrl(hopUrl);
+			},
 		});
 	};
 }

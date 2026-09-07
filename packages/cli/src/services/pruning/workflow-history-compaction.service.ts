@@ -13,6 +13,10 @@ import { strict } from 'node:assert';
 import { EventService } from '@/events/event.service';
 import { RelayEventMap } from '@/events/maps/relay.event-map';
 
+export function getCompactionWindowDeltas(minimumAge: number, timeWindow: number, unitMs: number) {
+	return { startDelta: (minimumAge + timeWindow) * unitMs, endDelta: minimumAge * unitMs };
+}
+
 /**
  * Responsible for compacting auto saved workflow history entries in the database.
  *
@@ -154,10 +158,11 @@ export class WorkflowHistoryCompactionService {
 		}
 		this.isTrimmingHistories = true;
 
-		const startDelta =
-			(this.config.trimmingMinimumAgeDays + this.config.trimmingTimeWindowDays) *
-			Time.days.toMilliseconds;
-		const endDelta = this.config.trimmingMinimumAgeDays * Time.days.toMilliseconds;
+		const { startDelta, endDelta } = getCompactionWindowDeltas(
+			this.config.trimmingMinimumAgeDays,
+			this.config.trimmingTimeWindowDays,
+			Time.days.toMilliseconds,
+		);
 
 		try {
 			await this.compactHistories(
@@ -189,10 +194,11 @@ export class WorkflowHistoryCompactionService {
 		}
 		this.isOptimizingHistories = true;
 
-		const startDelta =
-			(this.config.optimizingMinimumAgeHours + this.config.optimizingTimeWindowHours) *
-			Time.hours.toMilliseconds;
-		const endDelta = this.config.optimizingMinimumAgeHours * Time.hours.toMilliseconds;
+		const { startDelta, endDelta } = getCompactionWindowDeltas(
+			this.config.optimizingMinimumAgeHours,
+			this.config.optimizingTimeWindowHours,
+			Time.hours.toMilliseconds,
+		);
 
 		try {
 			await this.compactHistories(

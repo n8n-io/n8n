@@ -5,6 +5,7 @@ export type {
 } from './start-execution.service';
 export { stepKeyId } from './execution.types';
 export type {
+	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
 	StepError,
@@ -16,7 +17,12 @@ export type {
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
 export type { ExecutionRecord, ExecutionStore, NewExecutionRecord } from './execution-store';
-export type { ExecutionViewStore, ExecutionView, StepView } from './execution-view-store';
+export type {
+	ExecutionViewStore,
+	ExecutionView,
+	ExecutionWithStepsView,
+	StepView,
+} from './execution-view-store';
 export { StepNotFoundError } from './step-store';
 export type { NewStepRecord, StepRecord, StepStore, StepSummary } from './step-store';
 export { ExecutionStartHandler } from './execution-start-handler';

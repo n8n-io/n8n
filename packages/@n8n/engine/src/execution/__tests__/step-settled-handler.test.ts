@@ -55,6 +55,7 @@ function makeExecutionStore(
 		mode: 'production',
 		graph,
 		triggerOutputs: null,
+		callerContext: {},
 		...overrides,
 	};
 	return {
