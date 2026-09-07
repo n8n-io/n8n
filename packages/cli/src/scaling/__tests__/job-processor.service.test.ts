@@ -217,6 +217,45 @@ describe('JobProcessor', () => {
 		},
 	);
 
+	it('should remove the running job entry when the workflow run rejects', async () => {
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				mode: 'manual',
+				workflowData: { nodes: [], staticData: {} },
+				data: mock<IRunExecutionData>({
+					executionData: undefined,
+				}),
+			}),
+		);
+
+		const manualExecutionService = mock<ManualExecutionService>();
+		manualExecutionService.runManually.mockReturnValue(
+			Promise.reject(new Error('workflow run rejected')) as ReturnType<
+				ManualExecutionService['runManually']
+			>,
+		);
+
+		const jobProcessor = new JobProcessor(
+			logger,
+			mock<ExecutionRepository>(),
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		const job = mock<Job>({ id: 'job-1' });
+
+		await expect(jobProcessor.processJob(job)).rejects.toThrow('workflow run rejected');
+
+		expect(jobProcessor.getRunningJobIds()).toEqual([]);
+	});
+
 	it('should send job-finished with success=false when execution has errors', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const executionPersistence = mock<ExecutionPersistence>();

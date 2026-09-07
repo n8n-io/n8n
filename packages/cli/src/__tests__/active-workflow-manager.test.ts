@@ -5,6 +5,7 @@ import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import type { UpdateResult } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { sleep } from '@n8n/utils/sleep';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	ActiveWorkflowTriggers,
@@ -26,7 +27,6 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { sleep } from '@n8n/utils/sleep';
 import { Workflow, WorkflowActivationError } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
@@ -49,6 +49,8 @@ import type { OwnershipService } from '@/services/ownership.service';
 import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 describe('ActiveWorkflowManager', () => {
@@ -85,11 +87,11 @@ describe('ActiveWorkflowManager', () => {
 			instanceSettings,
 			mock(),
 			workflowsConfig,
-			mock(),
 			mock<TriggerExecutionContextFactory>(),
 			mock(),
 			mock(), // scheduleTriggerJobRegistrar
 			mock(), // pollTriggerJobRegistrar
+			mock(), // workflowPushNotifier
 			policyEnforcementService,
 			ownershipService,
 		);
@@ -223,8 +225,8 @@ describe('ActiveWorkflowManager', () => {
 				instanceSettings,
 				mock(),
 				policyWorkflowsConfig,
-				mock(),
 				mock<TriggerExecutionContextFactory>(),
+				mock(),
 				mock(),
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
@@ -414,8 +416,13 @@ describe('ActiveWorkflowManager', () => {
 	describe('handleAddWebhooksAndNonWebhookTriggers', () => {
 		const push = mock<Push>();
 		const publisher = mock<Publisher>();
+		const workflowSharingService = mock<WorkflowSharingService>();
+		const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
+		const sharedUserIds = ['user-1', 'user-2'];
 
 		beforeEach(() => {
+			workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(sharedUserIds);
+			publisher.publishCommand.mockResolvedValue(undefined);
 			activeWorkflowManager = new ActiveWorkflowManager(
 				mockLogger(),
 				mock(),
@@ -430,11 +437,11 @@ describe('ActiveWorkflowManager', () => {
 				instanceSettings,
 				publisher,
 				mock(),
-				push,
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				workflowPushNotifier,
 				policyEnforcementService,
 				ownershipService,
 			);
@@ -460,8 +467,8 @@ describe('ActiveWorkflowManager', () => {
 			expect(clearWebhooksSpy).not.toHaveBeenCalled();
 			expect(removeTriggersSpy).not.toHaveBeenCalled();
 			// The user is still told why it did not start.
-			expect(push.broadcast).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'workflowFailedToActivate' }),
+			expect(push.sendToUsers.mock.calls.map(([msg]) => msg.type)).toContain(
+				'workflowFailedToActivate',
 			);
 		});
 
@@ -479,14 +486,20 @@ describe('ActiveWorkflowManager', () => {
 				activationMode: 'activate',
 			});
 
-			expect(push.broadcast).toHaveBeenCalledWith({
-				type: 'workflowFailedToActivate',
-				data: {
-					workflowId: 'wf-1',
-					errorMessage: 'Invalid role: admin required',
-					nodeId: 'node-123',
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+				'wf-1',
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'workflowFailedToActivate',
+					data: {
+						workflowId: 'wf-1',
+						errorMessage: 'Invalid role: admin required',
+						nodeId: 'node-123',
+					},
 				},
-			});
+				sharedUserIds,
+			);
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'display-workflow-activation-error',
@@ -507,10 +520,13 @@ describe('ActiveWorkflowManager', () => {
 				activationMode: 'activate',
 			});
 
-			expect(push.broadcast).toHaveBeenCalledWith({
-				type: 'workflowFailedToActivate',
-				data: { workflowId: 'wf-1', errorMessage: 'Some error' },
-			});
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'workflowFailedToActivate',
+					data: { workflowId: 'wf-1', errorMessage: 'Some error' },
+				},
+				sharedUserIds,
+			);
 		});
 
 		test('should tear down partial registrations before deactivating when activation fails', async () => {
@@ -578,6 +594,180 @@ describe('ActiveWorkflowManager', () => {
 			expect(workflowRepository.update).toHaveBeenCalledWith('wf-1', {
 				active: false,
 				activeVersionId: null,
+			});
+		});
+
+		test('should push workflowActivated to accessible users and relay it on successful activation', async () => {
+			vi.spyOn(activeWorkflowManager, 'add').mockResolvedValue({
+				webhooks: true,
+				triggersAndPollers: true,
+			});
+
+			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+				activationMode: 'activate',
+			});
+
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+				'wf-1',
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{ type: 'workflowActivated', data: { workflowId: 'wf-1', activeVersionId: 'v1' } },
+				sharedUserIds,
+			);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'display-workflow-activation',
+				payload: { workflowId: 'wf-1', activeVersionId: 'v1' },
+			});
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+		});
+
+		test('should not roll back a successfully activated workflow when nobody can be resolved to notify', async () => {
+			vi.spyOn(activeWorkflowManager, 'add').mockResolvedValue({
+				webhooks: true,
+				triggersAndPollers: true,
+			});
+			workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValueOnce([]);
+
+			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+				activationMode: 'activate',
+			});
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{ type: 'workflowActivated', data: { workflowId: 'wf-1', activeVersionId: 'v1' } },
+				[],
+			);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'display-workflow-activation',
+				payload: { workflowId: 'wf-1', activeVersionId: 'v1' },
+			});
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+		});
+
+		test('should not roll back a successfully activated workflow even if the recipient lookup itself throws', async () => {
+			vi.spyOn(activeWorkflowManager, 'add').mockResolvedValue({
+				webhooks: true,
+				triggersAndPollers: true,
+			});
+			workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockRejectedValueOnce(
+				new Error('db unavailable'),
+			);
+
+			await expect(
+				activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
+					workflowId: 'wf-1',
+					activeVersionId: 'v1',
+					activationMode: 'activate',
+				}),
+			).rejects.toThrow('db unavailable');
+
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+			expect(push.sendToUsers).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'workflowFailedToActivate' }),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('display and removal pubsub handlers', () => {
+		const push = mock<Push>();
+		const publisher = mock<Publisher>();
+		const workflowSharingService = mock<WorkflowSharingService>();
+		const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
+		const sharedUserIds = ['user-1', 'user-2'];
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(sharedUserIds);
+			activeWorkflowManager = new ActiveWorkflowManager(
+				mockLogger(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+				instanceSettings,
+				publisher,
+				mock(),
+				mock<TriggerExecutionContextFactory>(),
+				mock(),
+				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
+				workflowPushNotifier,
+				policyEnforcementService,
+				ownershipService,
+			);
+		});
+
+		test.each([
+			{
+				name: 'handleDisplayWorkflowActivation',
+				call: async () =>
+					await activeWorkflowManager.handleDisplayWorkflowActivation({
+						workflowId: 'wf-1',
+						activeVersionId: 'v1',
+					}),
+				expectedMsg: {
+					type: 'workflowActivated',
+					data: { workflowId: 'wf-1', activeVersionId: 'v1' },
+				},
+			},
+			{
+				name: 'handleDisplayWorkflowDeactivation',
+				call: async () =>
+					await activeWorkflowManager.handleDisplayWorkflowDeactivation({ workflowId: 'wf-1' }),
+				expectedMsg: { type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+			},
+			{
+				name: 'handleDisplayWorkflowActivationError',
+				call: async () =>
+					await activeWorkflowManager.handleDisplayWorkflowActivationError({
+						workflowId: 'wf-1',
+						errorMessage: 'boom',
+						nodeId: 'node-1',
+					}),
+				expectedMsg: {
+					type: 'workflowFailedToActivate',
+					data: {
+						workflowId: 'wf-1',
+						errorMessage: 'boom',
+						errorDescription: undefined,
+						nodeId: 'node-1',
+					},
+				},
+			},
+		])('$name sends its push message only to accessible users', async ({ call, expectedMsg }) => {
+			await call();
+
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+				'wf-1',
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(expectedMsg, sharedUserIds);
+		});
+
+		test('handleRemoveNonWebhookTriggers sends workflowDeactivated only to accessible users and relays it', async () => {
+			vi.spyOn(activeWorkflowManager, 'removeActivationError').mockResolvedValue();
+			vi.spyOn(activeWorkflowManager, 'removeNonWebhookTriggers').mockResolvedValue();
+
+			await activeWorkflowManager.handleRemoveNonWebhookTriggers({ workflowId: 'wf-1' });
+
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+				'wf-1',
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{ type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+				sharedUserIds,
+			);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'display-workflow-deactivation',
+				payload: { workflowId: 'wf-1' },
 			});
 		});
 	});
@@ -715,11 +905,11 @@ describe('ActiveWorkflowManager', () => {
 				instanceSettings,
 				mock(), // publisher
 				workflowsConfig,
-				mock(), // push
 				factory,
 				mock(), // eventBus
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
 			);
@@ -1168,11 +1358,11 @@ describe('ActiveWorkflowManager', () => {
 				instanceSettings,
 				mock(),
 				workflowsConfig,
-				mock(),
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
 				scheduleTriggerJobRegistrar,
 				pollTriggerJobRegistrar,
+				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
 			);
@@ -1356,11 +1546,11 @@ describe('ActiveWorkflowManager', () => {
 				mock<InstanceSettings>({ isMultiMain: true }),
 				publisher,
 				workflowsConfig,
-				mock(),
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
 				scheduleTriggerJobRegistrar,
 				pollTriggerJobRegistrar,
+				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
 			);
@@ -1435,11 +1625,11 @@ describe('ActiveWorkflowManager', () => {
 				instanceSettings,
 				mock(),
 				workflowsConfig,
-				mock(),
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
 				scheduleTriggerJobRegistrar,
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
 			);

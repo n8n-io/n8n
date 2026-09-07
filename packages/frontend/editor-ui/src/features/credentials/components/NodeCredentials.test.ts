@@ -1986,7 +1986,7 @@ describe('NodeCredentials', () => {
 				renderComponent({ props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' } });
 
 				// Trigger overlay + the dropdown row both carry the balance.
-				expect(screen.getAllByText('$2.75 remaining').length).toBeGreaterThanOrEqual(1);
+				expect(screen.getAllByText('$2.75 left').length).toBeGreaterThanOrEqual(1);
 
 				const credentialsSelect = screen.getByTestId('node-credentials-select');
 				await userEvent.click(credentialsSelect);
@@ -1994,7 +1994,7 @@ describe('NodeCredentials', () => {
 				const credentialSearch = credentialsSelect.querySelector('input') as HTMLElement;
 				await userEvent.type(credentialSearch, 'My');
 
-				expect(screen.queryByText('$2.75 remaining')).not.toBeInTheDocument();
+				expect(screen.queryByText('$2.75 left')).not.toBeInTheDocument();
 			});
 
 			it('shows a top-up gear instead of the pen while managed', () => {

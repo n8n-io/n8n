@@ -10,7 +10,8 @@ import type {
 	PolicyCleared,
 	PolicySubject,
 } from '@n8n/decorators';
-import { mintPolicyCleared, workflowSubject } from '@n8n/decorators/policy-internal';
+import { workflowContentSubject, workflowSubject } from '@n8n/decorators';
+import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -51,7 +52,13 @@ export class PolicyEnforcementService {
 	}
 
 	async enforceWorkflowSave(context: WorkflowSaveContext): Promise<PolicyCleared<'workflowSave'>> {
-		return await this.enforce('workflowSave', context, workflowSubject(context.workflow));
+		// A create has no committed id to bind to, so it binds to its content — even when a client
+		// supplied an id, which is no proof of what was checked. An update binds to the row id.
+		const subject =
+			context.storedWorkflow === null
+				? workflowContentSubject(context.workflow)
+				: workflowSubject(context.workflow);
+		return await this.enforce('workflowSave', context, subject);
 	}
 
 	async evaluateWorkflowSave(context: WorkflowSaveContext): Promise<PolicyDecision> {

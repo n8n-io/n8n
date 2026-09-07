@@ -34,6 +34,7 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 			const workflowPublishBlockedDetails = {
 				reason: descriptor.meta?.reason,
 				workflowReviewRequestId: descriptor.meta?.workflowReviewRequestId,
+				versionId: descriptor.meta?.versionId,
 			};
 			return {
 				status: descriptor.status,

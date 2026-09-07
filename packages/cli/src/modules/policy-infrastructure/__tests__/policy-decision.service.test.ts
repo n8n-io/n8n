@@ -1,11 +1,12 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type {
-	PolicyCheckClass,
-	PolicyCheckMetadata,
-	PolicyCheckResult,
-	RegisteredPolicyCheck,
-	WorkflowSaveContext,
-	WorkflowStartContext,
+import {
+	type PolicyCheckClass,
+	type PolicyCheckMetadata,
+	type PolicyCheckResult,
+	type RegisteredPolicyCheck,
+	type WorkflowSaveContext,
+	type WorkflowStartContext,
+	workflowContentSubject,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { OperationalError } from 'n8n-workflow';
@@ -283,11 +284,24 @@ describe('PolicyDecisionService', () => {
 			expect((error as PolicyViolationError).violations).toEqual([slackBlocked]);
 		});
 
-		it('clears when the checks are silent', async () => {
+		it('clears a create against its content, not the client id', async () => {
 			const proxy = new PolicyEnforcementService();
 			proxy.setImplementation(serviceWith(SilentCheck));
 
 			const token = await proxy.enforceWorkflowSave(saveContext);
+
+			expect(token.subject).toEqual(workflowContentSubject(saveContext.workflow));
+			expect(token.subject.id).not.toBe('wf-1');
+		});
+
+		it('clears an update against the stored row id', async () => {
+			const proxy = new PolicyEnforcementService();
+			proxy.setImplementation(serviceWith(SilentCheck));
+
+			const token = await proxy.enforceWorkflowSave({
+				...saveContext,
+				storedWorkflow: saveContext.workflow,
+			});
 
 			expect(token.subject).toEqual({ type: 'workflow', id: 'wf-1' });
 		});

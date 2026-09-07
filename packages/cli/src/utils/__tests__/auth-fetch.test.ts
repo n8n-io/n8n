@@ -162,20 +162,21 @@ describe('createAuthFetch — allowedDomains', () => {
 			allowedDomains: { mode: 'domains', domains: 'example.test' },
 		});
 
-		await expect(fetchFn('https://evil.test/mcp')).rejects.toThrow(UserError);
+		await expect(fetchFn('https://other.domain/mcp')).rejects.toThrow(UserError);
 		expect(baseFetchMock).not.toHaveBeenCalled();
 	});
 
-	it('blocks redirect hops to disallowed domains', async () => {
-		baseFetchMock.mockResolvedValueOnce(makeRedirect('https://evil.test/exfiltrate'));
+	it('blocks redirect hops to disallowed domains without sending the auth header there', async () => {
+		baseFetchMock.mockResolvedValueOnce(makeRedirect('https://other.domain/exfiltrate'));
 
 		const fetchFn = createAuthFetch({
 			baseFetch,
-			initialHeaders: {},
+			initialHeaders: { Authorization: 'Bearer token' },
 			allowedDomains: { mode: 'domains', domains: 'example.test' },
 		});
 
 		await expect(fetchFn('https://example.test/mcp')).rejects.toThrow(UserError);
+		expect(baseFetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('follows redirect hops to allowed domains', async () => {
@@ -192,6 +193,25 @@ describe('createAuthFetch — allowedDomains', () => {
 
 		expect(res.status).toBe(200);
 		expect(baseFetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('withholds auth headers after a redirect hop crosses origins', async () => {
+		baseFetchMock
+			.mockResolvedValueOnce(makeRedirect('https://other.test/moved'))
+			.mockResolvedValueOnce(makeOk());
+
+		const fetchFn = createAuthFetch({
+			baseFetch,
+			initialHeaders: { Authorization: 'Bearer A' },
+			allowedDomains: { mode: 'domains', domains: 'example.test,other.test' },
+		});
+		await fetchFn('https://example.test/mcp');
+
+		expect(baseFetchMock).toHaveBeenCalledTimes(2);
+		expect(new Headers(baseFetchMock.mock.calls[0][1].headers).get('authorization')).toBe(
+			'Bearer A',
+		);
+		expect(new Headers(baseFetchMock.mock.calls[1][1].headers).get('authorization')).toBeNull();
 	});
 
 	it('blocks all requests when mode is none', async () => {

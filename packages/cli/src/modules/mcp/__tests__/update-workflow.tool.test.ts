@@ -25,6 +25,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { shapeToStandardSchema } from '../tool-schema.util';
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 import { NON_FATAL_OPERATION_TYPES } from '../tools/workflow-builder/workflow-operations';
 
@@ -249,6 +250,23 @@ describe('update-workflow MCP tool', () => {
 			);
 			expect(typeof tool.handler).toBe('function');
 		});
+
+		// Regression for GH #36780: a Zod instance shared between the `node.position`
+		// and operation-level `position` properties was deduped into a
+		// `$ref: "#/properties/..."` pointer, which strict MCP clients cannot
+		// resolve — they only follow refs into `$defs` — leaving this tool's
+		// arguments unvalidated client-side.
+		test.each([{ canvasGroupsEnabled: false }, { canvasGroupsEnabled: true }])(
+			'served input schema is self-contained — no JSON pointer refs (canvasGroupsEnabled: $canvasGroupsEnabled)',
+			({ canvasGroupsEnabled }) => {
+				const tool = createTool({ canvasGroupsEnabled });
+				const served = shapeToStandardSchema(tool.config.inputSchema!)[
+					'~standard'
+				].jsonSchema.input({ target: 'draft-2020-12' });
+
+				expect(JSON.stringify(served)).not.toContain('$ref');
+			},
+		);
 	});
 
 	describe('docs mention the non-fatal group exception only when canvasGroupsEnabled', () => {

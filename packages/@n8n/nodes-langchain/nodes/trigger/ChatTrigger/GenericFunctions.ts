@@ -1,17 +1,39 @@
 import basicAuth from 'basic-auth';
 import { UnexpectedError } from 'n8n-workflow';
-import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IUser, IWebhookFunctions } from 'n8n-workflow';
 
 import { ChatTriggerAuthorizationError } from './error';
 import {
 	clearChatOAuthToken,
 	isChatOAuth2Enabled,
 	readChatOAuthToken,
+	readChatRefreshToken,
 	setChatOAuthToken,
+	setChatRefreshToken,
 } from './shell';
-import type { AuthenticationChatOption, ChatFrameIdentity } from './types';
+import type { AuthenticationChatOption, ChatFrameIdentity, ChatShellSession } from './types';
 
-export async function validateAuth(context: IWebhookFunctions) {
+/** Absolute expiry for an access token the AS just minted, from the duration it reported. */
+function expiryFrom(expiresIn: number): number {
+	return Date.now() + expiresIn * 1000;
+}
+
+/**
+ * Seconds left on an absolute expiry, on the server's own clock. Converting here rather
+ * than in the page is the point: the page must never subtract its own `Date.now()` from
+ * a timestamp this process produced.
+ */
+function secondsUntil(expiresAt: number): number {
+	return Math.max(0, (expiresAt - Date.now()) / 1000);
+}
+
+/**
+ * Verifies the caller against the node's configured authentication. Throws a
+ * `ChatTriggerAuthorizationError` when the caller fails the check, so the return value
+ * only ever answers *who*: the authenticated n8n user under `n8nUserAuth`, or
+ * `undefined` for the modes that identify nobody (`none`, `basicAuth`, `setup`).
+ */
+export async function validateAuth(context: IWebhookFunctions): Promise<IUser | undefined> {
 	const authentication = context.getNodeParameter(
 		'authentication',
 		'none',
@@ -71,7 +93,7 @@ export async function validateAuth(context: IWebhookFunctions) {
 						const validation = await context.validateN8nOAuth2Token(chatToken, resourceUrl);
 						if (validation.valid) {
 							await context.establishTriggerIdentity(chatToken, resourceUrl, validation.user.id);
-							return;
+							return validation.user;
 						}
 					}
 					throw new ChatTriggerAuthorizationError(401, 'Invalid authentication token');
@@ -84,7 +106,8 @@ export async function validateAuth(context: IWebhookFunctions) {
 			}
 
 			try {
-				await context.validateCookieAuth(authCookie);
+				// Kept inside the `try` so a rejection still becomes a 401.
+				return await context.validateCookieAuth(authCookie);
 			} catch {
 				throw new ChatTriggerAuthorizationError(401, 'Invalid authentication token');
 			}
@@ -102,16 +125,22 @@ export async function validateAuth(context: IWebhookFunctions) {
  * receive the AS's session-cookie check, and any consent/sign-in page the AS
  * falls back to would then render editor-ui inside the opaque frame.
  *
- * On success, stashes the AS token in the one-hop `n8n-chat-oauth` cookie and
- * returns `true` — the caller renders the shell, whose frame's own GET picks
- * the cookie up via `resolveInnerFrameIdentity`. Returns `false` after
- * already sending a redirect/error response — the caller must abort with
- * `noWebhookResponse`.
+ * On success, stashes the AS token in the one-hop `n8n-chat-oauth` cookie and the
+ * grant's refresh token in the long-lived httpOnly `n8n-chat-oauth-refresh` cookie,
+ * establishes the run's identity from the access token (so the outer GET can check
+ * end-user-credential readiness for the connect panel), and returns the resolved
+ * identity plus the access token's remaining life — the caller renders the shell
+ * around it, whose frame's own GET picks the one-hop cookie up via
+ * `resolveInnerFrameIdentity`. Returns `null` after already sending a redirect/error
+ * response — the caller must abort with `noWebhookResponse`.
+ *
+ * The refresh token stays in its cookie and never reaches the caller, so it can't
+ * reach a document either.
  */
 export async function establishChatSessionIdentity(
 	context: IWebhookFunctions,
 	resourceUrl: string,
-): Promise<boolean> {
+): Promise<(ChatFrameIdentity & ChatShellSession) | null> {
 	const req = context.getRequestObject();
 	const res = context.getResponseObject();
 	const { code, state } = req.query;
@@ -124,7 +153,7 @@ export async function establishChatSessionIdentity(
 		});
 		res.status(403).send('Access denied');
 		res.end();
-		return false;
+		return null;
 	}
 
 	if (typeof code === 'string' && typeof state === 'string') {
@@ -134,11 +163,15 @@ export async function establishChatSessionIdentity(
 		try {
 			const result = await context.completeN8nOAuth2Flow(code, state);
 			if (result.valid) {
-				setChatOAuthToken(res, req, resourceUrl, result.token);
+				setChatOAuthToken(res, req, resourceUrl, {
+					token: result.token,
+					expiresAt: expiryFrom(result.expiresIn),
+				});
+				setChatRefreshToken(res, req, resourceUrl, result.refreshToken);
 				const redirectPath = req.originalUrl.split('?')[0];
 				res.writeHead(302, { Location: redirectPath });
 				res.end();
-				return false;
+				return null;
 			}
 			// Fall through to restart the OAuth2 flow if the callback is invalid.
 			context.logger.warn('Chat OAuth2 flow failed, restarting', { reason: result.reason });
@@ -150,13 +183,38 @@ export async function establishChatSessionIdentity(
 		// Not an AS callback. If we just completed the flow, the token rides in the
 		// one-hop cookie set on the redirect above — leave it for the frame's own GET
 		// to consume, just confirm it's still good before rendering the shell around it.
-		const cookieToken = readChatOAuthToken(req);
-		if (cookieToken) {
-			const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
+		const session = readChatOAuthToken(req);
+		if (session) {
+			const validation = await context.validateN8nOAuth2Token(session.token, resourceUrl);
 			if (validation.valid) {
-				return true;
+				await context.establishTriggerIdentity(session.token, resourceUrl, validation.user.id);
+				return {
+					visitor: validation.user,
+					authToken: session.token,
+					expiresIn: secondsUntil(session.expiresAt),
+				};
 			}
 			// Stale/invalid cookie — fall through to restart the OAuth2 flow.
+		} else {
+			// A reload mid-conversation: the one-hop cookie is long gone, but the grant
+			// is still live in the refresh cookie. Rotating is cheaper than a full
+			// redirect round trip through the AS, and keeps the visitor on the page.
+			const refreshed = await refreshChatSession(context, resourceUrl);
+			if (refreshed) {
+				// A refresh result names no user — the grant already fixes the subject — so
+				// the fresh token is validated to recover the visitor the connect panel is
+				// rendered for.
+				const validation = await context.validateN8nOAuth2Token(refreshed.token, resourceUrl);
+				if (validation.valid) {
+					await context.establishTriggerIdentity(refreshed.token, resourceUrl, validation.user.id);
+					return {
+						visitor: validation.user,
+						authToken: refreshed.token,
+						expiresIn: refreshed.expiresIn,
+					};
+				}
+			}
+			// Refresh failed — fall through to restart the OAuth2 flow, which handles it.
 		}
 	}
 
@@ -169,7 +227,83 @@ export async function establishChatSessionIdentity(
 		context.logger.warn('Chat OAuth2 flow failed', { error });
 		throw new UnexpectedError('Chat OAuth2 flow failed');
 	}
-	return false;
+	return null;
+}
+
+/**
+ * Rotate the grant behind the refresh cookie into a fresh pair and re-set both
+ * cookies. Returns the fresh access token and its lifetime, or `null` when there is
+ * no refresh cookie or the AS refuses it — the caller decides whether that means
+ * restart the flow or answer 401.
+ */
+async function refreshChatSession(
+	context: IWebhookFunctions,
+	resourceUrl: string,
+): Promise<{ token: string; expiresIn: number } | null> {
+	const req = context.getRequestObject();
+	const res = context.getResponseObject();
+
+	const refreshToken = readChatRefreshToken(req);
+	if (!refreshToken) return null;
+
+	try {
+		const result = await context.refreshN8nOAuth2Flow(refreshToken, resourceUrl);
+		if (!result.valid) {
+			context.logger.warn('Chat OAuth2 refresh rejected', { reason: result.reason });
+			return null;
+		}
+		const expiresAt = expiryFrom(result.expiresIn);
+		setChatOAuthToken(res, req, resourceUrl, { token: result.token, expiresAt });
+		// Rotation invalidates the token we just sent, so the cookie must be replaced
+		// in the same response or the next refresh presents a consumed one.
+		setChatRefreshToken(res, req, resourceUrl, result.refreshToken);
+		return { token: result.token, expiresIn: result.expiresIn };
+	} catch (error) {
+		context.logger.warn('Chat OAuth2 refresh failed', { error });
+		return null;
+	}
+}
+
+/**
+ * The shell's own refresh leg: a same-origin GET on the `setup` path that mints a
+ * fresh access token for the frame. Authenticates purely from the httpOnly refresh
+ * cookie — the shell's script never holds the refresh token and can't forge this.
+ *
+ * Answers the request itself; the caller must abort with `noWebhookResponse`.
+ */
+export async function handleChatTokenRefresh(
+	context: IWebhookFunctions,
+	resourceUrl: string,
+): Promise<void> {
+	const req = context.getRequestObject();
+	const res = context.getResponseObject();
+
+	// `no-store` because the response body is a bearer token: a shared cache holding
+	// it would hand one visitor's token to the next.
+	res.setHeader('Cache-Control', 'no-store');
+
+	if (!readChatRefreshToken(req)) {
+		res.status(401).json({ error: 'invalid_grant' });
+		res.end();
+		return;
+	}
+
+	const refreshed = await refreshChatSession(context, resourceUrl);
+	if (!refreshed) {
+		// The cookie stays. A concurrent refresh on the same path — a second tab — wins
+		// the AS's atomic rotation and has already written its rotated token here, so
+		// clearing would erase a live grant and take the winner down with the loser. A
+		// cookie the AS really has finished with self-heals instead: the next shell GET
+		// fails its refresh, redirects through the AS, and the callback overwrites it.
+		res.status(401).json({ error: 'invalid_grant' });
+		res.end();
+		return;
+	}
+
+	// Only the access token crosses the wire; the rotated refresh token stays in its
+	// httpOnly cookie. `expiresIn` is a duration, so the page schedules off its own
+	// clock and never has to agree with the server's.
+	res.status(200).json({ token: refreshed.token, expiresIn: refreshed.expiresIn }).end();
 }
 
 /**
@@ -189,15 +323,17 @@ export async function resolveInnerFrameIdentity(
 	const req = context.getRequestObject();
 	const res = context.getResponseObject();
 
-	const cookieToken = readChatOAuthToken(req);
-	if (!cookieToken) {
+	const session = readChatOAuthToken(req);
+	if (!session) {
 		return null;
 	}
+	// Only the one-hop cookie: the refresh cookie has to survive this render, since
+	// every later refresh the shell asks for is authenticated by it.
 	clearChatOAuthToken(res, req, resourceUrl);
 
-	const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
+	const validation = await context.validateN8nOAuth2Token(session.token, resourceUrl);
 	if (!validation.valid) {
 		return null;
 	}
-	return { visitor: validation.user, authToken: cookieToken };
+	return { visitor: validation.user, authToken: session.token };
 }

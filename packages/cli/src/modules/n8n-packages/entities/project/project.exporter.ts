@@ -6,8 +6,8 @@ import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ProjectSerializer } from './project.serializer';
+import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { FolderExporter } from '../folder/folder.exporter';
@@ -27,6 +27,7 @@ export interface ProjectExportRequest {
 	writer: PackageWriter;
 	includeTags: boolean;
 	workflowVersionPolicy: WorkflowVersionPolicy;
+	includeArchivedWorkflows: boolean;
 	/**
 	 * Export only these workflows from the projects, with the folders on the
 	 * path to them. Omit to export whole projects. An empty array writes the
@@ -69,12 +70,11 @@ export class ProjectExporter {
 		);
 
 		const selectedWorkflowIds = request.workflowIds ? new Set(request.workflowIds) : undefined;
-		const allocator = new UniqueFilenameAllocator('projects', 'project');
+		const projectsDir = packageDirectory('projects');
 		const results: ProjectExportResult[] = [];
 
 		for (const project of projects) {
-			const target = allocator.allocate(project.name);
-			results.push(await this.exportProject(project, target, request, selectedWorkflowIds));
+			results.push(await this.exportProject(project, projectsDir, request, selectedWorkflowIds));
 		}
 
 		const merged = this.mergeProjectExportResults(results);
@@ -95,41 +95,37 @@ export class ProjectExporter {
 
 	private async exportProject(
 		project: Project,
-		target: string,
+		projectsDir: string,
 		request: ProjectExportRequest,
 		selectedWorkflowIds: ReadonlySet<string> | undefined,
 	): Promise<ProjectExportResult> {
-		await this.exportProjectShell(project, target, request.writer);
+		const entry = await writeManifestEntry(
+			request.writer,
+			'projects',
+			projectsDir,
+			project,
+			this.projectSerializer.serialize(project),
+		);
 		const folders = await this.exportProjectFolders(
 			project.id,
-			target,
+			entry.target,
 			request,
 			selectedWorkflowIds,
 		);
 		const rootWorkflows = await this.exportProjectRootWorkflows(
 			project.id,
-			target,
+			entry.target,
 			request,
 			selectedWorkflowIds,
 		);
 
 		return {
-			entries: [{ id: project.id, name: project.name, target }],
+			entries: [entry],
 			folderEntries: folders.entries,
 			workflowEntries: [...folders.workflowEntries, ...rootWorkflows.entries],
 			requirements: mergeRequirements(folders.requirements, rootWorkflows.requirements),
-			projectTargetsById: new Map([[project.id, target]]),
+			projectTargetsById: new Map([[project.id, entry.target]]),
 		};
-	}
-
-	private async exportProjectShell(
-		project: Project,
-		target: string,
-		writer: PackageWriter,
-	): Promise<void> {
-		const serialized = this.projectSerializer.serialize(project);
-		await writer.writeDirectory(target);
-		await writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
 	}
 
 	private async exportProjectFolders(
@@ -153,6 +149,7 @@ export class ProjectExporter {
 			writer: request.writer,
 			includeTags: request.includeTags,
 			workflowVersionPolicy: request.workflowVersionPolicy,
+			includeArchivedWorkflows: request.includeArchivedWorkflows,
 			basePrefix: target,
 			selectedWorkflowIds,
 		});
@@ -164,7 +161,9 @@ export class ProjectExporter {
 		request: ProjectExportRequest,
 		selectedWorkflowIds: ReadonlySet<string> | undefined,
 	): Promise<WorkflowExportResult> {
-		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId);
+		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId, {
+			includeArchived: request.includeArchivedWorkflows,
+		});
 		if (rootWorkflowIds.length === 0) {
 			return { entries: [], requirements: mergeRequirements() };
 		}

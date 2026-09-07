@@ -46,9 +46,6 @@ function makeExporter(
 	const finder = mock<WorkflowFinderService>();
 	finder.findWorkflowsByIdsForUser.mockResolvedValue(returned);
 	finder.findExistingWorkflowIds.mockResolvedValue(new Set());
-	finder.findWorkflowNamesByIds.mockResolvedValue(
-		new Map(returned.map(({ id, name }) => [id, name])),
-	);
 	const exporter = new WorkflowExporter(
 		finder,
 		new WorkflowSerializer(),
@@ -164,11 +161,11 @@ describe('WorkflowExporter', () => {
 		});
 
 		expect(entries).toEqual([
-			{ id: workflow.id, name: workflow.name, target: 'workflows/repeated' },
+			{ id: workflow.id, name: workflow.name, target: 'workflows/repeated-wf-repeated' },
 		]);
-		expect(writer.files.filter((f) => f.path === 'workflows/repeated/workflow.json')).toHaveLength(
-			1,
-		);
+		expect(
+			writer.files.filter((f) => f.path === 'workflows/repeated-wf-repeated/workflow.json'),
+		).toHaveLength(1);
 	});
 
 	it('preserves the requested workflow order even when the finder returns a different order', async () => {
@@ -187,8 +184,8 @@ describe('WorkflowExporter', () => {
 
 		expect(entries.map(({ id }) => id)).toEqual([a.id, b.id]);
 		expect(writer.files.map(({ path }) => path)).toEqual([
-			'workflows/alpha/workflow.json',
-			'workflows/beta/workflow.json',
+			'workflows/alpha-wf-a/workflow.json',
+			'workflows/beta-wf-b/workflow.json',
 		]);
 	});
 
@@ -219,7 +216,9 @@ describe('WorkflowExporter', () => {
 			workflowVersionPolicy: 'latest',
 		});
 
-		const workflowFile = writer.files.find((f) => f.path === 'workflows/my-workflow/workflow.json');
+		const workflowFile = writer.files.find(
+			(f) => f.path === 'workflows/my-workflow-wf-abc1234567/workflow.json',
+		);
 		expect(workflowFile).toBeDefined();
 		expect(jsonParse<unknown>(workflowFile!.content)).toMatchObject({
 			nodes: [
@@ -249,7 +248,9 @@ describe('WorkflowExporter', () => {
 			workflowVersionPolicy: 'latest',
 		});
 
-		const workflowFile = writer.files.find((f) => f.path === 'workflows/my-workflow/workflow.json');
+		const workflowFile = writer.files.find(
+			(f) => f.path === 'workflows/my-workflow-wf-abc1234567/workflow.json',
+		);
 		expect(jsonParse<unknown>(workflowFile!.content)).toMatchObject({
 			nodeGroups: [
 				{ id: 'group-1', name: 'Ingest', nodeIds: ['node-1'], description: 'Pulls the data in' },
@@ -270,7 +271,9 @@ describe('WorkflowExporter', () => {
 			workflowVersionPolicy: 'latest',
 		});
 
-		const workflowFile = writer.files.find((f) => f.path === 'workflows/my-workflow/workflow.json');
+		const workflowFile = writer.files.find(
+			(f) => f.path === 'workflows/my-workflow-wf-abc1234567/workflow.json',
+		);
 		expect(jsonParse<object>(workflowFile!.content)).not.toHaveProperty('nodeGroups');
 	});
 
@@ -290,9 +293,9 @@ describe('WorkflowExporter', () => {
 			basePrefix: 'folders/in_progress',
 		});
 
-		expect(entries[0].target).toBe('folders/in_progress/workflows/triage');
+		expect(entries[0].target).toBe('folders/in_progress/workflows/triage-wf-nested');
 		expect(writer.files.map((f) => f.path)).toContain(
-			'folders/in_progress/workflows/triage/workflow.json',
+			'folders/in_progress/workflows/triage-wf-nested/workflow.json',
 		);
 	});
 
@@ -311,18 +314,17 @@ describe('WorkflowExporter', () => {
 		});
 
 		const targets = entries.map((e) => e.target);
-		expect(targets).toEqual(['workflows/same-name', 'workflows/same-name-2']);
+		expect(targets).toEqual(['workflows/same-name-wf-aaaaa', 'workflows/same-name-wf-bbbbb']);
 
 		const writtenPaths = writer.files.map((f) => f.path);
-		expect(writtenPaths).toContain('workflows/same-name/workflow.json');
-		expect(writtenPaths).toContain('workflows/same-name-2/workflow.json');
+		expect(writtenPaths).toContain('workflows/same-name-wf-aaaaa/workflow.json');
+		expect(writtenPaths).toContain('workflows/same-name-wf-bbbbb/workflow.json');
 	});
 
-	it('writes only selectedWorkflowIds but keeps the file names of a full export', async () => {
+	it('writes only selectedWorkflowIds, naming them by slug regardless of unselected siblings', async () => {
 		const a = makeWorkflow({ id: 'wf-aaaaa', name: 'Same Name' });
 		const b = makeWorkflow({ id: 'wf-bbbbb', name: 'Same Name' });
 		const { exporter, finder } = makeExporter([b]);
-		finder.findWorkflowNamesByIds.mockResolvedValue(new Map([[a.id, a.name]]));
 		const writer = new CapturingWriter();
 
 		const { entries, requirements } = await exporter.export({
@@ -341,23 +343,18 @@ describe('WorkflowExporter', () => {
 			['workflow:export'],
 			expect.anything(),
 		);
-		expect(finder.findWorkflowNamesByIds).toHaveBeenCalledWith([a.id]);
-		expect(entries).toEqual([{ id: b.id, name: b.name, target: 'workflows/same-name-2' }]);
-		expect(writer.files.map((f) => f.path)).toEqual(['workflows/same-name-2/workflow.json']);
+		expect(entries).toEqual([{ id: b.id, name: b.name, target: 'workflows/same-name-wf-bbbbb' }]);
+		expect(writer.files.map((f) => f.path)).toEqual([
+			'workflows/same-name-wf-bbbbb/workflow.json',
+		]);
 		expect(requirements.nodeTypes).toEqual([{ workflowId: b.id, nodes: [] }]);
 	});
 
 	it('does not authorize unselected workflows', async () => {
 		const selected = makeWorkflow({ id: 'wf-selected', name: 'Selected' });
 		const inaccessible = makeWorkflow({ id: 'wf-secret', name: 'Secret' });
-		// The scoped finder omits the inaccessible sibling; only its name is looked up.
+		// The scoped finder is asked only for the selected id; the unselected sibling is never fetched.
 		const { exporter, finder } = makeExporter([selected]);
-		finder.findWorkflowNamesByIds.mockResolvedValue(
-			new Map([
-				[selected.id, selected.name],
-				[inaccessible.id, inaccessible.name],
-			]),
-		);
 		const writer = new CapturingWriter();
 
 		const { entries } = await exporter.export({
@@ -369,10 +366,18 @@ describe('WorkflowExporter', () => {
 			workflowVersionPolicy: 'latest',
 		});
 
+		expect(finder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(
+			[selected.id],
+			user,
+			['workflow:export'],
+			expect.anything(),
+		);
 		expect(entries).toEqual([
-			{ id: selected.id, name: selected.name, target: 'workflows/selected' },
+			{ id: selected.id, name: selected.name, target: 'workflows/selected-wf-selected' },
 		]);
-		expect(writer.files.map((f) => f.path)).toEqual(['workflows/selected/workflow.json']);
+		expect(writer.files.map((f) => f.path)).toEqual([
+			'workflows/selected-wf-selected/workflow.json',
+		]);
 		expect(finder.findExistingWorkflowIds).not.toHaveBeenCalled();
 	});
 
