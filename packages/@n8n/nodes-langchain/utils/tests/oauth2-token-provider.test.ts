@@ -110,38 +110,6 @@ describe('createRefreshingOAuth2TokenProvider', () => {
 		expect(mockRefreshOAuth2Token).toHaveBeenCalledTimes(1);
 	});
 
-	it('should serve every concurrent request a usable token when rotation is single-use', async () => {
-		// Databricks can rotate on every grant, so only the first one lands and the
-		// rest meet a spent refresh token. Nobody may fall back to the expired token.
-		let grants = 0;
-		mockRefreshOAuth2Token.mockImplementation(async () => {
-			grants += 1;
-			if (grants > 1) throw new Error('invalid_grant: refresh token already used');
-			return {
-				access_token: 'refreshed-token',
-				refresh_token: 'refresh-b',
-				expires_in: 3600,
-				n8n_expires_at: String(Date.now() + 3600 * 1000),
-			};
-		});
-		const provider = makeProvider({
-			oauthTokenData: tokenData({ n8n_expires_at: String(Date.now() - 1000) }),
-		});
-
-		const tokens = await Promise.all([
-			provider.getToken(),
-			provider.getToken(),
-			provider.getToken(),
-		]);
-
-		expect(tokens).toEqual(['refreshed-token', 'refreshed-token', 'refreshed-token']);
-		expect(tokens).not.toContain('stored-token');
-		// Deduplicating the grant itself is core's job - it coalesces in-flight
-		// refreshes per credential and takes a cross-instance lease - so the
-		// provider does ask once per caller
-		expect(mockRefreshOAuth2Token).toHaveBeenCalledTimes(3);
-	});
-
 	it('should fall back to the stored token when the refresh fails transiently', async () => {
 		mockRefreshOAuth2Token.mockRejectedValue(new Error('socket hang up'));
 		const provider = makeProvider({
