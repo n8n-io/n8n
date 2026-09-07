@@ -22,9 +22,11 @@ pnpm turbo lint --filter=@n8n/frontend-module-icon-parameter
 pnpm turbo test --filter=@n8n/frontend-module-icon-parameter
 ```
 
-Go through turbo, not `pnpm --filter <pkg> typecheck`: this package is consumed
-from source, and on a cold tree its platform dependencies have not been built
-yet. Turbo builds them first; the bare pnpm form does not.
+Go through turbo, not the bare `pnpm --filter <pkg> <task>` form: this package is
+consumed from source, and on a cold tree its platform dependencies have not been
+built yet. Turbo builds them first; the bare pnpm form does not. **`test` needs
+this as much as `typecheck` does** — `pnpm --filter <pkg> test` fails to resolve
+`n8n-workflow` and `@n8n/vitest-config/frontend` until they are built.
 
 ## Import rules
 
