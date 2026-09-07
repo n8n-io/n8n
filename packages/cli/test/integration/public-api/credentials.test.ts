@@ -1,3 +1,4 @@
+import { MAX_ITEMS_PER_PAGE } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialPayload } from '@n8n/backend-test-utils';
 import { createTeamProject, linkUserToProject, randomName, testDb } from '@n8n/backend-test-utils';
@@ -19,6 +20,7 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import {
 	affixRoleToSaveCredential,
 	createCredentials,
+	createManyCredentials,
 	getCredentialSharings,
 } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
@@ -417,6 +419,18 @@ describe('GET /credentials', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(2);
+		expect(response.body.nextCursor).not.toBeNull();
+	});
+
+	test('should cap the limit at the maximum page size even when a higher limit is requested', async () => {
+		await createManyCredentials(MAX_ITEMS_PER_PAGE + 1);
+
+		const response = await authOwnerAgent
+			.get('/credentials')
+			.query({ limit: MAX_ITEMS_PER_PAGE + 50 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(MAX_ITEMS_PER_PAGE);
 		expect(response.body.nextCursor).not.toBeNull();
 	});
 
