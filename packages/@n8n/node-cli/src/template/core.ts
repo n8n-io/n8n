@@ -64,7 +64,7 @@ export async function copyDefaultTemplateFilesToDestination(data: TemplateData) 
 
 export async function templateStaticFiles(data: TemplateData) {
 	const files = await glob('**/*.{md,json,yml}', {
-		ignore: ['tsconfig.json', 'tsconfig.build.json', 'AGENTS.md', 'CLAUDE.md', '.agents/*.md'],
+		ignore: ['tsconfig.json', 'tsconfig.build.json', 'AGENTS.md', 'CLAUDE.md', '.agents/*.md', '.github/**'],
 		cwd: data.destinationPath,
 		absolute: true,
 		dot: true,

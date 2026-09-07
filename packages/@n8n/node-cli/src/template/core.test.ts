@@ -103,6 +103,21 @@ describe('Templates > core', () => {
 
 			expect(mockFs.writeFile).not.toHaveBeenCalled();
 		});
+
+		it('excludes .github/** files from Handlebars rendering', async () => {
+			mockGlob.default.mockResolvedValue(['/dest/.github/workflows/publish.yml', '/dest/file.md']);
+			mockFs.readFile.mockResolvedValue('Hello {{nodePackageName}}');
+			mockHandlebars.compile.mockReturnValue(() => 'Hello MyNode');
+			mockFs.writeFile.mockResolvedValue();
+
+			await templateStaticFiles(baseData);
+
+			expect(mockGlob.default).toHaveBeenCalledWith(
+				expect.objectContaining({
+					ignore: expect.arrayContaining(['.github/**']),
+				}),
+			);
+		});
 	});
 
 	describe('createTemplate', () => {
