@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentConfirmationModal.test.ts
+  s_dc1bcc8544e6b1::t_6320f6bda73e5f 87-103
+  s_dc1bcc8544e6b1::t_aad31613624e1f 16
+  s_dc1bcc8544e6b1::t_0862477e1a763b 104-105
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_dc1bcc8544e6b1::t_e864ff287161e3 336-339
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_dc1bcc8544e6b1::t_25abfaf676c3d9 11
+  s_dc1bcc8544e6b1::t_fdf4ea0d5f9129 1068-1104,1106
+  s_dc1bcc8544e6b1::t_94cbbaa959f341 1035,1044
+  s_dc1bcc8544e6b1::t_b121c64ce5c21d 975-980,1053-1055,1105,1107
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_dc1bcc8544e6b1::t_3d5b566b856a11 46,48
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_dc1bcc8544e6b1::t_8d42191e5a701d 643-644,650
+packages/frontend/editor-ui/src/app/components/PublicationIndicator.vue
+  s_dc1bcc8544e6b1::t_2fa9a65f2c1508 47-50,53
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_dc1bcc8544e6b1::t_e525a2a2f76c23 323,329,331,340,342-345,351
+  s_dc1bcc8544e6b1::t_07651c40e6f2fd 87-93
+  s_dc1bcc8544e6b1::t_5d7f72376fbdef 160-178
+  s_dc1bcc8544e6b1::t_640c00c7b3d461 26
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  s_dc1bcc8544e6b1::t_1c99990dd46107 77-78
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_dc1bcc8544e6b1::t_277bf027ecc2e7 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "25ebba409fcfcfbe5370defc24d060ced2049030",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dc1bcc8544e6b1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b230e043-4120-4803-80d6-26654a74875b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

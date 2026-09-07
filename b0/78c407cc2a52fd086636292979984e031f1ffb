@@ -1,0 +1,26 @@
+patches/@langchain__openai@1.4.4.patch
+  s_f6415c4adcae76::t_5720e3c6c62e16 1-30
+pnpm-lock.yaml
+  s_f6415c4adcae76::t_468d0fac024b9d 862,1165,1274,3292,29872
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b078c407cc2a52fd086636292979984e031f1ffb",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f6415c4adcae76": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "13d17183-179e-4d31-8177-732f8a6ae43e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

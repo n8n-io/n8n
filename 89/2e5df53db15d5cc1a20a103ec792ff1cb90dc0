@@ -1,0 +1,32 @@
+packages/cli/src/modules/instance-reporting/README.md
+  s_bcb1b82d2dd982::t_deb50a2cf7a66f 52
+packages/cli/src/modules/instance-reporting/instance-reporting.service.ts
+  s_bcb1b82d2dd982::t_e9ce382ca36159 83
+packages/cli/src/modules/instance-reporting/instance-reporting.config.ts
+  s_bcb1b82d2dd982::t_43559d4f4958aa 5-7,14-15,20-24
+  s_bcb1b82d2dd982::t_aa6a5c085c55db 8-9
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.service.test.ts
+  s_bcb1b82d2dd982::t_320600e11fff7b 62
+  s_bcb1b82d2dd982::t_e31fe730aec86f 216-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "892e5df53db15d5cc1a20a103ec792ff1cb90dc0",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bcb1b82d2dd982": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ec80add-707a-419e-842d-61425f84dc2a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

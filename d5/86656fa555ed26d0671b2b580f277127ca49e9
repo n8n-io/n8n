@@ -1,0 +1,33 @@
+packages/@n8n/db/src/migrations/common/1788527465971-AddWakeColumnsToAgentBackgroundJob.ts
+  s_bd2c53981ea354::t_6b9abac1221539 4-10,17-19,22
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_bd2c53981ea354::t_cc0674191beff9 90,92-95
+  s_bd2c53981ea354::t_7c4702e8c8ebf5 113
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_bd2c53981ea354::t_ef4ae1c0db779a 36-38,40-42
+packages/cli/test/migration/1788527465971-add-wake-columns-to-agent-background-job.test.ts
+  s_bd2c53981ea354::t_cdb53f66d72ed0 43,59-67,78-92,99-103,113-117,120-129,134,136-148,152,154,156-157,159,162-163,166,175-176,180,188-189,193,195-197,204
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_bd2c53981ea354::t_0000f11514d429 62-65,67,69,71-73,75,77
+  s_bd2c53981ea354::t_9e467c121be3f3 111,116
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 15-16,39-40
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 9,26-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d586656fa555ed26d0671b2b580f277127ca49e9",
+  "prompts": {},
+  "sessions": {
+    "s_bd2c53981ea354": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dae65258-6737-4a15-af4b-bbcfa1bd9afd",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

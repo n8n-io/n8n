@@ -1,0 +1,73 @@
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_5ddf40544fde37::t_d618b21841b3ff 655-656,466-468,476,513,658-660,667,680
+  s_5ddf40544fde37::t_52db992313da15 752
+  s_5ddf40544fde37::t_bae24e582c3369 790,793-794,802,469,475,481,496,503,505-506,510,514,760,795-796,178,193,661,666,668,672,681
+  s_5ddf40544fde37::t_0c9227a7e55eb5 473,488,497-499
+  s_5ddf40544fde37::t_3dfa347f28e407 474,490,495,502,509,797-801,678
+  s_5ddf40544fde37::t_0440d41f9a8220 777-778
+  s_5ddf40544fde37::t_2e5a4ba0237357 805-806
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_5ddf40544fde37::t_36cab2974775bd 50,126
+  s_5ddf40544fde37::t_ba81a86c1987ab 68,130,359
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_5ddf40544fde37::t_36cab2974775bd 427-434
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_5ddf40544fde37::t_9111acbb0c44f8 308,314,316
+  s_5ddf40544fde37::t_5eb373bc284905 342
+  s_5ddf40544fde37::t_97ccfea2ce5ed7 363
+  s_5ddf40544fde37::t_82efcddd0b3c63 279-282
+  s_5ddf40544fde37::t_99032423de68c7 324,341
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5ddf40544fde37::t_53cbdd157faed9 659-660,664-673
+  s_5ddf40544fde37::t_0265debc3bd427 674-676,662,71,64,44
+  s_5ddf40544fde37::t_563b82e9fbe260 622
+  s_5ddf40544fde37::t_51e46152984fc8 661
+  s_5ddf40544fde37::t_5fb1f352a67b94 70,38-43,329,542
+  s_5ddf40544fde37::t_e5a0e2003abf3d 52-63,663
+  s_5ddf40544fde37::t_96caa54d1608b8 21
+packages/cli/src/modules/git-connections.ee/__tests__/working-copy-updater.test.ts
+  s_5ddf40544fde37::t_472bf05a51816b 1,3-6,13-14,16,18,26-38,61,103-107,118-126,159-167,193-195,267,271-273,388,393,453-455,476,479-480,482,485-487,495-498,500-503,506-509,513,516-517,521-522,524-528,96,148,198,204-205,207,215-216,219,224-225,227,229-230,232,235-236,238,241-243,389,419,24-25,464,467-469,472-474,77-78,81,94
+  s_5ddf40544fde37::t_0d4acd4aa28bdd 2,17,39-57,59-60,97-102,127-131,136,144,158,168-192,244-245,247-248,250-254,256-257,259-260,262-265,274,276-277,283,289,293,295-296,302,305,308-309,312-313,315-317,324,330,339-341,344,351-363,392,395-396,403,410,414-416,421-425,427-429,431-438,444-452,456-462,368-369,372,378,381-382,387,413
+  s_5ddf40544fde37::t_25f2f4d7c1ea0f 268,270,246,266
+  s_5ddf40544fde37::t_5e315f512bf405 386,15,220,222,335,338,384,417-418,504,470,311,79-80,211,488-491,494
+  ai_agent 439-443
+  s_5ddf40544fde37::t_b6b340e1cb69ae 145,258,430
+  s_5ddf40544fde37::t_fbc3cf0188b6e1 499
+  s_5ddf40544fde37::t_4aff424a4ca794 275,297-301,303,306,310,314,342-343,345-350,391
+  s_5ddf40544fde37::t_9e789d476bb4ef 58,67-76
+  s_5ddf40544fde37::t_09649505fc3ae4 151-153,157,481,483,492,518-519
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  s_5ddf40544fde37::t_204e952fdc2e93 15,18-19
+  s_5ddf40544fde37::t_262cb0d1094afa 117,140,142,82,108,133
+  s_5ddf40544fde37::t_0513fac1c93e94 118-119,141,143-144,236,242-271,83-84,93,102,109,223
+  s_5ddf40544fde37::t_c967473bcaf24d 165,167-168,171,100
+  s_5ddf40544fde37::t_7b9c60bce38b7b 170,173,160,166
+  s_5ddf40544fde37::t_5c22d6c3207fdd 209-216
+  s_5ddf40544fde37::t_c919584b375036 30
+  s_5ddf40544fde37::t_a19faab5245ebc 79-81,94,110,112-116
+  s_5ddf40544fde37::t_fee2a783465204 122,124,127
+  s_5ddf40544fde37::t_51edd279d1ee3d 155
+  s_5ddf40544fde37::t_2a7bdb44fcfe00 178
+  s_5ddf40544fde37::t_14c81f99812a6b 14
+  s_5ddf40544fde37::t_e7f254be620e13 111
+  s_5ddf40544fde37::t_85fc65de7be4a1 5
+  s_5ddf40544fde37::t_a182edef17ea13 161-164
+  s_5ddf40544fde37::t_4fa82f0bf29a6b 208,217,219-222
+  s_5ddf40544fde37::t_1307b7237544dd 154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6acb0c77da09669d179748409bd6c37d1ab269c1",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}
