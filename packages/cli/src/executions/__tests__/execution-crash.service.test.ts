@@ -69,6 +69,15 @@ describe('ExecutionCrashService', () => {
 		expect(workflowStatisticsService.emit).not.toHaveBeenCalled();
 	});
 
+	test('counts nothing when the caller counts the executions itself', async () => {
+		transitions([crashedExecution('1')]);
+
+		await crashService.markAsCrashedWithoutCounting('1');
+
+		expect(executionRepository.markAsCrashed).toHaveBeenCalledWith('1');
+		expect(workflowStatisticsService.emit).not.toHaveBeenCalled();
+	});
+
 	test('reports the executions it transitioned for a whole workflow', async () => {
 		const first = crashedExecution('1');
 		const second = crashedExecution('2');

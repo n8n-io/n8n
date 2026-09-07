@@ -19,6 +19,14 @@ export class ExecutionCrashService {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) => this.count(batch));
 	}
 
+	/**
+	 * Mark executions as `crashed` without counting them. For a caller that fires
+	 * `workflowExecuteAfter` for the same executions, which counts them itself.
+	 */
+	async markAsCrashedWithoutCounting(executionIds: string | string[]): Promise<void> {
+		await this.executionRepository.markAsCrashed(executionIds);
+	}
+
 	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
 		const crashed = await this.executionRepository.markWorkflowExecutionsAsCrashed(workflowId);
 
