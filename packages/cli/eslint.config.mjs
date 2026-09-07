@@ -388,6 +388,7 @@ export default defineConfig(
 			'./src/modules/agents/integrations/agent-channel-reconciler.service.ts',
 			'./src/modules/agents/integrations/leader-channel-relay.service.ts',
 			'./src/modules/agents/integrations/platforms/discord-integration.ts',
+			'./src/modules/instance-reporting/instance-reporting-scheduler.service.ts',
 		],
 		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},
