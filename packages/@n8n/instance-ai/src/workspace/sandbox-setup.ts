@@ -30,6 +30,7 @@
  */
 
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
@@ -60,10 +61,6 @@ type SandboxWorkspaceSetupStep =
 	| 'install-dependencies'
 	| 'link-workspace-sdk'
 	| 'write-initialization-marker';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 export class SandboxWorkspaceSetupError extends Error {
 	constructor(

@@ -1089,6 +1089,7 @@ export function useNodeHelpers() {
 		getForeignCredentialsIfSharingEnabled,
 		displayParameter,
 		getNodeCredentialIssues,
+		getNodeInputIssues,
 		getNodeIssues,
 		updateNodesInputIssues,
 		updateNodesExecutionIssues,
