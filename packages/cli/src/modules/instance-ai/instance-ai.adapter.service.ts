@@ -4480,18 +4480,13 @@ function readHomeProject(workflow: object): { id: string; name: string } | undef
 	return { id, name };
 }
 
-/** Read the joined parent folder off a listed row. Same defensive shape as
- *  `readHomeProject`: the relation is present on the default select, absent on
- *  custom selects, and `null` for a root-level workflow. */
-function readParentFolder(workflow: object): { id: string; name: string } | undefined {
-	const parent = Reflect.get(workflow, 'parentFolder');
-	if (typeof parent !== 'object' || parent === null) return undefined;
-
-	const id = Reflect.get(parent, 'id');
-	const name = Reflect.get(parent, 'name');
-	if (typeof id !== 'string' || typeof name !== 'string') return undefined;
-
-	return { id, name };
+/** Read the joined parent folder off a listed row. Unlike `homeProject`,
+ *  `parentFolder` is declared on `WorkflowEntity`, so no `Reflect.get` is
+ *  needed; `?? undefined` covers both a root-level workflow (`null`) and a
+ *  custom select that omitted the relation (`undefined`). */
+function readParentFolder(workflow: WorkflowEntity): { id: string; name: string } | undefined {
+	const parent = workflow.parentFolder ?? undefined;
+	return parent ? { id: parent.id, name: parent.name } : undefined;
 }
 
 /** Folder ids per path query. `getFolderPathsToRoot` binds one parameter per id
