@@ -8,7 +8,7 @@ import { Agent } from '../../sdk/agent';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
-import type { CheckpointStore, SerializableAgentState } from '../../types';
+import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
@@ -38,6 +38,7 @@ import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: () =>
 		Object.assign(() => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }), {
+			chat: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }),
 			embeddingModel: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v2' }),
 		}),
 }));
@@ -6565,7 +6566,7 @@ describe('AgentRuntime — mid-run observation', () => {
 		extra?: {
 			tools?: BuiltTool[];
 			checkpointStorage?: CheckpointStore;
-			model?: { id: string; baseURL: string };
+			model?: ModelConfig;
 		},
 	): AgentRuntime {
 		return new AgentRuntime({
@@ -6619,6 +6620,24 @@ describe('AgentRuntime — mid-run observation', () => {
 		const memory = new InMemoryMemory();
 		const runtime = buildMidRunRuntime(memory, {
 			model: { id: 'custom/test-model', baseURL: 'https://example.test/v1' },
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
+
+		await runtime.generate('start work', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const second = capturedCall(1);
+		expect(second.instructions).not.toBeInstanceOf(Array);
+		expect(flattenInstructions(second.instructions)).toContain('You are a test assistant.');
+		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
+	});
+
+	it('merges system messages after compaction for OpenAI models with a custom URL', async () => {
+		const memory = new InMemoryMemory();
+		const runtime = buildMidRunRuntime(memory, {
+			model: { id: 'openai/x', url: 'http://localhost:8000/v1' },
 		});
 		generateText
 			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
