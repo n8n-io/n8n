@@ -9,6 +9,7 @@ import {
 
 import * as channel from './channel';
 import * as channelMessage from './channelMessage';
+import * as chatMember from './chatMember';
 import * as chatMessage from './chatMessage';
 import type { MicrosoftTeamsType } from './node.type';
 import * as onlineMeeting from './onlineMeeting';
@@ -63,6 +64,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						nodeVersion,
 						instanceId,
 					);
+					break;
+				case 'chatMember':
+					responseData = await chatMember[microsoftTeamsTypeData.operation].execute.call(this, i);
 					break;
 				case 'chatMessage':
 					responseData = await chatMessage[microsoftTeamsTypeData.operation].execute.call(

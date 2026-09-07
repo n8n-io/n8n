@@ -102,20 +102,27 @@ export class McpClient {
 
 	/**
 	 * Connect to all servers (if not already connected) and return the full
-	 * flat list of tools. Subsequent calls return the cached list without
-	 * additional network round-trips. Servers that fail to connect are
+	 * flat list of tools. Subsequent calls return the cached list when all
+	 * servers connect. Servers that fail to connect are
 	 * skipped (their tools are omitted and the failure is recorded via
-	 * `getConnectionFailures()`); the call still resolves with the remaining
-	 * servers' tools. On a hard error (e.g. tool-name collision) the cache is
-	 * cleared so the caller can retry.
+	 * `getConnectionFailures()`). The call still resolves with the remaining
+	 * servers' tools. A failed server retries on the next call. A hard error
+	 * (for example, a tool-name collision) also clears the cache.
 	 */
 	async listTools(): Promise<BuiltTool[]> {
 		if (!this.listToolsPromise) {
 			const p = this.doListTools();
 			this.listToolsPromise = p;
-			p.catch(() => {
-				if (this.listToolsPromise === p) this.listToolsPromise = undefined;
-			});
+			void p.then(
+				() => {
+					if (this.connectionFailures.length > 0 && this.listToolsPromise === p) {
+						this.listToolsPromise = undefined;
+					}
+				},
+				() => {
+					if (this.listToolsPromise === p) this.listToolsPromise = undefined;
+				},
+			);
 		}
 		return await this.listToolsPromise;
 	}

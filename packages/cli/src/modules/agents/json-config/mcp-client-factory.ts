@@ -2,7 +2,13 @@ import type { CredentialProvider, McpClient, McpServerConfig } from '@n8n/agents
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { getMcpAuthHeaders, isMcpOAuth2Authentication, OperationalError } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
+import {
+	getMcpAuthHeaders,
+	isMcpOAuth2Authentication,
+	OperationalError,
+	shouldRefreshMcpOAuth2Token,
+} from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
 
 import {
@@ -10,7 +16,12 @@ import {
 	toAgentMcpTransport,
 } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { OauthService } from '@/oauth/oauth.service';
-import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
+import {
+	type AuthFetchDomainPolicy,
+	createAuthFetch,
+	getBearerTokenRevision,
+	resolveAllowedDomains,
+} from '@/utils/auth-fetch';
 
 /**
  * Convert the JSON-config `approval` shape into the SDK's `requireApproval`
@@ -31,6 +42,7 @@ export function mapApprovalToSdk(
 type DerivedAuth = {
 	headers: Record<string, string>;
 	credentialData?: ICredentialDataDecryptedObject;
+	credentialType?: string;
 	/** Set when the credential could not be resolved (e.g. unreachable secret store). */
 	credentialError?: Error;
 };
@@ -41,9 +53,9 @@ type DerivedAuth = {
  * the langchain MCP node — kept inline here so the agents module does not
  * have to depend on `@n8n/nodes-langchain`.
  *
- * For any `*McpOAuth2Api` credential type, the Bearer header is computed from
- * the already-stored `oauthTokenData.access_token`. Refresh-on-401 is handled
- * by `createAuthFetch` below; this function only computes the initial set.
+ * For any supported OAuth2 credential type, the Bearer header is computed from
+ * the already-stored `oauthTokenData.access_token`. `createAuthFetch` refreshes
+ * the token before expiry and after a 401 response.
  */
 async function deriveAuthHeaders(
 	server: AgentJsonMcpServerConfig,
@@ -52,15 +64,49 @@ async function deriveAuthHeaders(
 	if (server.authentication === 'none' || !server.credential) return { headers: {} };
 
 	try {
-		const resolved = (await credentialProvider.resolve(
-			server.credential,
-		)) as ICredentialDataDecryptedObject;
+		const [resolved, credentials] = await Promise.all([
+			credentialProvider.resolve(server.credential),
+			credentialProvider.list(),
+		]);
+		const credential = credentials?.find((candidate) => candidate.id === server.credential);
+		if (credentials !== undefined && !credential) {
+			throw new OperationalError('Credential not found or not accessible');
+		}
+		const credentialData = resolved as ICredentialDataDecryptedObject;
 		return {
-			headers: getMcpAuthHeaders(server.authentication, resolved),
-			credentialData: resolved,
+			headers: getMcpAuthHeaders(server.authentication, credentialData),
+			credentialData,
+			credentialType: credential?.type ?? server.authentication,
 		};
 	} catch (error) {
 		return { headers: {}, credentialError: ensureError(error) };
+	}
+}
+
+function isNativeOAuth2Credential(authentication: string): boolean {
+	return (
+		isMcpOAuth2Authentication(authentication) &&
+		authentication !== 'mcpOAuth2Api' &&
+		!authentication.endsWith('McpOAuth2Api')
+	);
+}
+
+function resolveMcpDomainPolicy(
+	server: AgentJsonMcpServerConfig,
+	credentialData: ICredentialDataDecryptedObject,
+	mcpHostname: string | undefined,
+): AuthFetchDomainPolicy | undefined {
+	if (!isNativeOAuth2Credential(server.authentication) || !mcpHostname) {
+		return resolveAllowedDomains(credentialData);
+	}
+
+	switch (credentialData.allowedHttpRequestDomains) {
+		case 'domains':
+			return resolveAllowedDomains(credentialData);
+		case 'all':
+			return undefined;
+		default:
+			return { mode: 'domains', domains: mcpHostname };
 	}
 }
 
@@ -68,9 +114,9 @@ export interface BuildMcpClientDeps {
 	credentialProvider: CredentialProvider;
 	resolveRegistryConnection?: (nodeTypeName: string) => Promise<McpRegistryConnection | undefined>;
 	/**
-	 * Used to refresh OAuth2 tokens on a 401 response without an
+	 * Used to refresh OAuth2 tokens before expiry or after a 401 response without an
 	 * `IExecuteFunctions` workflow context. Only invoked when
-	 * `server.authentication` is any `*McpOAuth2Api` credential type.
+	 * `server.authentication` is a supported OAuth2 credential type.
 	 */
 	oauthService: OauthService;
 	projectId: string;
@@ -111,27 +157,38 @@ export async function buildMcpClientForServer(
 	const { McpClient } = await import('@n8n/agents');
 
 	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
-	const { credentialData } = derivedAuth;
+	const { credentialData, credentialType } = derivedAuth;
 	let { headers: initialHeaders, credentialError } = derivedAuth;
 	let runtimeUrl = server.url;
 	let runtimeTransport = server.transport;
-	let allowedDomains = credentialData ? resolveAllowedDomains(credentialData) : undefined;
+	const nativeMcpHostname =
+		isNativeOAuth2Credential(server.authentication) && URL.canParse(server.url)
+			? new URL(server.url).hostname
+			: undefined;
+	let allowedDomains = credentialData
+		? resolveMcpDomainPolicy(server, credentialData, nativeMcpHostname)
+		: undefined;
 
 	const registryNodeName = server.metadata?.nodeTypeName;
-	if (!registryNodeName && server.authentication.endsWith('McpOAuth2Api')) {
+	if (!registryNodeName && credentialType?.endsWith('McpOAuth2Api')) {
 		credentialError = new OperationalError(
-			`Credential type "${server.authentication}" requires an MCP registry node`,
+			`Credential type "${credentialType}" requires an MCP registry node`,
 		);
 	} else if (registryNodeName) {
 		try {
 			const connection = await deps.resolveRegistryConnection?.(registryNodeName);
-			if (!connection || !credentialData || connection.credentialType !== server.authentication) {
+			if (
+				!connection ||
+				!credentialData ||
+				!credentialType ||
+				!isMcpOAuth2Authentication(credentialType)
+			) {
 				throw new OperationalError('MCP registry connection could not be resolved');
 			}
 			const prepared = prepareMcpRegistryConnection({
 				connection,
+				credentialType,
 				credentialData,
-				headers: initialHeaders,
 			});
 			if (!prepared.ok) throw new OperationalError(prepared.error.message);
 			initialHeaders = prepared.value.headers;
@@ -143,14 +200,36 @@ export async function buildMcpClientForServer(
 		}
 	}
 
-	const onUnauthorized =
+	const oauthTokenData = isRecord(credentialData?.oauthTokenData)
+		? { ...credentialData.oauthTokenData }
+		: undefined;
+	const grantType = credentialData?.grantType;
+	const refreshAuthHeaders =
 		isMcpOAuth2Authentication(server.authentication) && server.credential
-			? async () => {
+			? async (currentHeaders: Record<string, string>) => {
 					const credentialId = server.credential;
 					if (!credentialId) return null;
-					return await oauthService
-						.refreshOAuth2CredentialById(credentialId, projectId)
-						.catch(() => null);
+					const result = await oauthService.refreshOAuth2CredentialById(
+						credentialId,
+						projectId,
+						getBearerTokenRevision(currentHeaders, oauthTokenData?.n8n_expires_at),
+					);
+					if (!result) return null;
+
+					if (oauthTokenData) {
+						if (result.expiresAt === undefined) {
+							delete oauthTokenData.n8n_expires_at;
+						} else {
+							oauthTokenData.n8n_expires_at = String(result.expiresAt);
+						}
+						if (result.expiresInSeconds === undefined) {
+							delete oauthTokenData.expires_in;
+						} else {
+							oauthTokenData.expires_in = result.expiresInSeconds;
+						}
+					}
+
+					return result.headers;
 				}
 			: undefined;
 
@@ -181,7 +260,10 @@ export async function buildMcpClientForServer(
 				fetch: createAuthFetch({
 					baseFetch: proxyFetch,
 					initialHeaders,
-					onUnauthorized,
+					onUnauthorized: refreshAuthHeaders,
+					...(refreshAuthHeaders
+						? { shouldRefresh: () => shouldRefreshMcpOAuth2Token(oauthTokenData, grantType) }
+						: {}),
 					allowedDomains,
 				}),
 			};

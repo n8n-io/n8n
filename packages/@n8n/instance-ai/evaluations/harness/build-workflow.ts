@@ -8,6 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiConfirmRequest, InstanceAiWorkflowAttachment } from '@n8n/api-types';
+import { truncate } from '@n8n/utils/string/truncate';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -1317,11 +1318,6 @@ function formatProxyStatsSuffix(stats: ProxyDecisionStats | undefined): string {
 // ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
-
-function truncate(text: string, maxLength: number): string {
-	if (text.length <= maxLength) return text;
-	return text.slice(0, maxLength) + '...';
-}
 
 /**
  * The provider key shape for the leak scan.
