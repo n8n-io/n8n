@@ -1810,7 +1810,14 @@ describe('createInstanceAiTraceContext', () => {
 		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
 			await wrappedAskUser.handler(
 				{
-					questions: [{ id: 'q1', question: 'What do you want?', type: 'text' }],
+					questions: [
+						{
+							id: 'q1',
+							question: 'What do you want?',
+							type: 'text',
+							recommendedOption: 'Build a draft',
+						},
+					],
 				},
 				{
 					toolCallId: 'toolu-ask',

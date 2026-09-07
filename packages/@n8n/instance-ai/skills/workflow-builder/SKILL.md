@@ -85,6 +85,12 @@ downstream node reference the data node explicitly.
 
 ## Escalation
 
+Ask at most three questions per `ask-user` call. Prefer one essential decision.
+Give every question a concrete default answer. Use the selected answer, then
+continue the build. Do not split a questionnaire into consecutive calls unless
+the user explicitly requests an in-depth interview. Use placeholders or defer
+setup when a default cannot be inferred.
+
 If the service or workflow shape is clear, never stop before the first
 `build-workflow` call to ask for setup values like recipients, accounts,
 resources, credentials, channel IDs, or timezone; use placeholders or unresolved

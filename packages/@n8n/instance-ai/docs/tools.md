@@ -968,8 +968,22 @@ Suspend the run for one or more human decisions.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `questions` | array | yes | Items with `id`, `question`, `type`, and optional `options` |
+| `questions` | array | yes | One to three items with `id`, `question`, `type`, `recommendedOption`, and optional `options` |
 | `introMessage` | string | no | Text shown above the first question |
+
+Each `recommendedOption` contains the default answer as plain text.
+The tool appends ` (Recommended)` and puts this answer first.
+The input accepts at most two alternatives in `options`, for a maximum of
+three suggested answers including the recommendation.
+
+If either limit is exceeded, validation rejects the call before it displays
+questions. The error identifies the field and tells the model how to retry.
+For excess questions, keep the highest-priority decisions and defer the rest.
+For excess options, keep at most two alternatives and put the default only in
+`recommendedOption`.
+
+It removes an exact duplicate of the plain answer from `options`. It displays
+`text` questions as `single` questions so users can select defaults or enter text.
 
 Question type is `single`, `multi`, or `text`. The UI adds its own free-text
 choice to select questions. The result is `{ answered: false }` when the user

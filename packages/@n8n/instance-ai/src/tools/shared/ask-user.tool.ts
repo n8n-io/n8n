@@ -18,6 +18,28 @@ const questionSchema = z.object({
 		.describe('Suggested answers (required for single/multi, ignored for text)'),
 });
 
+const questionInputSchema = questionSchema.extend({
+	options: z
+		.array(z.string())
+		.max(2, {
+			message:
+				'Too many alternative answers. Retry ask-user with at most 2 entries in this options array. ' +
+				'Put the default answer only in recommendedOption. The tool adds it as the first option, ' +
+				'for at most 3 suggested answers in total. Keep the two most useful alternatives. ' +
+				'Do not add "Something else"; the UI provides it.',
+		})
+		.optional()
+		.describe('Up to two alternatives to the recommended answer. Ignored for text questions.'),
+	recommendedOption: z
+		.string()
+		.trim()
+		.min(1)
+		.describe(
+			"The default answer as plain text, in the user's language. " +
+				'Use a safe placeholder or defer setup when a value cannot be inferred. Do not repeat this answer in options.',
+		),
+});
+
 const answerSchema = z.object({
 	questionId: z.string(),
 	selectedOptions: z.array(z.string()),
@@ -27,9 +49,17 @@ const answerSchema = z.object({
 
 export const askUserInputSchema = z.object({
 	questions: z
-		.array(questionSchema)
+		.array(questionInputSchema)
 		.min(1)
-		.describe('Questions to present to the user in a paginated wizard'),
+		.max(3, {
+			message:
+				'Too many questions. Retry ask-user with 1 to 3 entries in questions. ' +
+				'Keep only the highest-priority decisions needed to continue. Ask one decision per question. ' +
+				'Use sensible defaults or defer setup for the remaining details. ' +
+				'Do not combine the removed questions into one question. Do not send consecutive batches ' +
+				'unless the user explicitly requested an in-depth interview. Even then, keep each call to 3 questions.',
+		})
+		.describe('One to three essential questions. Ask one independent decision per question.'),
 	introMessage: z.string().optional().describe('Brief intro text shown above the first question'),
 });
 
@@ -42,7 +72,11 @@ export function createAskUserTool() {
 	return new Tool(ASK_USER_TOOL_ID)
 		.description(
 			'Ask the user when only a human can decide; the run suspends until they respond. ' +
-				'Questions are single-select, multi-select, or free-text. ' +
+				'Ask at most three questions per call. Prefer one question. ' +
+				'Provide a recommendedOption for every question with explicit, concrete defaults. ' +
+				'The tool shows it first. Text questions use a select question with the built-in custom answer input. ' +
+				'When the user selects defaults, use those defaults and continue the work. ' +
+				'Do not split a long questionnaire into consecutive calls unless the user explicitly requests an in-depth interview. ' +
 				'Before the first build-workflow call, use only for choices that change workflow intent or topology ' +
 				'(e.g. destination service) — setup values (recipients, accounts, resources, channels, credentials, ' +
 				'timezone) use placeholders or unresolved newCredential() calls instead. ' +
@@ -87,12 +121,22 @@ export function createAskUserTool() {
 
 			// First call — always suspend to show questions
 			if (resumeData === undefined || resumeData === null) {
+				const { questions } = askUserInputSchema.parse(input);
 				return await ctx.suspend({
 					requestId: nanoid(),
 					message: input.introMessage ?? input.questions[0].question,
 					severity: 'info' as const,
 					inputType: 'questions' as const,
-					questions: input.questions,
+					questions: questions.map(({ recommendedOption, ...question }) => ({
+						...question,
+						type: question.type === 'text' ? 'single' : question.type,
+						options: [
+							`${recommendedOption} (Recommended)`,
+							...(question.type === 'text' ? [] : (question.options ?? [])).filter(
+								(option) => option !== recommendedOption,
+							),
+						],
+					})),
 					introMessage: input.introMessage,
 				});
 			}
