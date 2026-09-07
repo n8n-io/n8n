@@ -51,9 +51,21 @@ const promotionUsernameSchema = z.string().trim().min(1);
 // Do not trim the password. A token is saved exactly as sent, and a blank one is rejected.
 const promotionSecretSchema = z.string().min(1);
 
+/*
+ * The auth payload carries its own `authType`, so it is a discriminated union and
+ * a request cannot pair one auth type with another's fields. Keeping the
+ * discriminator inside `auth` rather than beside it is what lets the request body
+ * stay a plain object: only a field can be a union here, not the body root.
+ *
+ * Responses have no `auth` at all, so they report `authType` at the top level.
+ */
+
 /** The backend generates the key pair. The caller only picks the algorithm. */
 export const promotionGitSshKeyAuthInputSchema = z
-	.object({ keyType: promotionSshKeyTypeSchema.default('ed25519') })
+	.object({
+		authType: z.literal('ssh-key'),
+		keyType: promotionSshKeyTypeSchema.default('ed25519'),
+	})
 	.strict();
 
 /**
@@ -63,68 +75,59 @@ export const promotionGitSshKeyAuthInputSchema = z
  * on an edit that never mentioned the key.
  */
 export const promotionGitSshKeyAuthUpdateSchema = z
-	.object({ keyType: promotionSshKeyTypeSchema.optional() })
+	.object({
+		authType: z.literal('ssh-key'),
+		keyType: promotionSshKeyTypeSchema.optional(),
+	})
 	.strict();
 
 /** Username and password are required together, on create and on update. */
 export const promotionGitTokenAuthInputSchema = z
-	.object({ username: promotionUsernameSchema, password: promotionSecretSchema })
+	.object({
+		authType: z.literal('token'),
+		username: promotionUsernameSchema,
+		password: promotionSecretSchema,
+	})
 	.strict();
 
-/**
- * Auth schema for each auth type. Use this map once the auth type is known: `{}` is
- * a complete `ssh-key` payload, so the union below also accepts it for a `token`
- * provider.
- */
-export const promotionGitAuthInputSchemas = {
-	'ssh-key': promotionGitSshKeyAuthInputSchema,
-	token: promotionGitTokenAuthInputSchema,
-} as const;
-
-/** The same map for an update; see {@link promotionGitSshKeyAuthUpdateSchema}. */
-export const promotionGitAuthUpdateSchemas = {
-	'ssh-key': promotionGitSshKeyAuthUpdateSchema,
-	token: promotionGitTokenAuthInputSchema,
-} as const;
-
-export const promotionProviderAuthInputSchema = z.union([
+export const promotionProviderAuthInputSchema = z.discriminatedUnion('authType', [
 	promotionGitSshKeyAuthInputSchema,
 	promotionGitTokenAuthInputSchema,
 ]);
 export type PromotionProviderAuthInput = z.infer<typeof promotionProviderAuthInputSchema>;
 
-export const promotionProviderAuthUpdateSchema = z.union([
+export const promotionProviderAuthUpdateSchema = z.discriminatedUnion('authType', [
 	promotionGitSshKeyAuthUpdateSchema,
 	promotionGitTokenAuthInputSchema,
 ]);
 export type PromotionProviderAuthUpdate = z.infer<typeof promotionProviderAuthUpdateSchema>;
 
 /**
- * The `auth` union cannot tell which variant `authType` asks for. The service must
- * parse `auth` again with `promotionGitAuthInputSchemas[authType]`, or `auth: {}`
- * creates a `token` provider with no credentials.
+ * The auth type is stated once, inside `auth`, so it always matches the credentials
+ * beside it. The service reads it from there for the `authType` column.
+ *
+ * `git` is the only provider type today, so its two auth methods are the only ones
+ * the union accepts. A second provider type brings its own auth variants, and the
+ * pairing of provider type to auth method becomes a choice to model here.
  */
 export class CreatePromotionProviderDto extends Z.class(
 	{
 		name: promotionDisplayNameSchema,
 		type: promotionProviderTypeSchema,
-		authType: promotionProviderAuthTypeSchema,
 		auth: promotionProviderAuthInputSchema,
 	},
 	{ strict: true },
 ) {}
 
 /**
- * `type` and `authType` cannot change, and `config` holds generated key material,
- * so a strict shape rejects all three. Leaving out `auth` keeps the stored
- * credentials. Sending it replaces them.
+ * `type` cannot change and `config` holds generated key material, so a strict shape
+ * rejects both. Leaving out `auth` keeps the stored credentials. Sending it replaces
+ * them.
  *
- * `authType` is not in the payload, so the service still has to:
- *
- * 1. Parse `auth` again with `promotionGitAuthUpdateSchemas[authType]`. `{}` is a
- *    complete `ssh-key` payload, so the union accepts it for a `token` provider.
- * 2. Read an omitted `keyType` from the provider's current key type, so rotating
- *    an `rsa` key keeps it `rsa`.
+ * `auth.authType` states which credentials are being sent, and the auth type itself
+ * cannot change, so the service compares it with the stored one and rejects a
+ * mismatch. It also reads an omitted `keyType` from the provider's current key type,
+ * so rotating an `rsa` key keeps it `rsa`.
  */
 export class UpdatePromotionProviderDto extends Z.class(
 	{
