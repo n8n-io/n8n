@@ -135,8 +135,36 @@ describe('structuredOutputParserValidator', () => {
 		]);
 	});
 
+	it.each([
+		['empty', ''],
+		['whitespace-only', '   '],
+	])('flags a %s jsonSchemaExample as invalid JSON', (_label, example) => {
+		expect(codes({ schemaType: 'fromJson', jsonSchemaExample: example })).toEqual([
+			'STRUCTURED_OUTPUT_PARSER_EXAMPLE_INVALID',
+		]);
+	});
+
 	it('ignores expression-valued jsonSchemaExample', () => {
 		expect(codes({ schemaType: 'fromJson', jsonSchemaExample: '={{ $json.schema }}' })).toEqual([]);
+	});
+
+	it('flags JSON Schema whose properties use keywords other than type', () => {
+		const schema = JSON.stringify({
+			type: 'object',
+			properties: {
+				status: { enum: ['open', 'closed'] },
+				owner: { $ref: '#/definitions/user' },
+				notes: { description: 'Free text' },
+			},
+		});
+		expect(codes({ schemaType: 'fromJson', jsonSchemaExample: schema })).toEqual([
+			'STRUCTURED_OUTPUT_PARSER_SCHEMA_IN_EXAMPLE_FIELD',
+		]);
+	});
+
+	it('does not treat an example with a literal type field and plain properties as JSON Schema', () => {
+		const example = JSON.stringify({ type: 'object', properties: { color: 'red', size: 3 } });
+		expect(codes({ schemaType: 'fromJson', jsonSchemaExample: example })).toEqual([]);
 	});
 
 	it('does not treat plain example objects with nested data as JSON Schema', () => {

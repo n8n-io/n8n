@@ -48,18 +48,21 @@ function usesFromJsonExample(
 function looksLikeJsonSchema(value: unknown): boolean {
 	if (!isRecord(value) || value.type !== 'object') return false;
 	const properties = value.properties;
-	if (!isRecord(properties) || Object.keys(properties).length === 0) return false;
+	if (!isRecord(properties)) return false;
 
-	return Object.values(properties).some((prop) => isRecord(prop) && typeof prop.type === 'string');
+	// In JSON Schema every entry of `properties` is a subschema (object or boolean), whatever
+	// keywords it uses ($ref, enum, anyOf, description only). Example objects hold plain values.
+	const subschemas = Object.values(properties);
+	return (
+		subschemas.length > 0 && subschemas.every((prop) => isRecord(prop) || typeof prop === 'boolean')
+	);
 }
 
 function resolveExampleValue(raw: unknown): { value?: unknown; parseError?: string } {
 	if (typeof raw === 'string') {
 		if (raw.startsWith('=')) return {};
-		const trimmed = raw.trim();
-		if (trimmed.length === 0) return {};
 		try {
-			const value: unknown = JSON.parse(trimmed);
+			const value: unknown = JSON.parse(raw);
 			return { value };
 		} catch (error) {
 			return { parseError: error instanceof Error ? error.message : 'parse error' };
