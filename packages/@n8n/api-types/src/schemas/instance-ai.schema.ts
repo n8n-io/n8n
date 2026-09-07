@@ -663,7 +663,15 @@ export const mcpConnectServerSchema = z.object({
 	serverSlug: z.string(),
 	title: z.string(),
 	tagline: z.string().optional(),
-	credentialType: z.string(),
+	usesCredentials: z
+		.array(
+			z.object({
+				credentialType: z.string(),
+				name: z.string(),
+				value: z.string(),
+			}),
+		)
+		.min(1),
 });
 export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
 
@@ -1476,6 +1484,21 @@ export interface InstanceAiSendMessageResponse {
 	runId: string;
 }
 
+/**
+ * Why a run was refused admission, sent as `meta.reason` on the 429 so the editor can
+ * tell the two cases apart. They need different copy and different advice: an instance
+ * limit is transient and not the user's fault, so retrying is right; a user limit means
+ * they already have runs in flight and retrying is exactly wrong.
+ */
+export const INSTANCE_AI_RUN_LIMIT_REASONS = ['user_run_limit', 'instance_run_limit'] as const;
+
+export type InstanceAiRunLimitReason = (typeof INSTANCE_AI_RUN_LIMIT_REASONS)[number];
+
+export type InstanceAiRunLimitMeta = {
+	reason: InstanceAiRunLimitReason;
+	limit: number;
+};
+
 // ---------------------------------------------------------------------------
 // Frontend store types (shared so both sides agree on structure)
 // ---------------------------------------------------------------------------
@@ -2235,7 +2258,12 @@ export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
 /** Enables adding selected canvas nodes as chat context in the AI Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 
+/** Enables the conversation-history tool and the past-conversations first-turn hint */
+export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
+
+export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 /** Enables the node-usage context surface for Instance AI: the `node-usage`
+
  *  action and the `nodeTypes` filter on `workflows(action="list")`. */
 export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
 

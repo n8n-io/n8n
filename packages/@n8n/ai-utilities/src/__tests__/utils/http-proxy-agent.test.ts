@@ -1,4 +1,5 @@
 import { lookup as dnsLookup } from 'node:dns';
+import { createRequire } from 'node:module';
 import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
 import type { MockedFunction } from 'vitest';
 
@@ -41,6 +42,15 @@ describe('getProxyAgent', () => {
 	// Restore original environment after all tests
 	afterAll(() => {
 		process.env = originalEnv;
+	});
+
+	it('resolves undici v7, whose dispatchers the global fetch of every supported Node accepts', () => {
+		// A v6 dispatcher handed to the global fetch of Node >= 26 rejects its
+		// dispatch handlers ('invalid onError method'), so every consumer call
+		// fails with an opaque 'fetch failed'. See the module doc.
+		// createRequire bypasses the vi.mock('undici') above.
+		const { version } = createRequire(__filename)('undici/package.json') as { version: string };
+		expect(Number(version.split('.')[0])).toBeGreaterThanOrEqual(7);
 	});
 
 	describe('default behavior (no timeout options)', () => {

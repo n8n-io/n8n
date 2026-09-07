@@ -1028,6 +1028,33 @@ describe('AgentCapabilitiesSection', () => {
 			);
 		});
 
+		it('marks an unpublished workflow tool as a warning, not as invalid', async () => {
+			const tools: AgentJsonToolRef[] = [
+				{ type: 'workflow', workflowId: 'wf-1', workflow: 'Draft Flow' },
+			];
+
+			const wrapper = mountSection(tools, {}, null, [], [], {
+				validationIssues: [
+					{
+						code: 'incompatible_reference',
+						path: 'tools.0.workflowId',
+						capability: { kind: 'tool', id: 'Draft Flow', index: 0, toolType: 'workflow' },
+						reason: 'not_published',
+					},
+				],
+			});
+			await flushPromises();
+
+			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			expect(chip.classes().some((c) => c.includes('warning'))).toBe(true);
+			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(false);
+			expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(false);
+			expect(chip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.tool.workflow.notPublished',
+			);
+		});
+
 		it('leaves capability chips unmarked when there are no matching validation issues', () => {
 			const tools: AgentJsonToolRef[] = [
 				{

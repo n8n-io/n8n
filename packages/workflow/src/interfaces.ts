@@ -4117,6 +4117,10 @@ export interface FeatureFlags {
 	[featureFlag: string]: string | boolean | undefined;
 }
 
+export interface FeatureFlagPayloads {
+	[featureFlag: string]: JsonValue;
+}
+
 export interface IConnectedNode {
 	name: string;
 	indicies: number[];
