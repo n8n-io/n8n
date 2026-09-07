@@ -308,7 +308,7 @@ describe('ScalingService', () => {
 			instanceSettings.instanceType = 'worker';
 			await scalingService.setupQueue();
 			scalingService.setupWorker(5);
-			const processFn = queue.process.mock.calls[0][2] as (job: Job) => Promise<void>;
+			const processFn = queue.process.mock.calls[0][2] as unknown as (job: Job) => Promise<void>;
 
 			const job = mock<Job>({ id: '1', data: { executionId: '123', loadStaticData: false } });
 			const originalError = new Error('execution errored');
