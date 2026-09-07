@@ -69,6 +69,14 @@ function requireValidValidation(
 	validation: AgentConfigValidationResponse,
 ): asserts validation is ValidAgentConfigValidationResponse {
 	if (validation.status !== 'valid') {
+		const unpublishedWorkflows = validation.issues
+			.filter((issue) => issue.reason === 'not_published')
+			.map(({ capability }) => `workflow "${capability.id}" is not published`);
+		if (unpublishedWorkflows.length > 0) {
+			throw new UserError(
+				`Cannot publish agent: ${unpublishedWorkflows.join('; ')}. Publish these workflows first.`,
+			);
+		}
 		throw new UserError('Agent configuration has errors that must be resolved before publishing');
 	}
 }
