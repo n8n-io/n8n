@@ -9,7 +9,9 @@ x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
 parameters:
   - schema:
-      type: string
+      type: integer
+      description: The ID of the execution.
+      minimum: 1
     required: true
     name: executionId
     in: path

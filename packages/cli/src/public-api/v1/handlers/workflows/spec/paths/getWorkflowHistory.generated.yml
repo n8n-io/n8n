@@ -9,6 +9,7 @@ parameters:
   - $ref: ../../../../shared/spec/parameters/cursor.yml
   - schema:
       type: string
+      description: The ID of the workflow.
     required: true
     name: workflowId
     in: path

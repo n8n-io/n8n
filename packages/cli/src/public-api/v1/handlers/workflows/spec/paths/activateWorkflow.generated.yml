@@ -11,6 +11,7 @@ x-decorator-routed: true
 parameters:
   - schema:
       type: string
+      description: The ID of the workflow.
     required: true
     name: workflowId
     in: path

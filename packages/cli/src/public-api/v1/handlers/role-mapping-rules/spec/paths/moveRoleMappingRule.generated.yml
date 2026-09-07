@@ -10,6 +10,7 @@ x-decorator-routed: true
 parameters:
   - schema:
       type: string
+      description: The ID of the role mapping rule.
     required: true
     name: roleMappingRuleId
     in: path
