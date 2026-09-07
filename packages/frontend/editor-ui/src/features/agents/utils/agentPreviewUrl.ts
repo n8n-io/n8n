@@ -8,6 +8,7 @@ export interface AgentPreviewLinkTarget {
 
 const AGENT_PREVIEW_PATH = /^\/projects\/([^/]+)\/agents\/([^/]+)\/preview\/?$/;
 const AGENT_BUILDER_PATH = /^\/projects\/([^/]+)\/agents\/([^/]+)\/?$/;
+const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 
 function decodePathSegment(value: string): string {
 	try {
@@ -21,6 +22,10 @@ export function resolveAgentPreviewLink(
 	href: string,
 	origin = window.location.origin,
 ): AgentPreviewLinkTarget | undefined {
+	const isRootRelative = href.startsWith('/') && !href.startsWith('//');
+	const isAbsolute = ABSOLUTE_URL_PATTERN.test(href);
+	if (!isRootRelative && !isAbsolute) return undefined;
+
 	try {
 		const url = new URL(href, origin);
 		if (url.origin !== origin) return undefined;

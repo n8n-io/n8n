@@ -44,6 +44,8 @@ describe('resolveAgentPreviewLink', () => {
 	it.each([
 		'/projects/project-1/agents/agent-1',
 		'/projects/project-1/agents/agent-1?openPreview=false',
+		'projects/project-1/agents/agent-1/preview',
+		'./projects/project-1/agents/agent-1/preview',
 		'https://example.com/projects/project-1/agents/agent-1?openPreview=true',
 	])('rejects non-preview links: %s', (href) => {
 		expect(resolveAgentPreviewLink(href)).toBeUndefined();

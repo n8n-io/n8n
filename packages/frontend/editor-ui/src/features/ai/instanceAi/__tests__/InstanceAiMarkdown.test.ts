@@ -351,5 +351,23 @@ describe('InstanceAiMarkdown', () => {
 			expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
 			expect(event.defaultPrevented).toBe(true);
 		});
+
+		it('does not treat a document-relative link as an agent Preview link', () => {
+			const openAgentChatPreview = vi.fn(() => true);
+			const content = '<a href="projects/project-1/agents/agent-1/preview">Relative Preview</a>';
+			const { getByTestId } = renderComponent({
+				props: { content },
+				global: { provide: { openAgentChatPreview } },
+			});
+			const link = getByTestId('markdown-output').querySelector('a');
+			if (!link) throw new Error('expected document-relative anchor');
+
+			expect(link.dataset.agentPreviewId).toBeUndefined();
+			expect(link.getAttribute('href')).toBe('projects/project-1/agents/agent-1/preview');
+			document.addEventListener('click', (event) => event.preventDefault(), { once: true });
+			link.dispatchEvent(clickEvent());
+
+			expect(openAgentChatPreview).not.toHaveBeenCalled();
+		});
 	});
 });
