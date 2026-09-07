@@ -15,8 +15,14 @@ const questionSchema = z.object({
 	options: z
 		.array(z.string())
 		.optional()
-		.describe('Suggested answers (required for single/multi, ignored for text)'),
-	recommendedOption: z.string().optional(),
+		.describe('Up to two alternatives to the recommended answer. Ignored for text questions.'),
+	recommendedOption: z
+		.string()
+		.optional()
+		.describe(
+			"The default answer as plain text, in the user's language. " +
+				'Use a safe placeholder or defer setup when a value cannot be inferred. Do not repeat this answer in options.',
+		),
 });
 
 const questionInputSchema = questionSchema.extend({
@@ -31,14 +37,7 @@ const questionInputSchema = questionSchema.extend({
 		})
 		.optional()
 		.describe('Up to two alternatives to the recommended answer. Ignored for text questions.'),
-	recommendedOption: z
-		.string()
-		.trim()
-		.min(1)
-		.describe(
-			"The default answer as plain text, in the user's language. " +
-				'Use a safe placeholder or defer setup when a value cannot be inferred. Do not repeat this answer in options.',
-		),
+	recommendedOption: questionSchema.shape.recommendedOption.unwrap().trim().min(1),
 });
 
 const answerSchema = z.object({
@@ -48,7 +47,16 @@ const answerSchema = z.object({
 	skipped: z.boolean().optional(),
 });
 
+// The runtime validates persisted input again when a suspended call resumes.
 export const askUserInputSchema = z.object({
+	questions: z
+		.array(questionSchema)
+		.min(1)
+		.describe('One to three essential questions. Ask one independent decision per question.'),
+	introMessage: z.string().optional().describe('Brief intro text shown above the first question'),
+});
+
+const newAskUserInputSchema = askUserInputSchema.extend({
 	questions: z
 		.array(questionInputSchema)
 		.min(1)
@@ -61,7 +69,6 @@ export const askUserInputSchema = z.object({
 				'unless the user explicitly requested an in-depth interview. Even then, keep each call to 3 questions.',
 		})
 		.describe('One to three essential questions. Ask one independent decision per question.'),
-	introMessage: z.string().optional().describe('Brief intro text shown above the first question'),
 });
 
 export const askUserResumeSchema = z.object({
@@ -122,7 +129,18 @@ export function createAskUserTool() {
 
 			// First call — always suspend to show questions
 			if (resumeData === undefined || resumeData === null) {
-				const { questions } = askUserInputSchema.parse(input);
+				const { questions } = newAskUserInputSchema.parse({
+					...input,
+					questions: input.questions.map((question) =>
+						question.recommendedOption === undefined
+							? {
+									...question,
+									recommendedOption: question.options?.[0],
+									options: question.options?.slice(1),
+								}
+							: question,
+					),
+				});
 				return await ctx.suspend({
 					requestId: nanoid(),
 					message: input.introMessage ?? input.questions[0].question,

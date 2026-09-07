@@ -1,5 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import { createAskUserTool } from '../ask-user.tool';
+import { askUserInputSchema, createAskUserTool } from '../ask-user.tool';
 
 const question = {
 	id: 'delivery',
@@ -10,6 +10,53 @@ const question = {
 };
 
 describe('ask-user', () => {
+	it.each([
+		{ type: 'single', options: ['Email', 'Slack', 'Telegram'], count: 1 },
+		{ type: 'text', options: undefined, count: 1 },
+		{ type: 'multi', options: ['Email', 'Slack', 'Telegram', 'Data Table'], count: 4 },
+	])('resumes legacy $type questions after input validation', async ({ type, options, count }) => {
+		const suspend = vi.fn();
+		const input = askUserInputSchema.parse({
+			questions: Array.from({ length: count }, (_, index) => ({
+				id: String(index),
+				question: question.question,
+				type,
+				options,
+			})),
+		});
+		const answer = { questionId: '0', selectedOptions: ['Email'] };
+
+		const result = await executeTool(createAskUserTool(), input, {
+			suspend,
+			resumeData: { approved: true, answers: [answer] },
+		});
+
+		expect(result).toEqual({
+			answered: true,
+			answers: [{ ...answer, question: question.question }],
+		});
+		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('uses the first legacy option as the recommended answer', async () => {
+		const suspend = vi.fn().mockResolvedValue(undefined);
+		const input = askUserInputSchema.parse({
+			questions: [
+				{ ...question, recommendedOption: undefined, options: ['Email', 'Slack', 'Telegram'] },
+			],
+		});
+
+		await executeTool(createAskUserTool(), input, { suspend });
+
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				questions: [
+					{ ...question, recommendedOption: 'Email', options: ['Email', 'Slack', 'Telegram'] },
+				],
+			}),
+		);
+	});
+
 	it('shows up to three questions with the recommended answer first', async () => {
 		const suspend = vi.fn().mockResolvedValue(undefined);
 
