@@ -20,11 +20,10 @@ const quoteShellArg = (value: string) => `'${value.replace(/'/g, "'\"'\"'")}'`;
  * The credential helper serves every request from this Git process. Each
  * operation uses a separate process and configuration.
  */
-export function buildHttpsGitConfig(
-	repositoryUrl: string,
-	credentials: { username: string; password: string },
-): string[] {
-	const helper = `!f() { echo username=${quoteShellArg(credentials.username)}; echo password=${quoteShellArg(credentials.password)}; }; f`;
+export function buildHttpsGitConfig(repositoryUrl: string): string[] {
+	// Read credentials from the operation's environment to keep them out of process arguments.
+	const helper =
+		'!f() { printf \'%s\\n\' "username=$N8N_GIT_USERNAME" "password=$N8N_GIT_PASSWORD"; }; f';
 	const config = [
 		`credential.helper=${helper}`,
 		'credential.useHttpPath=true',

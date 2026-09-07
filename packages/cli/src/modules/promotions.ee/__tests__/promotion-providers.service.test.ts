@@ -119,6 +119,11 @@ describe('PromotionProvidersService', () => {
 	});
 
 	describe('update', () => {
+		it('rejects an empty update before writing to the repository', async () => {
+			await expect(service.update('prov1', {})).rejects.toThrow('At least one field is required');
+			expect(providerRepository.updateProvider).not.toHaveBeenCalled();
+		});
+
 		it('keeps the stored credentials when the request has no auth', async () => {
 			providerRepository.findById.mockResolvedValue(sshProvider());
 
@@ -187,6 +192,26 @@ describe('PromotionProvidersService', () => {
 			provider.auth = 'enc:{"schemaVersion":2,"privateKey":"PRIV"}';
 
 			await expect(service.decryptCredentials(provider)).rejects.toThrow(BadRequestError);
+		});
+
+		it('reports a decryption failure with credential replacement instructions', async () => {
+			cipher.decryptV2.mockRejectedValueOnce(new Error('Cannot decrypt'));
+
+			const result = service.decryptCredentials(tokenProvider());
+			await expect(result).rejects.toThrow(BadRequestError);
+			await expect(result).rejects.toThrow(
+				'The stored provider credentials cannot be read. Update the provider to replace them.',
+			);
+		});
+
+		it('reports malformed stored JSON with credential replacement instructions', async () => {
+			cipher.decryptV2.mockResolvedValueOnce('invalid JSON');
+
+			const result = service.decryptCredentials(tokenProvider());
+			await expect(result).rejects.toThrow(BadRequestError);
+			await expect(result).rejects.toThrow(
+				'The stored provider credentials cannot be read. Update the provider to replace them.',
+			);
 		});
 
 		it('rejects a stored payload that does not match the auth type', async () => {

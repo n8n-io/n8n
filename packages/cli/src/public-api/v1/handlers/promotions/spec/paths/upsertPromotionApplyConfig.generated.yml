@@ -93,3 +93,5 @@ responses:
     $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

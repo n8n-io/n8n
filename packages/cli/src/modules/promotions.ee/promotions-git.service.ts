@@ -138,7 +138,7 @@ export class PromotionsGitService {
 					]);
 					if (!branchRefs.trim()) {
 						// Bootstrap only an empty remote; otherwise the requested branch is missing.
-						const anyRefs = await git.listRemote(['--heads', remoteUrl]);
+						const anyRefs = await git.listRemote([remoteUrl]);
 						if (anyRefs.trim()) {
 							throw new BadRequestError(`Remote branch does not exist: ${branchName}`);
 						}
@@ -161,10 +161,7 @@ export class PromotionsGitService {
 			);
 		} catch (error) {
 			await rm(nextRepositoryFolder, { recursive: true, force: true });
-			if (error instanceof BadRequestError) throw error;
-			// Raw Git output can include credential-helper config.
-			this.logger.warn('Failed to connect to Git repository', { configId, branchName });
-			throw new BadRequestError('Could not connect to the Git repository');
+			throw this.mapGitError(error, { configId, branchName });
 		}
 	}
 
@@ -278,13 +275,16 @@ export class PromotionsGitService {
 		try {
 			let git: SimpleGit;
 			if (credentials.authType === 'token') {
-				const config = [...buildHttpsGitConfig(remoteUrl, credentials), ...extraConfig];
+				const config = [...buildHttpsGitConfig(remoteUrl), ...extraConfig];
 
 				git = simpleGit({
 					...options,
 					config,
 					unsafe: { allowUnsafeCredentialHelper: true },
-				}).env('GIT_TERMINAL_PROMPT', '0');
+				})
+					.env('GIT_TERMINAL_PROMPT', '0')
+					.env('N8N_GIT_USERNAME', credentials.username)
+					.env('N8N_GIT_PASSWORD', credentials.password);
 			} else {
 				temporaryFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-'));
 				const privateKeyPath = path.join(temporaryFolder, 'private-key');

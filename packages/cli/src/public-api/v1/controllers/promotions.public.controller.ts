@@ -79,6 +79,7 @@ export class PromotionsPublicController {
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, PromotionProviderCreatedPublicDto)
+	@ApiErrorResponse(503)
 	async createPromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -95,6 +96,7 @@ export class PromotionsPublicController {
 	@ApiDescription('Returns a cursor-paginated list of providers, without their public keys.')
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionProviderListPublicDto)
+	@ApiErrorResponse(503)
 	async getPromotionProviders(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -104,7 +106,8 @@ export class PromotionsPublicController {
 		const { data, count } = await (await this.providersService()).list(offset, limit);
 		return {
 			data,
-			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+			nextCursor:
+				limit === 0 ? null : encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
 		};
 	}
 
@@ -117,6 +120,7 @@ export class PromotionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionProviderPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
 	async getPromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -136,6 +140,7 @@ export class PromotionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionProviderPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
 	async updatePromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -155,6 +160,7 @@ export class PromotionsPublicController {
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
+	@ApiErrorResponse(503)
 	async deletePromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -177,6 +183,7 @@ export class PromotionsPublicController {
 	@ApiResponse(201, PromotionConnectionPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
+	@ApiErrorResponse(503)
 	async createPromotionConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -195,6 +202,7 @@ export class PromotionsPublicController {
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionConnectionListPublicDto)
+	@ApiErrorResponse(503)
 	async getPromotionConnections(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -207,7 +215,8 @@ export class PromotionsPublicController {
 		});
 		return {
 			data,
-			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+			nextCursor:
+				limit === 0 ? null : encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
 		};
 	}
 
@@ -220,6 +229,7 @@ export class PromotionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionConnectionPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
 	async getPromotionConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -239,6 +249,7 @@ export class PromotionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionConnectionPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
 	async updatePromotionConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -259,6 +270,7 @@ export class PromotionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
 	async deletePromotionConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -281,6 +293,7 @@ export class PromotionsPublicController {
 	@ApiResponse(200, PromotionApplyConfigPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
+	@ApiErrorResponse(503)
 	async upsertPromotionApplyConfig(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -305,6 +318,7 @@ export class PromotionsPublicController {
 	@ApiResponse(200, PromotionPromoteConfigPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
+	@ApiErrorResponse(503)
 	async upsertPromotionPromoteConfig(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -326,6 +340,7 @@ export class PromotionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
 	async deletePromotionConfig(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -349,6 +364,7 @@ export class PromotionsPublicController {
 	@ApiResponse(200, PromotionCheckoutPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
 	async clonePromotionCheckout(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -369,6 +385,7 @@ export class PromotionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionCheckoutPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
 	async disconnectPromotionCheckout(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -388,6 +405,7 @@ export class PromotionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionConnectionProjectListPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
 	async getPromotionConnectionProjects(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -410,6 +428,7 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(403)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
+	@ApiErrorResponse(503)
 	async addProjectToPromotionConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -433,6 +452,7 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(403)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
+	@ApiErrorResponse(503)
 	async removeProjectFromPromotionConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -454,7 +474,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:push')
 	@ApiSummary('Promote all team projects')
 	@ApiDescription(
-		'Exports every team project, commits it, and pushes to the configured branch. Personal projects are ignored. Requires the Promote direction to be cloned first, and is available on the instance connection only.',
+		'Exports every team project, commits it, and pushes to the configured branch. Personal projects are ignored. Requires the Promote direction to be cloned first, and is available on the instance connection only. The API key also needs variable:list when the workflows reference variables.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotePackageResultDto)
@@ -467,7 +487,10 @@ export class PromotionsPublicController {
 		@Param('id') id: string,
 		@Body input: PromotePackageDto,
 	): Promise<PromotePackageResultDto> {
-		return await (await this.promotionsService()).promote(id, req.user, input);
+		return await (await this.promotionsService()).promote(id, req.user, {
+			...input,
+			canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
+		});
 	}
 
 	@Post('/connections/:id/apply')

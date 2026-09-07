@@ -125,7 +125,7 @@ export class PromotionsService {
 	async promote(
 		connectionId: string,
 		actor: User,
-		request: PromotePackageDto,
+		request: PromotePackageDto & { canExportVariableValues: boolean },
 	): Promise<PromotePackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
 		this.assertInstanceScope(input, 'Promote');
@@ -154,7 +154,7 @@ export class PromotionsService {
 					user: actor,
 					projectIds,
 					includeVariableValues: true,
-					canExportVariableValues: true,
+					canExportVariableValues: request.canExportVariableValues,
 					includeTags: true,
 					// Archived workflows travel too, so the target archives them instead of removing them.
 					includeArchivedWorkflows: true,
@@ -308,9 +308,7 @@ export class PromotionsService {
 
 	private commitAuthor(user: User): { name: string; email: string } {
 		const name =
-			user.firstName && user.lastName
-				? `${user.firstName} ${user.lastName}`
-				: GIT_DEFAULT_COMMIT_NAME;
+			[user.firstName, user.lastName].filter(Boolean).join(' ') || GIT_DEFAULT_COMMIT_NAME;
 		return { name, email: user.email ?? GIT_DEFAULT_COMMIT_EMAIL };
 	}
 

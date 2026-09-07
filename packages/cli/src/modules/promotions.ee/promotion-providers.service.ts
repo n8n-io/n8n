@@ -66,6 +66,9 @@ export class PromotionProvidersService {
 	 * credentials; sending it replaces them for every connection on this provider.
 	 */
 	async update(id: string, input: UpdatePromotionProviderDto): Promise<PromotionProviderPublicDto> {
+		if (Object.keys(input).length === 0) {
+			throw new BadRequestError('At least one field is required');
+		}
 		const current = await this.getEntity(id);
 		const changes: Partial<Pick<PromotionProvider, 'name' | 'config' | 'auth'>> = {};
 		if (input.name !== undefined) changes.name = input.name;
@@ -115,9 +118,12 @@ export class PromotionProvidersService {
 		authType: PromotionProviderAuthType;
 		auth: string;
 	}): Promise<PromotionGitCredentials> {
-		const stored = jsonParse<unknown>(await this.cipher.decryptV2(source.auth), {
-			fallbackValue: undefined,
-		});
+		let stored: unknown;
+		try {
+			stored = jsonParse<unknown>(await this.cipher.decryptV2(source.auth));
+		} catch {
+			throw unreadableCredentialsError();
+		}
 
 		if (source.authType === 'ssh-key') {
 			const parsed = promotionSshKeyAuthPayloadSchema.safeParse(stored);

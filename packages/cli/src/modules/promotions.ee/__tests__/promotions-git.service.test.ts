@@ -232,6 +232,40 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(stat(paths.repositoryFolder)).resolves.toBeDefined();
 		});
 
+		it('passes token credentials through the operation environment', async () => {
+			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
+			const tokenCredentials = {
+				authType: 'token' as const,
+				username: 'promotion-user',
+				password: 'promotion-password',
+			};
+
+			await gitService.clone({
+				remoteUrl,
+				credentials: tokenCredentials,
+				paths,
+				branchName: 'main',
+				configId,
+			});
+
+			const options = JSON.stringify(simpleGitMock.mock.calls);
+			expect(options).not.toContain(tokenCredentials.username);
+			expect(options).not.toContain(tokenCredentials.password);
+			expect(mockGit.env).toHaveBeenCalledWith('N8N_GIT_USERNAME', tokenCredentials.username);
+			expect(mockGit.env).toHaveBeenCalledWith('N8N_GIT_PASSWORD', tokenCredentials.password);
+		});
+
+		it('reports a stalled clone as a retryable 503 and removes the partial checkout', async () => {
+			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
+			mockGit.clone.mockImplementationOnce(async () => {
+				await mkdir(paths.nextRepositoryFolder, { recursive: true });
+				throw new GitPluginError(undefined, 'timeout', 'block timeout reached');
+			});
+
+			await expect(call()).rejects.toThrow(ServiceUnavailableError);
+			await expect(stat(paths.nextRepositoryFolder)).rejects.toMatchObject({ code: 'ENOENT' });
+		});
+
 		it('bootstraps a checkout on the target branch when the remote is empty', async () => {
 			mockGit.listRemote.mockResolvedValue('');
 
@@ -291,6 +325,12 @@ describe('PromotionsGitService (git operations)', () => {
 				new GitPluginError(undefined, 'timeout', 'block timeout reached'),
 			);
 			await expect(call()).rejects.toThrow(ServiceUnavailableError);
+		});
+
+		it('force-pushes when requested', async () => {
+			await call({ force: true });
+
+			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main', ['-f']);
 		});
 
 		it('redacts a push failure and keeps raw git output out of the log', async () => {

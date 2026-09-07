@@ -29,47 +29,27 @@ describe('promotions-git.utils', () => {
 			process.env = originalEnv;
 		});
 
-		it('builds a path-scoped credential helper for plain credentials', () => {
-			const config = buildHttpsGitConfig('https://github.com/user/repo.git', {
-				username: 'testuser',
-				password: 'testpass',
-			});
+		it('builds a credential helper that reads the operation environment', () => {
+			const config = buildHttpsGitConfig('https://github.com/user/repo.git');
 
 			expect(config).toEqual([
-				"credential.helper=!f() { echo username='testuser'; echo password='testpass'; }; f",
+				'credential.helper=!f() { printf \'%s\\n\' "username=$N8N_GIT_USERNAME" "password=$N8N_GIT_PASSWORD"; }; f',
 				'credential.useHttpPath=true',
 				'http.lowSpeedLimit=1000',
 				'http.lowSpeedTime=30',
 			]);
 		});
 
-		it('escapes single quotes so credentials cannot break out of the helper', () => {
-			const config = buildHttpsGitConfig('https://github.com/user/repo.git', {
-				username: "user'; rm -rf /",
-				password: "pass'; rm -rf /",
-			});
-
-			expect(config[0]).toBe(
-				"credential.helper=!f() { echo username='user'\"'\"'; rm -rf /'; echo password='pass'\"'\"'; rm -rf /'; }; f",
-			);
-		});
-
 		it('adds http.proxy when a proxy resolves for the repository URL', () => {
 			process.env.HTTPS_PROXY = 'http://proxy.company.com:8080';
 
-			const config = buildHttpsGitConfig('https://github.com/user/repo.git', {
-				username: 'testuser',
-				password: 'testpass',
-			});
+			const config = buildHttpsGitConfig('https://github.com/user/repo.git');
 
 			expect(config).toContain('http.proxy=http://proxy.company.com:8080');
 		});
 
 		it('adds no proxy setting when no proxy is configured', () => {
-			const config = buildHttpsGitConfig('https://github.com/user/repo.git', {
-				username: 'testuser',
-				password: 'testpass',
-			});
+			const config = buildHttpsGitConfig('https://github.com/user/repo.git');
 
 			expect(config.some((entry) => entry.includes('proxy='))).toBe(false);
 		});

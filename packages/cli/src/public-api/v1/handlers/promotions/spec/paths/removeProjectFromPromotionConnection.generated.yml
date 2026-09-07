@@ -28,3 +28,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
     $ref: ../../../../shared/spec/responses/conflict.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

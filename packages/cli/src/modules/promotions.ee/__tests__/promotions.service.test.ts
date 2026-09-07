@@ -205,7 +205,10 @@ describe('PromotionsService', () => {
 			await mkdir(packageFolder, { recursive: true });
 			await writeFile(path.join(packageFolder, 'stale.json'), '{}');
 
-			const result = await service.promote('conn1', actor, { commitMessage: 'sync projects' });
+			const result = await service.promote('conn1', actor, {
+				canExportVariableValues: true,
+				commitMessage: 'sync projects',
+			});
 			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
 
 			expect(projectRepository.findTeamProjectIds).toHaveBeenCalled();
@@ -274,9 +277,9 @@ describe('PromotionsService', () => {
 				new BadRequestError('A project dependency is missing'),
 			);
 
-			await expect(service.promote('conn1', actor, { commitMessage: 'm' })).rejects.toThrow(
-				BadRequestError,
-			);
+			await expect(
+				service.promote('conn1', actor, { canExportVariableValues: true, commitMessage: 'm' }),
+			).rejects.toThrow(BadRequestError);
 			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
 
 			expect(await readFile(path.join(repositoryFolder, '.git', 'HEAD'), 'utf-8')).toBe(
@@ -292,9 +295,9 @@ describe('PromotionsService', () => {
 		it('refuses to promote before exporting when the direction is not cloned', async () => {
 			gitService.hasCheckout.mockResolvedValueOnce(false);
 
-			await expect(service.promote('conn1', actor, { commitMessage: 'm' })).rejects.toThrow(
-				'not cloned',
-			);
+			await expect(
+				service.promote('conn1', actor, { canExportVariableValues: true, commitMessage: 'm' }),
+			).rejects.toThrow('not cloned');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 		});
@@ -311,9 +314,9 @@ describe('PromotionsService', () => {
 				}),
 			);
 
-			await expect(service.promote('conn1', actor, { commitMessage: 'm' })).rejects.toThrow(
-				'not cloned',
-			);
+			await expect(
+				service.promote('conn1', actor, { canExportVariableValues: true, commitMessage: 'm' }),
+			).rejects.toThrow('not cloned');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
@@ -327,7 +330,9 @@ describe('PromotionsService', () => {
 				}),
 			);
 
-			await expect(service.promote('conn1', actor, { commitMessage: 'm' })).resolves.toMatchObject({
+			await expect(
+				service.promote('conn1', actor, { canExportVariableValues: true, commitMessage: 'm' }),
+			).resolves.toMatchObject({
 				git: { branchName: 'staging' },
 			});
 		});
@@ -337,21 +342,64 @@ describe('PromotionsService', () => {
 				promoteInput({ target: { schemaVersion: 1, remoteUrl: 'git@github.com:o/other.git' } }),
 			);
 
-			await expect(service.promote('conn1', actor, { commitMessage: 'm' })).rejects.toThrow(
-				'not cloned',
-			);
+			await expect(
+				service.promote('conn1', actor, { canExportVariableValues: true, commitMessage: 'm' }),
+			).rejects.toThrow('not cloned');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
 		it('commits as n8n when the actor has no name or email', async () => {
 			const bareActor = mock<User>({ id: 'x', firstName: '', lastName: '', email: undefined });
 
-			await service.promote('conn1', bareActor, { commitMessage: 'm' });
+			await service.promote('conn1', bareActor, {
+				canExportVariableValues: true,
+				commitMessage: 'm',
+			});
 
 			expect(gitService.commitAndPush).toHaveBeenCalledWith(
 				expect.objectContaining({
 					author: { name: 'n8n user', email: 'n8n@example.com' },
 				}),
+			);
+		});
+
+		it.each([
+			{ firstName: 'Ada', lastName: '', name: 'Ada' },
+			{ firstName: '', lastName: 'Lovelace', name: 'Lovelace' },
+		])('uses the available profile name: $name', async ({ firstName, lastName, name }) => {
+			const partialActor = mock<User>({ firstName, lastName, email: 'ada@example.com' });
+
+			await service.promote('conn1', partialActor, {
+				canExportVariableValues: true,
+				commitMessage: 'm',
+			});
+
+			expect(gitService.commitAndPush).toHaveBeenCalledWith(
+				expect.objectContaining({ author: { name, email: 'ada@example.com' } }),
+			);
+		});
+
+		it('forwards the force option to Git', async () => {
+			await service.promote('conn1', actor, {
+				canExportVariableValues: true,
+				commitMessage: 'm',
+				force: true,
+			});
+
+			expect(gitService.commitAndPush).toHaveBeenCalledWith(
+				expect.objectContaining({ force: true }),
+			);
+		});
+
+		it('forwards variable value permission to the package exporter', async () => {
+			await service.promote('conn1', actor, {
+				commitMessage: 'm',
+				canExportVariableValues: false,
+			});
+
+			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalledWith(
+				expect.objectContaining({ includeVariableValues: true, canExportVariableValues: false }),
+				expect.any(Object),
 			);
 		});
 	});

@@ -3,10 +3,13 @@ import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { PromotionConfigRepository } from '@/modules/promotions.ee/database/repositories/promotion-config.repository';
 import { PromotionConnectionProjectRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
+import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
+import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -195,6 +198,85 @@ describe('Promotions in Public API', () => {
 		});
 		expect(after.auth).toBe(before.auth);
 	});
+
+	it('replaces both token credentials without returning them', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		const providerId = await createProvider(agent);
+		const before = await Container.get(PromotionProviderRepository).findById(providerId);
+
+		const response = await agent.put(`/promotions/providers/${providerId}`).send({
+			auth: { authType: 'token', username: 'replacement-user', password: 'replacement-password' },
+		});
+
+		expect(response.status).toBe(200);
+		expect(response.body).not.toHaveProperty('auth');
+		expect(JSON.stringify(response.body)).not.toContain('replacement-password');
+		const stored = await Container.get(PromotionProvidersService).getEntity(providerId);
+		expect(stored.auth).not.toBe(before?.auth);
+		expect(stored.auth).not.toContain('replacement-password');
+		await expect(
+			Container.get(PromotionProvidersService).decryptCredentials(stored),
+		).resolves.toEqual({
+			authType: 'token',
+			username: 'replacement-user',
+			password: 'replacement-password',
+		});
+	});
+
+	it('rejects an empty provider update', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		const providerId = await createProvider(agent);
+
+		const response = await agent.put(`/promotions/providers/${providerId}`).send({});
+
+		expect(response.status).toBe(400);
+		expect(response.body.message).toBe('At least one field is required');
+	});
+
+	it.each(['providers', 'connections'])(
+		'returns no cursor for a zero-limit %s list',
+		async (resource) => {
+			const agent = testServer.publicApiAgentFor(owner);
+			await createConnection(agent);
+
+			const response = await agent.get(`/promotions/${resource}?limit=0`);
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({ data: [], nextCursor: null });
+		},
+	);
+
+	it.each([false, true])(
+		'passes the API key variable permission to Promote: %s',
+		async (canExportVariableValues) => {
+			const scopedOwner = await createOwnerWithApiKey({
+				scopes: canExportVariableValues
+					? ['gitConnection:push', 'variable:list']
+					: ['gitConnection:push'],
+			});
+			const promote = vi
+				.spyOn(Container.get(PromotionsService), 'promote')
+				.mockRejectedValueOnce(new BadRequestError('Operation stopped for test'));
+			try {
+				const response = await testServer
+					.publicApiAgentFor(scopedOwner)
+					.post('/promotions/connections/conn1/promote')
+					.send({ commitMessage: 'Export projects' });
+
+				expect(response.status).toBe(400);
+				expect(promote).toHaveBeenCalledWith(
+					'conn1',
+					expect.objectContaining({ id: scopedOwner.id }),
+					{
+						commitMessage: 'Export projects',
+						canExportVariableValues,
+					},
+				);
+			} finally {
+				promote.mockRestore();
+			}
+		},
+	);
 
 	it('refuses to change the authentication method of a provider', async () => {
 		const agent = testServer.publicApiAgentFor(owner);

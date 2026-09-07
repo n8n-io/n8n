@@ -20,6 +20,8 @@ import { simpleGit, type SimpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { buildWorkflowReferencingVariables } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
@@ -29,6 +31,7 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 import { ProjectService } from '@/services/project.service.ee';
 import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
+import { createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
 
 import { PromotionConfigRepository } from '../database/repositories/promotion-config.repository';
@@ -97,7 +100,9 @@ beforeEach(async () => {
 		'SharedWorkflow',
 		'ProjectRelation',
 		'Project',
+		'Variables',
 	]);
+	await Container.get(VariablesService).updateCache();
 	licenseMocker.reset();
 	owner = await createOwner();
 	testRoot = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-roundtrip-'));
@@ -203,6 +208,47 @@ async function createInstanceConnection(
 }
 
 describe('Promote and Apply', () => {
+	it('rejects a missing branch when the remote contains only tags', async () => {
+		const remote = await createRemote();
+		await remote.git.raw(['push', 'origin', 'HEAD:refs/tags/v1']);
+		await simpleGit(remote.bareDir).raw(['update-ref', '-d', 'refs/heads/main']);
+		const connection = await createInstanceConnection(remote.bareDir);
+
+		await expect(service.clone(connection.id, 'promote')).rejects.toThrow(
+			'Remote branch does not exist: main',
+		);
+	});
+
+	it.each([false, true])(
+		'checks permission before exporting referenced variable values: %s',
+		async (canExportVariableValues) => {
+			const remote = await createRemote();
+			const connection = await createInstanceConnection(remote.bareDir);
+			await service.clone(connection.id, 'promote');
+			const originalHead = (await simpleGit(remote.bareDir).revparse(['main'])).trim();
+			const project = await createTeamProject('Orders', owner);
+			await createVariable('API_URL', 'https://api.example.com');
+			await buildWorkflowReferencingVariables({
+				name: 'Process order',
+				project,
+				variableNames: ['API_URL'],
+			});
+
+			const result = service.promote(connection.id, owner, {
+				commitMessage: 'Export orders',
+				canExportVariableValues,
+			});
+
+			if (canExportVariableValues) {
+				await expect(result).resolves.toMatchObject({ counts: { variables: 1 } });
+				expect((await simpleGit(remote.bareDir).revparse(['main'])).trim()).not.toBe(originalHead);
+			} else {
+				await expect(result).rejects.toThrow('variable:list');
+				expect((await simpleGit(remote.bareDir).revparse(['main'])).trim()).toBe(originalHead);
+			}
+		},
+	);
+
 	it('exports all team projects, commits them, and pushes them to the base branch', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
@@ -215,6 +261,7 @@ describe('Promote and Apply', () => {
 		);
 
 		const result = await service.promote(connection.id, owner, {
+			canExportVariableValues: false,
 			commitMessage: 'Export orders',
 		});
 
@@ -326,6 +373,7 @@ describe('Promote and Apply', () => {
 		await workflowRepository.update(workflow.id, { isArchived: true });
 
 		const promoteResult = await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
 			commitMessage: 'Archive order flow',
 		});
 		expect(promoteResult.counts.workflows).toBe(1);
@@ -367,6 +415,7 @@ describe('Promote and Apply', () => {
 			project,
 		);
 		const promoteResult = await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
 			commitMessage: 'Promote to staging',
 		});
 		await remote.git.raw(['fetch', 'origin']);

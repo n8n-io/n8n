@@ -130,14 +130,17 @@ export class SourceControlGitService {
 
 		if (preferences.connectionType === 'https') {
 			const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
-			const config = buildHttpsGitConfig(preferences.repositoryUrl, credentials);
+			const config = buildHttpsGitConfig(preferences.repositoryUrl);
 			const httpsGitOptions = {
 				...this.gitOptions,
 				config,
 				unsafe: { allowUnsafeCredentialHelper: true },
 			};
 
-			this.git = simpleGit(httpsGitOptions).env('GIT_TERMINAL_PROMPT', '0');
+			this.git = simpleGit(httpsGitOptions)
+				.env('GIT_TERMINAL_PROMPT', '0')
+				.env('N8N_GIT_USERNAME', credentials.username)
+				.env('N8N_GIT_PASSWORD', credentials.password);
 		} else if (preferences.connectionType === 'ssh') {
 			const privateKeyPath = await this.sourceControlPreferencesService.getPrivateKeyPath();
 			const sshCommand = buildSshCommand({
