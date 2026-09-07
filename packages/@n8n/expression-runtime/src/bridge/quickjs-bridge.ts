@@ -7,6 +7,7 @@ import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import {
 	isLuxonEscapedObject,
 	isLuxonSentinel,
+	isOpaqueLuxonEscapedObject,
 	rebuildLuxonValue,
 } from '../runtime/luxon-transfer';
 import { bridgeMessageSchema } from './bridge-messages';
@@ -110,8 +111,11 @@ function isEscapedObject(
 /**
  * Recursively reconstruct Date objects, NaN values, Map, and Set from
  * sentinels produced by the QuickJS-side __prepareForTransfer wrapper.
+ *
+ * With `luxonAsData` set, luxon markers are left as the plain objects they
+ * are, for the contents of a payload the guest marked opaque.
  */
-function unwrapSentinels(value: unknown): unknown {
+function unwrapSentinels(value: unknown, luxonAsData = false): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
 	// Escaped user objects: keys collided with the sentinel markers, so the
@@ -121,21 +125,24 @@ function unwrapSentinels(value: unknown): unknown {
 		const inner = value.__value;
 		const result: Record<string, unknown> = {};
 		for (const key of Object.keys(inner)) {
-			result[key] = unwrapSentinels(inner[key]);
+			result[key] = unwrapSentinels(inner[key], luxonAsData);
 		}
 		return result;
 	}
-	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
-	if (isLuxonEscapedObject(value)) {
-		const inner: unknown = value.__value;
-		if (typeof inner !== 'object' || inner === null) return inner;
-		if (isEscapedObject(inner)) return unwrapSentinels(inner);
-		if (Array.isArray(inner)) return inner.map(unwrapSentinels);
-		const unescaped: Record<string, unknown> = {};
-		for (const [key, entry] of Object.entries(inner)) {
-			unescaped[key] = unwrapSentinels(entry);
+	if (!luxonAsData) {
+		if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
+		if (isLuxonEscapedObject(value)) {
+			const inner: unknown = value.__value;
+			const opaque = isOpaqueLuxonEscapedObject(value);
+			if (typeof inner !== 'object' || inner === null) return inner;
+			if (isEscapedObject(inner)) return unwrapSentinels(inner, opaque);
+			if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry, opaque));
+			const unescaped: Record<string, unknown> = {};
+			for (const [key, entry] of Object.entries(inner)) {
+				unescaped[key] = unwrapSentinels(entry, opaque);
+			}
+			return unescaped;
 		}
-		return unescaped;
 	}
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
@@ -154,24 +161,29 @@ function unwrapSentinels(value: unknown): unknown {
 		const err = new ErrorCtor(value.__message);
 		if (value.__extra) {
 			for (const [k, v] of Object.entries(value.__extra)) {
-				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v);
+				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v, luxonAsData);
 			}
 		}
 		return err;
 	}
 	if (isMapSentinel(value)) {
-		return new Map(value.__entries.map(([k, v]) => [unwrapSentinels(k), unwrapSentinels(v)]));
+		return new Map(
+			value.__entries.map(([k, v]) => [
+				unwrapSentinels(k, luxonAsData),
+				unwrapSentinels(v, luxonAsData),
+			]),
+		);
 	}
 	if (isSetSentinel(value)) {
-		return new Set(value.__values.map(unwrapSentinels));
+		return new Set(value.__values.map((entry) => unwrapSentinels(entry, luxonAsData)));
 	}
-	if (Array.isArray(value)) return value.map(unwrapSentinels);
+	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry, luxonAsData));
 	// Pass error sentinels through untouched — execute() detects them after
 	// unwrapping and reconstructs the Error on the host.
 	if (isErrorSentinel(value)) return value;
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value as Record<string, unknown>)) {
-		result[key] = unwrapSentinels((value as Record<string, unknown>)[key]);
+		result[key] = unwrapSentinels((value as Record<string, unknown>)[key], luxonAsData);
 	}
 	return result;
 }
@@ -928,6 +940,9 @@ export class QuickJsBridge implements RuntimeBridge {
 			if (v.__isDateTime === true || v.__isDuration === true || v.__isInterval === true) return v;
 			if (v.__isLuxonEscaped === true) {
 				var payload = v.__value;
+				if (v.__isLuxonOpaque === true) {
+					return { __isLuxonEscaped: true, __isLuxonOpaque: true, __value: wrapOwnKeys(payload, true) };
+				}
 				if (payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
 					return { __isLuxonEscaped: true, __value: wrapOwnKeys(payload, inCollection) };
 				}
@@ -952,7 +967,8 @@ export class QuickJsBridge implements RuntimeBridge {
 			if (
 				inCollection && (
 					key === '__isDateTime' || key === '__isDuration' ||
-					key === '__isInterval' || key === '__isLuxonEscaped'
+					key === '__isInterval' || key === '__isLuxonEscaped' ||
+					key === '__isLuxonOpaque'
 				)
 			) {
 				collides = true;

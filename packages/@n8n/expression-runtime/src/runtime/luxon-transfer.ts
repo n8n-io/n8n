@@ -25,7 +25,8 @@ export interface IntervalSentinel extends InvalidLuxonSentinel {
 
 export interface LuxonEscapedObject {
 	__isLuxonEscaped: true;
-	__value: Record<string, unknown>;
+	__isLuxonOpaque?: true;
+	__value: unknown;
 }
 
 export const LUXON_SENTINEL_KEYS = [
@@ -33,6 +34,7 @@ export const LUXON_SENTINEL_KEYS = [
 	'__isDuration',
 	'__isInterval',
 	'__isLuxonEscaped',
+	'__isLuxonOpaque',
 ];
 
 function marker(value: unknown, key: string): unknown {
@@ -54,6 +56,14 @@ export function isIntervalSentinel(value: unknown): value is IntervalSentinel {
 
 export function isLuxonEscapedObject(value: unknown): value is LuxonEscapedObject {
 	return marker(value, '__isLuxonEscaped') === true;
+}
+
+/**
+ * An escaped wrapper whose payload must be returned as data without any
+ * further inspection for luxon markers.
+ */
+export function isOpaqueLuxonEscapedObject(value: unknown): boolean {
+	return marker(value, '__isLuxonOpaque') === true;
 }
 
 export function isLuxonSentinel(
@@ -125,7 +135,7 @@ const DURATION_UNIT_KEYS = new Set([
 	'milliseconds',
 ]);
 
-const FIXED_OFFSET_ZONE_NAME = /^(?:utc|gmt)(?:[+-]\d{1,2}(?::\d{2})?)?$/i;
+const FIXED_OFFSET_ZONE_NAME = /^utc(?:[+-]\d{1,2}(?::\d{2})?)?$/i;
 
 function invalidArguments(sentinel: InvalidLuxonSentinel): [string, string | undefined] {
 	const reason =
@@ -193,12 +203,37 @@ export function isPlainObject(value: object): value is Record<string, unknown> {
 	return proto === Object.prototype || proto === null;
 }
 
-function unwrapPlainObject(value: Record<string, unknown>): Record<string, unknown> {
+function unwrapPlainObject(
+	value: Record<string, unknown>,
+	seen: Map<object, unknown>,
+): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
+	seen.set(value, result);
 	for (const key of Object.keys(value)) {
-		result[key] = unwrapLuxonSentinels(value[key]);
+		result[key] = unwrapValue(value[key], seen);
 	}
 	return result;
+}
+
+function unwrapValue(value: unknown, seen: Map<object, unknown>): unknown {
+	if (value === null || value === undefined) return value;
+	if (typeof value !== 'object') return value;
+	if (seen.has(value)) return seen.get(value);
+	if (Array.isArray(value)) {
+		const result: unknown[] = [];
+		seen.set(value, result);
+		for (const item of value) result.push(unwrapValue(item, seen));
+		return result;
+	}
+	if (!isPlainObject(value)) return value;
+	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
+	if (isLuxonEscapedObject(value)) {
+		const inner: unknown = value.__value;
+		if (isOpaqueLuxonEscapedObject(value)) return inner;
+		if (typeof inner !== 'object' || inner === null || !isPlainObject(inner)) return inner;
+		return unwrapPlainObject(inner, seen);
+	}
+	return unwrapPlainObject(value, seen);
 }
 
 /**
@@ -206,17 +241,10 @@ function unwrapPlainObject(value: Record<string, unknown>): Record<string, unkno
  *
  * Walks the same shapes that function walks: a top-level value, arrays, and
  * plain objects. Other structured-cloneable types are returned untouched.
+ * A payload marked opaque is returned as data, without any inspection.
+ * Objects already visited are reused, so a graph that repeats or contains
+ * itself is walked once.
  */
 export function unwrapLuxonSentinels(value: unknown): unknown {
-	if (value === null || value === undefined) return value;
-	if (typeof value !== 'object') return value;
-	if (Array.isArray(value)) return value.map(unwrapLuxonSentinels);
-	if (!isPlainObject(value)) return value;
-	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
-	if (isLuxonEscapedObject(value)) {
-		const inner: unknown = value.__value;
-		if (typeof inner !== 'object' || inner === null || !isPlainObject(inner)) return inner;
-		return unwrapPlainObject(inner);
-	}
-	return unwrapPlainObject(value);
+	return unwrapValue(value, new Map<object, unknown>());
 }

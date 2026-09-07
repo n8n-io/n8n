@@ -434,28 +434,53 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(result).toEqual({ __isLuxonEscaped: true, keep: 1 });
 		});
 
-		it('should replace a value that contains itself with null', () => {
+		it('should keep every key of a user object that copies the opaque marker name', () => {
 			const data = { $json: {} };
 
-			const result = evaluator.evaluate(
-				'{{ (function(){ function Node(){ this.n = 1; this.self = this; } return new Node(); })() }}',
-				data,
-				caller,
-			);
+			const result = evaluator.evaluate('{{ ({ __isLuxonOpaque: true, keep: 1 }) }}', data, caller);
 
-			expect(result).toEqual({ n: 1, self: null });
+			expect(result).toEqual({ __isLuxonOpaque: true, keep: 1 });
 		});
 
-		it('should keep a value that two keys of one object share', () => {
+		it('should keep a marker object that a class instance holds as plain data', () => {
 			const data = { $json: {} };
 
 			const result = evaluator.evaluate(
-				'{{ (function(){ var shared = { v: 1 }; return { a: shared, b: shared }; })() }}',
+				'{{ (function(){ function Row(){ this.inner = { __isDateTime: true, __isoString: "2024-01-15T00:00:00.000Z" }; } return new Row(); })() }}',
 				data,
 				caller,
 			);
 
-			expect(result).toEqual({ a: { v: 1 }, b: { v: 1 } });
+			expect(result).toEqual({
+				inner: { __isDateTime: true, __isoString: '2024-01-15T00:00:00.000Z' },
+			});
+		});
+
+		it('should keep a marker object that a class instance holds deep inside an array as plain data', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ function Row(){ this.a = { b: [{ __isDateTime: true, __isoString: "2024-01-15T00:00:00.000Z" }] }; } return new Row(); })() }}',
+				data,
+				caller,
+			);
+
+			expect(result).toEqual({
+				a: { b: [{ __isDateTime: true, __isoString: '2024-01-15T00:00:00.000Z' }] },
+			});
+		});
+
+		it.runIf(!isQuickJS)('should return a class instance that contains itself', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ function Row(){ this.n = 1; this.self = this; } return new Row(); })() }}',
+				data,
+				caller,
+			) as Record<string, unknown>;
+
+			expect(result.n).toBe(1);
+			expect(result.self).toBe(result);
 		});
 	});
 

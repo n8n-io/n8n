@@ -100,6 +100,17 @@ describe('luxon transfer', () => {
 			expect(result.toISO()).toBe('2024-01-15T12:00:00.000+01:00');
 		});
 
+		it('should ignore an offset zone name that luxon cannot resolve', () => {
+			const result = unwrap({
+				__isDateTime: true,
+				__isoString: '2024-01-15T12:00:00.000+01:00',
+				__zone: 'GMT+2',
+			}) as DateTime;
+
+			expect(result.isValid).toBe(true);
+			expect(result.toMillis()).toBe(DateTime.fromISO('2024-01-15T12:00:00.000+01:00').toMillis());
+		});
+
 		it('should build an invalid DateTime when the ISO string is not a string', () => {
 			const result = unwrap({ __isDateTime: true, __isoString: 123 }) as DateTime;
 
@@ -143,6 +154,42 @@ describe('luxon transfer', () => {
 		it('should return the escaped payload untouched when it is not a plain object', () => {
 			expect(unwrap({ __isLuxonEscaped: true, __value: null })).toBeNull();
 			expect(unwrap({ __isLuxonEscaped: true, __value: 'text' })).toBe('text');
+		});
+
+		it('should return an opaque payload as data and leave a marker inside it alone', () => {
+			const payload = { inner: { __isDateTime: true, __isoString: '2024-01-15T00:00:00.000Z' } };
+
+			const result = unwrap({
+				__isLuxonEscaped: true,
+				__isLuxonOpaque: true,
+				__value: payload,
+			});
+
+			expect(result).toEqual(payload);
+			expect(DateTime.isDateTime((result as Record<string, unknown>).inner)).toBe(false);
+		});
+
+		it('should keep rebuilding a luxon value inside a payload that is not opaque', () => {
+			const result = unwrap({
+				__isLuxonEscaped: true,
+				__value: {
+					__isDateTime: 'x',
+					real: { __isDateTime: true, __isoString: '2024-01-15T00:00:00.000Z' },
+				},
+			}) as Record<string, unknown>;
+
+			expect(result.__isDateTime).toBe('x');
+			expect(DateTime.isDateTime(result.real)).toBe(true);
+		});
+
+		it('should walk a value that contains itself once', () => {
+			const value: Record<string, unknown> = { n: 1 };
+			value.self = value;
+
+			const result = unwrap(value) as Record<string, unknown>;
+
+			expect(result.n).toBe(1);
+			expect(result.self).toBe(result);
 		});
 	});
 });
