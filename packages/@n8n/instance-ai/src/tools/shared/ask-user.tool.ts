@@ -16,6 +16,7 @@ const questionSchema = z.object({
 		.array(z.string())
 		.optional()
 		.describe('Suggested answers (required for single/multi, ignored for text)'),
+	recommendedOption: z.string().optional(),
 });
 
 const questionInputSchema = questionSchema.extend({
@@ -129,9 +130,10 @@ export function createAskUserTool() {
 					inputType: 'questions' as const,
 					questions: questions.map(({ recommendedOption, ...question }) => ({
 						...question,
+						recommendedOption,
 						type: question.type === 'text' ? 'single' : question.type,
 						options: [
-							`${recommendedOption} (Recommended)`,
+							recommendedOption,
 							...(question.type === 'text' ? [] : (question.options ?? [])).filter(
 								(option) => option !== recommendedOption,
 							),

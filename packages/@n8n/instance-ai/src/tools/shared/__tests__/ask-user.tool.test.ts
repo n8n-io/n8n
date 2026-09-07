@@ -5,7 +5,7 @@ const question = {
 	id: 'delivery',
 	question: 'Where should the digest go?',
 	type: 'single',
-	recommendedOption: 'Email at 8:00 AM',
+	recommendedOption: 'Email',
 	options: ['Slack', 'Telegram'],
 };
 
@@ -38,41 +38,53 @@ describe('ask-user', () => {
 						id: 'delivery',
 						question: question.question,
 						type: 'single',
-						options: ['Email at 8:00 AM (Recommended)', 'Slack', 'Telegram'],
+						recommendedOption: 'Email',
+						options: ['Email', 'Slack', 'Telegram'],
 					},
 					{
 						id: 'multi',
 						question: question.question,
 						type: 'multi',
-						options: ['Email at 8:00 AM (Recommended)', 'Slack'],
+						recommendedOption: 'Email',
+						options: ['Email', 'Slack'],
 					},
 					{
 						id: 'text',
 						question: question.question,
 						type: 'single',
-						options: ['Email at 8:00 AM (Recommended)'],
+						recommendedOption: 'Email',
+						options: ['Email'],
 					},
 				],
 			}),
 		);
 	});
 
-	it('returns the selected default when the user answers', async () => {
+	it.each([
+		{ selectedOptions: ['Email'], expected: ['Email'] },
+		{
+			selectedOptions: ['Email', 'Slack', 'Custom (Recommended)'],
+			expected: ['Email', 'Slack', 'Custom (Recommended)'],
+		},
+	])('returns plain answer values for $selectedOptions', async ({ selectedOptions, expected }) => {
 		const suspend = vi.fn();
 		const answer = {
 			questionId: question.id,
-			selectedOptions: ['Email at 8:00 AM (Recommended)'],
+			selectedOptions,
+			customText: 'Custom (Recommended)',
 		};
 
 		const result = await executeTool(
 			createAskUserTool(),
-			{ questions: [question] },
+			{
+				questions: [{ ...question, type: 'multi', options: ['Slack', 'Custom (Recommended)'] }],
+			},
 			{ suspend, resumeData: { approved: true, answers: [answer] } },
 		);
 
 		expect(result).toEqual({
 			answered: true,
-			answers: [{ ...answer, question: question.question }],
+			answers: [{ ...answer, selectedOptions: expected, question: question.question }],
 		});
 		expect(suspend).not.toHaveBeenCalled();
 	});

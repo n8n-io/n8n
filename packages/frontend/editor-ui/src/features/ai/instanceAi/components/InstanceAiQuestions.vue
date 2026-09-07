@@ -11,16 +11,12 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { N8nButton, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { InstanceAiConfirmationRequestPayload } from '@n8n/api-types';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const OTHER_SENTINEL = '__other__';
 
-export interface QuestionItem {
-	id: string;
-	question: string;
-	type: 'single' | 'multi' | 'text';
-	options?: string[];
-}
+export type QuestionItem = NonNullable<InstanceAiConfirmationRequestPayload['questions']>[number];
 
 export interface QuestionAnswer {
 	questionId: string;
@@ -410,7 +406,12 @@ function onOptionMouseEnter(idx: number) {
 							@mouseenter="onOptionMouseEnter(idx)"
 						>
 							<span :class="$style.numberBadge">{{ idx + 1 }}</span>
-							<span :class="$style.optionLabel">{{ option }}</span>
+							<span :class="$style.optionLabel">
+								{{ option }}
+								<template v-if="option === currentQuestion.recommendedOption">
+									({{ i18n.baseText('generic.recommended') }})
+								</template>
+							</span>
 							<span :class="$style.arrowIndicator">
 								<N8nIcon
 									:class="$style.arrowIcon"
@@ -462,7 +463,12 @@ function onOptionMouseEnter(idx: number) {
 								:disabled="disabled"
 								@update:model-value="(checked: boolean) => onMultiToggle(option, checked)"
 							/>
-							<span :class="$style.optionLabel">{{ option }}</span>
+							<span :class="$style.optionLabel">
+								{{ option }}
+								<template v-if="option === currentQuestion.recommendedOption">
+									({{ i18n.baseText('generic.recommended') }})
+								</template>
+							</span>
 						</label>
 
 						<div

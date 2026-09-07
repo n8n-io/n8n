@@ -125,6 +125,38 @@ describe('InstanceAiQuestions', () => {
 		]);
 	});
 
+	it.each(['single', 'multi'] as const)(
+		'displays the recommendation label but submits the plain value for %s questions',
+		async (type) => {
+			vi.useFakeTimers();
+			const { emitted, getByText, getByTestId, queryByText } = render([
+				{ ...singleQuestion, type, recommendedOption: 'Production' },
+			]);
+
+			expect(queryByText('Staging (Recommended)')).not.toBeInTheDocument();
+			await fireEvent.click(getByText('Production (Recommended)'));
+			if (type === 'single') {
+				vi.advanceTimersByTime(250);
+			} else {
+				await fireEvent.click(getByTestId('instance-ai-questions-next'));
+			}
+
+			expect(emitted().submit).toEqual([
+				[
+					[
+						{
+							questionId: singleQuestion.id,
+							question: singleQuestion.question,
+							selectedOptions: ['Production'],
+							customText: '',
+							skipped: false,
+						},
+					],
+				],
+			]);
+		},
+	);
+
 	it('keeps Submit disabled while an option is only highlighted, not selected', async () => {
 		const { container, getByTestId } = render([singleQuestion]);
 

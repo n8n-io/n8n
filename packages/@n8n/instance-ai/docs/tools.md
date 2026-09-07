@@ -972,7 +972,9 @@ Suspend the run for one or more human decisions.
 | `introMessage` | string | no | Text shown above the first question |
 
 Each `recommendedOption` contains the default answer as plain text.
-The tool appends ` (Recommended)` and puts this answer first.
+The tool puts this answer first and passes `recommendedOption` to the frontend.
+The frontend displays the translated `(Recommended)` label beside that option.
+Option values and submitted answers contain only the original text.
 The input accepts at most two alternatives in `options`, for a maximum of
 three suggested answers including the recommendation.
 

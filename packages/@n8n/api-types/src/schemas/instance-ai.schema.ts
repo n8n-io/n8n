@@ -745,6 +745,10 @@ export const confirmationRequestPayloadSchema = z.object({
 				question: z.string(),
 				type: z.enum(['single', 'multi', 'text']),
 				options: z.array(z.string()).optional(),
+				recommendedOption: z
+					.string()
+					.optional()
+					.describe('The plain value of the recommended option'),
 			}),
 		)
 		.optional()

@@ -278,7 +278,7 @@ also emit `tool-error` if its resume path throws.
 | Field | Type | When used |
 |-------|------|-----------|
 | `inputType` | `'approval'` \| `'text'` \| `'questions'` \| `'plan-review'` | Controls which UI component renders. Default: `approval` |
-| `questions` | `[{id, question, type, options?}]` | Structured Q&A wizard (`inputType=questions`) |
+| `questions` | `[{id, question, type, options?, recommendedOption?}]` | Structured Q&A wizard (`inputType=questions`). The frontend labels the plain `recommendedOption` value as recommended. |
 | `tasks` | `TaskList` | Plan approval checklist (`inputType=plan-review`) |
 | `introMessage` | string | Intro text shown above questions or plan review |
 | `credentialRequests` | array | Credential setup requests |

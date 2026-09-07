@@ -9,21 +9,17 @@ import {
 	channelConfigSchema,
 	mcpConnectRequestSchema,
 	credentialDestinationSchema,
+	confirmationRequestPayloadSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
 
 export { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
 
-const questionItemSchema = z.object({
-	id: z.string(),
-	question: z.string(),
-	type: z.enum(['single', 'multi', 'text']),
-	options: z.array(z.string()).optional(),
-});
+const questionItemSchema = confirmationRequestPayloadSchema.shape.questions.unwrap().element;
 
 function getArrayProperty(record: Record<string, unknown>, key: string): unknown[] | undefined {
 	const value = record[key];
