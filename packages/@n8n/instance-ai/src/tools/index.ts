@@ -125,8 +125,8 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
 	}
 
-	// The adapter only wires appService when the `apps` module is active.
-	if (context.appService) {
+	// The adapter only wires appService when the `apps` module is active; the tool needs a sandbox to scaffold and build.
+	if (context.appService && context.workspace) {
 		tools.push([DOMAIN_TOOL_IDS.APPS, loadAppsTool().createAppsTool(context)]);
 	}
 
@@ -180,8 +180,8 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		]);
 	}
 
-	// The adapter only wires appService when the `apps` module is active.
-	if (context.appService) {
+	// The adapter only wires appService when the `apps` module is active; the tool needs a sandbox to scaffold and build.
+	if (context.appService && context.workspace) {
 		tools.push([DOMAIN_TOOL_IDS.APPS, loadAppsTool().createAppsTool(context)]);
 	}
 

@@ -13,7 +13,7 @@ recommended_tools:
   - workspace_write_file
   - workspace_str_replace_file
   - workspace_read_file
-  - workspace_list_files
+  - workspace_execute_command
   - workspace
 ---
 
@@ -51,6 +51,9 @@ it into a published version.
    is a new version and becomes the live one.
 
 For an already bound app (the conversation names an app id) skip step 1.
+Before you build, confirm that `apps/<namespace>/` exists in this workspace
+(`workspace_execute_command` with `ls apps/<namespace>`); if it does not, tell
+the user the app source is not available in this conversation.
 
 ## Rules
 

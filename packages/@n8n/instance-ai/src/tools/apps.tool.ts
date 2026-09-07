@@ -156,7 +156,10 @@ type SandboxRunner = (
 	options: { cwd: string; env?: NodeJS.ProcessEnv; timeout?: number },
 ) => Promise<{ exitCode: number; stdout: string; stderr: string }>;
 
-function requireSandbox(context: InstanceAiContext): {
+function requireSandbox(
+	context: InstanceAiContext,
+	abortSignal?: AbortSignal,
+): {
 	workspace: NonNullable<InstanceAiContext['workspace']>;
 	run: SandboxRunner;
 } {
@@ -168,7 +171,7 @@ function requireSandbox(context: InstanceAiContext): {
 	// Direct `executeCommand`: `runInSandbox` drops `env` and `timeout`, and the
 	// build needs both. Daytona merges stderr into stdout, so callers read stdout.
 	const run: SandboxRunner = async (command, options) => {
-		const result = await executeCommand(command, [], options);
+		const result = await executeCommand(command, [], { ...options, abortSignal });
 		return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
 	};
 	return { workspace, run };
@@ -178,9 +181,13 @@ function combinedLog(result: { stdout: string; stderr: string }): string {
 	return result.stderr ? `${result.stdout}\n${result.stderr}` : result.stdout;
 }
 
-async function handleCreate(context: InstanceAiContext, input: CreateInput) {
+async function handleCreate(
+	context: InstanceAiContext,
+	input: CreateInput,
+	abortSignal?: AbortSignal,
+) {
 	const appService = requireAppService(context);
-	const { workspace, run } = requireSandbox(context);
+	const { workspace, run } = requireSandbox(context, abortSignal);
 	const namespace = input.namespace ?? slugifyNamespace(input.name);
 	if (!namespace) {
 		return {
@@ -200,41 +207,57 @@ async function handleCreate(context: InstanceAiContext, input: CreateInput) {
 
 	const root = await getWorkspaceRoot(workspace);
 	const appDir = `${root}/${APPS_DIR}/${namespace}`;
+	const workspacePath = `${context.workspaceRoot ?? root}/${APPS_DIR}/${namespace}`;
 
-	const mkdir = await run(`mkdir -p ${q(appDir)}`, { cwd: root });
-	if (mkdir.exitCode !== 0) {
-		throw new Error(`Could not create ${appDir}: ${tailLog(combinedLog(mkdir))}`);
-	}
-
-	const template = input.template ?? DEFAULT_TEMPLATE;
-	if (template !== 'none') {
-		const templateDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${APP_BUILDER_SKILL_DIR}/templates/${template}`;
-		const copy = await run(buildScaffoldScript({ templateDir, appDir, packageName: namespace }), {
-			cwd: appDir,
-		});
-		if (copy.exitCode !== 0) {
-			throw new Error(`Could not copy the ${template} template: ${tailLog(combinedLog(copy))}`);
+	try {
+		const mkdir = await run(`mkdir -p ${q(appDir)}`, { cwd: root });
+		if (mkdir.exitCode !== 0) {
+			throw new Error(`Could not create ${appDir}: ${tailLog(combinedLog(mkdir))}`);
 		}
+
+		const template = input.template ?? DEFAULT_TEMPLATE;
+		if (template !== 'none') {
+			const templateDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${APP_BUILDER_SKILL_DIR}/templates/${template}`;
+			const copy = await run(buildScaffoldScript({ templateDir, appDir, packageName: namespace }), {
+				cwd: appDir,
+			});
+			if (copy.exitCode !== 0) {
+				throw new Error(`Could not copy the ${template} template: ${tailLog(combinedLog(copy))}`);
+			}
+		}
+
+		// Without a `.gitignore` (template "none"), the build's `git add -A` would stage node_modules.
+		// Some sandboxes ship without git; the agent's own diff/log history is a nicety, not a requirement.
+		const git = await run(
+			`[ -f .gitignore ] || printf 'node_modules\\n${DEFAULT_OUT_DIR}\\n' > .gitignore; ` +
+				`git init -q && git add -A && ${GIT_COMMIT} scaffold --allow-empty`,
+			{ cwd: appDir },
+		);
+		const warnings =
+			git.exitCode === 0
+				? []
+				: ['git is unavailable in the sandbox; the app directory is not version-controlled.'];
+
+		return {
+			app: created.app,
+			workspacePath,
+			...(warnings.length > 0 ? { warnings } : {}),
+		};
+	} catch (error) {
+		throw new Error(
+			`App "${input.name}" is registered (id ${created.app.id}, namespace "${namespace}") but scaffolding failed: ` +
+				`${getErrorMessage(error)} Write the files by hand under ${workspacePath}, then call build with appId ${created.app.id}.`,
+		);
 	}
-
-	// Some sandboxes ship without git; the agent's own diff/log history is a nicety, not a requirement.
-	const git = await run(`git init -q && git add -A && ${GIT_COMMIT} scaffold`, { cwd: appDir });
-	const warnings =
-		git.exitCode === 0
-			? []
-			: ['git is unavailable in the sandbox; the app directory is not version-controlled.'];
-
-	const promptRoot = context.workspaceRoot ?? root;
-	return {
-		app: created.app,
-		workspacePath: `${promptRoot}/${APPS_DIR}/${namespace}`,
-		...(warnings.length > 0 ? { warnings } : {}),
-	};
 }
 
-async function handleBuild(context: InstanceAiContext, input: BuildInput) {
+async function handleBuild(
+	context: InstanceAiContext,
+	input: BuildInput,
+	abortSignal?: AbortSignal,
+) {
 	const appService = requireAppService(context);
-	const { workspace, run } = requireSandbox(context);
+	const { workspace, run } = requireSandbox(context, abortSignal);
 	const app = await appService.get(input.appId);
 
 	const root = await getWorkspaceRoot(workspace);
@@ -284,8 +307,8 @@ async function handleBuild(context: InstanceAiContext, input: BuildInput) {
 
 	try {
 		const [source, dist] = await Promise.all([
-			readTarball(workspace, `${BUILD_STAGING_DIR}/${tag}-src.tgz`),
-			readTarball(workspace, `${BUILD_STAGING_DIR}/${tag}-dist.tgz`),
+			readTarball(workspace, `${BUILD_STAGING_DIR}/${tag}-src.tgz`, abortSignal),
+			readTarball(workspace, `${BUILD_STAGING_DIR}/${tag}-dist.tgz`, abortSignal),
 		]);
 		const stored = await appService.storeVersion(app.id, { source, dist });
 		return {
@@ -307,11 +330,12 @@ async function handleBuild(context: InstanceAiContext, input: BuildInput) {
 async function readTarball(
 	workspace: NonNullable<InstanceAiContext['workspace']>,
 	relativePath: string,
+	abortSignal?: AbortSignal,
 ): Promise<Buffer> {
 	const filesystem = workspace.filesystem;
 	if (!filesystem)
 		throw new Error('The sandbox workspace has no filesystem to read the build from.');
-	const content = await filesystem.readFile(relativePath);
+	const content = await filesystem.readFile(relativePath, { abortSignal });
 	if (!Buffer.isBuffer(content)) {
 		throw new Error(`Expected binary content for ${relativePath}, got a string.`);
 	}
@@ -343,12 +367,12 @@ export function createAppsTool(context: InstanceAiContext) {
 				'`build` returns the live `url` on success, or `{ error, stage, message, log }` to fix and retry.',
 		)
 		.input(inputSchema)
-		.handler(async (input: AppsInput) => {
+		.handler(async (input: AppsInput, ctx) => {
 			switch (input.action) {
 				case 'create':
-					return await handleCreate(context, input);
+					return await handleCreate(context, input, ctx.abortSignal);
 				case 'build':
-					return await handleBuild(context, input);
+					return await handleBuild(context, input, ctx.abortSignal);
 			}
 		})
 		.build();

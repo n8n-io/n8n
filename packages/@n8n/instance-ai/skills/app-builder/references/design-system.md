@@ -63,14 +63,13 @@ Use these in `<style scoped>` instead of raw px values.
 - Font: `--font-family`, `--font-family--monospace`, `--font-size--3xs` …
   `--font-size--2xl`, `--font-weight--regular`, `--font-weight--medium`,
   `--font-weight--bold`
-- Text colors: `--color--text`, `--color--text--shade-1`, `--color--text--subtle`,
-  `--color--text--tint-1`, `--color--text--danger`, `--color--text--success`,
-  `--color--text--warning`
-- Surfaces: `--color--background`, `--color--background--light-2`,
-  `--color--background--light-3`, `--color--background--hover`,
-  `--color--background--dark`
+- Text colors: `--color--text`, `--color--text--shade-1`, `--color--text--tint-1`,
+  `--color--text--danger`
+- Surfaces: `--color--background`, `--color--background--light-1`,
+  `--color--background--light-2`, `--color--background--light-3`,
+  `--color--background--shade-2`
 - Borders: `--border-color`, `--border-color--subtle`, `--border-color--strong`,
-  `--border-color--primary`
+  `--border-color--stronger`
 - Brand/status: `--color--primary`, `--color--danger`, `--color--success`,
   `--color--warning`
 

@@ -148,7 +148,11 @@ describe('apps tool', () => {
 			);
 			expect(commands[1]).toContain('mv gitignore .gitignore');
 			expect(commands[1]).toContain("'greeter'");
+			expect(commands[2]).toContain(
+				"[ -f .gitignore ] || printf 'node_modules\\ndist\\n' > .gitignore",
+			);
 			expect(commands[2]).toContain('git init');
+			expect(commands[2]).toContain('commit -qm scaffold --allow-empty');
 			expect(result).toEqual({
 				app: APP,
 				workspacePath: '/home/daytona/workspace/apps/greeter',
@@ -183,7 +187,7 @@ describe('apps tool', () => {
 			executeCommandMock(context).mockImplementation(
 				async (command: string) =>
 					await Promise.resolve(
-						command.startsWith('git init') ? fail('sh: git: not found', 127) : ok(),
+						command.includes('git init') ? fail('sh: git: not found', 127) : ok(),
 					),
 			);
 
@@ -193,6 +197,37 @@ describe('apps tool', () => {
 				app: APP,
 				warnings: [expect.stringContaining('git is unavailable')],
 			});
+		});
+
+		it('names the registered app when scaffolding fails after create', async () => {
+			const context = createMockContext();
+			executeCommandMock(context)
+				.mockResolvedValueOnce(ok())
+				.mockResolvedValueOnce(fail('cp: cannot stat template'));
+
+			await expect(runCreate(context)).rejects.toThrow(
+				/id app-1, namespace "greeter".*cp: cannot stat template.*\/home\/daytona\/workspace\/apps\/greeter.*appId app-1/,
+			);
+			expect(context.appService?.create).toHaveBeenCalledTimes(1);
+		});
+
+		it('forwards the run abort signal to every sandbox command', async () => {
+			const context = createMockContext();
+			const abortSignal = new AbortController().signal;
+			const tool = createAppsTool(context);
+			const parsed: unknown = inputSchema(tool).parse({
+				action: 'create',
+				projectId: 'proj-1',
+				name: 'Greeter',
+			});
+
+			await executeTool(tool, parsed, { abortSignal });
+
+			const calls = executeCommandMock(context).mock.calls as Array<
+				[string, string[], { abortSignal?: AbortSignal }]
+			>;
+			expect(calls).toHaveLength(3);
+			for (const call of calls) expect(call[2].abortSignal).toBe(abortSignal);
 		});
 	});
 
@@ -353,6 +388,27 @@ describe('apps tool', () => {
 		it('fails when the run has no sandbox', async () => {
 			const context = createMockContext({ workspace: undefined });
 			await expect(runBuild(context)).rejects.toThrow('sandbox workspace');
+		});
+
+		it('forwards the run abort signal to every sandbox command and tarball read', async () => {
+			const context = createMockContext();
+			const abortSignal = new AbortController().signal;
+			const tool = createAppsTool(context);
+			const parsed: unknown = inputSchema(tool).parse({ action: 'build', appId: 'app-1' });
+
+			await executeTool(tool, parsed, { abortSignal });
+
+			const commandCalls = executeCommandMock(context).mock.calls as Array<
+				[string, string[], { abortSignal?: AbortSignal }]
+			>;
+			expect(commandCalls).toHaveLength(4);
+			for (const call of commandCalls) expect(call[2].abortSignal).toBe(abortSignal);
+
+			const readCalls = readFileMock(context).mock.calls as Array<
+				[string, { abortSignal?: AbortSignal }]
+			>;
+			expect(readCalls).toHaveLength(2);
+			for (const call of readCalls) expect(call[1].abortSignal).toBe(abortSignal);
 		});
 	});
 
