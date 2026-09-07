@@ -41,7 +41,7 @@ function buildCaddyConfig(
 
     # Health check
     health_uri /healthz
-    health_interval 10s
+    health_interval 500ms
 
     # Timeouts
     transport http {
