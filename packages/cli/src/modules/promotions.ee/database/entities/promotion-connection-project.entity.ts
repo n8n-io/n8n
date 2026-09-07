@@ -14,8 +14,8 @@ import { PromotionConnection } from './promotion-connection.entity';
 /**
  * Links a project to a promotion connection. The `projectId` primary key keeps a
  * project on one connection at most. A connection can hold many links, or none.
- * Only team projects and `projects`-scoped connections can be linked, which the
- * service checks because both rules span tables.
+ * Which projects and connections are eligible spans tables, so the service checks
+ * that rather than the schema.
  *
  * The foreign key to `project` is declared in the migration and not as a
  * `@ManyToOne`, to keep this module apart from the core `Project` entity. This

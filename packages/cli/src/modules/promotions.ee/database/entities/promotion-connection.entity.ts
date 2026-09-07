@@ -26,10 +26,7 @@ export class PromotionConnection extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	scope: PromotionConnectionScope;
 
-	/**
-	 * Where to push and pull, with its own `schemaVersion`. Check a loaded row
-	 * against the schema for the provider's type before using it.
-	 */
+	/** Where to push and pull, with its own `schemaVersion`. */
 	@JsonColumn()
 	target: PromotionConnectionTarget;
 

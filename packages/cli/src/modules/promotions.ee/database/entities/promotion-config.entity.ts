@@ -6,29 +6,23 @@ import { PromotionConnection } from './promotion-connection.entity';
 
 /**
  * Settings for one direction of one connection. The generated `id` also names the
- * local checkout directory, so changing a branch keeps the checkout. Deleting and
- * recreating a direction gets a new one.
+ * local checkout directory.
  */
 @Entity('promotion_config')
 // One config for each direction. This index also covers lookups by connectionId.
 @Index(['connectionId', 'direction'], { unique: true })
 export class PromotionConfig extends WithTimestampsAndStringId {
-	/** Immutable after creation. */
 	@Column({ type: 'varchar', length: 36 })
 	connectionId: string;
 
-	/** Defaults to the direction label. Names are not unique. */
+	/** Names are not unique. */
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
 
-	/** Immutable after creation. */
 	@Column({ type: 'varchar', length: 16 })
 	direction: PromotionDirection;
 
-	/**
-	 * Branch settings, with their own `schemaVersion`. Check a loaded row against
-	 * the schema for {@link direction} and the provider's type before using it.
-	 */
+	/** Branch settings for {@link direction}, with their own `schemaVersion`. */
 	@JsonColumn()
 	settings: PromotionConfigSettings;
 

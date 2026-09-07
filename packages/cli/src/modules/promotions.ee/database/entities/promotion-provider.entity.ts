@@ -8,8 +8,7 @@ import { Column, Entity } from '@n8n/typeorm';
 
 /**
  * Credentials for a remote, shared by any number of connections. The database
- * limits which {@link type} and {@link authType} values are allowed. The service
- * checks that the pair makes sense and that both payloads below are valid.
+ * limits which {@link type} and {@link authType} values are allowed.
  */
 @Entity('promotion_provider')
 export class PromotionProvider extends WithTimestampsAndStringId {
@@ -24,9 +23,9 @@ export class PromotionProvider extends WithTimestampsAndStringId {
 	authType: PromotionProviderAuthType;
 
 	/**
-	 * Non-secret settings, with their own `schemaVersion`. Check a loaded row against
-	 * the schema for {@link authType}. This type says what we write, not what an
-	 * older row holds.
+	 * Non-secret settings, with their own `schemaVersion`. This type says what we
+	 * write, not what an older row holds, so check a loaded row against the schema
+	 * for {@link authType}. The same applies to the other JSON columns in this module.
 	 */
 	@JsonColumn()
 	config: PromotionProviderConfig;
