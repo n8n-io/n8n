@@ -53,6 +53,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/lodash": "catalog:",
