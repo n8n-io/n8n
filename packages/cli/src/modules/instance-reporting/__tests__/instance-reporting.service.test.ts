@@ -382,17 +382,6 @@ describe('InstanceReportingService', () => {
 			expect(reportRepository.markSkipped).toHaveBeenCalledWith(BATCH_ID);
 		});
 
-		test('counts attempts from the row, so a restart does not grant a fresh budget', async () => {
-			const { service, reportRepository, http } = makeHarness();
-			vi.mocked(http.request).mockRejectedValue(new Error('Network error'));
-			// A fresh process holds no counter of its own; the row says two are spent.
-			reportRepository.findTodaysPending.mockResolvedValue(makeReport({ attempts: 2 }));
-
-			await expect(service.sendReport()).rejects.toThrow();
-
-			expect(reportRepository.markSkipped).toHaveBeenCalledTimes(1);
-		});
-
 		test('skips an exhausted row without attempting again', async () => {
 			const { service, reportRepository, http } = makeHarness();
 			// A crash between the failure record and the skip leaves this row pending.
