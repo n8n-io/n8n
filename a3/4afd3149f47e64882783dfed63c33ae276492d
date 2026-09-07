@@ -1,0 +1,14 @@
+packages/@n8n/engine/docs/adr/ADR-20260904-store-the-workflow-with-the-execution.md
+  h_8fb27e0cdf6d1e 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a34afd3149f47e64882783dfed63c33ae276492d",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
