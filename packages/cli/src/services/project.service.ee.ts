@@ -414,6 +414,7 @@ export class ProjectService {
 		const [projects, count] = await this.projectRepository.findAndCount({
 			skip: offset,
 			take: limit,
+			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 		return { projects, count };
 	}
