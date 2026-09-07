@@ -180,7 +180,9 @@ describe('ActiveWorkflowManager', () => {
 	});
 
 	describe('addActiveWorkflows', () => {
-		test('should prevent concurrent activations', async () => {
+		test('should prevent concurrent activations while not leader', async () => {
+			Object.assign(instanceSettings, { isLeader: false, isFollower: true });
+
 			const getAllActiveIds = workflowRepository.getAllActiveIds;
 
 			workflowRepository.getAllActiveIds.mockImplementation(
@@ -191,6 +193,96 @@ describe('ActiveWorkflowManager', () => {
 				activeWorkflowManager.addActiveWorkflows('init'),
 				activeWorkflowManager.addActiveWorkflows('leadershipChange'),
 			]);
+
+			expect(getAllActiveIds).toHaveBeenCalledTimes(1);
+		});
+
+		test('should re-run activation when leadership is taken over mid-pass', async () => {
+			// A main that starts as a follower registers webhooks only. If it becomes
+			// leader while that pass is still in flight, the workflows it has already
+			// processed would otherwise never get their schedule and poll triggers,
+			// while still being reported as active.
+			const localInstanceSettings = mock<InstanceSettings>({
+				isMultiMain: true,
+				isLeader: false,
+				isFollower: true,
+			});
+			const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
+			const calls: string[] = [];
+
+			const manager = new ActiveWorkflowManager(
+				mockLogger(),
+				mock<ErrorReporter>(),
+				activeWorkflowTriggers,
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+				localInstanceSettings,
+				mock(),
+				mock<WorkflowsConfig>({
+					useWorkflowPublicationService: false,
+					activationBatchSize: 1,
+				}),
+				mock<TriggerExecutionContextFactory>(),
+				mock(),
+				mock(),
+				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
+				policyEnforcementService,
+				ownershipService,
+			);
+
+			// Keep `activateWorkflow` a no-op: the pass itself is what is under test.
+			workflowRepository.findById.mockResolvedValue(null);
+
+			activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows.mockImplementation(async () => {
+				calls.push('teardown');
+			});
+
+			const initPass = createDeferredPromise<string[]>();
+			workflowRepository.getAllActiveIds
+				.mockImplementationOnce(async () => {
+					calls.push('pass:init');
+					return await initPass.promise;
+				})
+				.mockImplementationOnce(async () => {
+					calls.push('pass:leadershipChange');
+					return [];
+				});
+
+			const inFlight = manager.addActiveWorkflows('init');
+
+			// Leadership is acquired while the `init` pass is still running.
+			Object.assign(localInstanceSettings, { isLeader: true, isFollower: false });
+			await manager.addActiveWorkflows('leadershipChange');
+
+			initPass.resolve(['workflow-1']);
+			await inFlight;
+
+			// The queued pass must run, and must tear down the triggers the
+			// interleaved pass may already have registered as leader, so they are
+			// not registered twice.
+			expect(calls).toEqual(['pass:init', 'teardown', 'pass:leadershipChange']);
+		});
+
+		test('should not re-run activation if leadership was not acquired', async () => {
+			Object.assign(instanceSettings, { isLeader: false, isFollower: true });
+
+			const getAllActiveIds = workflowRepository.getAllActiveIds;
+			const initPass = createDeferredPromise<string[]>();
+
+			workflowRepository.findById.mockResolvedValue(null);
+			workflowRepository.getAllActiveIds.mockImplementationOnce(async () => await initPass.promise);
+
+			const inFlight = activeWorkflowManager.addActiveWorkflows('init');
+			await activeWorkflowManager.addActiveWorkflows('leadershipChange');
+
+			initPass.resolve(['workflow-1']);
+			await inFlight;
 
 			expect(getAllActiveIds).toHaveBeenCalledTimes(1);
 		});

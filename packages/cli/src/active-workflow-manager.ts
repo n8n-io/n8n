@@ -386,13 +386,25 @@ export class ActiveWorkflowManager {
 
 	private isActivationInProgress = false;
 
+	private queuedLeadershipActivation = false;
+
 	/**
 	 * Register as active in memory all workflows stored as `active`,
 	 * only on instance init or (in multi-main setup) on leadership change.
 	 */
 	async addActiveWorkflows(activationMode: 'init' | 'leadershipChange') {
 		if (this.isActivationInProgress) {
-			this.logger.debug(`Skipping activation - already in progress for mode: ${activationMode}`);
+			// A leadership change must not be dropped. The in-flight pass may have
+			// already processed workflows while this instance was still a follower,
+			// i.e. with webhooks only and without schedule and poll triggers, and
+			// those workflows are never revisited. Queue a re-run instead.
+			if (activationMode === 'leadershipChange') {
+				this.logger.warn('Activation in progress, queueing re-run after leadership change');
+				this.queuedLeadershipActivation = true;
+			} else {
+				this.logger.debug(`Skipping activation - already in progress for mode: ${activationMode}`);
+			}
+
 			return;
 		}
 
@@ -419,7 +431,36 @@ export class ActiveWorkflowManager {
 			this.logger.debug('Finished activating all workflows');
 		} finally {
 			this.isActivationInProgress = false;
+
+			// Inside the `finally` on purpose: the body returns early when there are
+			// no active workflows, which would skip a block placed after the `try`.
+			// Never let this mask an error thrown by the pass itself.
+			try {
+				await this.runQueuedLeadershipActivation();
+			} catch (error) {
+				this.errorReporter.error(error);
+			}
 		}
+	}
+
+	/**
+	 * Re-run activation if this instance became leader while a previous pass was
+	 * still in flight.
+	 *
+	 * The interleaved pass may already have registered non-webhook triggers for
+	 * the workflows it processed after the takeover, so tear them down first;
+	 * otherwise the re-run registers them a second time and the workflow fires
+	 * twice per schedule.
+	 */
+	private async runQueuedLeadershipActivation() {
+		if (!this.queuedLeadershipActivation) return;
+
+		this.queuedLeadershipActivation = false;
+
+		if (!this.instanceSettings.isLeader) return;
+
+		await this.activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows();
+		await this.addActiveWorkflows('leadershipChange');
 	}
 
 	private async activateWorkflow(
