@@ -182,6 +182,8 @@ export {
 	type ContentImportPolicyResult,
 } from './schemas/content-import-policy-result.schema';
 
+export { appVersionSchema, type AppVersion } from './schemas/app.schema';
+
 export {
 	insightsSummarySchema,
 	type InsightsSummaryType,

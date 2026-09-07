@@ -26,3 +26,13 @@ export const pageRouteSchema = z
 	.trim()
 	.max(255)
 	.regex(PAGE_ROUTE_REGEX, PAGE_ROUTE_ERROR_MESSAGE);
+
+export const appVersionSchema = z.object({
+	id: z.string(),
+	appId: z.string(),
+	createdAt: z.string().datetime(),
+	// False once retention pruned the dist tarball; the source tarball stays.
+	hasDist: z.boolean(),
+});
+
+export type AppVersion = z.infer<typeof appVersionSchema>;
