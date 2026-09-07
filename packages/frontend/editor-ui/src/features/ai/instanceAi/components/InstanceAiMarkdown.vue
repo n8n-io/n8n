@@ -279,12 +279,14 @@ function buildResourceUrl(type: string, id: string, projectId: string | undefine
 function resolveContextualAgentPreviewLink(href: string) {
 	const resolved = resolveAgentPreviewLink(href);
 	if (!resolved || !props.agentPreviewTarget) return resolved;
+	const resolvedUrl = new URL(resolved.href, window.location.origin);
 
 	return {
 		...props.agentPreviewTarget,
 		href: buildAgentPreviewHref(
 			props.agentPreviewTarget.projectId,
 			props.agentPreviewTarget.agentId,
+			resolvedUrl.searchParams,
 		),
 	};
 }

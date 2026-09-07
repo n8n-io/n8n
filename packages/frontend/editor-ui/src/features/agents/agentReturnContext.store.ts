@@ -21,6 +21,8 @@ export interface AgentReturnContext {
 
 /** History-state key used to restore the workflow artifact after the return navigation. */
 export const AGENT_RETURN_WORKFLOW_ID_STATE = 'agentReturnWorkflowId';
+/** History-state key used to reopen the artifact node after the return navigation. */
+export const AGENT_RETURN_NODE_ID_STATE = 'agentReturnNodeId';
 
 export const useAgentReturnContextStore = defineStore('agentReturnContext', () => {
 	const context = ref<AgentReturnContext | null>(null);

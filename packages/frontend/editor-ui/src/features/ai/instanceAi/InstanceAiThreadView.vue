@@ -106,7 +106,10 @@ import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAg
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
-import { AGENT_RETURN_WORKFLOW_ID_STATE } from '@/features/agents/agentReturnContext.store';
+import {
+	AGENT_RETURN_NODE_ID_STATE,
+	AGENT_RETURN_WORKFLOW_ID_STATE,
+} from '@/features/agents/agentReturnContext.store';
 
 const props = defineProps<{
 	threadId: string;
@@ -295,11 +298,25 @@ const preview = useCanvasPreview({
 const agentReturnWorkflowId = (history.state as Record<string, unknown>)[
 	AGENT_RETURN_WORKFLOW_ID_STATE
 ];
+const agentReturnNodeIdFromHistory = (history.state as Record<string, unknown>)[
+	AGENT_RETURN_NODE_ID_STATE
+];
+const agentReturnNodeId = ref(
+	typeof agentReturnNodeIdFromHistory === 'string' ? agentReturnNodeIdFromHistory : undefined,
+);
 if (typeof agentReturnWorkflowId === 'string') {
 	preview.openWorkflowPreview(agentReturnWorkflowId);
 	const historyState = history.state as Record<string, unknown>;
-	const { [AGENT_RETURN_WORKFLOW_ID_STATE]: _, ...state } = historyState;
+	const {
+		[AGENT_RETURN_WORKFLOW_ID_STATE]: _,
+		[AGENT_RETURN_NODE_ID_STATE]: __,
+		...state
+	} = historyState;
 	history.replaceState(state, '');
+}
+
+function consumeAgentReturnNodeId() {
+	agentReturnNodeId.value = undefined;
 }
 const isAgentPreviewDockOpen = ref(false);
 
@@ -1428,8 +1445,14 @@ async function dismissComposerContextChip() {
 									{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
+								:initial-node-id="
+									preview.activeWorkflowId.value === agentReturnWorkflowId
+										? agentReturnNodeId
+										: undefined
+								"
 								:refresh-key="preview.workflowRefreshKey.value"
 								:execution-result="preview.activeWorkflowExecutionResult.value"
+								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview

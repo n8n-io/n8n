@@ -28,7 +28,10 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
-import { AGENT_RETURN_WORKFLOW_ID_STATE } from '@/features/agents/agentReturnContext.store';
+import {
+	AGENT_RETURN_NODE_ID_STATE,
+	AGENT_RETURN_WORKFLOW_ID_STATE,
+} from '@/features/agents/agentReturnContext.store';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 } as Ref<number>,
@@ -281,8 +284,9 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 	name: 'InstanceAiWorkflowPreviewStub',
 	props: {
 		workflowId: { type: String, required: true },
+		initialNodeId: { type: String, required: false },
 	},
-	emits: ['workflow-failures'],
+	emits: ['initial-node-id-consumed', 'workflow-failures'],
 	setup(props, { emit, expose }) {
 		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
 		expose({ requestFitView: vi.fn() });
@@ -290,6 +294,7 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 			h('div', {
 				'data-test-id': 'instance-ai-workflow-preview-stub',
 				'data-workflow-id': props.workflowId,
+				'data-initial-node-id': props.initialNodeId,
 			});
 	},
 });
@@ -1990,14 +1995,23 @@ describe('InstanceAiThreadView', () => {
 				attachments: [{ type: 'workflow', id: 'workflow-1', name: 'First workflow' }],
 			},
 		] as typeof thread.messages;
-		history.replaceState({ [AGENT_RETURN_WORKFLOW_ID_STATE]: 'workflow-2', preserved: true }, '');
+		history.replaceState(
+			{
+				[AGENT_RETURN_WORKFLOW_ID_STATE]: 'workflow-2',
+				[AGENT_RETURN_NODE_ID_STATE]: 'node-2',
+				preserved: true,
+			},
+			'',
+		);
 
 		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		const workflowPreview = await findByTestId('instance-ai-workflow-preview-stub');
 
 		expect(workflowPreview).toHaveAttribute('data-workflow-id', 'workflow-2');
+		expect(workflowPreview).toHaveAttribute('data-initial-node-id', 'node-2');
 		expect(history.state).toMatchObject({ preserved: true });
 		expect(history.state[AGENT_RETURN_WORKFLOW_ID_STATE]).toBeUndefined();
+		expect(history.state[AGENT_RETURN_NODE_ID_STATE]).toBeUndefined();
 	});
 
 	describe('Fix with AI card', () => {

@@ -4,6 +4,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import AgentView from '../views/AgentView.vue';
 import { VIEWS } from '@/app/constants';
 import {
+	AGENT_RETURN_NODE_ID_STATE,
 	AGENT_RETURN_WORKFLOW_ID_STATE,
 	type AgentReturnContext,
 } from '../agentReturnContext.store';
@@ -34,6 +35,7 @@ const returnContextStore = reactive<{ context: AgentReturnContext | null; clear:
 	}),
 });
 vi.mock('../agentReturnContext.store', () => ({
+	AGENT_RETURN_NODE_ID_STATE: 'agentReturnNodeId',
 	AGENT_RETURN_WORKFLOW_ID_STATE: 'agentReturnWorkflowId',
 	useAgentReturnContextStore: () => returnContextStore,
 }));
@@ -93,7 +95,27 @@ describe('AgentView', () => {
 		});
 	});
 
-	it('returns to an embedded workflow route and carries its artifact id', async () => {
+	it('returns to an embedded workflow route and carries its artifact and node ids', async () => {
+		returnContextStore.context = {
+			workflowId: 'artifact-workflow',
+			nodeId: 'node-1',
+			agentId: 'agent-1',
+			returnPath: '/assistant/thread-1',
+		};
+		const { getByRole } = renderComponent();
+
+		await userEvent.click(getByRole('button'));
+
+		expect(push).toHaveBeenCalledWith({
+			path: '/assistant/thread-1',
+			state: {
+				[AGENT_RETURN_WORKFLOW_ID_STATE]: 'artifact-workflow',
+				[AGENT_RETURN_NODE_ID_STATE]: 'node-1',
+			},
+		});
+	});
+
+	it('omits the node id when returning to an embedded canvas', async () => {
 		returnContextStore.context = {
 			workflowId: 'artifact-workflow',
 			nodeId: '',

@@ -5,6 +5,7 @@ import { computed, onMounted } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import {
+	AGENT_RETURN_NODE_ID_STATE,
 	AGENT_RETURN_WORKFLOW_ID_STATE,
 	useAgentReturnContextStore,
 } from '@/features/agents/agentReturnContext.store';
@@ -43,7 +44,10 @@ async function onBackToWorkflow() {
 	if (ctx.returnPath) {
 		await router.push({
 			path: ctx.returnPath,
-			state: { [AGENT_RETURN_WORKFLOW_ID_STATE]: ctx.workflowId },
+			state: {
+				[AGENT_RETURN_WORKFLOW_ID_STATE]: ctx.workflowId,
+				...(ctx.nodeId ? { [AGENT_RETURN_NODE_ID_STATE]: ctx.nodeId } : {}),
+			},
 		});
 		return;
 	}

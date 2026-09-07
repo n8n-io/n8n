@@ -21,8 +21,13 @@ function decodePathSegment(value: string): string {
 	}
 }
 
-export function buildAgentPreviewHref(projectId: string, agentId: string): string {
-	const searchParams = new URLSearchParams({ [OPEN_PREVIEW_PARAM]: 'true' });
+export function buildAgentPreviewHref(
+	projectId: string,
+	agentId: string,
+	queryParams?: URLSearchParams,
+): string {
+	const searchParams = new URLSearchParams(queryParams);
+	searchParams.set(OPEN_PREVIEW_PARAM, 'true');
 	return `/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}?${searchParams.toString()}`;
 }
 
