@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
 	N8nButton,
-	N8nIcon,
 	N8nIconButton,
 	N8nSegmentControl,
 	N8nTabs,
@@ -244,21 +243,19 @@ watch(versionId, (next, previous) => {
 							<N8nToggle
 								value="desktop"
 								:label="i18n.baseText('apps.builder.desktop')"
+								icon="monitor"
 								:variant="variant"
 								:size="size"
 								data-test-id="app-preview-device-desktop"
-							>
-								<N8nIcon icon="monitor" size="small" />
-							</N8nToggle>
+							/>
 							<N8nToggle
 								value="mobile"
 								:label="i18n.baseText('apps.builder.mobile')"
+								icon="smartphone"
 								:variant="variant"
 								:size="size"
 								data-test-id="app-preview-device-mobile"
-							>
-								<N8nIcon icon="smartphone" size="small" />
-							</N8nToggle>
+							/>
 						</template>
 					</N8nToggleGroup>
 					<N8nTooltip :content="i18n.baseText('apps.builder.refresh')">
