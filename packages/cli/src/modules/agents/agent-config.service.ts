@@ -10,6 +10,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -377,10 +378,6 @@ export class AgentConfigService {
 			}
 		}
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function mergePersonalisationWithPreviousGradient(

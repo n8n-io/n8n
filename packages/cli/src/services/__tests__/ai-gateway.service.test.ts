@@ -239,6 +239,35 @@ describe('AiGatewayService', () => {
 			).rejects.toThrow(UserError);
 		});
 
+		it('throws UserError when the node type is not covered by the gateway, even for a served credential type', async () => {
+			requestMock.mockResolvedValueOnce(
+				ok({
+					...MOCK_GATEWAY_CONFIG,
+					credentialTypes: [...MOCK_GATEWAY_CONFIG.credentialTypes, 'openAiApi'],
+					providerConfig: {
+						...MOCK_GATEWAY_CONFIG.providerConfig,
+						openAiApi: {
+							gatewayPath: '/v1/gateway/openai',
+							urlField: 'url',
+							apiKeyField: 'apiKey',
+						},
+					},
+				}),
+			);
+			const service = makeService();
+			await expect(
+				service.getSyntheticCredential({
+					credentialType: 'openAiApi',
+					userId: USER_ID,
+					node: {
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.5,
+						parameters: {},
+					},
+				}),
+			).rejects.toThrow(UserError);
+		});
+
 		it('returns synthetic credential with apiKey (JWT) and host (gateway URL)', async () => {
 			mockConfigThenToken('mock-jwt-token');
 			const service = makeService();

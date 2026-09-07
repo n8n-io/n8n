@@ -4,6 +4,7 @@ import {
 	type PatchRoleMappingRuleInput,
 } from '@n8n/api-types';
 import {
+	isUniqueConstraintError,
 	ProjectRepository,
 	RoleMappingRule,
 	RoleMappingRuleRepository,
@@ -11,7 +12,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { type EntityManager, type FindOptionsOrder, In, QueryFailedError } from '@n8n/typeorm';
+import { type EntityManager, type FindOptionsOrder, In } from '@n8n/typeorm';
 import type { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -167,7 +168,7 @@ export class RoleMappingRuleService {
 
 				return saved;
 			} catch (error) {
-				if (attempt < maxAttempts - 1 && isUniqueOrderViolation(error)) {
+				if (attempt < maxAttempts - 1 && isUniqueConstraintError(error)) {
 					continue;
 				}
 
@@ -434,21 +435,4 @@ export class RoleMappingRuleService {
 			updatedAt: loaded.updatedAt.toISOString(),
 		};
 	}
-}
-
-function isUniqueOrderViolation(error: unknown) {
-	if (!(error instanceof QueryFailedError)) return false;
-
-	const driverError = error.driverError as
-		| { code?: string; message?: string; detail?: string }
-		| undefined;
-	const code = driverError?.code;
-	const message = `${error.message} ${driverError?.message ?? ''} ${driverError?.detail ?? ''}`;
-
-	return (
-		code === '23505' ||
-		code === 'SQLITE_CONSTRAINT_UNIQUE' ||
-		code === 'ER_DUP_ENTRY' ||
-		(code === 'SQLITE_CONSTRAINT' && message.includes('UNIQUE constraint failed'))
-	);
 }

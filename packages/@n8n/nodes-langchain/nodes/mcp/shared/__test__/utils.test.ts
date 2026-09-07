@@ -6,6 +6,7 @@ import { createResultError, createResultOk } from '@n8n/utils/result';
 import type {
 	IExecuteFunctions,
 	INode,
+	LiteralMcpRegistryConnection,
 	NodeEgressFilter,
 	PrepareMcpRegistryConnectionInput,
 } from 'n8n-workflow';
@@ -224,6 +225,26 @@ describe('utils', () => {
 			expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('mcpOAuth2Api');
 		});
 
+		it('should refresh an expiring client credentials token without a refresh token', async () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({
+				grantType: 'clientCredentials',
+				oauthTokenData: {
+					access_token: 'access-token',
+					expires_in: 3600,
+					n8n_expires_at: String(now + 60_000),
+				},
+			});
+			ctx.helpers.refreshOAuth2Token.mockResolvedValue({ access_token: 'new-access-token' });
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer new-access-token' });
+			expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('mcpOAuth2Api');
+		});
+
 		it('should not refresh mcpOAuth2Api credentials when the access token is still valid', async () => {
 			const now = 1_700_000_000_000;
 			vi.spyOn(Date, 'now').mockReturnValue(now);
@@ -325,6 +346,19 @@ describe('utils', () => {
 			const result = await getAuthHeaders(ctx, 'unknown' as McpAuthenticationOption);
 
 			expect(result).toEqual({});
+		});
+
+		it('should apply a native OAuth2 credential', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = { oauthTokenData: { access_token: 'github-token' } };
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'githubOAuth2Api');
+
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer github-token' },
+				credentials,
+			});
 		});
 
 		it.each([
@@ -842,28 +876,33 @@ describe('utils', () => {
 				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
 					access_token: 'refreshed-token',
 				});
+				const credentialType = 'testMcpOAuth2Api' as const;
 				ctx.helpers.getSecureEgressFilter.mockReturnValue(createTestEgressFilter());
-				const connection = {
+				const connection: LiteralMcpRegistryConnection = {
 					nodeTypeName: '@n8n/mcp-registry.test',
-					credentialType: 'testMcpOAuth2Api' as const,
 					endpointUrl: 'https://example.com/mcp',
 					endpointHostname: 'example.com',
-					transport: 'httpStreamable' as const,
+					transport: 'httpStreamable',
+					credentialBindings: [{ credentialType, selector: 'oAuth2' }],
+					isTemplated: false,
 				};
 				const prepareConnection = vi.fn((input: PrepareMcpRegistryConnectionInput) => ({
 					ok: true as const,
 					value: {
-						...connection,
+						nodeTypeName: connection.nodeTypeName,
+						credentialType,
+						transport: connection.transport,
+						endpointUrl: connection.endpointUrl,
 						headers: input.headers ?? {},
 						allowedDomains: connection.endpointHostname,
 					},
 				}));
 
 				await connectMcpClientForCredential(ctx, {
-					authentication: connection.credentialType,
+					authentication: credentialType,
 					serverTransport: transport,
 					endpointUrl: connection.endpointUrl,
-					registryCredential: { connection, prepareConnection },
+					registryCredential: { connection, credentialType, prepareConnection },
 					surface: 'MCP Client Tool',
 				});
 

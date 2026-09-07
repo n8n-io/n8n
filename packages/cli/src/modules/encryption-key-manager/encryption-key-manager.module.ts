@@ -21,4 +21,10 @@ export class EncryptionKeyManagerModule implements ModuleInterface {
 		const { EncryptionBootstrapService } = await import('./encryption-bootstrap.service.js');
 		await Container.get(EncryptionBootstrapService).run();
 	}
+
+	/** Settings exposed to the frontend under `/rest/module-settings`. */
+	async settings() {
+		const { isKeyRotationEnabled } = await import('./key-rotation-flag.js');
+		return { rotationEnabled: isKeyRotationEnabled() };
+	}
 }

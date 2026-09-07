@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, reactive, ref } from 'vue';
+import { defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -316,6 +316,7 @@ const InstanceAiInputStub = defineComponent({
 		const currentText = ref('');
 		expose({
 			focus: vi.fn(),
+			isDirty: () => currentText.value.length > 0,
 			setText: (text: string) => {
 				currentText.value = text;
 			},
@@ -452,9 +453,10 @@ describe('InstanceAiEmptyView', () => {
 			isAwaitingConfirmation: false,
 			amendContext: null,
 			contextualSuggestion: null,
-			sendMessage: vi.fn().mockResolvedValue(undefined),
+			sendMessage: vi.fn().mockResolvedValue(true),
 		} as unknown as ThreadRuntime;
 		store.getOrCreateRuntime.mockReturnValue(thread);
+		store.deleteThread.mockResolvedValue(true);
 		store.creditsQuota = 100;
 		store.showCreditWarning = false;
 		store.quotaLocked = false;
@@ -894,6 +896,54 @@ describe('InstanceAiEmptyView', () => {
 			params: { threadId: 'thread-placeholder' },
 		});
 		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('stays on the empty view and restores the draft when the send is refused', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		vi.mocked(thread.sendMessage).mockResolvedValue(false);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+		await nextTick();
+
+		expect(thread.sendMessage).toHaveBeenCalledWith('hello', undefined, 'test-push-ref');
+		// Navigating would drop the user into a blank thread, and the destination cannot be
+		// handed the draft either: it reads localStorage once, synchronously, on mount.
+		expect(replaceMock).not.toHaveBeenCalled();
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+		// syncThread already persisted the thread and sendMessage opened its SSE; leaving
+		// them behind would strand a blank sidebar entry and an EventSource per attempt.
+		// Silent: the refusal was already reported, so a second toast would only confuse.
+		expect(store.deleteThread).toHaveBeenCalledWith('thread-placeholder', { silent: true });
+		expect(store.disposeRuntime).not.toHaveBeenCalled();
+	});
+
+	// A refused delete returns before the store's own teardown, so the SSE would otherwise
+	// stay open -- the exact leak this cleanup exists to prevent.
+	it('still disposes the runtime when the cleanup delete is refused', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		vi.mocked(thread.sendMessage).mockResolvedValue(false);
+		store.deleteThread.mockResolvedValue(false);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+		await nextTick();
+
+		expect(store.disposeRuntime).toHaveBeenCalledWith('thread-placeholder');
+		// The draft still comes back: cleanup must never cost the user their message.
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+	});
+
+	it('keeps the provisional thread when the send is accepted', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.deleteThread).not.toHaveBeenCalled();
 	});
 
 	it('attributes syncThread to ?source= from an unsaved-canvas hand-off', async () => {
