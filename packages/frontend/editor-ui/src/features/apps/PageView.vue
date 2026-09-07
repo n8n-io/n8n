@@ -1,17 +1,23 @@
 <script setup lang="ts">
 import {
 	N8nButton,
+	N8nIconButton,
 	N8nInput,
 	N8nOption,
+	N8nSegmentControl,
 	N8nSelect,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nTabs,
 	N8nText,
+	N8nToggle,
+	N8nToggleGroup,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import CopyInput from '@/app/components/CopyInput.vue';
@@ -19,6 +25,7 @@ import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
+import PagePreviewFrame from '@/features/apps/components/PagePreviewFrame.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { useAppDeletion } from '@/features/apps/useAppDeletion';
 import { ADD_PAGE_MODAL_KEY, APP_DETAILS, APP_PAGE_DETAILS } from '@/features/apps/apps.constants';
@@ -30,6 +37,12 @@ import {
 	getPageUrl,
 } from '@/features/apps/pageTree.utils';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+
+type BuilderMode = 'build' | 'preview';
+type PreviewDevice = 'desktop' | 'mobile';
+type BuildTab = 'settings' | 'code';
+
+const PREVIEW_WIDTHS: Record<PreviewDevice, string> = { desktop: '100%', mobile: '390px' };
 
 const props = defineProps<{
 	projectId: string;
@@ -51,6 +64,25 @@ const route = ref('');
 const dataWorkflowId = ref<string | null>(null);
 const loading = ref(false);
 const saving = ref(false);
+const mode = ref<BuilderMode>('build');
+const device = ref<PreviewDevice>('desktop');
+const buildTab = ref<BuildTab>('settings');
+const previewFrame = useTemplateRef<InstanceType<typeof PagePreviewFrame>>('previewFrame');
+
+const modeOptions = computed(() => [
+	{ label: i18n.baseText('apps.builder.build'), value: 'build' as const },
+	{ label: i18n.baseText('apps.builder.preview'), value: 'preview' as const },
+]);
+
+const buildTabOptions = computed(() => [
+	{ value: 'settings' as const, label: i18n.baseText('apps.page.tabs.settings') },
+	{
+		value: 'code' as const,
+		label: i18n.baseText('apps.builder.code'),
+		disabled: true,
+		tooltip: i18n.baseText('apps.builder.codeComingSoon'),
+	},
+]);
 
 const pageUrl = computed(() => {
 	if (!app.value) return '';
@@ -142,6 +174,10 @@ const onDeleteChildPage = async (pageId: string) => {
 	await confirmAndDeletePage(props.projectId, props.appId, pageId);
 };
 
+const onDeviceChange = (value: unknown) => {
+	if (value === 'desktop' || value === 'mobile') device.value = value;
+};
+
 onMounted(initialize);
 
 // Navigating between sibling pages (e.g. via the breadcrumb) reuses this same
@@ -152,126 +188,231 @@ watch(() => props.pageId, initialize);
 
 <template>
 	<PageViewLayout data-test-id="page-view">
-		<template #header>
-			<div :class="$style.breadcrumbsRow">
-				<AppBreadcrumbs
-					v-if="app"
-					:project-id="projectId"
-					:app-id="appId"
-					:app-name="app.name"
-					:current-page-id="pageId"
-				/>
-				<div v-if="app" :class="$style.headerActions">
-					<N8nButton :loading="saving" data-test-id="page-save" @click="onSave">
-						{{ i18n.baseText('apps.page.save') }}
-					</N8nButton>
-					<N8nButton
-						icon-only
-						icon="trash-2"
-						variant="subtle"
-						:aria-label="i18n.baseText('generic.delete')"
-						data-test-id="page-delete"
-						@click="onDelete"
+		<div :class="$style.builder">
+			<div :class="$style.toolbar">
+				<div :class="$style.toolbarStart">
+					<AppBreadcrumbs
+						v-if="app"
+						:project-id="projectId"
+						:app-id="appId"
+						:app-name="app.name"
+						:current-page-id="pageId"
 					/>
 				</div>
-			</div>
-		</template>
-
-		<div :class="$style.container">
-			<div v-if="app" :class="$style.urlCard">
-				<CopyInput
-					:label="i18n.baseText('apps.page.url.label')"
-					:value="pageUrl"
-					data-test-id="page-url"
+				<N8nSegmentControl
+					v-model="mode"
+					:options="modeOptions"
+					size="small"
+					data-test-id="page-builder-mode"
 				/>
+				<div :class="$style.toolbarEnd">
+					<template v-if="app">
+						<CopyInput :class="$style.urlCopy" :value="pageUrl" collapse data-test-id="page-url" />
+						<N8nButton :loading="saving" size="small" data-test-id="page-save" @click="onSave">
+							{{ i18n.baseText('apps.page.save') }}
+						</N8nButton>
+						<N8nButton
+							icon-only
+							icon="trash-2"
+							variant="subtle"
+							size="small"
+							:aria-label="i18n.baseText('generic.delete')"
+							data-test-id="page-delete"
+							@click="onDelete"
+						/>
+					</template>
+				</div>
 			</div>
 
-			<N8nSettingsSection>
-				<N8nSettingsRowGroup>
-					<N8nSettingsRow
-						:title="i18n.baseText('apps.page.input.route.label')"
-						:description="i18n.baseText('apps.page.add.input.route.hint')"
-						:max-description-lines="3"
+			<div
+				v-if="app && mode === 'preview'"
+				:class="$style.preview"
+				data-test-id="page-builder-preview"
+			>
+				<div :class="$style.previewBar">
+					<N8nToggleGroup
+						:model-value="device"
+						variant="ghost"
+						size="small"
+						data-test-id="page-preview-device"
+						@update:model-value="onDeviceChange"
 					>
-						<template #action>
-							<N8nInput
-								v-model="route"
-								:placeholder="i18n.baseText('apps.page.add.input.route.placeholder')"
-								data-test-id="page-route-input"
+						<template #default="{ variant, size }">
+							<N8nToggle
+								value="desktop"
+								:label="i18n.baseText('apps.builder.desktop')"
+								icon="monitor"
+								:variant="variant"
+								:size="size"
+								data-test-id="page-preview-device-desktop"
+							/>
+							<N8nToggle
+								value="mobile"
+								:label="i18n.baseText('apps.builder.mobile')"
+								icon="smartphone"
+								:variant="variant"
+								:size="size"
+								data-test-id="page-preview-device-mobile"
 							/>
 						</template>
-					</N8nSettingsRow>
-					<N8nSettingsRow
-						:title="i18n.baseText('apps.page.input.dataWorkflow.label')"
-						:description="i18n.baseText('apps.page.input.dataWorkflow.hint')"
-						:max-description-lines="3"
-					>
-						<template #action>
-							<N8nSelect
-								v-model="dataWorkflowId"
-								clearable
-								filterable
-								:placeholder="i18n.baseText('apps.page.input.dataWorkflow.placeholder')"
-								data-test-id="page-data-workflow-select"
-							>
-								<N8nOption
-									v-for="option in appsStore.dataWorkflowOptions"
-									:key="option.id"
-									:value="option.id"
-									:label="option.name"
-								/>
-							</N8nSelect>
-						</template>
-					</N8nSettingsRow>
-				</N8nSettingsRowGroup>
-			</N8nSettingsSection>
-
-			<div :class="$style.content" data-test-id="page-content-placeholder">
-				<N8nText color="text-light">{{ i18n.baseText('apps.page.content.placeholder') }}</N8nText>
+					</N8nToggleGroup>
+					<N8nTooltip :content="i18n.baseText('apps.builder.refresh')">
+						<N8nIconButton
+							icon="refresh-cw"
+							variant="ghost"
+							size="small"
+							:aria-label="i18n.baseText('apps.builder.refresh')"
+							data-test-id="page-preview-refresh"
+							@click="previewFrame?.refresh()"
+						/>
+					</N8nTooltip>
+				</div>
+				<PagePreviewFrame ref="previewFrame" :page-url="pageUrl" :width="PREVIEW_WIDTHS[device]" />
 			</div>
 
-			<div :class="$style.header">
-				<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.page.subPages') }}</N8nText>
-				<N8nButton
-					v-if="route"
+			<div v-else-if="app" :class="$style.build" data-test-id="page-builder-build">
+				<N8nTabs
+					v-model="buildTab"
+					:options="buildTabOptions"
 					size="small"
-					data-test-id="page-add-child"
-					@click="openAddPageModal(pageId)"
-				>
-					{{ i18n.baseText('apps.page.new') }}
-				</N8nButton>
-			</div>
-
-			<N8nText v-if="childPages.length === 0" color="text-light">
-				{{ i18n.baseText('apps.pages.empty') }}
-			</N8nText>
-
-			<div :class="$style.pageGrid">
-				<PageCard
-					v-for="page in childPages"
-					:key="page.id"
-					:page="page"
-					:child-count="childCounts.get(page.id) ?? 0"
-					@open="openPage"
-					@add-child="openAddPageModal"
-					@delete="onDeleteChildPage"
+					variant="modern"
+					data-test-id="page-builder-tabs"
 				/>
+
+				<div v-if="buildTab === 'settings'" :class="$style.container">
+					<N8nSettingsSection>
+						<N8nSettingsRowGroup>
+							<N8nSettingsRow
+								:title="i18n.baseText('apps.page.input.route.label')"
+								:description="i18n.baseText('apps.page.add.input.route.hint')"
+								:max-description-lines="3"
+							>
+								<template #action>
+									<N8nInput
+										v-model="route"
+										:placeholder="i18n.baseText('apps.page.add.input.route.placeholder')"
+										data-test-id="page-route-input"
+									/>
+								</template>
+							</N8nSettingsRow>
+							<N8nSettingsRow
+								:title="i18n.baseText('apps.page.input.dataWorkflow.label')"
+								:description="i18n.baseText('apps.page.input.dataWorkflow.hint')"
+								:max-description-lines="3"
+							>
+								<template #action>
+									<N8nSelect
+										v-model="dataWorkflowId"
+										clearable
+										filterable
+										:placeholder="i18n.baseText('apps.page.input.dataWorkflow.placeholder')"
+										data-test-id="page-data-workflow-select"
+									>
+										<N8nOption
+											v-for="option in appsStore.dataWorkflowOptions"
+											:key="option.id"
+											:value="option.id"
+											:label="option.name"
+										/>
+									</N8nSelect>
+								</template>
+							</N8nSettingsRow>
+						</N8nSettingsRowGroup>
+					</N8nSettingsSection>
+
+					<div :class="$style.header">
+						<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.page.subPages') }}</N8nText>
+						<N8nButton
+							v-if="route"
+							size="small"
+							data-test-id="page-add-child"
+							@click="openAddPageModal(pageId)"
+						>
+							{{ i18n.baseText('apps.page.new') }}
+						</N8nButton>
+					</div>
+
+					<N8nText v-if="childPages.length === 0" color="text-light">
+						{{ i18n.baseText('apps.pages.empty') }}
+					</N8nText>
+
+					<div :class="$style.pageGrid">
+						<PageCard
+							v-for="page in childPages"
+							:key="page.id"
+							:page="page"
+							:child-count="childCounts.get(page.id) ?? 0"
+							@open="openPage"
+							@add-child="openAddPageModal"
+							@delete="onDeleteChildPage"
+						/>
+					</div>
+				</div>
 			</div>
 		</div>
 	</PageViewLayout>
 </template>
 
 <style lang="scss" module>
-.breadcrumbsRow {
+.builder {
 	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	gap: var(--spacing--sm);
 }
 
-.headerActions {
+.toolbar {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.toolbarStart,
+.toolbarEnd {
+	display: flex;
+	flex: 1;
+	align-items: center;
 	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.toolbarEnd {
+	justify-content: flex-end;
+}
+
+.urlCopy {
+	max-width: 260px;
+	min-width: 0;
+}
+
+.preview {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	overflow: hidden;
+	background: var(--background--surface);
+}
+
+.previewBar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border-bottom: var(--border);
+}
+
+.build {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	gap: var(--spacing--sm);
+	overflow: auto;
 }
 
 .container {
@@ -280,24 +421,6 @@ watch(() => props.pageId, initialize);
 	gap: var(--spacing--sm);
 	width: 100%;
 	padding-bottom: var(--spacing--lg);
-}
-
-.urlCard {
-	background-color: var(--background--surface);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--md);
-	margin-bottom: var(--spacing--sm);
-}
-
-.content {
-	border: 1px dashed var(--border-color);
-	border-radius: var(--radius--sm);
-	padding: var(--spacing--xl);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	margin-bottom: var(--spacing--sm);
 }
 
 .header {
