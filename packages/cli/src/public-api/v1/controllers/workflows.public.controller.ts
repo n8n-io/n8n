@@ -26,7 +26,6 @@ import type {
 	AuthenticatedRequest,
 	Folder,
 	SharedWorkflow,
-	TagEntity,
 	WorkflowEntity,
 	WorkflowHistory,
 	WorkflowPublishHistory,
@@ -61,6 +60,7 @@ import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-v
 import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { toPublicTag } from '@/public-api/v1/handlers/tags/tags.mapper';
 import {
 	decodeCursor,
 	encodeNextCursor,
@@ -98,15 +98,6 @@ function toPublicJson(value: unknown): Record<string, unknown> | null {
 
 function parseTagNames(tags: string): string[] {
 	return tags.split(',').map((tag) => tag.trim());
-}
-
-function toPublicTag(tag: TagEntity) {
-	return {
-		id: tag.id,
-		name: tag.name,
-		createdAt: tag.createdAt.toISOString(),
-		updatedAt: tag.updatedAt.toISOString(),
-	};
 }
 
 function toPublicFolder(folder: Folder) {

@@ -12,6 +12,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { toPublicTag } from '@/public-api/v1/handlers/tags/tags.mapper';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -38,11 +39,7 @@ export class TagsPublicController {
 		const { data, count } = await this.tagService.getPaginated({ offset, limit });
 
 		return {
-			data: data.map((tag) => ({
-				...tag,
-				createdAt: tag.createdAt.toISOString(),
-				updatedAt: tag.updatedAt.toISOString(),
-			})),
+			data: data.map(toPublicTag),
 			nextCursor: encodeNextCursor({
 				offset,
 				limit,
