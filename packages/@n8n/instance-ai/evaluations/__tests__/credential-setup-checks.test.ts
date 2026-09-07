@@ -1,12 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
+import type { N8nClient } from '../clients/n8n-client';
 import {
 	credentialSetupExpectationTexts,
 	evaluateCredentialSetup,
+	probeCredentialValue,
 	redactTranscriptSecrets,
 	runCredentialSetupChecks,
 	type CredentialSetupFacts,
 } from '../harness/credential-setup-checks';
+import { createLogger } from '../harness/logger';
 
 const SECRET = 'sk-ant-api03-abcdefghijklmnopqrstuvwx';
 
@@ -324,5 +327,85 @@ describe('credentialSetupExpectationTexts stays in lockstep with the evaluator',
 		);
 
 		expect(new Set(credentialSetupExpectationTexts(undefined))).toEqual(new Set(emitted));
+	});
+});
+
+// Which field carries the base URL is per-provider (`host` for gemini). The
+// wrong one leaves the test pointed at the real provider, where it is discarded
+// — so the check silently never runs for that provider.
+describe('probeCredentialValue aims the test at the stand-in', () => {
+	const logger = createLogger(false);
+	const VERIFY_URL = 'http://dispatcher:41234';
+
+	function client(storedData: Record<string, unknown>) {
+		const testCredential = vi.fn().mockResolvedValue({ status: 'OK' });
+		return {
+			/** The `data` of each credential-test request the probe sent. */
+			tested: (): Array<Record<string, unknown>> =>
+				testCredential.mock.calls.map(([c]) => (c as { data: Record<string, unknown> }).data),
+			client: {
+				listCredentials: vi
+					.fn()
+					.mockResolvedValue([{ id: 'new1', name: 'acct', type: 'googlePalmApi' }]),
+				getCredentialForTest: vi
+					.fn()
+					.mockResolvedValue({ id: 'new1', name: 'acct', type: 'googlePalmApi', data: storedData }),
+				testCredential,
+			} as unknown as N8nClient,
+		};
+	}
+
+	it('overwrites the field the manifest names, not always `url`', async () => {
+		const { client: c, tested } = client({
+			host: 'https://generativelanguage.googleapis.com',
+			apiKey: '',
+		});
+
+		const probe = await probeCredentialValue({
+			client: c,
+			credentialType: 'googlePalmApi',
+			credentialIdsBefore: [],
+			fixture: { verifyAttempts: 1, verifiedOk: true },
+			verifyBaseUrl: VERIFY_URL,
+			urlField: 'host',
+			logger,
+		});
+
+		expect(probe).toEqual({ kind: 'passed', target: 'stand-in' });
+		expect(tested()[0].host).toBe(VERIFY_URL);
+		// And nothing invents a `url` the credential type does not have.
+		expect(tested()[0].url).toBeUndefined();
+	});
+
+	it('defaults to `url` when no field is named', async () => {
+		const { client: c, tested } = client({ url: 'https://api.anthropic.com', apiKey: '' });
+
+		await probeCredentialValue({
+			client: c,
+			credentialIdsBefore: [],
+			fixture: { verifyAttempts: 1, verifiedOk: true },
+			verifyBaseUrl: VERIFY_URL,
+			logger,
+		});
+
+		expect(tested()[0].url).toBe(VERIFY_URL);
+	});
+
+	it('leaves the URL alone in local mode, so the REAL provider answers', async () => {
+		const { client: c, tested } = client({
+			host: 'https://generativelanguage.googleapis.com',
+			apiKey: '',
+		});
+
+		const probe = await probeCredentialValue({
+			client: c,
+			credentialIdsBefore: [],
+			local: true,
+			urlField: 'host',
+			logger,
+		});
+
+		expect(probe).toEqual({ kind: 'passed', target: 'real' });
+		expect(tested()[0].host).toBe('https://generativelanguage.googleapis.com');
 	});
 });

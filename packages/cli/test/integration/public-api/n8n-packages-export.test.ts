@@ -196,4 +196,27 @@ describe('POST /n8n-packages/export', () => {
 
 		expect(response.statusCode).toBe(200);
 	});
+
+	// Acceptance proves `credentialExportPolicy` is declared in exportPackageRequest.yml.
+	test('accepts credentialExportPolicy=no-values through the OpenAPI request validator', async () => {
+		const project = await createTeamProject('Export project', owner);
+		const folder = await createFolder(project, { name: 'to_production' });
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/export')
+			.send({ folderIds: [folder.id], credentialExportPolicy: 'no-values' });
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('rejects an unknown credentialExportPolicy value', async () => {
+		const project = await createTeamProject('Export project', owner);
+		const folder = await createFolder(project, { name: 'to_production' });
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/export')
+			.send({ folderIds: [folder.id], credentialExportPolicy: 'all-values' });
+
+		expect(response.statusCode).toBe(400);
+	});
 });

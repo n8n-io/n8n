@@ -178,6 +178,7 @@ describe('WorkflowPublisher', () => {
 
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
+				archiveTransition: null,
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: false,
 				parentFolderId: null,
@@ -235,6 +236,7 @@ describe('WorkflowPublisher', () => {
 
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
+				archiveTransition: null,
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: true,
 				parentFolderId: null,
@@ -270,6 +272,7 @@ describe('WorkflowPublisher', () => {
 
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
+				archiveTransition: null,
 				sourceWorkflowId: 'wf-broken',
 				sourcePublished: true,
 				parentFolderId: null,

@@ -1,4 +1,5 @@
 @use 'mixins/mixins';
+@use 'mixins/motion';
 @use 'mixins/utils';
 @use './common/var';
 @use 'common/popup';
@@ -113,31 +114,15 @@
 }
 
 .dialog-fade-enter-active {
-	animation: dialog-fade-in 0.3s;
+	--animation--fade-in-down--duration: 0.3s;
+	--animation--fade-in-down--translate: 20px;
+
+	@include motion.fade-in-down;
 }
 
 .dialog-fade-leave-active {
-	animation: dialog-fade-out 0.3s;
-}
+	--animation--fade-out-up--duration: 0.3s;
+	--animation--fade-out-up--translate: 20px;
 
-@keyframes dialog-fade-in {
-	0% {
-		transform: translate3d(0, -20px, 0);
-		opacity: 0;
-	}
-	100% {
-		transform: translate3d(0, 0, 0);
-		opacity: 1;
-	}
-}
-
-@keyframes dialog-fade-out {
-	0% {
-		transform: translate3d(0, 0, 0);
-		opacity: 1;
-	}
-	100% {
-		transform: translate3d(0, -20px, 0);
-		opacity: 0;
-	}
+	@include motion.fade-out-up;
 }

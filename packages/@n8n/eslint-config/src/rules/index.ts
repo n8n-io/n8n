@@ -30,6 +30,12 @@ import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
 import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
 import { NoPublicApiGuardrailDisableRule } from './no-public-api-guardrail-disable.js';
+import { NoLegacyCipherMethodsRule } from './no-legacy-cipher-methods.js';
+import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
+import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
+import { NoMisplacedCipherPrimitivesRule } from './no-misplaced-cipher-primitives.js';
+import { NoDeploymentKeyDeleteRule } from './no-deployment-key-delete.js';
+import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -63,4 +69,10 @@ export const rules = {
 	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
 	'require-public-api-controller': RequirePublicApiControllerRule,
 	'no-public-api-guardrail-disable': NoPublicApiGuardrailDisableRule,
+	'no-legacy-cipher-methods': NoLegacyCipherMethodsRule,
+	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
+	'no-on-leader-takeover': NoOnLeaderTakeoverRule,
+	'no-misplaced-cipher-primitives': NoMisplacedCipherPrimitivesRule,
+	'no-deployment-key-delete': NoDeploymentKeyDeleteRule,
+	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
 } satisfies Record<string, AnyRuleModule>;

@@ -1,10 +1,44 @@
-import { collectHit, UNDELIMITED_TOKEN, type SecretHit } from '../redaction/redact';
-import { expandToTokenSpan } from '../redaction/token-span';
+import {
+	ASSIGNMENT_NAME,
+	type CaptureBlockedReason,
+	collectHit,
+	CONCATENATED_ONLY,
+	PARTIAL_TOKEN,
+	UNDELIMITED_TOKEN,
+	type SecretHit,
+} from '../redaction/redact';
+import { assignmentNames, expandToTokenSpan, tokenize } from '../redaction/token-span';
 
 export const TESTID_ATTRS = ['data-testid', 'data-test-id', 'data-test', 'data-qa'] as const;
 
-export const SENSITIVE_TESTID_PATTERN =
-	/(^|[-_\s])(api[-_\s]?key|apikey|admin[-_\s]?key|access[-_\s]?token|auth[-_\s]?token|session[-_\s]?token|secret|credential|password|key)([-_\s]|$)/i;
+// An identifier is not prose: `tokenizer-output` and `secretary-panel` carry a
+// credential noun without naming one, so a vocabulary only counts at separators.
+const identifierBoundary = (vocabulary: RegExp) =>
+	new RegExp(`(^|[-_\\s])(?:${vocabulary.source})([-_\\s]|$)`, 'i');
+
+// `clientSecret` names a secret as plainly as `client-secret` does, so give the
+// hump the separator the boundary rule needs. Humpless runs (`tokenizer`) are
+// untouched, which is what keeps them out.
+const separateCamelHumps = (text: string) => text.replace(/([a-z0-9])([A-Z])/g, '$1-$2');
+
+/** Shortest run we treat as opaque rather than prose. */
+const MIN_OPAQUE_TOKEN_LENGTH = 16;
+
+// Only excludes degenerate runs: a mask of repeated characters scores 0, while
+// the flattest real secret shape (hex) still scores ~3.95.
+const MIN_OPAQUE_TOKEN_ENTROPY = 2;
+
+// A credential noun trailed by one of these describes the credential instead of
+// being it: "Token expiry", "API key docs". Deliberately a denylist rather than
+// requiring the noun to end the label: an unknown qualifier here over-redacts,
+// whereas an unknown head noun ("Client secret value") would leak.
+const QUALIFIED_LABEL_PATTERN =
+	/\b(expir\w*|type|kind|status|state|policy|docs?|documentation|guide|help|name|id|created|updated|modified|date|time|commit|version|count|rotation|scopes?|fingerprint|hint|prefix|suffix|owner|author)\s*$/i;
+
+const TESTID_VOCABULARY =
+	/api[-_\s]?key|apikey|admin[-_\s]?key|access[-_\s]?token|auth[-_\s]?token|session[-_\s]?token|secret|credential|password|key/;
+
+export const SENSITIVE_TESTID_PATTERN = identifierBoundary(TESTID_VOCABULARY);
 
 export const SENSITIVE_ARIA_LABEL_PATTERN =
 	/(api[-_\s]?key|secret[-_\s]?key|access[-_\s]?token|auth[-_\s]?token|client[-_\s]?secret|password|credential)/i;
@@ -83,6 +117,51 @@ export function getAssociatedLabelText(
 		.join(' ');
 }
 
+const SENSITIVE_FIELD_ATTR_PATTERN = identifierBoundary(SENSITIVE_FIELD_LABEL_PATTERN);
+
+// A trailing colon, asterisk or parenthetical is decoration, not the end of the
+// label — without stripping it the qualifier rule below never anchors.
+const LABEL_DECORATION = /(?:\s*(?:\([^()]*\)|\[[^\]]*\]|[:*.,;·—-]))+$/;
+
+// A label is a few words; longer text only landed in the cell by accident, and
+// `LABEL_DECORATION` backtracks quadratically over it. Skipping the strip there
+// leaves the vocabulary test to run on undecorated text, which at worst
+// over-redacts — the safe direction.
+const MAX_LABEL_LENGTH = 200;
+
+function labelEnd(text: string): string {
+	if (!text) return '';
+	const label = text.replace(/\s+/g, ' ').trim();
+	return label.length > MAX_LABEL_LENGTH ? label : label.replace(LABEL_DECORATION, '');
+}
+
+function namesSecret(text: string, pattern: RegExp): boolean {
+	const label = labelEnd(text);
+	return pattern.test(label) && !QUALIFIED_LABEL_PATTERN.test(label);
+}
+
+// A row may label its value with a plain `td` rather than a `th`; the label
+// vocabulary, not the tag, is what qualifies it.
+const LABEL_PARTNER_TAGS = ['DT', 'TH', 'TD'];
+
+/**
+ * Whether a static value cell is named as holding a secret — by its label
+ * partner or by its own attributes. Each source is judged separately, or the
+ * trailing-qualifier rule would anchor to whichever source happened to be last.
+ */
+export function isSecretLabelledCell(el: Element): boolean {
+	const prev = el.previousElementSibling;
+	const partner = prev && LABEL_PARTNER_TAGS.includes(prev.tagName) ? prev.textContent : '';
+	if (namesSecret(partner ?? '', SENSITIVE_FIELD_LABEL_PATTERN)) return true;
+	// Five `getAttribute` calls per cell otherwise, on pages where most carry none.
+	if (!el.hasAttributes()) return false;
+	return (
+		namesSecret(separateCamelHumps(el.getAttribute('id') ?? ''), SENSITIVE_FIELD_ATTR_PATTERN) ||
+		// The test-id pass judges the same attribute, so it must agree with it.
+		namesSecret(separateCamelHumps(getTestId(el)), SENSITIVE_TESTID_PATTERN)
+	);
+}
+
 export function elementText(el: Element): string {
 	const parts: string[] = [];
 	for (const node of Array.from(el.childNodes)) {
@@ -122,7 +201,11 @@ export function sensitiveInputValues(el: Element): string[] {
 	for (const attr of Array.from(el.attributes)) {
 		if (!attr.name.startsWith('data-') || !SENSITIVE_TESTID_PATTERN.test(attr.name)) continue;
 		const candidate = attr.value.trim();
-		if (candidate.length >= 16 && !/\s/.test(candidate) && !values.includes(candidate)) {
+		if (
+			candidate.length >= MIN_OPAQUE_TOKEN_LENGTH &&
+			!/\s/.test(candidate) &&
+			!values.includes(candidate)
+		) {
 			values.push(candidate);
 		}
 	}
@@ -147,6 +230,50 @@ export function shannonEntropy(value: string): number {
 		entropy -= p * Math.log2(p);
 	}
 	return entropy;
+}
+
+function opaqueTokens(text: string): string[] {
+	return tokenize(text).filter(
+		(token) =>
+			token.length >= MIN_OPAQUE_TOKEN_LENGTH && shannonEntropy(token) >= MIN_OPAQUE_TOKEN_ENTROPY,
+	);
+}
+
+/**
+ * Opaque tokens from a container its label already confirmed, so length carries
+ * the decision that entropy carries over a region.
+ */
+export function opaqueTokenCandidates(el: Element): SecretHit[] {
+	const text = elementText(el);
+	const rendered = opaqueTokens(text);
+	// `elementText` spaces inline children apart, so a value split across them is
+	// whole only in `textContent` — a spelling that appears nowhere in what the
+	// model reads, which is why neither it nor the rendered fragments inside it
+	// may become a credential.
+	const seen = new Set(rendered);
+	const concatenated = el.firstElementChild
+		? opaqueTokens(el.textContent ?? '').filter((value) => !seen.has(value))
+		: [];
+	const names = new Set(assignmentNames(text));
+
+	// Masked either way; the reason decides only whether it may be captured.
+	const blocked = (value: string): CaptureBlockedReason | undefined => {
+		if (names.has(value)) return ASSIGNMENT_NAME;
+		if (concatenated.some((whole) => whole.includes(value))) return PARTIAL_TOKEN;
+		return undefined;
+	};
+
+	return [
+		...rendered.map((value): SecretHit => {
+			const captureBlocked = blocked(value);
+			return captureBlocked
+				? { type: 'password', value, captureBlocked }
+				: { type: 'password', value };
+		}),
+		...concatenated.map(
+			(value): SecretHit => ({ type: 'password', value, captureBlocked: CONCATENATED_ONLY }),
+		),
+	];
 }
 
 // Scored on the inner match, reported as the whole token: a shape this class

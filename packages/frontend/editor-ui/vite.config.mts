@@ -16,10 +16,17 @@ import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
 import { editorUiAliases } from './vite/aliases.mjs';
+import { DEFAULT_BACKEND_PORT, devServerPlugin, readDevPort } from './vite/dev-ports.mjs';
+// Imported from source, not from `@n8n/constants`: this file must resolve with no build step.
+import { HTML_NONCE_PLACEHOLDER } from '../../@n8n/constants/src/csp';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
 const { NODE_ENV } = process.env;
+
+// Only reachable through the dev server (see the `ctx.server` guard below),
+// which `devServerPlugin` has already validated by the time it runs.
+const devBackendPort = readDevPort(process.env, 'N8N_PORT', DEFAULT_BACKEND_PORT);
 
 const browsers = browserslist.loadConfig({ path: process.cwd() });
 
@@ -31,9 +38,10 @@ const singleInstanceDedupe = ['zod'];
 
 const alias = editorUiAliases(__dirname, packagesDir);
 
-const { RELEASE: release } = process.env;
+const { RELEASE: release, SENTRY_AUTH_TOKEN: sentryAuthToken } = process.env;
 
 const plugins: UserConfig['plugins'] = [
+	devServerPlugin(process.env),
 	nodePopularityPlugin(),
 	lucideIconsPlugin(),
 	icons({
@@ -96,7 +104,7 @@ const plugins: UserConfig['plugins'] = [
 			return ctx.server
 				? html
 						.replace('%CONFIG_TAGS%', '')
-						.replaceAll('/{{BASE_PATH}}', `//localhost:${process.env.N8N_PORT ?? '5678'}`)
+						.replaceAll('/{{BASE_PATH}}', `//localhost:${devBackendPort}`)
 						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},
@@ -131,10 +139,19 @@ const plugins: UserConfig['plugins'] = [
 				sentryVitePlugin({
 					org: 'n8nio',
 					project: 'instance-frontend',
-					authToken: process.env.SENTRY_AUTH_TOKEN,
+					authToken: sentryAuthToken,
+					// Stop the deletion hook if the Sentry upload fails.
+					errorHandler: (error) => {
+						throw error;
+					},
 					telemetry: false,
 					release: {
 						name: `n8n@${release}`,
+					},
+					sourcemaps: {
+						// Sentry keeps these maps, so the image does not need them (156MB).
+						// Keep the maps if upload credentials are not available.
+						filesToDeleteAfterUpload: sentryAuthToken ? ['./dist/**/*.map'] : undefined,
 					},
 				}),
 			]
@@ -162,6 +179,11 @@ export default defineConfig({
 		BASE_PATH: `'${publicPath}'`,
 	},
 	plugins,
+	// Marks every script, style and stylesheet link Vite emits, so the backend can swap in
+	// the request's nonce when it serves the page. Vite stamps these last, after plugins
+	// like `@vitejs/plugin-legacy` have appended their own tags, which a plugin of ours
+	// could not reach.
+	html: { cspNonce: HTML_NONCE_PLACEHOLDER },
 	resolve: { alias, dedupe: singleInstanceDedupe },
 	base: publicPath,
 	envPrefix: ['VUE', 'N8N_ENV_FEAT'],
@@ -181,8 +203,11 @@ export default defineConfig({
 		minify: !!release,
 		// Coverage builds emit INLINE maps so browser V8 coverage carries the
 		// map in the script source and monocart resolves offsets back to src.
-		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
+		// 'hidden' writes the maps but omits the sourceMappingURL comment.
+		// Deleted maps then cause no 404 in devtools.
+		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : release ? 'hidden' : false,
 		target,
+		cssTarget: target,
 	},
 	optimizeDeps: {
 		exclude: ['wa-sqlite'],

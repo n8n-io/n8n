@@ -1,6 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
+	createWorkflow,
 	linkUserToProject,
 	mockInstance,
 	testDb,
@@ -16,7 +17,7 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import type { User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { pickVariableForProject } from 'n8n-workflow';
 
@@ -27,6 +28,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
@@ -35,7 +37,11 @@ import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
-import type { ImportPackageRequest } from '../n8n-packages.types';
+import type {
+	ImportPackageRequest,
+	OverwriteDeletionPolicy,
+	ProjectConflictPolicy,
+} from '../n8n-packages.types';
 import {
 	buildEntityPackageBuffer,
 	credentialRequirementsFromWorkflows,
@@ -295,6 +301,250 @@ describe('project shell import', () => {
 			// Counted across every project: `workflowIdPolicy: 'new'` mints a fresh id, so counting
 			// the package's source id would pass even if the workflow had been written.
 			expect(await Container.get(WorkflowRepository).count()).toBe(0);
+		});
+	});
+
+	describe('folderConflictPolicy: overwrite', () => {
+		const projectPackage = async () =>
+			await buildEntityPackageBuffer({
+				projects: [
+					{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				],
+				folders: [
+					{ target: 'projects/brie/folders/a', folder: serializedFolder({ id: 'FA', name: 'a' }) },
+				],
+				workflows: [
+					{
+						target: 'projects/brie/folders/a/workflows/wf',
+						workflow: serializedWorkflow({ id: 'WF', name: 'wf' }),
+					},
+				],
+			});
+
+		let project: Project;
+		let packagedWorkflowId: string;
+
+		beforeEach(async () => {
+			const first = await importProjects(owner, await projectPackage());
+			project = await Container.get(ProjectRepository).findOneOrFail({ where: { id: 'P1' } });
+			packagedWorkflowId = first.workflows[0].localId;
+		});
+
+		/** States the intent once, at project level; the folder policy inherits it. */
+		const reconcile = async (
+			projectConflictPolicy: ProjectConflictPolicy,
+			overwriteDeletionPolicy: OverwriteDeletionPolicy = 'archive',
+		) =>
+			await importProjects(owner, await projectPackage(), undefined, {
+				projectConflictPolicy,
+				overwriteDeletionPolicy,
+			});
+
+		it('archives a root workflow the package does not contain, retaining the packaged one', async () => {
+			const stale = await createWorkflow({ name: 'Stale' }, project);
+
+			const result = await reconcile('overwrite');
+
+			expect(result.removedWorkflows).toEqual([
+				{
+					workflowId: stale.id,
+					name: 'Stale',
+					projectId: 'P1',
+					parentFolderId: null,
+					deletion: 'archived',
+				},
+			]);
+			expect((await findWorkflow(stale.id))?.isArchived).toBe(true);
+			// The package's own workflow is matched by sourceWorkflowId, so it is retained.
+			expect((await findWorkflow(packagedWorkflowId))?.isArchived).toBe(false);
+		});
+
+		it('retains a sub-workflow dependency the package references but does not carry', async () => {
+			const sub = await createWorkflow({ name: 'Sub' }, project);
+
+			const packageBuffer = await buildEntityPackageBuffer({
+				projects: [
+					{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				],
+				folders: [
+					{ target: 'projects/brie/folders/a', folder: serializedFolder({ id: 'FA', name: 'a' }) },
+				],
+				workflows: [
+					{
+						target: 'projects/brie/folders/a/workflows/wf',
+						workflow: serializedWorkflow({ id: 'WF', name: 'wf' }),
+					},
+				],
+				manifestExtras: {
+					requirements: { workflows: [{ id: sub.id, name: 'Sub', usedByWorkflows: ['WF'] }] },
+				},
+			});
+
+			const result = await importProjects(owner, packageBuffer, undefined, {
+				projectConflictPolicy: 'overwrite',
+			});
+
+			// Archiving it would leave the packaged parent unable to publish.
+			expect(result.removedWorkflows).toEqual([]);
+			expect((await findWorkflow(sub.id))?.isArchived).toBe(false);
+		});
+
+		it('archives inside a package-defined folder but shelters a target-only folder', async () => {
+			const stale = await createWorkflow(
+				{ name: 'Stale', parentFolder: await findFolder('FA') },
+				project,
+			);
+			const sheltered = await createFolder(project, { name: 'sheltered' });
+			const kept = await createWorkflow({ name: 'Kept', parentFolder: sheltered }, project);
+
+			const result = await reconcile('overwrite');
+
+			expect(result.removedWorkflows).toEqual([
+				{
+					workflowId: stale.id,
+					name: 'Stale',
+					projectId: 'P1',
+					parentFolderId: 'FA',
+					deletion: 'archived',
+				},
+			]);
+			expect((await findWorkflow(kept.id))?.isArchived).toBe(false);
+		});
+
+		it('drops the row entirely under hard-delete, keeping the packaged workflow', async () => {
+			const stale = await createWorkflow({ name: 'Stale' }, project);
+
+			const result = await reconcile('overwrite', 'hard-delete');
+
+			expect(result.removedWorkflows).toEqual([
+				{
+					workflowId: stale.id,
+					name: 'Stale',
+					projectId: 'P1',
+					parentFolderId: null,
+					deletion: 'deleted',
+				},
+			]);
+			expect(await findWorkflow(stale.id)).toBeNull();
+			expect(await findWorkflow(packagedWorkflowId)).not.toBeNull();
+		});
+
+		it('follows an explicit folder policy over the inherited one', async () => {
+			const stale = await createWorkflow({ name: 'Stale' }, project);
+
+			// Project says overwrite, but folders were told otherwise, so nothing is removed.
+			const result = await importProjects(owner, await projectPackage(), undefined, {
+				projectConflictPolicy: 'overwrite',
+				folderConflictPolicy: 'merge',
+			});
+
+			expect(result.removedWorkflows).toEqual([]);
+			expect((await findWorkflow(stale.id))?.isArchived).toBe(false);
+		});
+
+		it('removes an empty folder the package does not define, sheltering an occupied one', async () => {
+			const empty = await createFolder(project, { name: 'empty' });
+			const occupied = await createFolder(project, { name: 'occupied' });
+			const kept = await createWorkflow({ name: 'Kept', parentFolder: occupied }, project);
+
+			const result = await reconcile('overwrite');
+
+			expect(result.removedFolders).toEqual([
+				{ folderId: empty.id, name: 'empty', projectId: 'P1', parentFolderId: null },
+			]);
+			expect(await findFolder(empty.id)).toBeNull();
+			// Its workflow was sheltered by the workflow pass, so the folder holding it stays too.
+			expect(await findFolder(occupied.id)).not.toBeNull();
+			expect((await findWorkflow(kept.id))?.isArchived).toBe(false);
+		});
+
+		it('shelters a target-only folder holding only an archived workflow', async () => {
+			const shelved = await createFolder(project, { name: 'shelved' });
+			const archived = await createWorkflow(
+				{ name: 'Archived', parentFolder: shelved, isArchived: true },
+				project,
+			);
+
+			const result = await reconcile('overwrite', 'hard-delete');
+
+			// Pre-archived work is out of reconciliation's reach, so the folder holding it must
+			// survive too — deleting it would displace the archived workflow to the project root.
+			expect(result.removedWorkflows).toEqual([]);
+			expect(result.removedFolders).toEqual([]);
+			expect(await findFolder(shelved.id)).not.toBeNull();
+			const survivor = await findWorkflow(archived.id);
+			expect(survivor?.isArchived).toBe(true);
+			expect(survivor?.parentFolder?.id).toBe(shelved.id);
+		});
+
+		it('keeps the folders the package defines, even when reconciliation empties them', async () => {
+			const result = await reconcile('overwrite');
+
+			expect(result.removedFolders).toEqual([]);
+			expect(await findFolder('FA')).not.toBeNull();
+		});
+
+		it('removes no folders under merge', async () => {
+			const empty = await createFolder(project, { name: 'empty' });
+
+			const result = await reconcile('merge');
+
+			expect(result.removedFolders).toEqual([]);
+			expect(await findFolder(empty.id)).not.toBeNull();
+		});
+
+		it('archives nothing under merge', async () => {
+			const stale = await createWorkflow({ name: 'Stale' }, project);
+
+			const result = await reconcile('merge');
+
+			expect(result.removedWorkflows).toEqual([]);
+			expect((await findWorkflow(stale.id))?.isArchived).toBe(false);
+		});
+
+		it('does not re-report an already-archived workflow on a second reconcile', async () => {
+			await createWorkflow({ name: 'Stale' }, project);
+
+			await reconcile('overwrite');
+
+			expect((await reconcile('overwrite')).removedWorkflows).toEqual([]);
+		});
+
+		it('rejects the import when the API key lacks the workflow:delete scope', async () => {
+			await expect(
+				importProjects(
+					owner,
+					await projectPackage(),
+					['project:create', 'project:update', 'folder:create', 'folder:update', 'workflow:import'],
+					{ projectConflictPolicy: 'overwrite' },
+				),
+			).rejects.toBeInstanceOf(ForbiddenError);
+		});
+
+		it.each(['merge', 'fail'] as const)(
+			'rejects overwrite paired with projectConflictPolicy=%s, removing nothing',
+			async (projectConflictPolicy) => {
+				const stale = await createWorkflow({ name: 'Stale' }, project);
+
+				await expect(
+					importProjects(owner, await projectPackage(), undefined, {
+						folderConflictPolicy: 'overwrite',
+						projectConflictPolicy,
+					}),
+				).rejects.toThrow(/requires projectConflictPolicy=overwrite/);
+
+				expect((await findWorkflow(stale.id))?.isArchived).toBe(false);
+			},
+		);
+
+		it('reconciles only the project it is importing, never another project', async () => {
+			const bystander = await createTeamProject('Bystander', owner);
+			const untouched = await createWorkflow({ name: 'Untouched' }, bystander);
+
+			const result = await reconcile('overwrite');
+
+			expect(result.removedWorkflows).toEqual([]);
+			expect((await findWorkflow(untouched.id))?.isArchived).toBe(false);
 		});
 	});
 

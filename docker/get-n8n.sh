@@ -12,7 +12,7 @@
 # Source: https://github.com/n8n-io/n8n/blob/master/docker/get-n8n.sh
 set -eu
 
-SCRIPT_VERSION="1.1.0"
+SCRIPT_VERSION="1.3.0"
 # The version to install is derived from the latest stable GitHub release in
 # resolve_n8n_version(); this fallback only applies when that lookup fails.
 FALLBACK_N8N_VERSION="2.32.0"
@@ -25,15 +25,77 @@ SOURCE_URL="https://github.com/n8n-io/n8n/blob/master/docker/get-n8n.sh"
 COMPOSE_SOURCE="${N8N_COMPOSE_URL:-https://raw.githubusercontent.com/n8n-io/n8n/master/docker/get-n8n-compose.yml}"
 COMPOSE_HISTORY_URL="https://github.com/n8n-io/n8n/commits/master/docker/get-n8n-compose.yml"
 DOCS_HOSTING_URL="https://docs.n8n.io/hosting/"
+DOCS_EVERYDAY_URL="https://docs.n8n.io/deploy/host-n8n/install-options/one-line-setup#everyday-commands"
 
 UPGRADE=0
 NO_START=0
 REQUESTED_VERSION=""
 
+# Anonymous failure report (RudderStack): offered only when an install or
+# upgrade fails, and sent only after the user answers yes. The payload is the
+# script version, OS name, install|upgrade mode and the failed step — nothing
+# else. The write key is a public client-side key. DO_NOT_TRACK=1 disables
+# the offer entirely.
+TELEMETRY_URL="https://nnrry.dataplane.rudderstack.com/v1/track"
+TELEMETRY_WRITE_KEY="3IDNZwfcE0lfjVDb0Y1wp8ZVGlg"
+# Set before steps whose failure could be on n8n's side (stack definition
+# download, image pulls, container start, health check). Failures of the
+# user's environment (no docker, port taken, ...) leave it empty and no
+# report is offered.
+STEP=""
+
+# Apply ANSI styling only when stdout is a terminal that supports it and the
+# user hasn't opted out (https://no-color.org).
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != "dumb" ]; then
+	BOLD=$(printf '\033[1m')
+	DIM=$(printf '\033[2m')
+	CYAN=$(printf '\033[36m')
+	GREEN=$(printf '\033[32m')
+	YELLOW=$(printf '\033[33m')
+	RESET=$(printf '\033[0m')
+else
+	BOLD='' DIM='' CYAN='' GREEN='' YELLOW='' RESET=''
+fi
+# stderr can be a terminal when stdout isn't, so red gets its own check and reset.
+if [ -t 2 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != "dumb" ]; then
+	RED=$(printf '\033[1;31m')
+	RED_RESET=$(printf '\033[0m')
+else
+	RED='' RED_RESET=''
+fi
+
 say() { printf '%s\n' "$*"; }
-ok() { printf '\342\234\223 %s\n' "$*"; }
+ok() { printf '%s\342\234\224%s %s\n' "$GREEN" "$RESET" "$*"; }
+
+# Never sends without an explicit yes. The prompt uses /dev/tty because
+# 'curl | sh' owns stdin; without a terminal there is no prompt and no report.
+offer_failure_report() {
+	[ -n "$STEP" ] || return 0
+	[ -z "${DO_NOT_TRACK:-}" ] || return 0
+	printf '\nSend an anonymous failure report to n8n, so we can fix this?\n(script version, OS name, failed step — nothing else) [y/N] ' >/dev/tty 2>/dev/null || return 0
+	read -r answer </dev/tty 2>/dev/null || return 0
+	case "$answer" in
+	[Yy]*) ;;
+	*) return 0 ;;
+	esac
+	mode="install"
+	[ "$UPGRADE" -eq 1 ] && mode="upgrade"
+	body="{\"anonymousId\":\"$(gen_secret)\",\"event\":\"install_failed\",\"properties\":{\"scriptVersion\":\"${SCRIPT_VERSION}\",\"os\":\"$(uname -s)\",\"mode\":\"${mode}\",\"step\":\"${STEP}\"}}"
+	if command -v curl >/dev/null 2>&1; then
+		curl -s -o /dev/null --max-time 5 -u "${TELEMETRY_WRITE_KEY}:" \
+			-H 'Content-Type: application/json' -d "$body" "$TELEMETRY_URL" 2>/dev/null || true
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q -O /dev/null -T 5 \
+			--header="Authorization: Basic $(printf '%s:' "$TELEMETRY_WRITE_KEY" | base64)" \
+			--header='Content-Type: application/json' \
+			--post-data="$body" "$TELEMETRY_URL" 2>/dev/null || true
+	fi
+	printf 'Thank you!\n' >/dev/tty 2>/dev/null || true
+}
+
 fail() {
-	printf 'Error: %s\n' "$*" >&2
+	printf '%sError:%s %s\n' "$RED" "$RED_RESET" "$*" >&2
+	offer_failure_report
 	exit 1
 }
 
@@ -56,6 +118,7 @@ Options:
 
 Environment:
   N8N_DIR            Install directory (default: ./n8n)
+  DO_NOT_TRACK=1     Never offer to send an anonymous failure report.
 
 For production-grade setups (TLS, Postgres, queue mode) see:
   ${DOCS_HOSTING_URL}
@@ -203,8 +266,6 @@ write_env() {
 # n8n version to run. 'get-n8n.sh --upgrade' updates this line and nothing else.
 N8N_VERSION=${INSTALL_VERSION}
 
-N8N_ENABLED_MODULES=instance-ai
-
 # Code-node user code (JavaScript and Python) runs in the separate 'runners'
 # container. The broker binds 0.0.0.0 so that container can reach it — its
 # port (5679) stays private to the compose network.
@@ -288,24 +349,44 @@ compose() {
 	docker compose -f "${N8N_DIR}/compose.yml" "$@"
 }
 
-# For compose commands that pull images: Docker Hub's anonymous pull rate
-# limit is a common first-run failure, so turn it into recovery advice
-# instead of a raw error dump.
+# Docker Hub's anonymous pull rate limit is a common first-run failure, so
+# turn it into recovery advice instead of a raw error dump. Consumes the log.
+check_rate_limit() {
+	grep -qiE 'toomanyrequests|rate ?limit' "$1" || return 0
+	rm -f "$1"
+	STEP="docker-hub-rate-limit"
+	fail "Docker Hub pull rate limit reached — your configuration in ${N8N_DIR} is
+  unaffected. Wait about an hour, then start n8n with:
+    docker compose -f ${N8N_DIR}/compose.yml up -d
+  Or 'docker login' with a Docker Hub account to raise the limit and re-run."
+}
+
+# Pull attached to the terminal so compose renders its in-place progress bars
+# (capturing the output would drop compose into plain line mode). On failure,
+# retry quietly to get the error text for classification — a rate-limited pull
+# fails again instantly, a transient blip just succeeds on the retry.
+compose_pull() {
+	compose pull && return 0
+	log="$(mktemp)"
+	if compose pull -q >"$log" 2>&1; then
+		rm -f "$log"
+		return 0
+	fi
+	check_rate_limit "$log"
+	rm -f "$log"
+	fail "pulling images failed — see the output above; check your network and re-run."
+}
+
+# Quiet on success — compose's per-container status lines are only shown
+# when something went wrong.
 compose_checked() {
 	log="$(mktemp)"
 	if compose "$@" >"$log" 2>&1; then
-		cat "$log"
 		rm -f "$log"
 		return 0
 	fi
 	cat "$log" >&2
-	if grep -qiE 'toomanyrequests|rate ?limit' "$log"; then
-		rm -f "$log"
-		fail "Docker Hub pull rate limit reached — your configuration in ${N8N_DIR} is
-  unaffected. Wait about an hour, then start n8n with:
-    docker compose -f ${N8N_DIR}/compose.yml up -d
-  Or 'docker login' with a Docker Hub account to raise the limit and re-run."
-	fi
+	check_rate_limit "$log"
 	rm -f "$log"
 	fail "starting n8n failed — check 'docker compose -f ${N8N_DIR}/compose.yml logs'."
 }
@@ -335,20 +416,22 @@ do_upgrade() {
 		exit 0
 	fi
 
-	compose_checked pull -q
+	say "Pulling images..."
+	STEP="image-pull"
+	compose_pull
+	STEP="container-start"
 	compose_checked up -d --quiet-pull
 	ok "Restarted with n8n ${target}"
 }
 
 wait_for_n8n() {
-	printf 'Waiting for n8n to become ready (first boot pulls images and runs migrations) '
+	printf 'Waiting for n8n to become ready (first boot pulls images and runs migrations) ...'
 	waited=0
 	while [ "$waited" -lt 180 ]; do
 		if http_get "http://127.0.0.1:${N8N_PORT}/healthz"; then
-			printf '\n'
+			printf ' %s\342\234\223%s\n' "$GREEN" "$RESET"
 			return 0
 		fi
-		printf '.'
 		sleep 3
 		waited=$((waited + 3))
 	done
@@ -359,23 +442,24 @@ wait_for_n8n() {
 print_summary() {
 	cat <<EOF
 
-n8n is running at: http://localhost:${N8N_PORT}
-Data stored in:    ${N8N_DIR} (Docker volume: n8n-data)
-Config files:      ${N8N_DIR}/compose.yml, ${N8N_DIR}/.env
+${BOLD}n8n is running at:${RESET} ${CYAN}http://localhost:${N8N_PORT}${RESET}
+${BOLD}Data stored in:${RESET}    ${N8N_DIR} ${DIM}(Docker volume: n8n-data)${RESET}
+${BOLD}Config files:${RESET}      ${N8N_DIR}/compose.yml, ${N8N_DIR}/.env
 
-To stop:      docker compose -f ${N8N_DIR}/compose.yml down
-To upgrade:   curl -fsSL https://get.n8n.io | sh -s -- --upgrade
-To uninstall: docker compose -f ${N8N_DIR}/compose.yml down -v   # -v DELETES all n8n data
-              rm -rf ${N8N_DIR}
+${BOLD}To stop:${RESET}  docker compose -f ${N8N_DIR}/compose.yml down
+${BOLD}To start:${RESET} docker compose -f ${N8N_DIR}/compose.yml up -d
+${DIM}More everyday commands: ${DOCS_EVERYDAY_URL}${RESET}
 
-Security notes:
+${YELLOW}${BOLD}Security notes:${RESET}
   - Only port ${N8N_PORT} (n8n) should ever be reachable from the internet.
   - The sandbox runner is privileged Docker-in-Docker — never publish its ports.
 
 This setup is meant to try n8n locally. For production (TLS, Postgres, queue
 mode) see ${DOCS_HOSTING_URL}
 
-get-n8n.sh v${SCRIPT_VERSION} — source: ${SOURCE_URL}
+${DIM}get-n8n.sh v${SCRIPT_VERSION} — source: ${SOURCE_URL}${RESET}
+
+${GREEN}➜${RESET}  ${BOLD}All set! Open ${CYAN}http://localhost:${N8N_PORT}${RESET}${BOLD} in your browser to get started.${RESET}
 EOF
 }
 
@@ -386,6 +470,7 @@ main() {
 	if [ -f "${N8N_DIR}/compose.yml" ] || [ -f "${N8N_DIR}/.env" ]; then
 		if [ "$UPGRADE" -eq 1 ]; then
 			do_upgrade
+			STEP="n8n-readiness-timeout"
 			wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."
 			print_summary
 			exit 0
@@ -395,10 +480,11 @@ main() {
 		if http_get "http://127.0.0.1:${N8N_PORT}/healthz"; then
 			say "n8n is already running at: http://localhost:${N8N_PORT}"
 		else
-			say "To start it: docker compose -f ${N8N_DIR}/compose.yml up -d"
+			say "To start it:  docker compose -f ${N8N_DIR}/compose.yml up -d"
 			say "Once started, n8n runs at: http://localhost:${N8N_PORT}"
 		fi
-		say "To upgrade:  curl -fsSL https://get.n8n.io | sh -s -- --upgrade"
+		say "To upgrade:   curl -fsSL https://get.n8n.io | sh -s -- --upgrade"
+		say "To uninstall: docker compose -f ${N8N_DIR}/compose.yml down -v && rm -rf ${N8N_DIR}   # DELETES all n8n data"
 		check_compose_freshness
 		exit 0
 	fi
@@ -415,7 +501,9 @@ main() {
 
 	INSTALL_VERSION="${REQUESTED_VERSION:-$(resolve_n8n_version)}"
 	mkdir -p "${N8N_DIR}"
+	STEP="stack-definition-download"
 	write_compose
+	STEP=""
 	ok "Created ${N8N_DIR}/compose.yml"
 	write_searxng_settings
 	ok "Created ${N8N_DIR}/searxng-settings.yml"
@@ -429,9 +517,13 @@ main() {
 		exit 0
 	fi
 
-	say "Pulling images and starting (this can take a few minutes on first run)..."
+	say "Pulling images (this can take a few minutes on first run)..."
+	STEP="image-pull"
+	compose_pull
+	STEP="container-start"
 	compose_checked up -d --quiet-pull
 	ok "Started n8n ${INSTALL_VERSION} and sandbox services"
+	STEP="n8n-readiness-timeout"
 	wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."
 	print_summary
 }

@@ -2,7 +2,7 @@ import { defineComponent, reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InsightsDashboard from './InsightsDashboard.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import {
 	mockedStore,

@@ -305,6 +305,8 @@ export async function probeCredentialValue(options: {
 	/** Absent in local mode — there is no stand-in to have received anything. */
 	fixture?: { verifyAttempts: number; verifiedOk: boolean };
 	verifyBaseUrl?: string;
+	/** Base-URL field from the fixture manifest's `urlField`. */
+	urlField?: string;
 	/** Local mode: test against the REAL provider API instead of a stand-in. */
 	local?: boolean;
 	logger: EvalLogger;
@@ -316,6 +318,7 @@ export async function probeCredentialValue(options: {
 		foreignCredentialIds,
 		fixture,
 		verifyBaseUrl,
+		urlField = 'url',
 		local,
 		logger,
 	} = options;
@@ -349,6 +352,7 @@ export async function probeCredentialValue(options: {
 			credentialId,
 			fixture,
 			verifyBaseUrl,
+			urlField,
 			local,
 			logger,
 		});
@@ -373,10 +377,11 @@ async function probeOneCredential(options: {
 	credentialId: string;
 	fixture?: { verifyAttempts: number; verifiedOk: boolean };
 	verifyBaseUrl?: string;
+	urlField: string;
 	local?: boolean;
 	logger: EvalLogger;
 }): Promise<CredentialValueProbe> {
-	const { client, credentialId, fixture, verifyBaseUrl, local, logger } = options;
+	const { client, credentialId, fixture, verifyBaseUrl, urlField, local, logger } = options;
 	const attemptsBefore = fixture?.verifyAttempts ?? 0;
 	try {
 		const credential = await client.getCredentialForTest(credentialId);
@@ -385,9 +390,18 @@ async function probeOneCredential(options: {
 		// written. In local mode the URL is left alone, so the test goes to the
 		// real provider API — a pass there proves the key is genuine and active,
 		// which is a stronger claim than equality with a synthetic string.
+		//
+		// `urlField` is per-provider (gemini calls it `host`). Do NOT require the
+		// field to be present first: a Base URL with a default is not persisted
+		// unless the user changed it, so real anthropic/openai credentials store
+		// only `apiKey` — verified against live rows. Adding the field IS the
+		// mechanism (n8n merges the submitted data over the stored credential), so
+		// requiring it would discard the check on exactly the providers it works
+		// for. A wrong `urlField` is caught at CI time instead, by the manifest ↔
+		// `test.request` lockstep in `fixture-server.test.ts`.
 		const result = await client.testCredential({
 			...credential,
-			data: local ? credential.data : { ...credential.data, url: verifyBaseUrl },
+			data: local ? credential.data : { ...credential.data, [urlField]: verifyBaseUrl },
 		});
 		if (result.status === 'OK') return { kind: 'passed', target: local ? 'real' : 'stand-in' };
 

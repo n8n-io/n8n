@@ -13,6 +13,10 @@ export class AgentsModule implements ModuleInterface {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
+		// Imported for its `@OnLifecycleEvent` registration, which happens at
+		// class-decoration time — nothing else references this service.
+		await import('./agent-workflow-tool-resume.service.js');
+
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
 		await import('./agents.controller.js');
@@ -88,24 +92,31 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(DiscordIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 
-		// Reconnect Chat and Task services on startup so this main resumes its
-		// integrations and tasks for the role it currently holds.
+		// Resume Chat and Task services on startup so this main runs what its
+		// current role calls for.
 		//
-		// Chat integrations run on every main: webhook-driven platforms (Slack,
-		// Linear, Telegram in webhook mode) need to be connected on every main
-		// because inbound webhooks are load-balanced. Polling-driven integrations
-		// (Telegram in polling mode) are filtered to leader-only inside the
-		// service via `AgentChatIntegration.requiresLeader()`.
+		// Chat channels are reconciled on a loop rather than reconnected once:
+		// startup is only the first pass, and every later pass is what lets a
+		// channel that failed to start recover without a republish. Webhook-driven
+		// platforms (Slack, Linear, Telegram in webhook mode) run on every main
+		// because inbound webhooks are load-balanced; polling-driven ones
+		// (Telegram in polling mode) are filtered to the leader via
+		// `AgentChatIntegration.requiresLeader()`.
 		//
 		// Tasks remain leader-only by design — a cron firing on multiple
 		// mains would run the agent twice for the same tick.
-		const { ChatIntegrationService } = await import('./integrations/chat-integration.service.js');
+		const { AgentChannelReconciler } = await import(
+			'./integrations/agent-channel-reconciler.service.js'
+		);
 		const { AgentTaskService } = await import('./agent-task.service.js');
-		const chatService = Container.get(ChatIntegrationService);
+		const channelReconciler = Container.get(AgentChannelReconciler);
 		const taskService = Container.get(AgentTaskService);
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		if (instanceSettings.instanceType === 'main') {
+			// Loaded for its pubsub decorator
+			await import('./background/agent-background-job.service.js');
+
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);
@@ -123,11 +134,18 @@ export class AgentsModule implements ModuleInterface {
 			);
 			this.interruptedExecutionSweepTimer.unref();
 		}
-		void chatService.reconnectAll().catch((error) => {
-			logger.error('[Agents] Failed to reconnect integrations on startup', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-		});
+
+		// Workers never receive inbound platform events: no webhook route, no polling
+		// loop. Holding channels there would connect adapters nothing reads and, now
+		// that startups are reported, publish status rows for a process that cannot
+		// serve the channel either way. Webhook instances do serve the agent webhook
+		// route, so they keep their channels.
+		if (instanceSettings.instanceType !== 'worker') {
+			channelReconciler.init();
+		}
+
+		// Tasks are leader-only: only the leader should run the cron and reconnect tasks on startup.
+		// TODO: migrate to the durable scheduler
 		if (instanceSettings.isLeader) {
 			void taskService.reconnectAll().catch((error) => {
 				logger.error('[Agents] Failed to reconnect tasks on startup', {
@@ -165,12 +183,14 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentFile } = await import('./entities/agent-file.entity.js');
 		const { AgentChatAttachment } = await import('./entities/agent-chat-attachment.entity.js');
 		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity.js');
+		const { AgentChannelStatus } = await import('./entities/agent-channel-status.entity.js');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity.js');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity.js');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity.js');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
+		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -201,12 +221,14 @@ export class AgentsModule implements ModuleInterface {
 			AgentFile,
 			AgentChatAttachment,
 			AgentChatSubscription,
+			AgentChannelStatus,
 			AgentCheckpoint,
 			AgentResourceEntity,
 			AgentThreadEntity,
 			AgentMessageEntity,
 			AgentExecutionThread,
 			AgentExecution,
+			AgentBackgroundJob,
 			AgentHistory,
 			AgentCredentialDependency,
 			AgentTask,

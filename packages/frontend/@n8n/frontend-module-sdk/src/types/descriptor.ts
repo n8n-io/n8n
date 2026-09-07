@@ -5,6 +5,7 @@ import type { ModuleBanner } from './banner';
 import type { CommandBarEntry } from './command';
 import type { ModuleLocaleMessages } from './locale';
 import type { ModalDefinition } from './modal';
+import type { ParameterInputContribution } from './parameterInput';
 import type { ModulePushHandlers } from './push';
 import type { ResourceMetadata } from './resource';
 import type { ModuleSetupContext } from './setup';
@@ -42,12 +43,18 @@ export type FrontendModuleDescription = {
 
 	/** Per-module i18n messages, merged into the active locale by the shell. */
 	locales?: ModuleLocaleMessages;
-	/** Push-message handlers, keyed by message type. */
+	/** Push-message handlers, keyed by message type. See `ModulePushHandlers`. */
 	pushHandlers?: ModulePushHandlers;
 	/** Command-bar contributions. */
 	commands?: CommandBarEntry[];
 	/** Global keyboard shortcuts. */
 	shortcuts?: ModuleShortcut[];
+	/**
+	 * Custom parameter input components, resolved by `parameter.type` in the NDV
+	 * parameter render path. One owner per type; an unclaimed type keeps the
+	 * shell's built-in branch.
+	 */
+	parameterInputs?: ParameterInputContribution[];
 	/** Banners the module can contribute to the banner stack. */
 	banners?: ModuleBanner[];
 	/** Runs post-login, after the module is confirmed active. */

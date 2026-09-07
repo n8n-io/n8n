@@ -64,7 +64,6 @@ interface CardRow {
 	serverSlug: string;
 	subtitle: string;
 	icon: ConnectionRowIcon;
-	credentialType: string;
 	item: McpServerConnectionItem & { credentials: ToolCredentialRef[] };
 }
 
@@ -72,21 +71,23 @@ const rows = computed<CardRow[]>(() =>
 	props.servers.map((server) => {
 		const entry = catalogBySlug.value.get(server.serverSlug);
 		const connection = mcpStore.connections.find((c) => c.serverSlug === server.serverSlug);
-		const credentialType =
-			connection?.credentialType ?? entry?.credentialType ?? server.credentialType;
+		const credentialOptions = entry?.credentials ?? server.usesCredentials;
 		return {
 			serverSlug: server.serverSlug,
 			subtitle: entry?.tagline ?? server.tagline ?? '',
 			icon: iconForTool(entry?.icons ?? [], uiStore.appliedTheme),
-			credentialType,
 			item: {
 				id: connection?.id ?? server.serverSlug,
 				kind: 'mcp-server',
 				title: entry?.title ?? server.title,
 				status: connection?.status ?? 'none',
-				credentials: [
-					{ authType: credentialType, credentialId: connection?.credentialId, required: true },
-				],
+				credentials: credentialOptions.map(({ credentialType, name }) => ({
+					authType: credentialType,
+					displayName: name,
+					credentialId:
+						connection?.credentialType === credentialType ? connection.credentialId : undefined,
+					required: true,
+				})),
 				availableTools: [],
 			},
 		};
@@ -138,9 +139,14 @@ async function runConnect(attempt: () => Promise<unknown>) {
 	}
 }
 
-async function connect(row: CardRow) {
+async function connect(row: CardRow, credentialType: string, credentialTypes?: readonly string[]) {
 	await runConnect(
-		async () => await connectServer({ slug: row.serverSlug, credentialType: row.credentialType }),
+		async () =>
+			await connectServer({
+				slug: row.serverSlug,
+				credentialType,
+				credentialTypes,
+			}),
 	);
 }
 
@@ -153,20 +159,20 @@ async function handleSelectCredential(row: CardRow, credentialId: string) {
 
 provide(
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
-	createCredentialAdapter((_authType, item) => {
+	createCredentialAdapter((authType, item, credentialTypes) => {
 		const row = rows.value.find((candidate) => candidate.item.id === item.id);
-		if (row) void connect(row);
+		if (row) void connect(row, authType, credentialTypes);
 	}),
 );
 
 function handleBrowseAll() {
-	mcpTelemetry.trackToolsListOpened();
+	mcpTelemetry.trackToolsListOpened('mcp_connect_card');
 	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 }
 
 function openSettings(row: CardRow) {
 	if (!hasConnection(row)) return;
-	mcpTelemetry.trackSettingsOpened(row.serverSlug);
+	mcpTelemetry.trackSettingsOpened(row.serverSlug, 'mcp_connect_card');
 	uiStore.openModalWithData({
 		name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 		data: { connectionId: row.item.id },
@@ -197,7 +203,6 @@ function openSettings(row: CardRow) {
 				:name="row.item.title"
 				:subtitle="row.subtitle"
 				:icon="row.icon"
-				size="default"
 				:clickable="hasConnection(row)"
 				@open-settings="openSettings(row)"
 			>
@@ -264,7 +269,8 @@ function openSettings(row: CardRow) {
 }
 
 .awaitingInput {
-	border: 2px solid var(--color--primary);
+	border: 0;
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .header {

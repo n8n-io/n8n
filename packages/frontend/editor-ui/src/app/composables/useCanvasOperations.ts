@@ -2712,6 +2712,7 @@ export function useCanvasOperations() {
 
 		initializedDocumentStore.setNodes(nodes);
 		initializedDocumentStore.setConnections(connections);
+		initializedDocumentStore.setHydrated(true);
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -3357,10 +3358,9 @@ export function useCanvasOperations() {
 	): INodeCredentials {
 		return Object.fromEntries(
 			Object.entries(credentials).filter(([, credential]) => {
-				return (
-					credential.id &&
-					(!usedCredentials[credential.id] || usedCredentials[credential.id]?.currentUserHasAccess)
-				);
+				if (!credential.id) return Boolean(credential.__aiGatewayManaged);
+				const used = usedCredentials[credential.id];
+				return !used || used.currentUserHasAccess;
 			}),
 		);
 	}
@@ -3530,6 +3530,7 @@ export function useCanvasOperations() {
 			projectsStore.currentProjectId,
 		);
 		workflowDocumentStore.value.setName(workflowData.name);
+		workflowDocumentStore.value.setHydrated(true);
 	}
 
 	async function tryToOpenSubworkflowInNewTab(nodeId: string): Promise<boolean> {

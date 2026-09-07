@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import { timingSafeEqual } from 'crypto';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { jsonParse, UnexpectedError, CHAT_NODE_TYPE, CHAT_TOOL_NODE_TYPE } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
 import { z } from 'zod';
 
@@ -166,8 +166,8 @@ export class ChatService {
 				chatInput: getLastNodeMessage(execution, lastNode),
 				sessionId: session.sessionId,
 			};
-			await this.resumeExecution(session.executionId, data, sessionKey);
-			session.nodeWaitingForChatResponse = undefined;
+			const resumed = await this.resumeExecution(session.executionId, data, sessionKey);
+			if (resumed) session.nodeWaitingForChatResponse = undefined;
 		} else {
 			session.nodeWaitingForChatResponse = lastNode?.name;
 		}
@@ -249,10 +249,12 @@ export class ChatService {
 				}
 
 				const executionId = session.executionId;
-				if (await this.shouldResumeOnMessage(executionId)) {
-					await this.resumeExecution(executionId, this.parseChatMessage(message), sessionKey);
-					session.nodeWaitingForChatResponse = undefined;
-				}
+				const resumed = await this.resumeExecution(
+					executionId,
+					this.parseChatMessage(message),
+					sessionKey,
+				);
+				if (resumed) session.nodeWaitingForChatResponse = undefined;
 			} catch (e) {
 				const error = ensureError(e);
 				this.errorReporter.error(error);
@@ -263,10 +265,30 @@ export class ChatService {
 		};
 	}
 
-	private async resumeExecution(executionId: string, message: ChatMessage, sessionKey: string) {
+	private async resumeExecution(
+		executionId: string,
+		message: ChatMessage,
+		sessionKey: string,
+	): Promise<boolean> {
 		const execution = await this.getExecutionOrCleanupSession(executionId, sessionKey);
-		if (!execution || execution.status !== 'waiting') return;
+		if (!execution || execution.status !== 'waiting') return false;
+
+		// A chat message may only resume nodes designed to accept one (see
+		// ChatExecutionManager.canResumeOverChat); refuse everything else,
+		// whatever token is presented. Log the refusal so the denial is visible
+		// (probing / "why won't my chat resume") rather than silent.
+		if (!this.executionManager.canResumeOverChat(execution)) {
+			// Resolve the same node the gate checked (a tool-executor entry redirects to
+			// the wrapped tool) so the diagnostic names the node that was refused.
+			const nodeType = this.executionManager.resolveResumeNodeType(execution);
+			this.logger.warn(
+				`Refused chat resume for execution ${executionId}: suspended node (type: ${nodeType ?? 'unknown'}) is not resumable over chat`,
+			);
+			return false;
+		}
+
 		await this.executionManager.runWorkflow(execution, message);
+		return true;
 	}
 
 	private async getExecutionOrCleanupSession(executionId: string, sessionKey: string) {
@@ -358,21 +380,6 @@ export class ChatService {
 			this.errorReporter.error(error);
 			this.logger.error(`Error checking heartbeats: ${error.message}`);
 		}
-	}
-
-	private async shouldResumeOnMessage(executionId: string) {
-		const execution = await this.executionManager.findExecution(executionId);
-		if (!execution) {
-			return true;
-		}
-
-		const lastNode = getLastNodeExecuted(execution);
-		const isChatNode = lastNode?.type === CHAT_NODE_TYPE || lastNode?.type === CHAT_TOOL_NODE_TYPE;
-		if (isChatNode && lastNode?.parameters?.blockUserInput === true) {
-			return false;
-		}
-
-		return true;
 	}
 
 	@OnShutdown()

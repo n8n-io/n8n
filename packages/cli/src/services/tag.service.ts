@@ -1,7 +1,6 @@
 import type { TagEntity, ITagWithCountDb } from '@n8n/db';
-import { TagRepository, TransactionRunner } from '@n8n/db';
+import { isUniqueConstraintError, TagRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { QueryFailedError } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -9,16 +8,6 @@ import { validateEntity } from '@/generic-helpers';
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
 
 type Action = 'Create' | 'Update';
-
-// n8n supports postgres (SQLSTATE 23505) and sqlite (SQLITE_CONSTRAINT_UNIQUE,
-// or the older SQLITE_CONSTRAINT with a "UNIQUE constraint" message).
-function isUniqueConstraintViolation(error: unknown): error is QueryFailedError {
-	if (!(error instanceof QueryFailedError)) return false;
-	const driver = (error as { driverError?: { code?: unknown } }).driverError;
-	const code = driver && typeof driver.code !== 'undefined' ? String(driver.code) : undefined;
-	if (code === '23505' || code === 'SQLITE_CONSTRAINT_UNIQUE') return true;
-	return code === 'SQLITE_CONSTRAINT' && /UNIQUE constraint/i.test(error.message);
-}
 
 @Service()
 export class TagService {
@@ -183,7 +172,7 @@ export class TagService {
 				const created = await this.save(this.toEntity({ name }), 'create');
 				result.push(created);
 			} catch (error) {
-				if (!isUniqueConstraintViolation(error)) throw error;
+				if (!isUniqueConstraintError(error)) throw error;
 				const raced = await this.tagRepository.findOneBy({ name });
 				if (!raced) throw error;
 				result.push(raced);

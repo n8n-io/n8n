@@ -31,7 +31,7 @@ export type ResolvedRouteArg =
 	| { type: 'param'; key: string }
 	| { type: 'body' | 'query'; dto: ZodClass };
 
-function isDtoArg(
+export function isDtoArg(
 	arg: ResolvedRouteArg,
 	type: 'body' | 'query',
 ): arg is Extract<ResolvedRouteArg, { type: 'body' | 'query' }> {
@@ -114,6 +114,14 @@ export function resolveRouteArgs(
 	}
 
 	return resolved;
+}
+
+/**
+ * Whether a caller must send a body: an empty object being invalid means one is needed. Mirrors
+ * `requestBody.required` in the hand-written specs, without a second place to declare it.
+ */
+export function isRequestBodyRequired(dto: ZodClass): boolean {
+	return !dto.safeParse({}).success;
 }
 
 /** Every decorator route must state its success status via `@ApiResponse`. */

@@ -3,6 +3,7 @@
  * back into engine v1 artifacts (`INode`, `Workflow`, run data, node execute context).
  */
 
+import { deriveLoops, isBatchStepConfig } from '@n8n/engine';
 import type { GraphNode, StepSlots, WorkflowGraph } from '@n8n/engine';
 import { ExecuteContext, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
@@ -18,35 +19,38 @@ import type {
 } from 'n8n-workflow';
 import { createRunExecutionData, Workflow } from 'n8n-workflow';
 
-import { MAIN_CONNECTION_TYPE, MANUAL_TRIGGER_TYPE } from './constants';
-import { isV1NodeStepConfig } from './guards';
+import {
+	MAIN_CONNECTION_TYPE,
+	MANUAL_TRIGGER_TYPE,
+	SPLIT_IN_BATCHES_TYPE,
+	SPLIT_IN_BATCHES_TYPE_VERSION,
+} from './constants';
+import { isTriggerStepConfig, isV1NodeStepConfig } from './guards';
 import { fromStepInputs } from './io';
 import type { CreateExecuteContextParams, V1Execution, V1NodeStepConfig } from './types';
+import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
 
 export function toV1Execution(
 	graph: WorkflowGraph,
-	outputsByNodeId: Record<string, StepSlots>,
+	outputsByNode: Record<string, Record<number, StepSlots>>,
+	activeNodeId: string,
+	activeIteration: number,
 ): V1Execution {
 	return {
 		nodes: toV1Nodes(graph),
 		connections: toV1Connections(graph),
-		runData: toV1RunData(graph, outputsByNodeId),
+		runData: toV1RunData(graph, outputsByNode, activeNodeId, activeIteration),
 	};
 }
 
 function toV1Nodes(graph: WorkflowGraph): INode[] {
 	return graph.nodes.flatMap((graphNode): INode[] => {
 		if (graphNode.type === 'trigger') {
-			return [
-				{
-					id: graphNode.id,
-					name: graphNode.name,
-					type: MANUAL_TRIGGER_TYPE,
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-			];
+			return [toV1TriggerNode(graphNode)];
+		}
+
+		if (graphNode.type === 'batch') {
+			return [toV1BatchNode(graphNode)];
 		}
 
 		if (!isV1NodeStepConfig(graphNode.config)) return [];
@@ -56,7 +60,7 @@ function toV1Nodes(graph: WorkflowGraph): INode[] {
 }
 
 function toV1Connections(graph: WorkflowGraph): IConnections {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+	const namesById = nodeNamesById(graph);
 
 	const connections: IConnections = {};
 	for (const edge of graph.edges) {
@@ -79,43 +83,60 @@ function toV1Connections(graph: WorkflowGraph): IConnections {
 	return connections;
 }
 
-function toV1RunData(graph: WorkflowGraph, outputsByNodeId: Record<string, StepSlots>): IRunData {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+function toV1RunData(
+	graph: WorkflowGraph,
+	outputsByNode: Record<string, Record<number, StepSlots>>,
+	activeNodeId: string,
+	activeIteration: number,
+): IRunData {
+	const namesById = nodeNamesById(graph);
 	const sourcesByNodeId = toV1Sources(graph);
+	const activeLoop = deriveLoops(graph).find((loop) => loop.memberIds.has(activeNodeId));
 
 	const runData: IRunData = {};
-	for (const [completedNodeId, outputs] of Object.entries(outputsByNodeId)) {
+	for (const [completedNodeId, outputsByIteration] of Object.entries(outputsByNode)) {
 		const nodeName = namesById.get(completedNodeId);
 		if (nodeName === undefined) continue;
 
-		runData[nodeName] = [
-			{
+		const iterations = Object.keys(outputsByIteration).map(Number);
+		if (iterations.length === 0) continue;
+
+		let lastShown: number;
+		if (!activeLoop) {
+			lastShown = Math.max(...iterations);
+		} else if (activeLoop.memberIds.has(completedNodeId)) {
+			lastShown = activeIteration;
+		} else {
+			lastShown = 0;
+		}
+
+		const source = sourcesByNodeId.get(completedNodeId) ?? [];
+
+		// A pass the node was skipped on gets an empty run rather than a gap.
+		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => {
+			const outputs = outputsByIteration[iteration];
+			if (outputs === undefined) return emptyRun(iteration, source);
+
+			return {
 				startTime: 0,
 				executionTime: 0,
-				executionIndex: 0,
-				source: sourcesByNodeId.get(completedNodeId) ?? [],
+				executionIndex: iteration,
+				source,
 				data: { [MAIN_CONNECTION_TYPE]: fromStepInputs(outputs) },
-			},
-		];
+			};
+		});
 	}
 
 	return runData;
 }
 
+/** The execute path reports one pass, so no source names a `previousNodeRun`. */
 export function toV1Sources(graph: WorkflowGraph): Map<string, Array<ISourceData | null>> {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+	const namesById = nodeNamesById(graph);
 
 	const sourcesByNodeId = new Map<string, Array<ISourceData | null>>();
-	for (const edge of graph.edges) {
-		if (edge.isBackEdge === true) continue;
-		const fromName = namesById.get(edge.from);
-		if (fromName === undefined) continue;
-
-		const source = sourcesByNodeId.get(edge.to) ?? [];
-		const inputIndex = edge.inputIndex ?? 0;
-		while (source.length <= inputIndex) source.push(null);
-		source[inputIndex] ??= { previousNode: fromName, previousNodeOutput: edge.outputIndex };
-		sourcesByNodeId.set(edge.to, source);
+	for (const [nodeId, edges] of forwardEdgesByTarget(graph)) {
+		sourcesByNodeId.set(nodeId, toSourceSlots(edges, namesById));
 	}
 	return sourcesByNodeId;
 }
@@ -135,6 +156,33 @@ export function toV1Workflow(
 		active: false,
 		nodeTypes: tolerantNodeTypes(nodeTypes),
 	});
+}
+
+/** An older graph carries no config, and graphs are immutable, so a stub stands in. */
+function toV1TriggerNode(graphNode: GraphNode): INode {
+	const config = isTriggerStepConfig(graphNode.config) ? graphNode.config : undefined;
+
+	return {
+		id: graphNode.id,
+		name: graphNode.name,
+		type: config?.nodeType ?? MANUAL_TRIGGER_TYPE,
+		typeVersion: config?.typeVersion ?? 1,
+		position: [0, 0],
+		parameters: config?.parameters ?? {},
+	};
+}
+
+function toV1BatchNode(graphNode: GraphNode): INode {
+	const batchSize = isBatchStepConfig(graphNode.config) ? graphNode.config.batchSize : undefined;
+
+	return {
+		id: graphNode.id,
+		name: graphNode.name,
+		type: SPLIT_IN_BATCHES_TYPE,
+		typeVersion: SPLIT_IN_BATCHES_TYPE_VERSION,
+		position: [0, 0],
+		parameters: batchSize === undefined ? {} : { batchSize },
+	};
 }
 
 export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode {
@@ -212,7 +260,7 @@ export function toV1ExecuteContext({
 		additionalData,
 		mode,
 		runExecutionData,
-		0,
+		stepContext.iteration,
 		connectionInputData,
 		inputData,
 		executeData,

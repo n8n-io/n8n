@@ -13,6 +13,7 @@ import type {
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
 import { agentsEventBus } from '../agents.eventBus';
+import { NEW_SESSION_PARAM } from '../constants';
 
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
@@ -33,13 +34,13 @@ let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
 const {
-	fetchAllCredentialsForWorkflowMock,
+	fetchUsableCredentialsMock,
 	fetchAllCredentialsMock,
 	fetchCredentialTypesMock,
 	setCredentialsMock,
 	agentPermissionsMock,
 } = vi.hoisted(() => ({
-	fetchAllCredentialsForWorkflowMock: vi.fn().mockResolvedValue(undefined),
+	fetchUsableCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchAllCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchCredentialTypesMock: vi.fn().mockResolvedValue(undefined),
 	setCredentialsMock: vi.fn(),
@@ -88,7 +89,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 		allCredentials: [],
 		getCredentialsByType: () => [],
 		fetchAllCredentials: fetchAllCredentialsMock,
-		fetchAllCredentialsForWorkflow: fetchAllCredentialsForWorkflowMock,
+		fetchUsableCredentials: fetchUsableCredentialsMock,
 		fetchCredentialTypes: fetchCredentialTypesMock,
 		setCredentials: setCredentialsMock,
 	}),
@@ -783,7 +784,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await renderView();
 
 		expect(setCredentialsMock).toHaveBeenCalledWith([]);
-		expect(fetchAllCredentialsForWorkflowMock).toHaveBeenCalledWith({ projectId: 'p1' });
+		expect(fetchUsableCredentialsMock).toHaveBeenCalledWith({ projectId: 'p1' });
 		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
 	});
 
@@ -810,6 +811,18 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 				},
 			}),
 		);
+	});
+
+	it('opens the preview dock with a new session when requested by the route', async () => {
+		localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN:p1:a1');
+		routeQuery[NEW_SESSION_PARAM] = 'true';
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+
+		expect(preview.props('isOpen')).toBe(true);
+		expect(preview.props('effectiveSessionId')).toEqual(expect.any(String));
+		expect(preview.props('effectiveSessionId')).not.toBe('thread-1');
 	});
 
 	it('does not persist generated personalisation gradients for read-only agents', async () => {

@@ -534,13 +534,9 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 		});
 		const patched = applyPinData(wf, generated);
 		if (patched !== wf) {
-			const saved = await context.workflowService.updateFromWorkflowJSON(
-				input.workflowId,
-				patched,
-				{
-					...(input.projectId ? { projectId: input.projectId } : {}),
-				},
-			);
+			// No `projectId`: an update lands in the project the workflow already lives
+			// in, resolved by the adapter. Passing one here never did anything.
+			const saved = await context.workflowService.updateFromWorkflowJSON(input.workflowId, patched);
 			await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, {
 				versionId: saved.versionId,
 				checksum: saved.checksum,

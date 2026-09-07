@@ -44,3 +44,29 @@ Every node file is registered:
   }
 }
 ```
+
+### Versioned nodes
+
+A versioned node registers only its `VersionedNodeType` entry file. Its per-version
+implementations live in subdirectories of that entry file and are pulled in by it, so
+they must **not** be listed individually in `n8n.nodes`. The rule recognises this and
+does not flag the version files.
+
+Given:
+
+```
+nodes/SoterGuard/SoterGuard.node.ts
+nodes/SoterGuard/v1/SoterGuardV1.node.ts
+nodes/SoterGuard/v2/SoterGuardV2.node.ts
+```
+
+registering just the entry file is correct:
+
+```json
+{
+  "name": "n8n-nodes-my-service",
+  "n8n": {
+    "nodes": ["dist/nodes/SoterGuard/SoterGuard.node.js"]
+  }
+}
+```

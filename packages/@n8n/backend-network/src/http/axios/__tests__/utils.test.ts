@@ -23,6 +23,7 @@ import {
 	resolveLegacyRequestUrl,
 	searchForHeader,
 	setAxiosAgents,
+	throwIfDomainNotAllowed,
 	tryParseUrl,
 	validateProxySsrf,
 } from '../utils';
@@ -94,6 +95,59 @@ describe('getHostFromRequestObject', () => {
 	test('should return null for invalid URLs', () => {
 		expect(getHostFromRequestObject({ url: 'not-a-url' })).toBeNull();
 		expect(getHostFromRequestObject({})).toBeNull();
+	});
+});
+
+describe('throwIfDomainNotAllowed', () => {
+	test('should not throw when the host is on the allowlist', () => {
+		expect(() =>
+			throwIfDomainNotAllowed({ url: 'https://example.com/api' }, 'example.com'),
+		).not.toThrow();
+	});
+
+	test('should not throw when no allowlist is configured', () => {
+		expect(() => throwIfDomainNotAllowed({ url: 'https://other.com/api' })).not.toThrow();
+	});
+
+	test('should throw when the host is off the allowlist', () => {
+		expect(() => throwIfDomainNotAllowed({ url: 'https://other.com/api' }, 'example.com')).toThrow(
+			'Domain not allowed: This credential is restricted from accessing other.com. Only the following domains are allowed: example.com',
+		);
+	});
+
+	test('should exclude query parameters from the message', () => {
+		expect(() =>
+			throwIfDomainNotAllowed(
+				{ url: 'https://other.com/api', params: { api_key: 'query-param-value' } },
+				'example.com',
+			),
+		).not.toThrow(/query-param-value/);
+	});
+
+	test('should exclude a query string already present on the url', () => {
+		expect(() =>
+			throwIfDomainNotAllowed({ url: 'https://other.com/api?api_key=inline-value' }, 'example.com'),
+		).not.toThrow(/inline-value/);
+	});
+
+	test('should resolve the target against baseURL', () => {
+		expect(() =>
+			throwIfDomainNotAllowed({ baseURL: 'https://example.com', url: '/api' }, 'example.com'),
+		).not.toThrow();
+
+		expect(() =>
+			throwIfDomainNotAllowed(
+				{ baseURL: 'https://other.com', url: '/api', params: { api_key: 'base-url-value' } },
+				'example.com',
+			),
+		).not.toThrow(/base-url-value/);
+	});
+
+	test('should accept a plain url string', () => {
+		expect(() => throwIfDomainNotAllowed('https://example.com/api', 'example.com')).not.toThrow();
+		expect(() => throwIfDomainNotAllowed('https://other.com/api', 'example.com')).toThrow(
+			'Domain not allowed',
+		);
 	});
 });
 

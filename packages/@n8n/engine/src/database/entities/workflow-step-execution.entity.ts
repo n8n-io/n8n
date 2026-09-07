@@ -8,8 +8,7 @@ import {
 	UpdateDateColumn,
 } from '@n8n/typeorm';
 
-import type { StepSlots, StepStatus } from '../../execution/execution.types';
-import type { StepError } from '../../execution/step-store';
+import type { StepError, StepSlots, StepStatus } from '../../execution/execution.types';
 import { generateId } from '../generate-id';
 
 @Entity('workflow_step_execution')

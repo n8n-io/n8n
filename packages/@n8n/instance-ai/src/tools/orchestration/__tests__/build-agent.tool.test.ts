@@ -1,3 +1,4 @@
+import type { BuiltTool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	type InstanceAiEvent,
@@ -26,6 +27,7 @@ import {
 	type AgentBuilderTarget,
 } from '../agent-target-binding';
 import { createBuildAgentTool } from '../build-agent.tool';
+import type { BuilderRequiredArtifact } from '../builder-required-artifact';
 
 vi.mock('../agent-target-binding', async () => {
 	const actual = await vi.importActual<typeof AgentTargetBindingModule>('../agent-target-binding');
@@ -49,6 +51,7 @@ interface BuildAgentOutput {
 	agentRef?: string;
 	agentName?: string;
 	answers?: QuestionAnswer[];
+	requiredArtifacts?: BuilderRequiredArtifact[];
 }
 
 function fakeStream(chunks: unknown[], text: string): BuilderTurnStream {
@@ -61,6 +64,14 @@ function fakeStream(chunks: unknown[], text: string): BuilderTurnStream {
 		})(),
 		text: Promise.resolve(text),
 	};
+}
+
+function fakeMcpTools(): Map<string, BuiltTool> {
+	const notionSearch: BuiltTool = {
+		name: 'notion_search',
+		description: 'Search connected Notion content',
+	};
+	return new Map([[notionSearch.name, notionSearch]]);
 }
 
 /** A stream whose iteration rejects mid-consumption, instead of yielding an `error` chunk. */
@@ -293,6 +304,19 @@ describe('build-agent tool', () => {
 			modelConfig: context.modelId,
 			abortSignal: context.abortSignal,
 		});
+	});
+
+	it('forwards the parent MCP tools to the initial builder turn', async () => {
+		const { context, delegate } = makeContext();
+		const mcpTools = fakeMcpTools();
+		context.mcpTools = mcpTools;
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+		await runTool(context, { message: 'Build me a support agent', name: 'Support Agent' });
+
+		const session = vi.mocked(delegate.streamBuild).mock.calls[0]?.[2];
+		expect(session?.mcpTools).toBe(mcpTools);
 	});
 
 	it('returns the accumulated builder reply on completion', async () => {
@@ -1520,9 +1544,23 @@ describe('build-agent tool', () => {
 		class FakeBuilderCheckpointUnavailableError extends UserError {
 			readonly code = BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
 		}
+		const requiredArtifacts: BuilderRequiredArtifact[] = [
+			{
+				type: 'workflow',
+				name: 'WhatsApp Agent entrypoint',
+				purpose: 'Connect incoming WhatsApp messages to the Agent',
+				relationship: 'agent-entrypoint',
+				requirements: ['Trigger on incoming WhatsApp messages and invoke the Agent'],
+			},
+		];
 
 		function suspendPayloadWithCheckpoint(
-			overrides: Partial<{ runId: string; toolCallId: string; configUpdated: boolean }> = {},
+			overrides: Partial<{
+				runId: string;
+				toolCallId: string;
+				configUpdated: boolean;
+				requiredArtifacts: BuilderRequiredArtifact[];
+			}> = {},
 		) {
 			return {
 				...askQuestionsSuspendPayload(),
@@ -1581,6 +1619,31 @@ describe('build-agent tool', () => {
 				agentId: 'agent-1',
 				answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
 			});
+		});
+
+		it('forwards the parent MCP tools to the resumed builder turn', async () => {
+			const { context, delegate } = makeContext();
+			const mcpTools = fakeMcpTools();
+			context.mcpTools = mcpTools;
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Using Notion.'));
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint(),
+				},
+			);
+
+			const suspensionSession = vi.mocked(delegate.findOpenSuspensions).mock.calls[0]?.[1];
+			const resumeSession = vi.mocked(delegate.resumeBuild).mock.calls[0]?.[2];
+			expect(suspensionSession?.mcpTools).toBe(mcpTools);
+			expect(resumeSession?.mcpTools).toBe(mcpTools);
 		});
 
 		it('does not attach answers when resuming a credential suspension', async () => {
@@ -1706,11 +1769,15 @@ describe('build-agent tool', () => {
 			const result = await runToolWithCtx(
 				context,
 				{ message: 'Build it', name: 'New Agent' },
-				{ resumeData: { approved: true }, suspendPayload: suspendPayloadWithCheckpoint() },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint({ requiredArtifacts }),
+				},
 			);
 
 			expect(result.ok).toBe(false);
 			expect(result.error).toContain('does not match');
+			expect(result.requiredArtifacts).toEqual(requiredArtifacts);
 			expect(delegate.resumeBuild).not.toHaveBeenCalled();
 		});
 
@@ -1722,11 +1789,15 @@ describe('build-agent tool', () => {
 			const result = await runToolWithCtx(
 				context,
 				{ message: 'Build it', name: 'New Agent' },
-				{ resumeData: { approved: true }, suspendPayload: suspendPayloadWithCheckpoint() },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint({ requiredArtifacts }),
+				},
 			);
 
 			expect(result.ok).toBe(false);
 			expect(result.error).toContain('no longer open');
+			expect(result.requiredArtifacts).toEqual(requiredArtifacts);
 			expect(delegate.resumeBuild).not.toHaveBeenCalled();
 		});
 

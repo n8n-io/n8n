@@ -1,7 +1,12 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nBadge, N8nButton, N8nPopover } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDropdownMenu,
+	N8nTooltip,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
 import type { FilterOption } from '../session-timeline.types';
 import { swatchBackground } from '../session-timeline.styles';
 
@@ -14,98 +19,144 @@ const emit = defineEmits<{ update: [next: Set<string>] }>();
 
 const i18n = useI18n();
 
-const open = ref(false);
+const RESET_ID = '__reset__';
+const EVENTS_HEADER_ID = '__events__';
+const STATUS_HEADER_ID = '__status__';
 
-function toggle(key: string, checked: boolean): void {
-	const next = new Set(props.selected);
-	if (checked) next.add(key);
-	else next.delete(key);
-	emit('update', next);
+type FilterMenuItem = DropdownMenuItemProps<string, { option?: FilterOption }>;
+
+const menuItems = computed<FilterMenuItem[]>(() => {
+	const eventOptions = props.available.filter((option) => option.presentation === 'swatch');
+	const statusOptions = props.available.filter((option) => option.presentation === 'badge');
+	const items: FilterMenuItem[] = [];
+
+	if (eventOptions.length > 0) {
+		items.push({
+			id: EVENTS_HEADER_ID,
+			label: i18n.baseText('agentSessions.timeline.events'),
+			header: true,
+		});
+		items.push(...eventOptions.map(toMenuItem));
+	}
+
+	if (statusOptions.length > 0) {
+		items.push({
+			id: STATUS_HEADER_ID,
+			label: i18n.baseText('agentSessions.timeline.status'),
+			header: true,
+		});
+		items.push(...statusOptions.map(toMenuItem));
+	}
+
+	items.push({
+		id: RESET_ID,
+		label: i18n.baseText('generic.reset'),
+		divided: true,
+		disabled: props.selected.size === 0,
+		testId: 'filter-clear',
+	});
+
+	return items;
+});
+
+function toMenuItem(option: FilterOption): FilterMenuItem {
+	return {
+		id: option.key,
+		label: option.label,
+		checked: props.selected.has(option.key),
+		keepOpen: true,
+		testId: `filter-option-${option.key}`,
+		data: { option },
+	};
 }
 
-function clearAll(): void {
-	emit('update', new Set());
+function optionColor(option: FilterOption): string {
+	if (option.presentation === 'swatch') return option.color;
+
+	switch (option.key) {
+		case 'approved':
+			return 'var(--color--green-600)';
+		case 'error':
+			return 'var(--color--red-600)';
+		default:
+			return 'var(--color--neutral-600)';
+	}
+}
+
+function handleSelect(key: string): void {
+	if (key === RESET_ID) {
+		emit('update', new Set());
+		return;
+	}
+
+	const next = new Set(props.selected);
+	if (next.has(key)) next.delete(key);
+	else next.add(key);
+	emit('update', next);
 }
 </script>
 
 <template>
-	<N8nPopover v-model:open="open" side="bottom" align="end" :content-class="$style.panel">
+	<N8nDropdownMenu :items="menuItems" placement="bottom-end" @select="handleSelect">
 		<template #trigger>
-			<N8nButton variant="outline" icon="funnel" data-test-id="filter-trigger">
-				<span>{{ i18n.baseText('agentSessions.timeline.events') }}</span>
-				<span v-if="props.selected.size > 0">&nbsp;({{ props.selected.size }})</span>
-			</N8nButton>
-		</template>
-		<template #content>
-			<label
-				v-for="opt in props.available"
-				:key="opt.key"
-				:data-test-id="`filter-option-${opt.key}`"
-				:class="$style.option"
-			>
-				<input
-					type="checkbox"
-					:checked="props.selected.has(opt.key)"
-					@change="toggle(opt.key, ($event.target as HTMLInputElement).checked)"
-				/>
-				<span v-if="opt.presentation === 'badge'" :class="$style.label">
-					<N8nBadge
-						:theme="opt.badgeTheme"
-						size="xsmall"
-						:data-test-id="`filter-status-pill-${opt.key}`"
-					>
-						{{ opt.label }}
-					</N8nBadge>
+			<N8nTooltip :content="i18n.baseText('agentSessions.timeline.events')" placement="top">
+				<span :class="$style.trigger">
+					<N8nButton
+						variant="outline"
+						icon="funnel"
+						icon-only
+						:aria-label="i18n.baseText('agentSessions.timeline.events')"
+						data-test-id="filter-trigger"
+					/>
+					<span v-if="props.selected.size > 0" :class="$style.activeIndicator" aria-hidden="true" />
 				</span>
-				<template v-else>
-					<span :class="$style.swatch" :style="{ backgroundColor: swatchBackground(opt.color) }" />
-					<span :class="$style.label">{{ opt.label }}</span>
-				</template>
-				<span :class="$style.count">{{ opt.count }}</span>
-			</label>
-			<button
-				v-if="props.selected.size > 0"
-				type="button"
-				data-test-id="filter-clear"
-				:class="$style.clear"
-				@click="clearAll"
-			>
-				{{ i18n.baseText('agentSessions.timeline.clearFilter') }}
-			</button>
+			</N8nTooltip>
 		</template>
-	</N8nPopover>
+
+		<template #item-leading="{ item, ui }">
+			<span
+				v-if="item.data?.option"
+				:class="[$style.swatch, ui.class]"
+				:style="{ backgroundColor: swatchBackground(optionColor(item.data.option)) }"
+			/>
+		</template>
+
+		<template #item-label="{ item, ui }">
+			<span :class="ui.class">
+				{{ item.label }}
+				<span v-if="item.data?.option" :class="$style.count">
+					{{ item.data.option.count }}
+				</span>
+			</span>
+		</template>
+	</N8nDropdownMenu>
 </template>
 
 <style module lang="scss">
-.panel {
-	padding: var(--spacing--sm) var(--spacing--md);
+.trigger {
+	position: relative;
+	display: inline-flex;
 }
-.option {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) 0;
-	font-size: var(--font-size--2xs);
-	cursor: pointer;
+
+.activeIndicator {
+	position: absolute;
+	top: calc(var(--spacing--3xs) * -0.5);
+	right: calc(var(--spacing--3xs) * -0.5);
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	outline: var(--spacing--5xs) solid var(--background--surface);
+	border-radius: var(--radius--full);
+	background: var(--color--primary);
+	pointer-events: none;
 }
+
 .swatch {
-	width: 10px;
-	height: 10px;
-	border-radius: 2px;
+	width: var(--spacing--xs);
+	height: var(--spacing--xs);
+	border-radius: var(--radius--4xs);
 }
-.label {
-	flex: 1;
-}
+
 .count {
-	color: var(--color--text);
-}
-.clear {
-	margin-top: var(--spacing--3xs);
-	padding: var(--spacing--4xs);
-	background: none;
-	border: none;
-	color: var(--color--primary);
-	font-size: var(--font-size--3xs);
-	cursor: pointer;
+	color: var(--text-color--subtle);
 }
 </style>

@@ -1,13 +1,6 @@
-process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
-
 import type { SourceControlledFile } from '@n8n/api-types';
-import {
-	createTeamProject,
-	createWorkflow,
-	getPersonalProject,
-	mockInstance,
-	testDb,
-} from '@n8n/backend-test-utils';
+import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import {
 	FolderRepository,
@@ -16,7 +9,7 @@ import {
 	UserRepository,
 	WorkflowRepository,
 	WorkflowReviewActivityRepository,
-	WorkflowReviewRequestAuthorRepository,
+	WorkflowReviewLifecycleRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
@@ -26,22 +19,29 @@ import { readFile } from 'node:fs/promises';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { GlobalConfig } from '@n8n/config';
-
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { EventService } from '@/events/event.service';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
-import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
-import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
+import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
-import { createOwner } from '@test-integration/db/users';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
+
+import {
+	createReviewableWorkflow,
+	REVIEW_TABLES,
+	seedReview,
+	seedReviewActors,
+	stubWorkflowValidation,
+} from './support/workflow-review-test-data';
 
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
@@ -66,52 +66,26 @@ let ownerProject: Project;
 let ownerAgent: SuperAgentTest;
 
 let requestRepository: WorkflowReviewRequestRepository;
+let lifecycleRepository: WorkflowReviewLifecycleRepository;
 let linkRepository: WorkflowReviewRequestWorkflowRepository;
-let authorRepository: WorkflowReviewRequestAuthorRepository;
 let activityRepository: WorkflowReviewActivityRepository;
 
 beforeAll(async () => {
 	await utils.initNodeTypes();
 	requestRepository = Container.get(WorkflowReviewRequestRepository);
+	lifecycleRepository = Container.get(WorkflowReviewLifecycleRepository);
 	linkRepository = Container.get(WorkflowReviewRequestWorkflowRepository);
-	authorRepository = Container.get(WorkflowReviewRequestAuthorRepository);
 	activityRepository = Container.get(WorkflowReviewActivityRepository);
 });
 
 beforeEach(async () => {
-	process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 	testServer.license.enable('feat:workflowReviews');
-
-	await testDb.truncate([
-		'WorkflowReviewActivityComment',
-		'WorkflowReviewActivity',
-		'WorkflowReviewRequestAuthor',
-		'WorkflowReviewRequestReviewer',
-		'WorkflowReviewRequestWorkflow',
-		'WorkflowReviewRequest',
-		'SharedWorkflow',
-		'WorkflowPublishedVersion',
-		'WorkflowPublicationOutbox',
-		'WorkflowPublishHistory',
-		'WorkflowEntity',
-		'WorkflowHistory',
-		'Folder',
-		'ProjectRelation',
-		'Project',
-		'User',
-	]);
-
+	// `Folder` on top of the shared list: only the source-control pull tests need it.
+	await testDb.truncate(['Folder', ...REVIEW_TABLES]);
 	await Container.get(WorkflowReviewPolicyService).set(true);
+	stubWorkflowValidation(workflowValidationService);
 
-	// Test workflows have no trigger nodes; activation must not fail on that.
-	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
-	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
-	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
-	workflowValidationService.validateTriggerNodeIds.mockReturnValue({ isValid: true });
-
-	owner = await createOwner();
-	ownerProject = await getPersonalProject(owner);
-	ownerAgent = testServer.authAgentFor(owner);
+	({ owner, ownerProject, ownerAgent } = await seedReviewActors(testServer.authAgentFor));
 });
 
 /** Read through the endpoint, so the entries are asserted exactly as a reader sees them. */
@@ -131,12 +105,23 @@ const closedEntry = expect.objectContaining({
 	data: { reason: 'no-reviewable-workflows' },
 });
 
-/** Create a workflow owned by `owner` with a pinned history version. */
-async function createReviewableWorkflow(attributes: { isArchived?: boolean } = {}) {
-	const versionId = uuid();
-	const workflow = await createWorkflow({ versionId, ...attributes }, owner);
-	await createWorkflowHistoryItem(workflow.id, { versionId });
-	return { workflow, versionId };
+/**
+ * Take the activity writes down for the duration of `mutate`, then restore them.
+ *
+ * Scoping it to the one mutation matters: counting `mockRejectedValueOnce` calls
+ * instead couples the test to how many writes that mutation happens to attempt,
+ * and an unconsumed rejection then leaks into the *next* mutation — which is the
+ * sweep these tests are trying to observe working.
+ */
+async function withActivityWritesDown(mutate: () => Promise<unknown>) {
+	const spy = vi
+		.spyOn(activityRepository, 'createActivity')
+		.mockRejectedValue(new Error('write failed'));
+	try {
+		await mutate();
+	} finally {
+		spy.mockRestore();
+	}
 }
 
 async function createOpenReview(
@@ -147,30 +132,23 @@ async function createOpenReview(
 		decision?: 'pending' | 'changes_requested' | 'approved';
 	} = {},
 ) {
-	const request = await requestRepository.createRequest(
-		{
-			projectId: ownerProject.id,
-			title: 'Review before publishing',
-			createdById: owner.id,
-			state: overrides.state,
-			decision: overrides.decision,
-		},
-		{},
-	);
-	await linkRepository.createWorkflowRow(
-		{ workflowReviewRequestId: request.id, workflowId, workflowVersionId: versionId },
-		{},
-	);
-	await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: owner.id }, {});
-	return request;
+	return await seedReview({
+		projectId: ownerProject.id,
+		workflowId,
+		versionId,
+		author: owner,
+		...overrides,
+	});
 }
 
 describe('auto-close on workflow archive', () => {
 	test('archiving records the cause and the close, leaving the decision unchanged', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId, {
 			decision: 'changes_requested',
 		});
+		// Spied rather than mocked: the real container's listeners must keep running.
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		await ownerAgent.post(`/workflows/${workflow.id}/archive`).expect(200);
 
@@ -188,6 +166,20 @@ describe('auto-close on workflow archive', () => {
 			}),
 			closedEntry,
 		]);
+
+		// The archive path reports the close naming the cause, and the sweep that runs right
+		// after it finds nothing left to report.
+		expect(emit.mock.calls.filter(([eventName]) => eventName === 'workflow-review-closed')).toEqual(
+			[
+				[
+					'workflow-review-closed',
+					{
+						workflowReviewRequestId: request.id,
+						cause: { trigger: 'workflow-archived', actorKind: 'user', userId: owner.id },
+					},
+				],
+			],
+		);
 	});
 
 	// The cause, the close and its explanation share one transaction, so an unwritable entry
@@ -195,7 +187,7 @@ describe('auto-close on workflow archive', () => {
 	// mutation. The reconciliation sweep that follows the hook picks the rolled-back review
 	// straight back up, closing it without the (unrecoverable) cause entry.
 	test('archives the workflow anyway when the cause cannot be recorded, and the sweep closes it', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId);
 		vi.spyOn(activityRepository, 'createActivity').mockRejectedValueOnce(new Error('write failed'));
 
@@ -208,18 +200,16 @@ describe('auto-close on workflow archive', () => {
 	// Both the targeted close and the sweep that follows it are down, so the review is stranded
 	// open on a workflow that is already archived — the state the next sweep has to repair.
 	test('a review stranded open on an archived workflow is closed by the next sweep', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId);
-		vi.spyOn(activityRepository, 'createActivity')
-			.mockRejectedValueOnce(new Error('write failed'))
-			.mockRejectedValueOnce(new Error('write failed'));
-
-		await ownerAgent.post(`/workflows/${workflow.id}/archive`).expect(200);
+		await withActivityWritesDown(
+			async () => await ownerAgent.post(`/workflows/${workflow.id}/archive`).expect(200),
+		);
 		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
 
 		// Any later lifecycle mutation runs the sweep again — this one touches an unrelated
 		// workflow, so only the sweep can reach the stranded review.
-		const unrelated = await createReviewableWorkflow();
+		const unrelated = await createReviewableWorkflow(owner);
 		await ownerAgent.post(`/workflows/${unrelated.workflow.id}/archive`).expect(200);
 
 		const closed = await requestRepository.findById(request.id, {});
@@ -229,7 +219,7 @@ describe('auto-close on workflow archive', () => {
 	});
 
 	test('unarchiving does not reopen the review, and the workflow is no longer publish-blocked', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId);
 
 		await ownerAgent.post(`/workflows/${workflow.id}/archive`).expect(200);
@@ -241,7 +231,7 @@ describe('auto-close on workflow archive', () => {
 	});
 
 	test('an already-closed (approved) review is untouched by archiving', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId, {
 			state: 'closed',
 			decision: 'approved',
@@ -258,7 +248,7 @@ describe('auto-close on workflow archive', () => {
 
 describe('auto-close on workflow transfer', () => {
 	test('moving the workflow to another project records the cause and closes the review', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId);
 		const destination = await createTeamProject('Destination', owner);
 
@@ -286,21 +276,21 @@ describe('auto-close on workflow transfer', () => {
 	// The move stays committed when its close rolls back, leaving the review open on a workflow
 	// that now belongs to another project — the sweep still has the link row to find it by.
 	test('a review stranded open on a moved workflow is closed by the next sweep', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId);
 		const destination = await createTeamProject('Destination', owner);
-		vi.spyOn(activityRepository, 'createActivity')
-			.mockRejectedValueOnce(new Error('write failed'))
-			.mockRejectedValueOnce(new Error('write failed'));
 
-		await Container.get(EnterpriseWorkflowService).transferWorkflow(
-			owner,
-			workflow.id,
-			destination.id,
+		await withActivityWritesDown(
+			async () =>
+				await Container.get(EnterpriseWorkflowService).transferWorkflow(
+					owner,
+					workflow.id,
+					destination.id,
+				),
 		);
 		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
 
-		const unrelated = await createReviewableWorkflow();
+		const unrelated = await createReviewableWorkflow(owner);
 		await ownerAgent.post(`/workflows/${unrelated.workflow.id}/archive`).expect(200);
 
 		const closed = await requestRepository.findById(request.id, {});
@@ -310,10 +300,10 @@ describe('auto-close on workflow transfer', () => {
 	});
 
 	test('a review whose workflow is still in its project and unarchived is left open', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId);
 
-		const unrelated = await createReviewableWorkflow();
+		const unrelated = await createReviewableWorkflow(owner);
 		await ownerAgent.post(`/workflows/${unrelated.workflow.id}/archive`).expect(200);
 
 		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
@@ -322,7 +312,7 @@ describe('auto-close on workflow transfer', () => {
 
 describe('auto-close on workflow hard delete', () => {
 	test('force-deleting a non-archived workflow records the cause and closes the review', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId);
 
 		await Container.get(WorkflowService).delete(owner, workflow.id, true);
@@ -347,9 +337,9 @@ describe('auto-close on workflow hard delete', () => {
 	// The capture is best-effort: when it fails, the delete still goes through and the
 	// sweep closes the review — without the cause entry, which the cascade made unrecoverable.
 	test('a failed capture degrades to a sweep close without a cause entry', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow({ isArchived: true });
+		const { workflow, versionId } = await createReviewableWorkflow(owner, { isArchived: true });
 		const request = await createOpenReview(workflow.id, versionId);
-		vi.spyOn(requestRepository, 'findOpenRequestsForWorkflows').mockRejectedValueOnce(
+		vi.spyOn(lifecycleRepository, 'findOpenRequestsAffectedByWorkflows').mockRejectedValueOnce(
 			new Error('read failed'),
 		);
 
@@ -364,7 +354,7 @@ describe('auto-close on workflow hard delete', () => {
 	// A review opened after the capture ran loses its link row to the cascade and
 	// can no longer be found by workflow id. The post-delete sweep is what catches it.
 	test('a review orphaned by a delete that skipped the hooks is closed by the next delete', async () => {
-		const orphaned = await createReviewableWorkflow();
+		const orphaned = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(orphaned.workflow.id, orphaned.versionId);
 
 		// Delete the row straight from the repository, as a folder-hierarchy cascade does:
@@ -375,7 +365,7 @@ describe('auto-close on workflow hard delete', () => {
 
 		// `unrelated` has no review of its own, so the capture finds nothing to record
 		// and the sweep is the only thing that can explain the orphaned review.
-		const unrelated = await createReviewableWorkflow();
+		const unrelated = await createReviewableWorkflow(owner);
 		await Container.get(WorkflowService).delete(owner, unrelated.workflow.id, true);
 
 		const closed = await requestRepository.findById(request.id, {});
@@ -386,10 +376,10 @@ describe('auto-close on workflow hard delete', () => {
 	});
 
 	test('leaves a review whose workflow still exists open', async () => {
-		const live = await createReviewableWorkflow();
+		const live = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(live.workflow.id, live.versionId);
 
-		const other = await createReviewableWorkflow();
+		const other = await createReviewableWorkflow(owner);
 		await Container.get(WorkflowService).delete(owner, other.workflow.id, true);
 
 		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
@@ -398,8 +388,8 @@ describe('auto-close on workflow hard delete', () => {
 
 describe('close policy with multiple linked workflows', () => {
 	test('stays open while a reviewable workflow remains outside the affected set, then closes', async () => {
-		const first = await createReviewableWorkflow();
-		const second = await createReviewableWorkflow();
+		const first = await createReviewableWorkflow(owner);
+		const second = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(first.workflow.id, first.versionId);
 		await linkRepository.createWorkflowRow(
 			{
@@ -440,8 +430,8 @@ describe('close policy with multiple linked workflows', () => {
 	// A linked workflow without an owner sharing row is a broken row, not a move; the
 	// targeted close must leave it reviewable, exactly as the reconciliation sweep does.
 	test('treats a linked workflow with no owner row as reviewable, matching the sweep', async () => {
-		const first = await createReviewableWorkflow();
-		const second = await createReviewableWorkflow();
+		const first = await createReviewableWorkflow(owner);
+		const second = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(first.workflow.id, first.versionId);
 		await linkRepository.createWorkflowRow(
 			{
@@ -473,7 +463,7 @@ describe('publish recorder', () => {
 		});
 
 	test('records workflow.published into the closed (approved) review pinned to the version', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await approvedReview(workflow.id, versionId);
 
 		await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
@@ -487,7 +477,7 @@ describe('publish recorder', () => {
 		vi.spyOn(Container.get(WorkflowPublicationNotifier), 'requestDrain').mockReturnValue();
 		globalConfig.workflows.useWorkflowPublicationService = true;
 		try {
-			const { workflow, versionId } = await createReviewableWorkflow();
+			const { workflow, versionId } = await createReviewableWorkflow(owner);
 			const request = await approvedReview(workflow.id, versionId);
 
 			await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
@@ -501,7 +491,7 @@ describe('publish recorder', () => {
 	});
 
 	test('records into every request pinned to the published version', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const first = await approvedReview(workflow.id, versionId);
 		const second = await approvedReview(workflow.id, versionId);
 
@@ -513,7 +503,7 @@ describe('publish recorder', () => {
 
 	// It's a timeline, matching publish history: each publication of the version is an event.
 	test('repeated publication of the same version appends repeated entries', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await approvedReview(workflow.id, versionId);
 
 		await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
@@ -526,7 +516,7 @@ describe('publish recorder', () => {
 	});
 
 	test('records nothing for a review pinned to a different version', async () => {
-		const { workflow, versionId: pinnedVersionId } = await createReviewableWorkflow();
+		const { workflow, versionId: pinnedVersionId } = await createReviewableWorkflow(owner);
 		const request = await approvedReview(workflow.id, pinnedVersionId);
 
 		const otherVersionId = uuid();
@@ -540,7 +530,7 @@ describe('publish recorder', () => {
 	});
 
 	test('records nothing when activation fails before the commit boundary', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await approvedReview(workflow.id, versionId);
 		activeWorkflowManager.add.mockRejectedValueOnce(new Error('Webhook path already taken'));
 
@@ -552,7 +542,7 @@ describe('publish recorder', () => {
 	// The rename and the final re-fetch run after the boundary; their failures fail the API
 	// call, but the publication is committed and its record must survive with it.
 	test('the entry persists when post-boundary work throws', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await approvedReview(workflow.id, versionId);
 		vi.spyOn(Container.get(WorkflowHistoryService), 'updateVersion').mockRejectedValueOnce(
 			new Error('rename failed'),
@@ -574,7 +564,7 @@ describe('publish recorder', () => {
 
 	// The publication must never fail because its feed entry could not be written.
 	test('a failed recorder write does not fail the publish', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await approvedReview(workflow.id, versionId);
 		vi.spyOn(activityRepository, 'createActivity').mockRejectedValueOnce(new Error('db down'));
 
@@ -590,7 +580,7 @@ describe('publish recorder', () => {
 
 describe('auto-close with the instance policy disabled', () => {
 	test('cleanup still runs when the policy toggle is off', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId);
 
 		await Container.get(WorkflowReviewPolicyService).set(false);
@@ -637,6 +627,12 @@ describe('auto-close on source-control pull', () => {
 			mock(), // dataTableColumnRepository
 			mock(), // dataTableDDLService
 			mock(), // redactionEnforcementService
+			mock<PolicyEnforcementService>({
+				// The repository verifies the token, so it has to be a real one. With no backend
+				// registered the real service clears everything, which is what a default pull does.
+				enforceContentImport: async (context) =>
+					await Container.get(PolicyEnforcementService).enforceContentImport(context),
+			}), // policyEnforcementService
 			mock(), // dataTableSizeValidator
 			mock(), // activeWorkflowManager
 			mock(), // executionPersistence
@@ -681,7 +677,7 @@ describe('auto-close on source-control pull', () => {
 	});
 
 	test('a pull that archives the workflow closes the open review, decision unchanged', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId, {
 			decision: 'changes_requested',
 		});
@@ -711,7 +707,7 @@ describe('auto-close on source-control pull', () => {
 	});
 
 	test('an already-approved (closed) review is untouched by a pull-archive', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId, {
 			state: 'closed',
 			decision: 'approved',
@@ -727,7 +723,7 @@ describe('auto-close on source-control pull', () => {
 	});
 
 	test('a pull that updates the workflow without archiving leaves the review open', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId);
 
 		const candidate = putWorkflowFile(remoteWorkflow(workflow.id, { name: 'Updated by pull' }));
@@ -742,7 +738,7 @@ describe('auto-close on source-control pull', () => {
 
 	test('a pull that deletes a folder closes reviews of cascade-deleted workflows', async () => {
 		const folder = await createFolder(ownerProject, { name: 'Deleted remotely' });
-		const { workflow, versionId } = await createReviewableWorkflow();
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		await Container.get(WorkflowRepository).save({ id: workflow.id, parentFolder: folder });
 		const request = await createOpenReview(workflow.id, versionId);
 
