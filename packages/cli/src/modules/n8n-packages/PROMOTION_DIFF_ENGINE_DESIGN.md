@@ -168,9 +168,11 @@ workflow produce identical files, and which fields wobble?
 
 - **Option 2 — timestamp pre-filter.** Track one timestamp per connector: the
   last sync time. Query `WHERE updatedAt > lastSyncTimestamp` before
-  serializing, and only serialize+hash that candidate set. Cheap, and safe —
-  a stale or missing timestamp just means "diff everything," never a false
-  negative. Worth adding later on top of Option 1.
+  serializing, and only serialize+hash that candidate set. Not safe with a
+  selective push: a workflow edited before the last push but not selected
+  keeps an old `updatedAt` and a stale file on the branch, so the filter skips
+  it and reports it unchanged. A safe pre-filter needs per-entity knowledge of
+  what the branch holds, which is the hash-on-save idea deferred from v1.
 - **Option 3 — event log / changelog.** Hook into save/update/delete events;
   diff becomes "read the log since last sync." Cost scales with actual
   changes, not corpus size. Risk: correctness depends on the log never
