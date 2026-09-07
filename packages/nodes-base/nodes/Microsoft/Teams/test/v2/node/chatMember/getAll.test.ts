@@ -3,8 +3,11 @@ import nock from 'nock';
 
 import { credentials } from '../../../credentials';
 
+// Membership ids are opaque base64 of `0##0##<tenantId>##<chatId>##<userId>`,
+// derived here from the tenant, chat and user ids below so the fixture is self-consistent.
 const member1 = {
-	id: 'MCMjMCMjZmJlMmJmNDctMTZjOC00N2NmLWI0YTUtNGI5YTE5YzBmZTI4IyMxOTpiOTVhNTc3NGMxYzc0MjJmYjNkMTljMTU2Y2E5N2I5NEB0aHJlYWQudjIjIzg2MTA0MDBhLTUyYzYtNGI2Yy04MTZjLThjNjIzZDNlZmQ5Yg==',
+	id: 'MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDllZTBhMzM3IyMxOTplYmVkOWFkNDJjOTA0ZDZjODNhZGYwZGIzNjAwNTNlY0B0aHJlYWQudjIjI2U3NmY0NTZmLTVjM2YtNGYxZS05ZDVlLTRkOGYwZjZhYjExMQ==',
+	'@odata.type': '#microsoft.graph.aadUserConversationMember',
 	roles: ['owner'],
 	displayName: 'Ann Smith',
 	userId: 'e76f456f-5c3f-4f1e-9d5e-4d8f0f6ab111',
@@ -13,7 +16,8 @@ const member1 = {
 	visibleHistoryStartDateTime: '0001-01-01T00:00:00Z',
 };
 const member2 = {
-	id: 'MCMjMSMj',
+	id: 'MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDllZTBhMzM3IyMxOTplYmVkOWFkNDJjOTA0ZDZjODNhZGYwZGIzNjAwNTNlY0B0aHJlYWQudjIjI2FhMTFiYjIyLTVjM2YtNGYxZS05ZDVlLTRkOGYwZjZhYjIyMg==',
+	'@odata.type': '#microsoft.graph.aadUserConversationMember',
 	roles: ['owner'],
 	displayName: 'Bob Jones',
 	userId: 'aa11bb22-5c3f-4f1e-9d5e-4d8f0f6ab222',
@@ -25,6 +29,9 @@ const member2 = {
 describe('Test MicrosoftTeamsV2, chatMember => getAll', () => {
 	// Registered WITHOUT `.query(...)`: this endpoint supports no OData parameters, so
 	// the test fails if `$top` is ever added.
+	// The workflow passes this chat id By ID and percent-encoded, the way the RLC hint
+	// tells users to copy it out of a Teams URL. The decoded form below is what
+	// `validateMicrosoftGraphId` must interpolate into the path.
 	nock('https://graph.microsoft.com')
 		.get('/v1.0/chats/19:ebed9ad42c904d6c83adf0db360053ec@thread.v2/members')
 		.reply(200, { value: [member1, member2] });

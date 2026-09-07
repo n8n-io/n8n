@@ -87,6 +87,8 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			);
 			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
 			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
+			// the guard reads only the `authentication` parameter, never the credential itself
+			expect(ctx.getCredentials).not.toHaveBeenCalled();
 		},
 	);
 

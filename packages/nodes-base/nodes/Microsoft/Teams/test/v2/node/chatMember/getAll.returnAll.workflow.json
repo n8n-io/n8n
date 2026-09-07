@@ -46,7 +46,8 @@
 		"No Operation, do nothing": [
 			{
 				"json": {
-					"id": "MCMjMCMjZmJlMmJmNDctMTZjOC00N2NmLWI0YTUtNGI5YTE5YzBmZTI4IyMxOTpiOTVhNTc3NGMxYzc0MjJmYjNkMTljMTU2Y2E5N2I5NEB0aHJlYWQudjIjIzg2MTA0MDBhLTUyYzYtNGI2Yy04MTZjLThjNjIzZDNlZmQ5Yg==",
+					"id": "MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDllZTBhMzM3IyMxOTplYmVkOWFkNDJjOTA0ZDZjODNhZGYwZGIzNjAwNTNlY0B0aHJlYWQudjIjI2U3NmY0NTZmLTVjM2YtNGYxZS05ZDVlLTRkOGYwZjZhYjExMQ==",
+					"@odata.type": "#microsoft.graph.aadUserConversationMember",
 					"roles": ["owner"],
 					"displayName": "Ann Smith",
 					"userId": "e76f456f-5c3f-4f1e-9d5e-4d8f0f6ab111",
@@ -57,7 +58,8 @@
 			},
 			{
 				"json": {
-					"id": "MCMjMSMj",
+					"id": "MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDllZTBhMzM3IyMxOTplYmVkOWFkNDJjOTA0ZDZjODNhZGYwZGIzNjAwNTNlY0B0aHJlYWQudjIjI2FhMTFiYjIyLTVjM2YtNGYxZS05ZDVlLTRkOGYwZjZhYjIyMg==",
+					"@odata.type": "#microsoft.graph.aadUserConversationMember",
 					"roles": ["owner"],
 					"displayName": "Bob Jones",
 					"userId": "aa11bb22-5c3f-4f1e-9d5e-4d8f0f6ab222",
