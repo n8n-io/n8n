@@ -545,4 +545,50 @@ describe('new command', () => {
 			);
 		},
 	);
+
+	tmpdirTest(
+		'keeps GitHub Actions expressions in the generated workflows intact',
+		async ({ tmpdir }) => {
+			MockPrompt.setup([]);
+
+			mockExecSync([
+				{ command: 'git config --get user.name', result: 'Workflow User\n' },
+				{ command: 'git config --get user.email', result: 'workflow@example.com\n' },
+			]);
+
+			mockSpawn([
+				{
+					command: 'git',
+					args: ['init', '-b', 'main'],
+					options: { exitCode: 0 },
+				},
+			]);
+
+			await CommandTester.run(
+				'new n8n-nodes-workflow-expressions --template declarative/github-issues --skip-install',
+			);
+
+			const projectName = 'n8n-nodes-workflow-expressions';
+
+			// Handlebars shares its `{{ ... }}` delimiters with GitHub Actions expression syntax, so
+			// an unescaped `${{ secrets.NPM_TOKEN }}` resolves against the render context, finds
+			// nothing, and collapses to a bare `$` — leaving a workflow that never forwards the secret.
+			await expect(tmpdir).toHaveFileContaining(
+				`${projectName}/.github/workflows/publish.yml`,
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string -- literal GitHub Actions expression, not a JS template
+				'NPM_TOKEN: ${{ secrets.NPM_TOKEN }}',
+			);
+			await expect(tmpdir).toHaveFileContaining(
+				`${projectName}/.github/workflows/ci.yml`,
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string -- literal GitHub Actions expression, not a JS template
+				'group: ci-${{ github.ref }}',
+			);
+
+			// Escaping must stay surgical: the Handlebars placeholders in the same files still render.
+			await expect(tmpdir).toHaveFileMatchingPattern(
+				`${projectName}/.github/workflows/ci.yml`,
+				/run: '(npm|pnpm|yarn) [^{]+'/,
+			);
+		},
+	);
 });
