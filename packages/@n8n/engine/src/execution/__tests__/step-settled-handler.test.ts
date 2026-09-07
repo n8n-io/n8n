@@ -79,6 +79,8 @@ function makeStepStore(
 		status: 'completed',
 		outputs: null,
 		...step,
+		wait: null,
+		resume: null,
 	};
 	const summariesByKey = Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
 	return {
@@ -90,6 +92,9 @@ function makeStepStore(
 		loadStep: vi.fn().mockResolvedValue(record),
 		claimStep: vi.fn(),
 		completeStep: vi.fn(),
+		suspendStep: vi.fn(),
+		resumeStep: vi.fn(),
+		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		failStep: vi.fn(),
 		cancelQueuedSteps: vi.fn(),
 		// like the store: only requested keys that have rows appear
