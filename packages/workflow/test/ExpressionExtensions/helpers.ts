@@ -54,19 +54,22 @@ export const evaluate = (value: string, values?: IDataObject[]) =>
  * Replace usages with fromISO() directly.
  */
 export const asDateTime = (v: unknown): DateTime => {
-	if (DateTime.isDateTime(v)) return v;
+	if (v instanceof DateTime) return v;
+	if (DateTime.isDateTime(v)) return DateTime.fromISO(v.toISO() ?? '', { setZone: true });
 	if (typeof v !== 'string') throw new Error(`Expected DateTime or ISO string, got ${typeof v}`);
 	return DateTime.fromISO(v);
 };
 
 export const asDuration = (v: unknown): Duration => {
-	if (Duration.isDuration(v)) return v;
+	if (v instanceof Duration) return v;
+	if (Duration.isDuration(v)) return Duration.fromISO(v.toISO() ?? '');
 	if (typeof v !== 'string') throw new Error(`Expected Duration or ISO string, got ${typeof v}`);
 	return Duration.fromISO(v);
 };
 
 export const asInterval = (v: unknown): Interval => {
-	if (Interval.isInterval(v)) return v;
+	if (v instanceof Interval) return v;
+	if (Interval.isInterval(v)) return Interval.fromISO(v.toISO());
 	if (typeof v !== 'string') throw new Error(`Expected Interval or ISO string, got ${typeof v}`);
 	return Interval.fromISO(v);
 };
