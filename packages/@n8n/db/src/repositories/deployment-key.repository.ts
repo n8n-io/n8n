@@ -1,7 +1,9 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { DeploymentKey } from '../entities/deployment-key';
+import { DbLock, DbLockService } from '../services/db-lock.service';
 
 export type DeploymentKeySortField = 'createdAt' | 'updatedAt' | 'status';
 export type DeploymentKeySortDirection = 'ASC' | 'DESC';
@@ -18,8 +20,36 @@ export type ListDeploymentKeysOptions = {
 
 @Service()
 export class DeploymentKeyRepository extends Repository<DeploymentKey> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly dbLockService: DbLockService,
+	) {
 		super(DeploymentKey, dataSource.manager);
+	}
+
+	/**
+	 * Seeds the legacy aes-256-cbc data-encryption row exactly once. The
+	 * check and insert run inside a `DbLock` critical section, so mains
+	 * starting concurrently cannot create duplicate rows.
+	 */
+	async seedLegacyCbcKey(encryptedValue: string): Promise<void> {
+		await this.dbLockService.withLock(DbLock.DATA_ENCRYPTION_KEY_SEED, async (tx) => {
+			const repo = tx.getRepository(DeploymentKey);
+			const existing = await repo.findOne({
+				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
+			});
+			if (existing) return;
+			// a create()-built entity instance, so the @BeforeInsert id hook runs
+			// (a plain object literal would skip it and violate the NOT NULL id)
+			await repo.save(
+				repo.create({
+					type: 'data_encryption',
+					value: encryptedValue,
+					algorithm: 'aes-256-cbc',
+					status: 'inactive',
+				}),
+			);
+		});
 	}
 
 	async findActiveByType(type: string): Promise<DeploymentKey | null> {
@@ -98,5 +128,32 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 			await tx.update(DeploymentKey, { type, status: 'active' }, { status: 'inactive' });
 			await tx.update(DeploymentKey, { id, type }, { status: 'active' });
 		});
+	}
+
+	// Deployment keys must never be deleted: data encrypted with a key becomes
+	// unreadable without it. Keys are deactivated instead (`markInactive` /
+	// `promoteToActive`). These parameterless shadows close the inherited
+	// TypeORM delete surface twice over — calls with arguments no longer
+	// type-check, and any call throws at runtime. Call sites are additionally
+	// rejected in CI by `n8n-local-rules/no-deployment-key-delete`.
+
+	async delete(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async remove(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async softDelete(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async softRemove(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async clear(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
 	}
 }

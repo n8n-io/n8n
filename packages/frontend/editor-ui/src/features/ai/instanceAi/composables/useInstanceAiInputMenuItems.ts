@@ -7,15 +7,14 @@ import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrows
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
 import {
-	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 } from '../constants';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
-import { useInstanceAiBrowserUseTelemetry } from '../instanceAiBrowserUse.telemetry';
 import { useInstanceAiComputerUseTelemetry } from '../instanceAiComputerUse.telemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useBrowserUseConnection } from './useBrowserUseConnection';
 import { iconForTool } from '../toolIcons';
 
 type InputMenuItemData = {
@@ -32,7 +31,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	const settingsStore = useInstanceAiSettingsStore();
 	const mcpStore = useInstanceAiMcpStore();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
-	const browserUseTelemetry = useInstanceAiBrowserUseTelemetry();
+	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 	const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 	const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
 	const { isFeatureEnabled: isBrowserUseFeatureEnabled } = useInstanceAiBrowserUseExperiment();
@@ -266,9 +265,10 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 						settingsStore.browserUseConnectionStatus !== 'none'
 							? i18n.baseText('instanceAi.inputMenu.browser.connectedTitle')
 							: undefined,
-					connect: () => {
-						browserUseTelemetry.trackModalOpened('input_menu');
-						uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
+					// An instance the user allowed reconnects with no modal at all, so the flow
+					// decides whether one is needed — and reports the open when it is.
+					connect: async () => {
+						await ensureBrowserConnected('input_menu');
 					},
 					disconnect: settingsStore.disconnectBrowserUse,
 				}),

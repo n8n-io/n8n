@@ -164,6 +164,11 @@ export default mergeConfig(
 					// for everyone who imports the barrel, including consumers that alias
 					// this package to source and register no plugin.
 					'icons/lucide/index': resolve(srcDir, 'icons', 'lucide', 'index.ts'),
+					// Third entry for the same reason: `N8nPlugin` only registers the
+					// directives, so a consumer that wants them should not have to pull
+					// the component barrel. It stays on `src/index.ts` too — the entry is
+					// an extra door, not a move.
+					plugin: resolve(srcDir, 'plugin.ts'),
 				},
 				// ES only. UMD supports neither multiple entries nor code splitting, and
 				// both are requirements here — the icon buckets have to stay lazy chunks.

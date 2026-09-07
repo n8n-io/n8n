@@ -124,7 +124,7 @@ describe('get-workflow-details MCP tool', () => {
 						disabled: false,
 						parameters: {},
 						credentials: {
-							openAiApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							openAiApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 						},
 					},
 					{

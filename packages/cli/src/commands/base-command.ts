@@ -9,6 +9,7 @@ import {
 	ModuleRegistry,
 	ModulesConfig,
 } from '@n8n/backend-common';
+import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -33,6 +34,7 @@ import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
@@ -97,7 +99,15 @@ export abstract class BaseCommand<F = never> {
 	 */
 	protected seedsInstanceIdentity = false;
 
+	/** Whether this command runs the main server process (`n8n start`). */
+	protected readonly isMainServer: boolean = false;
+
 	async init(): Promise<void> {
+		// First, so any default-agent egress during init already honours the proxy
+		// env vars. Sentry is unaffected either way: its transport builds its own
+		// agent and reads only the lowercase http(s)_proxy / no_proxy variables.
+		this.installOutboundProxyAgents();
+
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
@@ -227,6 +237,7 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
+		Container.get(ActivityEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
 		if (this.needsExpressionEngine) {
@@ -253,6 +264,17 @@ export abstract class BaseCommand<F = never> {
 			// Record the configured engine so an unexpected expression evaluation on a
 			// vm-configured instance fails loudly instead of silently using the legacy engine
 			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
+		}
+	}
+
+	/**
+	 * Installs the env-proxy global agents so default-agent HTTP honours the proxy
+	 * environment variables. In `main-only` outbound proxy mode, only the main
+	 * server process installs them.
+	 */
+	protected installOutboundProxyAgents() {
+		if (this.globalConfig.outboundProxy.mode === 'all' || this.isMainServer) {
+			installGlobalProxyAgent();
 		}
 	}
 

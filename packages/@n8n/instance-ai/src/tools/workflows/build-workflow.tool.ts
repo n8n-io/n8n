@@ -4,7 +4,12 @@ import {
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
-import { SDK_IMPORTABLE_FUNCTIONS, type WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	dropInvalidWorkflowJsonGroups,
+	SDK_IMPORTABLE_FUNCTIONS,
+	type WorkflowJSON,
+} from '@n8n/workflow-sdk';
+import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -16,9 +21,11 @@ import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
 	buildCredentialMap,
 	buildCredentialResolutionNote,
+	isN8nCreditsWalletDepleted,
 	resolveCredentials,
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
+import { buildSetupItemsFromSetupRequests, isSetupPanelEnabled } from './setup-items';
 import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
@@ -71,7 +78,11 @@ import {
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
-import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
+import {
+	nodeGroupDroppedWarnings,
+	partitionWarnings,
+	type ValidationWarning,
+} from './workflow-validation-warnings';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
@@ -159,10 +170,6 @@ export const buildWorkflowInputSchema = z
 					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
 					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
-		projectId: z
-			.string()
-			.optional()
-			.describe('Project ID to create the workflow in. Defaults to personal project.'),
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
 		workItemId: z
 			.string()
@@ -179,9 +186,10 @@ export const buildWorkflowInputSchema = z
 			.array(z.string())
 			.optional()
 			.describe(
-				'Credential types (e.g. ["slackApi"]) the user explicitly asked to create fresh — pass ONLY on ' +
-					'an explicit request like "create a new Slack credential", never as a default. Those slots are ' +
-					'left unresolved instead of being filled from an existing credential or n8n credits, so ' +
+				'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when the user ' +
+					'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
+					'credential whose secret is invalid or rotated, never as a default. Those slots are ' +
+					'left unresolved instead of being filled from an existing credential or Gateway credits, so ' +
 					'credential setup can offer to create one. Pass the same list to workflows(action="setup").',
 			),
 		executionIntent: z
@@ -589,7 +597,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						category: 'blocked',
 						shouldEdit: false,
 						reason: 'user_denied',
-						guidance: 'The user denied permission to edit this workflow.',
+						guidance:
+							'The user declined the save approval card — nothing was saved. Do not re-issue ' +
+							'the same save unprompted: acknowledge the denial, tell the user what remains ' +
+							'unsaved, and ask how they want to proceed.',
 					});
 					trackWorkflowSourceBuild(context, {
 						result: 'denied',
@@ -725,7 +736,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				binding = await saveWorkflowSourceFileBinding(context, { ...binding, sourceHash });
 			}
 
-			const { projectId, name } = input;
+			const { name } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
 			const buildContext = context.workflowBuildContext;
 			const {
@@ -1012,6 +1023,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
+				let droppedGroupCount = 0;
 				// Runs first: the passes below key off node ids, so they must be unique.
 				ensureUniqueNodeIds(json);
 				// Recovers the saved id of a surviving node whose source declared none — layered
@@ -1021,6 +1033,17 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 				await preserveExistingNodePositions(json, targetWorkflowId, context);
+				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
+				const droppedGroupWarnings = nodeGroupDroppedWarnings(
+					dropInvalidWorkflowJsonGroups(
+						json,
+						context.nodeTypesProvider
+							? makeGetNodeTypeForGrouping(context.nodeTypesProvider)
+							: null,
+					),
+				);
+				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
+				informational.push(...droppedGroupWarnings);
 
 				if (await hasLostAllSavedNodeIds(json, targetWorkflowId, context)) {
 					context.logger.debug('Build kept none of the saved node ids', {
@@ -1067,11 +1090,33 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					saved: { id: string; versionId: string; checksum?: string },
 					operation: 'create' | 'update',
 				) => {
-					const setupRequests = await analyzeWorkflow(context, saved.id, undefined, {
+					// The setup panel lists bound slots too (rendered as done), so its
+					// snapshot needs the settled requests the routing below must not see.
+					const setupItemsEmitter = isSetupPanelEnabled(context)
+						? context.setupItemsEmitter
+						: undefined;
+					const analyzedRequests = await analyzeWorkflow(context, saved.id, undefined, {
 						...(input.preferNewCredentials
 							? { preferNewCredentialTypes: input.preferNewCredentials }
 							: {}),
+						...(setupItemsEmitter ? { includeSettled: true } : {}),
 					});
+					const setupRequests = analyzedRequests.filter((request) => !!request.needsAction);
+					if (setupItemsEmitter) {
+						// Every saved iteration re-announces the checklist; the emitter
+						// drops unchanged snapshots. Best-effort: never fail a build over it.
+						try {
+							setupItemsEmitter.emit(
+								saved.id,
+								buildSetupItemsFromSetupRequests(saved.id, analyzedRequests),
+							);
+						} catch (error) {
+							context.logger.warn('Failed to emit setup-items snapshot for built workflow', {
+								workflowId: saved.id,
+								error: error instanceof Error ? error.message : String(error),
+							});
+						}
+					}
 					// Two independent filters over the same list: `isInSetupScope` drops nodes this
 					// build never touched, the skip partition drops cards the user declined. A node
 					// only re-arms the setup follow-up when it survives both.
@@ -1202,6 +1247,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						isSupportingWorkflow,
 						isAuxiliarySupportingWorkflow,
 						warningCount: informational.length,
+						droppedGroupCount,
 					});
 
 					return {
@@ -1231,6 +1277,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								? buildCredentialResolutionNote(
 										mockResult.resolvedCredentialsByNode,
 										heldForNewCredentialTypes,
+										{
+											n8nCreditsDepleted: await isN8nCreditsWalletDepleted(
+												context,
+												mockResult.resolvedCredentialsByNode,
+											),
+										},
 									)
 								: undefined,
 						referencedWorkflowIds:
@@ -1241,14 +1293,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 
 				if (targetWorkflowId) {
-					const updateOptions = projectId
-						? {
-								projectId,
-								...(binding.workflowChecksum ? { expectedChecksum: binding.workflowChecksum } : {}),
-							}
-						: binding.workflowChecksum
-							? { expectedChecksum: binding.workflowChecksum }
-							: undefined;
+					const updateOptions = binding.workflowChecksum
+						? { expectedChecksum: binding.workflowChecksum }
+						: undefined;
 					const updated = await context.workflowService.updateFromWorkflowJSON(
 						targetWorkflowId,
 						json,
@@ -1258,7 +1305,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 
 				const created = await context.workflowService.createFromWorkflowJSON(json, {
-					...(projectId ? { projectId } : {}),
 					markAsAiTemporary: true,
 				});
 				await recordSessionOwnedWorkflow(context, created.id);

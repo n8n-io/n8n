@@ -1,4 +1,8 @@
-import { CreateGitConnectionDto, UpdateGitConnectionDto } from '../git-connections.dto';
+import {
+	CreateGitConnectionDto,
+	PushGitConnectionDto,
+	UpdateGitConnectionDto,
+} from '../git-connections.dto';
 
 describe('Git connection DTOs', () => {
 	it('accepts SSH and HTTPS create payloads', () => {
@@ -53,5 +57,31 @@ describe('Git connection DTOs', () => {
 	it('allows partial updates and rejects null branches', () => {
 		expect(UpdateGitConnectionDto.safeParse({ name: 'Renamed' }).success).toBe(true);
 		expect(UpdateGitConnectionDto.safeParse({ branchName: null }).success).toBe(false);
+	});
+
+	describe('PushGitConnectionDto', () => {
+		it('requires a non-empty commit message', () => {
+			expect(PushGitConnectionDto.safeParse({ commitMessage: 'Update projects' }).success).toBe(
+				true,
+			);
+			expect(PushGitConnectionDto.safeParse({}).success).toBe(false);
+			expect(PushGitConnectionDto.safeParse({ commitMessage: '' }).success).toBe(false);
+			expect(PushGitConnectionDto.safeParse({ commitMessage: '   ' }).success).toBe(false);
+		});
+
+		it('accepts an optional force flag', () => {
+			expect(PushGitConnectionDto.safeParse({ commitMessage: 'Update', force: true }).success).toBe(
+				true,
+			);
+			expect(
+				PushGitConnectionDto.safeParse({ commitMessage: 'Update', force: 'yes' }).success,
+			).toBe(false);
+		});
+
+		it('rejects unknown fields', () => {
+			expect(
+				PushGitConnectionDto.safeParse({ commitMessage: 'Update', dryRun: true }).success,
+			).toBe(false);
+		});
 	});
 });

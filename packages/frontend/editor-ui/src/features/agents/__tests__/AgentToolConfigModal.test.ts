@@ -114,6 +114,7 @@ function createWorkflowToolConfigStub(emitValid: boolean) {
 				getAllOutputs: () => props.initialRef?.allOutputs ?? false,
 				getWorkflow: () => props.initialRef?.workflow ?? '',
 				getWorkflowId: () => props.initialRef?.workflowId,
+				getInputs: () => props.initialRef?.inputs,
 				handleChangeName: vi.fn(),
 			});
 			onMounted(() => {

@@ -16,11 +16,13 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 
 const LIST_SENTINEL = 'list';
 
+const TECHNIQUE_CHOICES = [LIST_SENTINEL, ...Object.values(WorkflowTechnique)] as const;
+
 const inputSchema = {
 	technique: z
-		.union([z.nativeEnum(WorkflowTechnique), z.literal(LIST_SENTINEL)])
+		.enum(TECHNIQUE_CHOICES)
 		.describe(
-			`Workflow technique key (e.g. "chatbot", "scheduling", "triage") to fetch best-practices guidance for. Pass "${LIST_SENTINEL}" to discover all available techniques.`,
+			`Workflow technique key to fetch best-practices guidance for. Pass "${LIST_SENTINEL}" to discover all available techniques. One of: ${TECHNIQUE_CHOICES.join(', ')}.`,
 		),
 } satisfies z.ZodRawShape;
 

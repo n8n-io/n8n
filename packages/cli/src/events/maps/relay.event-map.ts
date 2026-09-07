@@ -24,6 +24,12 @@ import type {
 } from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
+import type {
+	PolicyAction,
+	PolicyAttachment,
+	PolicyRule,
+} from '@/modules/type-availability-policies/policy-rule.types';
+import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -120,6 +126,7 @@ export type RelayEventMap = {
 		projectIds?: string[];
 		counts: ExportPackageEventCounts;
 		credentialExportPolicy: CredentialExportPolicy;
+		includeArchivedWorkflows: boolean;
 	};
 
 	'n8n-package-export-failed': {
@@ -140,6 +147,14 @@ export type RelayEventMap = {
 	'workflow-deleted': {
 		user: UserLike;
 		workflowId: string;
+		/**
+		 * Both resolved before the delete runs. The cascade takes the workflow row and its
+		 * `shared_workflow` rows with it, so a listener cannot recover either afterwards.
+		 * `projectId` stays required-to-pass but nullable, so a caller has to decide rather than
+		 * forget, and an unowned workflow is still expressible.
+		 */
+		workflowName: string;
+		projectId: string | undefined;
 		publicApi: boolean;
 	};
 
@@ -449,6 +464,7 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		credentialName: string;
 		publicApi: boolean;
 		projectId?: string;
 		projectType?: string;
@@ -473,6 +489,7 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		credentialName: string;
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
@@ -484,6 +501,9 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		/** Both resolved before the delete, which cascades away the rows that name the project. */
+		credentialName: string;
+		projectId: string | undefined;
 	};
 
 	'credentials-user-disconnected': {
@@ -684,6 +704,7 @@ export type RelayEventMap = {
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-pull-ui': {
@@ -703,6 +724,7 @@ export type RelayEventMap = {
 		credsEligible: number;
 		credsEligibleWithConflicts: number;
 		variablesEligible: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-push-ui': {
@@ -1236,6 +1258,23 @@ export type RelayEventMap = {
 		clientName?: string;
 	};
 
+	/**
+	 * `authType` reports how the call authenticated, so an absent `clientId` is
+	 * explicit rather than inferred. `api_key` covers every non-OAuth bearer
+	 * token the MCP server admits, including token-exchange scoped JWTs, which
+	 * is the same grouping the MCP connection telemetry uses.
+	 *
+	 * `clientId` is the OAuth client the call was authenticated with, as
+	 * registered with this instance. Unlike `clientName` (self-reported by the
+	 * client), it identifies the client, so it is what usage can be attributed
+	 * by. Treat it as opaque: a first-party client's id is a URL rather than a
+	 * generated id.
+	 *
+	 * The two travel paired because they are not independent: verification
+	 * rejects an OAuth token carrying no `client_id` claim, and an API key is
+	 * never issued to a client. The pair is absent only where no caller was
+	 * resolved.
+	 */
 	'mcp-tool-called': {
 		user: UserLike;
 		toolName: string;
@@ -1243,11 +1282,59 @@ export type RelayEventMap = {
 		status: 'success' | 'error';
 		errorMessage?: string;
 		clientName?: string;
-	};
+	} & (McpCallerAuth | { authType?: undefined; clientId?: undefined });
 
 	'mcp-access-updated': {
 		user: UserLike;
 		enabled: boolean;
+	};
+
+	// #endregion
+
+	// #region Node type policy
+
+	/**
+	 * `updatedBy` is a plain user id, or the literal `environment` for an env-bootstrap
+	 * write — never a `UserLike`, since an env-bootstrap write has no user to describe.
+	 */
+	'node-type-policy-scope-updated': {
+		updatedBy: string;
+		kind: string;
+		projectId: string | null;
+		scopeId: string;
+		before: { defaultAction: PolicyAction; version: number } | null;
+		after: { defaultAction: PolicyAction; version: number };
+	};
+
+	'node-type-policy-document-created': {
+		updatedBy: string;
+		kind: string;
+		policyId: string;
+		after: { rules: readonly PolicyRule[]; version: number };
+	};
+
+	'node-type-policy-document-updated': {
+		updatedBy: string;
+		kind: string;
+		policyId: string;
+		before: { rules: readonly PolicyRule[]; version: number };
+		after: { rules: readonly PolicyRule[]; version: number };
+	};
+
+	'node-type-policy-document-deleted': {
+		updatedBy: string;
+		kind: string;
+		policyId: string;
+		before: { rules: readonly PolicyRule[]; version: number };
+	};
+
+	'node-type-policy-attachments-updated': {
+		updatedBy: string;
+		kind: string;
+		projectId: string | null;
+		scopeId: string;
+		before: { attachments: readonly PolicyAttachment[]; version: number };
+		after: { attachments: readonly PolicyAttachment[]; version: number };
 	};
 
 	// #endregion

@@ -276,10 +276,11 @@ function handleDeny() {
 	max-width: 90%;
 }
 
-// Highlight that the plan is waiting for the user's review; read-only /
-// resolved / building cards keep the regular border.
+// Elevate the plan while it is waiting for review; read-only / resolved /
+// building cards keep the regular border.
 .awaitingInput {
-	border: 2px solid var(--color--primary);
+	border: 0;
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .expiredHint {

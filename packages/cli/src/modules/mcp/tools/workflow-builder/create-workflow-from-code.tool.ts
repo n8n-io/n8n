@@ -8,7 +8,11 @@ import {
 import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import {
+	MAX_WORKFLOW_CODE_LENGTH,
+	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
+	CODE_BUILDER_VALIDATE_TOOL,
+} from './constants';
 import { validateWorkflowCredentialReferences } from './credential-validation';
 import {
 	autoPopulateNodeCredentials,
@@ -35,7 +39,7 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import {
-	dropInvalidNodeGroups,
+	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
@@ -73,8 +77,9 @@ function normalizeWorkflowDescription(description?: string) {
 const inputSchema = {
 	code: z
 		.string()
+		.max(MAX_WORKFLOW_CODE_LENGTH)
 		.describe(
-			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
+			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}. Max ${MAX_WORKFLOW_CODE_LENGTH} characters.`,
 		),
 	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	name: z
@@ -128,7 +133,7 @@ const outputSchema = {
 					.enum(['user', 'aiGateway'])
 					.optional()
 					.describe(
-						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via n8n credits.',
+						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via Gateway credits.',
 					),
 			}),
 		)
@@ -323,7 +328,7 @@ export const createCreateWorkflowFromCodeTool = (
 			// own (fatal) check, so an invalid group is dropped and reported instead
 			// of aborting the whole creation.
 			const skippedGroups = options.canvasGroupsEnabled
-				? dropInvalidNodeGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
+				? dropInvalidWorkflowGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
 						(violation) => ({ groupName: violation.groupName, reason: violation.message }),
 					)
 				: [];

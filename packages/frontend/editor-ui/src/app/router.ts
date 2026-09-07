@@ -26,7 +26,7 @@ import { useRecentResources } from '@/features/shared/commandBar/composables/use
 import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import {
 	canManageInstanceAi,
@@ -58,6 +58,8 @@ const SettingsPersonalView = async () =>
 const SettingsUsersView = async () =>
 	await import('@/features/settings/users/views/SettingsUsersView.vue');
 const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
+const GitConnectionsView = async () =>
+	await import('@/features/integrations/gitConnections.ee/views/GitConnectionsView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
@@ -762,7 +764,13 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				// Old path from before the feature was renamed to Gateway credits;
+				// redirect old deep links to the renamed route.
 				path: 'n8n-connect',
+				redirect: () => ({ name: VIEWS.AI_GATEWAY_SETTINGS }),
+			},
+			{
+				path: 'gateway-credits',
 				name: VIEWS.AI_GATEWAY_SETTINGS,
 				component: SettingsAiGatewayView,
 				meta: {
@@ -984,6 +992,38 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'git-connections',
+				name: VIEWS.GIT_CONNECTIONS_SETTINGS,
+				component: GitConnectionsView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: [
+								'gitConnection:list',
+								'gitConnection:read',
+								'gitConnection:create',
+								'gitConnection:update',
+								'gitConnection:delete',
+							],
+							options: { mode: 'allOf' },
+						},
+						custom: () => {
+							const { isEnabled } = usePromotionsEnabled();
+							return isEnabled.value;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'git-connections',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'external-secrets',
 				name: VIEWS.EXTERNAL_SECRETS_SETTINGS,
 				component: SettingsExternalSecrets,
@@ -1036,8 +1076,10 @@ export const routes: RouteRecordRaw[] = [
 							scope: 'encryptionKey:manage',
 						},
 						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('ENCRYPTION_KEY_ROTATION');
+							const settingsStore = useSettingsStore();
+							return (
+								settingsStore.moduleSettings['encryption-key-manager']?.rotationEnabled === true
+							);
 						},
 					},
 					telemetry: {

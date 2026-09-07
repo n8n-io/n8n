@@ -17,7 +17,7 @@ function makeQueue(): WorkQueue<OrchestrationMessage> {
 
 function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	return {
-		createExecution: vi.fn().mockResolvedValue({ id: 'exec-id-1' }),
+		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),
@@ -26,7 +26,7 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 }
 
 describe('StartExecutionService', () => {
-	it('admits, persists a queued execution, publishes execution:enqueued, returns id', async () => {
+	it('admits, persists a queued execution under the caller-minted id, publishes execution:enqueued', async () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
@@ -38,21 +38,43 @@ describe('StartExecutionService', () => {
 			workflowId: 'wf-1',
 			graph: sampleGraph,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
+			executionId: 'exec-id-1',
+			callerContext: {},
 		});
 
 		expect(result.executionId).toBe('exec-id-1');
 		expect(admittance.evaluate).toHaveBeenCalledWith({ workflowId: 'wf-1' });
 		expect(store.createExecution).toHaveBeenCalledWith({
+			id: 'exec-id-1',
 			workflowId: 'wf-1',
 			status: 'queued',
 			mode: 'production',
 			graph: sampleGraph,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
+			callerContext: {},
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'execution:enqueued',
 			executionId: 'exec-id-1',
 		});
+	});
+
+	it('stores the caller context as given', async () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const store = makeStore();
+		const service = new StartExecutionService(admittance, store, makeQueue());
+		const callerContext = { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' };
+
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			executionId: 'exec-id-1',
+			callerContext,
+		});
+
+		expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ callerContext }));
 	});
 
 	it('defaults mode to production and triggerOutputs to null', async () => {
@@ -63,7 +85,12 @@ describe('StartExecutionService', () => {
 		const queue = makeQueue();
 		const service = new StartExecutionService(admittance, store, queue);
 
-		await service.start({ workflowId: 'wf-1', graph: sampleGraph });
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			executionId: 'exec-id-1',
+			callerContext: {},
+		});
 
 		expect(store.createExecution).toHaveBeenCalledWith(
 			expect.objectContaining({ mode: 'production', triggerOutputs: null }),
@@ -77,7 +104,12 @@ describe('StartExecutionService', () => {
 		const validateGraph = vi.fn();
 		const service = new StartExecutionService(admittance, makeStore(), makeQueue(), validateGraph);
 
-		await service.start({ workflowId: 'wf-1', graph: sampleGraph });
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			executionId: 'exec-id-1',
+			callerContext: {},
+		});
 
 		expect(validateGraph).toHaveBeenCalledExactlyOnceWith(sampleGraph);
 	});
@@ -94,7 +126,14 @@ describe('StartExecutionService', () => {
 		});
 		const service = new StartExecutionService(admittance, store, queue, validateGraph);
 
-		await expect(service.start({ workflowId: 'wf-1', graph: sampleGraph })).rejects.toBe(rejection);
+		await expect(
+			service.start({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				executionId: 'exec-id-1',
+				callerContext: {},
+			}),
+		).rejects.toBe(rejection);
 
 		expect(store.createExecution).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
@@ -108,9 +147,14 @@ describe('StartExecutionService', () => {
 		const queue = makeQueue();
 		const service = new StartExecutionService(admittance, store, queue);
 
-		await expect(service.start({ workflowId: 'wf-1', graph: sampleGraph })).rejects.toBeInstanceOf(
-			AdmittanceRejectedError,
-		);
+		await expect(
+			service.start({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				executionId: 'exec-id-1',
+				callerContext: {},
+			}),
+		).rejects.toBeInstanceOf(AdmittanceRejectedError);
 
 		expect(store.createExecution).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();

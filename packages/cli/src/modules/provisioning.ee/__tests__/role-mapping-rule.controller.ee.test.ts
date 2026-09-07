@@ -3,8 +3,6 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-
 import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee';
 import type {
 	RoleMappingRuleListResponse,
@@ -14,13 +12,8 @@ import type {
 
 const roleMappingRuleService = mock<RoleMappingRuleService>();
 const licenseState = mock<LicenseState>();
-const eventService = mock<EventService>();
 
-const controller = new RoleMappingRuleController(
-	roleMappingRuleService,
-	licenseState,
-	eventService,
-);
+const controller = new RoleMappingRuleController(roleMappingRuleService, licenseState);
 
 describe('RoleMappingRuleController', () => {
 	beforeEach(() => {
@@ -220,16 +213,25 @@ describe('RoleMappingRuleController', () => {
 
 		it('should delete a role mapping rule when provisioning is licensed', async () => {
 			licenseState.isProvisioningLicensed.mockReturnValue(true);
-			roleMappingRuleService.delete.mockResolvedValue({ ruleType: 'instance' });
+			roleMappingRuleService.delete.mockResolvedValue({
+				id: ruleId,
+				expression: 'claims.group === "admins"',
+				role: 'global:member',
+				type: 'instance',
+				order: 0,
+				projectIds: [],
+				createdAt: '2025-01-01T00:00:00.000Z',
+				updatedAt: '2025-01-01T00:00:00.000Z',
+			});
 
 			const result = await controller.delete(req, res, ruleId);
 
 			expect(result).toEqual({ success: true });
-			expect(roleMappingRuleService.delete).toHaveBeenCalledWith(ruleId);
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'role-mapping-rule-deleted',
-				expect.objectContaining({ ruleId, ruleType: 'instance' }),
-			);
+			expect(roleMappingRuleService.delete).toHaveBeenCalledWith({
+				id: ruleId,
+				userId: req.user.id,
+				userEmail: req.user.email,
+			});
 		});
 	});
 });

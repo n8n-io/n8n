@@ -13,6 +13,7 @@ import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
+import { entityFilePath } from '../io/manifest-entry';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
@@ -112,7 +113,7 @@ export class N8nPackageParser {
 		entry: ManifestEntry,
 		parentFolderId: string | null,
 	): Promise<PreparedWorkflow> {
-		const path = `${entry.target}/workflow.json`;
+		const path = entityFilePath('workflows', entry.target);
 		const wire = await this.readJson<SerializedWorkflow>(reader, path, 'workflow');
 
 		let entity: WorkflowEntity;
@@ -142,7 +143,7 @@ export class N8nPackageParser {
 
 	/** Drops groups that wouldn't survive the save path, so they can't fail the whole import. */
 	private normalizeNodeGroups(entity: WorkflowEntity, path: string): void {
-		const dropped = WorkflowHelpers.dropInvalidNodeGroups(
+		const dropped = WorkflowHelpers.dropInvalidWorkflowGroups(
 			entity,
 			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
 		);
@@ -156,7 +157,7 @@ export class N8nPackageParser {
 	}
 
 	private async readFolder(reader: PackageReader, entry: ManifestEntry): Promise<PreparedFolder> {
-		const path = `${entry.target}/folder.json`;
+		const path = entityFilePath('folders', entry.target);
 		const wire = await this.readJson(reader, path, 'folder');
 
 		let folder: SerializedFolder;
@@ -188,7 +189,7 @@ export class N8nPackageParser {
 		reader: PackageReader,
 		entry: ManifestEntry,
 	): Promise<SerializedDataTable> {
-		const path = `${entry.target}/data-table.json`;
+		const path = entityFilePath('dataTables', entry.target);
 		const wire = await this.readJson(reader, path, 'data table');
 
 		let dataTable: SerializedDataTable;
@@ -216,7 +217,7 @@ export class N8nPackageParser {
 	}
 
 	private async readProject(reader: PackageReader, entry: ManifestEntry): Promise<PreparedProject> {
-		const path = `${entry.target}/project.json`;
+		const path = entityFilePath('projects', entry.target);
 		const wire = await this.readJson(reader, path, 'project');
 
 		let project: SerializedProject;
@@ -252,7 +253,7 @@ export class N8nPackageParser {
 		reader: PackageReader,
 		entry: ManifestEntry,
 	): Promise<SerializedVariable> {
-		const path = `${entry.target}/variable.json`;
+		const path = entityFilePath('variables', entry.target);
 		const wire = await this.readJson(reader, path, 'variable');
 
 		let variable: SerializedVariable;

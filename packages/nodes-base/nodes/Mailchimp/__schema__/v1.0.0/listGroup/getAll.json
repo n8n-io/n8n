@@ -1,0 +1,47 @@
+{
+    "type": "object",
+    "properties": {
+        "_links": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "href": {
+                        "type": "string"
+                    },
+                    "method": {
+                        "type": "string"
+                    },
+                    "rel": {
+                        "type": "string"
+                    },
+                    "schema": {
+                        "type": "string"
+                    },
+                    "targetSchema": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "category_id": {
+            "type": "string"
+        },
+        "display_order": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "list_id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "subscriber_count": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

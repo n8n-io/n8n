@@ -5,6 +5,7 @@ import {
 	N8nIcon,
 	N8nLoading,
 	N8nText,
+	N8nTooltip,
 	updatedIconSet,
 	type DropdownMenuItemProps,
 	type IconName,
@@ -22,6 +23,13 @@ interface Props {
 	connected: boolean;
 	connectAction: AgentChannelConnectAction;
 	loading?: boolean;
+	/**
+	 * Set up and meant to be running, but the last startup attempt failed. Never
+	 * true together with `connected`.
+	 */
+	notRunning?: boolean;
+	/** Why it isn't running, shown on hover. */
+	runtimeError?: string;
 }
 
 const props = defineProps<Props>();
@@ -52,6 +60,22 @@ const configuredActions = computed<Array<DropdownMenuItemProps<ChannelAction>>>(
 function isIconName(icon: string): icon is IconName {
 	return icon in updatedIconSet;
 }
+
+const statusLabel = computed(() => {
+	if (props.notRunning) return i18n.baseText('agents.channels.modal.notRunning');
+	if (props.connected) return i18n.baseText('agents.channels.modal.connected');
+	return i18n.baseText('agents.channels.modal.configured');
+});
+
+/**
+ * The tooltip is the only place the startup error is shown, so it must not be
+ * empty when there is one to explain — fall back to generic copy if the server
+ * reported a failure without a message.
+ */
+const statusTooltip = computed(() => {
+	if (!props.notRunning) return '';
+	return props.runtimeError || i18n.baseText('agents.channels.modal.notRunning.tooltip');
+});
 
 function handleConfiguredAction(action: ChannelAction) {
 	if (action === 'edit') {
@@ -100,23 +124,26 @@ function handleConfiguredAction(action: ChannelAction) {
 					@select="handleConfiguredAction"
 				>
 					<template #trigger>
-						<N8nButton variant="ghost" size="medium" :class="$style.connectedTrigger">
-							<div
-								v-if="connected"
-								:class="$style.connectedDotContainer"
-								data-testid="agent-channel-connected-indicator"
-							>
-								<span :class="[$style.connectedDot, $style.ping]" />
-								<span :class="$style.connectedDot" />
-							</div>
-							{{
-								i18n.baseText(
-									connected
-										? 'agents.channels.modal.connected'
-										: 'agents.channels.modal.configured',
-								)
-							}}
-						</N8nButton>
+						<N8nTooltip :content="statusTooltip" :disabled="!notRunning" placement="top">
+							<N8nButton variant="ghost" size="medium" :class="$style.connectedTrigger">
+								<div
+									v-if="connected"
+									:class="$style.connectedDotContainer"
+									data-testid="agent-channel-connected-indicator"
+								>
+									<span :class="[$style.connectedDot, $style.ping]" />
+									<span :class="$style.connectedDot" />
+								</div>
+								<div
+									v-else-if="notRunning"
+									:class="$style.connectedDotContainer"
+									data-testid="agent-channel-not-running-indicator"
+								>
+									<span :class="[$style.connectedDot, $style.notRunningDot]" />
+								</div>
+								{{ statusLabel }}
+							</N8nButton>
+						</N8nTooltip>
 					</template>
 				</N8nDropdownMenu>
 				<N8nButton
@@ -214,6 +241,9 @@ function handleConfiguredAction(action: ChannelAction) {
 	height: 6px;
 	border-radius: var(--radius--full);
 	background: var(--color--green-500);
+}
+.notRunningDot {
+	background: var(--color--danger);
 }
 .ping {
 	@include motion.ping;

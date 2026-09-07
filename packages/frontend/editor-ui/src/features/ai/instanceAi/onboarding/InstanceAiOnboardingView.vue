@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -18,6 +18,9 @@ import InstanceAiOnboardingWizard from './InstanceAiOnboardingWizard.vue';
 import { useInstanceAiOnboarding, type InstanceAiOnboardingStep } from './useInstanceAiOnboarding';
 
 const emit = defineEmits<{ completed: [] }>();
+
+// 'Not now' the first time the user lands here; 'Turn off' on later visits.
+const INTRO_SEEN_STORAGE_KEY = 'instanceAi.onboarding.introSeen';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -102,6 +105,14 @@ function finish(): void {
 	emit('completed');
 }
 
+const returnVisit = ref(
+	typeof localStorage !== 'undefined' && localStorage.getItem(INTRO_SEEN_STORAGE_KEY) === 'true',
+);
+
+async function setUpLater(): Promise<void> {
+	await router.push({ name: VIEWS.HOMEPAGE });
+}
+
 async function turnOff(): Promise<void> {
 	const confirmed = await message.confirm(
 		i18n.baseText('instanceAi.onboarding.turnOff.description'),
@@ -123,6 +134,9 @@ async function turnOff(): Promise<void> {
 useSetupPageViewTelemetry('onboarding');
 
 onMounted(async () => {
+	if (typeof localStorage !== 'undefined') {
+		localStorage.setItem(INTRO_SEEN_STORAGE_KEY, 'true');
+	}
 	await Promise.all([store.fetch(), credentialsStore.fetchCredentialTypes(false)]);
 });
 </script>
@@ -133,10 +147,12 @@ onMounted(async () => {
 			v-if="!store.isLoading"
 			:incomplete="incomplete"
 			:connect-model-only="composeFastPath"
+			:return-visit="returnVisit"
 			:model-value="modelValue"
 			:sandbox-value="sandboxValue"
 			:search-value="searchValue"
 			@setup="startAt()"
+			@setup-later="setUpLater"
 			@open-step="editStep"
 			@turn-off="turnOff"
 		/>

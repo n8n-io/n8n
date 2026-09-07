@@ -483,6 +483,24 @@ describe('browser_create_credential', () => {
 		});
 	});
 
+	describe('getAffectedResources', () => {
+		it('reports the credentials resource and names the credential in the description', async () => {
+			const resources = await getTool().getAffectedResources(
+				{ credentialsKey: 'k1', type: 'googleApi', name: 'My Cred' },
+				ctx(),
+			);
+
+			expect(resources).toEqual([
+				{
+					toolGroup: 'browser',
+					kind: 'credential-write',
+					resource: 'credentials',
+					description: 'Create credential "My Cred" (googleApi)',
+				},
+			]);
+		});
+	});
+
 	describe('buffer clearing', () => {
 		it('clears the buffer on success by default', async () => {
 			await getTool().execute({ credentialsKey: 'k1', type: 'googleApi', name: 'My Cred' }, ctx());

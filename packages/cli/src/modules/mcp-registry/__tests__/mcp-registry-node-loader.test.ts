@@ -16,6 +16,7 @@ import {
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
 	gmailDirectExtendMockServer,
+	githubUsesCredentialsMockServer,
 	notionMockServer,
 	slackExtendingMockServer,
 } from '../registry/mock-servers';
@@ -37,7 +38,6 @@ const baseDescription: INodeTypeDescription = {
 	outputs: [],
 	credentials: [{ name: 'mcpOAuth2Api', required: true }],
 	properties: [
-		{ displayName: 'Endpoint URL', name: 'endpointUrl', type: 'hidden', default: '' },
 		{
 			displayName: 'Server Transport',
 			name: 'serverTransport',
@@ -48,8 +48,9 @@ const baseDescription: INodeTypeDescription = {
 };
 
 function createBaseNodeClass() {
-	const baseInstance: INodeType = {
+	const baseInstance: INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> } = {
 		description: baseDescription,
+		setRegistryRuntime: vi.fn(),
 		methods: {
 			loadOptions: {
 				getTools: vi.fn(),
@@ -84,13 +85,23 @@ function createLoadNodesAndCredentials(options?: {
 
 	const knownCredentials: Record<string, unknown> = {};
 	for (const name of options?.knownCredentialTypes ?? []) {
-		knownCredentials[name] = {};
+		knownCredentials[name] = {
+			extends: name.toLowerCase().includes('oauth') ? ['oAuth2Api'] : [],
+		};
 	}
 
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		loaders: loaders as never,
 		knownCredentials: knownCredentials as never,
 	});
+	loadNodesAndCredentials.getCredential.mockImplementation((credentialType) => ({
+		type: {
+			name: credentialType,
+			displayName: credentialType,
+			properties: [],
+		},
+		sourcePath: '',
+	}));
 
 	return { loadNodesAndCredentials, baseNode, sourcePath };
 }
@@ -107,7 +118,7 @@ describe('McpRegistryNodeLoader', () => {
 
 	describe('loadAll', () => {
 		it('populates `types`, `known`, registers synthetic nodes and credentials for each supported server', async () => {
-			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials();
+			const { loadNodesAndCredentials, baseNode, sourcePath } = createLoadNodesAndCredentials();
 			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
 			loader.setServers([notionMockServer]);
 
@@ -140,6 +151,16 @@ describe('McpRegistryNodeLoader', () => {
 				sourcePath: '',
 				extends: ['mcpOAuth2Api'],
 				supportedNodes: ['notion'],
+			});
+			expect(
+				(baseNode as typeof baseNode & { setRegistryRuntime: ReturnType<typeof vi.fn> })
+					.setRegistryRuntime,
+			).toHaveBeenCalledOnce();
+			expect(loader.getConnection('@n8n/mcp-registry.notion')).toMatchObject({
+				nodeTypeName: '@n8n/mcp-registry.notion',
+				endpointUrl: 'https://mcp.notion.com/mcp',
+				endpointHostname: 'mcp.notion.com',
+				transport: 'httpStreamable',
 			});
 		});
 
@@ -280,6 +301,37 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loadedNode.sourcePath).toBe(sourcePath);
 		});
 
+		it('registers a node using existing credential types without synthetic credentials', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['githubOAuth2Api', 'githubApi'],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([githubUsesCredentialsMockServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.nodes[0]).toMatchObject({
+				name: 'gitHub',
+				credentials: [{ name: 'githubOAuth2Api', required: true }],
+			});
+			expect(loader.types.credentials).toHaveLength(0);
+			expect(loader.known.credentials).toEqual({});
+			const setRegistryRuntime = (
+				baseNode as INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> }
+			).setRegistryRuntime;
+			const runtime = setRegistryRuntime.mock.calls[0][0] as {
+				resolveConnection: (nodeTypeName: string, selector?: string) => unknown;
+			};
+			expect(runtime.resolveConnection('@n8n/mcp-registry.gitHub', 'oAuth2')).toMatchObject({
+				binding: { credentialType: 'githubOAuth2Api', selector: 'oAuth2' },
+				connection: {
+					endpointUrl: 'https://api.githubcopilot.com/mcp/',
+					endpointHostname: 'api.githubcopilot.com',
+				},
+			});
+		});
+
 		it('skips servers whose extendsCredential parent matches an inherited prototype key', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
 				knownCredentialTypes: ['slackOAuth2Api'],
@@ -385,6 +437,7 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loader.types.credentials).toEqual([]);
 			expect(loader.known.nodes).toEqual({});
 			expect(loader.known.credentials).toEqual({});
+			expect(loader.getConnection('@n8n/mcp-registry.notion')).toBeUndefined();
 			expect(() => loader.getNode('notion')).toThrow(UnrecognizedNodeTypeError);
 			expect(() => loader.getCredential('notionMcpOAuth2Api')).toThrow(
 				UnrecognizedCredentialTypeError,

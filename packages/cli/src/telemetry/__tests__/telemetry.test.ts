@@ -113,7 +113,7 @@ describe('Telemetry', () => {
 		test('should route the RudderStack SDK through the outbound transport with SSRF disabled', async () => {
 			await initTelemetry.init();
 
-			expect(transport).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(transport).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 			expect(getNodeAgent).toHaveBeenCalled();
 			expect(rudderStackConstructor).toHaveBeenCalledWith(
 				'test-key',
