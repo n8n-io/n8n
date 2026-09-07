@@ -158,3 +158,33 @@ describe('InstanceAiPendingConfirmationRepository.isPastExpiry', () => {
 		expect(countMock.mock.calls[0][0]!.where).toMatchObject({ userId: 'attacker-user' });
 	});
 });
+
+describe('InstanceAiPendingConfirmationRepository.hasLiveRowForRun', () => {
+	function buildRepoWithCount(countResult: number) {
+		const repo = Object.create(
+			InstanceAiPendingConfirmationRepository.prototype,
+		) as InstanceAiPendingConfirmationRepository;
+		const countMock = vi.fn(async (_opts?: { where: Record<string, unknown> }) => countResult);
+		Object.defineProperty(repo, 'count', { value: countMock, configurable: true });
+		return { repo, countMock };
+	}
+
+	it('is true when a live row still points at the run', async () => {
+		const now = new Date('2026-05-13T12:00:00.000Z');
+		const { repo, countMock } = buildRepoWithCount(1);
+
+		await expect(repo.hasLiveRowForRun('run-1', now)).resolves.toBe(true);
+		// Scoped by runId, with the same live predicate as claim /
+		// findLiveRequestIds: null expiresAt (timeout disabled) counts as live,
+		// a past expiresAt does not.
+		const where = countMock.mock.calls[0][0]!.where;
+		expect(where).toMatchObject({ runId: 'run-1' });
+		expect(where).toHaveProperty('expiresAt');
+	});
+
+	it('is false when the row is gone or past its expiry', async () => {
+		const { repo } = buildRepoWithCount(0);
+
+		await expect(repo.hasLiveRowForRun('run-1', new Date())).resolves.toBe(false);
+	});
+});
