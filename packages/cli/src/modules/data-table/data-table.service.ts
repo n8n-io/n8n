@@ -401,13 +401,13 @@ export class DataTableService {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
 			const rowsWithDefaults = this.applyColumnDefaults(rows, columns);
 			const transformedRows = this.validateAndTransformRows(rowsWithDefaults, columns);
-			const subscriptions = await this.mutationEventService.findSubscriptions(
+			const capture = await this.mutationEventService.prepareCapture(
 				dataTableId,
 				'rowInserted',
 				[],
 				trx,
 			);
-			const effectiveReturnType = subscriptions.length > 0 ? 'all' : returnType;
+			const effectiveReturnType = capture.shouldCapture ? 'all' : returnType;
 
 			const inserted = await this.dataTableRowsRepository.insertRows(
 				dataTableId,
@@ -418,12 +418,17 @@ export class DataTableService {
 			);
 			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
 
-			if (subscriptions.length === 0) return inserted;
+			if (!capture.shouldCapture) return inserted;
 			if (!this.isReturnedRows(inserted)) {
 				throw new DataTableValidationError('Inserted rows were not returned for trigger delivery');
 			}
 			const insertedRows: DataTableRowReturn[] = inserted;
-			await this.mutationEventService.recordInserted(dataTableId, insertedRows, subscriptions, trx);
+			await this.mutationEventService.recordInserted(
+				dataTableId,
+				insertedRows,
+				capture.subscriptions,
+				trx,
+			);
 
 			if (returnType === 'all') return insertedRows;
 			if (returnType === 'id') return insertedRows.map(({ id }) => ({ id }));
@@ -490,14 +495,14 @@ export class DataTableService {
 			const updatedColumnIds = columns
 				.filter((column) => column.name in data)
 				.map((column) => column.id);
-			const updateSubscriptions = await this.mutationEventService.findSubscriptions(
+			const updateCapture = await this.mutationEventService.prepareCapture(
 				dataTableId,
 				'columnUpdated',
 				updatedColumnIds,
 				trx,
 			);
 			const beforeRows =
-				updateSubscriptions.length > 0
+				updateCapture.shouldCapture
 					? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
 							dataTableId,
 							filter,
@@ -516,13 +521,13 @@ export class DataTableService {
 			);
 
 			if (Array.isArray(updated) && updated.length > 0) {
-				if (updateSubscriptions.length > 0) {
+				if (updateCapture.shouldCapture) {
 					await this.mutationEventService.recordUpdated(
 						dataTableId,
 						beforeRows,
 						updated,
 						columns,
-						updateSubscriptions,
+						updateCapture.subscriptions,
 						trx,
 					);
 				}
@@ -532,7 +537,7 @@ export class DataTableService {
 
 			// No rows were updated, so insert a new one
 			const [dataWithDefaults] = this.applyColumnDefaults([data], columns);
-			const insertSubscriptions = await this.mutationEventService.findSubscriptions(
+			const insertCapture = await this.mutationEventService.prepareCapture(
 				dataTableId,
 				'rowInserted',
 				[],
@@ -542,17 +547,17 @@ export class DataTableService {
 				dataTableId,
 				[dataWithDefaults],
 				columns,
-				returnData || insertSubscriptions.length > 0 ? 'all' : 'id',
+				returnData || insertCapture.shouldCapture ? 'all' : 'id',
 				trx,
 			);
-			if (insertSubscriptions.length > 0) {
+			if (insertCapture.shouldCapture) {
 				if (!this.isReturnedRows(inserted)) {
 					throw new DataTableValidationError('Inserted row was not returned for trigger delivery');
 				}
 				await this.mutationEventService.recordInserted(
 					dataTableId,
 					inserted,
-					insertSubscriptions,
+					insertCapture.subscriptions,
 					trx,
 				);
 			}
@@ -645,14 +650,14 @@ export class DataTableService {
 			const updatedColumnIds = columns
 				.filter((column) => column.name in data)
 				.map((column) => column.id);
-			const subscriptions = await this.mutationEventService.findSubscriptions(
+			const capture = await this.mutationEventService.prepareCapture(
 				dataTableId,
 				'columnUpdated',
 				updatedColumnIds,
 				trx,
 			);
 			const beforeRows =
-				subscriptions.length > 0
+				capture.shouldCapture
 					? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
 							dataTableId,
 							filter,
@@ -666,16 +671,16 @@ export class DataTableService {
 				data,
 				filter,
 				columns,
-				returnData || subscriptions.length > 0,
+				returnData || capture.shouldCapture,
 				trx,
 			);
-			if (subscriptions.length > 0 && Array.isArray(updated)) {
+			if (capture.shouldCapture && Array.isArray(updated)) {
 				await this.mutationEventService.recordUpdated(
 					dataTableId,
 					beforeRows,
 					updated,
 					columns,
-					subscriptions,
+					capture.subscriptions,
 					trx,
 				);
 			}
@@ -738,19 +743,24 @@ export class DataTableService {
 
 			const transformedFilter = this.validateAndTransformFilters(dto.filter, columns);
 
-			const subscriptions = dryRun
-				? []
-				: await this.mutationEventService.findSubscriptions(dataTableId, 'rowDeleted', [], trx);
+			const capture = dryRun
+				? { subscriptions: [], shouldCapture: false }
+				: await this.mutationEventService.prepareCapture(dataTableId, 'rowDeleted', [], trx);
 			const deleted = await this.dataTableRowsRepository.deleteRows(
 				dataTableId,
 				columns,
 				transformedFilter,
-				returnData || subscriptions.length > 0,
+				returnData || capture.shouldCapture,
 				dryRun,
 				trx,
 			);
-			if (subscriptions.length > 0 && this.isReturnedRows(deleted)) {
-				await this.mutationEventService.recordDeleted(dataTableId, deleted, subscriptions, trx);
+			if (capture.shouldCapture && this.isReturnedRows(deleted)) {
+				await this.mutationEventService.recordDeleted(
+					dataTableId,
+					deleted,
+					capture.subscriptions,
+					trx,
+				);
 			}
 			if (!dryRun) await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
 			return returnData || dryRun ? deleted : true;
@@ -768,13 +778,13 @@ export class DataTableService {
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			const subscriptions = await this.mutationEventService.findSubscriptions(
+			const capture = await this.mutationEventService.prepareCapture(
 				dataTableId,
 				'rowDeleted',
 				[],
 				trx,
 			);
-			if (subscriptions.length === 0) {
+			if (!capture.shouldCapture) {
 				const clearResult = await this.dataTableRowsRepository.clearRows(dataTableId, trx);
 				await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
 				return clearResult;
@@ -806,7 +816,12 @@ export class DataTableService {
 					false,
 					trx,
 				);
-				await this.mutationEventService.recordDeleted(dataTableId, rows, subscriptions, trx);
+				await this.mutationEventService.recordDeleted(
+					dataTableId,
+					rows,
+					capture.subscriptions,
+					trx,
+				);
 				deletedCount += rows.length;
 			}
 			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);

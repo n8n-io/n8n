@@ -23,7 +23,6 @@ vi.mock('@/workflow-execute-additional-data', () => ({
 describe('DataTableTriggerDeliveryConsumer', () => {
 	it('hands a claimed event to the latest published trigger and stores its execution ID', async () => {
 		const config = new DataTableConfig();
-		config.triggerEnabled = true;
 		config.triggerConcurrency = 1;
 		config.triggerPollIntervalMs = 60_000;
 

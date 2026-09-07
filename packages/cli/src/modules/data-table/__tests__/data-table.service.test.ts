@@ -53,7 +53,10 @@ describe('DataTableService', () => {
 		mockRoleService = mockInstance(RoleService);
 		mockCsvImportService = mockInstance(DataTableCsvImportService);
 		mockMutationEventService = mockInstance(DataTableMutationEventRecorder);
-		mockMutationEventService.findSubscriptions.mockResolvedValue([]);
+		mockMutationEventService.prepareCapture.mockResolvedValue({
+			subscriptions: [],
+			shouldCapture: false,
+		});
 		mockMutationEventService.hasSubscriptionForColumn.mockResolvedValue(false);
 		mockEventService = mockInstance(EventService);
 		mockProjectRepository = mockInstance(ProjectRepository);

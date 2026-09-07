@@ -1,4 +1,3 @@
-import { DataTableConfig } from '@n8n/config';
 import type {
 	DataTableMutationEventRepository,
 	DataTableTriggerSubscriptionRepository,
@@ -10,18 +9,12 @@ import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableMutationEventRecorder } from '../data-table-mutation-event.repository';
 
 describe('DataTableMutationEventService', () => {
-	const config = new DataTableConfig();
 	const subscriptionRepository = mock<DataTableTriggerSubscriptionRepository>();
 	const eventRepository = mock<DataTableMutationEventRepository>();
 	const trx = mock<EntityManager>();
-	const service = new DataTableMutationEventRecorder(
-		config,
-		subscriptionRepository,
-		eventRepository,
-	);
+	const service = new DataTableMutationEventRecorder(subscriptionRepository, eventRepository);
 
 	beforeEach(() => {
-		config.triggerEnabled = true;
 		vi.clearAllMocks();
 	});
 
@@ -85,12 +78,43 @@ describe('DataTableMutationEventService', () => {
 		});
 	});
 
-	it('does not query subscriptions while the feature is disabled', async () => {
-		config.triggerEnabled = false;
+	it('always queries matching subscriptions', async () => {
+		subscriptionRepository.findMatching.mockResolvedValue([]);
 
-		await expect(service.findSubscriptions('table-id', 'rowInserted', [], trx)).resolves.toEqual(
+		await expect(service.prepareCapture('table-id', 'rowInserted', [], trx)).resolves.toEqual({
+			subscriptions: [],
+			shouldCapture: false,
+		});
+		expect(subscriptionRepository.findMatching).toHaveBeenCalledWith(
+			'table-id',
+			'rowInserted',
 			[],
+			trx,
 		);
-		expect(subscriptionRepository.findMatching).not.toHaveBeenCalled();
+	});
+
+	it('notifies a manual listener without creating a durable delivery', async () => {
+		const listener = vi.fn();
+		const stopListening = service.listen('table-id', 'rowInserted', null, listener);
+		const timestamp = new Date();
+
+		await service.recordInserted(
+			'table-id',
+			[{ id: 1, createdAt: timestamp, updatedAt: timestamp, priority: 'High' }],
+			[],
+			trx,
+		);
+		await new Promise<void>((resolve) => setImmediate(resolve));
+
+		expect(listener).toHaveBeenCalledWith(
+			expect.objectContaining({
+				event: 'rowInserted',
+				dataTableId: 'table-id',
+				rowId: 1,
+			}),
+		);
+		expect(eventRepository.createWithDeliveries).not.toHaveBeenCalled();
+
+		stopListening();
 	});
 });

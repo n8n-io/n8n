@@ -1,4 +1,3 @@
-import { DataTableConfig } from '@n8n/config';
 import {
 	DataTableMutationEventRepository,
 	DataTableTriggerSubscriptionRepository,
@@ -16,27 +15,71 @@ import { randomUUID } from 'node:crypto';
 
 import type { DataTableColumn } from './data-table-column.entity';
 
+type DataTableMutationListener = {
+	event: DataTableTriggerEvent;
+	columnId: string | null;
+	handler: (payload: DataTableTriggerOutput) => void;
+};
+
 @Service()
 export class DataTableMutationEventRecorder {
+	private readonly listeners = new Map<string, Set<DataTableMutationListener>>();
+
 	constructor(
-		private readonly config: DataTableConfig,
 		private readonly subscriptionRepository: DataTableTriggerSubscriptionRepository,
 		private readonly eventRepository: DataTableMutationEventRepository,
 	) {}
 
-	async hasSubscriptionForColumn(dataTableId: string, columnId: string): Promise<boolean> {
-		if (!this.config.triggerEnabled) return false;
-		return await this.subscriptionRepository.hasForColumn(dataTableId, columnId);
+	listen(
+		dataTableId: string,
+		event: DataTableTriggerEvent,
+		columnId: string | null,
+		handler: (payload: DataTableTriggerOutput) => void,
+	): () => void {
+		const listener = { event, columnId, handler };
+		const tableListeners = this.listeners.get(dataTableId) ?? new Set<DataTableMutationListener>();
+		tableListeners.add(listener);
+		this.listeners.set(dataTableId, tableListeners);
+
+		return () => {
+			tableListeners.delete(listener);
+			if (tableListeners.size === 0) this.listeners.delete(dataTableId);
+		};
 	}
 
-	async findSubscriptions(
+	hasListeners(
+		dataTableId: string,
+		event: DataTableTriggerEvent,
+		columnIds: string[],
+	): boolean {
+		return [...(this.listeners.get(dataTableId) ?? [])].some(
+			(listener) =>
+				listener.event === event &&
+				(event !== 'columnUpdated' ||
+					(listener.columnId !== null && columnIds.includes(listener.columnId))),
+		);
+	}
+
+	async prepareCapture(
 		dataTableId: string,
 		event: DataTableTriggerEvent,
 		columnIds: string[],
 		trx: EntityManager,
-	): Promise<DataTableTriggerSubscription[]> {
-		if (!this.config.triggerEnabled) return [];
-		return await this.subscriptionRepository.findMatching(dataTableId, event, columnIds, trx);
+	): Promise<{ subscriptions: DataTableTriggerSubscription[]; shouldCapture: boolean }> {
+		const subscriptions = await this.subscriptionRepository.findMatching(
+			dataTableId,
+			event,
+			columnIds,
+			trx,
+		);
+		return {
+			subscriptions,
+			shouldCapture: subscriptions.length > 0 || this.hasListeners(dataTableId, event, columnIds),
+		};
+	}
+
+	async hasSubscriptionForColumn(dataTableId: string, columnId: string): Promise<boolean> {
+		return await this.subscriptionRepository.hasForColumn(dataTableId, columnId);
 	}
 
 	async recordInserted(
@@ -67,6 +110,14 @@ export class DataTableMutationEventRecorder {
 	): Promise<void> {
 		const beforeById = new Map(beforeRows.map((row) => [row.id, row]));
 		const columnsById = new Map(columns.map((column) => [column.id, column]));
+		const watchedColumnIds = new Set([
+			...subscriptions.flatMap((subscription) =>
+				subscription.columnId ? [subscription.columnId] : [],
+			),
+			...[...(this.listeners.get(dataTableId) ?? [])].flatMap((listener) =>
+				listener.event === 'columnUpdated' && listener.columnId ? [listener.columnId] : [],
+			),
+		]);
 		const events = [];
 
 		for (const row of afterRows) {
@@ -74,16 +125,15 @@ export class DataTableMutationEventRecorder {
 			if (!before) continue;
 
 			const changesByColumnId = new Map<string, DataTableTriggerChange>();
-			for (const subscription of subscriptions) {
-				if (!subscription.columnId || changesByColumnId.has(subscription.columnId)) continue;
-				const column = columnsById.get(subscription.columnId);
+			for (const columnId of watchedColumnIds) {
+				const column = columnsById.get(columnId);
 				if (!column) continue;
 
 				const beforeValue = before[column.name] ?? null;
 				const afterValue = row[column.name] ?? null;
 				if (this.valuesEqual(beforeValue, afterValue)) continue;
-				changesByColumnId.set(subscription.columnId, {
-					columnId: subscription.columnId,
+				changesByColumnId.set(columnId, {
+					columnId,
 					columnName: column.name,
 					before: beforeValue,
 					after: afterValue,
@@ -102,7 +152,7 @@ export class DataTableMutationEventRecorder {
 			events.push({ payload, recipients });
 		}
 
-		await this.eventRepository.createWithDeliveries(events, trx);
+		await this.persistAndNotify(events, trx);
 	}
 
 	private async recordRows(
@@ -113,13 +163,48 @@ export class DataTableMutationEventRecorder {
 		trx: EntityManager,
 	): Promise<void> {
 		const recipients = subscriptions.map(({ workflowId, nodeId }) => ({ workflowId, nodeId }));
-		await this.eventRepository.createWithDeliveries(
+		await this.persistAndNotify(
 			rows.map((row) => ({
 				payload: this.createPayload(event, dataTableId, row),
 				recipients,
 			})),
 			trx,
 		);
+	}
+
+	private async persistAndNotify(
+		events: Array<{
+			payload: DataTableTriggerOutput;
+			recipients: Array<{ workflowId: string; nodeId: string }>;
+		}>,
+		trx: EntityManager,
+	): Promise<void> {
+		const durableEvents = events.filter(({ recipients }) => recipients.length > 0);
+		if (durableEvents.length > 0) {
+			await this.eventRepository.createWithDeliveries(durableEvents, trx);
+		}
+
+		for (const { payload } of events) {
+			this.notifyListeners(payload);
+		}
+	}
+
+	private notifyListeners(payload: DataTableTriggerOutput): void {
+		for (const listener of this.listeners.get(payload.dataTableId) ?? []) {
+			if (listener.event !== payload.event) continue;
+			if (
+				payload.event === 'columnUpdated' &&
+				(!listener.columnId ||
+					!payload.changes?.some((change) => change.columnId === listener.columnId))
+			) {
+				continue;
+			}
+			setImmediate(() => {
+				if (this.listeners.get(payload.dataTableId)?.has(listener)) {
+					listener.handler(payload);
+				}
+			});
+		}
 	}
 
 	private createPayload(

@@ -3,8 +3,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	DataTableTriggerEvent,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { DATA_TABLE_RESOURCE_LOCATOR_BASE } from './common/fields';
 import { getDataTableColumnIds, tableSearch } from './common/methods';
@@ -69,7 +70,32 @@ export class DataTableTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		// The durable delivery consumer starts this node.
-		return {};
+		if (this.helpers.getDataTableProxy === undefined) {
+			throw new NodeOperationError(this.getNode(), 'Data Table support is not available');
+		}
+
+		const dataTableId = this.getNodeParameter('dataTableId', '', {
+			extractValue: true,
+		}) as string;
+		const event = this.getNodeParameter('event') as DataTableTriggerEvent;
+		const columnId =
+			event === 'columnUpdated' ? (this.getNodeParameter('columnId') as string) : null;
+		const dataTable = await this.helpers.getDataTableProxy(dataTableId);
+
+		let resolveManualTrigger = () => {};
+		const eventReceived = new Promise<void>((resolve) => {
+			resolveManualTrigger = resolve;
+		});
+		let stopListening = () => {};
+		stopListening = dataTable.listenForChanges(event, columnId, (payload) => {
+			this.emit([[{ json: payload }]]);
+			stopListening();
+			resolveManualTrigger();
+		});
+
+		return {
+			manualTriggerFunction: async () => await eventReceived,
+			closeFunction: async () => stopListening(),
+		};
 	}
 }

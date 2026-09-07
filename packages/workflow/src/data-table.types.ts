@@ -241,4 +241,10 @@ export interface IDataTableProjectService {
 	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataTableRowReturn[]>;
 
 	clearRows(): Promise<{ deletedCount: number }>;
+
+	listenForChanges(
+		event: DataTableTriggerEvent,
+		columnId: string | null,
+		handler: (payload: DataTableTriggerOutput) => void,
+	): () => void;
 }

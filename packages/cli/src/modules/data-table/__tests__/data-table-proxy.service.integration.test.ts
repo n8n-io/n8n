@@ -20,6 +20,7 @@ import * as checkAccess from '@/permissions.ee/check-access';
 import type { OwnershipService } from '@/services/ownership.service';
 
 import type { DataTableAggregateService } from '../data-table-aggregate.service';
+import type { DataTableMutationEventRecorder } from '../data-table-mutation-event.repository';
 import { DataTableProxyService } from '../data-table-proxy.service';
 import { DataTableService } from '../data-table.service';
 
@@ -52,6 +53,7 @@ describe('DataTableProxyService', () => {
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
 			dataTableAggregateServiceMock,
+			mock<DataTableMutationEventRecorder>(),
 			ownershipServiceMock,
 			loggerMock,
 			instanceWriteAccessMock,
@@ -354,6 +356,7 @@ describe('makeDataTableOperationsForUser', () => {
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
 			dataTableAggregateServiceMock,
+			mock<DataTableMutationEventRecorder>(),
 			mock<OwnershipService>(),
 			loggerMock,
 			instanceWriteAccessMock,

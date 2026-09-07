@@ -1,6 +1,7 @@
 import type {
 	Cron,
 	CronExpression,
+	DataTableProxyProvider,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	INode,
@@ -145,6 +146,29 @@ describe('TriggerContext', () => {
 
 		it('should fall back to the in-memory scheduling functions when none are injected', () => {
 			expect(typeof triggerContext.helpers.registerCron).toBe('function');
+		});
+	});
+
+	describe('Data Table helpers', () => {
+		it('should expose the Data Table proxy to trigger nodes', async () => {
+			const dataTableProxyProvider = mock<DataTableProxyProvider>();
+			const dataTableAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				'data-table': { dataTableProxyProvider },
+				dataTableProjectId: undefined,
+			});
+			const context = new TriggerContext(
+				workflow,
+				node,
+				dataTableAdditionalData,
+				mode,
+				activation,
+			);
+
+			await context.helpers.getDataTableProxy?.('table-id');
+
+			expect(dataTableProxyProvider.getDataTableProxy).toHaveBeenCalledOnce();
+			expect(dataTableProxyProvider.getDataTableProxy.mock.calls[0]?.[2]).toBe('table-id');
+			expect(dataTableProxyProvider.getDataTableProxy.mock.calls[0]?.[3]).toBeUndefined();
 		});
 	});
 });

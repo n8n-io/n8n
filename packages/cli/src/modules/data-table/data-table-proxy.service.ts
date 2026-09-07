@@ -21,6 +21,8 @@ import {
 	UpdateDataTableOptions,
 	UpdateDataTableRowOptions,
 	UpsertDataTableRowOptions,
+	DataTableTriggerEvent,
+	DataTableTriggerOutput,
 	Workflow,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -31,6 +33,7 @@ import { InstanceWriteAccessService } from '@/services/instance-write-access.ser
 import { OwnershipService } from '@/services/ownership.service';
 
 import { DataTableAggregateService } from './data-table-aggregate.service';
+import { DataTableMutationEventRecorder } from './data-table-mutation-event.repository';
 import { DataTableService } from './data-table.service';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 
@@ -53,6 +56,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableAggregateService: DataTableAggregateService,
+		private readonly mutationEventRecorder: DataTableMutationEventRecorder,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
@@ -284,6 +288,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		dataTableId: string,
 	): Omit<IDataTableProjectService, keyof IDataTableProjectAggregateService> {
 		const dataTableService = this.dataTableService;
+		const mutationEventRecorder = this.mutationEventRecorder;
 
 		return {
 			// DataTable management
@@ -356,6 +361,14 @@ export class DataTableProxyService implements DataTableProxyProvider {
 
 			async clearRows() {
 				return await dataTableService.clearRows(dataTableId, projectId);
+			},
+
+			listenForChanges(
+				event: DataTableTriggerEvent,
+				columnId: string | null,
+				handler: (payload: DataTableTriggerOutput) => void,
+			) {
+				return mutationEventRecorder.listen(dataTableId, event, columnId, handler);
 			},
 		};
 	}

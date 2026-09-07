@@ -1,4 +1,3 @@
-import { DataTableConfig } from '@n8n/config';
 import {
 	DataTableTriggerSubscriptionRepository,
 	TransactionRunner,
@@ -26,7 +25,6 @@ function isSupportedEvent(value: unknown): value is DataTableTriggerEvent {
 @Service()
 export class DataTableTriggerSubscriptionReconciler {
 	constructor(
-		private readonly config: DataTableConfig,
 		private readonly ownershipService: OwnershipService,
 		private readonly dataTableService: DataTableService,
 		private readonly subscriptionRepository: DataTableTriggerSubscriptionRepository,
@@ -35,7 +33,6 @@ export class DataTableTriggerSubscriptionReconciler {
 	) {}
 
 	async reconcileAll(): Promise<void> {
-		if (!this.config.triggerEnabled) return;
 		const published = await this.publishedVersionRepository.find({
 			relations: { publishedVersion: true },
 		});
@@ -60,9 +57,6 @@ export class DataTableTriggerSubscriptionReconciler {
 			(node) => node.type === DATA_TABLE_TRIGGER_NODE_TYPE && node.disabled !== true,
 		);
 		if (triggerNodes.length === 0) return [];
-		if (!this.config.triggerEnabled) {
-			throw new UserError('Data Table Trigger is not enabled on this instance');
-		}
 
 		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 		const subscriptions: NewDataTableTriggerSubscription[] = [];

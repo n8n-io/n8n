@@ -42,10 +42,6 @@ export class DataTableConfig {
 	@Env('N8N_DATA_TABLES_FILE_MAX_AGE_MS')
 	fileMaxAgeMs: number = 2 * Time.minutes.toMilliseconds;
 
-	/** Enable durable Data Table trigger capture and delivery. */
-	@Env('N8N_DATA_TABLE_TRIGGER_ENABLED')
-	triggerEnabled: boolean = false;
-
 	/** Maximum number of trigger deliveries processed by one main at a time. */
 	@Env('N8N_DATA_TABLE_TRIGGER_CONCURRENCY')
 	triggerConcurrency: number = 4;

@@ -1,5 +1,4 @@
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import { DataTableConfig } from '@n8n/config';
 import {
 	DataTableMutationEventRepository,
 	DataTableTriggerDeliveryRepository,
@@ -8,22 +7,20 @@ import {
 import { Container } from '@n8n/di';
 
 import { DataTableService } from '../data-table.service';
+import { DataTableMutationEventRecorder } from '../data-table-mutation-event.repository';
 import { mockDataTableSizeValidator } from './test-helpers';
 
 describe('Data Table durable triggers', () => {
 	let dataTableService: DataTableService;
-	let config: DataTableConfig;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
 		await testDb.init();
 		mockDataTableSizeValidator();
 		dataTableService = Container.get(DataTableService);
-		config = Container.get(DataTableConfig);
 	});
 
 	beforeEach(async () => {
-		config.triggerEnabled = true;
 		await testDb.truncate([
 			'DataTableTriggerDelivery',
 			'DataTableMutationEvent',
@@ -133,6 +130,33 @@ describe('Data Table durable triggers', () => {
 			expect.objectContaining({ priority: 'Low' }),
 			expect.objectContaining({ priority: 'High' }),
 		]);
+	});
+
+	it('notifies a manual trigger listener without a published subscription', async () => {
+		const project = await createTeamProject();
+		const table = await dataTableService.createDataTable(project.id, {
+			name: 'manual_trigger_test',
+			columns: [{ name: 'value', type: 'string' }],
+		});
+		const payloadReceived = new Promise<{ rowId: number }>((resolve) => {
+			const stopListening = Container.get(DataTableMutationEventRecorder).listen(
+				table.id,
+				'rowInserted',
+				null,
+				(payload) => {
+					stopListening();
+					resolve(payload);
+				},
+			);
+		});
+
+		await dataTableService.insertRows(table.id, project.id, [{ value: 'created' }]);
+
+		await expect(payloadReceived).resolves.toMatchObject({
+			event: 'rowInserted',
+			dataTableId: table.id,
+			row: { value: 'created' },
+		});
 	});
 
 	it('rolls the row insert back when durable event persistence fails', async () => {

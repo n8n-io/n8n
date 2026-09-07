@@ -42,7 +42,7 @@ export class DataTableTriggerDeliveryConsumer {
 	}
 
 	async start(): Promise<void> {
-		if (!this.config.triggerEnabled || this.instanceSettings.instanceType !== 'main') return;
+		if (this.instanceSettings.instanceType !== 'main') return;
 		if (this.instanceSettings.isLeader) await this.subscriptionReconciler.reconcileAll();
 		this.isRunning = true;
 		this.schedule();

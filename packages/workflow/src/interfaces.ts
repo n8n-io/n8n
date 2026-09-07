@@ -1498,6 +1498,7 @@ export interface ITriggerFunctions
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
+		DataTableProxyFunctions &
 		SSHTunnelFunctions &
 		SchedulingFunctions;
 }
