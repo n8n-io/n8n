@@ -1,0 +1,173 @@
+operationId: retryExecution
+tags:
+  - Executions
+summary: Retry an execution
+description: Retry an execution from your instance.
+x-required-scope: execution:retry
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: executionId
+    in: path
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          loadWorkflow:
+            type: boolean
+            description: Whether to load the currently saved workflow to execute instead of the one saved at the time of the execution. If set to true, it will retry with the latest version of the workflow.
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              description: ID of the new execution that the retry started.
+              example: '1001'
+            mode:
+              type: string
+              enum:
+                - cli
+                - error
+                - integrated
+                - internal
+                - manual
+                - retry
+                - trigger
+                - webhook
+                - evaluation
+                - chat
+                - agent
+              example: retry
+            startedAt:
+              type: string
+              nullable: true
+              format: date-time
+              description: The time at which the new execution started.
+            workflowId:
+              type: string
+              example: '1000'
+            finished:
+              type: boolean
+              description: Whether the execution ran to completion. Use `status` instead.
+              example: true
+              deprecated: true
+            retryOf:
+              type: string
+              nullable: true
+              description: ID of the execution this one is a retry of.
+            status:
+              type: string
+              enum:
+                - canceled
+                - crashed
+                - error
+                - new
+                - running
+                - success
+                - unknown
+                - waiting
+            waitTill:
+              type: string
+              nullable: true
+              format: date-time
+              description: The time at which a waiting execution resumes.
+            data:
+              type: object
+              description: Run data of the new execution.
+              additionalProperties: true
+              properties:
+                redactionInfo:
+                  type: object
+                  nullable: true
+                  description: Present when execution data has been redacted.
+                  properties:
+                    isRedacted:
+                      type: boolean
+                      description: Whether the execution data was redacted.
+                    reason:
+                      type: string
+                      description: The reason for redaction.
+                    canReveal:
+                      type: boolean
+                      description: Whether the current user has permission to reveal the redacted data.
+            workflowData:
+              type: object
+              description: The workflow as it was saved when the original execution ran. `loadWorkflow` changes which workflow the retry runs, not what this field reports.
+              additionalProperties: true
+            customData:
+              type: object
+              description: Execution metadata carried over from the original execution.
+              additionalProperties:
+                type: string
+            annotation:
+              type: object
+              properties:
+                id:
+                  type: number
+                vote:
+                  type: string
+                  nullable: true
+                  description: Vote left on the original execution.
+                  enum:
+                    - up
+                    - down
+                tags:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                      - id
+                      - name
+              required:
+                - id
+                - vote
+                - tags
+              description: Annotation on the original execution. Absent when it carries none.
+            storedAt:
+              type: string
+              description: Where the execution data is stored.
+              enum:
+                - db
+                - fs
+                - s3
+                - az
+          required:
+            - id
+            - mode
+            - startedAt
+            - workflowId
+            - finished
+            - retryOf
+            - status
+            - data
+            - workflowData
+            - customData
+            - storedAt
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

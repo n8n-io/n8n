@@ -740,7 +740,6 @@ catalogs:
       version: 7.29.0
 
 overrides:
-  eslint-plugin-import-x>@typescript-eslint/utils: 8.35.0
   libphonenumber-js: npm:empty-npm-package@1.0.0
   '@browserbasehq/stagehand': npm:empty-npm-package@1.0.0
   sharp: npm:empty-npm-package@1.0.0
@@ -1634,6 +1633,9 @@ importers:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2175,6 +2177,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3795,6 +3800,9 @@ importers:
         specifier: '>=8.21.1'
         version: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -4192,6 +4200,9 @@ importers:
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)(supports-color@8.1.1)
+      '@grpc/grpc-js':
+        specifier: ^1.14.3
+        version: 1.14.4
       '@joplin/turndown-plugin-gfm':
         specifier: 'catalog:'
         version: 1.0.64
@@ -4315,6 +4326,9 @@ importers:
       '@opentelemetry/core':
         specifier: 2.10.0
         version: 2.10.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/exporter-trace-otlp-grpc':
+        specifier: ^0.221.0
+        version: 0.221.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/exporter-trace-otlp-proto':
         specifier: ^0.221.0
         version: 0.221.0(@opentelemetry/api@1.9.1)
@@ -5537,6 +5551,12 @@ importers:
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../design-system
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -6729,6 +6749,9 @@ importers:
 
   packages/modules/otel/frontend:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
       '@n8n/composables':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/composables
@@ -6854,6 +6877,9 @@ importers:
         specifier: ^3.0.3
         version: 3.0.3
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../@n8n/eslint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -7434,6 +7460,9 @@ importers:
       '@n8n/db':
         specifier: workspace:*
         version: link:../../@n8n/db
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-config
       '@n8n/instance-ai':
         specifier: workspace:*
         version: link:../../@n8n/instance-ai

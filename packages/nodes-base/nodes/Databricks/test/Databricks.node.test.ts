@@ -72,7 +72,7 @@ describe('Databricks', () => {
 				// Proves the UA comes from the node helper: the harness only invokes a
 				// function-style `authenticate`, and this credential's is a generic object,
 				// so the credential contributes no headers here.
-				.matchHeader('user-agent', 'n8n_DatabricksNode/1.0')
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
 				.reply(200, {
 					statement_id: 'stmt-abc123',
 					status: { state: 'SUCCEEDED' },
@@ -201,7 +201,7 @@ describe('Databricks', () => {
 		beforeAll(() => {
 			nock(HOST)
 				.get('/api/2.0/fs/files/Volumes/main/default/my_volume/data/logo.png')
-				.matchHeader('user-agent', 'n8n_DatabricksNode/1.0')
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
 				.reply(200, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0xff, 0xfe]), {
 					'content-type': 'application/octet-stream',
 				});

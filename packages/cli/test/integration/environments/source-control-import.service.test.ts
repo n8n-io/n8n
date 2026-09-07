@@ -2049,6 +2049,7 @@ describe('SourceControlImportService', () => {
 				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
 					workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
 					projectId: importingUserProject.id,
+					transport: 'source-control',
 				});
 			});
 
