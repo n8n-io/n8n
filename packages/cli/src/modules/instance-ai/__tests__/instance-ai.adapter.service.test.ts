@@ -1292,6 +1292,8 @@ import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import type { AppsService } from '@/modules/apps/apps.service';
+import { AppNamespaceConflictError } from '@/modules/apps/errors/app-namespace-conflict.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
@@ -4155,6 +4157,8 @@ function createAdapterWithGatewayMock(
 		enabled?: boolean;
 		settingsService?: unknown;
 		getWallet?: Mock;
+		appsService?: unknown;
+		urlService?: unknown;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -4204,6 +4208,10 @@ function createAdapterWithGatewayMock(
 	args[32] = aiGatewayService as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[32];
+	if (overrides?.appsService) {
+		args[40] = overrides.appsService as ConstructorParameters<typeof InstanceAiAdapterService>[40];
+		args[41] = overrides.urlService as ConstructorParameters<typeof InstanceAiAdapterService>[41];
+	}
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);
@@ -4889,6 +4897,128 @@ describe('createContext — builder delegate wiring', () => {
 
 		expect(result).toEqual(agents);
 		expect(delegate.listAgents).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — app service wiring
+// ---------------------------------------------------------------------------
+
+describe('createContext — app service wiring', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+	const app = {
+		id: 'app-1',
+		name: 'Greeter',
+		namespace: 'greeter',
+		projectId: 'proj-1',
+		createdAt: new Date('2024-01-01T00:00:00.000Z'),
+	};
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	function mockAppsModule(active: boolean) {
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return { isActive: vi.fn().mockReturnValue(active) };
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+	}
+
+	function createAdapterWithApps(appsService: Partial<AppsService>) {
+		return createAdapterWithGatewayMock(vi.fn(), {
+			appsService,
+			urlService: { getInstanceBaseUrl: vi.fn().mockReturnValue('http://localhost:5678') },
+		});
+	}
+
+	it('omits appService when the apps module is inactive', () => {
+		mockAppsModule(false);
+		const service = createAdapterWithApps({});
+
+		expect(service.createContext(mockUser, { projectId: 'proj-1' }).appService).toBeUndefined();
+	});
+
+	it('omits appService when the apps deps were not injected', () => {
+		mockAppsModule(true);
+		const service = createAdapterWithGatewayMock(vi.fn());
+
+		expect(service.createContext(mockUser, { projectId: 'proj-1' }).appService).toBeUndefined();
+	});
+
+	it('creates an app in the bound project and maps a namespace conflict to { conflict }', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const createApp = vi
+			.fn()
+			.mockResolvedValueOnce(app)
+			.mockRejectedValueOnce(new AppNamespaceConflictError('greeter'));
+		const service = createAdapterWithApps({ createApp });
+		const appService = service.createContext(mockUser, { projectId: 'proj-1' }).appService;
+
+		await expect(
+			appService?.create({ projectId: 'proj-1', name: 'Greeter', namespace: 'greeter' }),
+		).resolves.toEqual({
+			app: {
+				id: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'proj-1',
+				createdAt: '2024-01-01T00:00:00.000Z',
+			},
+		});
+		expect(createApp).toHaveBeenCalledWith('proj-1', { name: 'Greeter', namespace: 'greeter' });
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:create'], false, {
+			projectId: 'proj-1',
+		});
+
+		await expect(
+			appService?.create({ projectId: 'proj-1', name: 'Greeter', namespace: 'greeter' }),
+		).resolves.toEqual({ conflict: true });
+	});
+
+	it('stores a version after checking app:update on the app project and returns the served url', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const createVersion = vi.fn().mockResolvedValue({ id: 'v-1', appId: 'app-1' });
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			createVersion,
+		});
+		const appService = service.createContext(mockUser).appService;
+		const source = Buffer.from('src');
+		const dist = Buffer.from('dist');
+
+		await expect(appService?.storeVersion('app-1', { source, dist })).resolves.toEqual({
+			versionId: 'v-1',
+			url: 'http://localhost:5678/apps/greeter/',
+		});
+		expect(createVersion).toHaveBeenCalledWith('app-1', source, dist);
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:update'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it('rejects a namespace that is not a URL slug before touching the service', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const createApp = vi.fn();
+		const service = createAdapterWithApps({ createApp });
+		const appService = service.createContext(mockUser, { projectId: 'proj-1' }).appService;
+
+		await expect(
+			appService?.create({ projectId: 'proj-1', name: 'Evil', namespace: '../etc' }),
+		).rejects.toThrow('Invalid app');
+		expect(createApp).not.toHaveBeenCalled();
+	});
+
+	it('rejects reads of an app in a project the user cannot access', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(false);
+		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) });
+		const appService = service.createContext(mockUser).appService;
+
+		await expect(appService?.get('app-1')).rejects.toThrow('required permissions');
 	});
 });
 

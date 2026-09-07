@@ -3,6 +3,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	CreateAppDto,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
@@ -38,6 +39,7 @@ import type {
 	InstanceAiWebResearchService,
 	InstanceAiWorkspaceService,
 	InstanceAiWorkflowTemplateService,
+	InstanceAiAppService,
 	FetchedPage,
 	DataTableSummary,
 	DataTableColumnInfo,
@@ -140,6 +142,8 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { AppsService } from '@/modules/apps/apps.service';
+import { AppNamespaceConflictError } from '@/modules/apps/errors/app-namespace-conflict.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
@@ -162,6 +166,7 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
+import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -351,6 +356,9 @@ export class InstanceAiAdapterService {
 		// Appended rather than grouped with the other query services: existing tests construct this
 		// service positionally, so inserting mid-list renames every later argument.
 		private readonly workflowDependencyQueryService?: WorkflowDependencyQueryService,
+		// Apps: optional so adapter tests can omit them; `createContext` also checks the module is active.
+		private readonly appsService?: AppsService,
+		private readonly urlService?: UrlService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -439,6 +447,11 @@ export class InstanceAiAdapterService {
 			conversationHistoryService: conversationHistory,
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
+			...(this.appsService && this.urlService && Container.get(ModuleRegistry).isActive('apps')
+				? {
+						appService: this.createAppAdapter(this.appsService, this.urlService, user, projectId),
+					}
+				: {}),
 			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
@@ -3139,6 +3152,68 @@ export class InstanceAiAdapterService {
 
 			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
 				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),
+		};
+	}
+
+	private createAppAdapter(
+		appsService: AppsService,
+		urlService: UrlService,
+		user: User,
+		boundProjectId?: string,
+	): InstanceAiAppService {
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('apps');
+		const { resolveProjectId, assertProjectScope } = this.createProjectScopeHelpers(
+			user,
+			boundProjectId,
+		);
+
+		const getAccessibleApp = async (scopes: Scope[], appId: string) => {
+			const app = await appsService.getApp(appId);
+			await assertProjectScope(scopes, app.projectId);
+			return app;
+		};
+
+		return {
+			async create({ projectId: requestedProjectId, name, namespace }) {
+				assertNotReadOnly();
+				const projectId = await resolveProjectId(['app:create'], requestedProjectId);
+				// The REST controller validates through this DTO; the tool path must not skip the slug rules.
+				const dto = CreateAppDto.safeParse({ name, namespace });
+				if (!dto.success) {
+					throw new UserError(`Invalid app: ${dto.error.issues.map((i) => i.message).join(' ')}`);
+				}
+				try {
+					const app = await appsService.createApp(projectId, dto.data);
+					return {
+						app: {
+							id: app.id,
+							name: app.name,
+							namespace: app.namespace,
+							projectId: app.projectId,
+							createdAt: app.createdAt.toISOString(),
+						},
+					};
+				} catch (error) {
+					if (error instanceof AppNamespaceConflictError) return { conflict: true };
+					throw error;
+				}
+			},
+
+			async get(appId) {
+				const app = await getAccessibleApp(['app:read'], appId);
+				return { id: app.id, name: app.name, namespace: app.namespace, projectId: app.projectId };
+			},
+
+			async storeVersion(appId, { source, dist }) {
+				assertNotReadOnly();
+				const app = await getAccessibleApp(['app:update'], appId);
+				const version = await appsService.createVersion(app.id, source, dist);
+				// Same URL the apps UI shows; the trailing slash keeps relative asset URLs working.
+				return {
+					versionId: version.id,
+					url: `${urlService.getInstanceBaseUrl()}/apps/${app.namespace}/`,
+				};
+			},
 		};
 	}
 
