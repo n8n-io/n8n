@@ -23,6 +23,8 @@ const loadConversationHistoryTool = lazyMod(
 const loadDataTablesTool = lazyMod(
 	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
 );
+// SPIKE (hackweek/n8nable-app-spike): apps as an Instance AI artifact.
+const loadAppsTool = lazyMod(() => require('./apps.tool') as typeof import('./apps.tool'));
 const loadEvalsTool = lazyMod(
 	() => require('./evals/evals.tool') as typeof import('./evals/evals.tool'),
 );
@@ -116,6 +118,8 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		// SPIKE (hackweek/n8nable-app-spike): apps as an Instance AI artifact.
+		[DOMAIN_TOOL_IDS.APPS, loadAppsTool().createAppsTool(context)],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
@@ -149,6 +153,8 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		// SPIKE (hackweek/n8nable-app-spike): apps as an Instance AI artifact.
+		[DOMAIN_TOOL_IDS.APPS, loadAppsTool().createAppsTool(context)],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService

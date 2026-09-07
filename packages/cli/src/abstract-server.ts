@@ -26,6 +26,8 @@ import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 
 import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
+// SPIKE (hackweek/n8nable-app-spike): see packages/@n8n/instance-ai/src/tools/apps.tool.ts
+import { registerAppSpikeServing } from './modules/app-spike/serve-app-spike';
 
 @Service()
 export abstract class AbstractServer {
@@ -282,6 +284,11 @@ export abstract class AbstractServer {
 			// Register a handler for live MCP servers
 			this.app.all(`/${this.endpointMcp}/*path`, createWebhookHandlerFor(liveWebhooks, 'mcp'));
 		}
+
+		// SPIKE (hackweek/n8nable-app-spike): serves apps published by the `apps`
+		// Instance AI tool. Unauthenticated, no RBAC, no CSP sandboxing yet —
+		// see plan.md Phase 1/6 for what a real version needs.
+		registerAppSpikeServing(this.app);
 
 		if (this.testWebhooksEnabled) {
 			const testWebhooks = Container.get(TestWebhooks);
