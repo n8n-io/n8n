@@ -348,7 +348,9 @@ export class WaitTracker {
 
 	/**
 	 * Wait for the child's in-memory `postExecutePromise`, or load a terminal run
-	 * from the DB if that promise never settles (queue-mode Bull completion loss).
+	 * from the DB if that promise never settles (queue-mode completion loss).
+	 * On the DB fallback, identity-checks `finalizeExecution` so the child's
+	 * ActiveExecutions entry (and its capacity reservation) are released.
 	 * Returns `undefined` when the deadline elapses with no terminal child.
 	 */
 	private async awaitChildRunOrLoadFromDb(
@@ -402,6 +404,15 @@ export class WaitTracker {
 				});
 				lastKnownChildStatus = child?.status;
 				if (child && isTerminalExecutionStatus(child.status) && child.data) {
+					const run = executionResponseToRun(child);
+					// The in-memory promise never settled, so neither did the capacity-releasing
+					// `.finally` on the child's ActiveExecutions entry. Settle it with an
+					// identity-checked finalize so we release capacity and clear the map without
+					// touching a resumed entry that may already own this id.
+					if (this.activeExecutions.has(childExecutionId)) {
+						const runId = this.activeExecutions.getRunId(childExecutionId);
+						this.activeExecutions.finalizeExecution(childExecutionId, run, runId);
+					}
 					this.logger.warn(
 						'Child execution finished in DB but post-execute promise did not settle; resuming parent from DB',
 						{
@@ -410,7 +421,7 @@ export class WaitTracker {
 							childStatus: child.status,
 						},
 					);
-					return executionResponseToRun(child);
+					return run;
 				}
 			} catch (error) {
 				this.logger.debug('Failed to poll child execution status while waiting to resume parent', {

@@ -1066,11 +1066,21 @@ describe('WaitTracker', () => {
 					activeExecutions.getPostExecutePromise
 						.calledWith(execution.id)
 						.mockReturnValue(postExecutePromise.promise);
+					activeExecutions.has.mockReturnValue(true);
+					activeExecutions.getRunId.mockReturnValue('child-run-id');
 
 					await waitTracker.startExecution(execution.id);
 					await vi.advanceTimersByTimeAsync(1000);
 					await vi.advanceTimersByTimeAsync(1000);
 
+					expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith(
+						execution.id,
+						expect.objectContaining({
+							status: 'success',
+							data: childRunData,
+						}),
+						'child-run-id',
+					);
 					expect(logger.warn).toHaveBeenCalledWith(
 						'Child execution finished in DB but post-execute promise did not settle; resuming parent from DB',
 						expect.objectContaining({
@@ -1109,8 +1119,8 @@ describe('WaitTracker', () => {
 					});
 
 					await waitTracker.startExecution(execution.id);
-					// Never resolve postExecutePromise. Advance past the 5-minute child settle budget.
-					await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1000);
+					// Never resolve postExecutePromise. Advance past the child settle budget.
+					await vi.advanceTimersByTimeAsync(60 * 60 * 1000 + 1000);
 
 					expect(logger.error).toHaveBeenCalledWith(
 						'Timed out waiting for child execution to complete before resuming parent',
