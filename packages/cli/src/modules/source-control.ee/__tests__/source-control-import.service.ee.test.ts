@@ -3947,6 +3947,10 @@ describe('SourceControlImportService', () => {
 		});
 
 		describe('getLocalDataTablesFromDb', () => {
+			beforeEach(() => {
+				projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(new Map());
+			});
+
 			it('should return data tables from database', async () => {
 				// Arrange
 				const mockDataTables = [
@@ -3987,14 +3991,61 @@ describe('SourceControlImportService', () => {
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				});
 				expect(dataTableRepository.find).toHaveBeenCalledWith({
-					relations: [
-						'columns',
-						'project',
-						'project.projectRelations',
-						'project.projectRelations.role',
-					],
+					relations: ['columns', 'project'],
 					where: {},
 				});
+			});
+
+			const dataTableIn = (id: string, project: { id: string; name: string; type: string }) => ({
+				id,
+				name: `Table ${id}`,
+				projectId: project.id,
+				columns: [],
+				createdAt: new Date('2024-01-01'),
+				updatedAt: new Date('2024-01-02'),
+				project,
+			});
+			const teamProject = { id: 'team1', name: 'Team Project 1', type: 'team' };
+			const personalProject = { id: 'personal1', name: 'Personal Project', type: 'personal' };
+
+			it('should resolve the owner of a personal project from the owner email lookup', async () => {
+				dataTableRepository.find.mockResolvedValue([dataTableIn('dt1', personalProject)] as never);
+				projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+					new Map([['personal1', 'owner@example.com']]),
+				);
+
+				const result = await service.getLocalDataTablesFromDb(globalAdminContext);
+
+				expect(result[0].ownedBy).toEqual({
+					type: 'personal',
+					projectId: 'personal1',
+					projectName: 'Personal Project',
+				});
+			});
+
+			it('should report no owner for a personal project without an owner relation', async () => {
+				dataTableRepository.find.mockResolvedValue([dataTableIn('dt1', personalProject)] as never);
+
+				const result = await service.getLocalDataTablesFromDb(globalAdminContext);
+
+				expect(result[0].ownedBy).toBeNull();
+			});
+
+			it('should look up owner emails only for personal projects', async () => {
+				const otherPersonalProject = { id: 'personal2', name: 'Other Personal', type: 'personal' };
+				dataTableRepository.find.mockResolvedValue([
+					dataTableIn('dt1', teamProject),
+					dataTableIn('dt2', personalProject),
+					dataTableIn('dt3', otherPersonalProject),
+				] as never);
+
+				await service.getLocalDataTablesFromDb(globalAdminContext);
+
+				expect(projectRelationRepository.findPersonalOwnerEmails).toHaveBeenCalledTimes(1);
+				expect(projectRelationRepository.findPersonalOwnerEmails).toHaveBeenCalledWith([
+					'personal1',
+					'personal2',
+				]);
 			});
 
 			it('should scope database query to data tables in authorized projects', async () => {
@@ -4014,12 +4065,7 @@ describe('SourceControlImportService', () => {
 					sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter,
 				).toHaveBeenCalledWith(globalMemberContext);
 				expect(dataTableRepository.find).toHaveBeenCalledWith({
-					relations: [
-						'columns',
-						'project',
-						'project.projectRelations',
-						'project.projectRelations.role',
-					],
+					relations: ['columns', 'project'],
 					where,
 				});
 			});
