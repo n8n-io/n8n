@@ -1498,6 +1498,7 @@ export class InstanceAiSettingsService {
 			url: baseUrl,
 			...(apiKey ? { apiKey } : {}),
 			...(headers ? { headers } : {}),
+			...(provider === 'custom' ? { includeUsage: true } : {}),
 			...customOptions,
 		};
 	}

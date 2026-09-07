@@ -49,8 +49,8 @@ catalogs:
       specifier: ^4.0.20
       version: 4.0.20
     '@ai-sdk/openai-compatible':
-      specifier: ^3.0.41
-      version: 3.0.43
+      specifier: ^3.0.44
+      version: 3.0.44
     '@ai-sdk/otel':
       specifier: ^1.0.66
       version: 1.0.74
@@ -1012,7 +1012,7 @@ importers:
         version: 4.0.20(zod@3.25.76)
       '@ai-sdk/openai-compatible':
         specifier: 'catalog:'
-        version: 3.0.43(zod@3.25.76)
+        version: 3.0.44(zod@3.25.76)
       '@ai-sdk/otel':
         specifier: 'catalog:'
         version: 1.0.74(zod@3.25.76)
@@ -4154,7 +4154,7 @@ importers:
         version: 4.0.39(zod@3.25.76)
       '@ai-sdk/openai-compatible':
         specifier: 'catalog:'
-        version: 3.0.43(zod@3.25.76)
+        version: 3.0.44(zod@3.25.76)
       '@apidevtools/json-schema-ref-parser':
         specifier: 12.0.2
         version: 12.0.2
@@ -7722,8 +7722,8 @@ packages:
     peerDependencies:
       zod: 3.25.76
 
-  '@ai-sdk/openai-compatible@3.0.43':
-    resolution: {integrity: sha512-QurboftQF0jGshbNM5KHNNpttp7huKSV7rN+C7ylcT5XsLZPud1eCMqyX0zlYFxm6pE4MEc/1PgFX12tm85yqg==}
+  '@ai-sdk/openai-compatible@3.0.44':
+    resolution: {integrity: sha512-pK7mERd/aIJVtyQCe/nV3G3iEJCY1no8GHDOGbgpNC+petjSfsxj+ni0Q8WVVehTUiY9B04F3Xvir+icBgORCg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: 3.25.76
@@ -24796,7 +24796,7 @@ snapshots:
       '@ai-sdk/provider-utils': 5.0.25(zod@3.25.76)
       zod: 3.25.76
 
-  '@ai-sdk/openai-compatible@3.0.43(zod@3.25.76)':
+  '@ai-sdk/openai-compatible@3.0.44(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 4.0.10
       '@ai-sdk/provider-utils': 5.0.36(zod@3.25.76)

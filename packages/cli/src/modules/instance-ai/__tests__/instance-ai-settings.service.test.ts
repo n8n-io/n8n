@@ -1983,7 +1983,11 @@ describe('InstanceAiSettingsService', () => {
 					{ type: 'openAiApi', data: { url: 'https://api.eu.mistral.ai/v1' } },
 					'zai-glm-5-2',
 				),
-			).toEqual({ id: 'custom/zai-glm-5-2', url: 'https://api.eu.mistral.ai/v1' });
+			).toEqual({
+				id: 'custom/zai-glm-5-2',
+				url: 'https://api.eu.mistral.ai/v1',
+				includeUsage: true,
+			});
 		});
 
 		it.each([
@@ -2002,6 +2006,7 @@ describe('InstanceAiSettingsService', () => {
 				).toEqual({
 					id: 'custom/zai-org/GLM-5.2-Fast',
 					url: 'https://model.example.com/v1',
+					includeUsage: true,
 					supportsStructuredOutputs: expected,
 				});
 			},

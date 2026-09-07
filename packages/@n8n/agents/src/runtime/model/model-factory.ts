@@ -175,6 +175,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	custom: {
 		build: (creds, model, fetch) =>
 			buildOpenAiCompatible('custom', undefined, creds, model, fetch, {
+				includeUsage: creds.includeUsage,
 				supportsStructuredOutputs: creds.supportsStructuredOutputs,
 			}),
 	},
