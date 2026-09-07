@@ -75,6 +75,10 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('data-tables')).toBe('table');
 	});
 
+	test('returns the apps grid for the apps tool', () => {
+		expect(getToolIcon('apps')).toBe('grid-2x2');
+	});
+
 	test('returns workflow for workflow-related tools', () => {
 		expect(getToolIcon('workflows')).toBe('workflow');
 		expect(getToolIcon('executions')).toBe('workflow');
