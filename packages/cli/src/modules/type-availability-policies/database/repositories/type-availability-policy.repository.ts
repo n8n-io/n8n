@@ -28,8 +28,23 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 		super(TypeAvailabilityPolicy, dataSource.manager, transactionRunner);
 	}
 
-	async findById(id: string, ctx: OperationContext): Promise<TypeAvailabilityPolicy | null> {
-		return await this.managerFor(ctx).findOneBy(TypeAvailabilityPolicy, { id });
+	/**
+	 * Pass `forUpdate: true` inside a write transaction that checks `expectedVersion` — see
+	 * `TypeAvailabilityPolicyScopeRepository.findScopeByKindAndProject` for why the lock
+	 * matters: without it, two concurrent writers can both pass the version check.
+	 */
+	async findById(
+		id: string,
+		ctx: OperationContext,
+		forUpdate = false,
+	): Promise<TypeAvailabilityPolicy | null> {
+		const manager = this.managerFor(ctx);
+		return await manager.findOne(TypeAvailabilityPolicy, {
+			where: { id },
+			...(forUpdate && manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
 	}
 
 	async findManyByIds(ids: string[], ctx: OperationContext): Promise<TypeAvailabilityPolicy[]> {

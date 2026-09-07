@@ -9,10 +9,9 @@ import { Telemetry } from '@/telemetry';
 import { buildAgentConfigurationTelemetryFromConfig } from './agent-telemetry';
 import type { Agent } from './entities/agent.entity';
 import {
-	configuredCapabilityKinds,
+	capabilityCountTelemetryProperties,
 	countAgentCapabilities,
 	isUnconfiguredAgent,
-	totalAgentCapabilities,
 } from './utils/agent-capabilities';
 
 export { isUnconfiguredAgent };
@@ -138,15 +137,7 @@ export class AgentModificationTelemetryService {
 				project_id: projectId,
 				user_id: user.id,
 				changed_parts: changedParts,
-				capability_kinds: configuredCapabilityKinds(counts),
-				capability_count: totalAgentCapabilities(counts),
-				tool_count: counts.tool,
-				skill_count: counts.skill,
-				sub_agent_count: counts.subAgent,
-				mcp_server_count: counts.mcpServer,
-				vector_store_count: counts.vectorStore,
-				task_count: counts.task,
-				trigger_count: counts.channel,
+				...capabilityCountTelemetryProperties(counts),
 				model,
 				tool_types,
 				has_published_version: Boolean(agent.activeVersionId),
