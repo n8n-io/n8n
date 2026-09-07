@@ -1111,6 +1111,40 @@ describe('SourceControlExportService', () => {
 			);
 		});
 
+		it('should export the owner email of a personal project', async () => {
+			dataTableRepository.find.mockResolvedValue([
+				{
+					id: 'dt1',
+					name: 'Personal Table',
+					projectId: personalProject.id,
+					columns: [],
+					createdAt: new Date('2024-01-01'),
+					updatedAt: new Date('2024-01-02'),
+					project: personalProject,
+				},
+			] as never);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'owner@example.com']]),
+			);
+
+			await service.exportDataTablesToWorkFolder(
+				[mock<SourceControlledFile>({ id: 'dt1' })],
+				globalAdminContext,
+			);
+
+			expect(projectRelationRepository.findPersonalOwnerEmails).toHaveBeenCalledWith([
+				personalProject.id,
+			]);
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/datatables/dt1.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value).ownedBy).toEqual({
+				type: 'personal',
+				projectId: 'personal-1',
+				projectName: 'Personal',
+				personalEmail: 'owner@example.com',
+			});
+		});
+
 		it('should handle export errors gracefully', async () => {
 			// Arrange
 			const candidates = [
