@@ -6,6 +6,7 @@ Frontend feature module. Consumed from source by the editor-ui shell through
 ```bash
 pnpm turbo typecheck --filter=@n8n/frontend-module-{{name}}
 pnpm turbo lint --filter=@n8n/frontend-module-{{name}}
+pnpm turbo lint:styles --filter=@n8n/frontend-module-{{name}}
 pnpm turbo test --filter=@n8n/frontend-module-{{name}}
 ```
 
@@ -29,6 +30,19 @@ yet. Turbo builds them first; the bare pnpm form does not.
 
 ## Adding UI
 
-`@vitejs/plugin-vue` is already wired into `vite.config.ts`, so a `.vue` file
-compiles in tests without further setup. Route components must load lazily —
-see the note in `src/{{name}}.module.ts`.
+`vite.config.ts` already carries the three plugins a design-system consumer
+needs, so a `.vue` file compiles in tests without further setup:
+
+- `@vitejs/plugin-vue` — single-file components.
+- `unplugin-icons` — the `~icons/lucide/*` virtual modules behind `N8nIcon`.
+- `vite-svg-loader` — design-system's `custom/*.svg` icon components. Without
+  it an `.svg` import is a data-URI string, which Vue renders as a tag name.
+
+`src/__tests__/design-system-icons.test.ts` renders one icon of each kind, so a
+plugin dropped from `vite.config.ts` fails this package's own suite. Keep that
+test while the module renders any design-system component.
+
+SCSS goes in a scoped `<style lang="scss">` block, with tokens from
+design-system — `stylelint.config.mjs` holds this package to the same rules the
+shell uses. Route components must load lazily — see the note in
+`src/{{name}}.module.ts`.
