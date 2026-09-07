@@ -5151,6 +5151,19 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it('fails every gate closed, rather than rejecting, if getFeatureFlags rejects unexpectedly', async () => {
+		const getFeatureFlags = stubContainer(allEnabled);
+		getFeatureFlags.mockRejectedValueOnce(new Error('PostHog unreachable'));
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			configEvalsEnabled: false,
+			mcpConnectionsEnabled: false,
+			conversationHistoryEnabled: false,
+			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
+		});
+	});
+
 	it('keeps MCP connections off when the mcp-registry module is disabled', async () => {
 		// With the module off the registry entity is never registered, so a
 		// search would throw rather than return nothing.

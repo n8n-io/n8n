@@ -546,7 +546,8 @@ export class InstanceAiAdapterService {
 	 * Every experiment gate from one PostHog fetch, so a caller wires its context
 	 * from one call. `mcpConnectionsEnabled` also folds in two instance-wide
 	 * preconditions. Fails closed: `getFeatureFlags` returns `{}` on a PostHog
-	 * outage.
+	 * outage, and an unexpected throw here still fails every gate closed rather
+	 * than failing the whole context build.
 	 */
 	async resolveExperimentGates(user: User): Promise<{
 		/** Config-based evals: never create evals the user can't run. */
@@ -562,7 +563,13 @@ export class InstanceAiAdapterService {
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
 	}> {
-		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
+		try {
+			flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		} catch {
+			// getFeatureFlags already swallows PostHog errors and returns {}; this
+			// second layer is for an unexpected throw elsewhere in the call.
+		}
 		return {
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
 			mcpConnectionsEnabled:
