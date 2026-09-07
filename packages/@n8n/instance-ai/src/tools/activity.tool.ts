@@ -9,6 +9,7 @@
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
@@ -16,7 +17,7 @@ import { DOMAIN_TOOL_IDS } from './tool-ids';
 const defaultListLimit = 30;
 const maxListLimit = 100;
 
-const activityInputSchema = z.discriminatedUnion('action', [
+const activityRuntimeInputSchema = z.discriminatedUnion('action', [
 	z.object({
 		action: z
 			.literal('list')
@@ -50,6 +51,13 @@ const activityInputSchema = z.discriminatedUnion('action', [
 			.describe('The bracketed id of the entry, as shown in the list you were given.'),
 	}),
 ]);
+
+/**
+ * What the model is shown. A discriminated union serialises to `anyOf` with no top-level `type`,
+ * which Anthropic rejects outright — so it is flattened to one object here, and the union above
+ * still does the real validation in the handler.
+ */
+const activityInputSchema = sanitizeInputSchema(activityRuntimeInputSchema);
 
 const activityEntrySchema = z.object({
 	id: z.number(),
@@ -86,11 +94,15 @@ export function createActivityTool(context: InstanceAiContext) {
 		)
 		.input(activityInputSchema)
 		.output(activityOutputSchema)
-		.handler(async (input) => {
+		.handler(async (rawInput) => {
 			const service = context.activityService;
 			if (!service) {
 				throw new Error('The instance activity log is not enabled on this instance.');
 			}
+
+			// The schema the model sees is flattened, so branch-required fields are optional there.
+			// Re-parsing against the union is what makes `expand` without an `id` impossible.
+			const input = activityRuntimeInputSchema.parse(rawInput);
 
 			if (input.action === 'expand') {
 				const expansion = await service.expand(input.id);

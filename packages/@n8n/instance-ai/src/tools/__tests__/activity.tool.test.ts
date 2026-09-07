@@ -100,24 +100,16 @@ describe('activity tool', () => {
 	});
 
 	describe('input schema', () => {
-		function inputSchema(tool: unknown): { safeParse: (input: unknown) => { success: boolean } } {
-			return (tool as { inputSchema: { safeParse: (input: unknown) => { success: boolean } } })
-				.inputSchema;
-		}
+		it('refuses an expand with no id, whatever the model sends', async () => {
+			const tool = createActivityTool(makeContext(makeService()));
 
-		/** The union carries the arity, so the handler never has to check for a missing id. */
-		it('refuses an expand with no id', () => {
-			const schema = inputSchema(createActivityTool(makeContext(makeService())));
-
-			expect(schema.safeParse({ action: 'expand' }).success).toBe(false);
-			expect(schema.safeParse({ action: 'expand', id: 20 }).success).toBe(true);
+			await expect(executeTool(tool, { action: 'expand' })).rejects.toThrow();
 		});
 
-		it('refuses a category outside the vocabulary, so a typo cannot widen the read', () => {
-			const schema = inputSchema(createActivityTool(makeContext(makeService())));
+		it('refuses a category outside the vocabulary, so a typo cannot widen the read', async () => {
+			const tool = createActivityTool(makeContext(makeService()));
 
-			expect(schema.safeParse({ action: 'list', category: 'execution' }).success).toBe(false);
-			expect(schema.safeParse({ action: 'list', category: 'workflow' }).success).toBe(true);
+			await expect(executeTool(tool, { action: 'list', category: 'execution' })).rejects.toThrow();
 		});
 	});
 
