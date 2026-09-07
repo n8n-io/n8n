@@ -96,5 +96,28 @@ describe('SharedWorkflowRepository', () => {
 
 			expect(result).toEqual(new Map());
 		});
+
+		it('merges owner projects returned from different chunks', async () => {
+			const firstProject = mock<Project>({ id: 'first-project' });
+			const lastProject = mock<Project>({ id: 'last-project' });
+			entityManager.find
+				.mockResolvedValueOnce([
+					mock<SharedWorkflow>({ workflowId: 'first', project: firstProject }),
+				])
+				.mockResolvedValueOnce([
+					mock<SharedWorkflow>({ workflowId: 'last', project: lastProject }),
+				]);
+			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `workflow-${index}`);
+
+			const result = await sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
+			expect(result).toEqual(
+				new Map([
+					['first', firstProject],
+					['last', lastProject],
+				]),
+			);
+		});
 	});
 });
