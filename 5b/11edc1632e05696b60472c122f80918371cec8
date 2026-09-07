@@ -1,0 +1,55 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_dc1bcc8544e6b1::t_076dab8056c883 449,453,459-460,464-465
+  s_dc1bcc8544e6b1::t_d8d6a69e12fe05 195,213,239,444
+  s_dc1bcc8544e6b1::t_0bc445f7734c14 129,155
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  s_dc1bcc8544e6b1::t_478ea8887261fb 2-3,12,37-38,62-64
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_dc1bcc8544e6b1::t_004dc84df6e550 2026,2034-2035,2038-2040,2042
+packages/cli/src/events/maps/relay.event-map.ts
+  s_dc1bcc8544e6b1::t_5b16be29dc1a18 37
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_dc1bcc8544e6b1::t_b058aa4ee2ab53 10,68-90,185
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_dc1bcc8544e6b1::t_194345218a9021 9,72-79
+  s_dc1bcc8544e6b1::t_a8c9a11b0ea912 130-137
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfirmationModal.ts
+  s_dc1bcc8544e6b1::t_af6ceabf7802c2 8-11,24
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_dc1bcc8544e6b1::t_5005e6cec0fff2 758,768,772,780,1539,1553-1561
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_dc1bcc8544e6b1::t_44df7a1613b626 52-53
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_dc1bcc8544e6b1::t_ad1e03e0c8d11d 638,651-678
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_dc1bcc8544e6b1::t_d563e041f4cdd4 5-6,28-31
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_dc1bcc8544e6b1::t_36e588eceb0883 223-252
+  s_dc1bcc8544e6b1::t_e6fc9a35a0488f 3
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_dc1bcc8544e6b1::t_13c577f715fdcf 335-336
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_dc1bcc8544e6b1::t_47dc8e0ed9e42d 983-1005
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_dc1bcc8544e6b1::t_6b8725372d6b59 339,345
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentVersionHistory.test.ts
+  s_dc1bcc8544e6b1::t_7a431ec932c6a5 240-245
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionHistory.ts
+  s_dc1bcc8544e6b1::t_99a74258ffbf04 129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5b11edc1632e05696b60472c122f80918371cec8",
+  "prompts": {},
+  "sessions": {
+    "s_dc1bcc8544e6b1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b230e043-4120-4803-80d6-26654a74875b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
