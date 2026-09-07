@@ -346,6 +346,23 @@ describe('Source Control (Public API)', () => {
 			fileNames: [{ id: 'wf-1', type: 'workflow' }],
 		};
 
+		it('should return 401 when API key is missing', async () => {
+			const response = await testServer.publicApiAgentWithoutApiKey().post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(401);
+			expect(response.body).toEqual({ message: 'Unauthorized' });
+		});
+
+		it('should return 401 when API key is invalid', async () => {
+			const response = await testServer
+				.publicApiAgentWithApiKey('not-a-real-api-key')
+				.post(pushUrl)
+				.send(validBody);
+
+			expect(response.status).toBe(401);
+			expect(response.body).toHaveProperty('message');
+		});
+
 		it('should return 403 when API key lacks sourceControl:push scope', async () => {
 			testServer.license.enable('feat:sourceControl');
 			const member = await createMemberWithApiKey({ scopes: ['tag:list'] });
