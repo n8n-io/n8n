@@ -160,7 +160,7 @@ export class AgentPublishService {
 		// Before the idempotent returns: a live agent can lose a workflow tool's
 		// published version, and the caller confirmed publishing exactly that.
 		if (options.publishDependencies) {
-			await this.publishUnpublishedDependencies(
+			await this.publishDependencies(
 				agentId,
 				targetHistory ? targetHistory.schema : agent.schema,
 				projectId,
@@ -321,22 +321,19 @@ export class AgentPublishService {
 	 * Try every dependency, then fail with all failures: the agent must not go
 	 * live with an unpublished tool.
 	 */
-	private async publishUnpublishedDependencies(
+	private async publishDependencies(
 		agentId: string,
 		config: AgentJsonConfig | null,
 		projectId: string,
 		user: User,
 	): Promise<void> {
 		const failedDependencies: AgentPublishDependencyFailure[] = [];
-		let published = false;
 		try {
 			for (const workflow of await this.findUnpublishedWorkflows(config, projectId)) {
 				try {
 					// Publishing a workflow the agent cannot run as a tool would not
 					// make the agent publishable, so name the fix instead.
 					validateCompatibility(workflow);
-					// Before the call: an activation can commit and still throw after.
-					published = true;
 					await this.workflowService.activateWorkflow(user, workflow.id, {
 						source: 'agent-publish',
 					});
@@ -350,7 +347,7 @@ export class AgentPublishService {
 		} finally {
 			// A live agent's cached runtimes built the tool while the workflow was
 			// unpublished, so they are stale even when the rest of the publish fails.
-			if (published) this.runtimeCacheService.clearRuntimes(agentId);
+			this.runtimeCacheService.clearRuntimes(agentId);
 		}
 		if (failedDependencies.length > 0) {
 			throw new AgentPublishDependenciesError({ failedDependencies });
