@@ -26,8 +26,10 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	}
 
 	/**
-	 * `SELECT ... FOR UPDATE`, Postgres only. SQLite has a single writer, so a write
-	 * transaction already serialises against every other one and no row lock is needed.
+	 * `SELECT ... FOR UPDATE`, Postgres only. n8n's SQLite driver has one write connection
+	 * behind a mutex and opens every transaction with `BEGIN IMMEDIATE`, so a write
+	 * transaction already runs to completion before the next one starts — every read inside
+	 * it sees the previous writer's commit, and no row lock is needed.
 	 */
 	private forUpdateLock(manager: EntityManager) {
 		return manager.connection.options.type === 'postgres'
