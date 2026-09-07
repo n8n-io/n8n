@@ -68,6 +68,7 @@ export type {
 
 export { ExecutionNotFoundError, StepNotFoundError } from './execution';
 export type {
+	CallerContext,
 	ExecutionMode,
 	ExecutionViewStore,
 	ExecutionRecord,
