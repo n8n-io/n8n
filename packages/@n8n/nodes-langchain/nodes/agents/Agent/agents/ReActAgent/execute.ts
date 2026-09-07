@@ -118,7 +118,9 @@ export async function reActAgentAgentExecute(
 			returnData.push({ json: response });
 		} catch (error) {
 			throwIfToolSchema(this, error);
-			const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex);
+			const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex, {
+				enrichNonParserErrors: true,
+			});
 			if (this.continueOnFail()) {
 				returnData.push({
 					json: { error: executionError.message },

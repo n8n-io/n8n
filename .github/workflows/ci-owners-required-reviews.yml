@@ -1,0 +1,165 @@
+name: 'CI: Owners Required Reviews'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Required Reviews (PR #{0})', inputs.pr_number) || '' }}"
+
+# Enforces the `required` entries in OWNERS: when a PR changes a file
+# whose winning OWNERS entry carries `required`, a member of the owning team
+# must approve the PR before merge.
+#
+# Replaces the GitHub-native CODEOWNERS enforcement, which could not express
+# team ownership metadata beyond "request a review".
+#
+# Triggers
+#   - pull_request (opened/synchronize/reopened/ready_for_review):
+#     re-evaluates whenever the changeset can change. Skipped for fork PRs
+#     (no secrets): their status stays "expected" — fail closed — until the
+#     first review event reports it.
+#   - pull_request_review (submitted/dismissed): re-evaluates when approvals
+#     change. A privileged event (base repo context, secrets), so it covers
+#     fork PRs too — and approvals can only change through review events.
+#   - merge_group: reports success on the queue head without re-evaluating.
+#     A PR cannot enter the queue unless this status is green on its head,
+#     and the queue does not change approvals.
+#   - workflow_dispatch: manual re-check (e.g. after a team membership change,
+#     or a fork PR push after an approval).
+#
+# The checkout below always pins the base branch, never the PR merge ref: the
+# scripts and the OWNERS file are trusted input, so a PR cannot lift its own
+# review requirement or reach the status-writing token.
+#
+# Output
+#   - A commit status named "Required Reviews" on the PR head SHA (or
+#     merge-group head SHA). Add this name to a ruleset's required-checks list
+#     to gate merges on it. The first job step sets the status to pending, so
+#     a run that crashes at any later point cannot leave a stale verdict in
+#     effect. The job itself only fails on errors.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - master
+  pull_request_review:
+    types: [submitted, dismissed]
+  merge_group:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to re-evaluate'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: >-
+    owners-required-reviews-${{ github.event.pull_request.number
+      || github.event.merge_group.head_sha
+      || inputs.pr_number
+      || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The queue requires this status on the merge-group head, but there is
+  # nothing new to evaluate there: entering the queue already required the
+  # status to be green on the PR head, and queueing does not change approvals.
+  pass-in-merge-queue:
+    name: Pass in merge queue
+    if: github.event_name == 'merge_group'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      statuses: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.merge_group.head_sha }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state=success \
+            -f context='Required Reviews' \
+            -f description='Approvals were verified before the PR entered the queue'
+
+  required-reviews:
+    name: Check required reviews
+    # Fork PRs are skipped on pull_request (no secrets for the app token);
+    # pull_request_review covers them. pull_request_review has no `branches`
+    # filter; the script also skips non-master bases, the guard here keeps
+    # the early pending status off non-master heads.
+    if: >-
+      github.event_name != 'merge_group' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event_name != 'pull_request_review' ||
+       github.event.pull_request.base.ref == 'master')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      # Fail closed before any fallible step: replace a possibly-green status
+      # with pending, so a failure in token generation, checkout, or setup
+      # cannot leave a stale verdict in effect. The script sets the verdict.
+      # Skipped for workflow_dispatch (no SHA in the event); there the script
+      # sets pending itself.
+      - name: Set pending status
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state=pending \
+            -f context='Required Reviews' \
+            -f description='Evaluating required reviews' \
+            -f "target_url=${RUN_URL}"
+
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the token to what the script needs; without these inputs it
+          # would inherit every permission of the app installation.
+          permission-members: read
+          permission-pull-requests: read
+          permission-statuses: write
+
+      # Always check out the base branch, never the PR merge ref: the OWNERS
+      # file and the scripts must be trusted input. The 'master' fallback
+      # covers workflow_dispatch, so a dispatch from another branch cannot
+      # run that branch's policy.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.base.ref || 'master' }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
+      - name: Evaluate required reviews
+        env:
+          # App token: reading org team membership is beyond GITHUB_TOKEN.
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          PULL_REQUEST_NUMBER: ${{ inputs.pr_number || '' }}
+          STATUS_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Bootstrap: the checkout is the trusted base branch. Until the
+          # enforcement script exists there, there is no policy to enforce.
+          if [ ! -f .github/scripts/owners/required-reviews.mjs ]; then
+            echo "No enforcement script on the base branch; nothing to enforce."
+            if [ -n "$STATUS_SHA" ]; then
+              gh api "repos/${GITHUB_REPOSITORY}/statuses/${STATUS_SHA}" \
+                -f state=success \
+                -f context='Required Reviews' \
+                -f description='Owners enforcement is not on the base branch yet'
+            fi
+            exit 0
+          fi
+          node .github/scripts/owners/required-reviews.mjs

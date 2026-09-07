@@ -30,6 +30,7 @@ export interface ScriptedGateRunArgs {
 	executionService: VerificationExecutionService;
 	workflowId: string;
 	inputData?: Record<string, unknown>;
+	triggerNodeName?: string;
 	timeout?: number;
 	abortSignal?: AbortSignal;
 	buildOutcome: WorkflowBuildOutcome;
@@ -65,6 +66,7 @@ export async function runScriptedGateVerification(
 	for (const decision of script.decisions) {
 		const result = await executionService.run(workflowId, args.inputData, {
 			timeout: args.timeout,
+			triggerNodeName: args.triggerNodeName,
 			verificationPinData: { ...basePins, [script.nodeName]: decision.items },
 			omitConnections: [script.cutEdge],
 			isVerificationRun: true,
@@ -74,6 +76,7 @@ export async function runScriptedGateVerification(
 			result,
 			buildOutcome,
 			simulatedNodes: prepared.simulatedNodes,
+			triggerNodeName: args.triggerNodeName,
 			stateBefore,
 			runId,
 			chatModelRelatedNodeNames,

@@ -109,6 +109,19 @@ describe('runScriptedGateVerification', () => {
 		expect(result.executedNodeNames).toEqual(expect.arrayContaining(['Publish', 'Revise']));
 	});
 
+	it('starts every decision pass from the named trigger', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce(approvePassResult)
+			.mockResolvedValueOnce(declinePassResult);
+
+		await runScriptedGateVerification({ ...makeArgs(run), triggerNodeName: 'First of Month' });
+
+		for (const call of run.mock.calls) {
+			expect((call as unknown[])[2]).toMatchObject({ triggerNodeName: 'First of Month' });
+		}
+	});
+
 	it('fails the merged analysis when any pass fails', async () => {
 		const run = vi
 			.fn()

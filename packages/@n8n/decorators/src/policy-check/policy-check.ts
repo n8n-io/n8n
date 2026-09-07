@@ -1,5 +1,8 @@
+import type { PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
 import type { Constructable } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
+
+export type { PolicyViolation, PolicyCheckFailure };
 
 /**
  * The points in n8n where a policy can block an action.
@@ -83,40 +86,19 @@ export type CredentialDecryptContext = {
 	readonly projectId: string | null;
 };
 
+/**
+ * How the content reached the instance.
+ *
+ * A check needs this to hold an unattended sync to a different standard than a hand-run
+ * import, and the host reads it to pick its fail posture — a batch sync reports, a direct
+ * import refuses before writing.
+ */
+export type ContentImportTransport = 'cli' | 'source-control' | 'package' | 'git-connection';
+
 export type ContentImportContext = {
 	readonly workflow: PolicedWorkflow;
 	readonly projectId: string | null;
-};
-
-/**
- * One reason something was blocked.
- *
- * The same shape is used by the UI, API errors, import reports and the audit log.
- * `kind`, `subjectType` and `scope` are plain strings rather than enums, so later policy
- * features can add values without breaking existing readers — which also means readers
- * must cope with values they don't recognise.
- */
-export type PolicyViolation = {
-	/** e.g. `'node-type-unavailable'`. Don't assume you know every value. */
-	kind: string;
-
-	/** Id of the check that objected. */
-	checkId: string;
-
-	/** Readable on its own. Don't parse details out of it — use the fields below. */
-	message: string;
-
-	/** What was blocked: a node type name, a credential type name, … */
-	subject?: string;
-
-	/** What kind of name `subject` is — node and credential type names can look alike. */
-	subjectType?: string;
-
-	/** Which level objected. Usually `'instance'` or `'project'`, but treat it as open. */
-	scope?: string;
-
-	/** The rule that decided, if a rule did rather than a fallback default. */
-	matchedRuleId?: string;
+	readonly transport: ContentImportTransport;
 };
 
 /** A policy version a check read, recorded on the audit log. */
@@ -124,12 +106,6 @@ export type PolicyVersionRef = {
 	/** Usually `'instance'` or `'project'`. Open, like {@link PolicyViolation.scope}. */
 	scope: string;
 	version: number;
-};
-
-/** A check that failed to run. Deliberately vague — error details stay server-side. */
-export type PolicyCheckFailure = {
-	checkId: string;
-	correlationId: string;
 };
 
 /**

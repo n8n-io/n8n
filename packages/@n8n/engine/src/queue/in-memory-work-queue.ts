@@ -1,3 +1,4 @@
+import { createConsoleLogger, type EngineLogger } from '../logging';
 import type { WorkQueue } from './work-queue.types';
 
 /**
@@ -5,6 +6,8 @@ import type { WorkQueue } from './work-queue.types';
  * sequentially on a microtask.
  */
 export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
+	constructor(private readonly logger: EngineLogger = createConsoleLogger()) {}
+
 	private pending: TMessage[] = [];
 
 	private handler: ((message: TMessage) => Promise<void>) | undefined;
@@ -40,7 +43,7 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 		if (this.dispatching || !this.handler || this.pending.length === 0) return;
 		this.dispatching = true;
 		this.dispatchPending().catch((error: unknown) => {
-			console.error('engine: work queue dispatch failed', error);
+			this.logger.error('work queue dispatch failed', { error });
 		});
 	}
 
@@ -52,7 +55,7 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 					await this.handler(message);
 				} catch (error) {
 					// Contained per message: a failed one must not strand those behind it.
-					console.error('engine: work queue handler failed', error);
+					this.logger.error('work queue handler failed', { error });
 				}
 			}
 		} finally {

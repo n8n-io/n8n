@@ -162,10 +162,6 @@ vi.mock('../planned-tasks/planned-task-service', () => ({
 }));
 vi.mock('../planned-tasks/planned-task-permissions', () => ({
 	PLANNED_TASK_PERMISSION_OVERRIDES: { checkpoint: { runWorkflow: 'always_allow' } },
-	applyPlannedTaskPermissions: (context: { permissions: Record<string, unknown> }) => ({
-		...context,
-		permissions: { ...context.permissions, runWorkflow: 'always_allow' },
-	}),
 }));
 vi.mock('../parsers/structured-file-parser', () => ({
 	classifyAttachments: () => [{ index: 0, parseable: true, format: 'csv' }],
@@ -326,10 +322,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.PlannedTaskCoordinator)).toBeInstanceOf(
 			entrypoint.PlannedTaskCoordinator,
 		);
-		expect(
-			entrypoint.applyPlannedTaskPermissions({ permissions: {} } as never, 'checkpoint')
-				.permissions!.runWorkflow,
-		).toBe('always_allow');
 		expect(entrypoint.PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint!.runWorkflow).toBe(
 			'always_allow',
 		);

@@ -245,8 +245,20 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 			payload: {
 				mcpConnectRequest: {
 					servers: [
-						{ serverSlug: 'brave', title: 'Brave', credentialType: 'braveMcpOAuth2Api' },
-						{ serverSlug: 'linear', title: 'Linear', credentialType: 'linearMcpOAuth2Api' },
+						{
+							serverSlug: 'brave',
+							title: 'Brave',
+							usesCredentials: [
+								{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
+						{
+							serverSlug: 'linear',
+							title: 'Linear',
+							usesCredentials: [
+								{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
 					],
 				},
 			},

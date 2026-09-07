@@ -7,11 +7,10 @@ import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-
 import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
+	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type AgentIntegrationRemovalContext,
 	type BridgeExecutionContext,
@@ -22,6 +21,7 @@ import {
 	type UnauthenticatedWebhookResponse,
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
+import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadSlackAdapter } from '../../esm-loader';
 import { connectionUnavailable } from '../../integration-helpers';
 import {
@@ -69,10 +69,11 @@ export class SlackIntegration extends AgentChatIntegration {
 			'The agent should be chatted with from Slack, invoked with @mentions, or keep conversing in Slack threads.',
 			'The agent needs Slack message context, user/channel lookup, DMs, channel messages, emoji reactions, or rich UI in Slack.',
 			'The agent should communicate as the connected Slack bot rather than merely call Slack as a backend API.',
+			'A scheduled Agent task should proactively send a DM or channel message through the connected Slack bot.',
 		],
 		useNodeToolWhen: [
 			'Slack is only a backend API step in a broader task and the agent does not need Slack conversation context.',
-			'The user asks for a one-off Slack operation from another trigger and does not need the agent connected as a Slack chat surface.',
+			'The Slack operation is performed by a non-Agent workflow, or the exact operation is not listed in the Agent integration capabilities.',
 		],
 	};
 
@@ -105,16 +106,12 @@ export class SlackIntegration extends AgentChatIntegration {
 		'do_not_respond',
 	]);
 
+	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
+		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
+	}
+
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		const others = await this.agentRepository.findByIntegrationCredential(
-			this.type,
-			ctx.credentialId,
-			ctx.projectId,
-			ctx.agentId,
-		);
-		if (others.length > 0) {
-			throw new ConflictError(`Slack credential is already connected to agent "${others[0].name}"`);
-		}
+		await this.assertStartupPreconditions(ctx);
 	}
 
 	async onRemove(

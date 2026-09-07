@@ -152,6 +152,20 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
 	},
+	alibaba: {
+		thinking: false,
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
+	minimax: {
+		thinking: false,
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
 	cohere: {
 		thinking: false,
 		promptCaching: false,

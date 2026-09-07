@@ -121,10 +121,27 @@ function hasReplayableReasoningProviderOptions(
 	});
 }
 
-type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
+function isReasoningMergedByProvider(part: AiContentPart): boolean {
+	if (part.type !== 'reasoning') return false;
+	return Object.keys(part.providerOptions ?? {}).some(
+		(namespace) => getProviderQuirks(namespace).mergesAdjacentAssistantMessages === true,
+	);
+}
 
-function isContentToolResultOutput(value: unknown): value is ContentToolResultOutput {
-	return isRecord(value) && value.type === 'content' && Array.isArray(value.value);
+export type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
+
+export function isContentToolResultOutput(value: unknown): value is ContentToolResultOutput {
+	return (
+		isRecord(value) &&
+		value.type === 'content' &&
+		Array.isArray(value.value) &&
+		value.value.every(
+			(part) =>
+				isRecord(part) &&
+				typeof part.type === 'string' &&
+				(part.type !== 'text' || typeof part.text === 'string'),
+		)
+	);
 }
 
 function normalizeReasoningFileData(
@@ -264,11 +281,15 @@ function toolCallToResultPart(
 	// rejected
 	const errorValue = block.error;
 	if (typeof errorValue === 'string') {
+		// Providers replay their own tool errors (e.g. a web search error code)
+		// from error-json; error-text is dropped with a warning.
 		return {
 			type: 'tool-result',
 			toolCallId: block.toolCallId,
 			toolName: block.toolName,
-			output: { type: 'error-text', value: errorValue },
+			output: block.providerExecuted
+				? { type: 'error-json', value: errorValue }
+				: { type: 'error-text', value: errorValue },
 		};
 	}
 	return {
@@ -354,7 +375,8 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
  *
  * For assistant messages with resolved/rejected tool-call blocks, this emits:
  *  1. The assistant ModelMessage (tool-call parts only, no result fields)
- *  2. One tool ModelMessage per settled tool-call block (resolved or rejected)
+ *  2. One tool ModelMessage per settled tool-call block (resolved or rejected),
+ *     except provider-executed blocks, whose result stays in the assistant message
  *
  * Pending tool-call blocks are silently skipped (defense-in-depth; the strip
  * step should already have removed them before forLlm() calls toAiMessages).
@@ -408,9 +430,11 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 						...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
 						...(block.providerOptions && { providerOptions: block.providerOptions }),
 					} as ToolCallPart);
-					// Emit corresponding tool-result message immediately after
+					// Emit corresponding tool-result message immediately after. A
+					// provider-executed result belongs in the assistant message itself.
 					const resultPart = toolCallToResultPart(block);
-					resultMessages.push({ role: 'tool', content: [resultPart] });
+					if (block.providerExecuted) assistantParts.push(resultPart);
+					else resultMessages.push({ role: 'tool', content: [resultPart] });
 				} else {
 					const part = toAiContent(block);
 					if (part) assistantParts.push(part);
@@ -448,7 +472,26 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 
 /** Convert n8n Messages to AI SDK ModelMessages for passing to stream/generateText. */
 export function toAiMessages(messages: Message[]): ModelMessage[] {
-	return messages.flatMap(toAiMessageList);
+	const modelMessages = messages.flatMap(toAiMessageList);
+	const result: ModelMessage[] = [];
+
+	for (const [index, message] of modelMessages.entries()) {
+		if (
+			message.role !== 'assistant' ||
+			typeof message.content === 'string' ||
+			modelMessages[index + 1]?.role !== 'assistant'
+		) {
+			result.push(message);
+			continue;
+		}
+
+		// Keep replayable reasoning only on the last of the merged responses so
+		// signatures from separate turns never mix (see mergesAdjacentAssistantMessages).
+		const content = message.content.filter((part) => !isReasoningMergedByProvider(part));
+		if (content.length > 0) result.push({ ...message, content });
+	}
+
+	return result;
 }
 
 /**
@@ -467,37 +510,41 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 	const toolCallIndex = new Map<string, ContentToolCall>();
 	const result: AgentMessage[] = [];
 
+	// Merge tool results back into the matching tool-call blocks
+	const settleToolCalls = (parts: readonly AiContentPart[]) => {
+		for (const part of parts) {
+			if (part.type !== 'tool-result') continue;
+			const block = toolCallIndex.get(part.toolCallId);
+			if (!block) continue; // orphan — drop
+
+			const { output } = part;
+			if (output.type === 'json' || output.type === 'text') {
+				const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
+				mutableBlock.state = 'resolved';
+				mutableBlock.output = output.value as JSONValue;
+			} else if (output.type === 'content') {
+				const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
+				mutableBlock.state = 'resolved';
+				mutableBlock.output = output as JSONValue;
+			} else if (output.type === 'error-json') {
+				const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
+				mutableBlock.state = 'rejected';
+				mutableBlock.error = JSON.stringify(output.value);
+			} else if (output.type === 'error-text') {
+				const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
+				mutableBlock.state = 'rejected';
+				mutableBlock.error = output.value;
+			} else {
+				const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
+				mutableBlock.state = 'rejected';
+				mutableBlock.error = JSON.stringify(output);
+			}
+		}
+	};
+
 	for (const msg of messages) {
 		if (msg.role === 'tool') {
-			// Merge tool results back into the matching tool-call blocks
-			const toolParts = msg.content as ToolResultPart[];
-			for (const part of toolParts) {
-				const block = toolCallIndex.get(part.toolCallId);
-				if (!block) continue; // orphan — drop
-
-				const { output } = part;
-				if (output.type === 'json' || output.type === 'text') {
-					const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
-					mutableBlock.state = 'resolved';
-					mutableBlock.output = output.value as JSONValue;
-				} else if (output.type === 'content') {
-					const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
-					mutableBlock.state = 'resolved';
-					mutableBlock.output = output as JSONValue;
-				} else if (output.type === 'error-json') {
-					const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
-					mutableBlock.state = 'rejected';
-					mutableBlock.error = JSON.stringify(output.value);
-				} else if (output.type === 'error-text') {
-					const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
-					mutableBlock.state = 'rejected';
-					mutableBlock.error = output.value;
-				} else {
-					const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
-					mutableBlock.state = 'rejected';
-					mutableBlock.error = JSON.stringify(output);
-				}
-			}
+			settleToolCalls(msg.content);
 			// Do not emit a separate n8n message for tool results
 			continue;
 		}
@@ -521,6 +568,9 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 					toolCallIndex.set(block.toolCallId, block);
 				}
 			}
+			// Provider-executed tools (e.g. native web search) return their result
+			// inside the assistant message rather than in a role:tool message.
+			if (typeof rawContent !== 'string') settleToolCalls(rawContent);
 		}
 	}
 

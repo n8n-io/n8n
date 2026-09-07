@@ -236,7 +236,7 @@ const actorName = computed(() =>
 				<N8nText
 					v-if="content.namesActor"
 					size="medium"
-					color="text-base"
+					color="text-dark"
 					:class="$style.line"
 					data-test-id="workflow-review-activity-actor"
 				>
@@ -247,7 +247,7 @@ const actorName = computed(() =>
 				</N8nText>
 				<N8nText
 					size="medium"
-					color="text-base"
+					color="text-light"
 					:class="$style.line"
 					:data-test-id="content.testId"
 				>
@@ -269,7 +269,7 @@ const actorName = computed(() =>
 						>
 					</I18nT>
 				</N8nText>
-				<N8nText size="small" color="text-light" :class="$style.timeStamp">
+				<N8nText size="medium" color="text-light" :class="$style.timeStamp">
 					<time :datetime="entry.createdAt">
 						<TimeAgo :date="entry.createdAt" />
 					</time>
@@ -278,7 +278,7 @@ const actorName = computed(() =>
 			<N8nText
 				v-if="content.note"
 				size="medium"
-				color="text-light"
+				color="text-dark"
 				:class="[$style.body, $style.line]"
 				data-test-id="workflow-review-activity-note"
 			>
@@ -320,6 +320,7 @@ const actorName = computed(() =>
 
 .separator {
 	margin-inline: var(--spacing--3xs);
+	color: var(--text-color--disabled);
 }
 
 .unknownWorkflow {
@@ -327,7 +328,7 @@ const actorName = computed(() =>
 }
 
 .timeStamp {
-	padding-left: var(--spacing--3xs);
+	padding-left: var(--spacing--4xs);
 }
 
 /* A decision that carries a note sits in a card, as a comment always does. */

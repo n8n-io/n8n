@@ -2,8 +2,11 @@ import type { WorkflowReviewDecisionIneligibilityReason } from '@n8n/api-types';
 
 /** The facts a decision verdict is derived from, resolved by the caller. */
 export interface WorkflowReviewDecisionFacts {
-	/** Reading the version under review is the floor for deciding it. */
-	canReadPinnedWorkflow: boolean;
+	/**
+	 * Reading every workflow the review covers is the floor for deciding it. A
+	 * decision applies to all of them, and no workflow on a review outranks another.
+	 */
+	canReadEveryWorkflow: boolean;
 	isAuthor: boolean;
 	isAssignedReviewer: boolean;
 	hasAdminOverride: boolean;
@@ -29,9 +32,9 @@ const ALLOWED: WorkflowReviewDecisionCapability = { allowed: true };
 export function resolveDecisionCapability(
 	facts: WorkflowReviewDecisionFacts,
 ): WorkflowReviewDecisionCapability {
-	// Checked first so someone who cannot see the workflow hears about the
-	// permission rather than about their authorship.
-	if (!facts.canReadPinnedWorkflow) {
+	// Checked first so someone who cannot see every covered workflow hears about
+	// the permission rather than about their authorship.
+	if (!facts.canReadEveryWorkflow) {
 		return { allowed: false, reason: 'missing_permission' };
 	}
 

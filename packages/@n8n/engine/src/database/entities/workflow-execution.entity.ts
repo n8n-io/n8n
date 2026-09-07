@@ -1,5 +1,4 @@
 import {
-	BeforeInsert,
 	Column,
 	CreateDateColumn,
 	Entity,
@@ -9,12 +8,12 @@ import {
 } from '@n8n/typeorm';
 
 import type {
+	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
 	TriggerOutputs,
 } from '../../execution/execution.types';
 import type { WorkflowGraph } from '../../graph';
-import { generateId } from '../generate-id';
 
 @Entity('workflow_execution')
 @Index('idx_workflow_execution_workflow_id', ['workflowId'])
@@ -38,6 +37,10 @@ export class WorkflowExecution {
 	@Column('jsonb', { name: 'trigger_outputs', nullable: true })
 	triggerOutputs!: TriggerOutputs | null;
 
+	/** Caller-supplied, opaque to the engine. See `CallerContext`. */
+	@Column('jsonb', { name: 'caller_context', default: () => "'{}'" })
+	callerContext!: CallerContext;
+
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;
 
@@ -46,9 +49,4 @@ export class WorkflowExecution {
 
 	@Column({ name: 'finished_at', type: 'timestamptz', nullable: true, precision: 3 })
 	finishedAt!: Date | null;
-
-	@BeforeInsert()
-	setId(): void {
-		if (!this.id) this.id = generateId();
-	}
 }

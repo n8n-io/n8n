@@ -1,4 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { IWorkflowDb, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -79,6 +81,7 @@ export class TriggerExecutionContextFactory {
 		private readonly ownershipService: OwnershipService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly pollCursorService: PollCursorService,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -279,6 +282,17 @@ export class TriggerExecutionContextFactory {
 		prefetchedCursor?: PollerCursor,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
+			// A poll must finish inside both the handler's abandon deadline and the task
+			// lease; past either, its commits are fenced out or discarded. The margin —
+			// 20%, at least 5s, at most half the ceiling — leaves room for the trailing
+			// hand-off and cursor commit.
+			const ceilingMs =
+				Math.min(
+					this.globalConfig.scheduler.pollTimeoutSeconds,
+					this.globalConfig.scheduler.leaseDurationSeconds,
+				) * Time.seconds.toMilliseconds;
+			const marginMs = Math.min(Math.max(0.2 * ceilingMs, 5_000), ceilingMs / 2);
+			const pollBudgetMs = ceilingMs - marginMs;
 			// A poll's staged snapshot lives in an async scope entered per poll, rather
 			// than in a variable per node: only the poll that staged it can commit it, and
 			// two overlapping polls of the same node never share a slot. An unmigrated
@@ -410,6 +424,9 @@ export class TriggerExecutionContextFactory {
 				__commitCursor,
 				__runPoll,
 				resolveNodeStaticData,
+				// Only a leased (durable) poll is bounded by the timeout and lease; a
+				// legacy in-memory poll keeps PollContext's generous default.
+				fence ? () => pollBudgetMs : undefined,
 			);
 		};
 	}
@@ -484,7 +501,8 @@ export class TriggerExecutionContextFactory {
 
 	/**
 	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the
-	 * published data. `pinData` and `meta` are deliberately left out: they are
+	 * published data, or returns `null` when the workflow has no published
+	 * version. `pinData` and `meta` are deliberately left out: they are
 	 * irrelevant to a production trigger execution.
 	 *
 	 * Pass `bypassCache` on the poll path: the poll cursor lives in `poller_state`,
@@ -492,15 +510,28 @@ export class TriggerExecutionContextFactory {
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
-	async loadPublishedWorkflowData(
+	async findPublishedWorkflowData(
 		workflowId: string,
 		{ bypassCache = false }: { bypassCache?: boolean } = {},
-	): Promise<IWorkflowBase> {
-		const publishedData = bypassCache
+	): Promise<IWorkflowBase | null> {
+		return bypassCache
 			? await this.workflowPublishedDataService.getPublishedWorkflowDataForExecution(workflowId)
 			: await this.workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution(
 					workflowId,
 				);
+	}
+
+	/**
+	 * Same as {@link findPublishedWorkflowData}, for callers that require a
+	 * published version to exist.
+	 *
+	 * @throws {UnexpectedError} when the workflow has no published version
+	 */
+	async loadPublishedWorkflowData(
+		workflowId: string,
+		options: { bypassCache?: boolean } = {},
+	): Promise<IWorkflowBase> {
+		const publishedData = await this.findPublishedWorkflowData(workflowId, options);
 
 		if (!publishedData) {
 			throw new UnexpectedError('Published version not found for workflow', {

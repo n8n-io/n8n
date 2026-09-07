@@ -508,9 +508,8 @@ export class DurableEventLog {
 	 * Append `events` with contiguous seqs, retrying on (threadId, seq) PK
 	 * collision — another main won the range (multi-main only), so re-seed from
 	 * the DB and try again. Returns the first assigned seq, or undefined when
-	 * the batch had to be dropped (logged; live delivery still happens).
-	 * INS-844 merges the shared-sequence drain (#33558) here: its Redis INCRBY
-	 * becomes this batch-INSERT's id assignment, one round trip.
+	 * the batch had to be dropped (logged; live delivery still happens). The
+	 * batch INSERT is also what assigns the ids, so it is one round trip.
 	 */
 	private async persistWithRetry(
 		threadId: string,
@@ -726,8 +725,6 @@ export class DurableEventLog {
 		const cached = this.lastSeq.get(threadId);
 		if (cached !== undefined) return cached;
 		const max = await this.repo.maxSeq(threadId);
-		// Cutover note (RFC Q&A on cursors): INS-844 seeds from max(DB, Redis
-		// high-water mark) so cursors minted by the live shared sequence stay valid.
 		this.lastSeq.set(threadId, max);
 		return max;
 	}

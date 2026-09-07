@@ -78,4 +78,36 @@ describe('ImportWorkflowsCommand', () => {
 	test('needs the expression engine', () => {
 		expect(new ImportWorkflowsCommand().needsExpressionEngine).toBe(true);
 	});
+
+	describe('logSkippedWorkflows', () => {
+		const buildCommandWithLoggerSpy = () => {
+			const command = new ImportWorkflowsCommand();
+			const logger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
+			// @ts-expect-error Protected property
+			command.logger = logger;
+			return { command, logger };
+		};
+
+		it('logs a warning per skipped workflow', () => {
+			const { command, logger } = buildCommandWithLoggerSpy();
+			const violation = { kind: 'node-type-unavailable', checkId: 'test.check', message: 'nope' };
+
+			// @ts-expect-error Private method
+			command.logSkippedWorkflows([{ workflowId: '1', name: 'Flagged', violations: [violation] }]);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped workflow "Flagged": 1 content-import policy violation(s)',
+				{ violations: [violation] },
+			);
+		});
+
+		it('logs nothing when no workflow was skipped', () => {
+			const { command, logger } = buildCommandWithLoggerSpy();
+
+			// @ts-expect-error Private method
+			command.logSkippedWorkflows([]);
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+	});
 });

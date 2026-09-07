@@ -1,9 +1,13 @@
 export { createAuthenticationMiddleware } from './authenticate';
 export {
-	IDENTITY_AUDIENCE,
-	IDENTITY_ISSUER,
-	IDENTITY_TOKEN_CLOCK_TOLERANCE_SECONDS,
-	IDENTITY_TOKEN_TTL_SECONDS,
+	ACTION_TOKEN,
+	InvalidActionTokenError,
+	mintActionToken,
+	verifyActionToken,
+} from './action-token';
+export type { ActionScope } from './action-token';
+export {
+	IDENTITY_TOKEN,
 	InvalidIdentityTokenError,
 	MIN_SECRET_LENGTH,
 	mintIdentityToken,

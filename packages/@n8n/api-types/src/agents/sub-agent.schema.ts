@@ -5,8 +5,10 @@ export const SUB_AGENT_MAX_CHILDREN_MAX = 20;
 export const SUB_AGENT_MAX_CHILDREN_DEFAULT = 10;
 
 /**
- * A sub-agent is always a saved n8n agent — optionally pinned to a published
- * version.
+ * A saved n8n agent source. Unpinned sources resolve per run type — the
+ * current draft for test runs, the published version for production runs.
+ * `versionId` pins resolution, so a resumed run continues on the exact
+ * version it started with.
  */
 export type SubAgentSource = {
 	agentId: string;
@@ -33,18 +35,16 @@ export interface SubAgentSpawnRequest {
 	context?: string;
 	expectedOutput?: string;
 	source: SubAgentSource;
-	/**
-	 * 'foreground' blocks the parent turn until the subagent completes — the only
-	 * mode implemented today. 'background' (dispatch, return a receipt, reconcile
-	 * the result later) is not yet implemented and is a consumer/product concern,
-	 * not an SDK one. Tracked in AGENT-186:
-	 * https://linear.app/n8n/issue/AGENT-186
-	 */
-	executionMode?: 'foreground' | 'background';
 	policy?: SubAgentRunPolicy;
 	parentThreadId?: string;
 	/** Parent's episodic-memory resource id, inherited so the child shares its scope. */
 	parentResourceId?: string;
+	/**
+	 * Thread id for the child run. A background dispatcher mints it before the
+	 * run starts so its durable job row can reference the child from the moment
+	 * of dispatch. When absent, the runner mints one itself.
+	 */
+	childThreadId?: string;
 	/** Parent's workspace principal hash, inherited by configured first-class children. */
 	parentSandboxPrincipalHash?: string;
 	/**

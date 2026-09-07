@@ -73,6 +73,18 @@ export interface ProtectedResource {
 	isFirstParty?: boolean;
 
 	/**
+	 * Whether the resource currently serves requests. An unavailable resource is
+	 * hidden from RFC 9728 discovery, so clients see no authorization server to
+	 * authenticate against. Treated as always available when not implemented.
+	 *
+	 * Discovery and the token/consent gates apply this automatically (the latter
+	 * via {@link ProtectedResource.authorize}); answering 404 on the resource's
+	 * own endpoint, rather than an authentication challenge, remains up to
+	 * whoever serves it.
+	 */
+	isAvailable?(): Promise<boolean>;
+
+	/**
 	 * Determine whether the given user is authorized to access this resource.
 	 * Called during the consent flow to gate access to the resource.
 	 *

@@ -28,6 +28,20 @@ describe('FeatureFlagConfig', () => {
 		expect(Container.get(FeatureFlagConfig).override).toEqual({ my_flag: false });
 	});
 
+	test('parses an override with a payload', () => {
+		vi.stubEnv(
+			'N8N_FEATURE_FLAG_OVERRIDES',
+			'{"my_flag":{"value":"variant","payload":{"url":"https://example.com"}}}',
+		);
+
+		expect(Container.get(FeatureFlagConfig).override).toEqual({
+			my_flag: {
+				value: 'variant',
+				payload: { url: 'https://example.com' },
+			},
+		});
+	});
+
 	test('falls back to default on JSON that is not an object', () => {
 		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		vi.stubEnv('N8N_FEATURE_FLAG_OVERRIDES', '["my_flag"]');
