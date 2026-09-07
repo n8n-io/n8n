@@ -18,6 +18,8 @@ import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrat
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import type { Agent } from '../entities/agent.entity';
+import type { AgentRepository } from '../repositories/agent.repository';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -110,6 +112,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 		projectId,
 		agentId,
 		telemetryConfiguration: telemetryContext.configuration,
+		toolAccessCheckedAt: Date.now(),
 	};
 }
 
@@ -124,6 +127,7 @@ function makeService(sandboxEnabled = false) {
 	const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 		isEnabled: () => sandboxEnabled,
 	});
+	const agentRepository = mock<AgentRepository>();
 
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
@@ -139,6 +143,7 @@ function makeService(sandboxEnabled = false) {
 		agentRunTracingService,
 		externalHooks,
 		agentSandboxRuntimeService,
+		agentRepository,
 	);
 
 	return {
@@ -151,6 +156,7 @@ function makeService(sandboxEnabled = false) {
 		agentRunTracingService,
 		externalHooks,
 		agentSandboxRuntimeService,
+		agentRepository,
 	};
 }
 
@@ -525,6 +531,77 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({ source: 'slack' }),
 		);
+	});
+
+	it('records a failed session and rethrows when the published runtime cannot be built', async () => {
+		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+		const buildError = new UserError('Credential "OpenAI" not found');
+		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
+		// A plain object: `mock<Agent>()` proxies nested fields, which breaks the
+		// telemetry builder's array handling of `schema`.
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			name: 'Support Agent (draft)',
+			schema: { ...schema, name: 'Support Agent (draft)' },
+			activeVersion: { schema },
+			integrations: [],
+		} as unknown as Agent);
+
+		await expect(
+			collect(
+				service.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'from slack',
+					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+					integrationType: 'slack',
+					sandboxPrincipalHash: integrationPrincipalHash,
+				}),
+			),
+		).rejects.toBe(buildError);
+
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentId,
+				agentName: 'Support Agent',
+				threadId: 'thread-1',
+				userMessage: 'from slack',
+				source: 'slack',
+				telemetry: expect.objectContaining({ runType: 'production' }),
+			}),
+			expect.any(Date),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({
+					finishReason: 'error',
+					error: 'Credential "OpenAI" not found',
+				}),
+			}),
+		);
+	});
+
+	it('rethrows the build error without recording when the agent no longer exists', async () => {
+		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+		const buildError = new Error('boom');
+		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+		await expect(
+			collect(
+				service.executeForTaskPublished({
+					agentId,
+					projectId,
+					message: 'run task',
+					memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
+					taskId: 'task-1',
+					taskVersionId: 'version-1',
+				}),
+			),
+		).rejects.toBe(buildError);
+
+		expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
 	});
 
 	it('executes published scheduled tasks with task-scoped runtime and metadata', async () => {
@@ -1087,7 +1164,6 @@ describe('AgentExecutionOrchestratorService', () => {
 				threadId: 'configured-child-thread',
 				resumeContext: {
 					agentId: 'configured-agent',
-					versionId: 'configured-version',
 				},
 			}),
 			inline: delegatedPending('inline', {
@@ -1096,6 +1172,9 @@ describe('AgentExecutionOrchestratorService', () => {
 				taskPath: '/root/inline_1',
 				subAgentId: 'inline',
 				childCount: 1,
+				resumeContext: {
+					agentId,
+				},
 			}),
 		});
 		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });

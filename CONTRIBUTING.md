@@ -235,6 +235,16 @@ does not exist: it prints a notice and exits with code 0.
 Given the size of the code base and the number of modules, we recommend only watching the modules you're
 actively working on.
 
+The dev servers default to 5678 (backend) and 8080 (editor). Set `N8N_PORT` and
+`N8N_EDITOR_PORT` to relocate them, for example to run a second instance beside
+your main one. The editor derives its REST base URL from `N8N_PORT`, so pass it
+to both commands:
+
+```bash
+N8N_PORT=5699 pnpm dev:be
+N8N_PORT=5699 N8N_EDITOR_PORT=8082 pnpm dev:fe:editor
+```
+
 ### Basic Development Workflow Example (most used within n8n)
 
 If you're working on API and FE, a lot of team members run the following steps:

@@ -127,7 +127,7 @@ describe('attachment:getMany', () => {
 	it('rejects a non-positive limit from an expression', async () => {
 		const promise = runGetMany({ limit: 0 });
 
-		await expect(promise).rejects.toThrow('Limit must be a number of at least 1');
+		await expect(promise).rejects.toThrow('Limit must be a finite number of at least 1');
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 

@@ -37,10 +37,11 @@ describe('CredentialImporter', () => {
 		options: {
 			credentialBindings?: CredentialBindingRequest['credentialBindings'];
 			missingMode?: CredentialBindingRequest['missingMode'];
+			matchingMode?: CredentialBindingRequest['matchingMode'];
 		} = {},
 	): CredentialBindingRequest => ({
 		requirements,
-		matchingMode: 'id-only',
+		matchingMode: options.matchingMode ?? 'id-only',
 		missingMode: options.missingMode ?? 'must-preexist',
 		credentialBindings: options.credentialBindings,
 	});
@@ -227,6 +228,7 @@ describe('CredentialImporter', () => {
 			expect(credentialsService.createStubCredential).toHaveBeenCalledTimes(1);
 			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
 				{
+					id: 'missing-cred',
 					name: 'Missing GitHub',
 					type: 'githubApi',
 					projectId: 'project-target',
@@ -281,6 +283,7 @@ describe('CredentialImporter', () => {
 
 			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
 				{
+					id: 'orphan-not-in-requirements',
 					name: 'Package GitHub',
 					type: 'githubApi',
 					projectId: 'project-target',
@@ -288,6 +291,64 @@ describe('CredentialImporter', () => {
 				user,
 			);
 			expect(result.stubbed).toEqual(['orphan-not-in-requirements']);
+		});
+
+		it('apply mints a fresh id (no reused source id) under name-and-type matching', async () => {
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
+
+			const missingCredential = packageCredential({ id: 'missing-cred', name: 'Missing GitHub' });
+			const request = bindingRequest([missingCredential], {
+				missingMode: 'create-stub',
+				matchingMode: 'name-and-type',
+			});
+
+			await importer.apply(context, request, {
+				successes: new Map(),
+				failures: [notFoundFailure(missingCredential)],
+			});
+
+			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
+				{
+					id: undefined,
+					name: 'Missing GitHub',
+					type: 'githubApi',
+					projectId: 'project-target',
+				},
+				user,
+			);
+		});
+
+		it('reuses the source id so a repeated pull resolves the stub instead of restubbing', async () => {
+			const missingCredential = packageCredential({ id: 'cred-source', name: 'Source GitHub' });
+
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'cred-source' } as never);
+			const firstRequest = bindingRequest([missingCredential], { missingMode: 'create-stub' });
+			const firstResult = await importer.apply(context, firstRequest, {
+				successes: new Map(),
+				failures: [notFoundFailure(missingCredential)],
+			});
+
+			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'cred-source' }),
+				user,
+			);
+			expect(firstResult.bindings).toEqual(new Map([['cred-source', 'cred-source']]));
+
+			vi.clearAllMocks();
+			credentialTypes.recognizes.mockReturnValue(true);
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				usable('cred-source'),
+			]);
+
+			const resolution = await importer.plan(context, firstRequest);
+			const secondResult = await importer.apply(context, firstRequest, resolution);
+
+			expect(credentialsService.createStubCredential).not.toHaveBeenCalled();
+			expect(secondResult).toEqual({
+				bindings: new Map([['cred-source', 'cred-source']]),
+				matched: ['cred-source'],
+				stubbed: [],
+			});
 		});
 
 		it('apply rejects when stub creation lacks credential:create', async () => {

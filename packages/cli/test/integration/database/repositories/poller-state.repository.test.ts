@@ -1,8 +1,16 @@
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import {
+	createWorkflow,
+	createWorkflowWithHistory,
+	setActiveVersion,
+	testDb,
+} from '@n8n/backend-test-utils';
 import {
 	type PollerCursor,
 	PollerStateRepository,
+	ScheduledJobRepository,
+	ScheduledTaskRepository,
 	TransactionRunner,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -242,29 +250,131 @@ describe('PollerStateRepository', () => {
 			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
 		});
 
+		// Deactivation deprovisions the node's scheduled jobs; the running task row
+		// must cascade away with its job so the lease fence rejects any commit a
+		// still-running poll attempts afterwards (e.g. a mid-poll emit).
+		describe('fence after the job was deprovisioned', () => {
+			let jobRepository: ScheduledJobRepository;
+			let taskRepository: ScheduledTaskRepository;
+
+			beforeAll(() => {
+				jobRepository = Container.get(ScheduledJobRepository);
+				taskRepository = Container.get(ScheduledTaskRepository);
+			});
+
+			beforeEach(async () => {
+				await testDb.truncate(['ScheduledTask', 'ScheduledJob']);
+			});
+
+			it('rejects the advance once deprovisioning cascaded the running task away', async () => {
+				// poller_state.workflowId FKs to the workflow, so the cursor rows below
+				// need a real one; the job row carries the workflow as owner data.
+				const published = await createWorkflowWithHistory({});
+				await setActiveVersion(published.id, published.versionId);
+				await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+					published.id,
+					published.versionId,
+				);
+
+				const owner = {
+					ownerType: 'workflow',
+					ownerId: published.id,
+					ownerMemberId: 'node-1',
+				};
+				const job = await jobRepository.save(
+					jobRepository.create({
+						name: 'poll-node-1',
+						...owner,
+						taskType: 'pollTrigger',
+						payload: {},
+						kind: 'interval',
+						intervalSeconds: 60,
+						enabled: true,
+						nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+						maxAttempts: 1,
+					}),
+				);
+				const task = await taskRepository.save(
+					taskRepository.create({
+						jobId: job.id,
+						taskType: 'pollTrigger',
+						payload: {},
+						scheduledFor: new Date('2026-06-01T00:00:00.000Z'),
+						runAt: new Date('2026-06-01T00:00:00.000Z'),
+						status: 'running',
+						attempts: 1,
+						maxAttempts: 1,
+						leaseEpoch: 1,
+						leaseExpiresAt: new Date(Date.now() + 60_000),
+					}),
+				);
+				const fence = { taskId: task.id, leaseEpoch: 1 };
+				await seed('node-1', { lastItemId: 'a' }, published.id);
+
+				// While the poll holds its lease, the fenced advance lands.
+				await expect(
+					repository.advanceCursor(published.id, 'node-1', { lastItemId: 'b' }, {}, fence),
+				).resolves.toBe(true);
+
+				// The same call deactivation's deprovision makes.
+				await jobRepository.deleteByOwnerMember(jobRepository.manager, owner);
+
+				// The running task row is gone with its job, not orphaned.
+				await expect(taskRepository.findOneBy({ id: task.id })).resolves.toBeNull();
+
+				// A late commit from the still-running poll is fenced out, cursor untouched.
+				await expect(
+					repository.advanceCursor(published.id, 'node-1', { lastItemId: 'c' }, {}, fence),
+				).resolves.toBe(false);
+				expect(await repository.findCursor(published.id, 'node-1')).toEqual({ lastItemId: 'b' });
+			});
+		});
+
 		it('does not touch the stored failure counters', async () => {
 			await seed('node-1', { lastItemId: 'a' });
 			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
-			const before = await repository.findFailureState(workflowId, 'node-1');
+			const before = await repository.findState(workflowId, 'node-1');
 
 			await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, {});
 
-			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual(before);
+			const after = await repository.findState(workflowId, 'node-1');
+			expect(after?.backoffUntil).toEqual(before?.backoffUntil);
+			expect(after?.consecutiveErrors).toEqual(before?.consecutiveErrors);
 		});
 	});
 
-	describe('findFailureState', () => {
+	describe('findState', () => {
 		it('returns null for a node that has never polled', async () => {
-			expect(await repository.findFailureState(workflowId, 'node-1')).toBeNull();
+			expect(await repository.findState(workflowId, 'node-1')).toBeNull();
 		});
 
-		it('returns the stored counters', async () => {
+		it('returns the cursor and clean failure fields for a healthy row', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+
+			expect(await repository.findState(workflowId, 'node-1')).toEqual({
+				cursor: { lastItemId: 'a' },
+				consecutiveErrors: 0,
+				backoffUntil: null,
+			});
+		});
+
+		it('distinguishes an empty cursor from a missing row', async () => {
 			await seed('node-1', {});
+
+			const state = await repository.findState(workflowId, 'node-1');
+
+			expect(state).not.toBeNull();
+			expect(state?.cursor).toEqual({});
+		});
+
+		it('returns the stored failure counters alongside the cursor', async () => {
+			await seed('node-1', { lastItemId: 'a' });
 			const sentAt = Date.now();
 			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 
+			expect(state?.cursor).toEqual({ lastItemId: 'a' });
 			expect(state?.consecutiveErrors).toBe(1);
 			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, BACKOFF_MS);
 		});
@@ -279,7 +389,7 @@ describe('PollerStateRepository', () => {
 				repository.recordFailure(workflowId, 'node-1', BACKOFF_MS),
 			]);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(2);
 		});
 
@@ -289,7 +399,7 @@ describe('PollerStateRepository', () => {
 
 			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(1);
 			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, BACKOFF_MS);
 		});
@@ -319,7 +429,7 @@ describe('PollerStateRepository', () => {
 			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
 			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(2);
 		});
 
@@ -330,7 +440,7 @@ describe('PollerStateRepository', () => {
 
 			await repository.recordFailure(workflowId, 'node-1', 5_000);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(2);
 			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, ONE_HOUR_MS);
 		});
@@ -342,7 +452,7 @@ describe('PollerStateRepository', () => {
 			const sentAt = Date.now();
 			await repository.recordFailure(workflowId, 'node-1', ONE_HOUR_MS);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(2);
 			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, ONE_HOUR_MS);
 		});
@@ -358,7 +468,7 @@ describe('PollerStateRepository', () => {
 				await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS, ctx);
 			});
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(1);
 		});
 
@@ -372,9 +482,10 @@ describe('PollerStateRepository', () => {
 				}),
 			).rejects.toThrow('execution insert failed');
 
-			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+			expect(await repository.findState(workflowId, 'node-1')).toEqual({
 				consecutiveErrors: 0,
 				backoffUntil: null,
+				cursor: {},
 			});
 		});
 	});
@@ -386,9 +497,10 @@ describe('PollerStateRepository', () => {
 
 			await repository.clearFailures(workflowId, 'node-1');
 
-			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+			expect(await repository.findState(workflowId, 'node-1')).toEqual({
 				consecutiveErrors: 0,
 				backoffUntil: null,
+				cursor: {},
 			});
 		});
 

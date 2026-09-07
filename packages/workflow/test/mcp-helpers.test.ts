@@ -11,6 +11,12 @@ describe('isMcpOAuth2Authentication', () => {
 		expect(isMcpOAuth2Authentication('slackMcpOAuth2Api')).toBe(true);
 	});
 
+	it('returns true for native OAuth2 credential naming conventions', () => {
+		expect(isMcpOAuth2Authentication('oAuth2Api')).toBe(true);
+		expect(isMcpOAuth2Authentication('githubOAuth2Api')).toBe(true);
+		expect(isMcpOAuth2Authentication('gmailOAuth2')).toBe(true);
+	});
+
 	it('returns false for static auth types', () => {
 		expect(isMcpOAuth2Authentication('bearerAuth')).toBe(false);
 		expect(isMcpOAuth2Authentication('headerAuth')).toBe(false);

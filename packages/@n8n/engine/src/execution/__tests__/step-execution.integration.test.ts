@@ -12,8 +12,11 @@ import {
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '../../database';
+import { generateId } from '../../database/generate-id';
 import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
+import { noopLifecycleEventPublisher } from '../../lifecycle-events';
+import type { LifecycleEventCallback, LifecycleEvent } from '../../lifecycle-events';
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { createEngineRuntime } from '../../runtime';
 import type { TriggerOutputs } from '../execution.types';
@@ -58,10 +61,20 @@ describe('step execution (integration)', () => {
 	async function runWorkflow(
 		executor: IStepExecutor,
 		triggerOutputs: TriggerOutputs,
-		{ workflowId = 'wf-1', graph: workflowGraph = graph } = {},
+		{
+			workflowId = 'wf-1',
+			graph: workflowGraph = graph,
+			lifecycleEventCallback,
+		}: {
+			workflowId?: string;
+			graph?: WorkflowGraph;
+			lifecycleEventCallback?: LifecycleEventCallback;
+		} = {},
 	) {
 		let done!: () => void;
 		const finished = new Promise<void>((resolve) => (done = resolve));
+		// stop() flushes, so every event is delivered by the time this returns.
+		const events: LifecycleEvent[] = [];
 
 		const runtime = createEngineRuntime({
 			dataSource,
@@ -75,7 +88,13 @@ describe('step execution (integration)', () => {
 					done();
 					return recorded;
 				});
-				return { v1StepExecutor: executor };
+				return {
+					v1StepExecutor: executor,
+					lifecycleEventCallback: async (batch, signal) => {
+						events.push(...batch);
+						await lifecycleEventCallback?.(batch, signal);
+					},
+				};
 			},
 		});
 		runtime.start();
@@ -83,7 +102,7 @@ describe('step execution (integration)', () => {
 		const response = await request(runtime.app)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({ workflowId, graph: workflowGraph, triggerOutputs })
+			.send({ workflowId, graph: workflowGraph, triggerOutputs, executionId: generateId() })
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
 		await finished;
@@ -96,7 +115,7 @@ describe('step execution (integration)', () => {
 		const steps = await dataSource
 			.getRepository(WorkflowStepExecution)
 			.find({ where: { executionId } });
-		return { executionId, execution, steps };
+		return { executionId, execution, steps, events };
 	}
 
 	it('runs a queued step and persists its outputs', async () => {
@@ -109,10 +128,36 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { executionId, execution, steps } = await runWorkflow(executor, [
+		const { executionId, execution, steps, events } = await runWorkflow(executor, [
 			{ body: { name: 'ada' } },
 		]);
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
+
+		// Covers both emit points, their order, and delivery.
+		expect(events.map(({ type }) => type)).toEqual([
+			'execution:started',
+			'step:started',
+			'step:completed',
+			'execution:completed',
+		]);
+		expect(events[0]).toEqual({
+			type: 'execution:started',
+			executionId,
+			workflowId: 'wf-1',
+			mode: 'production',
+			at: expect.any(String) as string,
+		});
+		// The ids are the ones a consumer would re-query the data plane with.
+		expect(events[2]).toEqual({
+			type: 'step:completed',
+			executionId,
+			stepId: step?.id,
+			nodeId: 'node-a',
+			nodeName: 'A',
+			iteration: 0,
+			outputs: [[{ json: { greeting: 'hi' } }]],
+			at: expect.any(String) as string,
+		});
 
 		expect(execution.status).toBe('completed');
 		expect(execution.finishedAt).toBeInstanceOf(Date);
@@ -129,6 +174,7 @@ describe('step execution (integration)', () => {
 			stepId: step?.id,
 			workflowId: 'wf-1',
 			mode: 'production',
+			iteration: 0,
 		});
 	});
 
@@ -140,8 +186,15 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution, steps } = await runWorkflow(executor, [{}]);
+		const { execution, steps, events } = await runWorkflow(executor, [{}]);
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
+
+		expect(events.map(({ type }) => type)).toEqual([
+			'execution:started',
+			'step:started',
+			'step:failed',
+			'execution:failed',
+		]);
 
 		// the failure is terminal for the execution too
 		expect(execution.status).toBe('failed');
@@ -154,6 +207,30 @@ describe('step execution (integration)', () => {
 			stack: expect.stringContaining('TypeError: credentials missing') as string,
 		});
 		expect(step?.outputs).toBeNull();
+	});
+
+	it('runs the execution to completion even when every status batch is refused', async () => {
+		// A host that cannot be reached costs freshness, never correctness.
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const executor: IStepExecutor = {
+			execute: async () => {
+				await Promise.resolve();
+				return { outputs: [[{ json: { greeting: 'hi' } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-refused',
+			lifecycleEventCallback: async () => {
+				await Promise.reject(new Error('control plane down'));
+			},
+		});
+
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
+		expect(steps.find(({ nodeId }) => nodeId === 'node-a')?.outputs).toEqual([
+			[{ json: { greeting: 'hi' } }],
+		]);
 	});
 
 	it('runs a chain of steps, feeding each output forward, and finishes the execution', async () => {
@@ -297,11 +374,17 @@ describe('step execution (integration)', () => {
 		const { executionStore, stepStore } = createStores(dataSource);
 		const execute = vi.fn().mockResolvedValue({ outputs: [[{ json: { n: 1 } }]] });
 		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-		const handler = new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {
-			v1StepExecutor: { execute },
-		});
+		const handler = new StepReadyHandler(
+			executionStore,
+			stepStore,
+			orchestrationQueue,
+			{ v1StepExecutor: { execute } },
+			noopLifecycleEventPublisher,
+		);
 
-		const { id: executionId } = await executionStore.createExecution({
+		const executionId = generateId();
+		await executionStore.createExecution({
+			id: executionId,
 			workflowId: 'wf-2',
 			status: 'running',
 			mode: 'production',

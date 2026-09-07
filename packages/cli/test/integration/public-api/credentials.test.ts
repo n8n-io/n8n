@@ -374,6 +374,25 @@ describe('GET /credentials', () => {
 		);
 	});
 
+	test('should return correct shared info for a credential in a team project with multiple members', async () => {
+		const teamProject = await createTeamProject('multi-member-project', owner);
+		await linkUserToProject(member, teamProject, 'project:editor');
+		const saved = await saveCredential(dbCredential(), { project: teamProject });
+
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		const item = response.body.data.find((c: { id: string }) => c.id === saved.id);
+		expect(item).toBeDefined();
+		expect(item.shared).toEqual([
+			expect.objectContaining({
+				id: teamProject.id,
+				name: teamProject.name,
+				role: 'credential:owner',
+			}),
+		]);
+	});
+
 	test('should return empty list when no credentials exist', async () => {
 		const response = await authOwnerAgent.get('/credentials');
 

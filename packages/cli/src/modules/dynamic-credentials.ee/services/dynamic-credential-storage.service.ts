@@ -37,6 +37,7 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 		credentialContext: ICredentialContext,
 		staticData?: ICredentialDataDecryptedObject,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<void> {
 		try {
 			if (!credentialStoreMetadata.isResolvable) {
@@ -92,11 +93,17 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				}
 			}
 
-			await resolver.setSecret(credentialStoreMetadata.id, credentialContext, mergedDynamicData, {
-				configuration: resolverConfig,
-				resolverName: resolverEntity.name,
-				resolverId: resolverEntity.id,
-			});
+			await resolver.setSecret(
+				credentialStoreMetadata.id,
+				credentialContext,
+				mergedDynamicData,
+				{
+					configuration: resolverConfig,
+					resolverName: resolverEntity.name,
+					resolverId: resolverEntity.id,
+				},
+				executionId,
+			);
 
 			this.logger.debug('Successfully stored dynamic credentials', {
 				credentialId: credentialStoreMetadata.id,

@@ -250,7 +250,13 @@ export const stepRequest = (
 ): StepExecutionRequest => ({
 	node: graph.nodes.find((n) => n.id === nodeId)!,
 	inputs,
-	context: { executionId: 'exec-1', stepId: nodeId, workflowId: 'wf-1', mode: 'manual' },
+	context: {
+		executionId: 'exec-1',
+		stepId: nodeId,
+		workflowId: 'wf-1',
+		mode: 'manual',
+		iteration: 0,
+	},
 });
 
 export const testStepExecutor = (
@@ -260,7 +266,14 @@ export const testStepExecutor = (
 	new V1StepExecutor({
 		nodeTypes: testNodeTypes,
 		additionalDataFactory: testAdditionalDataFactory,
-		loadStepData: async () => await Promise.resolve({ graph, outputsByNodeId }),
+		// every fixture node runs once, so its outputs sit at iteration 0
+		loadStepData: async () =>
+			await Promise.resolve({
+				graph,
+				outputsByNode: Object.fromEntries(
+					Object.entries(outputsByNodeId).map(([nodeId, outputs]) => [nodeId, { 0: outputs }]),
+				),
+			}),
 	});
 
 export const items = (...objects: JsonObject[]): StepSlots => [objects.map((json) => ({ json }))];

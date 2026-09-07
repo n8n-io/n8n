@@ -9,6 +9,7 @@ import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 describe('http-error-serializers', () => {
 	it('serializePublicApiError: minimal message for ResponseError', () => {
@@ -116,6 +117,35 @@ describe('http-error-serializers', () => {
 		const result = serializePublicApiError(descriptor);
 		expect(result.status).toBe(409);
 		expect(result.body).toEqual({ message: expect.stringContaining('Import blocked'), issues });
+	});
+
+	it('both serializers expose policy violations on a 403', () => {
+		const violations = [
+			{
+				kind: 'node-type-unavailable',
+				checkId: 'node-type-availability',
+				message: 'Slack is not available in this project',
+				subject: 'n8n-nodes-base.slack',
+				subjectType: 'nodeType',
+			},
+		];
+		const descriptor = classifyHttpError(new PolicyViolationError([violations[0]]));
+
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 403,
+			body: {
+				message: 'Slack is not available in this project',
+				violations,
+			},
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 403,
+			body: {
+				code: 403,
+				message: 'Slack is not available in this project',
+				meta: { violations },
+			},
+		});
 	});
 
 	it('both serializers map UserError to 400', () => {

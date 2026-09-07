@@ -1,8 +1,10 @@
 import type { WorkflowGraph } from '../graph';
 import type { ExecutionMode, ExecutionStatus, TriggerOutputs } from './execution.types';
 
-/** A new execution to persist. `id` and timestamps are assigned by the store. */
+/** A new execution to persist. Timestamps are assigned by the store. */
 export interface NewExecutionRecord {
+	/** Caller-minted id. The store never mints one. */
+	id: string;
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
@@ -10,7 +12,11 @@ export interface NewExecutionRecord {
 	triggerOutputs: TriggerOutputs | null;
 }
 
-/** A full execution record. */
+/**
+ * What running an execution needs of its row. No timing: the execution path
+ * decides on `status`, never on when anything happened. The read path has its
+ * own view (`ExecutionView`).
+ */
 export interface ExecutionRecord {
 	id: string;
 	workflowId: string;
@@ -30,8 +36,8 @@ export class ExecutionNotFoundError extends Error {
 
 /** Persistence interface for executions. */
 export interface ExecutionStore {
-	/** Persist a new execution record; returns its generated id. */
-	createExecution(record: NewExecutionRecord): Promise<{ id: string }>;
+	/** Persist a new execution record under the caller-minted `record.id`. */
+	createExecution(record: NewExecutionRecord): Promise<void>;
 
 	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
 	loadExecution(id: string): Promise<ExecutionRecord>;

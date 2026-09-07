@@ -84,6 +84,7 @@ export async function replaceCode(
 	);
 }
 
+/** @deprecated Calls the deprecated `POST /ai/ask-ai` endpoint. Removed in v3. */
 export async function generateCodeForPrompt(
 	ctx: IRestApiContext,
 	{ question, context, forNode }: AskAiRequest.RequestPayload,

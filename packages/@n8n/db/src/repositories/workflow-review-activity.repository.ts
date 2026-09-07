@@ -4,6 +4,7 @@ import type {
 	WorkflowReviewOpenedActivityData,
 	WorkflowReviewVersionUpdatedActivityData,
 	WorkflowReviewWorkflowCauseActivityData,
+	WorkflowReviewWorkflowCauseActivityType,
 	WorkflowReviewWorkflowPublishedActivityData,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
@@ -35,7 +36,7 @@ export type WorkflowReviewActivityPayload =
 	| { type: 'review.version_updated'; data: WorkflowReviewVersionUpdatedActivityData }
 	| { type: 'review.closed'; data: WorkflowReviewClosedActivityData }
 	| {
-			type: 'workflow.archived' | 'workflow.deleted' | 'workflow.moved';
+			type: WorkflowReviewWorkflowCauseActivityType;
 			data: WorkflowReviewWorkflowCauseActivityData;
 	  }
 	| { type: 'workflow.published'; data: WorkflowReviewWorkflowPublishedActivityData };

@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
-import type { PollerFailureState } from '@n8n/db';
+import type { PollerFailureState, PollerFullState } from '@n8n/db';
 import { PollerStateRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -37,17 +37,17 @@ export class PollBackoffService {
 	}
 
 	/**
-	 * Reads the stored failure state.
+	 * Reads the stored poller state: the cursor plus the failure counters.
 	 *
 	 * Never throws: `null` means no stored state, feature disabled, or a failed read.
 	 */
-	async getFailureState(workflowId: string, nodeId: string): Promise<PollerFailureState | null> {
+	async getState(workflowId: string, nodeId: string): Promise<PollerFullState | null> {
 		if (!this.enabled) return null;
 
 		try {
-			return await this.pollerStateRepository.findFailureState(workflowId, nodeId);
+			return await this.pollerStateRepository.findState(workflowId, nodeId);
 		} catch (error) {
-			this.reportFailure(error, workflowId, nodeId, 'Failed to read poller failure state');
+			this.reportFailure(error, workflowId, nodeId, 'Failed to read poller state');
 			return null;
 		}
 	}

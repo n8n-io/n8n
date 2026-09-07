@@ -888,7 +888,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('"My OAuth2"');
 			expect(result.error).toContain(
-				'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, or webhook triggers with n8n user authentication',
+				'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication',
 			);
 		});
 
@@ -1239,7 +1239,7 @@ describe('WorkflowValidationService', () => {
 
 				expect(result.isValid).toBe(false);
 				expect(result.error).toBe(
-					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
 				);
 			});
 
@@ -1265,7 +1265,7 @@ describe('WorkflowValidationService', () => {
 
 				expect(result.isValid).toBe(false);
 				expect(result.error).toContain(
-					'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, or webhook triggers with n8n user authentication',
+					'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication',
 				);
 			});
 		});
@@ -1273,11 +1273,9 @@ describe('WorkflowValidationService', () => {
 		describe('chat trigger', () => {
 			const CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.chatTrigger';
 
-			const validateWithChatTrigger = async (authentication: string) => {
+			const validateWithChatTrigger = async (parameters: Record<string, unknown>) => {
 				const nodes: INode[] = [
-					createNode('When chat message received', CHAT_TRIGGER, {
-						parameters: { authentication },
-					}),
+					createNode('When chat message received', CHAT_TRIGGER, { parameters }),
 					createNode('HTTP', 'n8n-nodes-base.httpRequest', {
 						credentials: { oAuth2Api: { id: 'cred-1' } },
 					}),
@@ -1296,22 +1294,75 @@ describe('WorkflowValidationService', () => {
 				return await service.validateDynamicCredentials(nodes, mockNodeTypes);
 			};
 
-			// A chat trigger establishes no identity at runtime through `n8nUserAuth`, so
-			// the flag being on must not let publish accept a configuration that would
-			// only fail later, mid-execution.
-			it.each(['n8nUserAuth', 'none', 'basicAuth'])(
+			// A chat trigger establishes no identity at runtime through `none`/`basicAuth`, so
+			// the flag being on must not let publish accept a configuration that would only
+			// fail later, mid-execution.
+			it.each(['none', 'basicAuth'])(
 				'should reject authentication %s even when chat OAuth2 is enabled',
 				async (authentication) => {
 					withChatOAuth2(true);
 
-					const result = await validateWithChatTrigger(authentication);
+					const result = await validateWithChatTrigger({ authentication });
 
 					expect(result.isValid).toBe(false);
 					expect(result.error).toBe(
-						'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+						'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
 					);
 				},
 			);
+
+			it.each([{}, { mode: 'hostedChat' }])(
+				'should return valid for public n8nUserAuth in hosted-chat mode when chat OAuth2 is enabled (%o)',
+				async (modeParams) => {
+					withChatOAuth2(true);
+
+					const result = await validateWithChatTrigger({
+						public: true,
+						authentication: 'n8nUserAuth',
+						...modeParams,
+					});
+
+					expect(result.isValid).toBe(true);
+				},
+			);
+
+			// With the flag off (the default), hosted-chat `n8nUserAuth` falls back to a cookie
+			// check that never binds the visitor's identity — publish must not accept an
+			// end-user credential it can't actually resolve at runtime.
+			it('should reject public n8nUserAuth in hosted-chat mode when chat OAuth2 is disabled', async () => {
+				const result = await validateWithChatTrigger({
+					public: true,
+					authentication: 'n8nUserAuth',
+				});
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toBe(
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+				);
+			});
+
+			// A non-public trigger 404s on every production request and skips auth entirely
+			// in test mode, so it never reaches the code that establishes identity.
+			it('should reject n8nUserAuth in hosted-chat mode when not public', async () => {
+				const result = await validateWithChatTrigger({ authentication: 'n8nUserAuth' });
+
+				expect(result.isValid).toBe(false);
+			});
+
+			// Embedded/webhook-mode chat has no hosted page to run the OAuth2 handshake on, so
+			// `n8nUserAuth` establishes no identity there despite being selected.
+			it('should reject authentication n8nUserAuth in webhook mode', async () => {
+				const result = await validateWithChatTrigger({
+					public: true,
+					authentication: 'n8nUserAuth',
+					mode: 'webhook',
+				});
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toBe(
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+				);
+			});
 		});
 
 		it('should state the identity-extractor requirement for a custom resolver', async () => {
@@ -1355,7 +1406,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.error).toBe(
-				'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+				'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
 			);
 		});
 

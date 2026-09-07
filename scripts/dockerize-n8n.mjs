@@ -1,73 +1,72 @@
 #!/usr/bin/env node
 /**
- * Build n8n and runners Docker images locally
+ * Build the n8n and runners Docker images.
  *
- * This script simulates the CI build process for local testing.
- * Default output: 'n8nio/n8n:local' and 'n8nio/runners:local'
- * Override with IMAGE_BASE_NAME and IMAGE_TAG environment variables.
+ * Targets, tags and build args live in docker/docker-bake.hcl. CI drives the
+ * same file. This script selects the targets, sets the output, and records the
+ * image sizes for the metrics pipeline.
+ *
+ * Default output: 'n8nio/n8n:local' and 'n8nio/runners:local'.
+ *
+ * Environment:
+ *   IMAGE_BASE_NAME, IMAGE_TAG, RUNNERS_IMAGE_BASE_NAME - image naming
+ *   NODE_VERSION, BUILDER_IMAGE, RUNTIME_IMAGE          - read by bake directly
+ *   DOCKER_PLATFORM                                     - cross-platform builds
+ *   DOCKER_BUILD_NO_CACHE, DOCKER_BUILD_BASE_IMAGE, DOCKER_BUILD_DISTROLESS
+ *   DOCKER_BUILD_TARBALL_DIR - write per-target docker-archives here instead of
+ *                              loading into the daemon (CI image distribution)
+ *   CONTAINER_ENGINE                                    - force 'docker' or 'podman'
  */
 
 import { $, echo, fs, chalk, os } from 'zx';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
-// Disable verbose mode for cleaner output
 $.verbose = false;
 process.env.FORCE_COLOR = '1';
 
-// #region ===== Helper Functions =====
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.basename(__dirname) === 'scripts' ? path.join(__dirname, '..') : __dirname;
+
+const BAKE_FILE = path.join(rootDir, 'docker/docker-bake.hcl');
+
+const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
+const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
+// Opt-in: only cloud deploys the distroless runners image, so local builds skip it.
+const withDistroless = process.env.DOCKER_BUILD_DISTROLESS === 'true';
+// Build n8n on the pointer-compressed bases. The pins live in the bake file.
+const pointerCompressed = process.env.DOCKER_BUILD_PC === 'true';
+
+const imageBaseName = process.env.IMAGE_BASE_NAME || 'n8nio/n8n';
+const runnersImageBaseName = process.env.RUNNERS_IMAGE_BASE_NAME || 'n8nio/runners';
+const imageTag = process.env.IMAGE_TAG || 'local';
+
+// Push directly when the name has a registry host. This avoids the slow
+// --load export and import.
+const hasRegistryHost = (name) => name.split('/').length > 2;
+const shouldPush = hasRegistryHost(imageBaseName);
+// CI needs a tarball, not images in the daemon. BuildKit writes it directly.
+// This removes the dockerd import and the `docker save` that follows it.
+const tarballDir = process.env.DOCKER_BUILD_TARBALL_DIR;
+
+const compiledAppDir = path.join(rootDir, 'compiled');
+const compiledTaskRunnerDir = path.join(rootDir, 'dist', 'task-runner-javascript');
 
 /**
- * Get Docker platform string based on host architecture or environment override
- * @returns {string} Platform string (e.g., 'linux/amd64')
+ * Which bake targets to build. n8n and runners are always built; the base image
+ * and the distroless runners are opt-in.
+ * @returns {string[]}
  */
-function getDockerPlatform() {
-	// Allow environment variable override for cross-platform builds
-	if (process.env.DOCKER_PLATFORM) {
-		return process.env.DOCKER_PLATFORM;
-	}
-
-	const arch = os.arch();
-	const dockerArch = {
-		x64: 'amd64',
-		arm64: 'arm64',
-	}[arch];
-
-	if (!dockerArch) {
-		throw new Error(`Unsupported architecture: ${arch}. Only x64 and arm64 are supported.`);
-	}
-
-	return `linux/${dockerArch}`;
+function selectTargets() {
+	// The pc target only differs by its base images, so it keeps the plain name -
+	// downstream jobs load `n8nio/n8n:local` either way.
+	const targets = [pointerCompressed ? 'n8n-pc' : 'n8n', 'runners'];
+	if (withDistroless) targets.push('runners-distroless');
+	if (withBaseImage) targets.unshift('base');
+	return targets;
 }
 
-/**
- * Format duration in seconds
- * @param {number} ms - Duration in milliseconds
- * @returns {string} Formatted duration
- */
-function formatDuration(ms) {
-	return `${Math.floor(ms / 1000)}s`;
-}
-
-/**
- * Get Docker image size
- * @param {string} imageName - Full image name with tag
- * @returns {Promise<string>} Image size or 'Unknown'
- */
-async function getImageSize(imageName) {
-	try {
-		const { stdout } = await $`docker images ${imageName} --format "{{.Size}}"`;
-		return stdout.trim();
-	} catch {
-		return 'Unknown';
-	}
-}
-
-/**
- * Check if a command exists
- * @param {string} command - Command to check
- * @returns {Promise<boolean>} True if command exists
- */
+/** @returns {Promise<boolean>} */
 async function commandExists(command) {
 	try {
 		await $`command -v ${command}`;
@@ -77,287 +76,224 @@ async function commandExists(command) {
 	}
 }
 
-const SupportedContainerEngines = /** @type {const} */ (['docker', 'podman']);
-
-/**
- * Detect if the local `docker` CLI is actually Podman via the docker shim.
- * @returns {Promise<boolean>}
- */
-async function isDockerPodmanShim() {
+/** @returns {Promise<boolean>} */
+async function hasBake() {
 	try {
-		const { stdout } = await $`docker version`;
-		return stdout.toLowerCase().includes('podman');
+		await $`docker buildx bake --help`;
+		return true;
 	} catch {
 		return false;
 	}
 }
 
 /**
- * Get the driver of the currently selected buildx builder ('docker', 'docker-container', etc).
- * Colima defaults to the 'docker' driver, which doesn't support buildkit-container flags
- * like `--load` or `--provenance=false`.
+ * Buildx driver of the selected builder. Colima defaults to the 'docker'
+ * driver, which rejects `--load` and `--provenance=false`.
  * @returns {Promise<string|null>}
  */
-async function getBuildxDriver() {
+async function buildxDriver() {
 	try {
 		const { stdout } = await $`docker buildx inspect`;
-		const match = stdout.match(/Driver:\s+(\S+)/);
-		return match ? match[1] : null;
+		return stdout.match(/Driver:\s+(\S+)/)?.[1] ?? null;
 	} catch {
 		return null;
 	}
 }
-/**
- * @returns {Promise<(typeof SupportedContainerEngines[number])>}
- */
-async function getContainerEngine() {
-	// Allow explicit override via env var
-	const override = process.env.CONTAINER_ENGINE?.toLowerCase();
-	if (override && /** @type {readonly string[]} */ (SupportedContainerEngines).includes(override)) {
-		return /** @type {typeof SupportedContainerEngines[number]} */ (override);
+
+/** @returns {string} */
+function hostPlatform() {
+	if (process.env.DOCKER_PLATFORM) return process.env.DOCKER_PLATFORM;
+	const dockerArch = { x64: 'amd64', arm64: 'arm64' }[os.arch()];
+	if (!dockerArch) {
+		throw new Error(`Unsupported architecture: ${os.arch()}. Only x64 and arm64 are supported.`);
 	}
-
-	const hasDocker = await commandExists('docker');
-	const hasPodman = await commandExists('podman');
-
-	if (hasDocker) {
-		// If docker is actually a Podman shim, use podman path to avoid unsupported flags like --load
-		if (hasPodman && (await isDockerPodmanShim())) {
-			return 'podman';
-		}
-		return 'docker';
-	}
-
-	if (hasPodman) return 'podman';
-
-	throw new Error('No supported container engine found. Please install Docker or Podman.');
+	return `linux/${dockerArch}`;
 }
 
-// #endregion ===== Helper Functions =====
+/** Resolved bake plan, so tags and platform are read back rather than re-derived. */
+async function bakePlan(targets) {
+	const { stdout } = await $`docker buildx bake -f ${BAKE_FILE} ${targets} --print`;
+	return JSON.parse(stdout);
+}
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const isInScriptsDir = path.basename(__dirname) === 'scripts';
-const rootDir = isInScriptsDir ? path.join(__dirname, '..') : __dirname;
-
-const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
-const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
-// Keep in sync with NODE_VERSION in .github/workflows/docker-build-push.yml,
-// which is what the published images are actually built with.
-const nodeVersion = process.env.NODE_VERSION || '26.7.0';
-
-const config = {
-	base: {
-		dockerfilePath: path.join(rootDir, 'docker/images/n8n-base/Dockerfile'),
-		get fullImageName() {
-			return `n8nio/base:${nodeVersion}`;
-		},
-	},
-	n8n: {
-		dockerfilePath: path.join(rootDir, 'docker/images/n8n/Dockerfile'),
-		imageBaseName: process.env.IMAGE_BASE_NAME || 'n8nio/n8n',
-		imageTag: process.env.IMAGE_TAG || 'local',
-		get fullImageName() {
-			return `${this.imageBaseName}:${this.imageTag}`;
-		},
-	},
-	runners: {
-		dockerfilePath: path.join(rootDir, 'docker/images/runners/Dockerfile'),
-		imageBaseName: process.env.RUNNERS_IMAGE_BASE_NAME || 'n8nio/runners',
-		get imageTag() {
-			// Runners use the same tag as n8n for consistency
-			return config.n8n.imageTag;
-		},
-		get fullImageName() {
-			return `${this.imageBaseName}:${this.imageTag}`;
-		},
-	},
-	buildContext: rootDir,
-	compiledAppDir: path.join(rootDir, 'compiled'),
-	compiledTaskRunnerDir: path.join(rootDir, 'dist', 'task-runner-javascript'),
-};
-
-// #region ===== Main Build Process =====
-
-const platform = getDockerPlatform();
-
-async function main() {
-	echo(chalk.blue.bold('===== Docker Build for n8n & Runners ====='));
-	echo(`INFO: n8n Image: ${config.n8n.fullImageName}`);
-	echo(`INFO: Runners Image: ${config.runners.fullImageName}`);
-	echo(`INFO: Platform: ${platform}`);
-	if (noCache) echo(chalk.yellow('INFO: Docker layer cache disabled (DOCKER_BUILD_NO_CACHE=true)'));
-	if (withBaseImage) echo(chalk.yellow('INFO: Building base image first (DOCKER_BUILD_BASE_IMAGE=true)'));
-	echo(chalk.gray('-'.repeat(47)));
-
-	await checkPrerequisites();
-
-	if (withBaseImage) {
-		await buildDockerImage({
-			name: 'base',
-			dockerfilePath: config.base.dockerfilePath,
-			fullImageName: config.base.fullImageName,
-			buildArgs: [`NODE_VERSION=${nodeVersion}`],
-		});
+/** @returns {Promise<string>} */
+async function getImageSize(imageName) {
+	try {
+		const { stdout } = await $`docker images ${imageName} --format {{.Size}}`;
+		return stdout.trim() || 'Unknown';
+	} catch {
+		return 'Unknown';
 	}
-
-	const nodeVersionArgs = withBaseImage ? [`NODE_VERSION=${nodeVersion}`] : [];
-
-	const n8nBuildTime = await buildDockerImage({
-		name: 'n8n',
-		dockerfilePath: config.n8n.dockerfilePath,
-		fullImageName: config.n8n.fullImageName,
-		buildArgs: nodeVersionArgs,
-	});
-
-	const runnersBuildTime = await buildDockerImage({
-		name: 'runners',
-		dockerfilePath: config.runners.dockerfilePath,
-		fullImageName: config.runners.fullImageName,
-		buildArgs: nodeVersionArgs,
-	});
-
-	// Get image details
-	const n8nImageSize = await getImageSize(config.n8n.fullImageName);
-	const runnersImageSize = await getImageSize(config.runners.fullImageName);
-
-	const imageStats = [
-		{
-			imageName: config.n8n.fullImageName,
-			platform,
-			size: n8nImageSize,
-			buildTime: n8nBuildTime,
-		},
-		{
-			imageName: config.runners.fullImageName,
-			platform,
-			size: runnersImageSize,
-			buildTime: runnersBuildTime,
-		},
-	];
-
-	// Write docker build manifest for telemetry collection
-	const dockerManifest = {
-		buildTime: new Date().toISOString(),
-		platform,
-		images: imageStats.map(({ imageName, size, buildTime }) => ({
-			imageName,
-			size,
-			buildTime,
-		})),
-	};
-	await fs.writeJson(path.join(config.buildContext, 'docker-build-manifest.json'), dockerManifest, {
-		spaces: 2,
-	});
-
-	// Display summary
-	displaySummary(imageStats);
 }
 
 async function checkPrerequisites() {
-	if (!(await fs.pathExists(config.compiledAppDir))) {
-		echo(chalk.red(`Error: Compiled app directory not found at ${config.compiledAppDir}`));
+	if (!(await fs.pathExists(compiledAppDir))) {
+		echo(chalk.red(`Error: Compiled app directory not found at ${compiledAppDir}`));
 		echo(chalk.yellow('Please run build-n8n.mjs first!'));
 		process.exit(1);
 	}
 
-	if (!(await fs.pathExists(config.compiledTaskRunnerDir))) {
-		echo(chalk.red(`Error: Task runner directory not found at ${config.compiledTaskRunnerDir}`));
+	if (!(await fs.pathExists(compiledTaskRunnerDir))) {
+		echo(chalk.red(`Error: Task runner directory not found at ${compiledTaskRunnerDir}`));
 		echo(chalk.yellow('Please run build-n8n.mjs first!'));
-		process.exit(1);
-	}
-
-	// Ensure at least one supported container engine is available
-	if (!(await commandExists('docker')) && !(await commandExists('podman'))) {
-		echo(chalk.red('Error: Neither Docker nor Podman is installed or in PATH'));
 		process.exit(1);
 	}
 }
 
-async function buildDockerImage({ name, dockerfilePath, fullImageName, buildArgs = [] }) {
-	const startTime = Date.now();
-	const containerEngine = await getContainerEngine();
-	// Push directly if image name contains a registry (e.g., ghcr.io/...)
-	// This avoids the slow --load step (export/import tarball) when pushing to a registry
-	const shouldPush = fullImageName.includes('/') && fullImageName.split('/').length > 2;
+async function buildWithBake(targets) {
+	const driver = await buildxDriver();
+	const isContainerDriver = driver !== 'docker';
 
-	const extraFlags = [
-		...buildArgs.flatMap((arg) => ['--build-arg', arg]),
+	const tarballOutputs = targets.flatMap((t) => [
+		'--set',
+		`${t}.output=type=docker,dest=${path.join(tarballDir ?? '', `${t}.tar`)},compression=zstd,compression-level=3`,
+	]);
+
+	if (tarballDir && !isContainerDriver) {
+		throw new Error(
+			"DOCKER_BUILD_TARBALL_DIR needs a container-driver builder. The 'docker' driver builds " +
+				'into the daemon and cannot write an archive.',
+		);
+	}
+
+	const flags = [
 		...(noCache ? ['--no-cache'] : []),
+		// The 'docker' driver builds into the daemon and rejects both flags.
+		...(isContainerDriver
+			? [
+					'--provenance=false',
+					...(tarballDir ? tarballOutputs : [shouldPush ? '--push' : '--load']),
+				]
+			: []),
 	];
 
-	echo(chalk.yellow(`INFO: Building ${name} Docker image using ${containerEngine}...`));
-	if (shouldPush) {
-		echo(chalk.yellow(`INFO: Registry detected - pushing directly to ${fullImageName}`));
-	}
+	echo(chalk.yellow(`INFO: Building ${targets.join(', ')} with docker buildx bake...`));
+	if (tarballDir) echo(chalk.yellow(`INFO: Writing image tarballs to ${tarballDir}`));
+	if (shouldPush) echo(chalk.yellow(`INFO: Registry detected - pushing directly`));
 
-	const buildxDriver = containerEngine === 'docker' ? await getBuildxDriver() : null;
-	const useLegacyDockerBuild = containerEngine === 'docker' && buildxDriver === 'docker';
-
-	try {
-		if (containerEngine === 'podman') {
-			const { stdout } = await $`podman build \
-				--platform ${platform} \
-				--build-arg TARGETPLATFORM=${platform} \
-				${extraFlags} \
-				-t ${fullImageName} \
-				-f ${dockerfilePath} \
-				${config.buildContext}`;
-			echo(stdout);
-		} else if (useLegacyDockerBuild) {
-			// Buildx 'docker' driver (colima default) doesn't support `--load` or
-			// `--provenance=false`. Use plain `docker build` instead.
-			const { stdout } = await $`docker build \
-				--platform ${platform} \
-				--build-arg TARGETPLATFORM=${platform} \
-				${extraFlags} \
-				-t ${fullImageName} \
-				-f ${dockerfilePath} \
-				${config.buildContext}`;
-			echo(stdout);
-		} else {
-			// Use docker buildx build to leverage Blacksmith's layer caching when running in CI.
-			// The setup-docker-builder action creates a buildx builder with sticky disk cache.
-			// In CI, push directly to registry to avoid slow --load (export/import tarball).
-			// Locally, use --load to make image available in local daemon.
-			const outputFlag = shouldPush ? '--push' : '--load';
-			const { stdout } = await $`docker buildx build \
-				--platform ${platform} \
-				--build-arg TARGETPLATFORM=${platform} \
-				${extraFlags} \
-				-t ${fullImageName} \
-				-f ${dockerfilePath} \
-				--provenance=false \
-				${outputFlag} \
-				${config.buildContext}`;
-			echo(stdout);
-		}
-
-		return formatDuration(Date.now() - startTime);
-	} catch (error) {
-		echo(chalk.red(`ERROR: ${name} Docker build failed: ${error.stderr || error.message}`));
-		process.exit(1);
-	}
+	await $({ verbose: true })`docker buildx bake -f ${BAKE_FILE} ${targets} ${flags}`;
 }
 
-function displaySummary(images) {
+/**
+ * Podman has no bake. A podman-only host also has no buildx to resolve the bake
+ * plan, so this list repeats the targets. It sends no build args, because this
+ * path has always used the Dockerfile defaults.
+ */
+async function buildWithPodman(platform) {
+	const podmanTargets = [
+		{ dockerfile: 'docker/images/n8n/Dockerfile', tag: `${imageBaseName}:${imageTag}` },
+		{
+			dockerfile: 'docker/images/runners/Dockerfile',
+			tag: `${runnersImageBaseName}:${imageTag}`,
+		},
+	];
+	if (withDistroless) {
+		podmanTargets.push({
+			dockerfile: 'docker/images/runners/Dockerfile.distroless',
+			tag: `${runnersImageBaseName}:${imageTag}-distroless`,
+		});
+	}
+
+	echo(chalk.yellow('INFO: docker buildx bake unavailable - building with podman...'));
+
+	for (const { dockerfile, tag } of podmanTargets) {
+		await $({
+			verbose: true,
+		})`podman build --platform ${platform} --build-arg TARGETPLATFORM=${platform} ${noCache ? ['--no-cache'] : []} -t ${tag} -f ${path.join(rootDir, dockerfile)} ${rootDir}`;
+	}
+
+	return podmanTargets.map(({ tag }) => tag);
+}
+
+async function main() {
+	echo(chalk.blue.bold('===== Docker Build for n8n & Runners ====='));
+
+	await checkPrerequisites();
+
+	const engineOverride = process.env.CONTAINER_ENGINE?.toLowerCase();
+	const usePodman =
+		engineOverride === 'podman' || (engineOverride !== 'docker' && !(await hasBake()));
+
+	if (usePodman && !(await commandExists('podman'))) {
+		echo(chalk.red('Error: neither `docker buildx bake` nor `podman` is available'));
+		process.exit(1);
+	}
+
+	// The podman list is fixed, so it cannot honour these. Fail instead of
+	// building something different from what was asked for.
+	if (usePodman) {
+		const unsupported = [
+			withBaseImage && 'DOCKER_BUILD_BASE_IMAGE',
+			pointerCompressed && 'DOCKER_BUILD_PC',
+			tarballDir && 'DOCKER_BUILD_TARBALL_DIR',
+		].filter(Boolean);
+		if (unsupported.length > 0) {
+			echo(chalk.red(`Error: the podman path does not support ${unsupported.join(', ')}`));
+			process.exit(1);
+		}
+	}
+
+	// --push applies to every target in the bake call. If only the n8n name
+	// carries a registry, the runners target would push to its Docker Hub
+	// default instead - a 401 at best, a tag in the official repo at worst.
+	if (shouldPush && !hasRegistryHost(runnersImageBaseName)) {
+		echo(
+			chalk.red(
+				`Error: IMAGE_BASE_NAME (${imageBaseName}) has a registry host but ` +
+					`RUNNERS_IMAGE_BASE_NAME (${runnersImageBaseName}) does not. ` +
+					'Set both, or neither.',
+			),
+		);
+		process.exit(1);
+	}
+
+	const targets = selectTargets();
+	const startTime = Date.now();
+	let platform;
+	let imageNames;
+
+	if (tarballDir) await fs.ensureDir(tarballDir);
+
+	if (usePodman) {
+		platform = hostPlatform();
+		imageNames = await buildWithPodman(platform);
+	} else {
+		if (process.env.DOCKER_PLATFORM) process.env.PLATFORMS = process.env.DOCKER_PLATFORM;
+		if (pointerCompressed) process.env.N8N_PC_TAGS = `${imageBaseName}:${imageTag}`;
+		const plan = await bakePlan(targets);
+		platform = plan.target[targets[0]].platforms.join(',');
+		imageNames = targets.map((name) => plan.target[name].tags[0]);
+		await buildWithBake(targets);
+	}
+
+	const buildDurationMs = Date.now() - startTime;
+
+	const images = [];
+	for (const imageName of imageNames) {
+		// Tarball mode loads nothing into the daemon, so there is no size to read.
+		// The archive size would change the meaning of the docker-image-size metric.
+		images.push({ imageName, size: tarballDir ? 'Unknown' : await getImageSize(imageName) });
+	}
+
+	await fs.writeJson(
+		path.join(rootDir, 'docker-build-manifest.json'),
+		{ buildTime: new Date().toISOString(), platform, buildDurationMs, images },
+		{ spaces: 2 },
+	);
+
 	echo('');
 	echo(chalk.green.bold('═'.repeat(54)));
 	echo(chalk.green.bold('           DOCKER BUILD COMPLETE'));
 	echo(chalk.green.bold('═'.repeat(54)));
-	for (const { imageName, platform, size, buildTime } of images) {
-		echo(chalk.green(`✅ Image built: ${imageName}`));
-		echo(`   Platform: ${platform}`);
-		echo(`   Size: ${size}`);
-		echo(`   Build time: ${buildTime}`);
-		echo('');
+	echo(`   Platform:   ${platform}`);
+	echo(`   Build time: ${Math.floor(buildDurationMs / 1000)}s`);
+	for (const { imageName, size } of images) {
+		echo(chalk.green(`✅ ${imageName} (${size})`));
 	}
 	echo(chalk.green.bold('═'.repeat(54)));
 }
 
-// #endregion ===== Main Build Process =====
-
 main().catch((error) => {
-	echo(chalk.red(`Unexpected error: ${error.message}`));
+	echo(chalk.red(`ERROR: Docker build failed: ${error.stderr || error.message}`));
 	process.exit(1);
 });

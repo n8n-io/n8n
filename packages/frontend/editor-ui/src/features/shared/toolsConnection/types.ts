@@ -1,4 +1,4 @@
-import type { InjectionKey } from 'vue';
+import type { InjectionKey, Ref } from 'vue';
 
 export type ConnectionItemKind =
 	| 'node'
@@ -14,6 +14,7 @@ export type ToolIconSource =
 
 export interface ToolCredentialRef {
 	authType: string;
+	displayName?: string;
 	credentialId?: string;
 	required?: boolean;
 }
@@ -41,6 +42,8 @@ export interface BaseConnectionItem {
 	category?: ToolCategoryKey;
 	/** Reviewed and approved by n8n. Drives the shield badge, install state irrelevant. */
 	verified?: boolean;
+	/** Backed by n8n Connect (AI Gateway): credentials are managed, shows a "Free credits" pill. */
+	freeCredits?: boolean;
 	/** Not yet installed: swaps the Connect action for an Install one. */
 	communityPreview?: boolean;
 	installing?: boolean;
@@ -64,6 +67,8 @@ export interface NodeConnectionItem extends BaseConnectionItem {
 export interface WorkflowConnectionItem extends BaseConnectionItem {
 	kind: 'workflow';
 	workflowId: string;
+	/** Short caveat shown next to the title, e.g. the workflow is not published. */
+	warning?: string;
 }
 
 export interface McpServerTool {
@@ -133,6 +138,7 @@ export type ToolCategoryKey =
 	| 'mcp'
 	| 'ai'
 	| 'n8n'
+	| 'n8n-connect'
 	| 'app-action'
 	| 'community'
 	| 'workflows'
@@ -171,10 +177,26 @@ export interface PickableCredential {
  */
 export interface ToolConnectionCredentialAdapter {
 	getCredentialsByType: (authType: string) => readonly PickableCredential[];
-	openNewCredential: (authType: string, item: ToolConnectionItem) => void;
+	openNewCredential: (
+		authType: string,
+		item: ToolConnectionItem,
+		credentialTypes?: readonly string[],
+	) => void;
 	openExistingCredential: (credentialId: string) => void;
 }
 
 export const TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY = Symbol(
 	'tool-connection-credential-adapter',
 ) as InjectionKey<ToolConnectionCredentialAdapter | null>;
+
+/**
+ * i18n key for the credits pill on gateway-backed rows: "Free credits" until an
+ * allowance is used up, then "n8n credits". Injected by the consumer (from
+ * `aiGateway.store`) so the shared module stays free of editor-ui stores; rows
+ * without `freeCredits` never read it.
+ */
+export type CreditsLabelKey = 'generic.freeCredits' | 'generic.n8nCredits';
+
+export const TOOL_CONNECTION_CREDITS_LABEL_KEY = Symbol(
+	'tool-connection-credits-label',
+) as InjectionKey<Ref<CreditsLabelKey> | null>;

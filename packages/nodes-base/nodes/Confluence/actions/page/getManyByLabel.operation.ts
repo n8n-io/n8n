@@ -4,12 +4,10 @@ import { NodeOperationError } from 'n8n-workflow';
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { confluenceApiRequest } from '../../transport';
 import type { ConfluenceBodyFormat } from '../common';
 import {
-	PAGE_LIMIT,
 	bodyFormatOption,
-	extractNextCursor,
+	fetchPaginatedResults,
 	labelRLC,
 	optionalSpaceRLC,
 	parsePositiveInt,
@@ -73,33 +71,15 @@ export const execute: ConfluenceOperation = async function (
 	// No server-side plain-text format exists; it is derived from ADF in shapeBody
 	const requestedFormat = bodyFormat === 'plainText' ? 'atlas_doc_format' : bodyFormat;
 
-	const pages: IDataObject[] = [];
-	let cursor: string | undefined;
-	const seenCursors = new Set<string>();
-	do {
-		const qs: IDataObject = {
-			'body-format': requestedFormat,
-			limit: Math.min(limit - pages.length, PAGE_LIMIT),
-		};
-		if (spaceId !== '') qs['space-id'] = spaceId;
-		if (cursor !== undefined) qs.cursor = cursor;
+	const qs: IDataObject = { 'body-format': requestedFormat };
+	if (spaceId !== '') qs['space-id'] = spaceId;
 
-		const response = await confluenceApiRequest.call(
-			this,
-			'GET',
-			`/wiki/api/v2/labels/${encodeURIComponent(labelId)}/pages`,
-			{},
-			qs,
-		);
-		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
-		pages.push.apply(pages, results);
+	const pages = await fetchPaginatedResults.call(
+		this,
+		`/wiki/api/v2/labels/${encodeURIComponent(labelId)}/pages`,
+		limit,
+		qs,
+	);
 
-		const next = extractNextCursor(response);
-		// A next link revisiting any earlier page would loop forever under Return All
-		if (next === undefined || seenCursors.has(next)) break;
-		seenCursors.add(next);
-		cursor = next;
-	} while (pages.length < limit);
-
-	return pages.slice(0, limit).map((page) => shapeBody(page, bodyFormat));
+	return pages.map((page) => shapeBody(page, bodyFormat));
 };

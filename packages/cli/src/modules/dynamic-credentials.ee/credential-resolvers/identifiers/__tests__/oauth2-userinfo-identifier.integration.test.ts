@@ -63,17 +63,11 @@ describe('OAuth2UserInfoIdentifier (integration)', () => {
 			new DnsResolver(new InMemoryDnsCache(config)),
 			mockLogger(),
 		);
-		const outboundHttp = new OutboundHttp(ssrfService, mockLogger());
+		const outboundHttp = new OutboundHttp(ssrfService, config, mockLogger());
 		const cache = mock<CacheService>();
 		cache.get.mockResolvedValue(undefined);
 		cache.set.mockResolvedValue();
-		const httpClient = new OAuth2MetadataHttpClient(
-			mockLogger(),
-			cache,
-			outboundHttp,
-			ssrfService,
-			config,
-		);
+		const httpClient = new OAuth2MetadataHttpClient(mockLogger(), cache, outboundHttp);
 		return new OAuth2UserInfoIdentifier(mockLogger(), cache, httpClient);
 	};
 

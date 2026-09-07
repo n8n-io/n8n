@@ -2,33 +2,24 @@ import type {
 	ContentImportContext,
 	CredentialDecryptContext,
 	EnforcementPoint,
-	PolicedWorkflow,
 	PolicyDecision,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
 	WorkflowStartContext,
 	WorkflowTransferContext,
+	PolicyCleared,
+	PolicySubject,
 } from '@n8n/decorators';
+import { workflowContentSubject, workflowSubject } from '@n8n/decorators';
+import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
-import { createHash } from 'node:crypto';
 
-import { mintPolicyCleared, type PolicyCleared, type PolicySubject } from './policy-cleared';
 import type { PolicyContext, PolicyEnforcementBackend } from './policy-enforcement-backend';
 import { hasViolations, PolicyViolationError } from './policy-violation.error';
 
 /** Fresh each time — `violations` is mutable. */
 const emptyDecision = (): PolicyDecision => ({ violations: [] });
-
-/** A workflow being created has no id yet, so it binds to its nodes instead. */
-function workflowSubject(workflow: PolicedWorkflow): PolicySubject {
-	if (workflow.id !== null) return { type: 'workflow', id: workflow.id };
-
-	// Same object within one request, so key order is stable.
-	const nodes = createHash('sha256').update(JSON.stringify(workflow.nodes)).digest('hex');
-
-	return { type: 'workflow', id: nodes };
-}
 
 /**
  * The policy enforcement point every host call site talks to.
@@ -52,8 +43,22 @@ export class PolicyEnforcementService {
 		this.implementation = implementation;
 	}
 
+	/**
+	 * Whether any check would run at `point`. Only for skipping expensive work needed to build
+	 * a context — `enforce*` already clears, so a host holding its context should just call it.
+	 */
+	hasChecksFor(point: EnforcementPoint): boolean {
+		return this.implementation?.hasChecksFor(point) ?? false;
+	}
+
 	async enforceWorkflowSave(context: WorkflowSaveContext): Promise<PolicyCleared<'workflowSave'>> {
-		return await this.enforce('workflowSave', context, workflowSubject(context.workflow));
+		// A create has no committed id to bind to, so it binds to its content — even when a client
+		// supplied an id, which is no proof of what was checked. An update binds to the row id.
+		const subject =
+			context.storedWorkflow === null
+				? workflowContentSubject(context.workflow)
+				: workflowSubject(context.workflow);
+		return await this.enforce('workflowSave', context, subject);
 	}
 
 	async evaluateWorkflowSave(context: WorkflowSaveContext): Promise<PolicyDecision> {

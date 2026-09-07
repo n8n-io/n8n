@@ -634,6 +634,47 @@ describe('WorkflowCompilerService', () => {
 		expect(() => compiler.compile(wf, config)).toThrow(/multiple downstream/);
 	});
 
+	it('auto-detects the entry node when a pre-existing EvaluationTrigger feeds a different node than the real trigger (JoseBra review)', () => {
+		// A pre-existing EvaluationTrigger matches the trigger regex too
+		// (`/trigger|webhook|manual/i`). If the auto-detect path saw it before it's
+		// pruned, its unrelated downstream node would count as a second candidate
+		// and `resolveEntryNode` would wrongly throw "multiple downstream nodes".
+		const wf: IWorkflowBase = {
+			...baseWorkflow(),
+			connections: {
+				...baseWorkflow().connections,
+				'Old Eval Trigger': { main: [[{ node: 'UnrelatedNode', type: 'main', index: 0 }]] },
+			},
+			nodes: [
+				...baseWorkflow().nodes,
+				{
+					id: 'n-old-trigger',
+					name: 'Old Eval Trigger',
+					type: EVALUATION_TRIGGER_NODE_TYPE,
+					typeVersion: 4.6,
+					position: [0, 200],
+					parameters: {},
+				},
+				{
+					id: 'n-unrelated',
+					name: 'UnrelatedNode',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [0, 400],
+					parameters: {},
+				},
+			],
+		} as unknown as IWorkflowBase;
+
+		const config = baseConfig();
+		config.startNodeName = '';
+
+		const compiled = compiler.compile(wf, config);
+		expect(compiled.connections.__eval_trigger).toEqual({
+			main: [[{ node: 'Agent', type: 'main', index: 0 }]],
+		});
+	});
+
 	describe('refinements (spec §7)', () => {
 		it('resolves LLM-judge credentials via the provider registry (not a hardcoded map)', () => {
 			const config = baseConfig();
@@ -804,6 +845,30 @@ describe('WorkflowCompilerService', () => {
 			expect(compiled.connections.__eval_trigger).toEqual({
 				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
 			});
+			// The real trigger's own edge into Agent is severed, not left dangling
+			// alongside __eval_trigger's new one.
+			expect(compiled.connections.UserTrigger).toBeUndefined();
+		});
+
+		it("severs the real trigger's edge regardless of connection key order (TRUST-407)", () => {
+			// Evaluation Trigger listed BEFORE the real trigger in `connections` —
+			// findUserTriggerEdgeTo must not just splice out whichever edge it
+			// encounters first while iterating.
+			const reordered: IWorkflowBase = {
+				...workflowWithExistingEvalNodes(),
+				connections: {
+					'Old Eval Trigger': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					UserTrigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					Agent: { main: [[{ node: 'Old Set Metrics', type: 'main', index: 0 }]] },
+				},
+			};
+
+			const compiled = compiler.compile(reordered, baseConfig());
+
+			expect(compiled.connections.UserTrigger).toBeUndefined();
+			expect(compiled.connections.__eval_trigger).toEqual({
+				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
+			});
 		});
 
 		it('disables Set Metrics nodes instead of removing them (structure preserved)', () => {
@@ -820,6 +885,397 @@ describe('WorkflowCompilerService', () => {
 			const isEval = compiled.nodes.find((n) => n.name === 'Is Eval Run');
 			expect(isEval).toBeDefined();
 			expect(isEval!.disabled).toBeUndefined();
+		});
+
+		// A workflow built entirely around evaluation (TRUST-407): the pre-existing
+		// EvaluationTrigger is the workflow's ONLY trigger, feeding the entry node
+		// directly — unlike `workflowWithExistingEvalNodes` above, there is no separate
+		// non-evaluation trigger to fall back on once the old trigger is removed.
+		function workflowWithOnlyEvaluationTrigger(): IWorkflowBase {
+			return {
+				...baseWorkflow(),
+				connections: {
+					'Old Eval Trigger': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				},
+				nodes: [
+					baseWorkflow().nodes.find((n) => n.name === 'Agent')!,
+					{
+						id: 'n-old-trigger',
+						name: 'Old Eval Trigger',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.6,
+						position: [0, 200],
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowBase;
+		}
+
+		it('compiles a workflow whose only trigger is the pre-existing EvaluationTrigger (TRUST-407)', () => {
+			const compiled = compiler.compile(workflowWithOnlyEvaluationTrigger(), baseConfig());
+
+			expect(compiled.nodes.find((n) => n.name === 'Old Eval Trigger')).toBeUndefined();
+			expect(compiled.connections['Old Eval Trigger']).toBeUndefined();
+			expect(compiled.connections.__eval_trigger).toEqual({
+				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
+			});
+		});
+
+		it('rewrites expressions referencing the sole pre-existing EvaluationTrigger before removing it (TRUST-407)', () => {
+			const config = baseConfig();
+			config.metrics = [
+				{
+					id: 'm-expr',
+					name: 'Matches dataset',
+					type: 'expression',
+					config: {
+						expression: '={{ $("Old Eval Trigger").item.json.expectedAnswer === $json.output }}',
+						outputType: 'boolean',
+					},
+				},
+			];
+
+			const compiled = compiler.compile(workflowWithOnlyEvaluationTrigger(), config);
+			const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-expr')!;
+			const assignedValue = (metric.parameters.metrics as { assignments: Array<{ value: string }> })
+				.assignments[0].value;
+
+			// The reference to the (now-deleted) old trigger was rewritten to
+			// __eval_trigger — left as-is, this would fail at runtime with
+			// "Referenced node doesn't exist".
+			expect(assignedValue).toContain('$("__eval_trigger")');
+			expect(assignedValue).not.toContain('$("Old Eval Trigger")');
+		});
+
+		it('leaves expressions untouched when two real nodes both feed the entry node (ambiguous upstream)', () => {
+			// UserTrigger and SecondTrigger both feed Agent directly — there's no
+			// single "the user's upstream node" to rewrite `$(...)` references from.
+			const workflow: IWorkflowBase = {
+				...baseWorkflow(),
+				connections: {
+					UserTrigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					SecondTrigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				},
+				nodes: [
+					...baseWorkflow().nodes,
+					{
+						id: 'n-second-trigger',
+						name: 'SecondTrigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 400],
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowBase;
+
+			const config = baseConfig();
+			config.metrics = [
+				{
+					id: 'm-expr',
+					name: 'Matches dataset',
+					type: 'expression',
+					config: {
+						expression: '={{ $("UserTrigger").item.json.expectedAnswer === $json.output }}',
+						outputType: 'boolean',
+					},
+				},
+			];
+
+			const compiled = compiler.compile(workflow, config);
+			const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-expr')!;
+			const assignedValue = (metric.parameters.metrics as { assignments: Array<{ value: string }> })
+				.assignments[0].value;
+
+			expect(assignedValue).toContain('$("UserTrigger")');
+		});
+
+		it('rewrites expressions referencing either of two pre-existing EvaluationTriggers', () => {
+			// Two old EvaluationTriggers converge on Agent with no other (kept) node
+			// feeding it. Which one "won" the entry edge is ambiguous, but both are
+			// removed regardless, so a reference to either must retarget to the
+			// single injected trigger — leaving it as-is would dangle on a deleted node.
+			const workflow: IWorkflowBase = {
+				...baseWorkflow(),
+				connections: {
+					'Old Eval Trigger A': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					'Old Eval Trigger B': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				},
+				nodes: [
+					baseWorkflow().nodes.find((n) => n.name === 'Agent')!,
+					{
+						id: 'n-old-trigger-a',
+						name: 'Old Eval Trigger A',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.6,
+						position: [0, 200],
+						parameters: {},
+					},
+					{
+						id: 'n-old-trigger-b',
+						name: 'Old Eval Trigger B',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.6,
+						position: [0, 400],
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowBase;
+
+			const config = baseConfig();
+			config.metrics = [
+				{
+					id: 'm-expr',
+					name: 'Matches dataset',
+					type: 'expression',
+					config: {
+						expression: '={{ $("Old Eval Trigger A").item.json.expectedAnswer === $json.output }}',
+						outputType: 'boolean',
+					},
+				},
+			];
+
+			const compiled = compiler.compile(workflow, config);
+			const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-expr')!;
+			const assignedValue = (metric.parameters.metrics as { assignments: Array<{ value: string }> })
+				.assignments[0].value;
+
+			expect(assignedValue).toContain('$("__eval_trigger")');
+			expect(assignedValue).not.toContain('$("Old Eval Trigger A")');
+		});
+
+		it('rewrites a reference to the OTHER pre-existing EvaluationTrigger too, even though it lost the entry edge', () => {
+			const workflow: IWorkflowBase = {
+				...baseWorkflow(),
+				connections: {
+					'Old Eval Trigger A': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					'Old Eval Trigger B': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				},
+				nodes: [
+					baseWorkflow().nodes.find((n) => n.name === 'Agent')!,
+					{
+						id: 'n-old-trigger-a',
+						name: 'Old Eval Trigger A',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.6,
+						position: [0, 200],
+						parameters: {},
+					},
+					{
+						id: 'n-old-trigger-b',
+						name: 'Old Eval Trigger B',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.6,
+						position: [0, 400],
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowBase;
+
+			const config = baseConfig();
+			config.metrics = [
+				{
+					id: 'm-expr',
+					name: 'Matches dataset',
+					type: 'expression',
+					config: {
+						expression: '={{ $("Old Eval Trigger B").item.json.expectedAnswer === $json.output }}',
+						outputType: 'boolean',
+					},
+				},
+			];
+
+			const compiled = compiler.compile(workflow, config);
+			const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-expr')!;
+			const assignedValue = (metric.parameters.metrics as { assignments: Array<{ value: string }> })
+				.assignments[0].value;
+
+			expect(assignedValue).toContain('$("__eval_trigger")');
+			expect(assignedValue).not.toContain('$("Old Eval Trigger B")');
+		});
+
+		it('retargets a reference to a removed EvaluationTrigger that never fed the entry node at all', () => {
+			// "Old Eval Trigger" sits elsewhere in the graph — UserTrigger alone feeds
+			// Agent — but a leftover Set Metrics node (kept, disabled) still reads from
+			// it by name. It's still deleted by prepareExistingEvaluationNodes, so the
+			// reference must be retargeted regardless of its distance from the entry node.
+			const workflow: IWorkflowBase = {
+				...baseWorkflow(),
+				nodes: [
+					...baseWorkflow().nodes,
+					{
+						id: 'n-old-trigger',
+						name: 'Old Eval Trigger',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.6,
+						position: [0, 200],
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowBase;
+
+			const config = baseConfig();
+			config.metrics = [
+				{
+					id: 'm-expr',
+					name: 'Matches dataset',
+					type: 'expression',
+					config: {
+						expression: '={{ $node["Old Eval Trigger"].json.expectedAnswer === $json.output }}',
+						outputType: 'boolean',
+					},
+				},
+			];
+
+			const compiled = compiler.compile(workflow, config);
+			const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-expr')!;
+			const assignedValue = (metric.parameters.metrics as { assignments: Array<{ value: string }> })
+				.assignments[0].value;
+
+			// $node[...] legacy syntax is covered via the shared applyAccessPatterns helper.
+			expect(assignedValue).toContain('$node["__eval_trigger"]');
+			expect(assignedValue).not.toContain('Old Eval Trigger');
+		});
+
+		it('rewrites a reference with extra whitespace around the quoted argument (cubic review)', () => {
+			const wf = baseWorkflow();
+			const config = baseConfig();
+			config.metrics = [
+				{
+					id: 'm-expr',
+					name: 'Latency OK',
+					type: 'expression',
+					config: {
+						expression: "={{ $( 'UserTrigger'  ).item.json.question.length > 0 }}",
+						outputType: 'boolean',
+					},
+				},
+			];
+
+			const compiled = compiler.compile(wf, config);
+			const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-expr')!;
+			const assignedValue = (metric.parameters.metrics as { assignments: Array<{ value: string }> })
+				.assignments[0].value;
+
+			expect(assignedValue).toContain("$('__eval_trigger')");
+			expect(assignedValue).not.toContain('UserTrigger');
+		});
+
+		it('leaves a plain literal string untouched even when it contains access-pattern-shaped text (cubic review)', () => {
+			const config = baseConfig();
+			config.metrics = [
+				{
+					id: 'm-ss-lit',
+					name: 'Similarity',
+					type: 'string_similarity',
+					config: {
+						inputs: {
+							// A literal (non-`=`) value: never evaluated as an expression, so
+							// it must not be rewritten even though it names the replaced
+							// trigger in one of the supported access-pattern shapes.
+							actualAnswer: 'see $("UserTrigger").item.json.question for context',
+							expectedAnswer: '={{ $json.expected }}',
+						},
+					},
+				},
+			];
+
+			const compiled = compiler.compile(baseWorkflow(), config);
+			const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-ss-lit')!;
+			expect(metric.parameters.actualAnswer).toBe(
+				'see $("UserTrigger").item.json.question for context',
+			);
+		});
+
+		it("only tightens whitespace around the replaced trigger's own name, not an unrelated one (cubic review)", () => {
+			const wf = baseWorkflow();
+			const config = baseConfig();
+			config.metrics = [
+				{
+					id: 'm-expr',
+					name: 'Latency OK',
+					// A string literal inside the expression names a DIFFERENT node
+					// with loose spacing — that's data the expression returns, not a
+					// reference to rewrite, so its spacing must survive untouched.
+					// The actual reference to the replaced trigger (tight, no spaces)
+					// still gets rewritten.
+					type: 'expression',
+					config: {
+						expression: '={{ $("UserTrigger").item.json.note === "$( \'Other Node\'  )" }}',
+						outputType: 'boolean',
+					},
+				},
+			];
+
+			const compiled = compiler.compile(wf, config);
+			const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-expr')!;
+			const assignedValue = (metric.parameters.metrics as { assignments: Array<{ value: string }> })
+				.assignments[0].value;
+
+			expect(assignedValue).toContain('$("__eval_trigger")');
+			expect(assignedValue).toContain("$( 'Other Node'  )");
+		});
+
+		it("rewrites a reference inside an HTML node's top-level html field (cubic review)", () => {
+			const wf: IWorkflowBase = {
+				...baseWorkflow(),
+				nodes: [
+					...baseWorkflow().nodes,
+					{
+						id: 'n-html',
+						name: 'Build Report',
+						type: 'n8n-nodes-base.html',
+						typeVersion: 1,
+						position: [400, 0],
+						parameters: {
+							html: '<div>{{ $("UserTrigger").item.json.question }}</div>',
+						},
+					},
+				],
+			} as unknown as IWorkflowBase;
+
+			const compiled = compiler.compile(wf, baseConfig());
+			const htmlNode = compiled.nodes.find((n) => n.name === 'Build Report')!;
+
+			expect(htmlNode.parameters.html).toBe(
+				'<div>{{ $("__eval_trigger").item.json.question }}</div>',
+			);
+		});
+
+		it("rewrites a reference inside a Form field's html content (cubic review)", () => {
+			const wf: IWorkflowBase = {
+				...baseWorkflow(),
+				nodes: [
+					...baseWorkflow().nodes,
+					{
+						id: 'n-form',
+						name: 'Show Form',
+						type: 'n8n-nodes-base.form',
+						typeVersion: 1,
+						position: [400, 0],
+						parameters: {
+							formFields: {
+								values: [
+									{
+										fieldType: 'html',
+										html: '<p>{{ $("UserTrigger").item.json.question }}</p>',
+									},
+									{ fieldType: 'text', fieldLabel: 'Name' },
+								],
+							},
+						},
+					},
+				],
+			} as unknown as IWorkflowBase;
+
+			const compiled = compiler.compile(wf, baseConfig());
+			const formNode = compiled.nodes.find((n) => n.name === 'Show Form')!;
+			const values = (formNode.parameters.formFields as { values: Array<Record<string, unknown>> })
+				.values;
+
+			expect(values[0].html).toBe('<p>{{ $("__eval_trigger").item.json.question }}</p>');
+			// The non-html field is left completely untouched.
+			expect(values[1]).toEqual({ fieldType: 'text', fieldLabel: 'Name' });
 		});
 	});
 });
