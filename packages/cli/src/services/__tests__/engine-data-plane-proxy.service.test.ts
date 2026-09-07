@@ -14,6 +14,7 @@ describe('EngineDataPlaneProxyService', () => {
 		workflowId: 'wf-1',
 		graph: { nodes: [], edges: [] },
 		executionId,
+		callerContext: {},
 	};
 
 	let proxy: EngineDataPlaneProxyService;
