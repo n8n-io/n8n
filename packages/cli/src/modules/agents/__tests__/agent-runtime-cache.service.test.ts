@@ -118,6 +118,10 @@ describe('AgentRuntimeCacheService', () => {
 			.mockResolvedValueOnce(makeRuntime());
 
 		await service.getRuntime({ agentId, projectId });
+		// An explicit `true` is the default and shares the default runtime.
+		await service.getRuntime({ agentId, projectId, allowBackgroundTasks: true });
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
+
 		await service.getRuntime({ agentId, projectId, allowBackgroundTasks: false });
 
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);

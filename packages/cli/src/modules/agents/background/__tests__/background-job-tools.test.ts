@@ -70,6 +70,19 @@ describe('spawn_background_subagent', () => {
 		});
 	});
 
+	it('rejects when the thread carries no host metadata', async () => {
+		const { backgroundRunner, options } = setup();
+		const tool = createSpawnBackgroundSubAgentTool(options);
+
+		const output = await tool.handler!(
+			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		);
+
+		expect(output).toMatchObject({ status: 'rejected' });
+		expect(backgroundRunner.spawn).not.toHaveBeenCalled();
+	});
+
 	it('rejects when no persisted thread is active', async () => {
 		const { backgroundRunner, options } = setup();
 		const tool = createSpawnBackgroundSubAgentTool(options);

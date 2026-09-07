@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddWakeColumnsToAgentBackgroundJob1788332569510';
+const MIGRATION_NAME = 'AddWakeColumnsToAgentBackgroundJob1788527465971';
 const COLUMNS = ['notifiedAt', 'parentResourceId', 'parentPrincipalHash'] as const;
 
 describe('AddWakeColumnsToAgentBackgroundJob migration', () => {
@@ -105,6 +105,43 @@ describe('AddWakeColumnsToAgentBackgroundJob migration', () => {
 					context.isSqlite ? Reflect.get(column, 'notnull') : Reflect.get(column, 'is_nullable'),
 				).toBe(context.isSqlite ? 0 : 'YES');
 			}
+
+			// Declared widths must match the entity; SQLite does not enforce them.
+			const width = (name: string) => {
+				const column = columns.find((entry) =>
+					context.isSqlite
+						? Reflect.get(entry, 'name') === name
+						: Reflect.get(entry, 'column_name') === name,
+				);
+				return context.isSqlite
+					? Reflect.get(column ?? {}, 'type')
+					: Reflect.get(column ?? {}, 'character_maximum_length');
+			};
+			expect(width('parentResourceId')).toBe(context.isSqlite ? 'varchar(255)' : 255);
+			expect(width('parentPrincipalHash')).toBe(context.isSqlite ? 'varchar(64)' : 64);
+
+			// The table is recreated on SQLite; the partial unique index that keeps
+			// one tracker per workflow execution must survive.
+			const indexDefinitions = context.isSqlite
+				? (
+						await context.queryRunner.query(
+							`SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ${context.escape.tableName('agent_background_job')}`,
+						)
+					).map((row: { sql: string | null }) => row.sql ?? '')
+				: (
+						await context.queryRunner.query(
+							'SELECT indexdef FROM pg_indexes WHERE tablename = $1',
+							[`${context.tablePrefix}agent_background_job`],
+						)
+					).map((row: { indexdef: string }) => row.indexdef);
+			expect(
+				indexDefinitions.some(
+					(definition: string) =>
+						/UNIQUE/i.test(definition) &&
+						definition.includes('childExecutionId') &&
+						/IS NOT NULL/i.test(definition),
+				),
+			).toBe(true);
 
 			const rows = await context.runQuery<
 				Array<{

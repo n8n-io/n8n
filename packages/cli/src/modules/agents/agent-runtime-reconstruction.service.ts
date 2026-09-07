@@ -546,9 +546,10 @@ export class AgentRuntimeReconstructionService {
 				supportsHitl: canResume,
 				// Only an interactive top-level agent backgrounds waiting workflows: a
 				// child's job would nest under its own thread, where no check/cancel
-				// tools exist, and a top-level agent invoked as a workflow step
-				// (supportsHitl false) has no interactive turn to hand a receipt to.
-				// Everyone else handles waits the legacy way.
+				// tools exist; a top-level agent invoked as a workflow step
+				// (supportsHitl false) or by a task (allowBackgroundTasks false) has no
+				// interactive turn to hand a receipt to. Everyone else handles waits
+				// the legacy way.
 				backgroundTasksEnabled: backgroundTasksEnabled && canResume,
 			},
 			instrumentation,

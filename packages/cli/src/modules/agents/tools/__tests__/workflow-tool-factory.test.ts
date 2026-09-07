@@ -975,6 +975,37 @@ describe('workflow tool → background job handoff', () => {
 		});
 	});
 
+	it.each([
+		[
+			'the host scope belongs to another project',
+			{
+				hostMetadata: encodeAgentSandboxHostMetadata({
+					projectId: 'p-other',
+					principalHash: parentPrincipalHash,
+				}),
+			},
+		],
+		['the thread carries no host metadata', { hostMetadata: undefined }],
+		['the thread has no memory resource', { resourceId: undefined }],
+	])('falls back to suspending when %s', async (_name, persistenceOverrides) => {
+		setPersistence({
+			status: 'waiting',
+			data: createRunExecutionData({ resultData: { runData: {} } }),
+		});
+		const jobService = setJobService();
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+		const persistence = {
+			...(ctx as { persistence: object }).persistence,
+			...persistenceOverrides,
+		};
+
+		await tool.handler?.({}, { ...(ctx as object), persistence } as never);
+
+		expect(jobService.registerWorkflowJob).not.toHaveBeenCalled();
+		expect(suspend).toHaveBeenCalledTimes(1);
+	});
+
 	it('falls back to suspending when the run has no parent identity', async () => {
 		setPersistence({
 			status: 'waiting',
