@@ -45,6 +45,20 @@ export function isNearExpiry(tokenData: OAuth2TokenData | undefined): boolean {
 	return Date.now() + buffer >= expiresAt;
 }
 
+/** Core reports a dead credential here, as plain data so no `instanceof` is needed. */
+type CredentialInvalidError = { message?: string; description?: string };
+
+function isCredentialInvalidError(error: unknown): error is CredentialInvalidError {
+	if (typeof error !== 'object' || error === null || !('failure' in error)) return false;
+	const { failure } = error;
+	return (
+		typeof failure === 'object' &&
+		failure !== null &&
+		'cause' in failure &&
+		failure.cause === 'credential-invalid'
+	);
+}
+
 /** Model SDKs rewrite what their fetch hook throws, so the original survives only on `cause`. */
 export function findSessionExpiredError(error: unknown): OAuth2SessionExpiredError | undefined {
 	const seen = new Set<unknown>();
@@ -80,8 +94,17 @@ export function createRefreshingOAuth2TokenProvider(options: {
 
 			tokenData = refreshed;
 			return refreshed.access_token;
-		} catch {
-			return null;
+		} catch (error) {
+			// A transient failure is not fatal; the server rejection reads better
+			if (!isCredentialInvalidError(error)) return null;
+
+			// Only a new sign-in recovers this, so carry core's reconnect error out
+			// instead of letting a doomed request come back as a bare 403
+			throw new OAuth2SessionExpiredError(
+				node,
+				error.message ?? `${serviceName} credential needs to be reconnected`,
+				{ description: error.description ?? reconnectHint },
+			);
 		}
 	};
 
@@ -89,7 +112,8 @@ export function createRefreshingOAuth2TokenProvider(options: {
 		expiredStatus: credential.tokenExpiredStatusCode ?? 401,
 
 		getToken: async () => {
-			// A failed refresh is not fatal; the server rejection reads better
+			// Only a dead credential throws here; a transient failure falls through
+			// to the stored token, whose server rejection reads better
 			if (isNearExpiry(tokenData)) await refresh();
 
 			const accessToken = tokenData?.access_token;

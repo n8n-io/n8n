@@ -127,13 +127,59 @@ describe('createRefreshingOAuth2TokenProvider', () => {
 		expect(tokens).toEqual(['refreshed-token', 'refreshed-token', 'refreshed-token']);
 	});
 
-	it('should fall back to the stored token when the refresh fails', async () => {
-		mockRefreshOAuth2Token.mockRejectedValue(new Error('invalid_grant'));
+	it('should fall back to the stored token when the refresh fails transiently', async () => {
+		mockRefreshOAuth2Token.mockRejectedValue(new Error('socket hang up'));
 		const provider = makeProvider({
 			oauthTokenData: tokenData({ n8n_expires_at: String(Date.now() - 1000) }),
 		});
 
 		await expect(provider.getToken()).resolves.toBe('stored-token');
+	});
+
+	describe('when core reports the credential is dead', () => {
+		// Core flags an unrecoverable grant as plain data on `failure`
+		const deadCredential = () =>
+			Object.assign(new Error('The credential "Databricks" needs to be reconnected.'), {
+				failure: { cause: 'credential-invalid' },
+				description: 'Open the credential and reconnect it to continue.',
+			});
+
+		const expiredProvider = () => {
+			mockRefreshOAuth2Token.mockRejectedValue(deadCredential());
+			return makeProvider({
+				oauthTokenData: tokenData({ n8n_expires_at: String(Date.now() - 1000) }),
+			});
+		};
+
+		it('should surface it instead of sending the expired token', async () => {
+			await expect(expiredProvider().getToken()).rejects.toThrow(OAuth2SessionExpiredError);
+		});
+
+		it('should keep the reconnect advice readable', async () => {
+			const error = await expiredProvider()
+				.getToken()
+				.catch((caught: OAuth2SessionExpiredError) => caught);
+
+			expect(error).toBeInstanceOf(OAuth2SessionExpiredError);
+			expect((error as OAuth2SessionExpiredError).message).toContain('needs to be reconnected');
+			expect((error as OAuth2SessionExpiredError).description).toBe(
+				'Open the credential and reconnect it to continue.',
+			);
+		});
+
+		it('should surface it from the post-rejection retry as well', async () => {
+			await expect(expiredProvider().refreshAfterRejection?.()).rejects.toThrow(
+				OAuth2SessionExpiredError,
+			);
+		});
+
+		it('should stay findable after a model SDK rewraps it', async () => {
+			const original = await expiredProvider()
+				.getToken()
+				.catch((caught: OAuth2SessionExpiredError) => caught);
+
+			expect(findSessionExpiredError(new Error('APIError', { cause: original }))).toBe(original);
+		});
 	});
 
 	it('should ask the user to reconnect when the credential holds no token', async () => {
