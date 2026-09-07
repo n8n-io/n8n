@@ -31,6 +31,28 @@ describe('dataTableCreateColumnSchema', () => {
 		).toBe(false);
 	});
 
+	it('accepts a default enum value from the option list', () => {
+		expect(
+			dataTableCreateColumnSchema.parse({
+				name: 'priority',
+				type: 'enum',
+				options: ['Low', 'High'],
+				defaultValue: 'Low',
+			}),
+		).toMatchObject({ defaultValue: 'Low' });
+	});
+
+	it('rejects a default enum value outside the option list', () => {
+		expect(
+			dataTableCreateColumnSchema.safeParse({
+				name: 'priority',
+				type: 'enum',
+				options: ['Low', 'High'],
+				defaultValue: 'Medium',
+			}).success,
+		).toBe(false);
+	});
+
 	it('rejects options on other column types', () => {
 		expect(
 			dataTableCreateColumnSchema.safeParse({

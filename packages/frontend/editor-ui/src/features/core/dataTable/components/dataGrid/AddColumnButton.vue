@@ -20,6 +20,7 @@ import {
 	N8nOption,
 	N8nPopover,
 	N8nSelect,
+	N8nTagsInput2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -55,25 +56,28 @@ const nameInputRef = ref<HTMLInputElement | null>(null);
 
 const columnName = ref('');
 const columnType = ref<DataTableColumnType>('string');
-const enumOptionsInput = ref('');
+const enumOptions = ref<string[]>([]);
+const enumDefaultValue = ref<string | null>(null);
 
 const columnTypes: DataTableColumnType[] = [...DATA_TABLE_COLUMN_TYPES];
 
 const error = ref<FormError | null>(null);
-const enumOptions = computed(() =>
-	enumOptionsInput.value
-		.split(',')
-		.map((option) => option.trim())
-		.filter((option) => option.length > 0),
-);
 const enumOptionsValid = computed(() => {
 	if (columnType.value !== 'enum') return true;
 	if (enumOptions.value.length < 1 || enumOptions.value.length > 100) return false;
 	if (enumOptions.value.some((option) => option.length > 128)) return false;
 	return new Set(enumOptions.value.map((option) => option.toLowerCase())).size === enumOptions.value.length;
 });
+const normalizeEnumOption = (option: string) => option.trim();
 const canSubmit = computed(
-	() => Boolean(columnName.value && columnType.value && !error.value && enumOptionsValid.value),
+	() =>
+		Boolean(
+			columnName.value &&
+				columnType.value &&
+				!error.value &&
+				enumOptionsValid.value &&
+				(columnType.value !== 'enum' || enumDefaultValue.value),
+		),
 );
 
 // Handling popover state manually to prevent it closing when interacting with dropdown
@@ -99,7 +103,9 @@ const onAddButtonClicked = async () => {
 	const response = await props.params.onAddColumn({
 		name: columnName.value,
 		type: columnType.value,
-		...(columnType.value === 'enum' ? { options: enumOptions.value } : {}),
+		...(columnType.value === 'enum'
+			? { options: enumOptions.value, defaultValue: enumDefaultValue.value }
+			: {}),
 	});
 
 	if (!response.success) {
@@ -125,7 +131,8 @@ const onAddButtonClicked = async () => {
 	}
 	columnName.value = '';
 	columnType.value = 'string';
-	enumOptionsInput.value = '';
+	enumOptions.value = [];
+	enumDefaultValue.value = null;
 	popoverOpen.value = false;
 };
 
@@ -159,7 +166,16 @@ const validateName = () => {
 const onInput = debounce(validateName, { debounceTime: 100 });
 
 watch(columnType, (type) => {
-	if (type !== 'enum') enumOptionsInput.value = '';
+	if (type !== 'enum') {
+		enumOptions.value = [];
+		enumDefaultValue.value = null;
+	}
+});
+
+watch(enumOptions, (options) => {
+	if (enumDefaultValue.value && !options.includes(enumDefaultValue.value)) {
+		enumDefaultValue.value = null;
+	}
 });
 </script>
 
@@ -260,19 +276,42 @@ watch(columnType, (type) => {
 								:label="i18n.baseText('dataTable.addColumn.enumOptions.label')"
 								:required="true"
 							>
-								<N8nInput
-									v-model="enumOptionsInput"
+								<N8nTagsInput2
+									v-model="enumOptions"
 									:placeholder="i18n.baseText('dataTable.addColumn.enumOptions.placeholder')"
+									:convert-value="normalizeEnumOption"
+									delimiter=","
+									add-on-paste
+									add-on-blur
 									data-test-id="add-column-enum-options-input"
-									@keyup.enter="onAddButtonClicked"
 								/>
 								<N8nText
-									v-if="enumOptionsInput && !enumOptionsValid"
+									v-if="enumOptions.length > 0 && !enumOptionsValid"
 									size="small"
 									color="danger"
 								>
 									{{ i18n.baseText('dataTable.addColumn.enumOptions.invalid') }}
 								</N8nText>
+							</N8nInputLabel>
+							<N8nInputLabel
+								v-if="columnType === 'enum'"
+								:label="i18n.baseText('dataTable.addColumn.enumDefaultValue.label')"
+								:required="true"
+							>
+								<N8nSelect
+									v-model="enumDefaultValue"
+									:append-to="`#${popoverId}`"
+									:placeholder="i18n.baseText('dataTable.addColumn.enumDefaultValue.placeholder')"
+									data-test-id="add-column-enum-default-select"
+									@visible-change="isSelectOpen = $event"
+								>
+									<N8nOption
+										v-for="option in enumOptions"
+										:key="option"
+										:label="option"
+										:value="option"
+									/>
+								</N8nSelect>
 							</N8nInputLabel>
 							<N8nButton
 								variant="solid"

@@ -5202,6 +5202,8 @@
 	"dataTable.addColumn.enumOptions.label": "Options",
 	"dataTable.addColumn.enumOptions.placeholder": "Low, Medium, High",
 	"dataTable.addColumn.enumOptions.invalid": "Enter 1 to 100 unique options. Each option can contain up to 128 characters.",
+	"dataTable.addColumn.enumDefaultValue.label": "Default status",
+	"dataTable.addColumn.enumDefaultValue.placeholder": "Select a default status",
 	"dataTable.addColumn.error": "Error adding column",
 	"dataTable.column.alreadyExistsError": "This column already exists",
 	"dataTable.moveColumn.error": "Error moving column",

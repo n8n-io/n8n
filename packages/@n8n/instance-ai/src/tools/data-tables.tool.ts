@@ -180,6 +180,10 @@ const createAction = z.object({
 				name: z.string().describe('Column name (alphanumeric + underscores)'),
 				type: columnTypeSchema.describe('Column data type'),
 				options: enumOptionsSchema.describe('Allowed values. Required when type is enum.'),
+				defaultValue: z
+					.string()
+					.optional()
+					.describe('Default value. Only supported when type is enum.'),
 			}),
 		)
 		.min(1)
@@ -209,6 +213,7 @@ const addColumnAction = z.object({
 	columnName: z.string().describe('Column name (alphanumeric + underscores)'),
 	type: columnTypeSchema.describe('Column data type'),
 	options: enumOptionsSchema.describe('Allowed values. Required when type is enum.'),
+	defaultValue: z.string().optional().describe('Default value. Only supported when type is enum.'),
 });
 
 const deleteColumnAction = z.object({
@@ -536,7 +541,12 @@ async function handleAddColumn(
 	// State 3: Approved or always_allow — execute
 	const column = await context.dataTableService.addColumn(
 		input.dataTableId,
-		{ name: input.columnName, type: input.type, options: input.options },
+		{
+			name: input.columnName,
+			type: input.type,
+			options: input.options,
+			defaultValue: input.defaultValue,
+		},
 		{ projectId: input.projectId },
 	);
 	return { column };

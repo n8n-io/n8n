@@ -108,6 +108,33 @@ describe('Data Table durable triggers', () => {
 		).rejects.toThrow("value 'Medium' is not an option for enum column 'priority'");
 	});
 
+	it('applies the enum default only when an inserted row omits the column', async () => {
+		const project = await createTeamProject();
+		const table = await dataTableService.createDataTable(project.id, {
+			name: 'priorities',
+			columns: [
+				{
+					name: 'priority',
+					type: 'enum',
+					options: ['Low', 'High'],
+					defaultValue: 'Low',
+				},
+			],
+		});
+
+		const rows = await dataTableService.insertRows(
+			table.id,
+			project.id,
+			[{}, { priority: 'High' }],
+			'all',
+		);
+
+		expect(rows).toEqual([
+			expect.objectContaining({ priority: 'Low' }),
+			expect.objectContaining({ priority: 'High' }),
+		]);
+	});
+
 	it('rolls the row insert back when durable event persistence fails', async () => {
 		const project = await createTeamProject();
 		const workflow = await createWorkflow({}, project);

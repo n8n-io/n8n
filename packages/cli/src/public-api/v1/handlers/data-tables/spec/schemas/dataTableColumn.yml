@@ -19,6 +19,10 @@ properties:
     description: Allowed enum values
     items:
       type: string
+  defaultValue:
+    type: string
+    nullable: true
+    description: Default enum value
   index:
     type: integer
     description: Column position

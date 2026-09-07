@@ -20,4 +20,26 @@ describe('Data Table enum options', () => {
 			}),
 		).toThrow('Enum options must be unique');
 	});
+
+	it('normalizes a valid default value', () => {
+		const column = normalizeColumn({
+			name: 'priority',
+			type: 'enum',
+			options: ['Low', 'High'],
+			defaultValue: ' Low ',
+		});
+
+		expect(column.defaultValue).toBe('Low');
+	});
+
+	it('rejects a default value outside the options', () => {
+		expect(() =>
+			normalizeColumn({
+				name: 'priority',
+				type: 'enum',
+				options: ['Low', 'High'],
+				defaultValue: 'Medium',
+			}),
+		).toThrow('The enum default value must be one of its options');
+	});
 });

@@ -30,6 +30,7 @@ type DataTableColumnPackageKeyHandling = {
 	type: 'copy';
 	index: 'copy';
 	options: 'copy';
+	defaultValue: 'copy';
 	dataTable: 'exclude';
 };
 
@@ -56,6 +57,7 @@ export class DataTableSerializer {
 					type: column.type,
 					index: column.index,
 					...(column.options ? { options: column.options } : {}),
+					...(column.defaultValue ? { defaultValue: column.defaultValue } : {}),
 				}),
 			);
 

@@ -21,6 +21,7 @@ export const serializedDataTableColumnSchema = z
 		type: dataTableColumnTypeSchema,
 		index: z.number().int(),
 		options: dataTableEnumOptionsSchema.optional(),
+		defaultValue: z.string().trim().min(1).max(128).optional(),
 	})
 	.strict();
 

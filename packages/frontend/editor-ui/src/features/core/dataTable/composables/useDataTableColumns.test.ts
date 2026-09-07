@@ -29,6 +29,10 @@ vi.mock('@/features/core/dataTable/components/dataGrid/ElDatePickerFilter.vue', 
 	default: {},
 }));
 
+vi.mock('@/features/core/dataTable/components/dataGrid/EnumSelectCellRenderer.vue', () => ({
+	default: { name: 'EnumSelectCellRenderer' },
+}));
+
 vi.mock('@/features/core/dataTable/components/dataGrid/AddColumnButton.vue', () => ({
 	default: {},
 }));
@@ -46,6 +50,7 @@ vi.mock('@/features/core/dataTable/utils/columnUtils', () => ({
 	dateValueFormatter: vi.fn(),
 	numberValueFormatter: vi.fn(),
 	getStringColumnFilterOptions: vi.fn(() => []),
+	getEnumColumnFilterOptions: vi.fn(() => []),
 	getDateColumnFilterOptions: vi.fn(() => []),
 	getNumberColumnFilterOptions: vi.fn(() => []),
 	getBooleanColumnFilterOptions: vi.fn(() => []),
@@ -150,6 +155,23 @@ describe('useDataTableColumns', () => {
 
 			expect(colDef.colId).toBe('col1');
 			expect(colDef.field).toBe('Boolean Column');
+		});
+
+		it('should always render enum columns as selectors', () => {
+			const { createColumnDef } = createComposable();
+			const colDef = createColumnDef({
+				id: 'col1',
+				name: 'Status',
+				type: 'enum',
+				index: 0,
+				options: ['Todo', 'Done'],
+			});
+
+			expect(colDef.editable).toBe(false);
+			expect(colDef.cellRendererSelector?.({ data: { id: 1 }, value: 'Todo' } as never)).toMatchObject({
+				component: { name: 'EnumSelectCellRenderer' },
+				params: { options: ['Todo', 'Done'] },
+			});
 		});
 
 		it('should merge extra props', () => {

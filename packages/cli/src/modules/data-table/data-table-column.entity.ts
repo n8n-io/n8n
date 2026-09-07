@@ -21,6 +21,9 @@ export class DataTableColumn extends WithTimestampsAndStringId {
 	@Column({ type: 'json', nullable: true })
 	options: string[] | null;
 
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	defaultValue: string | null;
+
 	@ManyToOne('DataTable', 'columns')
 	@JoinColumn({ name: 'dataTableId' })
 	dataTable: DataTable;

@@ -75,6 +75,7 @@ export const dataTableColumnSchema = z.object({
 	type: dataTableColumnTypeSchema,
 	index: z.number().int().describe('The position of the column in the table'),
 	options: z.array(z.string()).nullable().optional().describe('Allowed enum values'),
+	defaultValue: z.string().nullable().optional().describe('Default enum value'),
 });
 
 export const dataTableSchema = z.object({

@@ -46,6 +46,8 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'dataTable.addColumn.enumOptions.label': 'Options',
 				'dataTable.addColumn.enumOptions.placeholder': 'Low, Medium, High',
 				'dataTable.addColumn.enumOptions.invalid': 'Invalid enum options',
+				'dataTable.addColumn.enumDefaultValue.label': 'Default status',
+				'dataTable.addColumn.enumDefaultValue.placeholder': 'Select a default status',
 				'dataTable.addColumn.invalidName.error': 'Invalid column name',
 				'dataTable.addColumn.invalidName.description':
 					'Column names must start with a letter and contain only letters, numbers, and hyphens',
@@ -163,18 +165,34 @@ describe('AddColumnButton', () => {
 		});
 	});
 
-	it('should submit normalized enum options', async () => {
-		const { getByTestId, openPopover, setColumnName, selectType, submit } = setup();
+	it('should split comma-separated enum options into badges and submit the default', async () => {
+		const {
+			getAllByTestId,
+			getByPlaceholderText,
+			getByRole,
+			getByTestId,
+			openPopover,
+			setColumnName,
+			selectType,
+			submit,
+		} = setup();
 		await openPopover();
 		await setColumnName('priority');
 		await selectType('enum');
-		await user.type(getByTestId('add-column-enum-options-input'), 'Low, Medium, High');
+		const optionsInput = getByTestId('add-column-enum-options-input').querySelector('input');
+		expect(optionsInput).not.toBeNull();
+		await user.type(optionsInput!, 'Low, Medium, High,');
+
+		expect(getAllByTestId('tags-input-tag')).toHaveLength(3);
+		await user.click(getByPlaceholderText('Select a default status'));
+		await user.click(getByRole('option', { name: 'Medium' }));
 		await submit();
 
 		expect(addColumnHandler).toHaveBeenCalledWith({
 			name: 'priority',
 			type: 'enum',
 			options: ['Low', 'Medium', 'High'],
+			defaultValue: 'Medium',
 		});
 	});
 

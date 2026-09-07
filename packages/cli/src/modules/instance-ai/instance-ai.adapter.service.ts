@@ -2440,6 +2440,7 @@ export class InstanceAiAdapterService {
 						type: c.type,
 						index,
 						...(c.options ? { options: c.options } : {}),
+						...(c.defaultValue ? { defaultValue: c.defaultValue } : {}),
 					}),
 				);
 			},
@@ -2458,6 +2459,7 @@ export class InstanceAiAdapterService {
 					type: result.type,
 					index: result.index,
 					...(result.options ? { options: result.options } : {}),
+					...(result.defaultValue ? { defaultValue: result.defaultValue } : {}),
 				};
 			},
 

@@ -68,6 +68,7 @@ erDiagram
 "public.data_table_column" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ dataTableId FK
+  varchar_128_ defaultValue
   varchar_36_ id
   integer index
   varchar_128_ name

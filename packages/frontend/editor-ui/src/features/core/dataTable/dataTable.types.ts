@@ -32,11 +32,13 @@ export type DataTableColumn = {
 	type: DataTableColumnType;
 	index: number;
 	options?: string[] | null;
+	defaultValue?: string | null;
 };
 
 export type DataTableColumnCreatePayload = Pick<DataTableColumn, 'name' | 'type'> & {
 	csvColumnName?: string;
 	options?: string[];
+	defaultValue?: string | null;
 };
 
 export type DataTableValue = string | number | boolean | Date | null;

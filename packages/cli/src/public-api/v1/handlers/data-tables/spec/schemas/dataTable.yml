@@ -31,6 +31,10 @@ properties:
           description: Allowed enum values
           items:
             type: string
+        defaultValue:
+          type: string
+          nullable: true
+          description: Default enum value
   metadata:
     type: object
     description: Extensible Data Table configuration

@@ -51,7 +51,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [credential_dependency](credential_dependency.md) | 5 |  | table |
 | [credentials_entity](credentials_entity.md) | 12 |  | table |
 | [data_table](data_table.md) | 6 |  | table |
-| [data_table_column](data_table_column.md) | 8 |  | table |
+| [data_table_column](data_table_column.md) | 9 |  | table |
 | [data_table_mutation_event](data_table_mutation_event.md) | 8 |  | table |
 | [data_table_trigger_delivery](data_table_trigger_delivery.md) | 16 |  | table |
 | [data_table_trigger_subscription](data_table_trigger_subscription.md) | 9 |  | table |
@@ -839,6 +839,7 @@ erDiagram
 "data_table_column" {
   datetime_3_ createdAt
   varchar_36_ dataTableId FK
+  varchar_128_ defaultValue
   varchar_36_ id PK
   INTEGER index
   varchar_128_ name

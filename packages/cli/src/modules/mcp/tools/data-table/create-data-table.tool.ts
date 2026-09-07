@@ -12,6 +12,7 @@ const columnSchema = z.object({
 	name: columnNameSchema,
 	type: dataTableColumnTypeSchema,
 	options: z.array(z.string()).min(1).max(100).optional(),
+	defaultValue: z.string().optional(),
 });
 
 const createInputSchema = {
@@ -63,6 +64,7 @@ export const createCreateDataTableTool = (
 			name: string;
 			type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
 			options?: string[];
+			defaultValue?: string;
 		}>;
 	}) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
@@ -78,6 +80,7 @@ export const createCreateDataTableTool = (
 					name: col.name,
 					type: col.type,
 					options: col.options,
+					defaultValue: col.defaultValue,
 				})),
 			});
 

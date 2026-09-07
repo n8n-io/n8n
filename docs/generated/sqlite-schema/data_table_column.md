@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "data_table_column" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "type" varchar(32) NOT NULL, "index" integer NOT NULL, "dataTableId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "options" text, CONSTRAINT "UQ_8082ec4890f892f0bc77473a123" UNIQUE ("dataTableId", "name"), CONSTRAINT "FK_930b6e8faaf88294cef23484160" FOREIGN KEY ("dataTableId") REFERENCES "data_table" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "data_table_column" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "type" varchar(32) NOT NULL, "index" integer NOT NULL, "dataTableId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "options" text, "defaultValue" varchar(128), CONSTRAINT "UQ_8082ec4890f892f0bc77473a123" UNIQUE ("dataTableId", "name"), CONSTRAINT "FK_930b6e8faaf88294cef23484160" FOREIGN KEY ("dataTableId") REFERENCES "data_table" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -17,6 +17,7 @@ CREATE TABLE "data_table_column" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" 
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | dataTableId | varchar(36) |  | false |  | [data_table](data_table.md) |  |
+| defaultValue | varchar(128) |  | true |  |  |  |
 | id | varchar(36) |  | false | [data_table_trigger_subscription](data_table_trigger_subscription.md) |  |  |
 | index | INTEGER |  | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
@@ -51,6 +52,7 @@ erDiagram
 "data_table_column" {
   datetime_3_ createdAt
   varchar_36_ dataTableId FK
+  varchar_128_ defaultValue
   varchar_36_ id PK
   INTEGER index
   varchar_128_ name

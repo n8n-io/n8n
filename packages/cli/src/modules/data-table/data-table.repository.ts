@@ -90,6 +90,7 @@ export class DataTableRepository extends Repository<DataTable> {
 					type: col.type,
 					index: col.index ?? index,
 					options: col.options ?? null,
+					defaultValue: col.defaultValue ?? null,
 				});
 			});
 

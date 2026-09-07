@@ -26,6 +26,7 @@ export type DataTableColumn = {
 	index: number;
 	dataTableId: string;
 	options?: string[] | null;
+	defaultValue?: string | null;
 };
 
 export type DataTableMetadata = Record<string, never>;
@@ -43,6 +44,7 @@ export type DataTable = {
 export type CreateDataTableColumnOptions = Pick<DataTableColumn, 'name' | 'type'> & {
 	index?: number;
 	options?: string[];
+	defaultValue?: string;
 };
 
 export type CreateDataTableOptions = Pick<DataTable, 'name'> & {

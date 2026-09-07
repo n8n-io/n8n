@@ -24,6 +24,7 @@ const inputSchema = {
 		.max(100)
 		.optional()
 		.describe('Allowed values. Required when type is enum.'),
+	defaultValue: z.string().optional().describe('Default value. Only supported when type is enum.'),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -56,12 +57,14 @@ export const createAddDataTableColumnTool = (
 		name,
 		type,
 		options,
+		defaultValue,
 	}: {
 		dataTableId: string;
 		projectId: string;
 		name: string;
 		type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
 		options?: string[];
+		defaultValue?: string;
 	}) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
@@ -74,6 +77,7 @@ export const createAddDataTableColumnTool = (
 				name,
 				type,
 				options,
+				defaultValue,
 			});
 
 			const output = {
@@ -84,6 +88,7 @@ export const createAddDataTableColumnTool = (
 					name: column.name,
 					type: column.type,
 					...(column.options ? { options: column.options } : {}),
+					...(column.defaultValue ? { defaultValue: column.defaultValue } : {}),
 				},
 			};
 

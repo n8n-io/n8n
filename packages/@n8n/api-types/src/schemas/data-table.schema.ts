@@ -58,6 +58,7 @@ export const dataTableCreateColumnBaseSchema = z.object({
 	type: dataTableColumnTypeSchema,
 	index: z.number().optional(),
 	options: dataTableEnumOptionsSchema.optional(),
+	defaultValue: z.string().trim().min(1).max(128).optional(),
 });
 
 export const dataTableCreateColumnSchema = dataTableCreateColumnBaseSchema.superRefine(
@@ -69,11 +70,25 @@ export const dataTableCreateColumnSchema = dataTableCreateColumnBaseSchema.super
 				path: ['options'],
 			});
 		}
-		if (column.type !== 'enum' && column.options !== undefined) {
+		if (
+			column.type === 'enum' &&
+			column.defaultValue !== undefined &&
+			!column.options?.includes(column.defaultValue)
+		) {
 			context.addIssue({
 				code: z.ZodIssueCode.custom,
-				message: 'Only enum columns can define options',
-				path: ['options'],
+				message: 'The enum default value must be one of its options',
+				path: ['defaultValue'],
+			});
+		}
+		if (
+			column.type !== 'enum' &&
+			(column.options !== undefined || column.defaultValue !== undefined)
+		) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Only enum columns can define options or a default value',
+				path: [column.options !== undefined ? 'options' : 'defaultValue'],
 			});
 		}
 	},
@@ -85,6 +100,7 @@ export const dataTableColumnSchema = z.object({
 	type: dataTableColumnTypeSchema,
 	index: z.number(),
 	options: dataTableEnumOptionsSchema.nullable(),
+	defaultValue: z.string().nullable(),
 	dataTableId: dataTableIdSchema,
 });
 

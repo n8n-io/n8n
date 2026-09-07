@@ -6,6 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | dataTableId | varchar(36) |  | false |  | [public.data_table](public.data_table.md) |  |
+| defaultValue | varchar(128) |  | true |  |  | Default value for an enum column |
 | id | varchar(36) |  | false | [public.data_table_trigger_subscription](public.data_table_trigger_subscription.md) |  |  |
 | index | integer |  | false |  |  | Column order, starting from 0 (0 = first column) |
 | name | varchar(128) |  | false |  |  |  |
@@ -46,6 +47,7 @@ erDiagram
 "public.data_table_column" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ dataTableId FK
+  varchar_128_ defaultValue
   varchar_36_ id
   integer index
   varchar_128_ name

@@ -399,7 +399,8 @@ export class DataTableService {
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			const transformedRows = this.validateAndTransformRows(rows, columns);
+			const rowsWithDefaults = this.applyColumnDefaults(rows, columns);
+			const transformedRows = this.validateAndTransformRows(rowsWithDefaults, columns);
 			const subscriptions = await this.mutationEventService.findSubscriptions(
 				dataTableId,
 				'rowInserted',
@@ -530,6 +531,7 @@ export class DataTableService {
 			}
 
 			// No rows were updated, so insert a new one
+			const [dataWithDefaults] = this.applyColumnDefaults([data], columns);
 			const insertSubscriptions = await this.mutationEventService.findSubscriptions(
 				dataTableId,
 				'rowInserted',
@@ -538,7 +540,7 @@ export class DataTableService {
 			);
 			const inserted = await this.dataTableRowsRepository.insertRows(
 				dataTableId,
-				[data],
+				[dataWithDefaults],
 				columns,
 				returnData || insertSubscriptions.length > 0 ? 'all' : 'id',
 				trx,
@@ -855,6 +857,30 @@ export class DataTableService {
 				);
 			}
 			return transformedRow;
+		});
+	}
+
+	private applyColumnDefaults(
+		rows: DataTableRows,
+		columns: Array<{ name: string; type: DataTableColumnType; defaultValue?: string | null }>,
+	): DataTableRows {
+		const defaults = columns
+			.filter(
+				(column): column is typeof column & { defaultValue: string } =>
+					column.type === 'enum' && column.defaultValue !== null && column.defaultValue !== undefined,
+			)
+			.map((column) => [column.name, column.defaultValue] as const);
+
+		if (defaults.length === 0) return rows;
+
+		return rows.map((row) => {
+			const rowWithDefaults = { ...row };
+			for (const [columnName, defaultValue] of defaults) {
+				if (!(columnName in rowWithDefaults)) {
+					rowWithDefaults[columnName] = defaultValue;
+				}
+			}
+			return rowWithDefaults;
 		});
 	}
 

@@ -762,6 +762,7 @@ export interface DataTableColumnInfo {
 	type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
 	index: number;
 	options?: string[];
+	defaultValue?: string;
 }
 
 export interface DataTableFilterInput {
@@ -797,6 +798,7 @@ export interface InstanceAiDataTableService {
 			name: string;
 			type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
 			options?: string[];
+			defaultValue?: string;
 		}>,
 		options?: { projectId?: string },
 	): Promise<DataTableSummary>;
@@ -812,6 +814,7 @@ export interface InstanceAiDataTableService {
 			name: string;
 			type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
 			options?: string[];
+			defaultValue?: string;
 		},
 		options?: DataTableIdOptions,
 	): Promise<DataTableColumnInfo>;

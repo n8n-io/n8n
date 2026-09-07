@@ -82,6 +82,7 @@ export const createSearchDataTablesTool = (
 					type: col.type,
 					index: col.index,
 					...(col.options ? { options: col.options } : {}),
+					...(col.defaultValue ? { defaultValue: col.defaultValue } : {}),
 				})),
 				metadata: table.metadata,
 			}));

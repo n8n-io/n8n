@@ -16,6 +16,7 @@ import { useDataTableTypes } from '@/features/core/dataTable/composables/useData
 import ColumnHeader from '@/features/core/dataTable/components/dataGrid/ColumnHeader.vue';
 import ElDatePickerCellEditor from '@/features/core/dataTable/components/dataGrid/ElDatePickerCellEditor.vue';
 import ElDatePickerFilter from '@/features/core/dataTable/components/dataGrid/ElDatePickerFilter.vue';
+import EnumSelectCellRenderer from '@/features/core/dataTable/components/dataGrid/EnumSelectCellRenderer.vue';
 import orderBy from 'lodash/orderBy';
 import AddColumnButton from '@/features/core/dataTable/components/dataGrid/AddColumnButton.vue';
 import AddRowButton from '@/features/core/dataTable/components/dataGrid/AddRowButton.vue';
@@ -89,9 +90,17 @@ export const useDataTableColumns = ({
 		};
 
 		if (col.type === 'enum') {
-			columnDef.cellEditor = 'agSelectCellEditor';
-			columnDef.cellEditorParams = { values: col.options ?? [] };
-			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
+			columnDef.editable = false;
+			columnDef.cellRendererSelector = (params: ICellRendererParams) => {
+				if (params.data?.id === ADD_ROW_ROW_ID) return {};
+				return {
+					component: EnumSelectCellRenderer,
+					params: {
+						options: col.options ?? [],
+						isDisabled: () => readOnly.value || isOversizedValue(params.value),
+					},
+				};
+			};
 			columnDef.filterParams = {
 				filterOptions: getEnumColumnFilterOptions(i18n),
 			};

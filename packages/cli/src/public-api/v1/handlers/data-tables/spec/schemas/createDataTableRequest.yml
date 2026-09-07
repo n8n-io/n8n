@@ -27,6 +27,10 @@ properties:
           items:
             type: string
             maxLength: 128
+        defaultValue:
+          type: string
+          maxLength: 128
+          description: Default value. Only supported when type is enum and must match an option.
       required:
         - name
         - type

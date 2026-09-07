@@ -51,7 +51,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.credential_dependency](public.credential_dependency.md) | 5 |  | BASE TABLE |
 | [public.credentials_entity](public.credentials_entity.md) | 12 |  | BASE TABLE |
 | [public.data_table](public.data_table.md) | 6 |  | BASE TABLE |
-| [public.data_table_column](public.data_table_column.md) | 8 |  | BASE TABLE |
+| [public.data_table_column](public.data_table_column.md) | 9 |  | BASE TABLE |
 | [public.data_table_mutation_event](public.data_table_mutation_event.md) | 8 |  | BASE TABLE |
 | [public.data_table_trigger_delivery](public.data_table_trigger_delivery.md) | 16 |  | BASE TABLE |
 | [public.data_table_trigger_subscription](public.data_table_trigger_subscription.md) | 9 |  | BASE TABLE |
@@ -852,6 +852,7 @@ erDiagram
 "public.data_table_column" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ dataTableId FK
+  varchar_128_ defaultValue
   varchar_36_ id
   integer index
   varchar_128_ name

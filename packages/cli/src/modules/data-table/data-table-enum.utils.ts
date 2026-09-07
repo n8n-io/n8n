@@ -33,11 +33,17 @@ export function normalizeEnumOptions(options: string[] | undefined): string[] {
 
 export function normalizeColumn(column: DataTableCreateColumnSchema): DataTableCreateColumnSchema {
 	if (column.type === 'enum') {
-		return { ...column, options: normalizeEnumOptions(column.options) };
+		const options = normalizeEnumOptions(column.options);
+		const defaultValue = column.defaultValue?.trim();
+		if (defaultValue !== undefined && !options.includes(defaultValue)) {
+			throw new DataTableValidationError('The enum default value must be one of its options');
+		}
+
+		return { ...column, options, defaultValue };
 	}
 
-	if (column.options !== undefined) {
-		throw new DataTableValidationError('Only enum columns can define options');
+	if (column.options !== undefined || column.defaultValue !== undefined) {
+		throw new DataTableValidationError('Only enum columns can define options or a default value');
 	}
 
 	return column;

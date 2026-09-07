@@ -116,6 +116,7 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 				type: schema.type,
 				index: schema.index,
 				options: schema.options ?? null,
+				defaultValue: schema.defaultValue ?? null,
 			});
 
 			await em.insert(DataTableColumn, column);

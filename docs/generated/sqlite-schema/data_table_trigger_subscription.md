@@ -72,6 +72,7 @@ erDiagram
 "data_table_column" {
   datetime_3_ createdAt
   varchar_36_ dataTableId FK
+  varchar_128_ defaultValue
   varchar_36_ id PK
   INTEGER index
   varchar_128_ name
