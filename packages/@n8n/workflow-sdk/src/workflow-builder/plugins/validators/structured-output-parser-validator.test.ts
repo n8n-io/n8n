@@ -1,4 +1,7 @@
 import type { GraphNode, NodeInstance } from '../../../types/base';
+import { workflow } from '../../../workflow-builder';
+import { node, trigger } from '../../node-builders/node-builder';
+import { outputParser } from '../../node-builders/subnode-builders';
 import type { PluginContext, ValidationIssue } from '../types';
 import { structuredOutputParserValidator } from './structured-output-parser-validator';
 
@@ -6,6 +9,8 @@ const OUTPUT_PARSER = '@n8n/n8n-nodes-langchain.outputParserStructured';
 const INFORMATION_EXTRACTOR = '@n8n/n8n-nodes-langchain.informationExtractor';
 const CODE_TOOL = '@n8n/n8n-nodes-langchain.toolCode';
 const WORKFLOW_TOOL = '@n8n/n8n-nodes-langchain.toolWorkflow';
+const CHAIN_LLM = '@n8n/n8n-nodes-langchain.chainLlm';
+const AGENT = '@n8n/n8n-nodes-langchain.agent';
 
 function validate(
 	parameters: Record<string, unknown>,
@@ -244,6 +249,68 @@ describe('structuredOutputParserValidator', () => {
 					WORKFLOW_TOOL,
 				),
 			).toContain('STRUCTURED_OUTPUT_PARSER_SCHEMA_IN_EXAMPLE_FIELD');
+		});
+	});
+
+	describe('production payloads through workflow().validate()', () => {
+		// Two example values copied from production builds that passed validation and then
+		// failed at run time: a JSON Schema pasted as the example (the model echoed the schema
+		// back and every field came out null) and an object-valued example (the node threw
+		// '"[object Object]" is not valid JSON').
+		const SCHEMA_PASTED_AS_EXAMPLE =
+			'{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    "ats_score": { "type": "number" },\n    "feedback": { "type": "string" },\n    "selected": { "type": "boolean" }\n  },\n  "required": ["name", "ats_score", "feedback", "selected"]\n}';
+		const OBJECT_VALUED_EXAMPLE = {
+			customer_name: '',
+			delivery_address: '',
+			is_order_complete: false,
+			phone_number: '',
+			products_ordered: '',
+			reply_text: 'สวัสดีค่ะ ยินดีต้อนรับ มีอะไรให้ช่วยคะ',
+			total_amount: '',
+		};
+		const CORRECTED_EXAMPLE =
+			'{\n  "name": "Jane Doe",\n  "ats_score": 78,\n  "feedback": "Add measurable achievements.",\n  "selected": true\n}';
+
+		function parserCodes(rootType: string, rootVersion: number, jsonSchemaExample: unknown) {
+			const parser = outputParser({
+				type: OUTPUT_PARSER,
+				version: 1.3,
+				config: { name: 'Structured Output Parser', parameters: { jsonSchemaExample } },
+			});
+			const root = node({
+				type: rootType,
+				version: rootVersion,
+				config: {
+					name: 'Root',
+					parameters: { hasOutputParser: true },
+					subnodes: { outputParser: parser },
+				},
+			});
+			const start = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const result = workflow('wf', 'Parser check').add(start).to(root).validate();
+			return [...result.errors, ...result.warnings]
+				.map((issue) => issue.code)
+				.filter((code) => code.startsWith('STRUCTURED_OUTPUT_PARSER'));
+		}
+
+		it('flags a JSON Schema pasted into the example of a Basic LLM Chain parser', () => {
+			expect(parserCodes(CHAIN_LLM, 1.7, SCHEMA_PASTED_AS_EXAMPLE)).toEqual([
+				'STRUCTURED_OUTPUT_PARSER_SCHEMA_IN_EXAMPLE_FIELD',
+			]);
+		});
+
+		it('flags an object-valued example on an AI Agent parser', () => {
+			expect(parserCodes(AGENT, 3.1, OBJECT_VALUED_EXAMPLE)).toEqual([
+				'STRUCTURED_OUTPUT_PARSER_EXAMPLE_NOT_STRING',
+			]);
+		});
+
+		it('accepts the corrected example values', () => {
+			expect(parserCodes(CHAIN_LLM, 1.7, CORRECTED_EXAMPLE)).toEqual([]);
 		});
 	});
 });
