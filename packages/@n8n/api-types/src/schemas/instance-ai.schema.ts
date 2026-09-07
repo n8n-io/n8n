@@ -1280,6 +1280,22 @@ export const instanceAiAgentAttachmentSchema = z.object({
 });
 export type InstanceAiAgentAttachment = z.infer<typeof instanceAiAgentAttachmentSchema>;
 
+/**
+ * An app reference the apps pages hand off to a message. Binds the thread to
+ * the app the `apps` tool should build. `appId` is absent while the app is
+ * still to be created (`isNewApp`); the name and namespace then tell the agent
+ * what to call `apps.create` with.
+ */
+export const instanceAiAppAttachmentSchema = z.object({
+	type: z.literal('app'),
+	projectId: z.string().min(1).max(64),
+	appId: z.string().min(1).max(64).optional(),
+	name: z.string().min(1).max(255),
+	namespace: z.string().min(1).max(255).optional(),
+	isNewApp: z.boolean().optional(),
+});
+export type InstanceAiAppAttachment = z.infer<typeof instanceAiAppAttachmentSchema>;
+
 const instanceAiNodeRefSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
@@ -1318,6 +1334,7 @@ export type InstanceAiNodesAttachment = z.infer<typeof instanceAiNodesAttachment
 export const instanceAiResourceAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiWorkflowAttachmentSchema,
 	instanceAiAgentAttachmentSchema,
+	instanceAiAppAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
 ]);
 export type InstanceAiResourceAttachment = z.infer<typeof instanceAiResourceAttachmentSchema>;
@@ -1414,6 +1431,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
+ * - `app_builder_page` — Instance AI hand-off from the apps list or app details page
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `evals` — Instance AI evaluation harness / offline eval runners
@@ -1431,6 +1449,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
+	'app_builder_page',
 	'agent_preview',
 	'assistant_page',
 	// Experiment cleanup: remove with openWorkflowInAssistant.
