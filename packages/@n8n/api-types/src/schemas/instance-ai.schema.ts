@@ -974,10 +974,6 @@ export interface InstanceAiBrowserCreateLinkResponse {
 	ttlSeconds: number | null;
 }
 
-export class InstanceAiBrowserCreateLinkRequest extends Z.class({
-	pushRef: z.string().min(1).max(255).optional(),
-}) {}
-
 export interface InstanceAiBrowserStatusResponse {
 	connected: boolean;
 	connectedAt: string | null;

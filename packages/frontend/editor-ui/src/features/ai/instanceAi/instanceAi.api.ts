@@ -167,7 +167,6 @@ export async function createBrowserLink(
 		context,
 		'POST',
 		'/instance-ai/browser/create-link',
-		{ pushRef: context.pushRef },
 	);
 }
 
@@ -183,12 +182,6 @@ export async function getBrowserStatus(
 		'GET',
 		'/instance-ai/browser/status',
 	);
-}
-
-export async function updateBrowserPushRef(context: IRestApiContext): Promise<void> {
-	await makeRestApiRequest(context, 'POST', '/instance-ai/browser/update-push-ref', {
-		pushRef: context.pushRef,
-	});
 }
 
 /**

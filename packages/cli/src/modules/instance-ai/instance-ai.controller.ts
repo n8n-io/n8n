@@ -12,7 +12,6 @@ import {
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
-	InstanceAiBrowserCreateLinkRequest,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
 	InstanceAiVerifySearchRequest,
@@ -1364,14 +1363,10 @@ export class InstanceAiController {
 
 	@Post('/browser/create-link')
 	@GlobalScope('instanceAi:gateway')
-	async createBrowserLink(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiBrowserCreateLinkRequest,
-	) {
+	async createBrowserLink(req: AuthenticatedRequest) {
 		this.requireInstanceAiEnabled();
 		this.assertBrowserChannelEnabled();
-		return await this.browserSessionService.createLink(req.user.id, payload.pushRef);
+		return await this.browserSessionService.createLink(req.user.id);
 	}
 
 	@Get('/browser/status')
@@ -1380,19 +1375,6 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		this.assertBrowserChannelEnabled();
 		return this.browserSessionService.getStatus(req.user.id);
-	}
-
-	@Post('/browser/update-push-ref')
-	@GlobalScope('instanceAi:gateway')
-	updateBrowserPushRef(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiBrowserCreateLinkRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		this.assertBrowserChannelEnabled();
-		if (payload.pushRef) this.browserSessionService.updatePushRef(req.user.id, payload.pushRef);
-		return { ok: true };
 	}
 
 	@Post('/browser/disconnect-session')

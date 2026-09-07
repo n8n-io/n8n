@@ -173,12 +173,6 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			const { useInstanceAiMcpStore } = await import('./instanceAiMcp.store');
 			useInstanceAiMcpStore().handleToolCallFailed(event.data.connectionId);
 		},
-		instanceAiBrowserRecordingCompleted: async (event, { router }) => {
-			await router.push({
-				name: INSTANCE_AI_THREAD_VIEW,
-				params: { threadId: event.data.threadId },
-			});
-		},
 	},
 	settingsPages: [
 		{

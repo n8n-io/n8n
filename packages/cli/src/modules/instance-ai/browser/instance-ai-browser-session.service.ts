@@ -54,14 +54,12 @@ interface BrowserSession {
 	extensionVersion: string | null;
 	connection: BrowserConnection;
 	mcpServer: BrowserLocalMcpServer;
-	pushRef?: string;
 	completedRecordingIds: Set<string>;
 }
 
 interface BrowserRecordingCompletion {
 	userId: string;
 	projectId: string;
-	pushRef?: string;
 	recording: BrowserRecording;
 }
 
@@ -100,9 +98,8 @@ export class InstanceAiBrowserSessionService {
 		this.recordingCompletionHandler = handler;
 	}
 
-	async createLink(userId: string, pushRef?: string): Promise<InstanceAiBrowserCreateLinkResponse> {
+	async createLink(userId: string): Promise<InstanceAiBrowserCreateLinkResponse> {
 		const session = this.sessions.get(userId) ?? (await this.createSession(userId));
-		session.pushRef = pushRef;
 
 		session.relayAuthToken = `bu_${nanoid(32)}`;
 		session.tokenCreatedAt = Date.now();
@@ -117,11 +114,6 @@ export class InstanceAiBrowserSessionService {
 			expiresAt: expiresAt.toISOString(),
 			ttlSeconds: Math.ceil(CONNECT_TOKEN_TTL_MS / 1000),
 		};
-	}
-
-	updatePushRef(userId: string, pushRef: string): void {
-		const session = this.sessions.get(userId);
-		if (session) session.pushRef = pushRef;
 	}
 
 	getStatus(userId: string): InstanceAiBrowserStatusResponse {
@@ -272,7 +264,6 @@ export class InstanceAiBrowserSessionService {
 			const { threadId } = await handler({
 				userId,
 				projectId: project.id,
-				pushRef: session.pushRef,
 				recording,
 			});
 			return {

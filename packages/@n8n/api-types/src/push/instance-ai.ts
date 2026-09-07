@@ -19,13 +19,6 @@ export type InstanceAiPushMessage =
 			};
 	  }
 	| {
-			type: 'instanceAiBrowserRecordingCompleted';
-			data: {
-				threadId: string;
-				runId: string;
-			};
-	  }
-	| {
 			type: 'updateInstanceAiCredits';
 			data: InstanceAiCredits & {
 				// Present only on a per-message claim that carries the acting thread's

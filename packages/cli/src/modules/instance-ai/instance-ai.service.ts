@@ -1462,7 +1462,6 @@ export class InstanceAiService {
 	private async launchBrowserRecording(input: {
 		userId: string;
 		projectId: string;
-		pushRef?: string;
 		recording: BrowserRecording;
 	}): Promise<{ threadId: string }> {
 		if (
@@ -1499,29 +1498,11 @@ export class InstanceAiService {
 			'Build a workflow from my browser recording.',
 			recordingContext,
 		);
-		let runId: string;
 		try {
-			runId = this.startRun(
-				user,
-				threadId,
-				message,
-				undefined,
-				undefined,
-				undefined,
-				input.pushRef,
-			);
+			this.startRun(user, threadId, message);
 		} catch (error) {
 			await this.memoryService.deleteThread(threadId);
 			throw error;
-		}
-		const event = {
-			type: 'instanceAiBrowserRecordingCompleted' as const,
-			data: { threadId, runId },
-		};
-		if (input.pushRef) {
-			this.push.send(event, input.pushRef);
-		} else {
-			this.push.sendToUsers(event, [user.id]);
 		}
 		return { threadId };
 	}
