@@ -40,16 +40,3 @@ const i18n = useI18n();
 		</N8nTooltip>
 	</N8nChatActions>
 </template>
-
-<style lang="scss" module>
-.actions {
-	margin-top: var(--spacing--4xs);
-	margin-left: calc(var(--spacing--4xs) * -1);
-
-	& g,
-	& path {
-		color: var(--icon-color);
-		stroke-width: 2.5;
-	}
-}
-</style>
