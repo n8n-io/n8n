@@ -42,9 +42,8 @@ import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import {
-	configuredCapabilityKinds,
+	capabilityCountTelemetryProperties,
 	countAgentCapabilities,
-	totalAgentCapabilities,
 } from './utils/agent-capabilities';
 import { saveAgentDraftFenced } from './utils/agent-draft.utils';
 
@@ -411,15 +410,7 @@ export class AgentPublishService {
 			// Set by the transaction above to either targetHistory.versionId or
 			// agent.versionId, so it is never null on this path.
 			version_id: agent.activeVersionId!,
-			capability_kinds: configuredCapabilityKinds(counts),
-			capability_count: totalAgentCapabilities(counts),
-			tool_count: counts.tool,
-			skill_count: counts.skill,
-			sub_agent_count: counts.subAgent,
-			mcp_server_count: counts.mcpServer,
-			vector_store_count: counts.vectorStore,
-			task_count: counts.task,
-			trigger_count: counts.channel,
+			...capabilityCountTelemetryProperties(counts),
 			model,
 			tool_types,
 		} as const;
