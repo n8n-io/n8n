@@ -1,6 +1,7 @@
 import {
 	CreatedProjectPublicDto,
 	CreateProjectPublicDto,
+	DeleteProjectQueryPublicDto,
 	ListProjectsQueryPublicDto,
 	ProjectListPublicDto,
 	ProjectPublicDto,
@@ -118,11 +119,13 @@ export class ProjectsPublicController {
 	@ApiDescription('Delete a project from your instance.')
 	@ApiTags(tags)
 	@ApiResponse(204)
+	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async deleteProject(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
+		@Query _query: DeleteProjectQueryPublicDto,
 	): Promise<void> {
 		await this.projectService.deleteProject(req.user, projectId);
 	}
