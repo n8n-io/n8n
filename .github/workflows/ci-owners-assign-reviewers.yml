@@ -55,6 +55,7 @@ jobs:
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir . --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Assign reviewer teams
         env:

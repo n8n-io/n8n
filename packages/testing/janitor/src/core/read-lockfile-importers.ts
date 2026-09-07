@@ -37,8 +37,13 @@ function readLockfile(): Lockfile | undefined {
 	const lockPath = join(getGitRoot(process.cwd()), 'pnpm-lock.yaml');
 	if (!existsSync(lockPath)) return undefined;
 	try {
-		const document = parseAllDocuments(readFileSync(lockPath, 'utf8')).at(-1);
-		if (!document || document.errors.length > 0) return undefined;
+		const documents = parseAllDocuments(readFileSync(lockPath, 'utf8'));
+		if (documents.length === 0 || documents.some((doc) => doc.errors.length > 0)) {
+			return undefined;
+		}
+
+		const document = documents.at(-1);
+		if (!document) return undefined;
 
 		const value: unknown = document.toJS();
 		return typeof value === 'object' && value !== null ? value : undefined;

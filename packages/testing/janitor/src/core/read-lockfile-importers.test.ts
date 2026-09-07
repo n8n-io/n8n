@@ -61,4 +61,25 @@ snapshots:
 		});
 		expect(readRuntimeClosure()).toEqual(new Set(['external', 'transitive']));
 	});
+
+	it('returns fallback empty results when any document has syntax errors', () => {
+		writeFileSync(
+			join(dir, 'pnpm-lock.yaml'),
+			`---
+lockfileVersion: '9.0'
+malformed: [unclosed
+---
+lockfileVersion: '9.0'
+importers:
+  packages/cli:
+    dependencies:
+      external:
+        specifier: 1.0.0
+        version: 1.0.0
+`,
+		);
+
+		expect(readLockfileImporters()).toEqual({});
+		expect(readRuntimeClosure()).toBeUndefined();
+	});
 });
