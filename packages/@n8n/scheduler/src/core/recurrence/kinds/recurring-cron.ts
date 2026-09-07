@@ -2,7 +2,7 @@ import { RecurringCronUnitList } from '@n8n/constants';
 import type { CronExpression } from 'n8n-workflow';
 
 import { InvalidScheduleError } from '../../errors';
-import type { RecurringCronSchedule, ScheduledJob } from '../../types';
+import type { RecurringCronSchedule, StoredSchedule } from '../../types';
 import { required } from '../field';
 import { periodsBetween } from '../periods';
 import { type CronCursor, cronNextRun, parseCron, resolvedTimezone, validateCron } from './cron';
@@ -154,7 +154,7 @@ export function* recurringCronOccurrences(
  * @throws {CorruptStorageRowError} When a required field is unset.
  */
 export function resolveRecurringCron(
-	job: ScheduledJob,
+	job: StoredSchedule,
 	defaultTimezone: string,
 ): RecurringCronSchedule {
 	return {

@@ -317,4 +317,23 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'A self-hosted instance reached a complete AI Assistant setup for the first time: model configured, sandbox configured, and web search decided (configured or explicitly disabled) — the same predicate that unlocks the assistant UI. Fires at most once per instance, guarded by a persisted settings key, regardless of how the last piece was set: emitted from the settings save path, with a boot-time check so an env-var finish is also counted. No "User" prefix because the last piece can land via env vars with no acting user.',
 		properties: z.object({ ...setupSnapshotProps }),
 	},
+	USER_ADDED_NODES_TO_CHAT: {
+		name: 'User added nodes to chat',
+		description:
+			'The user attached one or more canvas nodes as context to the Instance AI chat. Fires once per add action, after the attachment is built — so node_count reflects the nodes actually attached (unresolved ids dropped, capped at the per-set maximum), not the raw selection.',
+		properties: z.object({
+			source: z
+				.enum(['node_toolbar', 'selection_toolbar', 'context_menu', 'group_title_bar', 'keyboard'])
+				.describe('Which affordance triggered the add'),
+			node_count: z.number().describe('Number of nodes actually attached in this add action'),
+		}),
+	},
+	USER_SENT_CHAT_MESSAGE_WITH_NODES: {
+		name: 'User sent chat message with nodes',
+		description:
+			'The user sent an Instance AI chat message that carried node context. Fires only when the submitted message includes at least one node attachment; node_count is the total nodes across every attached set in the message.',
+		properties: z.object({
+			node_count: z.number().describe('Total nodes attached across the sent message'),
+		}),
+	},
 });

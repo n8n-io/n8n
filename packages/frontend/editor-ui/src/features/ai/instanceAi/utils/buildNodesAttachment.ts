@@ -1,6 +1,6 @@
 import type { IConnections } from 'n8n-workflow';
 import { mapConnectionsByDestination, getChildNodes, getParentNodes } from 'n8n-workflow';
-import type { InstanceAiNodesAttachment } from '@n8n/api-types';
+import type { InstanceAiAttachment, InstanceAiNodesAttachment } from '@n8n/api-types';
 
 export interface NodeContextNode {
 	id: string;
@@ -160,4 +160,11 @@ export function buildNodesAttachment(
 	];
 
 	return { attachment: { type: 'nodes', workflowId, sets: serialized }, truncated };
+}
+
+/** Total nodes attached across every `nodes` attachment in a sent message. */
+export function countAttachedNodes(attachments?: InstanceAiAttachment[]): number {
+	return (attachments ?? [])
+		.filter((a): a is InstanceAiNodesAttachment => a.type === 'nodes')
+		.reduce((sum, a) => sum + a.sets.reduce((s, set) => s + set.nodes.length, 0), 0);
 }

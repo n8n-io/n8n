@@ -273,6 +273,20 @@ describe('N8nClient packages', () => {
 				JSON.stringify({ workflowIds: ['a'], workflowVersionPolicy: 'published-strict' }),
 			);
 		});
+
+		it('sends includeArchivedWorkflows only when true', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], includeArchivedWorkflows: false });
+			await client.exportPackage({ workflowIds: ['a'], includeArchivedWorkflows: true });
+
+			const [, first] = fetchMock.mock.calls[0] as [string, RequestInit];
+			const [, second] = fetchMock.mock.calls[1] as [string, RequestInit];
+			expect(first.body).toBe(JSON.stringify({ workflowIds: ['a'] }));
+			expect(second.body).toBe(
+				JSON.stringify({ workflowIds: ['a'], includeArchivedWorkflows: true }),
+			);
+		});
 	});
 
 	describe('importPackage', () => {

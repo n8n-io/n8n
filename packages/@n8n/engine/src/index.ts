@@ -15,12 +15,7 @@ export {
 } from './auth';
 export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
 
-export type {
-	EngineErrorResponse,
-	ExecutionSnapshot,
-	ExecutionStepsResponse,
-	StepDetail,
-} from './server';
+export type { EngineErrorResponse, ExecutionSnapshot, StepDetail } from './server';
 
 // The publisher stays internal: no host constructs or swaps one.
 export {
@@ -73,6 +68,7 @@ export type {
 
 export { ExecutionNotFoundError, StepNotFoundError } from './execution';
 export type {
+	CallerContext,
 	ExecutionMode,
 	ExecutionViewStore,
 	ExecutionRecord,
@@ -92,6 +88,7 @@ export type {
 	StepStore,
 	StepView,
 	TriggerOutputs,
+	WorkflowDocument,
 } from './execution';
 
 export { createDataSource, WorkflowExecution, WorkflowStepExecution } from './database';

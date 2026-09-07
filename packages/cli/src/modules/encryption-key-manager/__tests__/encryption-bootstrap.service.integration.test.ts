@@ -90,4 +90,38 @@ describe('EncryptionBootstrapService (integration)', () => {
 		});
 		expect(rows).toHaveLength(1);
 	});
+
+	describe('end-to-end write path (real key store, real cipher)', () => {
+		beforeEach(() => {
+			delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+		});
+
+		it('writes the legacy no-prefix format while rotation is off', async () => {
+			await Container.get(EncryptionBootstrapService).run();
+			const cipher = Container.get(Cipher);
+
+			const encrypted = await cipher.encryptV2('e2e-off');
+
+			expect(encrypted.includes(':')).toBe(false);
+			expect(cipher.decryptWithInstanceKey(encrypted)).toBe('e2e-off');
+			expect(await cipher.decryptV2(encrypted)).toBe('e2e-off');
+		});
+
+		it('writes the keyId-prefixed GCM format while rotation is on, round-tripping through the seeded key', async () => {
+			await Container.get(EncryptionBootstrapService).run();
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
+			try {
+				const cipher = Container.get(Cipher);
+
+				const encrypted = await cipher.encryptV2('e2e-on');
+
+				const active =
+					await Container.get(DeploymentKeyRepository).findActiveByType('data_encryption');
+				expect(encrypted.startsWith(`${active!.id}:`)).toBe(true);
+				expect(await cipher.decryptV2(encrypted)).toBe('e2e-on');
+			} finally {
+				delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			}
+		});
+	});
 });

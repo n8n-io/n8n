@@ -35,6 +35,9 @@ type ToolRowBase = {
 	invalid: boolean;
 	/** Human-readable reasons behind `invalid`; the union of member reasons for a grouped row. */
 	invalidReasons: string[];
+	/** True when the row blocks publishing but still works in preview (e.g. an unpublished workflow). */
+	warning: boolean;
+	warningReasons: string[];
 };
 
 export type GroupedToolRow = ToolRowBase & {
