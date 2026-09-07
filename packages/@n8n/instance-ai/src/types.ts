@@ -33,6 +33,7 @@ import type {
 	ITaskData,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import type { z } from 'zod';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -47,6 +48,14 @@ import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
+import type {
+	conversationHistoryExcerptSchema,
+	conversationHistoryMatchSourceSchema,
+	conversationHistoryMessageSchema,
+	conversationHistoryMessagesResultSchema,
+	conversationHistorySearchHitSchema,
+	conversationHistorySearchResultSchema,
+} from './tools/conversation-history.schema';
 import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
@@ -1156,6 +1165,37 @@ export type LocalGatewayStatus =
 			status: 'disabledGlobally' | 'disconnected' | 'disabled';
 	  };
 
+// ── Conversation history ─────────────────────────────────────────────────────
+
+export const CONVERSATION_HISTORY_MAX_SEARCH_LIMIT = 10;
+export const CONVERSATION_HISTORY_MAX_WINDOW_SIDE = 5;
+
+export type ConversationHistoryMatchSource = z.infer<typeof conversationHistoryMatchSourceSchema>;
+
+export type ConversationHistoryExcerpt = z.infer<typeof conversationHistoryExcerptSchema>;
+
+export type ConversationHistorySearchHit = z.infer<typeof conversationHistorySearchHitSchema>;
+
+export type ConversationHistorySearchResult = z.infer<typeof conversationHistorySearchResultSchema>;
+
+export type ConversationHistoryMessage = z.infer<typeof conversationHistoryMessageSchema>;
+
+export type ConversationHistoryMessagesResult = z.infer<
+	typeof conversationHistoryMessagesResultSchema
+>;
+
+/** Read-only recall over past conversations, pre-bound by the host to one
+ *  user, project and current thread. */
+export interface InstanceAiConversationHistoryReader {
+	search(params: { query?: string; limit?: number }): Promise<ConversationHistorySearchResult>;
+	getMessages(params: {
+		threadId: string;
+		aroundMessageId?: string;
+		before?: number;
+		after?: number;
+	}): Promise<ConversationHistoryMessagesResult>;
+}
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 export interface InstanceAiContext {
@@ -1184,6 +1224,9 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
+	/** Optional — wired by the host when the run has a bound project. Presence
+	 *  gates the `conversation-history` tool (orchestrator only). */
+	conversationHistoryService?: InstanceAiConversationHistoryReader;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

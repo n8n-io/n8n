@@ -186,6 +186,10 @@ export function readChatRefreshToken(req: Request): string | null {
 	return readRawCookie(req, CHAT_OAUTH_REFRESH_COOKIE_NAME);
 }
 
+export function clearChatRefreshToken(res: Response, req: Request, resourceUrl: string): void {
+	res.clearCookie(CHAT_OAUTH_REFRESH_COOKIE_NAME, chatOAuthCookieOptions(req, resourceUrl));
+}
+
 /**
  * Whether this GET is the shell asking for a fresh access token rather than for a page.
  *

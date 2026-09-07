@@ -574,11 +574,27 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.18.1'
+  node-version:        # default: '26.5.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
 ```
+
+The pnpm version comes from the `packageManager` field in the root
+`package.json`, through `resolve-pnpm-version.mjs`. There is no version input to
+keep in sync: a bump in `package.json` moves the setup step, the cache key and
+the version check together.
+
+The action caches the pnpm executable in `~/setup-pnpm` by OS, architecture and
+version. A cache miss runs `pnpm/setup` and retries once if the registry request
+fails. The action verifies the version and saves the cache before the rest of
+the job can fail.
+
+Concurrent jobs can all miss a new key before the first save completes. Jobs
+that start after the save use the cached executable. Windows keeps the standard
+`pnpm/setup` path because its runner cannot activate the cached POSIX home path.
+The existing `actions/setup-node` cache continues to store the pnpm package
+store.
 
 The Blacksmith layer cache lives on a sticky disk identified by
 `docker-cache-key`, and commits are last-writer-wins. Splitting the key per
@@ -660,6 +676,7 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|---------------------------|
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
+| `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
