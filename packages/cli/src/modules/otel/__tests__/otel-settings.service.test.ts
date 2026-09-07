@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import type { Logger } from '@n8n/backend-common';
 import type { Settings, SettingsRepository } from '@n8n/db';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import type { OtelConnectionParams } from '../otel-settings.service';
@@ -8,6 +13,7 @@ import { OtelConfig } from '../otel.config';
 
 describe('OtelSettingsService', () => {
 	const settingsRepository = mock<SettingsRepository>();
+	const logger = mock<Logger>();
 	const config = new OtelConfig(); // env-defaults (no env vars set in test runtime)
 	let service: OtelSettingsService;
 
@@ -21,7 +27,7 @@ describe('OtelSettingsService', () => {
 		for (const key of Object.keys(process.env)) {
 			if (key.startsWith('N8N_OTEL_')) delete process.env[key];
 		}
-		service = new OtelSettingsService(config, settingsRepository);
+		service = new OtelSettingsService(config, settingsRepository, logger);
 	});
 
 	afterAll(() => {
@@ -29,6 +35,43 @@ describe('OtelSettingsService', () => {
 	});
 
 	describe('loadSettings', () => {
+		it('warns and falls back to defaults when persisted exporterHeaders is not a string', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ exporterHeaders: 123 }),
+			} as Settings);
+
+			await service.loadSettings();
+			const result = service.getSettings();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('non-string exporterHeaders'),
+			);
+			expect(result.exporterHeaders).toBe('');
+		});
+
+		it('warns and falls back to defaults when the persisted row is not a settings object', async () => {
+			settingsRepository.findByKey.mockResolvedValue({ value: '"a-string"' } as Settings);
+
+			await service.loadSettings();
+			const result = service.getSettings();
+
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('not a settings object'));
+			expect(result.exporterServiceName).toBe('n8n');
+		});
+
+		it('warns and falls back to defaults when the persisted row contains invalid JSON', async () => {
+			settingsRepository.findByKey.mockResolvedValue({ value: 'not-valid-json' } as Settings);
+
+			await service.loadSettings();
+			const result = service.getSettings();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('invalid JSON'),
+				expect.objectContaining({ error: expect.any(String) }),
+			);
+			expect(result.exporterEndpoint).toBe('http://localhost:4318');
+		});
+
 		it('returns defaults when DB row is absent and no env vars are set', async () => {
 			settingsRepository.findByKey.mockResolvedValue(null);
 
@@ -84,7 +127,7 @@ describe('OtelSettingsService', () => {
 
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterEndpoint = 'https://from-env';
-			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 
 			await serviceWithEnv.loadSettings();
 			const result = serviceWithEnv.getSettings();
@@ -125,7 +168,7 @@ describe('OtelSettingsService', () => {
 
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterProtocol = 'grpc';
-			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 
 			await serviceWithEnv.loadSettings();
 			const result = serviceWithEnv.getSettings();
@@ -144,7 +187,7 @@ describe('OtelSettingsService', () => {
 			const configWithEnv = new OtelConfig();
 			configWithEnv.enabled = true;
 			configWithEnv.exporterEndpoint = 'https://from-env';
-			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 
 			await serviceWithEnv.loadSettings();
 			const result = serviceWithEnv.getSettings();
@@ -153,6 +196,88 @@ describe('OtelSettingsService', () => {
 			expect(result.exporterEndpoint).toBe('https://from-env');
 			expect(result.envManagedFields).toContain('enabled');
 			expect(result.envManagedFields).toContain('exporterEndpoint');
+		});
+
+		it('masks env-managed exporterHeaders in the settings response', async () => {
+			settingsRepository.findByKey.mockResolvedValue(null);
+			process.env.N8N_OTEL_EXPORTER_OTLP_HEADERS = 'authorization=Bearer secret-token';
+
+			const configWithEnv = new OtelConfig();
+			configWithEnv.exporterHeaders = 'authorization=Bearer secret-token';
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
+
+			await serviceWithEnv.loadSettings();
+			const result = serviceWithEnv.getSettings();
+
+			expect(result.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
+			expect(result.exporterHeaders).not.toContain('secret-token');
+			expect(result.envManagedFields).toContain('exporterHeaders');
+		});
+
+		it('returns an empty string when no headers are set', async () => {
+			settingsRepository.findByKey.mockResolvedValue(null);
+
+			await service.loadSettings();
+			const result = service.getSettings();
+
+			expect(result.exporterHeaders).toBe('');
+		});
+
+		it('masks stored exporterHeaders even when not env-managed', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ exporterHeaders: 'x-api-key=stored' }),
+			} as Settings);
+
+			await service.loadSettings();
+			const result = service.getSettings();
+
+			expect(result.exporterHeaders).toBe(`x-api-key=${CREDENTIAL_BLANKING_VALUE}`);
+			expect(result.exporterHeaders).not.toContain('stored');
+			expect(result.envManagedFields).not.toContain('exporterHeaders');
+		});
+
+		describe('values supplied via the _FILE env variant', () => {
+			// Temp dir backing the _FILE test; removed in afterEach
+			let tempHeadersDir: string | undefined;
+
+			afterEach(() => {
+				if (tempHeadersDir) {
+					rmSync(tempHeadersDir, { recursive: true, force: true });
+					tempHeadersDir = undefined;
+				}
+			});
+
+			it('treats headers from N8N_OTEL_EXPORTER_OTLP_HEADERS_FILE as env-managed and masks them', async () => {
+				const dir = mkdtempSync(join(tmpdir(), 'otel-headers-'));
+				tempHeadersDir = dir;
+				const headersFile = join(dir, 'headers');
+				writeFileSync(headersFile, 'authorization=Bearer file-secret');
+				process.env.N8N_OTEL_EXPORTER_OTLP_HEADERS_FILE = headersFile;
+				settingsRepository.findByKey.mockResolvedValue(null);
+
+				// Mirror what the config factory does when it reads the _FILE variant
+				// (covered by @n8n/config's own decorator tests)
+				const configFromFile = new OtelConfig();
+				configFromFile.exporterHeaders = 'authorization=Bearer file-secret';
+
+				const serviceFromFile = new OtelSettingsService(configFromFile, settingsRepository, logger);
+				await serviceFromFile.loadSettings();
+				const result = serviceFromFile.getSettings();
+
+				expect(result.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
+				expect(result.envManagedFields).toContain('exporterHeaders');
+			});
+
+			it('does not treat an empty _FILE variable as env-managed', async () => {
+				process.env.N8N_OTEL_EXPORTER_OTLP_HEADERS_FILE = '';
+				settingsRepository.findByKey.mockResolvedValue(null);
+
+				await service.loadSettings();
+				const result = service.getSettings();
+
+				expect(result.envManagedFields).not.toContain('exporterHeaders');
+				expect(result.exporterHeaders).toBe('');
+			});
 		});
 	});
 
@@ -216,7 +341,7 @@ describe('OtelSettingsService', () => {
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterEndpoint = 'https://from-env';
 			configWithEnv.exporterProtocol = 'grpc';
-			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 			settingsRepository.findByKey.mockResolvedValue(null);
 
 			const incoming: OtelConfig = {
@@ -232,6 +357,37 @@ describe('OtelSettingsService', () => {
 			expect(saved.exporterEndpoint).toBe('https://from-env');
 			expect(saved.exporterProtocol).toBe('grpc');
 			expect(saved.enabled).toBe(settings.enabled);
+		});
+
+		it('keeps the stored value per key when blanked values are echoed back', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ ...settings, exporterHeaders: 'a=1,b=2' }),
+			} as Settings);
+
+			await service.saveSettings({
+				...settings,
+				exporterHeaders: `a=${CREDENTIAL_BLANKING_VALUE},c=3`,
+			});
+
+			const saved = JSON.parse(
+				(settingsRepository.save.mock.calls[0]?.[0] as { value: string }).value,
+			) as OtelConfig;
+			// 'a' keeps its stored value, 'b' is dropped (absent), 'c' is new
+			expect(saved.exporterHeaders).toBe('a=1,c=3');
+		});
+
+		it('drops a blanked pair whose key has no stored value', async () => {
+			settingsRepository.findByKey.mockResolvedValue(null);
+
+			await service.saveSettings({
+				...settings,
+				exporterHeaders: `z=${CREDENTIAL_BLANKING_VALUE}`,
+			});
+
+			const saved = JSON.parse(
+				(settingsRepository.save.mock.calls[0]?.[0] as { value: string }).value,
+			) as OtelConfig;
+			expect(saved.exporterHeaders).toBe('');
 		});
 	});
 
@@ -249,11 +405,26 @@ describe('OtelSettingsService', () => {
 			expect(service.resolveTestConnection(incoming)).toEqual(incoming);
 		});
 
+		it('resolves blanked values against the stored ones for test connections', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ exporterHeaders: 'x-api-key=stored,x-other=2' }),
+			} as Settings);
+
+			await service.loadSettings();
+
+			const result = service.resolveTestConnection({
+				...incoming,
+				exporterHeaders: `x-api-key=${CREDENTIAL_BLANKING_VALUE}`,
+			});
+
+			expect(result.exporterHeaders).toBe('x-api-key=stored');
+		});
+
 		it('overrides env-managed fields with the canonical env-var value', () => {
 			process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT = 'https://from-env';
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterEndpoint = 'https://from-env';
-			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 
 			const result = serviceWithEnv.resolveTestConnection({
 				...incoming,
@@ -268,7 +439,7 @@ describe('OtelSettingsService', () => {
 			process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL = 'grpc';
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterProtocol = 'grpc';
-			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 
 			const result = serviceWithEnv.resolveTestConnection({
 				...incoming,

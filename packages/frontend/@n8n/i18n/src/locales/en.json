@@ -3300,6 +3300,7 @@
 	"settings.opentelemetry.exporterHeaders.keyPlaceholder": "Key",
 	"settings.opentelemetry.exporterHeaders.valuePlaceholder": "Value",
 	"settings.opentelemetry.exporterHeaders.addHeader": "Add header",
+	"settings.opentelemetry.exporterHeaders.hiddenValuePlaceholder": "Configured value not shown",
 	"settings.opentelemetry.exporterTracingPath.label": "Trace path",
 	"settings.opentelemetry.exporterTracingPath.description": "Appended to the endpoint. /v1/traces is the OTLP default.",
 	"settings.opentelemetry.exporterTracingPath.placeholder": "/v1/traces",
