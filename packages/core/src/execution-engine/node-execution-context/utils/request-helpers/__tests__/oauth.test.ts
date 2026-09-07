@@ -1,4 +1,4 @@
-import { LockNamespace, LockService } from '@n8n/backend-common';
+import { LockAcquisitionTimeoutError, LockNamespace, LockService } from '@n8n/backend-common';
 import type { SsrfBridge } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import FormData from 'form-data';
@@ -1296,6 +1296,25 @@ describe('requestOAuth2 - concurrent refresh serialization', () => {
 			.mockResolvedValue({ success: true });
 
 		await expect(call()).resolves.toEqual({ success: true });
+	});
+
+	test('refreshes without a lease when lease acquisition times out', async () => {
+		const withLeaseSpy = vi
+			.spyOn(Container.get(LockService), 'withLease')
+			.mockRejectedValueOnce(new LockAcquisitionTimeoutError('Timed out waiting for lock'));
+		const tokenScope = nock(tokenUrl)
+			.post('/token')
+			.reply(200, { access_token: 'new-token', token_type: 'bearer' });
+		mockThis.helpers.httpRequest
+			.mockRejectedValueOnce(error401())
+			.mockResolvedValue({ success: true });
+
+		await expect(call()).resolves.toEqual({ success: true });
+		expect(tokenScope.isDone()).toBe(true);
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledTimes(1);
+		withLeaseSpy.mockRestore();
 	});
 
 	test('wraps the refresh in LockService.withLease keyed by the credential id', async () => {
