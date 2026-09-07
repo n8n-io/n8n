@@ -1,7 +1,7 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import type { App, Page } from '@/features/apps/apps.types';
+import type { App, DataWorkflowOption, Page, UpdatePageInput } from '@/features/apps/apps.types';
 
 export const fetchAppsApi = async (context: IRestApiContext, projectId: string) => {
 	return await makeRestApiRequest<App[]>(context, 'GET', `/projects/${projectId}/apps`);
@@ -55,13 +55,21 @@ export const updatePageApi = async (
 	projectId: string,
 	appId: string,
 	pageId: string,
-	route: string,
+	updates: UpdatePageInput,
 ) => {
 	return await makeRestApiRequest<Page>(
 		context,
 		'PATCH',
 		`/projects/${projectId}/apps/${appId}/pages/${pageId}`,
-		{ route },
+		{ ...updates },
+	);
+};
+
+export const fetchDataWorkflowsApi = async (context: IRestApiContext, projectId: string) => {
+	return await makeRestApiRequest<DataWorkflowOption[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/apps/data-workflows`,
 	);
 };
 

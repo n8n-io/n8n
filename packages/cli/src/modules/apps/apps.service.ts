@@ -1,8 +1,12 @@
 import type { CreateAppDto, CreatePageDto, UpdateAppDto, UpdatePageDto } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AppRepository } from './app.repository';
 import { AppNotFoundError } from './errors/app-not-found.error';
+import { DataWorkflowNotFoundError } from './errors/data-workflow-not-found.error';
 import { IndexPageCannotHaveChildrenError } from './errors/index-page-cannot-have-children.error';
 import { PageNotFoundError } from './errors/page-not-found.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
@@ -13,6 +17,7 @@ export class AppsService {
 	constructor(
 		private readonly appRepository: AppRepository,
 		private readonly pageRepository: PageRepository,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto) {
@@ -67,7 +72,7 @@ export class AppsService {
 		return page;
 	}
 
-	async updatePage(appId: string, pageId: string, dto: UpdatePageDto) {
+	async updatePage(appId: string, pageId: string, dto: UpdatePageDto, user: User) {
 		const page = await this.getPage(appId, pageId);
 		if (dto.route !== undefined && dto.route !== page.route) {
 			if (dto.route === '' && (await this.pageRepository.hasChildren(pageId))) {
@@ -83,6 +88,17 @@ export class AppsService {
 			) {
 				throw new PageRouteConflictError(dto.route);
 			}
+		}
+		if (dto.dataWorkflowId) {
+			// Scoped to the user's own `workflow:read` access, same as any other
+			// workflow lookup — not just existence, so a page can't be wired up to
+			// read data from a workflow the caller isn't allowed to see.
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
+				dto.dataWorkflowId,
+				user,
+				['workflow:read'],
+			);
+			if (!workflow) throw new DataWorkflowNotFoundError(dto.dataWorkflowId);
 		}
 		return await this.pageRepository.updatePage(page, dto);
 	}

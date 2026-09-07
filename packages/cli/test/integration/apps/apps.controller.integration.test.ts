@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { createWorkflow, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -76,6 +76,18 @@ describe('GET /projects/:projectId/apps', () => {
 		expect(response.body.data).toHaveLength(1);
 
 		await authMemberAgent.get(`/projects/${ownerProject.id}/apps`).expect(403);
+	});
+});
+
+describe('GET /projects/:projectId/apps/data-workflows', () => {
+	// Regression test: this route must be registered before GET /:appId, or
+	// Express matches 'data-workflows' as an appId and 404s looking for that app.
+	test('lists data workflows without being shadowed by GET /:appId', async () => {
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/data-workflows`)
+			.expect(200);
+
+		expect(response.body.data).toEqual([]);
 	});
 });
 
@@ -247,6 +259,36 @@ describe('App pages', () => {
 		await authOwnerAgent
 			.post(`/projects/${ownerProject.id}/apps/${appB.id}/pages`)
 			.send({ route: 'child', parentPageId: pageInA.id })
+			.expect(404);
+	});
+
+	test("sets and clears a page's dataWorkflowId", async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, 'home');
+		const workflow = await createWorkflow({}, ownerProject);
+
+		const setResponse = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ dataWorkflowId: workflow.id })
+			.expect(200);
+		expect(setResponse.body.data.dataWorkflowId).toBe(workflow.id);
+
+		const clearResponse = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ dataWorkflowId: null })
+			.expect(200);
+		expect(clearResponse.body.data.dataWorkflowId).toBeNull();
+	});
+
+	test("rejects a dataWorkflowId the caller can't read", async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, 'home');
+		// Owned by no one, so no SharedWorkflow row grants the owner access to it.
+		const workflow = await createWorkflow();
+
+		await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ dataWorkflowId: workflow.id })
 			.expect(404);
 	});
 });

@@ -38,7 +38,10 @@ export class PageRepository extends Repository<Page> {
 		});
 	}
 
-	async updatePage(page: Page, updates: Partial<Pick<Page, 'route' | 'content'>>) {
+	async updatePage(
+		page: Page,
+		updates: Partial<Pick<Page, 'route' | 'content' | 'dataWorkflowId'>>,
+	) {
 		return await this.save(Object.assign(page, updates));
 	}
 

@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nInput,
+	N8nOption,
+	N8nSelect,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
+	N8nSettingsSection,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -39,6 +48,7 @@ const appsStore = useAppsStore();
 
 const app = ref<App | null>(null);
 const route = ref('');
+const dataWorkflowId = ref<string | null>(null);
 const loading = ref(false);
 const saving = ref(false);
 
@@ -70,6 +80,9 @@ const initialize = async () => {
 			appsStore.pages.length === 0
 				? appsStore.fetchPages(props.projectId, props.appId)
 				: Promise.resolve(),
+			appsStore.dataWorkflowOptions.length === 0
+				? appsStore.fetchDataWorkflows(props.projectId)
+				: Promise.resolve(),
 		]);
 		app.value = result;
 		const page = appsStore.pages.find((p) => p.id === props.pageId);
@@ -78,6 +91,7 @@ const initialize = async () => {
 			return;
 		}
 		route.value = page.route;
+		dataWorkflowId.value = page.dataWorkflowId;
 		documentTitle.set(formatRoutePath(route.value, i18n.baseText('apps.page.index')));
 	} catch (error) {
 		await showErrorAndGoBack(error);
@@ -89,7 +103,10 @@ const initialize = async () => {
 const onSave = async () => {
 	saving.value = true;
 	try {
-		await appsStore.updatePage(props.projectId, props.appId, props.pageId, route.value);
+		await appsStore.updatePage(props.projectId, props.appId, props.pageId, {
+			route: route.value,
+			dataWorkflowId: dataWorkflowId.value,
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('apps.page.save.error'));
 	} finally {
@@ -169,17 +186,45 @@ watch(() => props.pageId, initialize);
 				/>
 			</div>
 
-			<div :class="$style.routeRow">
-				<N8nText tag="label">{{ i18n.baseText('apps.page.input.route.label') }}</N8nText>
-				<N8nInput
-					v-model="route"
-					:placeholder="i18n.baseText('apps.page.add.input.route.placeholder')"
-					data-test-id="page-route-input"
-				/>
-			</div>
-			<N8nText color="text-light" size="small">
-				{{ i18n.baseText('apps.page.add.input.route.hint') }}
-			</N8nText>
+			<N8nSettingsSection>
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow
+						:title="i18n.baseText('apps.page.input.route.label')"
+						:description="i18n.baseText('apps.page.add.input.route.hint')"
+						:max-description-lines="3"
+					>
+						<template #action>
+							<N8nInput
+								v-model="route"
+								:placeholder="i18n.baseText('apps.page.add.input.route.placeholder')"
+								data-test-id="page-route-input"
+							/>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						:title="i18n.baseText('apps.page.input.dataWorkflow.label')"
+						:description="i18n.baseText('apps.page.input.dataWorkflow.hint')"
+						:max-description-lines="3"
+					>
+						<template #action>
+							<N8nSelect
+								v-model="dataWorkflowId"
+								clearable
+								filterable
+								:placeholder="i18n.baseText('apps.page.input.dataWorkflow.placeholder')"
+								data-test-id="page-data-workflow-select"
+							>
+								<N8nOption
+									v-for="option in appsStore.dataWorkflowOptions"
+									:key="option.id"
+									:value="option.id"
+									:label="option.name"
+								/>
+							</N8nSelect>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
 
 			<div :class="$style.content" data-test-id="page-content-placeholder">
 				<N8nText color="text-light">{{ i18n.baseText('apps.page.content.placeholder') }}</N8nText>
@@ -242,13 +287,6 @@ watch(() => props.pageId, initialize);
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--md);
 	margin-bottom: var(--spacing--sm);
-}
-
-.routeRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
 }
 
 .content {

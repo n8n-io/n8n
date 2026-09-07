@@ -15,6 +15,7 @@ import { NextFunction, Response } from 'express';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -28,6 +29,7 @@ export class AppsController {
 		private readonly appsService: AppsService,
 		private readonly projectService: ProjectService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 	) {}
 
 	private checkInstanceWriteAccess(): void {
@@ -78,6 +80,13 @@ export class AppsController {
 	@ProjectScope('app:listProject')
 	async listApps(req: AuthenticatedRequest<{ projectId: string }>, _res: Response) {
 		return await this.appsService.listApps(req.params.projectId);
+	}
+
+	/** Workflows a page can set as its `dataWorkflowId` — same trigger-compatible list agents pick tools from. */
+	@Get('/data-workflows')
+	@ProjectScope('app:read')
+	async listDataWorkflows(req: AuthenticatedRequest<{ projectId: string }>, _res: Response) {
+		return await this.attachableWorkflowsService.list(req.user, req.params.projectId);
 	}
 
 	@Get('/:appId')
@@ -146,7 +155,7 @@ export class AppsController {
 	@Patch('/:appId/pages/:pageId')
 	@ProjectScope('app:update')
 	async updatePage(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('appId') appId: string,
 		@Param('pageId') pageId: string,
@@ -154,7 +163,7 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		try {
-			return await this.appsService.updatePage(appId, pageId, dto);
+			return await this.appsService.updatePage(appId, pageId, dto, req.user);
 		} catch (e: unknown) {
 			this.handleAppError(e);
 		}

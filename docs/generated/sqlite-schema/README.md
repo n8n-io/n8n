@@ -97,7 +97,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [oauth_clients](oauth_clients.md) | 10 |  | table |
 | [oauth_refresh_tokens](oauth_refresh_tokens.md) | 8 |  | table |
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
-| [page](page.md) | 7 |  | table |
+| [page](page.md) | 8 |  | table |
 | [poller_state](poller_state.md) | 7 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
 | [project](project.md) | 9 |  | table |
@@ -280,8 +280,9 @@ erDiagram
 "oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"page" }o--o| "page" : "FOREIGN KEY (parentPageId) REFERENCES page (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"page" }o--o| "workflow_entity" : "FOREIGN KEY (dataWorkflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "page" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"page" }o--o| "page" : "FOREIGN KEY (parentPageId) REFERENCES page (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "poller_state" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "processed_data" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project" }o--o| "user" : "FOREIGN KEY (creatorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -1259,6 +1260,7 @@ erDiagram
   varchar_36_ appId FK
   TEXT content
   datetime_3_ createdAt
+  varchar_36_ dataWorkflowId FK
   varchar_36_ id PK
   varchar_36_ parentPageId FK
   varchar_255_ route
