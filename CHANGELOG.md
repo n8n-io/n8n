@@ -1,3 +1,12 @@
+## [2.37.11](https://github.com/n8n-io/n8n/compare/n8n@2.37.10...n8n@2.37.11) (2026-09-07)
+
+
+### Bug Fixes
+
+* **core:** Ensure running job cleanup when a workflow run rejects ([#37826](https://github.com/n8n-io/n8n/issues/37826)) ([257f0bb](https://github.com/n8n-io/n8n/commit/257f0bb616fe6013032513b7bfae3d7304efaf11))
+* **core:** Keep a serving external secrets provider active when its replacement fails ([#37872](https://github.com/n8n-io/n8n/issues/37872)) ([865fa12](https://github.com/n8n-io/n8n/commit/865fa12059e632c22a21e6d05b8e1b86dea2f0f5))
+
+
 ## [2.37.10](https://github.com/n8n-io/n8n/compare/n8n@2.37.9...n8n@2.37.10) (2026-09-04)
 
 
