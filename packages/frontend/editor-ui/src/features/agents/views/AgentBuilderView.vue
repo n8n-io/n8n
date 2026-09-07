@@ -1586,7 +1586,7 @@ watch(
 			return;
 		}
 
-		persistedPreviewOpen.value = false;
+		persistedPreviewOpen.value = props.artifactPreviewOpen ?? false;
 		activeChatSessionId.value = null;
 	},
 );

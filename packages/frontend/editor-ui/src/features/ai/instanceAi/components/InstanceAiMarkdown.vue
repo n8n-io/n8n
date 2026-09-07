@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
-import { OPEN_PREVIEW_PARAM } from '@/features/agents/constants';
+import { resolveAgentPreviewLink } from '@/features/agents/utils/agentPreviewUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useThread } from '../instanceAi.store';
 
@@ -218,9 +218,6 @@ const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
 	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
 ];
-const AGENT_PREVIEW_PATH = /^\/projects\/([^/]+)\/agents\/([^/]+)\/preview\/?$/;
-const AGENT_BUILDER_PATH = /^\/projects\/([^/]+)\/agents\/([^/]+)\/?$/;
-
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 
 function getSameOriginUrl(href: string): URL | undefined {
@@ -234,26 +231,6 @@ function getSameOriginUrl(href: string): URL | undefined {
 	} catch {
 		return undefined;
 	}
-}
-
-function getAgentPreviewTarget(url: URL): { projectId: string; agentId: string } | undefined {
-	const match =
-		AGENT_PREVIEW_PATH.exec(url.pathname) ??
-		(url.searchParams.get(OPEN_PREVIEW_PARAM) === 'true'
-			? AGENT_BUILDER_PATH.exec(url.pathname)
-			: null);
-	if (!match) return undefined;
-
-	return {
-		projectId: decodeResourceId(match[1]),
-		agentId: decodeResourceId(match[2]),
-	};
-}
-
-function buildAgentPreviewUrl(url: URL, projectId: string, agentId: string): string {
-	const searchParams = new URLSearchParams(url.search);
-	searchParams.set(OPEN_PREVIEW_PARAM, 'true');
-	return `${buildResourceUrl('agent', agentId, projectId)}?${searchParams.toString()}`;
 }
 
 function decodeResourceId(value: string): string {
@@ -341,18 +318,18 @@ function enhanceResourceLinks(): void {
 		}
 
 		// 2. Handle standard links pointing to internal n8n routes
-		const internalUrl = getSameOriginUrl(href);
-		if (!internalUrl) continue;
-		const agentPreviewTarget = getAgentPreviewTarget(internalUrl);
+		const agentPreviewTarget = resolveAgentPreviewLink(href);
 		if (agentPreviewTarget) {
 			const { projectId, agentId } = agentPreviewTarget;
-			link.href = buildAgentPreviewUrl(internalUrl, projectId, agentId);
+			link.href = agentPreviewTarget.href;
 			link.removeAttribute('target');
 			link.removeAttribute('rel');
 			link.dataset.agentPreviewId = agentId;
 			link.dataset.agentPreviewProjectId = projectId;
 			continue;
 		}
+		const internalUrl = getSameOriginUrl(href);
+		if (!internalUrl) continue;
 
 		for (const { pattern, type } of INTERNAL_ROUTE_PATTERNS) {
 			if (pattern.test(internalUrl.pathname)) {
@@ -390,11 +367,10 @@ function handleLinkClick(event: MouseEvent): void {
 	const clickedLink = event.target.closest('a');
 	if (!(clickedLink instanceof HTMLAnchorElement)) return;
 
-	const previewAgentId = clickedLink.dataset.agentPreviewId;
-	const previewProjectId = clickedLink.dataset.agentPreviewProjectId;
-	if (previewAgentId && previewProjectId && openAgentChatPreview) {
+	const previewTarget = resolveAgentPreviewLink(clickedLink.getAttribute('href') ?? '');
+	if (previewTarget && openAgentChatPreview) {
 		event.preventDefault();
-		openAgentChatPreview(previewAgentId, previewProjectId);
+		openAgentChatPreview(previewTarget.agentId, previewTarget.projectId);
 		return;
 	}
 

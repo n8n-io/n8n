@@ -43,17 +43,21 @@ describe('AgentMarkdownChunk', () => {
 		expect(routerPush).not.toHaveBeenCalled();
 	});
 
-	it('leaves Cmd/Ctrl-click Preview links to the browser', async () => {
-		const wrapper = mount(AgentMarkdownChunk, {
-			props: {
-				source: '[Preview](/projects/project-1/agents/agent-1/preview)',
-			},
-		});
+	it.each([{ metaKey: true }, { ctrlKey: true }])(
+		'canonicalizes modifier-click Preview links for the browser',
+		async (modifier) => {
+			const wrapper = mount(AgentMarkdownChunk, {
+				props: {
+					source: '[Preview](/projects/project-1/agents/agent-1/preview)',
+				},
+			});
 
-		const link = wrapper.find('a');
-		link.element.addEventListener('click', (event) => event.preventDefault(), { once: true });
-		await link.trigger('click', { metaKey: true });
+			const link = wrapper.find('a');
+			link.element.addEventListener('click', (event) => event.preventDefault(), { once: true });
+			await link.trigger('click', modifier);
 
-		expect(routerPush).not.toHaveBeenCalled();
-	});
+			expect(routerPush).not.toHaveBeenCalled();
+			expect(link.attributes('href')).toBe('/projects/project-1/agents/agent-1?openPreview=true');
+		},
+	);
 });

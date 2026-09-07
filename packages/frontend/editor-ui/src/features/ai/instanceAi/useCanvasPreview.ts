@@ -40,16 +40,23 @@ interface UseCanvasPreviewOptions {
 	initialAgentId?: () => string | undefined;
 }
 
+interface LinkedAgentTarget {
+	agentId: string;
+	projectId: string;
+}
+
 export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 	const isPreviewOpen = ref(false);
+	const linkedAgentTarget = ref<LinkedAgentTarget>();
 
 	const buildingArtifactIds = useBuildingArtifactIds(thread);
 
 	// All previewable artifacts in the current thread, derived from resource registry.
 	const allArtifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
+		const linkedAgent = linkedAgentTarget.value;
 		for (const entry of thread.producedArtifacts.values()) {
 			if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
 				result.push({
@@ -57,11 +64,29 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 					type: entry.type,
 					name: entry.name,
 					icon: ARTIFACT_ICON_MAP[entry.type] ?? 'file',
-					projectId: entry.projectId,
+					projectId:
+						entry.projectId ??
+						(entry.type === 'agent' && linkedAgent?.agentId === entry.id
+							? linkedAgent.projectId
+							: undefined),
 					pending: entry.pending,
 					building: buildingArtifactIds.value.has(entry.id),
 				});
 			}
+		}
+
+		if (linkedAgent && !result.some((tab) => tab.id === linkedAgent.agentId)) {
+			const indexedAgent = [...thread.resourceNameIndex.values()].find(
+				(entry) => entry.type === 'agent' && entry.id === linkedAgent.agentId,
+			);
+			result.push({
+				id: linkedAgent.agentId,
+				type: 'agent',
+				name: indexedAgent?.name ?? linkedAgent.agentId,
+				icon: ARTIFACT_ICON_MAP.agent,
+				projectId: indexedAgent?.projectId ?? linkedAgent.projectId,
+				building: buildingArtifactIds.value.has(linkedAgent.agentId),
+			});
 		}
 
 		return result;
@@ -197,7 +222,8 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 	 * Returns true if the preview tab changed; false if the tab was already
 	 * active (so the caller can fall back to opening in a new tab instead).
 	 */
-	function openAgentPreview(agentId: string, _projectId: string): boolean {
+	function openAgentPreview(agentId: string, projectId: string): boolean {
+		linkedAgentTarget.value = { agentId, projectId };
 		if (activeTabId.value === agentId && isPreviewOpen.value) return false;
 		activeTabId.value = agentId;
 		isPreviewOpen.value = true;

@@ -332,5 +332,24 @@ describe('InstanceAiMarkdown', () => {
 				expect(event.defaultPrevented).toBe(true);
 			},
 		);
+
+		it('opens a Preview link after the markdown child replaces its enhanced content', () => {
+			const openAgentChatPreview = vi.fn(() => true);
+			const { getByTestId } = renderComponent({
+				props: { content: agentPreviewLinks[0].content },
+				global: { provide: { openAgentChatPreview } },
+			});
+			const markdownOutput = getByTestId('markdown-output');
+			markdownOutput.innerHTML = agentPreviewLinks[0].content;
+			const link = markdownOutput.querySelector('a');
+			if (!link) throw new Error('expected replaced Preview anchor');
+
+			expect(link.dataset.agentPreviewId).toBeUndefined();
+			const event = clickEvent();
+			link.dispatchEvent(event);
+
+			expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
+			expect(event.defaultPrevented).toBe(true);
+		});
 	});
 });

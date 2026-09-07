@@ -350,6 +350,14 @@ const InstanceAiAgentPreviewStub = defineComponent({
 						},
 						'Preview',
 					),
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-external-preview-link',
+							onClick: () => openAgentChatPreview?.('agent-2', 'proj-2'),
+						},
+						'External preview',
+					),
 				],
 			);
 	},
@@ -1720,6 +1728,17 @@ describe('InstanceAiThreadView', () => {
 
 		expect(preview).toHaveAttribute('data-preview-open', 'true');
 		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
+	});
+
+	it('opens a linked agent that is not a produced artifact', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+
+		await user.click(getByTestId('instance-ai-agent-external-preview-link'));
+
+		const preview = getByTestId('instance-ai-agent-preview-stub');
+		expect(preview).toHaveAttribute('data-agent-id', 'agent-2');
+		expect(preview).toHaveAttribute('data-project-id', 'proj-2');
+		expect(preview).toHaveAttribute('data-preview-open', 'true');
 	});
 
 	it('restores the default or preferred preview width when available space grows', async () => {
