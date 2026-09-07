@@ -1,36 +1,68 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import type { WorkflowTestData } from 'n8n-workflow';
+import type { INodePropertyOptions, WorkflowTestData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
+
+import { Metabase } from '../Metabase.node';
 
 describe('Metabase Node', () => {
 	const testHarness = new NodeTestHarness();
 
-	// Each credential type points at its own host, so the host that receives the
-	// request tells us which credential the node resolved.
-	const sessionBaseUrl = 'https://metabase-session.example.com';
-	const apiKeyBaseUrl = 'https://metabase-api-key.example.com';
+	describe('Authentication parameter', () => {
+		const { credentials = [], properties } = new Metabase().description;
+		const authentication = properties.find((property) => property.name === 'authentication');
 
-	const credentials = {
-		metabaseApi: {
-			url: sessionBaseUrl,
-			username: 'user@example.com',
-			password: 'password',
-			sessionToken: 'session-token',
-		},
-		metabaseApiKeyApi: {
-			// Trailing slash on purpose: the node must strip it before it builds the request URL
-			url: `${apiKeyBaseUrl}/`,
-			apiKey: 'mb_test_api_key',
-		},
-	};
+		const credentialTypesFor = (authenticationValue: string) =>
+			credentials
+				.filter((credential) =>
+					credential.displayOptions?.show?.authentication?.includes(authenticationValue),
+				)
+				.map((credential) => credential.name);
 
-	const databases = [{ id: 1, name: 'Sample Database', engine: 'h2' }];
+		it('should default to username & password so existing workflows keep their credential', () => {
+			expect(authentication?.default).toBe('password');
+		});
+
+		it('should map each authentication option to exactly one credential type', () => {
+			const options = (authentication?.options ?? []) as INodePropertyOptions[];
+
+			expect(options.map((option) => option.value)).toEqual(['apiKey', 'password']);
+			expect(credentialTypesFor('password')).toEqual(['metabaseApi']);
+			expect(credentialTypesFor('apiKey')).toEqual(['metabaseApiKeyApi']);
+		});
+	});
 
 	describe('Credentials', () => {
+		// Each credential type points at its own host, and each host returns its own
+		// fixture. The output of a node therefore shows which credential it resolved.
+		const sessionBaseUrl = 'https://metabase-session.example.com';
+		const apiKeyBaseUrl = 'https://metabase-api-key.example.com';
+
+		const credentials = {
+			metabaseApi: {
+				url: sessionBaseUrl,
+				username: 'user@example.com',
+				password: 'password',
+				sessionToken: 'session-token',
+			},
+			metabaseApiKeyApi: {
+				// Trailing slash on purpose: the node must strip it before it builds the request URL
+				url: `${apiKeyBaseUrl}/`,
+				apiKey: 'mb_test_api_key',
+			},
+		};
+
+		const sessionDatabases = [{ id: 1, name: 'Session database', engine: 'h2' }];
+		const apiKeyDatabases = [{ id: 2, name: 'API key database', engine: 'postgres' }];
+
+		let sessionScope: nock.Scope;
+		let apiKeyScope: nock.Scope;
+
 		beforeAll(() => {
-			nock(sessionBaseUrl).get('/api/database/').reply(200, { data: databases });
-			nock(apiKeyBaseUrl).get('/api/database/').reply(200, { data: databases });
+			sessionScope = nock(sessionBaseUrl)
+				.get('/api/database/')
+				.reply(200, { data: sessionDatabases });
+			apiKeyScope = nock(apiKeyBaseUrl).get('/api/database/').reply(200, { data: apiKeyDatabases });
 		});
 
 		const testData: WorkflowTestData = {
@@ -113,12 +145,19 @@ describe('Metabase Node', () => {
 			},
 			output: {
 				nodeData: {
-					'Metabase metabaseApi': [[{ json: databases[0] }]],
-					'Metabase metabaseApiKeyApi': [[{ json: databases[0] }]],
+					'Metabase metabaseApi': [[{ json: sessionDatabases[0] }]],
+					'Metabase metabaseApiKeyApi': [[{ json: apiKeyDatabases[0] }]],
 				},
 			},
 		};
 
-		testHarness.setupTest(testData, { credentials });
+		testHarness.setupTest(testData, {
+			credentials,
+			customAssertions: () => {
+				// Each host must have received exactly one request
+				expect(sessionScope.isDone()).toBe(true);
+				expect(apiKeyScope.isDone()).toBe(true);
+			},
+		});
 	});
 });
