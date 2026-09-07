@@ -152,7 +152,7 @@ describe('agent knowledge commands', () => {
 				["o'clock notes.txt"],
 			);
 
-			expect(command).toContain("'./o'\\''clock notes.txt'");
+			expect(command).toContain("'./o'\"'\"'clock notes.txt'");
 		});
 
 		it('uses the bounded awk pipeline for all output modes', () => {
