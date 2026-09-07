@@ -23,6 +23,7 @@ export const {{PascalName}}Module: FrontendModuleDescription = {
 	// settingsPages: [ /* IMenuItem[]; feeds SettingsSidebar */ ],
 	// pushHandlers: { /* keyed by push message type */ },
 	// commands: [ /* CommandBarEntry[] */ ],
+	// parameterInputs: [ /* ParameterInputContribution[]; resolved by `parameter.type` */ ],
 
 	// The SDK types the fields below, but no host in the shell reads them yet.
 	// A value here does nothing at runtime: locales, shortcuts, banners, setup.

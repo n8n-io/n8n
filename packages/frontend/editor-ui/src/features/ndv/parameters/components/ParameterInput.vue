@@ -18,14 +18,11 @@ import type {
 } from 'n8n-workflow';
 import {
 	CREDENTIAL_EMPTY_VALUE,
-	IconOrEmojiSchema,
 	isResourceLocatorValue,
 	jsonParse,
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
-
-import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system';
 
 import type { CodeNodeLanguageOption } from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -104,7 +101,6 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import {
 	N8nIcon,
-	N8nIconPicker,
 	N8nInput,
 	N8nInputNumber,
 	N8nOption,
@@ -382,22 +378,6 @@ const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 			? (props.modelValue as INodeParameterResourceLocator).value
 			: ''
 		: props.modelValue;
-});
-
-const iconPickerValue = computed<DesignSystemIconOrEmoji | undefined>({
-	get() {
-		const result = IconOrEmojiSchema.safeParse(props.modelValue);
-		if (result.success) {
-			return {
-				type: result.data.type,
-				value: result.data.value,
-			} as DesignSystemIconOrEmoji;
-		}
-		return undefined;
-	},
-	set(_value: DesignSystemIconOrEmoji | undefined) {
-		// Handled by valueChanged
-	},
 });
 
 const editorRows = computed(() => {
@@ -1541,6 +1521,7 @@ onUpdated(async () => {
 			<component
 				:is="contributedComponent"
 				v-if="showContributedComponent"
+				ref="inputField"
 				:parameter="parameter"
 				:model-value="modelValue"
 				:path="path"
@@ -1553,6 +1534,7 @@ onUpdated(async () => {
 				:dependent-parameters-values="dependentParametersValues"
 				:parameter-issues="getIssues"
 				:droppable="droppable ?? false"
+				:hide-label="hideLabel ?? false"
 				:event-bus="eventBus"
 				@update:model-value="valueChangedDebounced"
 				@modal-opener-click="openExpressionEditorModal"
@@ -1617,19 +1599,6 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
-			/>
-			<N8nIconPicker
-				v-else-if="parameter.type === 'icon' && !isModelValueExpression && !forceShowExpression"
-				ref="inputField"
-				v-model="iconPickerValue"
-				:button-tooltip="
-					parameter.placeholder || i18n.baseText('parameterInput.iconPicker.tooltip')
-				"
-				:button-size="hideLabel ? 'small' : 'large'"
-				:is-read-only="isReadOnly"
-				@update:model-value="valueChanged"
-				@focus="setFocus"
-				@blur="onBlur"
 			/>
 			<ExpressionParameterInput
 				v-else-if="isModelValueExpression || forceShowExpression"

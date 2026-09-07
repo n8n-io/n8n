@@ -1840,6 +1840,7 @@ describe('ParameterInput.vue', () => {
 			},
 			parameterIssues: { type: Array as PropType<string[]>, required: true as const },
 			droppable: { type: Boolean, required: true as const },
+			hideLabel: { type: Boolean, required: true as const },
 			eventBus: { type: Object as PropType<EventBus>, required: false as const },
 		};
 
@@ -1888,6 +1889,25 @@ describe('ParameterInput.vue', () => {
 			await nextTick();
 
 			expect(getByTestId('contributed-input')).toHaveTextContent('from-shell');
+		});
+
+		test.each([
+			[false, 'false'],
+			[true, 'true'],
+		])('should pass hideLabel=%s to a contributed input', async (hideLabel, expected) => {
+			const HideLabelProbe = defineComponent({
+				props: contractProps,
+				setup: (props) => () =>
+					h('span', { 'data-test-id': 'contributed-input' }, String(props.hideLabel)),
+			});
+			parameterInputRegistry.register({ type: 'string', component: HideLabelProbe });
+
+			const { getByTestId } = renderComponent({
+				props: { path: 'custom', parameter: stringParameter, modelValue: '', hideLabel },
+			});
+			await nextTick();
+
+			expect(getByTestId('contributed-input')).toHaveTextContent(expected);
 		});
 
 		test('should emit the parameter update a contributed input sends', async () => {
