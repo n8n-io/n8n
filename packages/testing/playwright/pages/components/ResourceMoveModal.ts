@@ -35,8 +35,25 @@ export class ResourceMoveModal extends FloatingUiHelper {
 		await this.getProjectSelectCredential().locator('input').click();
 	}
 
+	/**
+	 * Opens the workflow move modal project select and types a search query into it.
+	 * Mirrors how a user filters the destination list.
+	 */
+	async searchProjects(query: string): Promise<void> {
+		const input = this.getProjectSelect().locator('input');
+		await input.click();
+		await this.page.keyboard.press('ControlOrMeta+a');
+		await this.page.keyboard.press('Backspace');
+		await this.page.keyboard.type(query, { delay: 50 });
+	}
+
 	getProjectOptions(): Locator {
 		return this.getVisiblePopoverOption();
+	}
+
+	/** First option offered for a project name or user email, as the move flow resolves it. */
+	getProjectOption(projectNameOrEmail: string): Locator {
+		return this.getProjectOptions().filter({ hasText: projectNameOrEmail }).first();
 	}
 
 	async selectProjectOption(projectNameOrEmail: string): Promise<void> {

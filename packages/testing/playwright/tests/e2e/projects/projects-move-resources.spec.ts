@@ -149,5 +149,35 @@ test.describe(
 				n8n.credentials.cards.getCredentials().filter({ hasText: 'Personal' }),
 			).toHaveCount(2);
 		});
+
+		// Reproduces the flakiness of 'should move the workflow to expected projects'.
+		// The destination select is a remote select with a 300ms debounce, so the options on
+		// screen right after the user types are still the unfiltered list from when the modal
+		// opened. The move flow clicks the destination as soon as its option is visible, which
+		// is inside that window: when the filtered response lands it replaces the option list
+		// under the pointer, so the click can select a different project than the one asked
+		// for. The workflow then lands in the wrong project and the later count assertions fail.
+		test('should offer only projects matching the typed search in the move modal @auth:owner', async ({
+			n8n,
+		}) => {
+			await n8n.sideBar.clickProjectMenuItem('Project 1');
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
+
+			const workflowCard = n8n.workflows.cards.getWorkflow('Workflow in Project 1');
+			await n8n.workflows.cards.clickCardAction(workflowCard, 'moveToFolder');
+
+			await n8n.resourceMoveModal.searchProjects('Project 2');
+
+			// Wait for exactly what the move flow waits for before it clicks the destination.
+			await n8n.resourceMoveModal.getProjectOption('Project 2').waitFor({ state: 'visible' });
+
+			// Read the options once, without retrying: this is the list the click lands in.
+			const offeredProjects = await n8n.resourceMoveModal.getProjectOptions().allInnerTexts();
+			const notMatchingSearch = offeredProjects.filter(
+				(projectName) => !projectName.includes('Project 2'),
+			);
+
+			expect(notMatchingSearch).toEqual([]);
+		});
 	},
 );
