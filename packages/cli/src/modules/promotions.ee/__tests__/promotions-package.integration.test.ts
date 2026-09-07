@@ -128,7 +128,8 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await rm(testRoot, { recursive: true, force: true });
+	// A finished git process can still hold a file for a moment, so retry.
+	await rm(testRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
 });
 
 async function createRemote(): Promise<TestRemote> {
@@ -153,7 +154,18 @@ async function createRemote(): Promise<TestRemote> {
  * Writes the fixture through the repositories, so the local bare path is not
  * checked by the production remote URL validator.
  */
-async function createInstanceConnection(remoteUrl: string) {
+/** Branches the remote already has, so a clone finds them. */
+async function createRemoteBranches(remote: TestRemote, branchNames: string[]) {
+	for (const branchName of branchNames) {
+		await remote.git.raw(['branch', branchName, 'main']);
+	}
+	await remote.git.raw(['push', 'origin', '--all']);
+}
+
+async function createInstanceConnection(
+	remoteUrl: string,
+	branches: { apply: string; promote: string } = { apply: 'main', promote: 'main' },
+) {
 	const provider = await providerRepository.insertProvider({
 		name: 'Bot user',
 		type: 'git',
@@ -175,13 +187,17 @@ async function createInstanceConnection(remoteUrl: string) {
 		connectionId: connection.id,
 		direction: 'apply',
 		name: 'Apply',
-		settings: { schemaVersion: 1, branchName: 'main' },
+		settings: { schemaVersion: 1, branchName: branches.apply },
 	});
 	await configRepository.insertConfig({
 		connectionId: connection.id,
 		direction: 'promote',
 		name: 'Promote',
-		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+		settings: {
+			schemaVersion: 1,
+			baseBranchName: branches.promote,
+			createBranchOnPromotion: false,
+		},
 	});
 	return connection;
 }
@@ -331,5 +347,46 @@ describe('Promote and Apply', () => {
 		expect(await workflowRepository.findOneBy({ id: workflow.id })).toMatchObject({
 			isArchived: true,
 		});
+	});
+
+	it('promotes to its base branch and applies from a different branch', async () => {
+		const remote = await createRemote();
+		await createRemoteBranches(remote, ['staging', 'dev']);
+		const connection = await createInstanceConnection(remote.bareDir, {
+			apply: 'dev',
+			promote: 'staging',
+		});
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+
+		// Seed `dev` with a package from somewhere else, then take that project away
+		// so the Apply has to bring it back.
+		const project = await createTeamProject('Orders', owner);
+		const workflow = await createWorkflow(
+			{ name: 'Process order', nodes: [], connections: {} },
+			project,
+		);
+		const promoteResult = await service.promote(connection.id, owner, {
+			commitMessage: 'Promote to staging',
+		});
+		await remote.git.raw(['fetch', 'origin']);
+		await remote.git.raw(['push', 'origin', 'refs/remotes/origin/staging:refs/heads/dev']);
+		const devHead = (await remote.git.revparse(['origin/staging'])).trim();
+		await Container.get(WorkflowRepository).delete({ id: workflow.id });
+
+		const applyResult = await service.apply(connection.id, owner);
+
+		expect(promoteResult.git.branchName).toBe('staging');
+		expect(applyResult.git).toEqual({ commitSha: devHead, branchName: 'dev' });
+		expect(await Container.get(WorkflowRepository).findOneBy({ id: workflow.id })).toMatchObject({
+			name: 'Process order',
+		});
+
+		// `main` never took part, so the packageless branch is untouched.
+		const inspectionDir = path.join(testRoot, 'main-inspection');
+		await simpleGit().clone(remote.bareDir, inspectionDir, ['--branch', 'main', '--single-branch']);
+		await expect(
+			readFile(path.join(inspectionDir, 'n8n-export', 'manifest.json')),
+		).rejects.toThrow();
 	});
 });

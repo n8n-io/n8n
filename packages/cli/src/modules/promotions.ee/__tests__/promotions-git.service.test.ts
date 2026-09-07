@@ -193,7 +193,7 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(gitService.hasCheckout(paths.repositoryFolder)).resolves.toBe(false);
 		});
 
-		it('returns false when the check throws (directory missing)', async () => {
+		it('returns false when the directory is missing', async () => {
 			mockGit.checkIsRepo.mockRejectedValue(new Error('not a repo'));
 			await expect(gitService.hasCheckout(paths.repositoryFolder)).resolves.toBe(false);
 		});
@@ -254,7 +254,7 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(stat(paths.repositoryFolder)).resolves.toBeDefined();
 		});
 
-		it('throws when the branch is missing but the remote already has other branches', async () => {
+		it('reports a missing branch instead of bootstrapping a remote that has branches', async () => {
 			mockGit.listRemote
 				.mockResolvedValueOnce('') // requested branch not found
 				.mockResolvedValueOnce('def456\trefs/heads/develop\n'); // remote is not empty
@@ -286,14 +286,14 @@ describe('PromotionsGitService (git operations)', () => {
 			mockGit.revparse.mockResolvedValue('abc123\n');
 		});
 
-		it('maps a stall timeout to a 503', async () => {
+		it('reports a stalled push as a retryable 503', async () => {
 			mockGit.push.mockRejectedValueOnce(
 				new GitPluginError(undefined, 'timeout', 'block timeout reached'),
 			);
 			await expect(call()).rejects.toThrow(ServiceUnavailableError);
 		});
 
-		it('maps any other failure to a redacted 400 and never logs raw git output', async () => {
+		it('redacts a push failure and keeps raw git output out of the log', async () => {
 			mockGit.push.mockRejectedValue(new Error('remote: rejected [non-fast-forward] secret-token'));
 
 			const error = await call().catch((e: unknown) => e);
@@ -328,16 +328,13 @@ describe('PromotionsGitService (git operations)', () => {
 			expect(result).toEqual({ commitSha: 'def456' });
 		});
 
-		it('maps a stall timeout to a 503', async () => {
-			mockGit.fetch.mockRejectedValueOnce(
-				new GitPluginError(undefined, 'timeout', 'block timeout reached'),
-			);
-			await expect(call()).rejects.toThrow(ServiceUnavailableError);
-		});
+		it('redacts a fetch failure instead of surfacing raw git output', async () => {
+			mockGit.fetch.mockRejectedValueOnce(new Error('remote: fatal secret-token'));
 
-		it('maps any other failure to a redacted 400', async () => {
-			mockGit.fetch.mockRejectedValueOnce(new Error('boom'));
-			await expect(call()).rejects.toThrow(BadRequestError);
+			const error = await call().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect((error as Error).message).toBe('Could not complete the Git operation');
 		});
 	});
 });

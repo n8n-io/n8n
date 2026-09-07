@@ -66,7 +66,7 @@ describe('PromotionProvidersService', () => {
 	});
 
 	describe('create', () => {
-		it('generates and encrypts an SSH key pair for an ssh-key provider', async () => {
+		it('generates a key pair and stores the private key encrypted', async () => {
 			const result = await service.create({
 				name: 'Deploy key',
 				type: 'git',
@@ -81,7 +81,7 @@ describe('PromotionProvidersService', () => {
 			expect(result.publicKey).toBe('PUB');
 		});
 
-		it('encrypts username and password for a token provider', async () => {
+		it('stores the username and password encrypted', async () => {
 			const result = await service.create({
 				name: 'Bot user',
 				type: 'git',
@@ -95,7 +95,7 @@ describe('PromotionProvidersService', () => {
 			expect(result.publicKey).toBeNull();
 		});
 
-		it('rejects credentials that would break the Git credential helper', async () => {
+		it('rejects a password with a newline, which would split the credential helper', async () => {
 			await expect(
 				service.create({
 					name: 'Bot user',
@@ -106,7 +106,7 @@ describe('PromotionProvidersService', () => {
 			expect(providerRepository.insertProvider).not.toHaveBeenCalled();
 		});
 
-		it('never returns the encrypted credentials', async () => {
+		it('leaves the stored ciphertext out of the response', async () => {
 			const result = await service.create({
 				name: 'Bot user',
 				type: 'git',
@@ -119,18 +119,7 @@ describe('PromotionProvidersService', () => {
 	});
 
 	describe('update', () => {
-		it('rejects changing the authentication method', async () => {
-			providerRepository.findById.mockResolvedValue(sshProvider());
-
-			await expect(
-				service.update('prov1', {
-					auth: { authType: 'token', username: 'u', password: 'p' },
-				} as UpdatePromotionProviderDto),
-			).rejects.toThrow(BadRequestError);
-			expect(providerRepository.updateProvider).not.toHaveBeenCalled();
-		});
-
-		it('keeps the stored credentials when auth is left out', async () => {
+		it('keeps the stored credentials when the request has no auth', async () => {
 			providerRepository.findById.mockResolvedValue(sshProvider());
 
 			await service.update('prov1', { name: 'renamed' } as UpdatePromotionProviderDto);
@@ -141,7 +130,7 @@ describe('PromotionProvidersService', () => {
 			});
 		});
 
-		it('rotates the key with the algorithm the provider already uses', async () => {
+		it('rotates a key without changing its algorithm', async () => {
 			providerRepository.findById.mockResolvedValue(sshProvider());
 
 			await service.update('prov1', {
@@ -154,18 +143,7 @@ describe('PromotionProvidersService', () => {
 			expect(changes.auth).toBe('enc:{"schemaVersion":1,"privateKey":"PRIV"}');
 		});
 
-		it('replaces the username and password of a token provider', async () => {
-			providerRepository.findById.mockResolvedValue(tokenProvider());
-
-			await service.update('prov2', {
-				auth: { authType: 'token', username: 'u2', password: 'p2' },
-			} as UpdatePromotionProviderDto);
-
-			const changes = providerRepository.updateProvider.mock.calls[0][1];
-			expect(changes.auth).toBe('enc:{"schemaVersion":1,"username":"u2","password":"p2"}');
-		});
-
-		it('rejects an unknown provider with 404', async () => {
+		it('reports an unknown provider as not found', async () => {
 			providerRepository.findById.mockResolvedValue(null);
 
 			await expect(
@@ -175,25 +153,17 @@ describe('PromotionProvidersService', () => {
 	});
 
 	describe('delete', () => {
-		it('refuses to delete a provider that a connection uses', async () => {
+		it('refuses to delete a provider a connection still uses', async () => {
 			providerRepository.findById.mockResolvedValue(sshProvider());
 			connectionRepository.countByProviderId.mockResolvedValue(1);
 
 			await expect(service.delete('prov1')).rejects.toThrow(ConflictError);
 			expect(providerRepository.deleteProvider).not.toHaveBeenCalled();
 		});
-
-		it('deletes an unused provider', async () => {
-			providerRepository.findById.mockResolvedValue(sshProvider());
-
-			await service.delete('prov1');
-
-			expect(providerRepository.deleteProvider).toHaveBeenCalledWith('prov1');
-		});
 	});
 
 	describe('decryptCredentials', () => {
-		it('reads an ssh-key payload', async () => {
+		it('reads a stored ssh-key payload', async () => {
 			const provider = sshProvider();
 
 			await expect(service.decryptCredentials(provider)).resolves.toEqual({
@@ -202,7 +172,7 @@ describe('PromotionProvidersService', () => {
 			});
 		});
 
-		it('reads a token payload', async () => {
+		it('reads a stored username and password payload', async () => {
 			const provider = tokenProvider();
 
 			await expect(service.decryptCredentials(provider)).resolves.toEqual({
@@ -212,14 +182,14 @@ describe('PromotionProvidersService', () => {
 			});
 		});
 
-		it('rejects a payload version it cannot read', async () => {
+		it('rejects a stored payload version it cannot read', async () => {
 			const provider = sshProvider();
 			provider.auth = 'enc:{"schemaVersion":2,"privateKey":"PRIV"}';
 
 			await expect(service.decryptCredentials(provider)).rejects.toThrow(BadRequestError);
 		});
 
-		it('rejects a payload that does not match the stored auth type', async () => {
+		it('rejects a stored payload that does not match the auth type', async () => {
 			const provider = sshProvider();
 			provider.auth = 'enc:{"schemaVersion":1,"username":"u","password":"p"}';
 

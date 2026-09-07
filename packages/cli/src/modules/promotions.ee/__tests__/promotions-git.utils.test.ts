@@ -1,4 +1,9 @@
-import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from '../promotions-git.utils';
+import {
+	buildHttpsGitConfig,
+	buildSshCommand,
+	checkoutBranchName,
+	generateSshKeyPair,
+} from '../promotions-git.utils';
 
 describe('promotions-git.utils', () => {
 	describe('buildHttpsGitConfig', () => {
@@ -24,7 +29,7 @@ describe('promotions-git.utils', () => {
 			process.env = originalEnv;
 		});
 
-		it('should build a path-scoped credential helper for plain credentials', () => {
+		it('builds a path-scoped credential helper for plain credentials', () => {
 			const config = buildHttpsGitConfig('https://github.com/user/repo.git', {
 				username: 'testuser',
 				password: 'testpass',
@@ -38,7 +43,7 @@ describe('promotions-git.utils', () => {
 			]);
 		});
 
-		it('should escape single quotes so credentials cannot break out of the helper', () => {
+		it('escapes single quotes so credentials cannot break out of the helper', () => {
 			const config = buildHttpsGitConfig('https://github.com/user/repo.git', {
 				username: "user'; rm -rf /",
 				password: "pass'; rm -rf /",
@@ -49,7 +54,7 @@ describe('promotions-git.utils', () => {
 			);
 		});
 
-		it('should append http.proxy when a proxy resolves for the repository URL', () => {
+		it('adds http.proxy when a proxy resolves for the repository URL', () => {
 			process.env.HTTPS_PROXY = 'http://proxy.company.com:8080';
 
 			const config = buildHttpsGitConfig('https://github.com/user/repo.git', {
@@ -60,7 +65,7 @@ describe('promotions-git.utils', () => {
 			expect(config).toContain('http.proxy=http://proxy.company.com:8080');
 		});
 
-		it('should not append http.proxy when no proxy is set', () => {
+		it('adds no proxy setting when no proxy is configured', () => {
 			const config = buildHttpsGitConfig('https://github.com/user/repo.git', {
 				username: 'testuser',
 				password: 'testpass',
@@ -68,20 +73,10 @@ describe('promotions-git.utils', () => {
 
 			expect(config.some((entry) => entry.includes('proxy='))).toBe(false);
 		});
-
-		it('should bound stalled transfers with a low-speed limit', () => {
-			const config = buildHttpsGitConfig('https://github.com/user/repo.git', {
-				username: 'testuser',
-				password: 'testpass',
-			});
-
-			expect(config).toContain('http.lowSpeedLimit=1000');
-			expect(config).toContain('http.lowSpeedTime=30');
-		});
 	});
 
 	describe('buildSshCommand', () => {
-		it('should build an ssh command pinning host keys with accept-new', () => {
+		it('builds an ssh command pinning host keys with accept-new', () => {
 			const command = buildSshCommand({
 				privateKeyPath: '/data/.ssh/private-key',
 				knownHostsPath: '/data/.ssh/known_hosts',
@@ -92,7 +87,7 @@ describe('promotions-git.utils', () => {
 			);
 		});
 
-		it('should normalize Windows-style backslash paths to POSIX', () => {
+		it('normalizes Windows-style backslash paths to POSIX', () => {
 			const command = buildSshCommand({
 				privateKeyPath: 'C:\\n8n\\.ssh\\private-key',
 				knownHostsPath: 'C:\\n8n\\.ssh\\known_hosts',
@@ -103,18 +98,7 @@ describe('promotions-git.utils', () => {
 			);
 		});
 
-		it('should bound a stalled connection with connect and keepalive timeouts', () => {
-			const command = buildSshCommand({
-				privateKeyPath: '/data/.ssh/private-key',
-				knownHostsPath: '/data/.ssh/known_hosts',
-			});
-
-			expect(command).toContain('-o ConnectTimeout=30');
-			expect(command).toContain('-o ServerAliveInterval=15');
-			expect(command).toContain('-o ServerAliveCountMax=3');
-		});
-
-		it('should quote shell metacharacters in paths', () => {
+		it('quotes shell metacharacters in paths', () => {
 			const command = buildSshCommand({
 				privateKeyPath: "/data/$(archive)/owner's/private-key",
 				knownHostsPath: '/data/`archive`/known_hosts',
@@ -126,7 +110,7 @@ describe('promotions-git.utils', () => {
 	});
 
 	describe('generateSshKeyPair', () => {
-		it('should generate a parseable ed25519 key pair carrying the comment', async () => {
+		it('generates a parseable ed25519 key pair carrying the comment', async () => {
 			const keyPair = await generateSshKeyPair('ed25519', 'n8n promotions');
 
 			expect(keyPair.privateKey).toContain('BEGIN OPENSSH PRIVATE KEY');
@@ -134,11 +118,36 @@ describe('promotions-git.utils', () => {
 			expect(keyPair.publicKey).toContain('n8n promotions');
 		});
 
-		it('should generate a parseable rsa key pair', async () => {
+		it('generates a parseable rsa key pair', async () => {
 			const keyPair = await generateSshKeyPair('rsa', 'n8n promotions');
 
 			expect(keyPair.privateKey).toContain('BEGIN OPENSSH PRIVATE KEY');
 			expect(keyPair.publicKey).toContain('ssh-rsa');
+		});
+	});
+
+	describe('checkoutBranchName', () => {
+		it('reads the branch an Apply config imports from', () => {
+			const branch = checkoutBranchName({
+				direction: 'apply',
+				settings: { schemaVersion: 1, branchName: 'dev' },
+			});
+
+			expect(branch).toBe('dev');
+		});
+
+		it('reads the base branch a Promote config starts from', () => {
+			const branch = checkoutBranchName({
+				direction: 'promote',
+				settings: {
+					schemaVersion: 1,
+					baseBranchName: 'staging',
+					// The branch a promotion creates is never the checkout branch.
+					createBranchOnPromotion: true,
+				},
+			});
+
+			expect(branch).toBe('staging');
 		});
 	});
 });

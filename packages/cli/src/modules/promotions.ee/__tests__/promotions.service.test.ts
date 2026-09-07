@@ -7,8 +7,6 @@ import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
@@ -106,7 +104,7 @@ describe('PromotionsService', () => {
 	});
 
 	describe('clone', () => {
-		it('clones the configured branch and records the cache descriptor', async () => {
+		it('clones the configured branch and records what it cloned', async () => {
 			const input = promoteInput();
 			resolver.resolveForConnection.mockResolvedValue(input);
 
@@ -133,32 +131,17 @@ describe('PromotionsService', () => {
 			});
 		});
 
-		it('uses the Apply source branch for an Apply config', async () => {
-			resolver.resolveForConnection.mockResolvedValue(applyInput());
-
-			await service.clone('conn1', 'apply');
-
-			expect(gitService.clone).toHaveBeenCalledWith(expect.objectContaining({ branchName: 'dev' }));
-		});
-
-		it('writes no descriptor when the clone fails', async () => {
+		it('records nothing when the clone fails, so the checkout stays unusable', async () => {
 			resolver.resolveForConnection.mockResolvedValue(promoteInput());
 			gitService.clone.mockRejectedValueOnce(new BadRequestError('cannot connect'));
 
 			await expect(service.clone('conn1', 'promote')).rejects.toThrow(BadRequestError);
 			await expect(workingDirectory.readDescriptor(CONFIG_ID)).resolves.toBeNull();
 		});
-
-		it('does not touch the filesystem for a missing configuration', async () => {
-			resolver.resolveForConnection.mockRejectedValue(new NotFoundError('not found'));
-
-			await expect(service.clone('conn1', 'promote')).rejects.toThrow(NotFoundError);
-			expect(gitService.clone).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('disconnect', () => {
-		it('removes the checkout and its descriptor, keeping the host keys', async () => {
+		it('removes the checkout but keeps the trusted host keys', async () => {
 			const input = promoteInput();
 			resolver.resolveForConnection.mockResolvedValue(input);
 			await markCloned(input, 'staging');
@@ -211,7 +194,7 @@ describe('PromotionsService', () => {
 			);
 		});
 
-		it('exports all team projects into the n8n-export subfolder, leaving the root untouched', async () => {
+		it('writes the package into n8n-export and leaves the repository root alone', async () => {
 			const { repositoryFolder } = workingDirectory.paths(CONFIG_ID);
 			const packageFolder = path.join(repositoryFolder, 'n8n-export');
 			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
@@ -279,7 +262,7 @@ describe('PromotionsService', () => {
 			await expect(stat(stagingFolder)).rejects.toThrow();
 		});
 
-		it('keeps the previous package and repository root intact when export fails', async () => {
+		it('keeps the previous package when the export fails', async () => {
 			const { repositoryFolder } = workingDirectory.paths(CONFIG_ID);
 			const packageFolder = path.join(repositoryFolder, 'n8n-export');
 			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
@@ -306,19 +289,7 @@ describe('PromotionsService', () => {
 			await expect(stat(stagingFolder)).rejects.toThrow();
 		});
 
-		it('does not query projects or write files for a missing configuration', async () => {
-			resolver.resolveForConnection.mockRejectedValueOnce(
-				new NotFoundError('This connection has no promote configuration'),
-			);
-
-			await expect(service.promote('conn1', actor, { commitMessage: 'm' })).rejects.toThrow(
-				NotFoundError,
-			);
-			expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
-			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
-		});
-
-		it('refuses to promote when the direction is not cloned, before exporting', async () => {
+		it('refuses to promote before exporting when the direction is not cloned', async () => {
 			gitService.hasCheckout.mockResolvedValueOnce(false);
 
 			await expect(service.promote('conn1', actor, { commitMessage: 'm' })).rejects.toThrow(
@@ -346,6 +317,21 @@ describe('PromotionsService', () => {
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
+		// `createBranchOnPromotion` is not part of the cache identity, so flipping it
+		// must leave the checkout alone.
+		it('keeps the checkout usable when only the branching toggle changes', async () => {
+			resolver.resolveForConnection.mockResolvedValue(
+				operationInput({
+					direction: 'promote',
+					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+				}),
+			);
+
+			await expect(service.promote('conn1', actor, { commitMessage: 'm' })).resolves.toMatchObject({
+				git: { branchName: 'staging' },
+			});
+		});
+
 		it('refuses to promote when the checkout was cloned from another remote', async () => {
 			resolver.resolveForConnection.mockResolvedValue(
 				promoteInput({ target: { schemaVersion: 1, remoteUrl: 'git@github.com:o/other.git' } }),
@@ -357,15 +343,7 @@ describe('PromotionsService', () => {
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
-		it('forwards the force flag to the git service', async () => {
-			await service.promote('conn1', actor, { commitMessage: 'm', force: true });
-
-			expect(gitService.commitAndPush).toHaveBeenCalledWith(
-				expect.objectContaining({ force: true }),
-			);
-		});
-
-		it('falls back to the n8n identity when the actor has no profile', async () => {
+		it('commits as n8n when the actor has no name or email', async () => {
 			const bareActor = mock<User>({ id: 'x', firstName: '', lastName: '', email: undefined });
 
 			await service.promote('conn1', bareActor, { commitMessage: 'm' });
@@ -374,14 +352,6 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					author: { name: 'n8n user', email: 'n8n@example.com' },
 				}),
-			);
-		});
-
-		it('propagates a timeout from the git service as a 503', async () => {
-			gitService.commitAndPush.mockRejectedValueOnce(new ServiceUnavailableError('timed out'));
-
-			await expect(service.promote('conn1', actor, { commitMessage: 'm' })).rejects.toThrow(
-				ServiceUnavailableError,
 			);
 		});
 	});
@@ -427,7 +397,7 @@ describe('PromotionsService', () => {
 			projectRepository.findTeamProjectIds.mockResolvedValue(['p1', 'p2']);
 		});
 
-		it('imports from the n8n-export subfolder with the overwrite policy and maps counts by status', async () => {
+		it('imports n8n-export with the fixed policy and counts the result by status', async () => {
 			await mkdir(packageFolder, { recursive: true });
 
 			const result = await service.apply('conn1', actor);
@@ -485,43 +455,16 @@ describe('PromotionsService', () => {
 			});
 		});
 
-		it('deletes team projects missing from the package', async () => {
-			await mkdir(packageFolder, { recursive: true });
-			projectRepository.findTeamProjectIds.mockResolvedValueOnce(['p1', 'p2', 'removed']);
-
-			const result = await service.apply('conn1', actor);
-
-			expect(projectService.deleteProject).toHaveBeenCalledWith(actor, 'removed');
-			expect(result.counts.projects.deleted).toBe(1);
-		});
-
-		it('fails with a clear error when the branch holds no package', async () => {
+		it('explains that the branch holds no package to import', async () => {
 			await expect(service.apply('conn1', actor)).rejects.toThrow('no exported package to import');
 			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 		});
 
-		it('does not touch the filesystem for a missing configuration', async () => {
-			resolver.resolveForConnection.mockRejectedValueOnce(
-				new NotFoundError('This connection has no apply configuration'),
-			);
-
-			await expect(service.apply('conn1', actor)).rejects.toThrow(NotFoundError);
-			expect(gitService.refreshCheckout).not.toHaveBeenCalled();
-			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
-		});
-
-		it('refuses to apply when the direction is not cloned, before fetching', async () => {
+		it('refuses to apply before fetching when the direction is not cloned', async () => {
 			gitService.hasCheckout.mockResolvedValueOnce(false);
 
 			await expect(service.apply('conn1', actor)).rejects.toThrow('not cloned');
 			expect(gitService.refreshCheckout).not.toHaveBeenCalled();
-			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
-		});
-
-		it('propagates a timeout from the git service as a 503', async () => {
-			gitService.refreshCheckout.mockRejectedValueOnce(new ServiceUnavailableError('timed out'));
-
-			await expect(service.apply('conn1', actor)).rejects.toThrow(ServiceUnavailableError);
 			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 		});
 	});

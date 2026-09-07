@@ -68,7 +68,7 @@ describe('Promotions in Public API', () => {
 		owner = await createOwnerWithApiKey();
 	});
 
-	it('creates, retrieves, lists, updates, disconnects, and deletes a connection', async () => {
+	it('walks a connection through create, read, list, update, disconnect, and delete', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const providerId = await createProvider(agent);
 		const createResponse = await agent.post('/promotions/connections').send({
@@ -137,21 +137,24 @@ describe('Promotions in Public API', () => {
 		).not.toBeNull();
 	});
 
-	it('rejects a key without a promotion scope', async () => {
+	it('rejects a key that has no promotion scope', async () => {
 		const unscopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
-		const response = await testServer
-			.publicApiAgentFor(unscopedOwner)
-			.get('/promotions/connections');
-		expect(response.status).toBe(403);
+		const agent = testServer.publicApiAgentFor(unscopedOwner);
+
+		const list = await agent.get('/promotions/connections');
+		const apply = await agent.post('/promotions/connections/someId/apply');
+
+		expect(list.status).toBe(403);
+		expect(apply.status).toBe(403);
 	});
 
-	it('rejects requests when the feature is not licensed', async () => {
+	it('rejects every request when the feature is not licensed', async () => {
 		testServer.license.disable('feat:gitConnections');
 		const response = await testServer.publicApiAgentFor(owner).get('/promotions/connections');
 		expect(response.status).toBe(403);
 	});
 
-	it('generates an SSH key pair without exposing the private key', async () => {
+	it('returns the generated public key and keeps the private key hidden', async () => {
 		const response = await testServer
 			.publicApiAgentFor(owner)
 			.post('/promotions/providers')
@@ -175,7 +178,7 @@ describe('Promotions in Public API', () => {
 		expect(stored.auth).not.toContain('PRIVATE KEY');
 	});
 
-	it('rejects replacing only one half of the username and password', async () => {
+	it('keeps the stored credentials when only half of them is sent', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const providerId = await createProvider(agent);
 		const before = await Container.get(PromotionProviderRepository).findOneByOrFail({
@@ -193,7 +196,7 @@ describe('Promotions in Public API', () => {
 		expect(after.auth).toBe(before.auth);
 	});
 
-	it('rejects changing the authentication method of a provider', async () => {
+	it('refuses to change the authentication method of a provider', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const providerId = await createProvider(agent);
 
@@ -204,17 +207,38 @@ describe('Promotions in Public API', () => {
 		expect(response.status).toBe(400);
 	});
 
-	it('rejects deleting a provider that a connection uses', async () => {
+	it('deletes a provider only once no connection uses it', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const providerId = await createProvider(agent);
-		await createConnection(agent, { providerId });
+		const connectionId = await createConnection(agent, { providerId });
 
-		const response = await agent.delete(`/promotions/providers/${providerId}`);
+		const inUse = await agent.delete(`/promotions/providers/${providerId}`);
+		await agent.delete(`/promotions/connections/${connectionId}`);
+		const unused = await agent.delete(`/promotions/providers/${providerId}`);
 
-		expect(response.status).toBe(409);
+		expect(inUse.status).toBe(409);
+		expect(unused.status).toBe(204);
+		expect(
+			await Container.get(PromotionProviderRepository).findOneBy({ id: providerId }),
+		).toBeNull();
 	});
 
-	it('rejects creating a second instance connection', async () => {
+	it('stores nothing when the connection names an unknown provider', async () => {
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/promotions/connections')
+			.send({
+				name: 'Deployments',
+				scope: 'instance',
+				providerId: 'doesNotExist',
+				target: { schemaVersion: 1, remoteUrl: 'https://example.com/org/repo.git' },
+			});
+
+		expect(response.status).toBe(404);
+		expect(await Container.get(PromotionConnectionRepository).count()).toBe(0);
+	});
+
+	it('allows only one instance connection', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		await createConnection(agent);
 		const providerId = await createProvider(agent, {
@@ -233,7 +257,7 @@ describe('Promotions in Public API', () => {
 		expect(await Container.get(PromotionConnectionRepository).count()).toBe(1);
 	});
 
-	it('rejects a remote URL that does not match the provider auth method, without persisting', async () => {
+	it('stores nothing when the remote URL does not suit the provider', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const providerId = await createProvider(agent);
 
@@ -246,6 +270,77 @@ describe('Promotions in Public API', () => {
 
 		expect(response.status).toBe(400);
 		expect(await Container.get(PromotionConnectionRepository).count()).toBe(0);
+	});
+
+	describe('provider sharing', () => {
+		async function createProjectConnection(agent: Agent, name: string, providerId: string) {
+			const response = await agent.post('/promotions/connections').send({
+				name,
+				scope: 'projects',
+				providerId,
+				target: { schemaVersion: 1, remoteUrl: 'https://example.com/org/repo.git' },
+			});
+			expect(response.status, JSON.stringify(response.body)).toBe(201);
+			return response.body.id as string;
+		}
+
+		it('lists the connections that a provider edit would affect', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const shared = await createProvider(agent, { ...tokenProviderPayload, name: 'Shared' });
+			const other = await createProvider(agent, { ...tokenProviderPayload, name: 'Other' });
+			const instanceId = await createConnection(agent, { providerId: shared });
+			const teamId = await createProjectConnection(agent, 'Team', shared);
+			await createProjectConnection(agent, 'Unrelated', other);
+
+			const byProvider = await agent.get(`/promotions/connections?providerId=${shared}`);
+			const instanceOnly = await agent.get('/promotions/connections?scope=instance');
+			const combined = await agent.get(
+				`/promotions/connections?providerId=${shared}&scope=projects`,
+			);
+
+			expect(byProvider.body.data.map((row: { id: string }) => row.id).sort()).toEqual(
+				[instanceId, teamId].sort(),
+			);
+			expect(instanceOnly.body.data.map((row: { id: string }) => row.id)).toEqual([instanceId]);
+			expect(combined.body.data.map((row: { id: string }) => row.id)).toEqual([teamId]);
+		});
+
+		it('moves one connection to another provider and leaves the rest alone', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const first = await createProvider(agent, { ...tokenProviderPayload, name: 'First' });
+			const second = await createProvider(agent, { ...tokenProviderPayload, name: 'Second' });
+			const movedId = await createProjectConnection(agent, 'Moved', first);
+			const keptId = await createProjectConnection(agent, 'Kept', first);
+
+			const moved = await agent
+				.put(`/promotions/connections/${movedId}`)
+				.send({ providerId: second });
+			const kept = await agent.get(`/promotions/connections/${keptId}`);
+
+			expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+			expect(moved.body.provider.id).toBe(second);
+			expect(kept.body.provider.id).toBe(first);
+		});
+
+		it('rechecks the remote URL when a connection moves to another provider', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const tokenId = await createProvider(agent);
+			const sshId = await createProvider(agent, {
+				name: 'Deploy key',
+				type: 'git',
+				auth: { authType: 'ssh-key' },
+			});
+			// The HTTP(S) URL suits the username-and-password provider, but not an SSH key.
+			const connectionId = await createConnection(agent, { providerId: tokenId });
+
+			const response = await agent
+				.put(`/promotions/connections/${connectionId}`)
+				.send({ providerId: sshId });
+
+			expect(response.status).toBe(400);
+			const unchanged = await agent.get(`/promotions/connections/${connectionId}`);
+			expect(unchanged.body.provider.id).toBe(tokenId);
+		});
 	});
 
 	describe('configurations', () => {
@@ -287,7 +382,7 @@ describe('Promotions in Public API', () => {
 			expect(after.body.configs).toEqual({});
 		});
 
-		it('rejects the other direction branch field', async () => {
+		it("rejects the other direction's branch field", async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const id = await createConnection(agent);
 
@@ -309,7 +404,7 @@ describe('Promotions in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
-		it('rejects a configuration payload on a connection update', async () => {
+		it('rejects configurations sent to the connection update route', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const id = await createConnection(agent);
 
@@ -481,7 +576,7 @@ describe('Promotions in Public API', () => {
 	});
 
 	describe('package operations', () => {
-		it('rejects a Promote with a clear error when the direction is not cloned', async () => {
+		it('explains that Promote needs a clone first', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const id = await createConnection(agent);
 
@@ -492,7 +587,7 @@ describe('Promotions in Public API', () => {
 			expect(response.body.message).toContain('not cloned');
 		});
 
-		it('rejects an Apply with a clear error when the direction is not cloned', async () => {
+		it('explains that Apply needs a clone first', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const id = await createConnection(agent);
 
@@ -515,7 +610,7 @@ describe('Promotions in Public API', () => {
 			expect(response.status).toBe(404);
 		});
 
-		it('rejects Promote and Apply on a project connection before any Git work', async () => {
+		it('refuses Promote and Apply on a project connection', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const providerId = await createProvider(agent);
 			const create = await agent.post('/promotions/connections').send({
@@ -541,14 +636,6 @@ describe('Promotions in Public API', () => {
 			expect(promote.body.message).toContain('instance connection');
 			expect(apply.status).toBe(400);
 			expect(apply.body.message).toContain('instance connection');
-		});
-
-		it('rejects an Apply from a key without the gitConnection:pull scope', async () => {
-			const unscopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
-			const response = await testServer
-				.publicApiAgentFor(unscopedOwner)
-				.post('/promotions/connections/someId/apply');
-			expect(response.status).toBe(403);
 		});
 	});
 });
