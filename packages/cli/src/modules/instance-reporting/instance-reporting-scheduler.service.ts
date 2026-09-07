@@ -9,15 +9,9 @@ import { strict } from 'node:assert';
 import { CentralInstanceMonitoringReportRepository } from './database/repositories/central-instance-monitoring-report.repository';
 import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
 import { InstanceReportingConfig } from './instance-reporting.config';
-import { InstanceReportingService } from './instance-reporting.service';
+import { InstanceReportingService, RETRY_DELAY_MS } from './instance-reporting.service';
 
 const MINUTES_PER_DAY = 24 * 60;
-
-/** How long to wait before re-attempting a delivery that failed. */
-const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
-
-/** Attempts within one day before giving up until the next day's slot. */
-const MAX_ATTEMPTS_PER_DAY = 3;
 
 /**
  * Fires the daily instance report at this instance's configured report time.
@@ -35,19 +29,17 @@ const MAX_ATTEMPTS_PER_DAY = 3;
  * - **Leader-only.** In multi-main, followers hold no timer, so exactly one
  *   instance reports. Handover moves the timer with leadership.
  * - **Catch-up over precision.** Every tick asks the database whether today's
- *   report has been delivered rather than trusting that a timer fired, so a
- *   restart or handover that straddles the report time still reports that day.
- * - **Bounded retry.** A failed delivery is re-attempted a few times before the
- *   day is left to the next slot.
+ *   report has settled rather than trusting that a timer fired, so a restart or
+ *   handover that straddles the report time still reports that day.
+ * - **Bounded retry, held in the database.** The report row carries the attempts
+ *   made and when the last one finished, so a restart resumes that budget rather
+ *   than starting a fresh one. This class keeps no attempt state.
  */
 @Service()
 export class InstanceReportingScheduler {
 	private timeout: NodeJS.Timeout | undefined;
 
 	private isShuttingDown = false;
-
-	/** Delivery attempts for the current day; reset once a day is done with. */
-	private attemptsToday = 0;
 
 	constructor(
 		private readonly config: InstanceReportingConfig,
@@ -128,28 +120,30 @@ export class InstanceReportingScheduler {
 	/**
 	 * One pass: report if due, then arm the next one. Never throws — a pass that
 	 * fails still re-arms, otherwise one bad day would stop reporting for good.
+	 *
+	 * The retry budget and the wait between attempts both live on the report row,
+	 * so this holds no attempt state of its own and a restart resumes where the
+	 * last process stopped.
 	 */
 	private async tick(): Promise<void> {
 		try {
 			const reportTime = await this.settingsService.getReportTime();
-			const sent = await this.reportIfDue(reportTime);
 
-			// A failed delivery retries within the day; anything else waits for the
-			// next slot. `attemptsToday` is only ever raised by a failure, so a day
-			// that reported cleanly resets it here.
-			if (sent === 'failed' && this.attemptsToday < MAX_ATTEMPTS_PER_DAY) {
+			// An attempt too soon after the last one arms for the remainder rather
+			// than falling through, which would sleep until tomorrow and drop the retry.
+			const waitMs = await this.reportingService.msUntilRetryAllowed(new Date());
+			if (waitMs > 0) {
+				this.scheduleNext(waitMs);
+				return;
+			}
+
+			// A failed delivery retries; the row decides when the attempts run out,
+			// after which the day reads as settled and this waits for the next slot.
+			if ((await this.reportIfDue(reportTime)) === 'failed') {
 				this.scheduleNext(RETRY_DELAY_MS);
 				return;
 			}
 
-			if (sent === 'failed') {
-				this.logger.error(
-					'Giving up on the instance report for today after repeated delivery failures',
-					{ attempts: this.attemptsToday },
-				);
-			}
-
-			this.attemptsToday = 0;
 			this.scheduleNext(msUntilNext(reportTime, new Date()));
 		} catch (error) {
 			// Reaching here means the report time could not even be resolved (e.g. the
@@ -160,25 +154,21 @@ export class InstanceReportingScheduler {
 	}
 
 	/**
-	 * Report when this day's slot has passed and nothing has been delivered for it
-	 * yet. Both conditions are re-checked here rather than inferred from the timer
-	 * having fired, so an early fire (a backward clock jump) reports nothing and a
+	 * Report when this day's slot has passed and the day is not settled yet. Both
+	 * conditions are re-checked here rather than inferred from the timer having
+	 * fired, so an early fire (a backward clock jump) reports nothing and a
 	 * duplicate fire is a no-op.
 	 */
 	private async reportIfDue(reportTime: string): Promise<'sent' | 'skipped' | 'failed'> {
 		const now = new Date();
 		if (now.getTime() < slotOn(reportTime, now)) return 'skipped';
-		if (await this.reportRepository.hasDeliveredToday(now)) return 'skipped';
+		if (await this.reportRepository.hasSettledToday(now)) return 'skipped';
 
 		try {
 			await this.reportingService.sendReport();
 			return 'sent';
 		} catch (error) {
-			this.attemptsToday++;
-			this.logger.warn('Failed to deliver the instance report', {
-				attempt: this.attemptsToday,
-				error,
-			});
+			this.logger.warn('Failed to deliver the instance report', { error });
 			return 'failed';
 		}
 	}

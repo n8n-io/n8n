@@ -16,12 +16,23 @@ export class CreateCentralInstanceMonitoringReportTable1788445119184
 			column('dataPoints').json.notNull.comment(
 				'The data point array exactly as sent to the receiver.',
 			),
+			column('status')
+				.varchar(255)
+				.notNull.default("'PENDING'")
+				.comment(
+					'PENDING, DELIVERED, or SKIPPED_AFTER_MAX_RETRIES. Skipped means the instance stopped trying that day, not that the numbers were lost: only a delivered report crosses a day off, so a skipped day is covered by the next report.',
+				),
 			column('deliveredAt')
 				.timestampTimezone()
 				.comment('When the receiver accepted the report; NULL while undelivered.'),
 			column('attempts')
 				.int.notNull.default(0)
-				.comment('Delivery attempts made so far, successful or not.'),
+				.comment('Delivery attempts made so far, successful or not. Three ends the report.'),
+			column('lastAttemptAt')
+				.timestampTimezone()
+				.comment(
+					'When the last attempt finished; NULL before the first. Paces retries across a restart.',
+				),
 			column('lastError').text.comment('Message of the most recent delivery failure.'),
 		).withTimestamps;
 	}

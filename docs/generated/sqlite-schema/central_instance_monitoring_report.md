@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "central_instance_monitoring_report" ("id" varchar(36) PRIMARY KEY NOT NULL, "dataPoints" text NOT NULL, "deliveredAt" datetime(3), "attempts" integer NOT NULL DEFAULT (0), "lastError" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
+CREATE TABLE "central_instance_monitoring_report" ("id" varchar(36) PRIMARY KEY NOT NULL, "dataPoints" text NOT NULL, "status" varchar(255) NOT NULL DEFAULT ('PENDING'), "deliveredAt" datetime(3), "attempts" integer NOT NULL DEFAULT (0), "lastAttemptAt" datetime(3), "lastError" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
 ```
 
 </details>
@@ -20,7 +20,9 @@ CREATE TABLE "central_instance_monitoring_report" ("id" varchar(36) PRIMARY KEY 
 | dataPoints | TEXT |  | false |  |  |  |
 | deliveredAt | datetime(3) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
+| lastAttemptAt | datetime(3) |  | true |  |  |  |
 | lastError | TEXT |  | true |  |  |  |
+| status | varchar(255) | 'PENDING' | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -48,7 +50,9 @@ erDiagram
   TEXT dataPoints
   datetime_3_ deliveredAt
   varchar_36_ id PK
+  datetime_3_ lastAttemptAt
   TEXT lastError
+  varchar_255_ status
   datetime_3_ updatedAt
 }
 ```

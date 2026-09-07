@@ -13,6 +13,43 @@ sent, so a retry resends the exact same measurement under the same `batchId`
 rather than taking fresh numbers — the cumulative total's day-to-day diff is
 only meaningful while every sample sits a fixed 24 hours apart.
 
+A report that follows downtime carries one `daily` point for each day the
+instance missed, up to 30 days, and one `cumulative` point as always. Across a
+gap the `daily` series is the authoritative one: the two cumulative samples
+around the gap sit more than 24 hours apart, so their difference covers the
+whole outage. A missed day with no executions is reported as `0`, so a gap in
+the series always means "not reported", never "nothing ran". A gap longer than
+30 days is unrecoverable, since `insights` buckets a longer range by week; the
+oldest days are dropped and logged.
+
+**A day is reported once, and 201 is what decides it.** The receiver answers 201
+only once it has saved the report, so anything else means nothing was saved and
+the day is still owed. A day is crossed off only by a delivered report, which is
+why a failed day is simply covered again by the next one — even under a new
+`batchId`, since the first attempt left nothing behind.
+
+## Retry state
+
+A report row carries its own retry state, so `status` says where it stands
+without reading this document:
+
+| `status` | Meaning |
+|---|---|
+| `PENDING` | Not delivered yet, and attempts remain |
+| `DELIVERED` | The receiver answered 201 |
+| `SKIPPED_AFTER_MAX_RETRIES` | Three attempts failed, so the instance stopped for that day |
+
+A skipped report is **not** lost data. Only a delivered report crosses a day
+off, so the days a skipped report covered are measured again and sent by the
+next one.
+
+`attempts` and `lastAttemptAt` hold the budget and the pacing, rather than the
+scheduler holding them in memory. A restart therefore resumes the same report's
+three attempts instead of granting three more, and waits out the rest of the
+five minutes since the last attempt before trying again — otherwise a crash loop
+would spend the whole budget in seconds. `InstanceReportingScheduler` keeps no
+attempt state of its own.
+
 ## Scheduling
 
 The daily fire is driven by `InstanceReportingScheduler`, a leader-gated

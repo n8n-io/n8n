@@ -4,12 +4,14 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| attempts | integer | 0 | false |  |  | Delivery attempts made so far, successful or not. |
+| attempts | integer | 0 | false |  |  | Delivery attempts made so far, successful or not. Three ends the report. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | dataPoints | json |  | false |  |  | The data point array exactly as sent to the receiver. |
 | deliveredAt | timestamp(3) with time zone |  | true |  |  | When the receiver accepted the report; NULL while undelivered. |
 | id | varchar(36) |  | false |  |  | Nanoid; travels with the payload as its `batchId`. |
+| lastAttemptAt | timestamp(3) with time zone |  | true |  |  | When the last attempt finished; NULL before the first. Paces retries across a restart. |
 | lastError | text |  | true |  |  | Message of the most recent delivery failure. |
+| status | varchar(255) | 'PENDING'::character varying | false |  |  | PENDING, DELIVERED, or SKIPPED_AFTER_MAX_RETRIES. Skipped means the instance stopped trying that day, not that the numbers were lost: only a delivered report crosses a day off, so a skipped day is covered by the next report. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -21,6 +23,7 @@
 | central_instance_monitoring_report_createdAt_not_null | n | NOT NULL "createdAt" |
 | central_instance_monitoring_report_dataPoints_not_null | n | NOT NULL "dataPoints" |
 | central_instance_monitoring_report_id_not_null | n | NOT NULL id |
+| central_instance_monitoring_report_status_not_null | n | NOT NULL status |
 | central_instance_monitoring_report_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -41,7 +44,9 @@ erDiagram
   json dataPoints
   timestamp_3__with_time_zone deliveredAt
   varchar_36_ id
+  timestamp_3__with_time_zone lastAttemptAt
   text lastError
+  varchar_255_ status
   timestamp_3__with_time_zone updatedAt
 }
 ```

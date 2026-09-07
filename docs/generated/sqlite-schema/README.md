@@ -42,7 +42,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
-| [central_instance_monitoring_report](central_instance_monitoring_report.md) | 7 |  | table |
+| [central_instance_monitoring_report](central_instance_monitoring_report.md) | 9 |  | table |
 | [chat_hub_agent_tools](chat_hub_agent_tools.md) | 2 |  | table |
 | [chat_hub_agents](chat_hub_agents.md) | 13 |  | table |
 | [chat_hub_messages](chat_hub_messages.md) | 17 |  | table |
@@ -736,7 +736,9 @@ erDiagram
   TEXT dataPoints
   datetime_3_ deliveredAt
   varchar_36_ id PK
+  datetime_3_ lastAttemptAt
   TEXT lastError
+  varchar_255_ status
   datetime_3_ updatedAt
 }
 "chat_hub_agent_tools" {

@@ -38,8 +38,11 @@ function makeHarness({
 	config.instanceReportingBaseUrl = baseUrl;
 
 	const reportingService = mock<InstanceReportingService>();
+	// No attempt has been made yet, so nothing is holding the next one back.
+	reportingService.msUntilRetryAllowed.mockResolvedValue(0);
+
 	const reportRepository = mock<CentralInstanceMonitoringReportRepository>();
-	reportRepository.hasDeliveredToday.mockResolvedValue(false);
+	reportRepository.hasSettledToday.mockResolvedValue(false);
 
 	const settingsService = mock<InstanceReportingSettingsService>();
 	settingsService.getReportTime.mockResolvedValue(REPORT_TIME);
@@ -149,7 +152,7 @@ describe('InstanceReportingScheduler', () => {
 		test("stays quiet when the day's report was already delivered", async () => {
 			vi.setSystemTime(new Date(AFTER_SLOT));
 			const { scheduler, reportingService, reportRepository } = makeHarness();
-			reportRepository.hasDeliveredToday.mockResolvedValue(true);
+			reportRepository.hasSettledToday.mockResolvedValue(true);
 
 			await scheduler.init();
 			await settle();
@@ -164,7 +167,7 @@ describe('InstanceReportingScheduler', () => {
 			await scheduler.init();
 			await settle();
 			// The catch-up delivered it, so the rest of the day has nothing to do.
-			reportRepository.hasDeliveredToday.mockResolvedValue(true);
+			reportRepository.hasSettledToday.mockResolvedValue(true);
 			await vi.advanceTimersByTimeAsync(Time.hours.toMilliseconds * 12);
 
 			expect(reportingService.sendReport).toHaveBeenCalledTimes(1);
@@ -230,15 +233,36 @@ describe('InstanceReportingScheduler', () => {
 			expect(reportingService.sendReport).toHaveBeenCalledTimes(2);
 		});
 
-		test('gives up after a bounded number of attempts, leaving the day to the next slot', async () => {
+		test('stops retrying once the report has run out of attempts', async () => {
+			// The row owns the budget, so the service settles the day and this only
+			// has to notice. Three attempts, then the row reads as settled.
 			vi.setSystemTime(new Date(AFTER_SLOT));
-			const { scheduler, reportingService } = makeHarness();
+			const { scheduler, reportingService, reportRepository } = makeHarness();
 			reportingService.sendReport.mockRejectedValue(new Error('Network error'));
+			reportRepository.hasSettledToday.mockImplementation(
+				async () => reportingService.sendReport.mock.calls.length >= 3,
+			);
 
 			await scheduler.init();
 			await vi.advanceTimersByTimeAsync(Time.hours.toMilliseconds);
 
 			expect(reportingService.sendReport).toHaveBeenCalledTimes(3);
+		});
+
+		test('waits out the remaining delay after a restart mid-retry', async () => {
+			// A crash between attempts would otherwise let the fresh process attempt at
+			// once, and a crash loop would spend the whole budget in seconds.
+			vi.setSystemTime(new Date(AFTER_SLOT));
+			const { scheduler, reportingService } = makeHarness();
+			reportingService.msUntilRetryAllowed.mockResolvedValueOnce(2 * Time.minutes.toMilliseconds);
+
+			await scheduler.init();
+			await settle();
+			expect(reportingService.sendReport).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(2 * Time.minutes.toMilliseconds);
+
+			expect(reportingService.sendReport).toHaveBeenCalledTimes(1);
 		});
 
 		test('retries when the report time cannot even be resolved', async () => {

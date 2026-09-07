@@ -42,7 +42,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
-| [public.central_instance_monitoring_report](public.central_instance_monitoring_report.md) | 7 |  | BASE TABLE |
+| [public.central_instance_monitoring_report](public.central_instance_monitoring_report.md) | 9 |  | BASE TABLE |
 | [public.chat_hub_agent_tools](public.chat_hub_agent_tools.md) | 2 |  | BASE TABLE |
 | [public.chat_hub_agents](public.chat_hub_agents.md) | 13 |  | BASE TABLE |
 | [public.chat_hub_messages](public.chat_hub_messages.md) | 17 |  | BASE TABLE |
@@ -749,7 +749,9 @@ erDiagram
   json dataPoints
   timestamp_3__with_time_zone deliveredAt
   varchar_36_ id
+  timestamp_3__with_time_zone lastAttemptAt
   text lastError
+  varchar_255_ status
   timestamp_3__with_time_zone updatedAt
 }
 "public.chat_hub_agent_tools" {
