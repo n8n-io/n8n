@@ -94,8 +94,8 @@ export const NODE_GROUPING_RULES = {
 			'form a single connected section of the graph — reachable from one another, not two ' +
 			'unrelated islands — where at most one member takes main input from outside the group ' +
 			'and at most one member sends main output outside it, and that member has no successor ' +
-			"inside — so a loop node stays outside its body's group, and a gate cannot hold only its " +
-			'dead end. The limit is on members facing outward, not on connections: several ' +
+			'inside (the one exception: a closed loop whose only exit is the loop node) — so a gate ' +
+			'cannot hold only its dead end. The limit is on members facing outward, not on connections: several ' +
 			'connections may reach that one entry member, and several may leave that one exit ' +
 			'member. Sticky notes may accompany the selection ' +
 			'without participating in connectivity, and a sticky-only group is valid.',
@@ -452,7 +452,7 @@ function groupRuleViolationMessage(
 		case 'trigger-selected':
 			return `${label} ${NODE_GROUPING_RULES.triggerSelected.violation}: ${result.triggers.join(', ')}.`;
 		case 'invalid-subgraph':
-			return `${label} ${NODE_GROUPING_RULES.invalidSubgraph.violation}.`;
+			return `${label} ${NODE_GROUPING_RULES.invalidSubgraph.violation}${describeSubgraphError(result.errors[0], nodeLabel)}.`;
 		case 'node-already-grouped':
 			return `${label} ${NODE_GROUPING_RULES.nodeAlreadyGrouped.violation}: ${result.nodeIds.map(nodeLabel).join(', ')}.`;
 		case 'non-main-boundary':
@@ -462,6 +462,30 @@ function groupRuleViolationMessage(
 			return `${label} has multiple input branches at node "${result.node}".`;
 		case 'multiple-output-branches':
 			return `${label} has multiple output branches at node "${result.node}".`;
+	}
+}
+
+/**
+ * Names the node(s) the engine blamed, so the reader can fix the boundary
+ * instead of guessing which member faces outward.
+ */
+function describeSubgraphError(
+	error: ExtractableErrorResult | undefined,
+	nodeLabel: (nodeId: string) => string,
+): string {
+	if (!error) {
+		return '';
+	}
+
+	switch (error.errorCode) {
+		case 'Output Edge From Non-Leaf Node':
+		case 'Input Edge To Non-Root Node':
+			return ` (${error.errorCode.toLowerCase()}: "${nodeLabel(error.node)}")`;
+		case 'Multiple Input Nodes':
+		case 'Multiple Output Nodes':
+			return ` (${error.errorCode.toLowerCase()}: ${[...error.nodes].map((node) => `"${nodeLabel(node)}"`).join(', ')})`;
+		case 'No Continuous Path From Root To Leaf In Selection':
+			return ` (no path from "${nodeLabel(error.start)}" to "${nodeLabel(error.end)}")`;
 	}
 }
 

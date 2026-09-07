@@ -143,10 +143,11 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		expect(NODE_GROUPS_REFERENCE).toMatch(/not on connections/i);
 		expect(NODE_GROUPS_REFERENCE).toMatch(/several connections may reach that one entry member/i);
 		// The engine also rejects an exit member that continues inside the group
-		// (`Output Edge From Non-Leaf Node`), which is why a loop node cannot join its
-		// body and a gate cannot be grouped with only its dead end.
+		// (`Output Edge From Non-Leaf Node`), except in a closed loop where the loop node
+		// is the only exit — so a gate cannot be grouped with only its dead end.
 		expect(NODE_GROUPS_REFERENCE).toMatch(/that member has no successor\s+inside/i);
-		expect(NODE_GROUPS_REFERENCE).toMatch(/loop node stays outside/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/closed loop whose only exit is the loop node/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/gate\s+cannot hold only its dead end/i);
 	});
 
 	it('does not claim the extraction-only per-node single-main-port rule', () => {
