@@ -1140,6 +1140,117 @@ describe('WaitTracker', () => {
 					postExecutePromise.resolve(undefined);
 				});
 			});
+
+			describe('leader stepdown aborts leader-started resume loops', () => {
+				it('stops the parent-park poll without claiming after stopTracking', async () => {
+					const { parentExecution, postExecutePromise, subworkflowResults } =
+						setupParentExecutionTest(true);
+					parentExecution.status = 'running';
+					workflowRunner.run.mockReset();
+					workflowRunner.run.mockResolvedValue(execution.id);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+					executionPersistence.findSingleExecution.mockImplementation(async (id) => {
+						if (id === parentExecution.id) return parentExecution;
+						return execution;
+					});
+
+					await waitTracker.startExecution(execution.id);
+					postExecutePromise.resolve(subworkflowResults);
+					// Let the park poll start sleeping, then step down.
+					await vi.advanceTimersByTimeAsync(100);
+					waitTracker.stopTracking();
+					await vi.advanceTimersByTimeAsync(2000);
+
+					expect(workflowRunner.run).toHaveBeenCalledTimes(1); // child only
+					expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+					expect(logger.info).toHaveBeenCalledWith(
+						'Stopped resuming parent after leader stepdown',
+						expect.objectContaining({
+							parentExecutionId: parentExecution.id,
+							childExecutionId: execution.id,
+						}),
+					);
+					expect(logger.error).not.toHaveBeenCalled();
+				});
+
+				it('stops the child-settle wait without claiming after stopTracking', async () => {
+					const { parentExecution, postExecutePromise } = setupParentExecutionTest(true);
+					workflowRunner.run.mockReset();
+					workflowRunner.run.mockResolvedValue(execution.id);
+
+					executionPersistence.findSingleExecution.mockImplementation(async (id) => {
+						if (id === parentExecution.id) return parentExecution;
+						return execution;
+					});
+
+					await waitTracker.startExecution(execution.id);
+					await vi.advanceTimersByTimeAsync(100);
+					waitTracker.stopTracking();
+					await vi.advanceTimersByTimeAsync(2000);
+
+					expect(workflowRunner.run).toHaveBeenCalledTimes(1); // child only
+					expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+					expect(logger.info).toHaveBeenCalledWith(
+						'Stopped resuming parent after leader stepdown',
+						expect.objectContaining({
+							parentExecutionId: parentExecution.id,
+							childExecutionId: execution.id,
+						}),
+					);
+					expect(logger.error).not.toHaveBeenCalled();
+					postExecutePromise.resolve(undefined);
+				});
+
+				it('still resumes when resumeParentExecution has no abort signal (webhook-like)', async () => {
+					const { parentExecution, postExecutePromise, subworkflowResults } =
+						setupParentExecutionTest(true);
+					parentExecution.status = 'waiting';
+					workflowRunner.run.mockReset();
+					workflowRunner.run.mockResolvedValue(execution.id);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+					const executeData: IExecuteData = {
+						node: mock<INode>({ name: 'Execute Sub Workflow' }),
+						data: { main: [[{ json: { data: 'Parent input data' } }]] },
+						source: { main: [{ previousNode: 'Manual Trigger' }] },
+						metadata: { waitingChildExecutionIds: [execution.id] },
+					};
+					parentExecution.data = createRunExecutionData({
+						executionData: { nodeExecutionStack: [executeData] },
+					});
+
+					executionPersistence.findSingleExecution.mockImplementation(async (id) => {
+						if (id === parentExecution.id) return parentExecution;
+						return execution;
+					});
+
+					// Webhook path: no abort signal. Stepdown must not affect this resume.
+					const resume = waitTracker.resumeParentExecution(
+						{
+							executionId: parentExecution.id,
+							workflowId: parentExecution.workflowData.id,
+							shouldResume: true,
+						},
+						postExecutePromise.promise,
+						{ executionId: execution.id, workflowId: execution.workflowData.id },
+						'child-run-id',
+					);
+					waitTracker.stopTracking();
+					postExecutePromise.resolve(subworkflowResults);
+					await vi.advanceTimersByTimeAsync(1000);
+					await resume;
+
+					expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
+						executionId: parentExecution.id,
+						expectedStatus: 'waiting',
+					});
+					expect(logger.info).not.toHaveBeenCalledWith(
+						'Stopped resuming parent after leader stepdown',
+						expect.anything(),
+					);
+				});
+			});
 		});
 	});
 
