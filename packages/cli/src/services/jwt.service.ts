@@ -42,7 +42,9 @@ export class JwtService {
 			return;
 		}
 		await repo.seedSigningSecret('signing.jwt', this.jwtSecret);
-		const winner = await repo.findActiveSigningSecret('signing.jwt');
+		// The winner may be a pre-wrap row inserted concurrently by an older
+		// process — rewrap on this read too, so startup always leaves it wrapped.
+		const winner = await repo.findActiveSigningSecret('signing.jwt', { rewrapLegacy: true });
 		if (winner !== null) this.jwtSecret = winner;
 	}
 

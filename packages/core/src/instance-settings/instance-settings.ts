@@ -201,7 +201,9 @@ export class InstanceSettings {
 		}
 		if (!canSeed) return;
 		await repo.seedSigningSecret(type, get());
-		const winner = await repo.findActiveSigningSecret(type);
+		// The winner may be a pre-wrap row inserted concurrently by an older
+		// process — rewrap on this read too, so startup always leaves it wrapped.
+		const winner = await repo.findActiveSigningSecret(type, { rewrapLegacy: true });
 		if (winner !== null) set(winner);
 	}
 

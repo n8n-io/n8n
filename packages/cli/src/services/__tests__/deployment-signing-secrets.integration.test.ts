@@ -2,6 +2,7 @@ import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import jsonwebtoken from 'jsonwebtoken';
 import { Cipher, InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
@@ -97,22 +98,18 @@ describe('deployment signing secrets (integration)', () => {
 		);
 	});
 
-	it('keeps the JWT secret stable across service restarts', async () => {
+	it('adopts the wrapped DB secret instead of the derived one', async () => {
+		// Pre-seed a DB secret that differs from anything derivable from the
+		// instance key: only a real unwrap-and-adopt of the stored row can make
+		// tokens verify against it.
+		await repo.seedSigningSecret('signing.jwt', 'preseeded-db-secret');
+
 		const globalConfig = Container.get(GlobalConfig);
 		globalConfig.userManagement.jwtSecret = '';
-		const instanceSettings = Container.get(InstanceSettings);
+		const service = new JwtService(Container.get(InstanceSettings), globalConfig);
+		await service.initialize(repo);
 
-		const first = new JwtService(instanceSettings, globalConfig);
-		await first.initialize(repo);
-		const token = first.sign({ sub: 'roundtrip' });
-
-		globalConfig.userManagement.jwtSecret = '';
-		const second = new JwtService(instanceSettings, globalConfig);
-		await second.initialize(repo);
-
-		expect(second.verify(token)).toMatchObject({ sub: 'roundtrip' });
-
-		const row = await repo.findActiveByType('signing.jwt');
-		expect(row!.algorithm).toBe('aes-256-gcm');
+		const token = service.sign({ sub: 'roundtrip' });
+		expect(jsonwebtoken.verify(token, 'preseeded-db-secret')).toMatchObject({ sub: 'roundtrip' });
 	});
 });

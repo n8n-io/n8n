@@ -83,7 +83,11 @@ export class BinaryDataConfig {
 			return;
 		}
 		await repo.seedSigningSecret('signing.binary_data', this.signingSecret);
-		const winner = await repo.findActiveSigningSecret('signing.binary_data');
+		// The winner may be a pre-wrap row inserted concurrently by an older
+		// process — rewrap on this read too, so startup always leaves it wrapped.
+		const winner = await repo.findActiveSigningSecret('signing.binary_data', {
+			rewrapLegacy: true,
+		});
 		if (winner !== null) this.signingSecret = winner;
 	}
 }
