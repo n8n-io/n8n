@@ -79,10 +79,19 @@ import { nodeGroupDroppedWarnings } from './workflows/workflow-validation-warnin
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
-// `list` and `setup` share this field, and the schema sanitizer requires one
-// description per shared field, so it has to cover both uses.
+// `list`, `node-usage` and `setup` share these fields, and the schema sanitizer rejects
+// conflicting descriptions for one field name across the union, so each has to read correctly
+// for every action that uses it.
 const PROJECT_ID_FIELD_DESCRIPTION =
-	'Project ID, obtainable from `workspace(action="list-projects")`. For `list`: read that one project instead of the default scope — use it for "what is in project X" rather than listing the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write. For `setup`: scope credential creation to that project.';
+	'Project ID, obtainable from `workspace(action="list-projects")`. For `list` and `node-usage`: read that one project instead of the default scope — use it for "what is in project X" rather than reading the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write. For `setup`: scope credential creation to that project.';
+
+const SCOPE_FIELD_DESCRIPTION =
+	"Which project(s) to read. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.";
+
+const LIMIT_FIELD_DESCRIPTION = 'Max results to return';
+
+const NODE_TYPES_FIELD_DESCRIPTION =
+	'Full node types, e.g. ["n8n-nodes-base.slack"]. Matched against the nodes a workflow actually contains, from an index — so it finds users of a node however the workflow is named, and costs one call however many workflows exist. Keeps only workflows containing at least one of these.';
 
 const listAction = z.object({
 	action: z
@@ -96,19 +105,51 @@ const listAction = z.object({
 		.describe(
 			'Substring filter on the workflow NAME only — it does not match node types, descriptions, or what a workflow does. Omit it whenever you need the actual inventory (what exists here, project status, what to do next): a name-filtered list is not the set of workflows in scope. Use it only when the user named a workflow, or to locate one you already know exists.',
 		),
-	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
+	nodeTypes: z.array(z.string()).optional().describe(NODE_TYPES_FIELD_DESCRIPTION),
+	limit: z.number().int().positive().max(100).optional().describe(LIMIT_FIELD_DESCRIPTION),
 	status: z
 		.enum(['active', 'archived', 'all'])
 		.optional()
 		.describe(
 			'Which workflows to list. Defaults to active; use archived to find workflows that can be restored.',
 		),
-	scope: z
-		.enum(['project', 'instance'])
+	scope: z.enum(['project', 'instance']).optional().describe(SCOPE_FIELD_DESCRIPTION),
+	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
+});
+
+/** `list` as it looks without the dependency index behind it — the shape the agent saw before
+ *  node usage existed. Registered instead of `listAction` when the capability is off, so the
+ *  off arm really lacks the field rather than being told to avoid it. `Input` still derives
+ *  from the full `listAction`, so the handler keeps its types either way. */
+const listActionWithoutNodeTypes = listAction.omit({ nodeTypes: true });
+
+/**
+ * The cheap rung of preference discovery. `list` filters on the workflow name only, so learning
+ * what a project is built out of otherwise means fetching every workflow and reading its nodes:
+ * measured across ten workflows, that is ~6,500 tokens against ~85 for this aggregate.
+ */
+const nodeUsageAction = z.object({
+	action: z
+		.literal('node-usage')
+		.describe(
+			'Which node types the workflows in scope actually use, and how many use each, most-used ' +
+				'first. Read this BEFORE opening workflows when the question is what a project is built ' +
+				'out of — its conventions, which integrations are in play, whether something already ' +
+				'exists. Call it with no `nodeType` for the overview; call it with one to get the ' +
+				'workflows using that type, most recently updated first, when you want to read a ' +
+				'current example.',
+		),
+	nodeType: z
+		.string()
 		.optional()
 		.describe(
-			"Which project(s) to search. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.",
+			'A single full node type, e.g. "@n8n/n8n-nodes-langchain.lmChatAnthropic". Omit it for the ' +
+				'overview of every type in use.',
 		),
+	// Caps both shapes: node types in the overview, workflows when a `nodeType` is given. The
+	// ceiling is above the overview's default so raising it after a truncated answer works.
+	limit: z.number().int().positive().max(200).optional().describe(LIMIT_FIELD_DESCRIPTION),
+	scope: z.enum(['project', 'instance']).optional().describe(SCOPE_FIELD_DESCRIPTION),
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
 });
 
@@ -323,6 +364,7 @@ interface WorkflowToolContext {
 // regardless of which dynamic subset the schema actually includes.
 type Input =
 	| z.infer<typeof listAction>
+	| z.infer<typeof nodeUsageAction>
 	| z.infer<typeof getAction>
 	| z.infer<typeof getJsonAction>
 	| z.infer<typeof getAsCodeAction>
@@ -344,6 +386,7 @@ type PublishRollbackResult = {
 };
 export type WorkflowAction =
 	| 'list'
+	| 'node-usage'
 	| 'get'
 	| 'get-json'
 	| 'get-as-code'
@@ -371,6 +414,9 @@ type WorkflowsToolOptionsInput = WorkflowsToolOptions | 'full' | 'orchestrator';
 
 const WORKFLOW_ACTION_ORDER = [
 	'list',
+	// Directly after `list`: it answers the same discovery question far more cheaply, and this
+	// ordering is what the agent reads first in the tool schema.
+	'node-usage',
 	'get',
 	'get-json',
 	'get-as-code',
@@ -388,6 +434,7 @@ const WORKFLOW_ACTION_ORDER = [
 
 const WORKFLOW_ACTION_LABELS = {
 	list: 'list',
+	'node-usage': 'summarize which node types are in use',
 	get: 'inspect',
 	'get-json': 'inspect full WorkflowJSON',
 	'get-as-code': 'convert existing workflows to TypeScript SDK code',
@@ -413,9 +460,14 @@ function getSupportedWorkflowActionSchemas(
 ): Partial<Record<WorkflowAction, WorkflowActionSchema>> {
 	const hasNamedVersions = !!context.workflowService.updateVersion;
 	const hasVersions = !!context.workflowService.listVersions;
+	// One gate for both halves of the surface: the host attaches `nodeUsage` only when the
+	// dependency index is wired and the capability is on, so the agent is never offered an
+	// action or a filter it would get an error from.
+	const hasNodeUsage = !!context.workflowService.nodeUsage;
 
 	return {
-		list: listAction,
+		list: hasNodeUsage ? listAction : listActionWithoutNodeTypes,
+		...(hasNodeUsage ? { 'node-usage': nodeUsageAction } : {}),
 		get: getAction,
 		...(surface !== 'orchestrator' ? { 'get-json': getJsonAction } : {}),
 		'get-as-code': getAsCodeAction,
@@ -486,6 +538,57 @@ async function resolveWorkflowName(
 		.catch(() => workflowId);
 }
 
+/**
+ * Renders the counts against the scope total, because "10 of 10" is the statement a preference is
+ * made of and a bare count says nothing without its denominator.
+ */
+async function handleNodeUsage(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'node-usage' }>,
+) {
+	if (!context.workflowService.nodeUsage) {
+		return {
+			note: 'Node usage is not available on this instance. Read the workflows you need directly.',
+		};
+	}
+
+	const result = await context.workflowService.nodeUsage({
+		...(input.nodeType ? { nodeType: input.nodeType } : {}),
+		...(input.limit !== undefined ? { limit: input.limit } : {}),
+		...(input.scope ? { scope: input.scope } : {}),
+		...(input.projectId ? { projectId: input.projectId } : {}),
+	});
+
+	if (input.nodeType) {
+		return {
+			nodeType: input.nodeType,
+			workflowsInScope: result.workflowsInScope,
+			workflows: result.workflows ?? [],
+			...(result.truncated ? { truncated: true } : {}),
+		};
+	}
+
+	// What an absence means depends on whether the list is complete. On a full list, a missing
+	// type is a choice the user has not made, and saying so is most of the value. On a cut list
+	// it means nothing at all, and the note must withdraw the claim rather than repeat it.
+	const absence = result.truncated
+		? 'This list is CUT at the top ' +
+			`${result.nodeTypes?.length ?? 0} most-used types — a type missing from it may still be ` +
+			'in use, so do not read an absence as evidence. Raise `limit`, or narrow with `projectId`.'
+		: 'A type absent from this list is used by no workflow in scope.';
+
+	return {
+		workflowsInScope: result.workflowsInScope,
+		nodeTypes: result.nodeTypes ?? [],
+		...(result.truncated ? { truncated: true } : {}),
+		// The limit of the surface is named so counts are never quoted as parameter-level house style.
+		note:
+			`Counts are how many workflows use each type, out of workflowsInScope. ${absence} ` +
+			'Node types only — for parameter-level convention (retry settings, naming, model ' +
+			'options), read one workflow with `get`.',
+	};
+}
+
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
 	const { workflows, total, totalInScope } = await context.workflowService.list({
 		limit: input.limit,
@@ -493,6 +596,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		...(input.status ? { status: input.status } : {}),
 		...(input.scope ? { scope: input.scope } : {}),
 		...(input.projectId ? { projectId: input.projectId } : {}),
+		...(input.nodeTypes?.length ? { nodeTypes: input.nodeTypes } : {}),
 	});
 
 	// A partial list must never read as the complete inventory: guessed name
@@ -2014,6 +2118,8 @@ export function createWorkflowsTool(
 			switch (workflowInput.action) {
 				case 'list':
 					return await handleList(context, workflowInput);
+				case 'node-usage':
+					return await handleNodeUsage(context, workflowInput);
 				case 'get':
 					return await handleGet(context, workflowInput);
 				case 'get-json':

@@ -518,3 +518,118 @@ describe('confluenceApiRequestUpload', () => {
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe('credential routing (authentication selector)', () => {
+	let ctx: Mocked<IExecuteFunctions>;
+	let mockHttpRequestWithAuthentication: Mock;
+
+	const setup = (authentication: unknown) => {
+		ctx = mockDeep<IExecuteFunctions>();
+		mockHttpRequestWithAuthentication = vi.fn().mockResolvedValue(accessibleResources);
+		ctx.helpers.httpRequestWithAuthentication = mockHttpRequestWithAuthentication;
+		ctx.getNode.mockReturnValue({
+			id: 'test-node',
+			name: 'Test Confluence Node',
+			type: 'n8n-nodes-base.confluence',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: {},
+		});
+		ctx.getNodeParameter.mockImplementation(((
+			name: string,
+			_itemIndex?: number,
+			fallback?: unknown,
+		) => {
+			if (name === 'authentication') return authentication ?? fallback;
+			if (name === 'site') return siteByUrl('https://example.atlassian.net');
+			return fallback;
+		}) as never);
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		clearAtlassianAccessibleResourcesCache();
+	});
+
+	it('routes the cloudId lookup and the API call through the Service Account credential', async () => {
+		setup('serviceAccount');
+
+		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+
+		expect(mockHttpRequestWithAuthentication.mock.calls.length).toBeGreaterThanOrEqual(2);
+		for (const call of mockHttpRequestWithAuthentication.mock.calls) {
+			expect(call[0]).toBe('atlassianServiceAccountApi');
+		}
+	});
+
+	it('uploads through the Service Account credential when selected', async () => {
+		setup('serviceAccount');
+
+		await confluenceApiRequestUpload.call(
+			ctx,
+			'/wiki/rest/api/content/9/child/attachment',
+			new FormData(),
+		);
+
+		expect(mockHttpRequestWithAuthentication.mock.calls.length).toBeGreaterThanOrEqual(2);
+		for (const call of mockHttpRequestWithAuthentication.mock.calls) {
+			expect(call[0]).toBe('atlassianServiceAccountApi');
+		}
+	});
+
+	it('downloads binary content through the Service Account credential when selected', async () => {
+		setup('serviceAccount');
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockResolvedValueOnce(Buffer.from('bytes'));
+
+		await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/file.txt');
+
+		expect(mockHttpRequestWithAuthentication.mock.calls.length).toBeGreaterThanOrEqual(2);
+		for (const call of mockHttpRequestWithAuthentication.mock.calls) {
+			expect(call[0]).toBe('atlassianServiceAccountApi');
+		}
+	});
+
+	it('defaults to Cloud OAuth2 when the authentication parameter is absent', async () => {
+		// Workflows saved before the selector existed have no `authentication` key;
+		// the read falls back to 'cloudOAuth2' and behavior is unchanged.
+		setup(undefined);
+
+		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+
+		expect(mockHttpRequestWithAuthentication.mock.calls.length).toBeGreaterThanOrEqual(2);
+		for (const call of mockHttpRequestWithAuthentication.mock.calls) {
+			expect(call[0]).toBe('confluenceCloudOAuth2Api');
+		}
+	});
+
+	it('resolves the Service Account credential through getCurrentNodeParameter in a load-options context', async () => {
+		// The NDV dropdowns (sites, spaces, pages, labels) run in a load-options
+		// context, where only getCurrentNodeParameter sees the unsaved selector value.
+		const loadCtx: Mocked<ILoadOptionsFunctions> = mockDeep<ILoadOptionsFunctions>();
+		const loadMock = vi.fn().mockResolvedValue(accessibleResources);
+		loadCtx.helpers.httpRequestWithAuthentication = loadMock;
+		loadCtx.getNode.mockReturnValue({
+			id: 'test-node',
+			name: 'Test Confluence Node',
+			type: 'n8n-nodes-base.confluence',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: {},
+		});
+		loadCtx.getCurrentNodeParameter.mockImplementation(((name: string) => {
+			if (name === 'authentication') return 'serviceAccount';
+			return siteByUrl('https://example.atlassian.net');
+		}) as never);
+
+		await confluenceApiRequest.call(loadCtx, 'GET', '/wiki/api/v2/pages');
+
+		expect(loadMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+		for (const call of loadMock.mock.calls) {
+			expect(call[0]).toBe('atlassianServiceAccountApi');
+		}
+	});
+});

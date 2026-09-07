@@ -164,6 +164,14 @@ function getDescription(tool: unknown): string {
 	return (tool as { description: string }).description;
 }
 
+/** Parse through the tool's real input schema, so assertions see what the handler would get —
+ *  zod strips fields the schema does not declare rather than rejecting them. */
+function parseInput(tool: unknown, input: unknown): Record<string, unknown> {
+	const schema = (tool as { inputSchema: { parse: (input: unknown) => Record<string, unknown> } })
+		.inputSchema;
+	return schema.parse(input);
+}
+
 describe('workflows tool', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -3532,6 +3540,149 @@ describe('workflows tool', () => {
 				message: 'Unpublish My WF (ID: wf1)',
 				severity: 'warning',
 			});
+		});
+	});
+});
+
+describe('node usage', () => {
+	const withNodeUsage = (result: unknown = { workflowsInScope: 0, nodeTypes: [] }) => {
+		const context = createMockContext();
+		context.workflowService.nodeUsage = vi.fn().mockResolvedValue(result);
+		return context;
+	};
+
+	describe('capability gate', () => {
+		// The host attaches `nodeUsage` only when the dependency index is wired behind it, so the
+		// agent must never be offered an action or a filter that would error.
+		it('registers the action only when the service exposes nodeUsage', () => {
+			expect(
+				getInputSchema(createWorkflowsTool(withNodeUsage(), 'full')).safeParse({
+					action: 'node-usage',
+				}).success,
+			).toBe(true);
+
+			expect(
+				getInputSchema(createWorkflowsTool(createMockContext(), 'full')).safeParse({
+					action: 'node-usage',
+				}).success,
+			).toBe(false);
+		});
+
+		// The field is omitted from the schema rather than ignored downstream, so zod strips it and
+		// the handler cannot receive it — which is also what keeps it out of the schema the model reads.
+		it('offers the nodeTypes filter on list under the same condition', () => {
+			const parseList = (context: InstanceAiContext) =>
+				parseInput(createWorkflowsTool(context, 'full'), {
+					action: 'list',
+					nodeTypes: ['n8n-nodes-base.slack'],
+				});
+
+			expect(parseList(withNodeUsage())).toMatchObject({ nodeTypes: ['n8n-nodes-base.slack'] });
+			expect(parseList(createMockContext())).not.toHaveProperty('nodeTypes');
+		});
+	});
+
+	describe('histogram', () => {
+		it('returns the counts with the denominator and states the surface limits', async () => {
+			const context = withNodeUsage({
+				workflowsInScope: 10,
+				nodeTypes: [{ nodeType: '@n8n/n8n-nodes-langchain.lmChatAnthropic', workflowCount: 10 }],
+			});
+			const tool = createWorkflowsTool(context, 'full');
+
+			const result = await executeTool<{
+				workflowsInScope: number;
+				nodeTypes: Array<{ nodeType: string; workflowCount: number }>;
+				note: string;
+			}>(tool, { action: 'node-usage' } as never, {} as never);
+
+			expect(result.workflowsInScope).toBe(10);
+			expect(result.nodeTypes).toEqual([
+				{ nodeType: '@n8n/n8n-nodes-langchain.lmChatAnthropic', workflowCount: 10 },
+			]);
+			// An absence is evidence, not a gap — and the note has to say so, or a type the project
+			// never uses reads as "unknown" rather than "not chosen".
+			expect(result.note).toContain('absent from this list is used by no workflow in scope');
+			expect(result.note).toContain('Node types only');
+		});
+
+		// The claim above is only true of a complete list. On a cut one it is actively wrong, so
+		// the note has to withdraw it rather than repeat it.
+		it('withdraws the absence claim when the list is cut', async () => {
+			const context = withNodeUsage({
+				workflowsInScope: 40,
+				nodeTypes: [{ nodeType: 'n8n-nodes-base.slack', workflowCount: 9 }],
+				truncated: true,
+			});
+			const tool = createWorkflowsTool(context, 'full');
+
+			const result = await executeTool<{ truncated?: boolean; note: string }>(
+				tool,
+				{ action: 'node-usage', limit: 1 } as never,
+				{} as never,
+			);
+
+			expect(result.truncated).toBe(true);
+			expect(result.note).toContain('do not read an absence as evidence');
+			expect(result.note).not.toContain('used by no workflow in scope');
+		});
+
+		it('passes the limit through to the service', async () => {
+			const context = withNodeUsage();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(tool, { action: 'node-usage', limit: 5 } as never, {} as never);
+
+			expect(context.workflowService.nodeUsage).toHaveBeenCalledWith({ limit: 5 });
+		});
+	});
+
+	describe('workflows for a node type', () => {
+		it('names the workflows using a type and reports truncation', async () => {
+			const context = withNodeUsage({
+				workflowsInScope: 12,
+				workflows: [
+					{ workflowId: 'wf-1', name: 'Daily sync', updatedAt: '2026-01-01T00:00:00.000Z' },
+				],
+				truncated: true,
+			});
+			const tool = createWorkflowsTool(context, 'full');
+
+			const result = await executeTool(
+				tool,
+				{ action: 'node-usage', nodeType: 'n8n-nodes-base.slack', limit: 1 } as never,
+				{} as never,
+			);
+
+			expect(context.workflowService.nodeUsage).toHaveBeenCalledWith({
+				nodeType: 'n8n-nodes-base.slack',
+				limit: 1,
+			});
+			expect(result).toEqual({
+				nodeType: 'n8n-nodes-base.slack',
+				workflowsInScope: 12,
+				workflows: [
+					{ workflowId: 'wf-1', name: 'Daily sync', updatedAt: '2026-01-01T00:00:00.000Z' },
+				],
+				truncated: true,
+			});
+		});
+	});
+
+	describe('list', () => {
+		it('passes nodeTypes through to the service', async () => {
+			const context = withNodeUsage();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(
+				tool,
+				{ action: 'list', nodeTypes: ['n8n-nodes-base.slack'] } as never,
+				{} as never,
+			);
+
+			expect(context.workflowService.list).toHaveBeenCalledWith(
+				expect.objectContaining({ nodeTypes: ['n8n-nodes-base.slack'] }),
+			);
 		});
 	});
 });

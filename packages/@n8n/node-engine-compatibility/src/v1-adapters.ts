@@ -28,6 +28,7 @@ import {
 import { isTriggerStepConfig, isV1NodeStepConfig } from './guards';
 import { fromStepInputs } from './io';
 import type { CreateExecuteContextParams, V1Execution, V1NodeStepConfig } from './types';
+import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
 
 export function toV1Execution(
 	graph: WorkflowGraph,
@@ -59,7 +60,7 @@ function toV1Nodes(graph: WorkflowGraph): INode[] {
 }
 
 function toV1Connections(graph: WorkflowGraph): IConnections {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+	const namesById = nodeNamesById(graph);
 
 	const connections: IConnections = {};
 	for (const edge of graph.edges) {
@@ -88,7 +89,7 @@ function toV1RunData(
 	activeNodeId: string,
 	activeIteration: number,
 ): IRunData {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+	const namesById = nodeNamesById(graph);
 	const sourcesByNodeId = toV1Sources(graph);
 	const activeLoop = deriveLoops(graph).find((loop) => loop.memberIds.has(activeNodeId));
 
@@ -111,37 +112,31 @@ function toV1RunData(
 
 		const source = sourcesByNodeId.get(completedNodeId) ?? [];
 
-		// A pass the node was skipped on gets an empty run rather than a gap. v1
-		// reads whatever entry it finds, and a gap would crash it. The empty run
-		// holds one empty slot, since zero slots reads to v1 as no data at all.
-		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => ({
-			startTime: 0,
-			executionTime: 0,
-			executionIndex: iteration,
-			source,
-			data: {
-				[MAIN_CONNECTION_TYPE]: fromStepInputs(outputsByIteration[iteration] ?? [[]]),
-			},
-		}));
+		// A pass the node was skipped on gets an empty run rather than a gap.
+		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => {
+			const outputs = outputsByIteration[iteration];
+			if (outputs === undefined) return emptyRun(iteration, source);
+
+			return {
+				startTime: 0,
+				executionTime: 0,
+				executionIndex: iteration,
+				source,
+				data: { [MAIN_CONNECTION_TYPE]: fromStepInputs(outputs) },
+			};
+		});
 	}
 
 	return runData;
 }
 
+/** The execute path reports one pass, so no source names a `previousNodeRun`. */
 export function toV1Sources(graph: WorkflowGraph): Map<string, Array<ISourceData | null>> {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+	const namesById = nodeNamesById(graph);
 
 	const sourcesByNodeId = new Map<string, Array<ISourceData | null>>();
-	for (const edge of graph.edges) {
-		if (edge.isBackEdge === true) continue;
-		const fromName = namesById.get(edge.from);
-		if (fromName === undefined) continue;
-
-		const source = sourcesByNodeId.get(edge.to) ?? [];
-		const inputIndex = edge.inputIndex ?? 0;
-		while (source.length <= inputIndex) source.push(null);
-		source[inputIndex] ??= { previousNode: fromName, previousNodeOutput: edge.outputIndex };
-		sourcesByNodeId.set(edge.to, source);
+	for (const [nodeId, edges] of forwardEdgesByTarget(graph)) {
+		sourcesByNodeId.set(nodeId, toSourceSlots(edges, namesById));
 	}
 	return sourcesByNodeId;
 }

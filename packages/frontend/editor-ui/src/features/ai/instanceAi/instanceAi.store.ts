@@ -227,14 +227,27 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		});
 	}
 
-	async function deleteThread(threadId: string): Promise<boolean> {
+	/**
+	 * Delete a thread. Returns false if the backend refused, in which case the thread is
+	 * left in the list because it genuinely still exists.
+	 *
+	 * `silent` suppresses the failure toast, for callers cleaning up after some other
+	 * failure they have already reported -- a second, unrelated "delete failed" on top of
+	 * the real error only confuses. Those callers should handle `false` themselves.
+	 */
+	async function deleteThread(
+		threadId: string,
+		options: { silent?: boolean } = {},
+	): Promise<boolean> {
 		// Only call API for threads that have been persisted to the backend
 		if (persistedThreadIds.has(threadId)) {
 			try {
 				await deleteThreadApi(rootStore.restApiContext, threadId);
 				persistedThreadIds.delete(threadId);
 			} catch {
-				toast.showError(new Error('Failed to delete thread. Try again.'), 'Delete failed');
+				if (!options.silent) {
+					toast.showError(new Error('Failed to delete thread. Try again.'), 'Delete failed');
+				}
 				return false;
 			}
 		}

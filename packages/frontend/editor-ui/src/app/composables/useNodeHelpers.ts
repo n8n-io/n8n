@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/app/constants';
@@ -7,6 +7,8 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	classifyTriggerIdentity,
+	getChildNodes,
+	getParentNodes,
 	nodeIssuesToString,
 } from 'n8n-workflow';
 import type {
@@ -417,17 +419,34 @@ export function useNodeHelpers() {
 		return null;
 	}
 
-	// Returns which resolver kind is in effect when a trigger blocks end-user
-	// credentials, or null when the workflow is compatible. Mirror the backend publish
-	// check: the effective resolver decides which identity every enabled trigger must
-	// establish, so a single incompatible trigger blocks publish even when a compatible
-	// one (e.g. a manual trigger) is also present. The system resolver (self-connect)
-	// keys on the n8n user identity; a custom resolver keys on an external identity
-	// extracted from the trigger data.
+	// Decides which nodes should carry the end-user-credential trigger warning, instead of
+	// poisoning every node whenever any trigger is incompatible. Returns:
+	//   - null                       — nothing to warn (no triggers, or none is blocking)
+	//   - { reachable: null }        — warn every end-user-credential node (no compatible
+	//                                  trigger exists, so no branch can resolve them)
+	//   - { reachable: Set<string> } — warn only nodes reachable from a blocking trigger
+	//                                  (a compatible trigger also exists; its branch is fine)
+	// plus the resolver kind, which selects the message.
 	//
-	// A workflow with no triggers is left un-warned: it's a transient state while
-	// building. The backend still catches it at publish time.
-	function getBlockingTrigger(): { isSystemResolver: boolean } | null {
+	// A trigger is "blocking" when it can't establish the identity the effective resolver
+	// keys on: the system resolver (self-connect) needs the n8n user identity, a custom
+	// resolver needs an external identity extracted from the trigger data.
+	//
+	// The reachable set is the forward main closure of each blocking trigger plus the AI
+	// sub-nodes (tool / model / memory) attached to any reachable node — a sub-node is the
+	// source of an `ai_*` connection into its parent, so a plain forward walk misses it.
+	// This mirrors execution: a node runs on a given trigger iff it's in that closure.
+	//
+	// A workflow with no triggers is left un-warned: it's a transient state while building.
+	// The backend still catches incompatible workflows at publish time.
+	// Computed so the graph walk runs once per reactive change rather than once per node:
+	// `collectPrivateCredentialIssues` reads it inside `updateNodesCredentialsIssues`, which
+	// loops over every node, so recomputing per call would be quadratic. Vue caches the result
+	// until the triggers / connections / resolver setting actually change.
+	const privateCredentialTriggerWarning = computed<{
+		reachable: Set<string> | null;
+		isSystemResolver: boolean;
+	} | null>(() => {
 		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
 			(trigger) => !trigger.disabled,
 		);
@@ -436,17 +455,49 @@ export function useNodeHelpers() {
 		const resolverId = workflowDocumentStore.value.settings?.credentialResolverId;
 		const isSystemResolver = !resolverId || resolverId === SYSTEM_RESOLVER_ID;
 
-		const hasBlockingTrigger = triggers.some((trigger) => {
+		const isBlocking = (trigger: INodeUi) => {
 			const { providesN8nIdentity, providesExternalIdentity } = classifyTriggerIdentity(
 				trigger.type,
 				trigger.parameters,
 				{ isChatOAuth2Enabled: envFeatureFlag.value('CHAT_TRIGGER_OAUTH2') },
 			);
 			return isSystemResolver ? !providesN8nIdentity : !providesExternalIdentity;
-		});
+		};
 
-		return hasBlockingTrigger ? { isSystemResolver } : null;
-	}
+		const blockingTriggers = triggers.filter(isBlocking);
+		if (blockingTriggers.length === 0) return null;
+
+		// No compatible trigger anywhere: no branch can resolve end-user credentials, so
+		// every such node is blocked regardless of graph shape — warn them all.
+		if (blockingTriggers.length === triggers.length) {
+			return { reachable: null, isSystemResolver };
+		}
+
+		// Mixed triggers: only nodes an incompatible trigger can actually reach are blocked.
+		// Nodes sitting only on a compatible trigger's branch resolve fine at run time.
+		const bySource = workflowDocumentStore.value.connectionsBySourceNode;
+		const byDestination = workflowDocumentStore.value.connectionsByDestinationNode;
+
+		const reachable = new Set<string>();
+		for (const trigger of blockingTriggers) {
+			reachable.add(trigger.name);
+			// Forward walk follows `main` only. A sub-node wired into a reachable node is the
+			// source of an `ai_*` connection, so walking 'ALL' here would also cross that edge
+			// backwards and pull in the sub-node's own (possibly unreachable) parent. The
+			// reverse ALL_NON_MAIN pass below is what attaches sub-nodes, correctly.
+			for (const child of getChildNodes(bySource, trigger.name, NodeConnectionTypes.Main)) {
+				reachable.add(child);
+			}
+		}
+		// Pull in sub-nodes of every reachable node (their connections point backwards).
+		for (const nodeName of [...reachable]) {
+			for (const subNode of getParentNodes(byDestination, nodeName, 'ALL_NON_MAIN')) {
+				reachable.add(subNode);
+			}
+		}
+
+		return { reachable, isSystemResolver };
+	});
 
 	function collectPrivateCredentialIssues(
 		node: INodeUi,
@@ -454,7 +505,12 @@ export function useNodeHelpers() {
 	): void {
 		if (!isPrivateCredentialsEnabled.value) return;
 
-		const blockingTrigger = getBlockingTrigger();
+		const warning = privateCredentialTriggerWarning.value;
+		if (!warning) return;
+		// With a compatible trigger present, warn only the nodes the incompatible trigger
+		// can reach; a node on the valid branch is left alone. `reachable === null` means
+		// no compatible trigger exists, so every end-user-credential node is warned.
+		if (warning.reachable !== null && !warning.reachable.has(node.name)) return;
 
 		for (const [credTypeName, details] of Object.entries(node.credentials ?? {})) {
 			if (foundIssues[credTypeName]?.length) continue;
@@ -463,18 +519,15 @@ export function useNodeHelpers() {
 			const credential = credentialsStore.getCredentialById(details.id);
 			if (!credential?.isResolvable) continue;
 
-			// Mirror the backend publish check: trigger incompatibility blocks publish
-			// regardless of who connected the credential, so warn on it here too. A
-			// merely-not-yet-connected credential is surfaced via the callout/banner.
-			// The message depends on the resolver: the system resolver needs a trigger
-			// that establishes the n8n user identity, a custom resolver needs one that
-			// extracts an external identity.
-			if (blockingTrigger) {
-				const messageKey: BaseTextKey = blockingTrigger.isSystemResolver
-					? 'nodeIssues.credentials.privateRequiresIdentityTriggerWithFormAndWebhook'
-					: 'nodeIssues.credentials.privateRequiresIdentityExtractor';
-				foundIssues[credTypeName] = [i18n.baseText(messageKey)];
-			}
+			// Trigger incompatibility blocks this node regardless of who connected the
+			// credential, so warn on it here too. A merely-not-yet-connected credential is
+			// surfaced via the callout/banner. The message depends on the resolver: the
+			// system resolver needs a trigger that establishes the n8n user identity, a
+			// custom resolver needs one that extracts an external identity.
+			const messageKey: BaseTextKey = warning.isSystemResolver
+				? 'nodeIssues.credentials.privateRequiresIdentityTriggerWithFormAndWebhook'
+				: 'nodeIssues.credentials.privateRequiresIdentityExtractor';
+			foundIssues[credTypeName] = [i18n.baseText(messageKey)];
 		}
 	}
 
