@@ -111,12 +111,58 @@ describe('createDeclarativePoll', () => {
 		expect(staticData()[DECLARATIVE_CURSOR_KEY]).toEqual({ value: '2999-01-01T00:00:00Z' });
 	});
 
+	test('timestamp cursor: a non-date field fails loudly instead of never emitting', async () => {
+		const { run } = setup({ ...idTrigger, cursor: { type: 'timestamp', field: 'at' } });
+
+		expect(await run()).toBeNull(); // seeds with an ISO "now"
+
+		respond([{ at: 1757238000 }]);
+		await expect(run()).rejects.toThrow(/non-date value from "at"/);
+	});
+
 	test('manual run returns the last item and leaves the cursor alone', async () => {
 		const { run, staticData } = setup(idTrigger, 'manual');
 		respond([{ id: 1 }, { id: 2 }]);
 
 		expect(await run()).toEqual([[{ json: { id: 2 } }]]);
 		expect(staticData()[DECLARATIVE_CURSOR_KEY]).toBeUndefined();
+	});
+
+	test.each([
+		{ maxResults: 0, expected: null },
+		{ maxResults: -5, expected: null },
+		{ maxResults: 2, expected: [[{ json: { id: 2 } }, { json: { id: 3 } }]] },
+	])('manual run clamps maxResults $maxResults', async ({ maxResults, expected }) => {
+		const { run } = setup({ ...idTrigger, manual: { maxResults } }, 'manual');
+		respond([{ id: 1 }, { id: 2 }, { id: 3 }]);
+
+		expect(await run()).toEqual(expected);
+	});
+
+	test('$cursor resolves in postReceive actions, not only in the request', async () => {
+		const { run } = setup({
+			...idTrigger,
+			routing: {
+				request: { url: '/items' },
+				output: {
+					postReceive: [
+						{ type: 'rootProperty', properties: { property: 'items' } },
+						// Drops everything up to and including the stored cursor. Resolves to
+						// `pass: false` for every item if `$cursor` is not threaded through.
+						{
+							type: 'filter',
+							properties: { pass: '={{ $responseItem.id > ($cursor.value ?? 0) }}' },
+						},
+					],
+				},
+			},
+		});
+
+		respond([{ id: 1 }, { id: 2 }]);
+		expect(await run()).toBeNull(); // seeds at 2
+
+		respond([{ id: 1 }, { id: 2 }, { id: 3 }]);
+		expect(await run()).toEqual([[{ json: { id: 3 } }]]);
 	});
 
 	test('function cursor gets items and the stored cursor and decides both outputs', async () => {

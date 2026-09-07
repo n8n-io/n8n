@@ -2794,8 +2794,10 @@ export interface INodePropertyRouting {
  * from one poll's items. The engine owns cursor storage.
  *
  * - `timestamp`: emit items whose `field` is after the cursor; cursor = latest
- *   `field` seen. The first production poll seeds the cursor with "now" and
- *   makes no request.
+ *   `field` seen. `field` must hold a Date-parseable value (ISO-8601): the seed
+ *   is an ISO string and is interpolated into the next request, so a numeric
+ *   epoch belongs to `id`, which compares numbers directly. The first
+ *   production poll seeds the cursor with "now" and makes no request.
  * - `id`: emit items whose `field` is above the cursor; cursor = highest
  *   `field` seen. The first production poll seeds the cursor and emits nothing.
  * - function: full control. Return the items to emit and the cursor to store.
@@ -2820,7 +2822,10 @@ export interface IDeclarativePollingTrigger {
 	 */
 	routing: INodePropertyRouting;
 	cursor: DeclarativePollingCursor;
-	/** Manual runs skip the cursor and return the last `maxResults` items (default 1). */
+	/**
+	 * Manual runs skip the cursor and return the last `maxResults` items
+	 * (default 1). Clamped to a non-negative integer; `0` returns nothing.
+	 */
 	manual?: { maxResults?: number };
 }
 
