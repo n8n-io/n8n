@@ -140,6 +140,7 @@ export class Cipher {
 	/**
 	 * Encrypts a data-encryption key (DEK) with the instance key using AES-256-GCM.
 	 * DEKs are always wrapped with GCM for authenticated encryption and integrity.
+	 * Signing-secret rows in `deployment_key` reuse this same wrapping.
 	 */
 	encryptDEKWithInstanceKey(data: string): string {
 		return this.encryptWithKey(data, this.dekWrappingKey, 'aes-256-gcm');
