@@ -4,6 +4,8 @@ export interface App {
 	namespace: string;
 	theme: Record<string, unknown> | null;
 	projectId: string;
+	/** Version served at `/apps/<namespace>/`; null until the first build. */
+	activeVersionId: string | null;
 	createdAt: string;
 	updatedAt: string;
 }

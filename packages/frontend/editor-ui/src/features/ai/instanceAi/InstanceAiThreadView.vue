@@ -1564,13 +1564,12 @@ async function dismissComposerContextChip() {
 								v-if="
 									preview.isPreviewVisible.value &&
 									preview.activeAppId.value &&
-									preview.activeAppProjectId.value &&
-									preview.activeAppNamespace.value
+									preview.activeAppProjectId.value
 								"
+								:key="preview.activeAppId.value"
 								:class="$style.previewSlot"
 								:app-id="preview.activeAppId.value"
 								:project-id="preview.activeAppProjectId.value"
-								:namespace="preview.activeAppNamespace.value"
 								:version-id="preview.activeAppVersionId.value ?? undefined"
 								:building="preview.activeAppBuilding.value"
 							/>

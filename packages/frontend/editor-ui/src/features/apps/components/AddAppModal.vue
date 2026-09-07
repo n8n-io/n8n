@@ -9,6 +9,8 @@ import Modal from '@/app/components/Modal.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { APP_DETAILS } from '@/features/apps/apps.constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 
 type AddAppModalData = { projectId: string };
 
@@ -22,6 +24,8 @@ const toast = useToast();
 const router = useRouter();
 const uiStore = useUIStore();
 const appsStore = useAppsStore();
+const instanceAiReady = useInstanceAiReady();
+const { openAppArtifactThread } = useInstanceAiHandoff();
 
 const name = ref('');
 const namespace = ref('');
@@ -30,10 +34,30 @@ const nameInputRef = ref<HTMLInputElement | null>(null);
 
 const namespacePreview = computed(() => `/apps/${namespace.value || '…'}`);
 
+// With the assistant ready, the agent creates the row itself from the handed-off
+// name and namespace (`apps.create`), so the thread owns the app from the start.
 const onSubmit = async () => {
 	if (!name.value || !namespace.value || isCreating.value) return;
 	isCreating.value = true;
 	try {
+		if (instanceAiReady.value) {
+			const opened = await openAppArtifactThread(
+				{
+					type: 'app',
+					projectId: props.data.projectId,
+					name: name.value,
+					namespace: namespace.value,
+					isNewApp: true,
+				},
+				{
+					source: 'app_builder_page',
+					origin: 'internal',
+					sourceContext: { namespace: namespace.value },
+				},
+			);
+			if (opened) uiStore.closeModal(props.modalName);
+			return;
+		}
 		const app = await appsStore.createApp(props.data.projectId, name.value, namespace.value);
 		uiStore.closeModal(props.modalName);
 		await router.push({
