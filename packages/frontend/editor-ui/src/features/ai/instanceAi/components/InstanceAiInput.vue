@@ -165,6 +165,10 @@ function setText(text: string) {
 	inputText.value = text;
 }
 
+function setTextIfEmpty(text: string) {
+	if (!inputText.value.trim()) inputText.value = text;
+}
+
 function clearTextIfMatches(text: string) {
 	if (inputText.value === text) inputText.value = '';
 }
@@ -177,6 +181,7 @@ defineExpose({
 	focus,
 	appendText,
 	setText,
+	setTextIfEmpty,
 	clearTextIfMatches,
 	isDirty,
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.

@@ -463,11 +463,9 @@ onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
 function restoreDraftAfterFailedSubmit(message: string, restoreDraft?: () => boolean) {
 	void nextTick(() => {
-		// The input supplies the callback only when the draft has attachments.
-		// Restore text directly for a text-only draft.
+		// Restore text without replacing new text or attachments.
 		if (!restoreDraft?.()) {
-			const input = chatInputRef.value;
-			if (input && !input.isDirty()) input.setText(message);
+			chatInputRef.value?.setTextIfEmpty(message);
 		}
 		chatInputRef.value?.focus();
 	});

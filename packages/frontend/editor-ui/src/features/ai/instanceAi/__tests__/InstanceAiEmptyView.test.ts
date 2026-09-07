@@ -320,7 +320,9 @@ const InstanceAiInputStub = defineComponent({
 		};
 		expose({
 			focus: vi.fn(),
-			isDirty: () => currentText.value.length > 0,
+			setTextIfEmpty: (text: string) => {
+				if (!currentText.value.trim()) currentText.value = text;
+			},
 			setText: (text: string) => {
 				currentText.value = text;
 			},
@@ -1022,28 +1024,54 @@ describe('InstanceAiEmptyView', () => {
 	});
 
 	it('restores the submitted draft when syncThread rejects', async () => {
-		templateExamplesEnabled.value = true;
 		store.syncThread.mockRejectedValue(new Error('persist failed'));
-		const { getByTestId } = renderView();
+		const { getByRole, getByTestId } = renderView({
+			global: { stubs: { InstanceAiInput: false } },
+		});
+		const textbox = getByRole('textbox');
 
-		await fireEvent.click(getByTestId('template-example-card'));
-		await flushPromises();
-		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
-			'Build me an invoice automation',
-		);
-
-		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await fireEvent.update(textbox, 'Build me an invoice automation');
+		await fireEvent.click(getByTestId('instance-ai-send-button'));
 		await flushPromises();
 
-		// INS-579: Keep the submitted text when thread creation fails.
-		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
-			'Build me an invoice automation',
-		);
+		expect(textbox).toHaveValue('Build me an invoice automation');
 		expect(showErrorMock).toHaveBeenCalled();
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();
 	});
+
+	it.each([
+		{ newText: '', expectedText: 'Build me an invoice automation' },
+		{ newText: 'A new prompt', expectedText: 'A new prompt' },
+	])(
+		'keeps a pasted attachment and text $expectedText after failure',
+		async ({ newText, expectedText }) => {
+			const sync = Promise.withResolvers<void>();
+			store.syncThread.mockReturnValue(sync.promise);
+			const { getByRole, getByTestId } = renderView({
+				global: { stubs: { InstanceAiInput: false } },
+			});
+			const textbox = getByRole('textbox');
+
+			await fireEvent.update(textbox, 'Build me an invoice automation');
+			await fireEvent.click(getByTestId('instance-ai-send-button'));
+			expect(textbox).toHaveValue('');
+
+			await fireEvent.paste(textbox, {
+				clipboardData: { files: [new File(['image'], 'context.png', { type: 'image/png' })] },
+			});
+			await fireEvent.update(textbox, newText);
+			expect(getByRole('img', { name: 'context.png' })).toBeInTheDocument();
+
+			sync.reject(new Error('persist failed'));
+			await flushPromises();
+
+			expect(textbox).toHaveValue(expectedText);
+			expect(getByRole('img', { name: 'context.png' })).toBeInTheDocument();
+			expect(replaceMock).not.toHaveBeenCalled();
+		},
+	);
 
 	it('shows an upfront unavailable state and does not start a thread when the builder is unavailable', async () => {
 		useSettingsStore().moduleSettings = {
