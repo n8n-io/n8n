@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { N8nIconButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -12,6 +12,15 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const refreshCount = ref(0);
+
+// A new build already reloads the iframe; carrying `r` over would keep a stale
+// cache-buster on the new version's URL.
+watch(
+	() => props.versionId,
+	() => {
+		refreshCount.value = 0;
+	},
+);
 
 const appUrl = computed(() => `/apps/${props.namespace}/`);
 

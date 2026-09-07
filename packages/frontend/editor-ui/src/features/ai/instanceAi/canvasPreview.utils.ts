@@ -48,6 +48,12 @@ export interface DataTableResult {
 	toolCallId: string;
 }
 
+export interface AppBuildResult {
+	appId: string;
+	/** Unique per build — changes even when the same app is rebuilt. */
+	toolCallId: string;
+}
+
 export interface AgentArtifactResult {
 	agentId: string;
 	projectId?: string;
@@ -424,6 +430,28 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 			if (dataTableId) {
 				return { dataTableId, toolCallId: tc.toolCallId };
 			}
+		}
+	}
+	return undefined;
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the appId and
+ * toolCallId from the latest successful `apps build` tool result. Failed builds
+ * return `{ error: true }` and carry no `versionId`, so they are skipped.
+ */
+export function getLatestAppBuildResult(node: InstanceAiAgentNode): AppBuildResult | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestAppBuildResult(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		const args = tc.args as Record<string, unknown> | undefined;
+		if (tc.toolName !== 'apps' || args?.action !== 'build' || tc.isLoading) continue;
+		if (!isRecord(tc.result)) continue;
+		if (typeof tc.result.appId === 'string' && typeof tc.result.versionId === 'string') {
+			return { appId: tc.result.appId, toolCallId: tc.toolCallId };
 		}
 	}
 	return undefined;

@@ -63,6 +63,20 @@ describe('InstanceAiAppPreview', () => {
 		);
 	});
 
+	it('drops the manual refresh counter when a new version is built', async () => {
+		const { getByTestId, rerender } = renderComponent({
+			props: { ...baseProps, versionId: 'v-1' },
+		});
+
+		await fireEvent.click(getByTestId('app-preview-refresh'));
+		await rerender({ ...baseProps, versionId: 'v-2' });
+
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+			'src',
+			'/apps/greeter/?v=v-2',
+		);
+	});
+
 	it('shows the building indicator while an apps build call is in flight', () => {
 		const { getByTestId } = renderComponent({
 			props: { ...baseProps, versionId: 'v-1', building: true },

@@ -8,6 +8,7 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
+	getLatestAppBuildResult,
 	getLatestAgentConfigMutation,
 	getLatestAgentBuilderTarget,
 	getExecutionResultsByWorkflow,
@@ -430,6 +431,33 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			activeTabId.value = latestDataTableResult.value.dataTableId;
 			isPreviewOpen.value = true;
 			dataTableRefreshKey.value++;
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Auto-open app preview when AI builds an app ---
+	// The registry already bumps `versionId` on the tab, which re-keys the iframe,
+	// so no refresh key is needed here.
+
+	const latestAppBuildResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestAppBuildResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestAppBuildResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestAppBuildResult.value) return;
+			if (thread.isHydratingThread) return;
+
+			activeTabId.value = latestAppBuildResult.value.appId;
+			isPreviewOpen.value = true;
 		},
 		{ flush: 'sync' },
 	);
