@@ -38,7 +38,8 @@ runs:
       shell: bash
       # A restore reports a hit whatever it wrote, and writes to the paths
       # recorded at save time. Fail loudly rather than letting an unexpanded
-      # glob reach `docker load`.
+      # glob reach `docker load`. load-archives.sh loads the found archives
+      # at the same time, and fails this step if one load fails.
       run: |
         set -euo pipefail
         shopt -s nullglob
@@ -47,7 +48,7 @@ runs:
           echo "::error::cache hit but /tmp/n8n-images holds no archives"
           exit 1
         fi
-        for f in "${files[@]}"; do docker load -i "$f"; done
+        bash "$GITHUB_ACTION_PATH/load-archives.sh" "${files[@]}"
 
     - name: Warn on cache miss
       if: steps.restore.outputs.cache-hit != 'true'
@@ -65,7 +66,8 @@ runs:
         build-variant: ${{ inputs.build-variant }}
 
     # build-n8n-docker writes archives rather than loading them, so the fallback
-    # has to load them here or downstream steps find no images.
+    # has to load them here or downstream steps find no images. It uses the same
+    # concurrent loader as the cache-hit path.
     - name: Load rebuilt images into docker
       if: steps.restore.outputs.cache-hit != 'true'
       shell: bash
@@ -77,4 +79,4 @@ runs:
           echo "::error::rebuild produced no archives in /tmp/n8n-images"
           exit 1
         fi
-        for f in "${files[@]}"; do docker load -i "$f"; done
+        bash "$GITHUB_ACTION_PATH/load-archives.sh" "${files[@]}"
