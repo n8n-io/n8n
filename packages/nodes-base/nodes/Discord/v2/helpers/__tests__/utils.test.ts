@@ -416,6 +416,7 @@ describe('Discord V2 Utils', () => {
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 3 } as any);
 		});
 
 		afterEach(() => {
@@ -492,6 +493,22 @@ describe('Discord V2 Utils', () => {
 				width: 1920,
 				height: 1080,
 			});
+		});
+
+		it('v2 node preserves prior wrapping behavior for object image fields', () => {
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2 } as any);
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'json',
+					json: JSON.stringify({
+						image: { url: 'https://example.com/image.png' },
+					}),
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result[0].image).toEqual({ url: { url: 'https://example.com/image.png' } });
 		});
 	});
 });
