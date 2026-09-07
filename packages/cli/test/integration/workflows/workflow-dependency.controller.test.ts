@@ -18,6 +18,7 @@ import { AgentCredentialDependencyRepository } from '@/modules/agents/repositori
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentWorkflowDependencyRepository } from '@/modules/agents/repositories/agent-workflow-dependency.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { registerAgentUsageProvider } from '@/modules/agents/register-agent-usage-provider';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
@@ -39,7 +40,6 @@ beforeAll(() => {
 		AgentCredentialDependency,
 		AgentWorkflowDependency,
 	);
-	moduleRegistry.getActiveModules().push('agents');
 });
 
 testServer = utils.setupTestServer({
@@ -54,6 +54,7 @@ beforeAll(() => {
 	agentHistoryRepo = Container.get(AgentHistoryRepository);
 	agentRepo = Container.get(AgentRepository);
 	projectRepo = Container.get(ProjectRepository);
+	registerAgentUsageProvider();
 });
 
 /** Seed a workflow_dependency row (draft). */
