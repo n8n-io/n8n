@@ -47,14 +47,33 @@ export default defineConfig(
 
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
-			// The allowlist below is the only place @n8n/typeorm exceptions may live; block inline disables.
-			'n8n-local-rules/no-misplaced-typeorm-import-disable': 'error',
-			// Public API handler-pattern ratchet — the allowlist is the only escape hatch; block inline disables.
-			'n8n-local-rules/no-public-api-guardrail-disable': 'error',
+			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a
+			// violation. `no-unsealed-workflow-entity-write` (on for every package via the plugin) has none.
+			'n8n-local-rules/no-guardrail-disable': [
+				'error',
+				{
+					guarded: [
+						{
+							rule: 'misplaced-n8n-typeorm-import',
+							message:
+								'Keep TypeORM in the persistence layer: put the query behind a use-case repository method in @n8n/db.',
+						},
+						{
+							rule: 'no-repository-in-public-api-handler',
+							message: 'Call a service instead of reaching the repository.',
+						},
+						{
+							rule: 'require-public-api-controller',
+							message: 'Migrate to `@PublicApiController`.',
+						},
+						{
+							rule: 'no-unsealed-workflow-entity-write',
+							message: 'Route the write through a token-gated `WorkflowRepository` method.',
+						},
+					],
+				},
+			],
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
-			// Seal WorkflowEntity node-writes to the token-gated repository methods.
-			// Every write site is migrated; there is no allowlist left to grant an exception.
-			'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
 			// Periodic leader-only work must be a @SystemTask() class; hand-rolled
 			// @OnLeaderTakeover timers are reserved for the allowlisted services below.
 			'n8n-local-rules/no-on-leader-takeover': 'error',
@@ -163,7 +182,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
 			'./src/public-api/v1/handlers/discover/discover.handler.ts',
 			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
-			'./src/public-api/v1/handlers/executions/executions.handler.ts',
 			'./src/public-api/v1/handlers/folders/folders.handler.ts',
 			'./src/public-api/v1/handlers/insights/insights.handler.ts',
 			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
@@ -403,7 +421,6 @@ export default defineConfig(
 			'./src/modules/instance-ai/instance-ai.service.ts',
 			'./src/modules/instance-registry/checks/check.service.ts',
 			'./src/modules/instance-registry/stale-member-cleanup.service.ts',
-			'./src/modules/mcp-registry/registry/mcp-registry.service.ts',
 			'./src/modules/token-exchange/services/jti-cleanup.service.ts',
 			'./src/modules/token-exchange/services/trusted-key.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',

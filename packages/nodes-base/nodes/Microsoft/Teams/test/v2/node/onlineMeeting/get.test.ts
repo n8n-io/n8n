@@ -28,9 +28,9 @@ const meeting = {
 
 describe('Test MicrosoftTeamsV2, onlineMeeting => get', () => {
 	nock('https://graph.microsoft.com')
+		.matchHeader('Prefer', 'include-unknown-enum-members')
 		.get('/v1.0/me/onlineMeetings/MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi')
 		.reply(200, meeting)
-		// Get by join URL returns a collection envelope; the operation unwraps value[0].
 		.get('/v1.0/me/onlineMeetings')
 		.query({
 			$filter: `JoinWebUrl eq '${meeting.joinWebUrl}'`,

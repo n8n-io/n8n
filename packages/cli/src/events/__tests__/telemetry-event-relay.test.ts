@@ -2460,6 +2460,7 @@ describe('TelemetryEventRelay', () => {
 					tags: 2,
 				},
 				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: true,
 			};
 
 			eventService.emit('n8n-package-exported', event);
@@ -2473,6 +2474,7 @@ describe('TelemetryEventRelay', () => {
 				variable_count: 4,
 				tag_count: 2,
 				credential_export_policy: 'expression-values-only',
+				include_archived_workflows: true,
 			});
 		});
 
