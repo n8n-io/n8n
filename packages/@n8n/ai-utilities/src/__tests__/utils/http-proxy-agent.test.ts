@@ -619,11 +619,19 @@ describe('proxyFetch with the real undici', () => {
 
 	// The Mistral SDK builds its requests with the global Request class and hands
 	// them to the fetcher; the package's undici fetch only recognizes its own
-	// Request class and used to stringify these to '[object Request]'.
-	it('should send a Request built with the global Request class', async () => {
+	// Request class and used to stringify these to '[object Request]'. Either
+	// class can arrive, so both must reach the wire.
+	it.each([
+		['the global Request class', async () => Request],
+		[
+			'the undici Request class',
+			async () => (await import('undici')).Request as unknown as typeof Request,
+		],
+	])('should send a Request built with %s', async (_, loadRequestClass) => {
 		vi.doUnmock('undici');
 		vi.resetModules();
 		const { proxyFetch: realProxyFetch } = await import('../../utils/http-proxy-agent.js');
+		const RequestClass = await loadRequestClass();
 
 		const received: { method?: string; contentType?: string; body?: string } = {};
 		const server = createServer((req, res) => {
@@ -642,7 +650,7 @@ describe('proxyFetch with the real undici', () => {
 		const { port } = server.address() as AddressInfo;
 
 		try {
-			const request = new Request(`http://127.0.0.1:${port}/v1/chat/completions`, {
+			const request = new RequestClass(`http://127.0.0.1:${port}/v1/chat/completions`, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: '{"model":"mistral-small"}',
