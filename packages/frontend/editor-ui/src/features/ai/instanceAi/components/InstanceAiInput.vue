@@ -17,6 +17,7 @@ import {
 } from '@n8n/api-types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
+import type { ContextChip } from '../instanceAi.contextChip';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { mergeNodeSets } from '../utils/buildNodesAttachment';
 
@@ -49,7 +50,6 @@ type SuggestionPreviewPayload = BaseTextKey | { prompt: string } | null;
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
-type ContextChip = { label: string; icon?: string; testId?: string } | null;
 
 const props = withDefaults(
 	defineProps<{
@@ -75,7 +75,7 @@ const props = withDefaults(
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		submitLabel?: string;
 		submitActiveRequiresFocus?: boolean;
-		contextChip?: ContextChip;
+		contextChip?: ContextChip | null;
 	}>(),
 	{
 		isStreaming: false,
@@ -247,6 +247,9 @@ const placeholder = computed(() => {
 	}
 	if (props.contextualSuggestion) {
 		return props.contextualSuggestion;
+	}
+	if (props.contextChip?.type === 'agent-artifact' && props.contextChip.isNewAgent) {
+		return i18n.baseText('instanceAi.input.newAgentPlaceholder');
 	}
 	return i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });

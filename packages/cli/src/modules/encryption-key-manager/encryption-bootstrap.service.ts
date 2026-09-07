@@ -19,8 +19,10 @@ export class EncryptionBootstrapService {
 
 	async run(): Promise<void> {
 		// Seeding is deployment-wide state: only a main that is allowed to seed
-		// creates it. One-off CLI commands (`canSeedDeploymentState` false) and
-		// workers/webhooks skip seeding but still get the read-path provider.
+		// creates it. Workers and webhooks skip seeding but still get the
+		// read-path provider. One-off CLI commands never run module init, so
+		// they get neither — keyId-prefixed data is not readable there until
+		// the provider is wired for commands too.
 		if (this.instanceSettings.instanceType === 'main' && this.canSeed) {
 			try {
 				await this.keyManager.bootstrapLegacyCbcKey(this.instanceSettings.encryptionKey);

@@ -9,12 +9,9 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { toPathSegment } from '@utils/url';
+import { removeTrailingSlash } from '@utils/utilities';
 
 import type { Connector, ElasticSecurityApiCredentials } from './types';
-
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
-}
 
 export async function elasticSecurityApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -26,7 +23,7 @@ export async function elasticSecurityApiRequest(
 	const { baseUrl: rawBaseUrl } =
 		await this.getCredentials<ElasticSecurityApiCredentials>('elasticSecurityApi');
 
-	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
+	const baseUrl = removeTrailingSlash(rawBaseUrl);
 
 	const options: IRequestOptions = {
 		method,

@@ -5,7 +5,17 @@ import { isSafeObjectProperty, NodeConnectionTypes } from 'n8n-workflow';
 import type { WorkflowNode } from '../../types';
 
 export const STRUCTURE_ONLY_NOTE =
-	'Node parameters omitted to keep context small. Pass full: true to include them in one call, or use get-as-code (optionally with versionId) for parameter-level detail.';
+	'Node parameters omitted to keep context small. For parameter-level detail use get-as-code, which writes the workflow source to a workspace file and returns a node index; pass full: true only for workflows small enough to inline.';
+
+export const FULL_PAYLOAD_TOO_LARGE_NOTE =
+	'This workflow is too large to inline with full: true. Use get-as-code: it writes the source to a workspace file and returns a node index with line numbers, so you can read only the nodes you need.';
+
+/** Above this a `full: true` read is refused in favour of the file-backed get-as-code. */
+export const FULL_PAYLOAD_LIMIT_BYTES = 100_000;
+
+export function exceedsFullPayloadLimit(detail: unknown): boolean {
+	return Buffer.byteLength(JSON.stringify(detail), 'utf8') > FULL_PAYLOAD_LIMIT_BYTES;
+}
 
 // Below this, summarizing saves too little to be worth a possible second full fetch.
 export const PARAMETERS_INLINE_LIMIT_BYTES = 4096;

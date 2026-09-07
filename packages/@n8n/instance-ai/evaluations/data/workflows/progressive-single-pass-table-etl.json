@@ -1,0 +1,125 @@
+{
+	"description": "Progressive building must not over-slice: a code-heavy on-demand ETL over a data table with exactly two credentialed services (OpenAI + Slack) is one outcome and one legal increment, so it builds in a single pass and actually works. Guards the anti-over-slicing rule (spec prompt P2 behavior) with the slack/openai/data-table set.",
+	"buildMode": "progressive",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "We collect leads into a data table called 'leads_raw' (columns: email, name, phone, company, submittedAt). It's messy — inconsistent phone formats, random casing, and duplicate people. Build me a pipeline I can run on demand that writes a cleaned version into a 'leads_clean' table: normalize the phone numbers to one consistent format, title-case the names, merge duplicates by email keeping the newest row, and use AI to guess each company's industry. When it finishes, post a short run report to #data-ops with how many rows came in, how many went out, and how many duplicates were merged."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[If the agent asks about the tables, say leads_raw already exists with exactly those five columns (submittedAt is their submission timestamp) and it should create leads_clean itself.",
+				"When the workflow setup card appears, apply it using the existing Slack and OpenAI credentials.",
+				"Approve any verification or test run the agent proposes.",
+				"Don't add new requirements.]"
+			]
+		}
+	],
+	"complexity": "complex",
+	"tags": [
+		"progressive-building"
+	],
+	"triggerType": "manual",
+	"messageBudget": 3,
+	"credentials": [
+		{
+			"type": "slackApi"
+		},
+		{
+			"type": "openAiApi"
+		}
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path-dedupe-and-report",
+			"description": "Run the cleaning pipeline over a small messy leads_raw table containing one duplicate pair and mixed formatting; the cleaned table ends up smaller and a run report goes to Slack.",
+			"dataSetup": "The leads_raw data table contains 6 stored rows: two rows share the email ana@acme.com (one older, one newer by submittedAt) with differently formatted phone numbers ('+420 601 222 333' and '0601222333') and lowercase names ('ana novak'); the other four rows are unique people at different companies (a bakery, a software vendor, a logistics firm, a law office) with phones in mixed formats and names in mixed casing. Any OpenAI call returns a plausible one-word industry per company. The Slack post succeeds.",
+			"successCriteria": "The execution completes successfully end to end. The cleaned output contains fewer rows than the raw input (the duplicate pair was merged, keeping the newer row). Phone numbers in the cleaned output share one consistent format and names are title-cased. Each cleaned row carries an AI-inferred industry. A Slack message was sent reporting rows in, rows out, and duplicates merged (counts must be consistent with the processed data, not exact hard-coded numbers).",
+			"seedDataTables": [
+				{
+					"id": "leads-raw-seed-001",
+					"name": "leads_raw",
+					"columns": [
+						{
+							"name": "email",
+							"type": "string"
+						},
+						{
+							"name": "name",
+							"type": "string"
+						},
+						{
+							"name": "phone",
+							"type": "string"
+						},
+						{
+							"name": "company",
+							"type": "string"
+						},
+						{
+							"name": "submittedAt",
+							"type": "string"
+						}
+					],
+					"rows": [
+						{
+							"email": "ana@acme.com",
+							"name": "ana novak",
+							"phone": "+420 601 222 333",
+							"company": "Acme Corp",
+							"submittedAt": "2026-08-01T10:00:00Z"
+						},
+						{
+							"email": "ana@acme.com",
+							"name": "ANA NOVAK",
+							"phone": "0601222333",
+							"company": "Acme Corp",
+							"submittedAt": "2026-08-20T09:30:00Z"
+						},
+						{
+							"email": "ben@dough.io",
+							"name": "ben carter",
+							"phone": "(601) 555-0134",
+							"company": "Dough Bakery",
+							"submittedAt": "2026-08-05T08:15:00Z"
+						},
+						{
+							"email": "carla@softly.dev",
+							"name": "CARLA RUIZ",
+							"phone": "+1 415 555 0199",
+							"company": "Softly",
+							"submittedAt": "2026-08-10T14:45:00Z"
+						},
+						{
+							"email": "dan@shipfast.eu",
+							"name": "dan kovac",
+							"phone": "00420777888999",
+							"company": "ShipFast Logistics",
+							"submittedAt": "2026-08-12T11:20:00Z"
+						},
+						{
+							"email": "eva@lexlaw.cz",
+							"name": "eva maly",
+							"phone": "777 111 222",
+							"company": "LexLaw",
+							"submittedAt": "2026-08-15T16:05:00Z"
+						}
+					]
+				}
+			]
+		}
+	],
+	"processExpectations": [
+		"The agent builds the whole pipeline — cleaning, dedupe, AI industry inference, and the Slack run report — in a single build pass rather than splitting it into separately gated increments: the request is one outcome using two credentialed services, which fits inside one progressive increment.",
+		"The agent never asks a multi-select question listing services or features to include; any clarifying question narrows a single choice or is replaced by a stated assumption."
+	],
+	"outcomeExpectations": [
+		"The workflow is manually runnable, reads rows from the leads_raw data table, and writes cleaned rows to a leads_clean data table.",
+		"Deduplication merges rows sharing an email and keeps the most recent row; phone normalization and name title-casing are implemented in the pipeline's logic.",
+		"An AI step infers an industry from the company name, and the Slack report message includes rows in, rows out, and duplicates merged."
+	],
+	"datasets": [
+		"full"
+	]
+}

@@ -72,6 +72,7 @@ describe('LmOllama', () => {
 		const egressFilter: NodeEgressFilter = {
 			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
 			createSecureLookup: vi.fn().mockReturnValue(secureLookup),
+			validateRedirectSync: vi.fn(),
 		};
 		const ctx = setupContext({ baseUrl: 'http://ollama.example.com:11434' }, egressFilter);
 
@@ -92,6 +93,7 @@ describe('LmOllama', () => {
 		const egressFilter: NodeEgressFilter = {
 			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
 			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+			validateRedirectSync: vi.fn(),
 		};
 		const ctx = setupContext(
 			{
@@ -110,6 +112,7 @@ describe('LmOllama', () => {
 		const egressFilter: NodeEgressFilter = {
 			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
 			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+			validateRedirectSync: vi.fn(),
 		};
 		const ctx = setupContext(
 			{

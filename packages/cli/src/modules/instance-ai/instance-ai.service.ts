@@ -76,6 +76,7 @@ import {
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
+	createSetupItemsEmitter,
 	orchestratorAgentId,
 	resolveAgentPreviewSession,
 	saveAgentBuilderTarget,
@@ -115,6 +116,7 @@ import {
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
 import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -145,6 +147,7 @@ import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-a
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
+import { InstanceAiConversationHistoryService } from './instance-ai-conversation-history.service';
 import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import {
@@ -154,6 +157,7 @@ import {
 import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
+import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
@@ -167,6 +171,7 @@ import {
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
 	withCurrentDateTime,
+	withPastConversations,
 	withProjectContext,
 	getProjectContextSection,
 } from './internal-messages';
@@ -214,10 +219,6 @@ import {
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 import { AgentExecutionService } from '../agents/agent-execution.service';
 import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 /** A resource attachment as the trace records it: the reference, not its contents. */
 type TracedResourceAttachment = {
@@ -665,6 +666,9 @@ function classifyUnclaimedResume(
 
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
+/** Sentinel for "no cap", matching the execution concurrency limits. */
+const UNLIMITED_CONCURRENCY = -1;
+
 /**
  * Circuit breaker for machine-started follow-up runs (verification, synthesize,
  * replan, …). A follow-up that dies before the agent can settle its trigger
@@ -701,11 +705,9 @@ export class InstanceAiService {
 
 	private readonly formBaseUrl: string;
 
-	private readonly runState = new RunStateRegistry<User>();
+	private readonly runState = new RunStateRegistry<User>((user) => user.id);
 
-	private readonly backgroundTasks = new BackgroundTaskManager(
-		MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
-	);
+	private readonly backgroundTasks: BackgroundTaskManager;
 
 	private readonly memoryTaskRegistry = new MemoryTaskRegistry();
 
@@ -842,6 +844,7 @@ export class InstanceAiService {
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
 		private readonly push: Push,
+		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -853,6 +856,10 @@ export class InstanceAiService {
 			this.workflowObligations,
 		);
 		this.instanceAiConfig = globalConfig.instanceAi;
+		this.backgroundTasks = new BackgroundTaskManager(
+			MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
+			this.instanceAiConfig.maxConcurrentSubAgents,
+		);
 		this.suspendedThreads = new SuspendedThreadPersistenceService({
 			logger: this.logger,
 			config: this.instanceAiConfig,
@@ -1345,6 +1352,66 @@ export class InstanceAiService {
 		await this.tracing.submitLangsmithFeedback(user, threadId, responseId, payload);
 	}
 
+	/**
+	 * Refuse a new user turn when a concurrency cap is already full.
+	 *
+	 * Only new turns are gated. Resumes and internal follow-up runs are always admitted: a
+	 * refused resume strands a conversation mid-confirmation, and a refused follow-up trips
+	 * the consecutive-failure breaker and abandons the thread's planned-task graph for good.
+	 * The ceiling is therefore soft by design -- it bounds how much new work starts, not how
+	 * much can be in flight.
+	 *
+	 * Counts are per process. That is the right scope for the instance cap, because the
+	 * pressure it relieves is per process; for the per-user cap it means a multi-main
+	 * deployment allows the cap once per main.
+	 *
+	 * The instance cap bounds concurrent execution, not resident memory: a suspended run
+	 * releases its slot but keeps its agent in memory. Counting those here would be worse
+	 * than the gap, because a few abandoned approval cards would then wall the whole
+	 * instance for the confirmation timeout. To close it, run state must leave memory.
+	 *
+	 * Either cap is disabled by setting it to `-1` (unlimited), matching
+	 * `N8N_CONCURRENCY_PRODUCTION_LIMIT`. The config schema rejects `0`, so it can't reach
+	 * here and be mistaken for either reading.
+	 */
+	private assertRunAdmissible(user: User): void {
+		const { maxConcurrentRuns, maxConcurrentRunsPerUser } = this.instanceAiConfig;
+
+		// Per-user first: it is the more specific diagnosis, and the only one the user can
+		// act on themselves.
+		if (maxConcurrentRunsPerUser !== UNLIMITED_CONCURRENCY) {
+			const running = this.runState.activeRunCountForUser(user.id);
+			if (running >= maxConcurrentRunsPerUser) {
+				this.logger.warn('Refused Instance AI run: per-user concurrency limit reached', {
+					userId: user.id,
+					running,
+					limit: maxConcurrentRunsPerUser,
+				});
+				this.eventService.emit('instance-ai-run-refused', { reason: 'user_run_limit' });
+				throw new InstanceAiRunLimitError(
+					`You already have ${running} conversations running. Wait for one to finish, or stop it, before starting another.`,
+					{ reason: 'user_run_limit', limit: maxConcurrentRunsPerUser },
+				);
+			}
+		}
+
+		if (maxConcurrentRuns !== UNLIMITED_CONCURRENCY) {
+			const running = this.runState.activeRunCount();
+			if (running >= maxConcurrentRuns) {
+				this.logger.warn('Refused Instance AI run: instance concurrency limit reached', {
+					userId: user.id,
+					running,
+					limit: maxConcurrentRuns,
+				});
+				this.eventService.emit('instance-ai-run-refused', { reason: 'instance_run_limit' });
+				throw new InstanceAiRunLimitError(
+					'This n8n instance is already running the maximum number of assistant conversations. Try again in a moment.',
+					{ reason: 'instance_run_limit', limit: maxConcurrentRuns },
+				);
+			}
+		}
+	}
+
 	startRun(
 		user: User,
 		threadId: string,
@@ -1355,6 +1422,7 @@ export class InstanceAiService {
 		pushRef?: string,
 		mode?: InstanceAiBuildMode,
 	): string {
+		this.assertRunAdmissible(user);
 		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
@@ -2375,8 +2443,16 @@ export class InstanceAiService {
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
 				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
 
-		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
-		const mcpConnectionsEnabled = await this.adapterService.isMcpConnectionsEnabled(user);
+		const {
+			configEvalsEnabled,
+			mcpConnectionsEnabled,
+			conversationHistoryEnabled,
+			nodeUsageEnabled,
+		} = await this.adapterService.resolveExperimentGates(user);
+		// One scoped reader backs both the tool and the first-turn hint.
+		const conversationHistory = conversationHistoryEnabled
+			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
+			: undefined;
 		// Sticky per thread (set on user runs, reused by follow-up runs) — see startRun.
 		const buildMode = this.getThreadBuildMode(threadId);
 		const context = this.adapterService.createContext(user, {
@@ -2389,6 +2465,8 @@ export class InstanceAiService {
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
+			nodeUsageEnabled,
+			conversationHistory,
 			modelId,
 			buildMode,
 		});
@@ -2419,6 +2497,17 @@ export class InstanceAiService {
 		}
 
 		context.runId = runId;
+
+		// Setup panel v2: wire the durable `setup-items` sink only while the flag
+		// is on — its presence is the package-side gate.
+		if (this.settingsService.isInstanceAiSetupPanelEnabled()) {
+			context.setupItemsEmitter = createSetupItemsEmitter({
+				eventBus: this.eventBus,
+				threadId,
+				runId,
+				agentId: orchestratorAgentId(runId),
+			});
+		}
 
 		context.browserCredentialSetup = this.createBrowserCredentialSetupTracker(runId, user.id);
 
@@ -2694,6 +2783,7 @@ export class InstanceAiService {
 			plannedTaskService,
 			modelId,
 			orchestrationContext,
+			conversationHistory,
 		};
 	}
 
@@ -3760,6 +3850,7 @@ export class InstanceAiService {
 				plannedTaskService,
 				modelId,
 				orchestrationContext,
+				conversationHistory,
 			} = environment;
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
 			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
@@ -3885,8 +3976,10 @@ export class InstanceAiService {
 			// message), so title it with the workflow name and mark it refined so
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
+			// The heuristic title lands on the opening turn, so "no title yet" marks it.
+			const isOpeningTurn = Boolean(thread && !thread.title);
 
-			if (thread && !thread.title) {
+			if (isOpeningTurn) {
 				const handoffTitle =
 					contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback;
 
@@ -3898,7 +3991,11 @@ export class InstanceAiService {
 									title: truncateToTitle(handoffTitle),
 									metadata: { ...metadata, titleRefined: true },
 								}
-							: { title: truncateToTitle(message) },
+							: // Attachment-only openers keep a title too, so the opening-turn signal holds.
+								{
+									title:
+										truncateToTitle(message) || truncateToTitle(fileAttachments[0]?.fileName ?? ''),
+								},
 				});
 			}
 
@@ -3943,15 +4040,24 @@ export class InstanceAiService {
 				.join('\n\n');
 			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
 			// so putting it in the cached system prefix would break caching.
-			const projectSection = await this.resolveProjectContextSection(context);
+			//
+			// The opening turn names the project's recent conversations; otherwise the
+			// agent has no reason to believe the conversation-history tool holds anything.
+			const [projectSection, pastConversationsSection] = await Promise.all([
+				this.resolveProjectContextSection(context),
+				isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
+			]);
 			const messageWithProject = projectSection
 				? withProjectContext(messageWithContext, projectSection)
 				: messageWithContext;
+			const messageWithPastConversations = pastConversationsSection
+				? withPastConversations(messageWithProject, pastConversationsSection)
+				: messageWithProject;
 
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
-				messageWithProject,
+				messageWithPastConversations,
 				getDateTimeSection(timeZone ?? this.defaultTimeZone),
 			);
 

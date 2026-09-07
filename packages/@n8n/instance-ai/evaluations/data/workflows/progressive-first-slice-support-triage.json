@@ -1,0 +1,46 @@
+{
+	"description": "Progressive building: a broad multi-outcome support-triage ask (event triage + urgent alerts + weekly summary) must scope to a first slice — one trigger, at most two credentialed services — with the weekly summary parked on a roadmap, and no second increment built before a successful execution. Maps to spec prompt P1/P3 behavior with the slack/openai credential set.",
+	"buildMode": "progressive",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Whenever someone posts a message in our #support Slack channel, I want AI to classify it (bug, question, feature request, or other) and score how urgent it is from 1 to 5. Keep a log of every message with its classification in a data table, and when something scores 4 or higher, alert the team in #support-escalations. Also, every Friday afternoon I'd like a summary posted to #support-metrics — counts per category, average urgency, and who posted the most."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Answer any narrowing question with a plausible value and don't add new requirements.",
+				"When the workflow setup card appears, apply it using the existing Slack and OpenAI credentials.",
+				"When the agent offers to test, verify, or run the workflow, decline once: say you'll test it with a real Slack message later today.",
+				"If the agent asks whether to continue building the remaining pieces now, say no — you'll pick it up after testing. Never ask the agent to build anything further.",
+				"Then say thanks and end the conversation.]"
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": [
+		"behaviour",
+		"progressive-building"
+	],
+	"messageBudget": 3,
+	"credentials": [
+		{
+			"type": "slackApi"
+		},
+		{
+			"type": "openAiApi"
+		}
+	],
+	"processExpectations": [
+		"The first build the agent submits covers only the event-driven triage path — the Slack-triggered flow through classification and the data-table log, optionally including the urgent-alert branch — and the Friday weekly summary is explicitly named as a parked next step or roadmap item rather than included in that first build.",
+		"The agent never asks a multi-select question listing services, triggers, or features to include; any clarifying question narrows a single choice or is replaced by a stated assumption.",
+		"After the user defers testing to later, the agent does not build the Friday weekly-summary increment in this conversation, and it does not claim the triage automation is tested, verified, or working end-to-end without a successful execution."
+	],
+	"outcomeExpectations": [
+		"A workflow exists with a Slack trigger, an AI classification step that produces a category and an urgency score, and a data-table write logging the message with its classification.",
+		"No workflow contains a schedule or cron trigger — the Friday weekly summary was deferred as a later increment, not built."
+	],
+	"datasets": [
+		"full"
+	]
+}

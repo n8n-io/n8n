@@ -1,0 +1,41 @@
+{
+	"description": "Progressive building's full loop, end to end: build the first increment, gate the staged extension on a real successful execution (produced mid-conversation by the harness's runWorkflowNow mock execution), inspect that execution, then extend the same workflow. The user stages the two increments explicitly, so this case tests the execution gate and extend-on-real-data mechanics, not slicing judgment (the sibling progressive cases cover that).",
+	"buildMode": "progressive",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Whenever someone posts a message in our #support Slack channel, use AI to classify it as bug, question, feature request, or other, and log every message with its classification into a data table. Once that's proven working, I also want to extend it so posts classified as bugs additionally get posted to our #bug-triage channel. Let's start with the triage log."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Apply the workflow setup card using the existing Slack and OpenAI credentials.",
+				"When the agent asks you to test the workflow, or asks you to trigger it with a real Slack message and report back, run the workflow yourself and tell the agent you just ran it with a test message.",
+				"After the run, when the agent proposes extending the workflow with the bug-escalation step, say yes.",
+				"Once the extension is built, say thanks and end the conversation. Don't add new requirements.]"
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": ["behaviour", "progressive-building"],
+	"messageBudget": 5,
+	"credentials": [{ "type": "slackApi" }, { "type": "openAiApi" }],
+	"executionScenarios": [
+		{
+			"name": "bug-message-classified-logged-and-escalated",
+			"description": "A bug report lands in #support: it gets classified, logged to the data table, and — in the final extended workflow — posted to #bug-triage.",
+			"dataSetup": "The Slack trigger receives one new message in #support from user U123: 'the CSV export button crashes the whole app every time'. The AI classification identifies it as a bug. The data-table insert succeeds. Any Slack post succeeds.",
+			"successCriteria": "The execution completes successfully. The message is classified as a bug, a row is written to the data table containing the message and its classification, and a message is posted to the bug-triage Slack channel."
+		}
+	],
+	"processExpectations": [
+		"The agent does not build the bug-escalation extension before a successful execution of the triage log exists — the extension is built only after the user reports having run the workflow.",
+		"After the user says they ran the workflow, the agent verifies by inspecting the actual execution (listing or fetching executions, or reading node output) rather than accepting the user's statement alone as execution evidence.",
+		"Before or while building the bug-escalation extension, the agent reads real output data from the inspected execution (e.g. the classification result via node output) rather than working purely from guessed schemas."
+	],
+	"outcomeExpectations": [
+		"The final workflow contains the full staged result: a Slack trigger, an AI classification step, a data-table write logging the message with its classification, and a branch that posts bug-classified messages to a second Slack channel.",
+		"Both stages live in one workflow — the extension modified the existing triage workflow rather than creating a separate second workflow."
+	],
+	"datasets": ["full"]
+}

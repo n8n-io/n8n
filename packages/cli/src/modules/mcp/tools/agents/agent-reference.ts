@@ -1,4 +1,5 @@
-import { AgentJsonConfigBaseSchema } from '@n8n/api-types';
+import { AgentJsonConfigBaseSchema, WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME } from '@n8n/api-types';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export const AGENT_BUILDER_REFERENCE_URI = 'n8n://agents/reference';
@@ -128,6 +129,10 @@ Tool references use these forms:
 
 - Custom tool: { "type": "custom", "id": "tool_name" }
 - Workflow tool: { "type": "workflow", "workflow": "Workflow Name", "name": "tool_name" }
+  A workflow tool must start with a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger
+  (${EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE}) and must be published before the published Agent can
+  call it; validate_agent reports incompatible_reference with reason no_supported_trigger or
+  not_published otherwise.
 - Node tool: { "type": "node", "name": "tool_name", "node": { "nodeType": "...",
   "nodeTypeVersion": 1, "nodeParameters": {}, "credentials": {} } }
 

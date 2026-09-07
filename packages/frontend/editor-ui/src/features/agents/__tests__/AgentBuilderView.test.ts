@@ -13,6 +13,7 @@ import type {
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
 import { agentsEventBus } from '../agents.eventBus';
+import { NEW_SESSION_PARAM } from '../constants';
 
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
@@ -810,6 +811,18 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 				},
 			}),
 		);
+	});
+
+	it('opens the preview dock with a new session when requested by the route', async () => {
+		localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN:p1:a1');
+		routeQuery[NEW_SESSION_PARAM] = 'true';
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+
+		expect(preview.props('isOpen')).toBe(true);
+		expect(preview.props('effectiveSessionId')).toEqual(expect.any(String));
+		expect(preview.props('effectiveSessionId')).not.toBe('thread-1');
 	});
 
 	it('does not persist generated personalisation gradients for read-only agents', async () => {
