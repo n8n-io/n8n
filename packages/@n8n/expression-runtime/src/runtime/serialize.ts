@@ -1,10 +1,12 @@
 import { DateTime, Duration, Interval } from 'luxon';
 
-/** Type guard: plain object with Object.prototype or null prototype. */
-function isPlainObject(value: object): value is Record<string, unknown> {
-	const proto = Object.getPrototypeOf(value);
-	return proto === Object.prototype || proto === null;
-}
+import {
+	dateTimeToSentinel,
+	durationToSentinel,
+	intervalToSentinel,
+	isPlainObject,
+	LUXON_SENTINEL_KEYS,
+} from './luxon-transfer';
 
 /**
  * Prepare a value for transfer across the V8 isolate boundary.
@@ -27,15 +29,9 @@ export function __prepareForTransfer(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
 
-	// Luxon DateTime -> ISO string (toISO() returns null for invalid DateTime)
-	if (DateTime.isDateTime(value)) return value.toISO() ?? null;
-	// Luxon Duration -> ISO string (toISO() returns null for invalid Duration)
-	if (Duration.isDuration(value)) return value.toISO() ?? null;
-	// Luxon Interval -> ISO string (toISO() returns "Invalid Interval" for invalid Interval)
-	if (Interval.isInterval(value)) {
-		const iso = value.toISO();
-		return iso === 'Invalid Interval' ? null : iso;
-	}
+	if (DateTime.isDateTime(value)) return dateTimeToSentinel(value);
+	if (Duration.isDuration(value)) return durationToSentinel(value);
+	if (Interval.isInterval(value)) return intervalToSentinel(value);
 
 	// Array — walk elements
 	if (Array.isArray(value)) return value.map(__prepareForTransfer);
@@ -46,8 +42,10 @@ export function __prepareForTransfer(value: unknown): unknown {
 
 	// Plain object — walk values
 	const result: Record<string, unknown> = {};
+	let collides = false;
 	for (const key of Object.keys(value)) {
+		if (LUXON_SENTINEL_KEYS.includes(key)) collides = true;
 		result[key] = __prepareForTransfer(value[key]);
 	}
-	return result;
+	return collides ? { __isLuxonEscaped: true, __value: result } : result;
 }

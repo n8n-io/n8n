@@ -4,6 +4,11 @@ import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
+import {
+	isLuxonEscapedObject,
+	isLuxonSentinel,
+	rebuildLuxonValue,
+} from '../runtime/luxon-transfer';
 import { bridgeMessageSchema } from './bridge-messages';
 
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
@@ -119,6 +124,16 @@ function unwrapSentinels(value: unknown): unknown {
 			result[key] = unwrapSentinels(inner[key]);
 		}
 		return result;
+	}
+	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
+	if (isLuxonEscapedObject(value)) {
+		const inner = value.__value;
+		if (isEscapedObject(inner)) return unwrapSentinels(inner);
+		const unescaped: Record<string, unknown> = {};
+		for (const key of Object.keys(inner)) {
+			unescaped[key] = unwrapSentinels(inner[key]);
+		}
+		return unescaped;
 	}
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
@@ -907,6 +922,10 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (Array.isArray(v)) return v.map(wrapSpecialValues);
 		// Error sentinels are already in transfer shape — leave them intact.
 		if (v.__isError) return v;
+		if (v.__isDateTime === true || v.__isDuration === true || v.__isInterval === true) return v;
+		if (v.__isLuxonEscaped === true) {
+			return { __isLuxonEscaped: true, __value: wrapSpecialValues(v.__value) };
+		}
 		var result = {};
 		var keys = Object.keys(v);
 		var collides = false;

@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import get from 'lodash/get';
 import { constructExecutionMetaData } from 'n8n-core';
 import {
@@ -125,13 +126,13 @@ describe('test Set2, rawMode/json Mode', () => {
 	});
 
 	describe('date expression', () => {
-		it('should quote a date expression that resolves to an ISO string', async () => {
+		it('should quote a date expression that resolves to a DateTime', async () => {
 			const isoString = '2026-09-04T10:20:30.000+02:00';
 			const jsonOutputTemplate = '{\n  "time": {{ $now }}\n}\n';
 			const fakeExecuteFunction = createMockExecuteFunction(
 				{ jsonOutput: `=${jsonOutputTemplate}` },
 				false,
-				() => isoString,
+				() => DateTime.fromISO(isoString, { setZone: true }),
 			);
 
 			const result = await execute.call(

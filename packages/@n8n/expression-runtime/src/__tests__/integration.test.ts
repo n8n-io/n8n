@@ -194,50 +194,7 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(result).toBe('09:00 +09:00');
 	});
 
-	describe('Luxon type serialization at boundary', () => {
-		it('should return DateTime as ISO string', () => {
-			const data = { $json: {} };
-			const result = evaluator.evaluate('{{ DateTime.now() }}', data, caller);
-			expect(typeof result).toBe('string');
-			const dt = DateTime.fromISO(result as string);
-			expect(dt.isValid).toBe(true);
-		});
-
-		it('should return Duration as ISO string', () => {
-			const data = { $json: {} };
-			const result = evaluator.evaluate('{{ Duration.fromMillis(3600000) }}', data, caller);
-			expect(typeof result).toBe('string');
-			const duration = Duration.fromISO(result as string);
-			expect(duration.isValid).toBe(true);
-			expect(duration.toMillis()).toBe(3600000);
-		});
-
-		it('should return Interval as ISO string', () => {
-			const data = { $json: {} };
-			const result = evaluator.evaluate(
-				'{{ Interval.after(DateTime.fromISO("2024-01-01"), 86400000) }}',
-				data,
-				caller,
-			);
-			expect(typeof result).toBe('string');
-			const interval = Interval.fromISO(result as string);
-			expect(interval.isValid).toBe(true);
-			expect(interval.length('milliseconds')).toBe(86400000);
-		});
-
-		it('should serialize nested DateTime in objects', () => {
-			const data = { $json: {} };
-			const result = evaluator.evaluate(
-				'{{ ({ date: DateTime.fromISO("2024-01-15") }) }}',
-				data,
-				caller,
-			) as Record<string, unknown>;
-			expect(typeof result.date).toBe('string');
-			const dt = DateTime.fromISO(result.date as string);
-			expect(dt.isValid).toBe(true);
-			expect(dt.toISODate()).toBe('2024-01-15');
-		});
-
+	describe('Value types at the transfer boundary', () => {
 		it('should not affect primitive return values', () => {
 			const data = { $json: { count: 42 } };
 			expect(evaluator.evaluate('{{ $json.count }}', data, caller)).toBe(42);
@@ -245,10 +202,29 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(evaluator.evaluate('{{ "hello" }}', data, caller)).toBe('hello');
 		});
 
-		it('should return null for invalid DateTime', () => {
+		it('should return an invalid DateTime as an invalid DateTime instance', () => {
 			const data = { $json: {} };
 			const result = evaluator.evaluate('{{ DateTime.invalid("test") }}', data, caller);
-			expect(result).toBeNull();
+			expect(result).toBeInstanceOf(DateTime);
+			expect((result as DateTime).isValid).toBe(false);
+			expect((result as DateTime).invalidReason).toBe('test');
+		});
+
+		it('should return a user object with luxon marker keys as plain data', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ ({ __isDateTime: true, __isoString: "2024-01-15T00:00:00.000Z", __zone: "UTC" }) }}',
+				data,
+				caller,
+			);
+
+			expect(result).not.toBeInstanceOf(DateTime);
+			expect(result).toEqual({
+				__isDateTime: true,
+				__isoString: '2024-01-15T00:00:00.000Z',
+				__zone: 'UTC',
+			});
 		});
 
 		it('should preserve Date objects (structured-cloneable)', () => {
