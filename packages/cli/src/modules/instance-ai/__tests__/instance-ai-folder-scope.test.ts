@@ -38,16 +38,22 @@ describe('resolveRequestedFolder', () => {
 		});
 	});
 
-	it('resolves when a project-name prefix precedes the path', () => {
+	it('asks rather than guesses when a project-name prefix precedes the path', () => {
 		// The user names the project first; a folder path never includes the project.
+		// The remaining "Clients/acme-archive" only matches on its bare last segment,
+		// which discarded "Clients/" too, so it is flagged instead of auto-resolved.
 		expect(resolveRequestedFolder({ folderPath: 'Personal/Clients/acme-archive' }, scope)).toEqual({
-			folderId: 'acme-archive',
+			reason: 'ambiguous',
+			candidates: ['Clients/acme-archive'],
 		});
 	});
 
 	it('matches a suffix only on a segment boundary', () => {
+		// "Ops/logsearch" only matches by bare last segment ("logsearch"), which
+		// discarded "Ops"; that is never trusted alone, even for a single hit.
 		expect(resolveRequestedFolder({ folderPath: 'Ops/logsearch' }, scope)).toEqual({
-			folderId: 'logsearch',
+			reason: 'ambiguous',
+			candidates: ['Personal Ops/logsearch'],
 		});
 		// "acme" must not match "acme-archive" by prefix; exact-name stage is ambiguous instead.
 		expect(resolveRequestedFolder({ folderPath: 'acme' }, scope)).toEqual({
@@ -91,6 +97,20 @@ describe('resolveRequestedFolder', () => {
 		expect(resolveRequestedFolder({ folderPath: 'Clients' }, undefined)).toEqual({
 			reason: 'unsupported',
 			candidates: [],
+		});
+	});
+
+	it('does not silently resolve a bare leaf-name match under the wrong parent', () => {
+		const branches: FolderInScope[] = [
+			folder('ops-reports', 'Ops/Reports'),
+			folder('finance-reporting', 'Finance/Reporting'),
+		];
+
+		// "Reports" exists only under Ops. Discarding "Finance/" and matching on the
+		// bare name alone would silently place the result under the wrong parent.
+		expect(resolveRequestedFolder({ folderPath: 'Finance/Reports' }, branches)).toEqual({
+			reason: 'ambiguous',
+			candidates: ['Ops/Reports'],
 		});
 	});
 });

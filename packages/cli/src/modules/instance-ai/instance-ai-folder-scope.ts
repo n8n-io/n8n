@@ -48,7 +48,10 @@ export function listCandidatePaths(folders: FolderInScope[]): string[] {
  * with the real folders listed.
  *
  * A user's path often starts with the PROJECT ("personal/logsearch"), which is
- * not part of a folder path, so the trailing segments are tried on their own.
+ * not part of a folder path, so the last segment is also tried as a bare name.
+ * That stage discards everything before it, so a same-named folder under an
+ * unrelated parent would match too: it never resolves alone, only flags
+ * "ambiguous" so the caller asks instead of guessing the parent.
  */
 export function resolveRequestedFolder(
 	requested: { folderPath?: string; folderId?: string },
@@ -69,17 +72,20 @@ export function resolveRequestedFolder(
 	if (wanted.length === 0) return { reason: 'not-found', candidates };
 	const wantedLeaf = wanted.split('/').at(-1) ?? wanted;
 
-	const stages: Array<(folder: FolderInScope) => boolean> = [
-		(folder) => normalizeFolderPath(folder.path) === wanted,
-		(folder) => folder.name.trim().toLowerCase() === wanted,
-		(folder) => folder.name.trim().toLowerCase() === wantedLeaf,
-		(folder) => normalizeFolderPath(folder.path).endsWith(`/${wanted}`),
+	const stages: Array<{ matches: (folder: FolderInScope) => boolean; leafNameOnly?: boolean }> = [
+		{ matches: (folder) => normalizeFolderPath(folder.path) === wanted },
+		{ matches: (folder) => folder.name.trim().toLowerCase() === wanted },
+		// A bare-leaf-name hit discarded everything before the last "/", so a
+		// same-named folder under a different parent matches just as well. Never
+		// trust it alone, even when it is the only hit.
+		{ matches: (folder) => folder.name.trim().toLowerCase() === wantedLeaf, leafNameOnly: true },
+		{ matches: (folder) => normalizeFolderPath(folder.path).endsWith(`/${wanted}`) },
 	];
 
-	for (const matches of stages) {
-		const hits = foldersInScope.filter(matches);
-		if (hits.length === 1) return { folderId: hits[0].id };
-		if (hits.length > 1) {
+	for (const stage of stages) {
+		const hits = foldersInScope.filter(stage.matches);
+		if (hits.length === 1 && !stage.leafNameOnly) return { folderId: hits[0].id };
+		if (hits.length >= 1) {
 			return { reason: 'ambiguous', candidates: listCandidatePaths(hits) };
 		}
 	}
