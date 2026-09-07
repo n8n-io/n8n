@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { ensureUrlPathSuffix } from '@n8n/ai-utilities/model-discovery';
+import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
+import { withChatCompletionsFallback } from './openai-api-style';
 import {
 	PROVIDER_CREDENTIAL_SCHEMAS,
 	type ProviderId,
@@ -133,10 +134,6 @@ function buildOpenAiCompatible(
 
 type OpenAiCompatibleProviderId = 'nvidia';
 
-function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
-	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
-}
-
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
 	name: P,
 	defaultBaseURL: string,
@@ -159,17 +156,16 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
 			const { apiStyle, ...providerCreds } = creds;
 			const provider = createOpenAI({ ...providerCreds, fetch });
-			// A custom baseURL usually means an OpenAI-COMPATIBLE server (LM Studio,
-			// vLLM, Ollama), which speaks /chat/completions; the provider's default
-			// model targets OpenAI's own Responses API (/responses) that those
-			// servers do not implement. OpenAI credentials also carry the official
-			// baseURL, so keep those on /responses. `apiStyle` handles proxies that
-			// explicitly support one API or the other.
-			const useChat =
-				apiStyle === 'chat' ||
-				(apiStyle === undefined &&
-					Boolean(providerCreds.baseURL && !isOfficialOpenAiBaseUrl(providerCreds.baseURL)));
-			return useChat ? provider.chat(model) : provider(model);
+			// `apiStyle` is the explicit override and wins over the automatic choice.
+			if (apiStyle === 'chat') return provider.chat(model);
+			// The official API serves /responses, which the provider's default model
+			// targets. OpenAI credentials also carry that base URL.
+			if (apiStyle === 'responses' || !isOpenAiCustomEndpoint(providerCreds.baseURL)) {
+				return provider(model);
+			}
+			// A custom baseURL is either a proxy for real OpenAI or an
+			// OpenAI-COMPATIBLE server. Only the endpoint knows which one it is.
+			return withChatCompletionsFallback(provider(model), provider.chat(model));
 		},
 	},
 	custom: {
