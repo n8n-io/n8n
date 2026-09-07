@@ -16,7 +16,6 @@ const i18n = useI18n();
 
 <template>
 	<N8nChatActions
-		:class="$style.actions"
 		:content="props.content"
 		data-test-id="agent-chat-message-actions"
 		copy-test-id="agent-chat-message-copy"

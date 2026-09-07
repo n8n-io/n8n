@@ -92,7 +92,8 @@ defineSlots<{
 	opacity: 0;
 	transition: opacity var(--duration--snappy) var(--easing--ease-out);
 
-	&:hover {
+	&:hover,
+	&:focus-within {
 		opacity: 1;
 	}
 

@@ -119,10 +119,6 @@ const isRateable = computed(
 		!(responseId.value in thread.feedbackByResponseId),
 );
 
-const hasSubmittedFeedback = computed(
-	() => !isUser.value && responseId.value in thread.feedbackByResponseId,
-);
-
 const hasSettledText = computed(function hasSettledAssistantText() {
 	return !isUser.value && !isStreaming.value && props.message.content.trim().length > 0;
 });
@@ -238,14 +234,6 @@ function formatJson(value: unknown): string {
 				<span>{{ cancelledLabel }}</span>
 			</div>
 
-			<p
-				v-if="hasSubmittedFeedback"
-				:class="$style.feedbackSuccess"
-				data-test-id="instance-ai-feedback-success"
-			>
-				{{ i18n.baseText('instanceAi.feedback.success') }}
-			</p>
-
 			<pre v-if="showDebugInfo" :class="$style.debugJson">{{ formatJson(props.message) }}</pre>
 		</template>
 
@@ -255,7 +243,7 @@ function formatJson(value: unknown): string {
 				:show-copy="hasSettledText"
 				copy-test-id="instance-ai-message-copy"
 				:show-rating="isRateable"
-				@rating="onFeedback"
+				:on-rating="onFeedback"
 				:show-read-aloud="hasSettledText"
 				read-aloud-test-id="instance-ai-message-read-aloud"
 			>
@@ -369,12 +357,6 @@ function formatJson(value: unknown): string {
 	&:hover {
 		opacity: 1;
 	}
-}
-
-.feedbackSuccess {
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	margin: var(--spacing--2xs) 0 0;
 }
 
 .debugJson {
