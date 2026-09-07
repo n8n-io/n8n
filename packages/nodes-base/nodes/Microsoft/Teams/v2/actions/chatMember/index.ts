@@ -8,7 +8,7 @@ export { getAll };
 export const description: INodeProperties[] = [
 	{
 		displayName:
-			'Chat members are not available with the Service Principal credential. App-only Microsoft Graph has no signed-in user; use an OAuth2 credential for chat actions.',
+			'Chat members are not available with the Service Principal credential. The chat picker cannot list chats app-only; use an OAuth2 credential for chat actions.',
 		name: 'chatMemberServicePrincipalNotice',
 		type: 'notice',
 		default: '',
