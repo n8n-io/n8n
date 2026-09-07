@@ -202,9 +202,6 @@ describe('Microsoft Teams v2 — getChats', () => {
 			expect(result.results.map((r) => r.value)).toEqual(['c2', 'c3', 'c1']);
 		});
 
-		// Only one page is fetched, so the message must describe this list, never claim the
-		// account has no group chats: a full page of 1:1 chats can still be followed by
-		// group chats the picker never asked for.
 		it('explains the empty list without claiming the account has no group chats', async () => {
 			apiRequest.mockResolvedValue({
 				value: Array.from({ length: 50 }, (_, i) => ({
@@ -221,7 +218,11 @@ describe('Microsoft Teams v2 — getChats', () => {
 				operation: 'add',
 			});
 
-			await expect(getChats.call(ctx)).rejects.toThrow('No group chats available to select');
+			const thrown = await getChats.call(ctx).catch((error) => error);
+
+			expect(thrown.message).toBe('No group chats available to select');
+			expect(thrown.description).toContain('up to 50 chats');
+			expect(thrown.description).not.toContain('account');
 		});
 
 		// The message must not fire when the tenant simply has no chats, or it would

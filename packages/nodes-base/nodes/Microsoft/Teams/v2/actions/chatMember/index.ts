@@ -47,7 +47,7 @@ export const description: INodeProperties[] = [
 				action: 'Get many chat members',
 			},
 		],
-		default: 'add',
+		default: 'getAll',
 	},
 
 	...add.description,

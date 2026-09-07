@@ -97,8 +97,7 @@ export async function getChats(
 	}
 
 	// Every chat on the page was 1:1, so the dropdown would otherwise show an unexplained
-	// empty list for a state no search term can fix. Only one page is fetched, so the
-	// message states what this list holds and never that the account has no group chats.
+	// empty list for a state no search term can fix.
 	if (excludeOneOnOne && value.length > 0 && returnData.length === 0) {
 		throw new NodeOperationError(this.getNode(), 'No group chats available to select', {
 			description:

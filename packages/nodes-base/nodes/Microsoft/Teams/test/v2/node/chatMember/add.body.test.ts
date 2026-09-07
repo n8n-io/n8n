@@ -89,6 +89,18 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 		});
 	});
 
+	it('sends no visibleHistoryStartDateTime for an explicit None history', async () => {
+		setParams(addParams({ options: { shareHistory: 'none' } }));
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
+			'@odata.type': '#microsoft.graph.aadUserConversationMember',
+			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+			roles: ['owner'],
+		});
+	});
+
 	it('throws when From Date is selected without a date, and issues no request', async () => {
 		setParams(addParams({ options: { shareHistory: 'fromDate', historyStartDate: '' } }));
 

@@ -21,7 +21,7 @@ const properties: INodeProperties[] = [
 	{
 		...chatRLC,
 		description:
-			'Select the group chat, or specify its URL or ID. One-on-one chats are not listed because Teams does not allow adding members to a 1:1 chat',
+			'Select the group chat from the list, or specify its ID (find the chat ID after "conversations/" in the URL). One-on-one chats are not listed because Teams does not allow adding members to a 1:1 chat.',
 	},
 	userRLC,
 	{
@@ -118,7 +118,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const body: IDataObject = {
 		'@odata.type': '#microsoft.graph.aadUserConversationMember',
 		'user@odata.bind': `${await getGraphBaseUrl.call(this)}/v1.0/users/${userId}`,
-		roles: [options.role ?? 'owner'],
+		roles: [options.role === 'guest' ? 'guest' : 'owner'],
 	};
 
 	// Not inverted: omitting the field shares NO history, and the 0001-01-01 sentinel

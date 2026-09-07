@@ -343,8 +343,9 @@ export const userRLC: INodeProperties = {
 					type: 'regex',
 					properties: {
 						regex:
-							'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[^\\s@]+@[^\\s@]+)[ \t]*$',
-						errorMessage: 'Not a valid user ID or user principal name',
+							'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[^\\s@#]+@[^\\s@#]+)[ \t]*$',
+						errorMessage:
+							'Not a valid user ID or user principal name. Give a guest user by their object ID, because a guest principal name contains "#EXT#".',
 					},
 				},
 			],
