@@ -21,6 +21,13 @@ import {
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity, type CredentialUsageScope } from './credentials-entity';
+import { DataTableMutationEvent } from './data-table-mutation-event';
+import {
+	DataTableTriggerDelivery,
+	DataTableTriggerDeliveryStatus,
+	type DataTableTriggerDeliveryStatus as DataTableTriggerDeliveryStatusType,
+} from './data-table-trigger-delivery';
+import { DataTableTriggerSubscription } from './data-table-trigger-subscription';
 import { DeploymentKey } from './deployment-key';
 import { EvaluationCollection } from './evaluation-collection.ee';
 import { EvaluationConfig } from './evaluation-config.ee';
@@ -133,6 +140,11 @@ export {
 	CredentialDependency,
 	type CredentialDependencyType,
 	DeploymentKey,
+	DataTableMutationEvent,
+	DataTableTriggerDelivery,
+	DataTableTriggerDeliveryStatus,
+	type DataTableTriggerDeliveryStatusType,
+	DataTableTriggerSubscription,
 	EvaluationCollection,
 	EvaluationConfig,
 	Folder,
@@ -217,6 +229,9 @@ export const entities = {
 	CredentialsEntity,
 	CredentialDependency,
 	DeploymentKey,
+	DataTableMutationEvent,
+	DataTableTriggerDelivery,
+	DataTableTriggerSubscription,
 	EvaluationCollection,
 	EvaluationConfig,
 	Folder,

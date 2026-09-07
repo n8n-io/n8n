@@ -67,6 +67,16 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	return returnData;
 }
 
+export async function getDataTableColumnIds(this: ILoadOptionsFunctions) {
+	const proxy = await getDataTableProxyLoadOptions(this);
+	if (!proxy) return [];
+
+	return (await proxy.getColumns()).map((column) => ({
+		name: `${column.name} (${column.type})`,
+		value: column.id,
+	}));
+}
+
 export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	const proxy = await getDataTableProxyLoadOptions(this);
 	if (!proxy) {
@@ -136,6 +146,10 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 		conditions.push.apply(conditions, comparableConditions);
 	}
 
+	if (type === 'enum') {
+		conditions.push.apply(conditions, equalsConditions);
+	}
+
 	if (['number', 'date'].includes(type)) {
 		conditions.push.apply(conditions, equalsConditions);
 		conditions.push.apply(conditions, comparableConditions);
@@ -156,7 +170,7 @@ export async function getDataTables(this: ILoadOptionsFunctions): Promise<Resour
 	const fields: ResourceMapperField[] = [];
 
 	for (const field of result) {
-		const type = field.type === 'date' ? 'dateTime' : field.type;
+		const type = field.type === 'date' ? 'dateTime' : field.type === 'enum' ? 'string' : field.type;
 
 		fields.push({
 			id: field.name,

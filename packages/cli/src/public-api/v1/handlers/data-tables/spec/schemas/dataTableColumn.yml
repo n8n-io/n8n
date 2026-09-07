@@ -11,8 +11,14 @@ properties:
     description: ID of the data table this column belongs to
   type:
     type: string
-    enum: [string, number, boolean, date]
+    enum: [string, number, boolean, date, enum]
     description: Column data type
+  options:
+    type: array
+    nullable: true
+    description: Allowed enum values
+    items:
+      type: string
   index:
     type: integer
     description: Column position

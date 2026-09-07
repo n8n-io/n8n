@@ -19,7 +19,8 @@ import { DATA_TABLES_TOOL_ID } from './tool-ids';
 
 export { DATA_TABLES_TOOL_ID };
 
-const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
+const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date', 'enum']);
+const enumOptionsSchema = z.array(z.string().min(1).max(128)).min(1).max(100).optional();
 
 const filterSchema = z.object({
 	type: z.enum(['and', 'or']).describe('Combine filters with AND or OR'),
@@ -178,6 +179,7 @@ const createAction = z.object({
 			z.object({
 				name: z.string().describe('Column name (alphanumeric + underscores)'),
 				type: columnTypeSchema.describe('Column data type'),
+				options: enumOptionsSchema.describe('Allowed values. Required when type is enum.'),
 			}),
 		)
 		.min(1)
@@ -206,6 +208,7 @@ const addColumnAction = z.object({
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnName: z.string().describe('Column name (alphanumeric + underscores)'),
 	type: columnTypeSchema.describe('Column data type'),
+	options: enumOptionsSchema.describe('Allowed values. Required when type is enum.'),
 });
 
 const deleteColumnAction = z.object({
@@ -533,7 +536,7 @@ async function handleAddColumn(
 	// State 3: Approved or always_allow — execute
 	const column = await context.dataTableService.addColumn(
 		input.dataTableId,
-		{ name: input.columnName, type: input.type },
+		{ name: input.columnName, type: input.type, options: input.options },
 		{ projectId: input.projectId },
 	);
 	return { column };

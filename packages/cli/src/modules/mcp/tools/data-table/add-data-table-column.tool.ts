@@ -18,6 +18,12 @@ const inputSchema = {
 	projectId: dataTableProjectIdSchema,
 	name: columnNameSchema,
 	type: dataTableColumnTypeSchema.describe('The data type of the new column'),
+	options: z
+		.array(z.string())
+		.min(1)
+		.max(100)
+		.optional()
+		.describe('Allowed values. Required when type is enum.'),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -49,11 +55,13 @@ export const createAddDataTableColumnTool = (
 		projectId,
 		name,
 		type,
+		options,
 	}: {
 		dataTableId: string;
 		projectId: string;
 		name: string;
-		type: 'string' | 'number' | 'boolean' | 'date';
+		type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
+		options?: string[];
 	}) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
@@ -62,12 +70,21 @@ export const createAddDataTableColumnTool = (
 		};
 
 		try {
-			const column = await dataTableOps.addColumn(dataTableId, projectId, { name, type });
+			const column = await dataTableOps.addColumn(dataTableId, projectId, {
+				name,
+				type,
+				options,
+			});
 
 			const output = {
 				success: true,
 				message: `Column '${name}' added with type '${type}'`,
-				column: { id: column.id, name: column.name, type: column.type },
+				column: {
+					id: column.id,
+					name: column.name,
+					type: column.type,
+					...(column.options ? { options: column.options } : {}),
+				},
 			};
 
 			telemetryPayload.results = { success: true };

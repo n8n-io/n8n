@@ -50,8 +50,11 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [chat_hub_tools](chat_hub_tools.md) | 9 |  | table |
 | [credential_dependency](credential_dependency.md) | 5 |  | table |
 | [credentials_entity](credentials_entity.md) | 12 |  | table |
-| [data_table](data_table.md) | 5 |  | table |
-| [data_table_column](data_table_column.md) | 7 |  | table |
+| [data_table](data_table.md) | 6 |  | table |
+| [data_table_column](data_table_column.md) | 8 |  | table |
+| [data_table_mutation_event](data_table_mutation_event.md) | 8 |  | table |
+| [data_table_trigger_delivery](data_table_trigger_delivery.md) | 16 |  | table |
+| [data_table_trigger_subscription](data_table_trigger_subscription.md) | 9 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
 | [dynamic_credential_entry](dynamic_credential_entry.md) | 6 |  | table |
 | [dynamic_credential_resolver](dynamic_credential_resolver.md) | 6 |  | table |
@@ -223,6 +226,13 @@ erDiagram
 "credentials_entity" }o--o| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "data_table" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table_column" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table_mutation_event" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table_trigger_delivery" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table_trigger_delivery" }o--|| "data_table_mutation_event" : "FOREIGN KEY (eventId) REFERENCES data_table_mutation_event (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table_trigger_subscription" }o--o| "data_table_column" : "FOREIGN KEY (columnId) REFERENCES data_table_column (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"data_table_trigger_subscription" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table_trigger_subscription" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table_trigger_subscription" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_entry" |o--|| "dynamic_credential_resolver" : "FOREIGN KEY (resolver_id) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_user_entry" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -821,6 +831,7 @@ erDiagram
 "data_table" {
   datetime_3_ createdAt
   varchar_36_ id PK
+  TEXT metadata
   varchar_128_ name
   varchar_36_ projectId FK
   datetime_3_ updatedAt
@@ -831,8 +842,48 @@ erDiagram
   varchar_36_ id PK
   INTEGER index
   varchar_128_ name
+  TEXT options
   varchar_32_ type
   datetime_3_ updatedAt
+}
+"data_table_mutation_event" {
+  datetime_3_ createdAt
+  varchar_36_ dataTableId FK
+  varchar_20_ event
+  varchar id PK
+  datetime_3_ occurredAt
+  TEXT payload
+  INTEGER rowId
+  datetime_3_ updatedAt
+}
+"data_table_trigger_delivery" {
+  smallint attempts
+  varchar_36_ claimedBy
+  datetime_3_ createdAt
+  datetime_3_ dispatchedAt
+  TEXT error
+  varchar eventId FK
+  bigint executionId
+  datetime_3_ finishedAt
+  varchar id PK
+  INTEGER leaseEpoch
+  datetime_3_ leaseExpiresAt
+  datetime_3_ nextAttemptAt
+  varchar_36_ nodeId
+  varchar_20_ status
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+}
+"data_table_trigger_subscription" {
+  varchar_36_ columnId FK
+  datetime_3_ createdAt
+  varchar_36_ dataTableId FK
+  varchar_20_ event
+  varchar id PK
+  varchar_36_ nodeId
+  varchar_36_ projectId FK
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "deployment_key" {
   varchar_20_ algorithm

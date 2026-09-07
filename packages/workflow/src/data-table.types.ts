@@ -1,4 +1,4 @@
-export type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date';
+export type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date' | 'enum';
 
 /**
  * Data Table row operations
@@ -25,19 +25,25 @@ export type DataTableColumn = {
 	type: DataTableColumnType;
 	index: number;
 	dataTableId: string;
+	options?: string[] | null;
 };
+
+export type DataTableMetadata = Record<string, never>;
 
 export type DataTable = {
 	id: string;
 	name: string;
 	columns: DataTableColumn[];
+	metadata: DataTableMetadata;
 	createdAt: Date;
 	updatedAt: Date;
 	projectId: string;
 };
 
-export type CreateDataTableColumnOptions = Pick<DataTableColumn, 'name' | 'type'> &
-	Partial<Pick<DataTableColumn, 'index'>>;
+export type CreateDataTableColumnOptions = Pick<DataTableColumn, 'name' | 'type'> & {
+	index?: number;
+	options?: string[];
+};
 
 export type CreateDataTableOptions = Pick<DataTable, 'name'> & {
 	columns: CreateDataTableColumnOptions[];
@@ -91,10 +97,28 @@ export type MoveDataTableColumnOptions = {
 	targetIndex: number;
 };
 
-export type AddDataTableColumnOptions = Pick<DataTableColumn, 'name' | 'type'> &
-	Partial<Pick<DataTableColumn, 'index'>>;
+export type AddDataTableColumnOptions = CreateDataTableColumnOptions;
 
 export type DataTableColumnJsType = string | number | boolean | Date | null;
+
+export type DataTableTriggerEvent = 'rowInserted' | 'rowDeleted' | 'columnUpdated';
+
+export type DataTableTriggerChange = {
+	columnId: string;
+	columnName: string;
+	before: DataTableColumnJsType;
+	after: DataTableColumnJsType;
+};
+
+export type DataTableTriggerOutput = {
+	eventId: string;
+	event: DataTableTriggerEvent;
+	dataTableId: string;
+	rowId: number;
+	occurredAt: string;
+	row: DataTableRowReturn;
+	changes?: DataTableTriggerChange[];
+};
 
 export const DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP: Record<string, DataTableColumnType> = {
 	id: 'number',

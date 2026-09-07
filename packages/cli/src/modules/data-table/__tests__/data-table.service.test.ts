@@ -9,6 +9,7 @@ import type { Mocked } from 'vitest';
 import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableCsvImportService } from '../data-table-csv-import.service';
+import { DataTableMutationEventRecorder } from '../data-table-mutation-event.repository';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
 import type { DataTable } from '../data-table.entity';
@@ -33,6 +34,7 @@ describe('DataTableService', () => {
 	let mockProjectRelationRepository: Mocked<ProjectRelationRepository>;
 	let mockRoleService: Mocked<RoleService>;
 	let mockCsvImportService: Mocked<DataTableCsvImportService>;
+	let mockMutationEventService: Mocked<DataTableMutationEventRecorder>;
 	let mockEventService: Mocked<EventService>;
 	let mockProjectRepository: Mocked<ProjectRepository>;
 	let mockProjectService: Mocked<ProjectService>;
@@ -50,6 +52,9 @@ describe('DataTableService', () => {
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
 		mockRoleService = mockInstance(RoleService);
 		mockCsvImportService = mockInstance(DataTableCsvImportService);
+		mockMutationEventService = mockInstance(DataTableMutationEventRecorder);
+		mockMutationEventService.findSubscriptions.mockResolvedValue([]);
+		mockMutationEventService.hasSubscriptionForColumn.mockResolvedValue(false);
 		mockEventService = mockInstance(EventService);
 		mockProjectRepository = mockInstance(ProjectRepository);
 		mockProjectService = mockInstance(ProjectService);
@@ -66,6 +71,7 @@ describe('DataTableService', () => {
 			mockProjectRelationRepository,
 			mockRoleService,
 			mockCsvImportService,
+			mockMutationEventService,
 			mockEventService,
 			mockProjectRepository,
 			mockProjectService,

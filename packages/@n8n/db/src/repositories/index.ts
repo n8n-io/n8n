@@ -26,6 +26,18 @@ export {
 	type ListDeploymentKeysOptions,
 } from './deployment-key.repository';
 export {
+	DataTableMutationEventRepository,
+	type NewDataTableMutationEvent,
+} from './data-table-mutation-event.repository';
+export {
+	DataTableTriggerDeliveryRepository,
+	type DataTableTriggerDeliveryFence,
+} from './data-table-trigger-delivery.repository';
+export {
+	DataTableTriggerSubscriptionRepository,
+	type NewDataTableTriggerSubscription,
+} from './data-table-trigger-subscription.repository';
+export {
 	EvaluationCollectionRepository,
 	type EvaluationCollectionListItem,
 } from './evaluation-collection.repository';

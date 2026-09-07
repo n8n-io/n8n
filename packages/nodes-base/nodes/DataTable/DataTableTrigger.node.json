@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.dataTableTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Start a workflow when rows in a Data Table change",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datatable/"
+			}
+		]
+	},
+	"alias": ["data", "table", "trigger", "row", "column"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}

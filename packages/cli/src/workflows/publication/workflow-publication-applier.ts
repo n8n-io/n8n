@@ -7,12 +7,13 @@ import {
 	WorkflowPublicationReason,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
+	TransactionRunner,
 	type WorkflowPublicationTriggerKind,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { INode, WorkflowActivateMode } from 'n8n-workflow';
+import { DATA_TABLE_TRIGGER_NODE_TYPE, type INode, type WorkflowActivateMode } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -22,6 +23,7 @@ import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-o
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
+import { DataTableTriggerSubscriptionReconciler } from '@/workflows/publication/data-table-trigger-subscription-reconciler';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';
 import type {
 	PublicationResult,
@@ -53,7 +55,6 @@ const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActiv
 	[WorkflowPublicationReason.LeadershipTakeover]: 'leadershipChange',
 	[WorkflowPublicationReason.Reconcile]: 'update',
 };
-
 /**
  * Reconciles a workflow's triggers to a published version, one outbox record at
  * a time. This is the only class that knows the remove → advance published
@@ -70,6 +71,8 @@ export class WorkflowPublicationApplier {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
+		private readonly transactionRunner: TransactionRunner,
+		private readonly dataTableTriggerSubscriptionReconciler: DataTableTriggerSubscriptionReconciler,
 		private readonly workflowTriggerActivator: WorkflowTriggerActivator,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly nodeTypes: NodeTypes,
@@ -148,8 +151,18 @@ export class WorkflowPublicationApplier {
 		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+		const dataTableSubscriptions = await this.dataTableTriggerSubscriptionReconciler.prepare(
+			workflow.id,
+			newVersion.nodes,
+		);
 
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerNodes, desiredTriggerNodes);
+		for (const node of desiredTriggerNodes) {
+			if (node.type === DATA_TABLE_TRIGGER_NODE_TYPE) toAdd.delete(node.id);
+		}
+		for (const node of oldTriggerNodes) {
+			if (node.type === DATA_TABLE_TRIGGER_NODE_TYPE) toRemove.delete(node.id);
+		}
 
 		this.logger.debug(
 			`Calculated trigger diff for workflow publication: ${toAdd.size} to add, ${toRemove.size} to remove`,
@@ -178,7 +191,7 @@ export class WorkflowPublicationApplier {
 		// No trigger changed: advance the published version and finish. Unchanged
 		// triggers keep running and re-read the new version on their next fire.
 		if (toAdd.size === 0 && toRemove.size === 0) {
-			await this.advancePublishedVersion(record);
+			await this.advancePublishedVersion(record, dataTableSubscriptions);
 			return {
 				type: 'completed',
 				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
@@ -218,7 +231,7 @@ export class WorkflowPublicationApplier {
 		// version included — must return a `failed` result (not throw) so the
 		// teardown failures collected above still reach the reporter.
 		try {
-			await this.advancePublishedVersion(record);
+			await this.advancePublishedVersion(record, dataTableSubscriptions);
 
 			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
@@ -377,7 +390,10 @@ export class WorkflowPublicationApplier {
 			this.workflowScheduledJobOwner.ref(record.workflowId),
 		);
 
-		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
+		await this.transactionRunner.run({}, async (ctx) => {
+			await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId, ctx);
+			await this.dataTableTriggerSubscriptionReconciler.replace(record.workflowId, [], ctx);
+		});
 
 		return teardownFailures.length > 0
 			? { type: 'unpublished', teardownFailures }
@@ -545,15 +561,26 @@ export class WorkflowPublicationApplier {
 	 * the new triggers so they execute the newly published version rather than
 	 * the previous one.
 	 */
-	private async advancePublishedVersion(record: WorkflowPublicationOutbox) {
+	private async advancePublishedVersion(
+		record: WorkflowPublicationOutbox,
+		dataTableSubscriptions: Awaited<ReturnType<DataTableTriggerSubscriptionReconciler['prepare']>>,
+	) {
 		// Invalidate → write → refresh: with the cache empty across the write, reads
 		// fall through to the database (the source of truth) rather than ever serving
 		// a stale version, before the new version is cached again.
 		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
-		await this.workflowPublishedVersionRepository.setPublishedVersion(
-			record.workflowId,
-			record.publishedVersionId,
-		);
+		await this.transactionRunner.run({}, async (ctx) => {
+			await this.workflowPublishedVersionRepository.setPublishedVersion(
+				record.workflowId,
+				record.publishedVersionId,
+				ctx,
+			);
+			await this.dataTableTriggerSubscriptionReconciler.replace(
+				record.workflowId,
+				dataTableSubscriptions,
+				ctx,
+			);
+		});
 		await this.workflowPublishedDataService.refreshCache(record.workflowId);
 	}
 }

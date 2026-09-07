@@ -11,6 +11,7 @@ import { columnNameSchema, dataTableColumnTypeSchema } from '../schemas';
 const columnSchema = z.object({
 	name: columnNameSchema,
 	type: dataTableColumnTypeSchema,
+	options: z.array(z.string()).min(1).max(100).optional(),
 });
 
 const createInputSchema = {
@@ -58,7 +59,11 @@ export const createCreateDataTableTool = (
 	}: {
 		projectId: string;
 		name: string;
-		columns: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'date' }>;
+		columns: Array<{
+			name: string;
+			type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
+			options?: string[];
+		}>;
 	}) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
@@ -72,6 +77,7 @@ export const createCreateDataTableTool = (
 				columns: columns.map((col) => ({
 					name: col.name,
 					type: col.type,
+					options: col.options,
 				})),
 			});
 

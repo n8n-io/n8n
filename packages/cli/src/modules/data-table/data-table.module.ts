@@ -23,6 +23,12 @@ export class DataTableModule implements ModuleInterface {
 					toProjectId,
 					trx,
 				);
+				const { DataTableTriggerSubscriptionRepository } = await import('@n8n/db');
+				await Container.get(DataTableTriggerSubscriptionRepository).transferProject(
+					fromProjectId,
+					toProjectId,
+					trx,
+				);
 			},
 			deleteAll: async (projectId) => {
 				await Container.get(DataTableService).deleteDataTableByProjectId(projectId);
@@ -37,6 +43,12 @@ export class DataTableModule implements ModuleInterface {
 
 		const { DataTableFileCleanupService } = await import('./data-table-file-cleanup.service.js');
 		await Container.get(DataTableFileCleanupService).start();
+
+		const { DataTableTriggerDeliveryConsumer } = await import(
+			'./data-table-trigger-delivery.consumer.js'
+		);
+		await import('./data-table-trigger-reconciliation.task.js');
+		await Container.get(DataTableTriggerDeliveryConsumer).start();
 	}
 
 	@OnShutdown()
@@ -49,6 +61,11 @@ export class DataTableModule implements ModuleInterface {
 
 		const { DataTableFileCleanupService } = await import('./data-table-file-cleanup.service.js');
 		await Container.get(DataTableFileCleanupService).shutdown();
+
+		const { DataTableTriggerDeliveryConsumer } = await import(
+			'./data-table-trigger-delivery.consumer.js'
+		);
+		await Container.get(DataTableTriggerDeliveryConsumer).shutdown();
 	}
 
 	async entities() {

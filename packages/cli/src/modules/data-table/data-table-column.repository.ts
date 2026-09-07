@@ -10,6 +10,7 @@ import {
 
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableDDLService } from './data-table-ddl.service';
+import { normalizeColumn } from './data-table-enum.utils';
 import { DataTable } from './data-table.entity';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
@@ -66,7 +67,6 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 			.createQueryBuilder(DataTableColumn, 'dsc')
 			.where('dsc.dataTableId = :dataTableId', { dataTableId })
 			.getMany();
-
 		// Ensure columns are always returned in the correct order by index,
 		// since the database does not guarantee ordering and TypeORM does not preserve
 		// join order in @OneToMany relations.
@@ -98,6 +98,7 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 
 	async addColumn(dataTableId: string, schema: DataTableCreateColumnSchema, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
+			schema = normalizeColumn(schema);
 			this.validateNotSystemColumn(schema.name);
 			await this.validateUniqueColumnName(schema.name, dataTableId, em);
 
@@ -110,14 +111,16 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 			}
 
 			const column = em.create(DataTableColumn, {
-				...schema,
 				dataTableId,
+				name: schema.name,
+				type: schema.type,
+				index: schema.index,
+				options: schema.options ?? null,
 			});
 
 			await em.insert(DataTableColumn, column);
 
 			await this.ddlService.addColumn(dataTableId, column, em.connection.options.type, em);
-
 			return column;
 		});
 	}

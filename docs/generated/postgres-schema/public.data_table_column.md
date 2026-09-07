@@ -6,9 +6,10 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | dataTableId | varchar(36) |  | false |  | [public.data_table](public.data_table.md) |  |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [public.data_table_trigger_subscription](public.data_table_trigger_subscription.md) |  |  |
 | index | integer |  | false |  |  | Column order, starting from 0 (0 = first column) |
 | name | varchar(128) |  | false |  |  |  |
+| options | json |  | true |  |  | Allowed values for an enum column |
 | type | varchar(32) |  | false |  |  | Expected: string, number, boolean, or date (not enforced as a constraint) |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -40,6 +41,7 @@
 erDiagram
 
 "public.data_table_column" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
+"public.data_table_trigger_subscription" }o--o| "public.data_table_column" : "FOREIGN KEY (#quot;columnId#quot;) REFERENCES data_table_column(id) ON DELETE RESTRICT"
 
 "public.data_table_column" {
   timestamp_3__with_time_zone createdAt
@@ -47,15 +49,28 @@ erDiagram
   varchar_36_ id
   integer index
   varchar_128_ name
+  json options
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt
 }
 "public.data_table" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  json metadata
   varchar_128_ name
   varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
+}
+"public.data_table_trigger_subscription" {
+  varchar_36_ columnId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ dataTableId FK
+  varchar_20_ event
+  uuid id
+  varchar_36_ nodeId
+  varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 ```
 

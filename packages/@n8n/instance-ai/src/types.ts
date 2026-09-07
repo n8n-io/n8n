@@ -759,8 +759,9 @@ export interface DataTableReference {
 export interface DataTableColumnInfo {
 	id: string;
 	name: string;
-	type: 'string' | 'number' | 'boolean' | 'date';
+	type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
 	index: number;
+	options?: string[];
 }
 
 export interface DataTableFilterInput {
@@ -792,7 +793,11 @@ export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
 		name: string,
-		columns: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'date' }>,
+		columns: Array<{
+			name: string;
+			type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
+			options?: string[];
+		}>,
 		options?: { projectId?: string },
 	): Promise<DataTableSummary>;
 	delete(dataTableId: string, options?: DataTableIdOptions): Promise<void>;
@@ -803,7 +808,11 @@ export interface InstanceAiDataTableService {
 	getSchema(dataTableId: string, options?: DataTableIdOptions): Promise<DataTableColumnInfo[]>;
 	addColumn(
 		dataTableId: string,
-		column: { name: string; type: 'string' | 'number' | 'boolean' | 'date' },
+		column: {
+			name: string;
+			type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
+			options?: string[];
+		},
 		options?: DataTableIdOptions,
 	): Promise<DataTableColumnInfo>;
 	deleteColumn(dataTableId: string, columnId: string, options?: DataTableIdOptions): Promise<void>;

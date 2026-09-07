@@ -22,16 +22,69 @@ export const dataTableColumnNameSchema = z
 	.min(1)
 	.max(DATA_TABLE_COLUMN_MAX_LENGTH) // Postgres has a maximum of 63 characters
 	.regex(DATA_TABLE_COLUMN_REGEX, DATA_TABLE_COLUMN_ERROR_MESSAGE);
-export const dataTableColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
+export const dataTableColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date', 'enum']);
+export const dataTableEnumOptionsSchema = z
+	.array(z.string().trim().min(1).max(128))
+	.min(1)
+	.max(100)
+	.superRefine((options, context) => {
+		const normalized = new Set<string>();
+		for (const [index, option] of options.entries()) {
+			if (option.includes(',')) {
+				context.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Enum options cannot contain commas',
+					path: [index],
+				});
+			}
 
-export const dataTableCreateColumnSchema = z.object({
+			const key = option.toLocaleLowerCase();
+			if (normalized.has(key)) {
+				context.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Enum options must be unique, ignoring case',
+					path: [index],
+				});
+			}
+			normalized.add(key);
+		}
+	});
+
+export const dataTableMetadataSchema = z.object({});
+export type DataTableMetadata = z.infer<typeof dataTableMetadataSchema>;
+
+export const dataTableCreateColumnBaseSchema = z.object({
 	name: dataTableColumnNameSchema,
 	type: dataTableColumnTypeSchema,
 	index: z.number().optional(),
+	options: dataTableEnumOptionsSchema.optional(),
 });
+
+export const dataTableCreateColumnSchema = dataTableCreateColumnBaseSchema.superRefine(
+	(column, context) => {
+		if (column.type === 'enum' && column.options === undefined) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Enum columns require options',
+				path: ['options'],
+			});
+		}
+		if (column.type !== 'enum' && column.options !== undefined) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Only enum columns can define options',
+				path: ['options'],
+			});
+		}
+	},
+);
 export type DataTableCreateColumnSchema = z.infer<typeof dataTableCreateColumnSchema>;
 
-export const dataTableColumnSchema = dataTableCreateColumnSchema.extend({
+export const dataTableColumnSchema = z.object({
+	name: dataTableColumnNameSchema,
+	type: dataTableColumnTypeSchema,
+	index: z.number(),
+	options: dataTableEnumOptionsSchema.nullable(),
 	dataTableId: dataTableIdSchema,
 });
 
@@ -39,6 +92,7 @@ export const dataTableSchema = z.object({
 	id: dataTableIdSchema,
 	name: dataTableNameSchema,
 	columns: z.array(dataTableColumnSchema),
+	metadata: dataTableMetadataSchema,
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
 });

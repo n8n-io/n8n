@@ -6,6 +6,7 @@ import type {
 	WorkflowPublishedVersionRepository,
 	WorkflowHistoryRepository,
 	WorkflowRepository,
+	TransactionRunner,
 } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
@@ -25,6 +26,7 @@ import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import type { DataTableTriggerSubscriptionReconciler } from '@/workflows/publication/data-table-trigger-subscription-reconciler';
 
 describe('WorkflowPublicationApplier', () => {
 	const logger = mock<Logger>();
@@ -32,6 +34,10 @@ describe('WorkflowPublicationApplier', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
+	const transactionRunner = mock<TransactionRunner>();
+	transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn({}));
+	const dataTableTriggerSubscriptionReconciler = mock<DataTableTriggerSubscriptionReconciler>();
+	dataTableTriggerSubscriptionReconciler.prepare.mockResolvedValue([]);
 	const workflowTriggerActivator = mock<WorkflowTriggerActivator>();
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
 	const nodeTypes = mock<NodeTypes>();
@@ -52,6 +58,8 @@ describe('WorkflowPublicationApplier', () => {
 		workflowRepository,
 		workflowHistoryRepository,
 		workflowPublishedVersionRepository,
+		transactionRunner,
+		dataTableTriggerSubscriptionReconciler,
 		workflowTriggerActivator,
 		workflowPublishedDataService,
 		nodeTypes,
@@ -196,6 +204,7 @@ describe('WorkflowPublicationApplier', () => {
 			);
 			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
 				'wf-1',
+				{},
 			);
 			expect(workflowPublishedDataService.invalidateCache).toHaveBeenCalledWith('wf-1');
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
@@ -214,6 +223,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
 				'wf-1',
+				{},
 			);
 		});
 
@@ -230,6 +240,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
 				'wf-1',
+				{},
 			);
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
@@ -253,6 +264,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect(result).toEqual({ type: 'unpublished', teardownFailures: [failure] });
 			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
 				'wf-1',
+				{},
 			);
 		});
 
@@ -428,6 +440,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
+			{},
 		);
 		// The unchanged-triggers path still advances the version, so the cache is
 		// invalidated and repopulated for the new version to be served on next fire.
@@ -486,6 +499,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
+			{},
 		);
 	});
 
@@ -625,6 +639,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
+			{},
 		);
 	});
 
@@ -778,6 +793,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
+			{},
 		);
 	});
 
@@ -807,6 +823,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
+			{},
 		);
 	});
 
@@ -837,6 +854,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
+			{},
 		);
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 	});
@@ -924,6 +942,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
+			{},
 		);
 	});
 
@@ -954,6 +973,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
+			{},
 		);
 	});
 
@@ -1022,6 +1042,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
+			{},
 		);
 	});
 

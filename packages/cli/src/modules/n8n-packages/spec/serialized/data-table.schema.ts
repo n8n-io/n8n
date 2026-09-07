@@ -1,7 +1,9 @@
 import {
 	dataTableColumnNameSchema,
 	dataTableColumnTypeSchema,
+	dataTableEnumOptionsSchema,
 	dataTableIdSchema,
+	dataTableMetadataSchema,
 	dataTableNameSchema,
 } from '@n8n/api-types';
 import { DATA_TABLE_SYSTEM_COLUMNS, DATA_TABLE_SYSTEM_TESTING_COLUMN } from 'n8n-workflow';
@@ -18,6 +20,7 @@ export const serializedDataTableColumnSchema = z
 		name: dataTableColumnNameSchema,
 		type: dataTableColumnTypeSchema,
 		index: z.number().int(),
+		options: dataTableEnumOptionsSchema.optional(),
 	})
 	.strict();
 
@@ -28,6 +31,7 @@ export const serializedDataTableSchema = z
 		id: dataTableIdSchema.min(1),
 		name: dataTableNameSchema,
 		columns: z.array(serializedDataTableColumnSchema),
+		metadata: dataTableMetadataSchema.optional(),
 	})
 	.strict()
 	.superRefine(({ columns }, ctx) => {

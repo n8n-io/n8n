@@ -25,6 +25,12 @@ export type DataTableColumnTypeMismatch = {
 	actualType: string;
 };
 
+export type DataTableEnumOptionsMismatch = {
+	column: string;
+	missingOptions: string[];
+	extraOptions?: string[];
+};
+
 export type DataTableResolutionFailure = {
 	kind: DataTableResolutionFailureKind;
 	/** Absent for import-wide failures (`module-disabled`, `permission-denied`). */
@@ -36,6 +42,8 @@ export type DataTableResolutionFailure = {
 	missingColumns?: string[];
 	/** For `schema-incompatible`: package columns whose target type differs. */
 	typeMismatches?: DataTableColumnTypeMismatch[];
+	/** For `schema-incompatible`: enum values not accepted by the target schema. */
+	enumOptionMismatches?: DataTableEnumOptionsMismatch[];
 	/** For `schema-incompatible` under the `fail` policy: target columns not in the package schema. */
 	extraColumns?: string[];
 	usedByWorkflows: string[];
@@ -47,7 +55,11 @@ export function createFailure(
 	details: Partial<
 		Pick<
 			DataTableResolutionFailure,
-			'existingProjectId' | 'missingColumns' | 'typeMismatches' | 'extraColumns'
+			| 'existingProjectId'
+			| 'missingColumns'
+			| 'typeMismatches'
+			| 'enumOptionMismatches'
+			| 'extraColumns'
 		>
 	> = {},
 ): DataTableResolutionFailure {

@@ -34,12 +34,20 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 		super(WorkflowPublishedVersion, dataSource.manager, transactionRunner);
 	}
 
-	async setPublishedVersion(workflowId: string, publishedVersionId: string): Promise<void> {
-		await this.upsert({ workflowId, publishedVersionId }, ['workflowId']);
+	async setPublishedVersion(
+		workflowId: string,
+		publishedVersionId: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.managerFor(ctx).upsert(
+			WorkflowPublishedVersion,
+			{ workflowId, publishedVersionId },
+			['workflowId'],
+		);
 	}
 
-	async removePublishedVersion(workflowId: string): Promise<void> {
-		await this.delete({ workflowId });
+	async removePublishedVersion(workflowId: string, ctx: OperationContext = {}): Promise<void> {
+		await this.managerFor(ctx).delete(WorkflowPublishedVersion, { workflowId });
 	}
 
 	/**

@@ -22,7 +22,9 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { DataTableColumn } from '../data-table-column.entity';
 import type { DataTableUserTableName } from '../data-table.types';
 
-export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[] {
+type DataTableColumnDefinition = Pick<DataTableCreateColumnSchema, 'name' | 'type'>;
+
+export function toDslColumns(columns: DataTableColumnDefinition[]): DslColumn[] {
 	return columns.map((col) => {
 		const name = new DslColumn(col.name.trim());
 
@@ -32,6 +34,7 @@ export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[
 			case 'boolean':
 				return name.bool;
 			case 'string':
+			case 'enum':
 				return name.text;
 			case 'date':
 				return name.timestampTimezone();
@@ -47,6 +50,7 @@ function dataTableColumnTypeToSql(
 ) {
 	switch (type) {
 		case 'string':
+		case 'enum':
 			return 'TEXT';
 		case 'number':
 			switch (dbType) {
@@ -70,7 +74,7 @@ function dataTableColumnTypeToSql(
 }
 
 function columnToWildcardAndType(
-	column: DataTableCreateColumnSchema,
+	column: DataTableColumnDefinition,
 	dbType: DataSourceOptions['type'],
 ) {
 	return `${quoteIdentifier(column.name, dbType)} ${dataTableColumnTypeToSql(column.type, dbType)}`;
@@ -86,7 +90,7 @@ export function isValidDataTableId(id: string) {
 
 export function addColumnQuery(
 	tableName: DataTableUserTableName,
-	column: DataTableCreateColumnSchema,
+	column: DataTableColumnDefinition,
 	dbType: DataSourceOptions['type'],
 ) {
 	// API requests should already conform to this, but better safe than sorry

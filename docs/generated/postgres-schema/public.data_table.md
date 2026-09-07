@@ -5,7 +5,8 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.data_table_column](public.data_table_column.md) |  |  |
+| id | varchar(36) |  | false | [public.data_table_column](public.data_table_column.md) [public.data_table_mutation_event](public.data_table_mutation_event.md) [public.data_table_trigger_subscription](public.data_table_trigger_subscription.md) |  |  |
+| metadata | json | '{}'::json | false |  |  | Extensible Data Table configuration |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -19,6 +20,7 @@
 | UQ_b23096ef747281ac944d28e8b0d | UNIQUE | UNIQUE ("projectId", name) |
 | data_table_createdAt_not_null | n | NOT NULL "createdAt" |
 | data_table_id_not_null | n | NOT NULL id |
+| data_table_metadata_not_null | n | NOT NULL metadata |
 | data_table_name_not_null | n | NOT NULL name |
 | data_table_projectId_not_null | n | NOT NULL "projectId" |
 | data_table_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -36,11 +38,14 @@
 erDiagram
 
 "public.data_table_column" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
+"public.data_table_mutation_event" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
+"public.data_table_trigger_subscription" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
 "public.data_table" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.data_table" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  json metadata
   varchar_128_ name
   varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
@@ -51,8 +56,30 @@ erDiagram
   varchar_36_ id
   integer index
   varchar_128_ name
+  json options
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt
+}
+"public.data_table_mutation_event" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ dataTableId FK
+  varchar_20_ event
+  uuid id
+  timestamp_3__with_time_zone occurredAt
+  json payload
+  integer rowId
+  timestamp_3__with_time_zone updatedAt
+}
+"public.data_table_trigger_subscription" {
+  varchar_36_ columnId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ dataTableId FK
+  varchar_20_ event
+  uuid id
+  varchar_36_ nodeId
+  varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 "public.project" {
   timestamp_3__with_time_zone createdAt

@@ -75,7 +75,7 @@ export class DataTableRepository extends Repository<DataTable> {
 			const dataTable = em.create(DataTable, {
 				...(explicitId === undefined ? {} : { id: explicitId }),
 				name,
-				columns,
+				metadata: {},
 				projectId,
 			});
 
@@ -83,14 +83,15 @@ export class DataTableRepository extends Repository<DataTable> {
 			const dataTableId = dataTable.id;
 
 			// insert columns
-			const columnEntities = columns.map((col, index) =>
-				em.create(DataTableColumn, {
+			const columnEntities = columns.map((col, index) => {
+				return em.create(DataTableColumn, {
 					dataTableId,
 					name: col.name,
 					type: col.type,
 					index: col.index ?? index,
-				}),
-			);
+					options: col.options ?? null,
+				});
+			});
 
 			if (columnEntities.length > 0) {
 				await em.insert(DataTableColumn, columnEntities);

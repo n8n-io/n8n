@@ -71,4 +71,26 @@ describe('findSchemaIncompatibility', () => {
 			typeMismatches: [{ column: 'age', expectedType: 'number', actualType: 'date' }],
 		});
 	});
+
+	it('accepts a target enum that allows every package option', () => {
+		expect(
+			findSchemaIncompatibility(
+				[{ name: 'priority', type: 'enum', index: 0, options: ['Low', 'High'] }],
+				[{ name: 'priority', type: 'enum', options: ['Low', 'Medium', 'High'] }],
+			),
+		).toBeNull();
+	});
+
+	it('reports enum options that the target does not allow', () => {
+		expect(
+			findSchemaIncompatibility(
+				[{ name: 'priority', type: 'enum', index: 0, options: ['Low', 'High'] }],
+				[{ name: 'priority', type: 'enum', options: ['Low'] }],
+			),
+		).toEqual({
+			missingColumns: [],
+			typeMismatches: [],
+			enumOptionMismatches: [{ column: 'priority', missingOptions: ['High'] }],
+		});
+	});
 });

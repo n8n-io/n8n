@@ -43,6 +43,9 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'dataTable.addColumn.nameInput.label': 'Column name',
 				'dataTable.addColumn.nameInput.placeholder': 'Enter column name',
 				'dataTable.addColumn.typeInput.label': 'Column type',
+				'dataTable.addColumn.enumOptions.label': 'Options',
+				'dataTable.addColumn.enumOptions.placeholder': 'Low, Medium, High',
+				'dataTable.addColumn.enumOptions.invalid': 'Invalid enum options',
 				'dataTable.addColumn.invalidName.error': 'Invalid column name',
 				'dataTable.addColumn.invalidName.description':
 					'Column names must start with a letter and contain only letters, numbers, and hyphens',
@@ -109,7 +112,7 @@ describe('AddColumnButton', () => {
 			await user.click(getSubmitButton());
 		};
 
-		const selectType = async (label: 'number' | 'datetime' | 'string' | 'boolean') => {
+		const selectType = async (label: 'number' | 'datetime' | 'string' | 'boolean' | 'enum') => {
 			await user.click(rendered.getByRole('combobox'));
 			await waitFor(() => {
 				expect(rendered.getByText(label)).toBeInTheDocument();
@@ -157,6 +160,21 @@ describe('AddColumnButton', () => {
 				name: 'newColumn',
 				type: 'string',
 			});
+		});
+	});
+
+	it('should submit normalized enum options', async () => {
+		const { getByTestId, openPopover, setColumnName, selectType, submit } = setup();
+		await openPopover();
+		await setColumnName('priority');
+		await selectType('enum');
+		await user.type(getByTestId('add-column-enum-options-input'), 'Low, Medium, High');
+		await submit();
+
+		expect(addColumnHandler).toHaveBeenCalledWith({
+			name: 'priority',
+			type: 'enum',
+			options: ['Low', 'Medium', 'High'],
 		});
 	});
 

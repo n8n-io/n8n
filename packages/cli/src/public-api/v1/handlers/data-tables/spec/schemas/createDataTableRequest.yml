@@ -17,8 +17,16 @@ properties:
           minLength: 1
         type:
           type: string
-          enum: [string, number, boolean, date, json]
+          enum: [string, number, boolean, date, enum]
           description: Column data type
+        options:
+          type: array
+          minItems: 1
+          maxItems: 100
+          description: Allowed values. Required when type is enum.
+          items:
+            type: string
+            maxLength: 128
       required:
         - name
         - type

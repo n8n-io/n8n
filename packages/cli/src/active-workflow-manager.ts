@@ -30,6 +30,7 @@ import {
 	WebhookPathTakenError,
 	UnexpectedError,
 	IsolateError,
+	DATA_TABLE_TRIGGER_NODE_TYPE,
 	validateWorkflowHasTriggerLikeNode,
 } from 'n8n-workflow';
 import { strict } from 'node:assert';
@@ -1131,9 +1132,9 @@ export class ActiveWorkflowManager {
 			resolveWorkflowData,
 		);
 
-		const triggerAndPollNodeIds = [...workflow.getTriggerNodes(), ...workflow.getPollNodes()].map(
-			(node) => node.id,
-		);
+		const triggerAndPollNodeIds = [...workflow.getTriggerNodes(), ...workflow.getPollNodes()]
+			.filter((node) => node.type !== DATA_TABLE_TRIGGER_NODE_TYPE)
+			.map((node) => node.id);
 		const nodeIdsToAdd = nodeIds
 			? triggerAndPollNodeIds.filter((id) => nodeIds.has(id))
 			: triggerAndPollNodeIds;

@@ -86,6 +86,13 @@ describe('GlobalConfig', () => {
 			sizeCheckCacheDuration: 5 * 1000,
 			cleanupIntervalMs: 60 * 1000,
 			fileMaxAgeMs: 2 * 60 * 1000,
+			triggerEnabled: false,
+			triggerConcurrency: 4,
+			triggerPollIntervalMs: 1000,
+			triggerLeaseMs: 30 * 1000,
+			triggerMaxAttempts: 10,
+			triggerCompletedRetentionMs: 7 * 24 * 60 * 60 * 1000,
+			triggerFailedRetentionMs: 30 * 24 * 60 * 60 * 1000,
 			uploadDir: path.join(tmpdir(), 'n8nDataTableUploads'),
 		},
 		database: {

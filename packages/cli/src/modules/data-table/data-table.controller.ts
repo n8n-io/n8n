@@ -40,6 +40,7 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import { assertRowReadAccessIfReturningRows } from './data-table-permissions';
 import { DataTableService } from './data-table.service';
+import { DataTableColumnInUseError } from './errors/data-table-column-in-use.error';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { FileUploadError } from './errors/data-table-file-upload.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
@@ -58,6 +59,7 @@ export class DataTableController {
 	private handleDataTableColumnOperationError(e: unknown): never {
 		if (
 			e instanceof DataTableColumnNameConflictError ||
+			e instanceof DataTableColumnInUseError ||
 			e instanceof DataTableSystemColumnNameConflictError ||
 			e instanceof DataTableNameConflictError
 		) {

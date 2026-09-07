@@ -482,7 +482,7 @@ export class DataTableRowsRepository {
 		});
 	}
 
-	private async getAffectedRowsForUpdate<T extends boolean>(
+	async getAffectedRowsForUpdate<T extends boolean>(
 		dataTableId: string,
 		filter: DataTableFilter,
 		columns: DataTableColumn[],

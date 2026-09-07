@@ -81,7 +81,9 @@ export const createSearchDataTablesTool = (
 					name: col.name,
 					type: col.type,
 					index: col.index,
+					...(col.options ? { options: col.options } : {}),
 				})),
+				metadata: table.metadata,
 			}));
 
 			telemetryPayload.results = {

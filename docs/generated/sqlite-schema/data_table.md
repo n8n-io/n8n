@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "data_table" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "UQ_b23096ef747281ac944d28e8b0d" UNIQUE ("projectId", "name"), CONSTRAINT "FK_c2a794257dee48af7c9abf681de" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
+CREATE TABLE "data_table" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "metadata" text NOT NULL DEFAULT ('{}'), CONSTRAINT "UQ_b23096ef747281ac944d28e8b0d" UNIQUE ("projectId", "name"), CONSTRAINT "FK_c2a794257dee48af7c9abf681de" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -16,7 +16,8 @@ CREATE TABLE "data_table" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [data_table_column](data_table_column.md) |  |  |
+| id | varchar(36) |  | false | [data_table_column](data_table_column.md) [data_table_mutation_event](data_table_mutation_event.md) [data_table_trigger_subscription](data_table_trigger_subscription.md) |  |  |
+| metadata | TEXT | '{}' | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -43,11 +44,14 @@ CREATE TABLE "data_table" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar
 erDiagram
 
 "data_table_column" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table_mutation_event" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table_trigger_subscription" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "data_table" {
   datetime_3_ createdAt
   varchar_36_ id PK
+  TEXT metadata
   varchar_128_ name
   varchar_36_ projectId FK
   datetime_3_ updatedAt
@@ -58,8 +62,30 @@ erDiagram
   varchar_36_ id PK
   INTEGER index
   varchar_128_ name
+  TEXT options
   varchar_32_ type
   datetime_3_ updatedAt
+}
+"data_table_mutation_event" {
+  datetime_3_ createdAt
+  varchar_36_ dataTableId FK
+  varchar_20_ event
+  varchar id PK
+  datetime_3_ occurredAt
+  TEXT payload
+  INTEGER rowId
+  datetime_3_ updatedAt
+}
+"data_table_trigger_subscription" {
+  varchar_36_ columnId FK
+  datetime_3_ createdAt
+  varchar_36_ dataTableId FK
+  varchar_20_ event
+  varchar id PK
+  varchar_36_ nodeId
+  varchar_36_ projectId FK
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "project" {
   datetime_3_ createdAt

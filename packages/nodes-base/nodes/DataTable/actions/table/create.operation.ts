@@ -60,10 +60,24 @@ export const description: INodeProperties[] = [
 						options: [
 							{ name: 'Boolean', value: 'boolean' },
 							{ name: 'Date', value: 'date' },
+							{ name: 'Enum', value: 'enum' },
 							{ name: 'Number', value: 'number' },
 							{ name: 'String', value: 'string' },
 						],
 						description: 'The type of the column',
+					},
+					{
+						displayName: 'Enum Options',
+						name: 'enumOptions',
+						type: 'string',
+						default: '',
+						placeholder: 'Low, Medium, High',
+						description: 'Comma-separated allowed values',
+						displayOptions: {
+							show: {
+								type: ['enum'],
+							},
+						},
 					},
 				],
 			},
@@ -95,7 +109,7 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const tableName = this.getNodeParameter('tableName', index) as string;
 	const columnsData = this.getNodeParameter('columns.column', index, []) as Array<
-		Pick<CreateDataTableColumnOptions, 'name' | 'type'>
+		Pick<CreateDataTableColumnOptions, 'name' | 'type'> & { enumOptions?: string }
 	>;
 	const options = this.getNodeParameter('options', index, {}) as {
 		createIfNotExists?: boolean;
@@ -120,6 +134,14 @@ export async function execute(
 		name: col.name,
 		type: col.type,
 		index: idx,
+		...(col.type === 'enum'
+			? {
+					options: (col.enumOptions ?? '')
+						.split(',')
+						.map((option) => option.trim())
+						.filter(Boolean),
+				}
+			: {}),
 	}));
 
 	const result = await aggregateProxy.createDataTable({

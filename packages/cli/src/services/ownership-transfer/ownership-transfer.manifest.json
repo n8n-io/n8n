@@ -16,6 +16,10 @@
 		{
 			"name": "DataTable",
 			"path": "packages/cli/src/modules/data-table/data-table.entity.ts"
+		},
+		{
+			"name": "DataTableTriggerSubscription",
+			"path": "packages/@n8n/db/src/entities/data-table-trigger-subscription.ts"
 		}
 	],
 	"notTransferred": [

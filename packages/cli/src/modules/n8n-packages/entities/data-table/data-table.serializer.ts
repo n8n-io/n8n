@@ -16,6 +16,7 @@ type DataTablePackageKeyHandling = {
 	updatedAt: 'exclude';
 	name: 'copy';
 	columns: 'transform';
+	metadata: 'copy';
 	project: 'transform';
 	projectId: 'transform';
 };
@@ -28,6 +29,7 @@ type DataTableColumnPackageKeyHandling = {
 	name: 'copy';
 	type: 'copy';
 	index: 'copy';
+	options: 'copy';
 	dataTable: 'exclude';
 };
 
@@ -53,6 +55,7 @@ export class DataTableSerializer {
 					name: column.name,
 					type: column.type,
 					index: column.index,
+					...(column.options ? { options: column.options } : {}),
 				}),
 			);
 
@@ -61,6 +64,7 @@ export class DataTableSerializer {
 				id: dataTable.id,
 				name: dataTable.name,
 				columns,
+				metadata: dataTable.metadata,
 			}),
 		);
 	}

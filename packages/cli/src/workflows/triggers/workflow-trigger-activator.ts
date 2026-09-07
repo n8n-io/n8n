@@ -22,6 +22,7 @@ import {
 	ERROR_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
+	DATA_TABLE_TRIGGER_NODE_TYPE,
 	UserError,
 	Workflow,
 	WorkflowActivationError,
@@ -97,6 +98,7 @@ const PSEUDO_TRIGGER_NODE_TYPES = new Set<string>([
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	ERROR_TRIGGER_NODE_TYPE,
+	DATA_TABLE_TRIGGER_NODE_TYPE,
 ]);
 
 /** A single trigger node that failed to (de)register during activation. */
@@ -275,7 +277,9 @@ export class WorkflowTriggerActivator {
 			nodeTypes: this.nodeTypes,
 		});
 
-		return [...workflow.getTriggerNodes(), ...workflow.getPollNodes()].map((node) => node.id);
+		return [...workflow.getTriggerNodes(), ...workflow.getPollNodes()]
+			.filter((node) => !PSEUDO_TRIGGER_NODE_TYPES.has(node.type))
+			.map((node) => node.id);
 	}
 
 	/**

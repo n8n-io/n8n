@@ -69,6 +69,7 @@ describe('dataTable', () => {
 				{
 					name: 'foo',
 					type: 'string',
+					options: null,
 					index: 0,
 					dataTableId,
 					id: expect.any(String),
@@ -619,6 +620,7 @@ describe('dataTable', () => {
 					id: c2.id,
 					name: 'myColumn2',
 					type: 'number',
+					options: null,
 					createdAt: c2.createdAt,
 					updatedAt: expect.any(Date),
 				},

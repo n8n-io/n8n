@@ -6,6 +6,7 @@ export const DATA_TYPE_ICON_MAP = {
 	['number']: 'hash',
 	['boolean']: 'square-check',
 	date: 'calendar',
+	enum: 'list',
 	array: 'list',
 	object: 'box',
 	file: 'file',

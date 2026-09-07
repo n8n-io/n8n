@@ -226,6 +226,13 @@ export const getStringColumnFilterOptions = (i18n: I18nClass) => [
 	createNotNullFilterOption(i18n),
 ];
 
+export const getEnumColumnFilterOptions = (i18n: I18nClass) => [
+	'equals',
+	'notEqual',
+	createNullFilterOption(i18n),
+	createNotNullFilterOption(i18n),
+];
+
 export const getDateColumnFilterOptions = (i18n: I18nClass) => [
 	'equals',
 	'notEqual',

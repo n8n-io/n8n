@@ -7,6 +7,7 @@ export const columnTypeToFieldType: Record<string, keyof FieldTypeMap> = {
 	number: 'number',
 	// eslint-disable-next-line id-denylist
 	string: 'string',
+	enum: 'string',
 	// eslint-disable-next-line id-denylist
 	boolean: 'boolean',
 	date: 'dateTime',

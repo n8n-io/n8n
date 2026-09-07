@@ -3,7 +3,7 @@ import type { SchemaIncompatibility } from './data-table-compat';
 import type { DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
 import type { SerializedDataTableColumn } from '../../spec/serialized/data-table.schema';
 
-type TargetColumns = Array<{ name: string; type: string }>;
+type TargetColumns = Array<{ name: string; type: string; options?: string[] | null }>;
 
 /**
  * Decides whether a matched table's schema blocks the import. `keep-existing`
@@ -22,7 +22,7 @@ const SCHEMA_CONFLICTS: Record<
 > = {
 	'keep-existing': findSchemaIncompatibility,
 	fail: (packageColumns, targetColumns) => {
-		const incompatibility = findSchemaIncompatibility(packageColumns, targetColumns);
+		const incompatibility = findSchemaIncompatibility(packageColumns, targetColumns, true);
 
 		const packageColumnNames = new Set(packageColumns.map(({ name }) => name));
 		const extraColumns = targetColumns
@@ -30,7 +30,13 @@ const SCHEMA_CONFLICTS: Record<
 			.filter((name) => !packageColumnNames.has(name));
 		if (extraColumns.length === 0) return incompatibility;
 
-		return { missingColumns: [], typeMismatches: [], ...incompatibility, extraColumns };
+		return {
+			missingColumns: [],
+			typeMismatches: [],
+			enumOptionMismatches: [],
+			...incompatibility,
+			extraColumns,
+		};
 	},
 };
 /* eslint-enable @typescript-eslint/naming-convention */

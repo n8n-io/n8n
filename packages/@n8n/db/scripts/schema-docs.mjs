@@ -162,7 +162,8 @@ async function provision(dbType) {
 function buildDsn(dbType, provisioned, docker) {
 	if (dbType === 'sqlite') {
 		// tbls reads the file directly; under Docker it lives in the /work mount.
-		const filePath = docker ? `/work/${relative(REPO_ROOT, provisioned.file)}` : provisioned.file;
+		const relativeFile = relative(REPO_ROOT, provisioned.file).replaceAll('\\', '/');
+		const filePath = docker ? `/work/${relativeFile}` : provisioned.file;
 		return `sqlite://${filePath}`;
 	}
 	const conn = provisioned.dataSourceOptions;

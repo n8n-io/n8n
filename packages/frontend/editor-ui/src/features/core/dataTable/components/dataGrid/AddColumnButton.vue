@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import type {
 	AddColumnResponse,
 	DataTableColumnCreatePayload,
@@ -55,10 +55,26 @@ const nameInputRef = ref<HTMLInputElement | null>(null);
 
 const columnName = ref('');
 const columnType = ref<DataTableColumnType>('string');
+const enumOptionsInput = ref('');
 
 const columnTypes: DataTableColumnType[] = [...DATA_TABLE_COLUMN_TYPES];
 
 const error = ref<FormError | null>(null);
+const enumOptions = computed(() =>
+	enumOptionsInput.value
+		.split(',')
+		.map((option) => option.trim())
+		.filter((option) => option.length > 0),
+);
+const enumOptionsValid = computed(() => {
+	if (columnType.value !== 'enum') return true;
+	if (enumOptions.value.length < 1 || enumOptions.value.length > 100) return false;
+	if (enumOptions.value.some((option) => option.length > 128)) return false;
+	return new Set(enumOptions.value.map((option) => option.toLowerCase())).size === enumOptions.value.length;
+});
+const canSubmit = computed(
+	() => Boolean(columnName.value && columnType.value && !error.value && enumOptionsValid.value),
+);
 
 // Handling popover state manually to prevent it closing when interacting with dropdown
 const popoverOpen = ref(false);
@@ -77,12 +93,13 @@ const columnTypeOptions = computed(() => {
 
 const onAddButtonClicked = async () => {
 	validateName();
-	if (!columnName.value || !columnType.value || error.value) {
+	if (!canSubmit.value) {
 		return;
 	}
 	const response = await props.params.onAddColumn({
 		name: columnName.value,
 		type: columnType.value,
+		...(columnType.value === 'enum' ? { options: enumOptions.value } : {}),
 	});
 
 	if (!response.success) {
@@ -108,6 +125,7 @@ const onAddButtonClicked = async () => {
 	}
 	columnName.value = '';
 	columnType.value = 'string';
+	enumOptionsInput.value = '';
 	popoverOpen.value = false;
 };
 
@@ -139,6 +157,10 @@ const validateName = () => {
 };
 
 const onInput = debounce(validateName, { debounceTime: 100 });
+
+watch(columnType, (type) => {
+	if (type !== 'enum') enumOptionsInput.value = '';
+});
 </script>
 
 <template>
@@ -233,12 +255,31 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 									</N8nOption>
 								</N8nSelect>
 							</N8nInputLabel>
+							<N8nInputLabel
+								v-if="columnType === 'enum'"
+								:label="i18n.baseText('dataTable.addColumn.enumOptions.label')"
+								:required="true"
+							>
+								<N8nInput
+									v-model="enumOptionsInput"
+									:placeholder="i18n.baseText('dataTable.addColumn.enumOptions.placeholder')"
+									data-test-id="add-column-enum-options-input"
+									@keyup.enter="onAddButtonClicked"
+								/>
+								<N8nText
+									v-if="enumOptionsInput && !enumOptionsValid"
+									size="small"
+									color="danger"
+								>
+									{{ i18n.baseText('dataTable.addColumn.enumOptions.invalid') }}
+								</N8nText>
+							</N8nInputLabel>
 							<N8nButton
 								variant="solid"
 								data-test-id="data-table-add-column-submit-button"
 								class="mt-m"
 								size="large"
-								:disabled="!columnName || !columnType || !!error"
+								:disabled="!canSubmit"
 								@click="onAddButtonClicked"
 							>
 								{{ i18n.baseText('dataTable.addColumn.label') }}

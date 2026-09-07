@@ -13,10 +13,13 @@ export class DataTableColumn extends WithTimestampsAndStringId {
 	name: string;
 
 	@Column({ type: 'varchar' })
-	type: 'string' | 'number' | 'boolean' | 'date';
+	type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
 
 	@Column({ type: 'int' })
 	index: number;
+
+	@Column({ type: 'json', nullable: true })
+	options: string[] | null;
 
 	@ManyToOne('DataTable', 'columns')
 	@JoinColumn({ name: 'dataTableId' })

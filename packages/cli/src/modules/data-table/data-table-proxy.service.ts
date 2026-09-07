@@ -37,6 +37,7 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTable',
 	'n8n-nodes-base.dataTableTool',
+	'n8n-nodes-base.dataTableTrigger',
 	'n8n-nodes-base.evaluationTrigger',
 	'n8n-nodes-base.evaluation',
 ] as const;

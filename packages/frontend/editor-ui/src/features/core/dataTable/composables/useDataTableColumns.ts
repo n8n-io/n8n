@@ -29,6 +29,7 @@ import {
 	dateValueFormatter,
 	numberValueFormatter,
 	getStringColumnFilterOptions,
+	getEnumColumnFilterOptions,
 	getDateColumnFilterOptions,
 	getNumberColumnFilterOptions,
 	getBooleanColumnFilterOptions,
@@ -87,7 +88,14 @@ export const useDataTableColumns = ({
 			width: DEFAULT_COLUMN_WIDTH,
 		};
 
-		if (col.type === 'string') {
+		if (col.type === 'enum') {
+			columnDef.cellEditor = 'agSelectCellEditor';
+			columnDef.cellEditorParams = { values: col.options ?? [] };
+			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
+			columnDef.filterParams = {
+				filterOptions: getEnumColumnFilterOptions(i18n),
+			};
+		} else if (col.type === 'string') {
 			columnDef.cellEditor = 'agLargeTextCellEditor';
 			columnDef.cellEditorPopup = true;
 			columnDef.cellEditorPopupPosition = 'over';

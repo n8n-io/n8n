@@ -20,11 +20,20 @@ properties:
           description: Column name
         type:
           type: string
-          enum: [string, number, boolean, date]
+          enum: [string, number, boolean, date, enum]
           description: Column data type
         index:
           type: integer
           description: Column position
+        options:
+          type: array
+          nullable: true
+          description: Allowed enum values
+          items:
+            type: string
+  metadata:
+    type: object
+    description: Extensible Data Table configuration
   projectId:
     type: string
     description: ID of the project this table belongs to
@@ -43,6 +52,7 @@ required:
   - id
   - name
   - columns
+  - metadata
   - projectId
   - createdAt
   - updatedAt

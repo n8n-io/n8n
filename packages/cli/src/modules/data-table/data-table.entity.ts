@@ -1,3 +1,4 @@
+import type { DataTableMetadata } from '@n8n/api-types';
 import { Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from '@n8n/typeorm';
 
@@ -12,6 +13,9 @@ export class DataTable extends WithTimestampsAndStringId {
 
 	@Column()
 	name: string;
+
+	@Column({ type: 'json', default: '{}' })
+	metadata: DataTableMetadata;
 
 	@OneToMany(
 		() => DataTableColumn,

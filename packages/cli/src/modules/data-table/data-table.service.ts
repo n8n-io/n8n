@@ -34,12 +34,15 @@ import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workfl
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableCsvImportService } from './data-table-csv-import.service';
+import { normalizeColumn } from './data-table-enum.utils';
+import { DataTableMutationEventRecorder } from './data-table-mutation-event.repository';
 import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTableSizeValidator } from './data-table-size-validator.service';
 import type { DataTable } from './data-table.entity';
 import { DataTableRepository } from './data-table.repository';
 import { columnTypeToFieldType } from './data-table.types';
 import { DataTableAccessDeniedError } from './errors/data-table-access-denied.error';
+import { DataTableColumnInUseError } from './errors/data-table-column-in-use.error';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
@@ -61,6 +64,7 @@ export class DataTableService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly csvImportService: DataTableCsvImportService,
+		private readonly mutationEventService: DataTableMutationEventRecorder,
 		private readonly eventService: EventService,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
@@ -129,11 +133,12 @@ export class DataTableService {
 		}
 
 		await this.validateUniqueName(dto.name, projectId);
+		const columns = dto.columns.map(normalizeColumn);
 
 		const result = await this.dataTableRepository.createDataTable(
 			projectId,
 			dto.name,
-			dto.columns,
+			columns,
 			undefined,
 			id,
 		);
@@ -278,7 +283,10 @@ export class DataTableService {
 	async addColumn(dataTableId: string, projectId: string, dto: AddDataTableColumnDto) {
 		await this.validateDataTableExists(dataTableId, projectId);
 
-		const result = await this.dataTableColumnRepository.addColumn(dataTableId, dto);
+		const result = await this.dataTableColumnRepository.addColumn(
+			dataTableId,
+			normalizeColumn(dto),
+		);
 
 		await this.dataTableRepository.touchUpdatedAt(dataTableId);
 
@@ -302,6 +310,9 @@ export class DataTableService {
 	async deleteColumn(dataTableId: string, projectId: string, columnId: string) {
 		await this.validateDataTableExists(dataTableId, projectId);
 		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
+		if (await this.mutationEventService.hasSubscriptionForColumn(dataTableId, columnId)) {
+			throw new DataTableColumnInUseError(existingColumn.name);
+		}
 
 		await this.dataTableColumnRepository.deleteColumn(dataTableId, existingColumn);
 
@@ -389,19 +400,36 @@ export class DataTableService {
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
 			const transformedRows = this.validateAndTransformRows(rows, columns);
+			const subscriptions = await this.mutationEventService.findSubscriptions(
+				dataTableId,
+				'rowInserted',
+				[],
+				trx,
+			);
+			const effectiveReturnType = subscriptions.length > 0 ? 'all' : returnType;
 
-			return await this.dataTableRowsRepository.insertRows(
+			const inserted = await this.dataTableRowsRepository.insertRows(
 				dataTableId,
 				transformedRows,
 				columns,
-				returnType,
+				effectiveReturnType,
 				trx,
 			);
+			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
+
+			if (subscriptions.length === 0) return inserted;
+			if (!this.isReturnedRows(inserted)) {
+				throw new DataTableValidationError('Inserted rows were not returned for trigger delivery');
+			}
+			const insertedRows: DataTableRowReturn[] = inserted;
+			await this.mutationEventService.recordInserted(dataTableId, insertedRows, subscriptions, trx);
+
+			if (returnType === 'all') return insertedRows;
+			if (returnType === 'id') return insertedRows.map(({ id }) => ({ id }));
+			return { success: true, insertedRows: insertedRows.length };
 		});
 
 		this.dataTableSizeValidator.reset();
-
-		await this.dataTableRepository.touchUpdatedAt(dataTableId);
 
 		return result;
 	}
@@ -458,6 +486,25 @@ export class DataTableService {
 				);
 			}
 
+			const updatedColumnIds = columns
+				.filter((column) => column.name in data)
+				.map((column) => column.id);
+			const updateSubscriptions = await this.mutationEventService.findSubscriptions(
+				dataTableId,
+				'columnUpdated',
+				updatedColumnIds,
+				trx,
+			);
+			const beforeRows =
+				updateSubscriptions.length > 0
+					? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
+							dataTableId,
+							filter,
+							columns,
+							false,
+							trx,
+						)
+					: [];
 			const updated = await this.dataTableRowsRepository.updateRows(
 				dataTableId,
 				data,
@@ -467,25 +514,52 @@ export class DataTableService {
 				trx,
 			);
 
-			if (updated.length > 0) {
+			if (Array.isArray(updated) && updated.length > 0) {
+				if (updateSubscriptions.length > 0) {
+					await this.mutationEventService.recordUpdated(
+						dataTableId,
+						beforeRows,
+						updated,
+						columns,
+						updateSubscriptions,
+						trx,
+					);
+				}
+				await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
 				return returnData ? updated : true;
 			}
 
 			// No rows were updated, so insert a new one
+			const insertSubscriptions = await this.mutationEventService.findSubscriptions(
+				dataTableId,
+				'rowInserted',
+				[],
+				trx,
+			);
 			const inserted = await this.dataTableRowsRepository.insertRows(
 				dataTableId,
 				[data],
 				columns,
-				returnData ? 'all' : 'id',
+				returnData || insertSubscriptions.length > 0 ? 'all' : 'id',
 				trx,
 			);
+			if (insertSubscriptions.length > 0) {
+				if (!this.isReturnedRows(inserted)) {
+					throw new DataTableValidationError('Inserted row was not returned for trigger delivery');
+				}
+				await this.mutationEventService.recordInserted(
+					dataTableId,
+					inserted,
+					insertSubscriptions,
+					trx,
+				);
+			}
+			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
 			return returnData ? inserted : true;
 		});
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
-
-			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -566,20 +640,49 @@ export class DataTableService {
 				);
 			}
 
-			return await this.dataTableRowsRepository.updateRows(
+			const updatedColumnIds = columns
+				.filter((column) => column.name in data)
+				.map((column) => column.id);
+			const subscriptions = await this.mutationEventService.findSubscriptions(
+				dataTableId,
+				'columnUpdated',
+				updatedColumnIds,
+				trx,
+			);
+			const beforeRows =
+				subscriptions.length > 0
+					? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
+							dataTableId,
+							filter,
+							columns,
+							false,
+							trx,
+						)
+					: [];
+			const updated = await this.dataTableRowsRepository.updateRows(
 				dataTableId,
 				data,
 				filter,
 				columns,
-				returnData,
+				returnData || subscriptions.length > 0,
 				trx,
 			);
+			if (subscriptions.length > 0 && Array.isArray(updated)) {
+				await this.mutationEventService.recordUpdated(
+					dataTableId,
+					beforeRows,
+					updated,
+					columns,
+					subscriptions,
+					trx,
+				);
+			}
+			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
+			return returnData ? updated : true;
 		});
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
-
-			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -633,20 +736,26 @@ export class DataTableService {
 
 			const transformedFilter = this.validateAndTransformFilters(dto.filter, columns);
 
-			return await this.dataTableRowsRepository.deleteRows(
+			const subscriptions = dryRun
+				? []
+				: await this.mutationEventService.findSubscriptions(dataTableId, 'rowDeleted', [], trx);
+			const deleted = await this.dataTableRowsRepository.deleteRows(
 				dataTableId,
 				columns,
 				transformedFilter,
-				returnData,
+				returnData || subscriptions.length > 0,
 				dryRun,
 				trx,
 			);
+			if (subscriptions.length > 0 && this.isReturnedRows(deleted)) {
+				await this.mutationEventService.recordDeleted(dataTableId, deleted, subscriptions, trx);
+			}
+			if (!dryRun) await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
+			return returnData || dryRun ? deleted : true;
 		});
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
-
-			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -656,9 +765,50 @@ export class DataTableService {
 		await this.validateDataTableExists(dataTableId, projectId);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
-			const clearResult = await this.dataTableRowsRepository.clearRows(dataTableId, trx);
+			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
+			const subscriptions = await this.mutationEventService.findSubscriptions(
+				dataTableId,
+				'rowDeleted',
+				[],
+				trx,
+			);
+			if (subscriptions.length === 0) {
+				const clearResult = await this.dataTableRowsRepository.clearRows(dataTableId, trx);
+				await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
+				return clearResult;
+			}
+
+			let deletedCount = 0;
+			while (true) {
+				const { data } = await this.dataTableRowsRepository.getManyAndCount(
+					dataTableId,
+					{ skip: 0, take: 100, sortBy: ['id', 'ASC'] },
+					columns,
+					trx,
+				);
+				const rows = normalizeRows(data, columns);
+				if (rows.length === 0) break;
+
+				await this.dataTableRowsRepository.deleteRows(
+					dataTableId,
+					columns,
+					{
+						type: 'or',
+						filters: rows.map((row) => ({
+							columnName: 'id',
+							condition: 'eq',
+							value: row.id,
+						})),
+					},
+					false,
+					false,
+					trx,
+				);
+				await this.mutationEventService.recordDeleted(dataTableId, rows, subscriptions, trx);
+				deletedCount += rows.length;
+			}
 			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
-			return clearResult;
+			return { deletedCount };
 		});
 
 		this.dataTableSizeValidator.reset();
@@ -667,7 +817,7 @@ export class DataTableService {
 
 	private validateAndTransformRows(
 		rows: DataTableRows,
-		columns: Array<{ name: string; type: DataTableColumnType }>,
+		columns: Array<{ name: string; type: DataTableColumnType; options?: string[] | null }>,
 		includeSystemColumns = false,
 		skipDateTransform = false,
 	): DataTableRows {
@@ -683,6 +833,11 @@ export class DataTableService {
 			: columns;
 		const columnNames = new Set(allColumns.map((x) => x.name));
 		const columnTypeMap = new Map(allColumns.map((x) => [x.name, x.type]));
+		const enumOptionsMap = new Map(
+			columns
+				.filter((column) => column.type === 'enum')
+				.map((column) => [column.name, column.options ?? []]),
+		);
 
 		return rows.map((row) => {
 			const transformedRow: DataTableRow = {};
@@ -695,6 +850,7 @@ export class DataTableService {
 					row[key],
 					key,
 					columnTypeMap,
+					enumOptionsMap,
 					skipDateTransform,
 				);
 			}
@@ -702,16 +858,40 @@ export class DataTableService {
 		});
 	}
 
+	private isReturnedRows(value: unknown): value is DataTableRowReturn[] {
+		return (
+			Array.isArray(value) &&
+			value.every(
+				(row) =>
+					typeof row === 'object' &&
+					row !== null &&
+					'id' in row &&
+					typeof row.id === 'number' &&
+					'createdAt' in row &&
+					'updatedAt' in row,
+			)
+		);
+	}
+
 	private validateAndTransformCell(
 		cell: DataTableColumnJsType,
 		key: string,
 		columnTypeMap: Map<string, string>,
+		enumOptionsMap: Map<string, string[]>,
 		skipDateTransform = false,
 	): DataTableColumnJsType {
 		if (cell === null) return null;
 
 		const columnType = columnTypeMap.get(key);
 		if (!columnType) return cell;
+		if (columnType === 'enum') {
+			if (typeof cell !== 'string' || !enumOptionsMap.get(key)?.includes(cell)) {
+				throw new DataTableValidationError(
+					`value '${String(cell)}' is not an option for enum column '${key}'`,
+				);
+			}
+			return cell;
+		}
 
 		const fieldType = columnTypeToFieldType[columnType];
 		if (!fieldType) return cell;
@@ -791,6 +971,19 @@ export class DataTableService {
 		filterObject: DataTableFilter,
 		columns: DataTableColumn[],
 	): DataTableFilter {
+		const columnTypeByName = new Map(columns.map((column) => [column.name, column.type]));
+		for (const filter of filterObject.filters) {
+			if (
+				columnTypeByName.get(filter.columnName) === 'enum' &&
+				filter.condition !== 'eq' &&
+				filter.condition !== 'neq'
+			) {
+				throw new DataTableValidationError(
+					`condition '${filter.condition}' is not supported for enum column '${filter.columnName}'`,
+				);
+			}
+		}
+
 		// Skip date transformation for filters - TypeORM needs Date objects for parameterized queries
 		const transformedRows = this.validateAndTransformRows(
 			filterObject.filters.map((f) => {

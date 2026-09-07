@@ -14,6 +14,7 @@ import {
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationReason,
 	WorkflowPublishedVersionRepository,
+	TransactionRunner,
 	ProjectRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -31,6 +32,7 @@ import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
+import { DataTableTriggerSubscriptionReconciler } from './publication/data-table-trigger-subscription-reconciler';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -1123,6 +1125,20 @@ export class WorkflowService {
 				throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 			}
 
+			const dataTableTriggerReconciler = Container.get(DataTableTriggerSubscriptionReconciler);
+			const subscriptions = await dataTableTriggerReconciler.prepare(
+				workflowId,
+				versionToActivate.nodes,
+			);
+			await Container.get(TransactionRunner).run({}, async (ctx) => {
+				await this.workflowPublishedVersionRepository.setPublishedVersion(
+					workflowId,
+					versionIdToActivate,
+					ctx,
+				);
+				await dataTableTriggerReconciler.replace(workflowId, subscriptions, ctx);
+			});
+
 			await this._addToActiveWorkflowManager(
 				user,
 				workflowId,
@@ -1416,6 +1432,10 @@ export class WorkflowService {
 				activeVersionId: null,
 				// workflow content did not change, so we keep updatedAt as is
 				updatedAt: workflow.updatedAt,
+			});
+			await Container.get(TransactionRunner).run({}, async (ctx) => {
+				await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId, ctx);
+				await Container.get(DataTableTriggerSubscriptionReconciler).replace(workflowId, [], ctx);
 			});
 
 			await this.workflowPublishHistoryRepository.addRecord({

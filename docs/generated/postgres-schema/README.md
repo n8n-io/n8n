@@ -50,8 +50,11 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.chat_hub_tools](public.chat_hub_tools.md) | 9 |  | BASE TABLE |
 | [public.credential_dependency](public.credential_dependency.md) | 5 |  | BASE TABLE |
 | [public.credentials_entity](public.credentials_entity.md) | 12 |  | BASE TABLE |
-| [public.data_table](public.data_table.md) | 5 |  | BASE TABLE |
-| [public.data_table_column](public.data_table_column.md) | 7 |  | BASE TABLE |
+| [public.data_table](public.data_table.md) | 6 |  | BASE TABLE |
+| [public.data_table_column](public.data_table_column.md) | 8 |  | BASE TABLE |
+| [public.data_table_mutation_event](public.data_table_mutation_event.md) | 8 |  | BASE TABLE |
+| [public.data_table_trigger_delivery](public.data_table_trigger_delivery.md) | 16 |  | BASE TABLE |
+| [public.data_table_trigger_subscription](public.data_table_trigger_subscription.md) | 9 |  | BASE TABLE |
 | [public.deployment_key](public.deployment_key.md) | 7 |  | BASE TABLE |
 | [public.dynamic_credential_entry](public.dynamic_credential_entry.md) | 6 |  | BASE TABLE |
 | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) | 6 |  | BASE TABLE |
@@ -240,6 +243,13 @@ erDiagram
 "public.credentials_entity" }o--o| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL"
 "public.data_table" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.data_table_column" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
+"public.data_table_mutation_event" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
+"public.data_table_trigger_delivery" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.data_table_trigger_delivery" }o--|| "public.data_table_mutation_event" : "FOREIGN KEY (#quot;eventId#quot;) REFERENCES data_table_mutation_event(id) ON DELETE CASCADE"
+"public.data_table_trigger_subscription" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.data_table_trigger_subscription" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.data_table_trigger_subscription" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
+"public.data_table_trigger_subscription" }o--o| "public.data_table_column" : "FOREIGN KEY (#quot;columnId#quot;) REFERENCES data_table_column(id) ON DELETE RESTRICT"
 "public.dynamic_credential_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.dynamic_credential_entry" }o--|| "public.dynamic_credential_resolver" : "FOREIGN KEY (resolver_id) REFERENCES dynamic_credential_resolver(id) ON DELETE CASCADE"
 "public.dynamic_credential_user_entry" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -834,6 +844,7 @@ erDiagram
 "public.data_table" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  json metadata
   varchar_128_ name
   varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
@@ -844,8 +855,48 @@ erDiagram
   varchar_36_ id
   integer index
   varchar_128_ name
+  json options
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt
+}
+"public.data_table_mutation_event" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ dataTableId FK
+  varchar_20_ event
+  uuid id
+  timestamp_3__with_time_zone occurredAt
+  json payload
+  integer rowId
+  timestamp_3__with_time_zone updatedAt
+}
+"public.data_table_trigger_delivery" {
+  smallint attempts
+  varchar_36_ claimedBy
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone dispatchedAt
+  text error
+  uuid eventId FK
+  bigint executionId
+  timestamp_3__with_time_zone finishedAt
+  uuid id
+  integer leaseEpoch
+  timestamp_3__with_time_zone leaseExpiresAt
+  timestamp_3__with_time_zone nextAttemptAt
+  varchar_36_ nodeId
+  varchar_20_ status
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.data_table_trigger_subscription" {
+  varchar_36_ columnId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ dataTableId FK
+  varchar_20_ event
+  uuid id
+  varchar_36_ nodeId
+  varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 "public.deployment_key" {
   varchar_20_ algorithm

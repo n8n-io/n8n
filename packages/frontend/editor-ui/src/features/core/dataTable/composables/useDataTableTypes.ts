@@ -16,7 +16,7 @@ export const useDataTableTypes = () => {
 	 * @returns The corresponding AGGridCellType.
 	 */
 	const mapToAGCellType = (colType: DataTableColumnType): AGGridCellType => {
-		if (colType === 'string') {
+		if (colType === 'string' || colType === 'enum') {
 			return 'text';
 		}
 		return colType;
