@@ -1,7 +1,18 @@
 import {
 	DeletedExecutionPublicDto,
+	ExecutionListPublicDto,
 	ExecutionPublicDto,
+	ExecutionTagsPublicDto,
 	GetExecutionQueryDto,
+	ListExecutionsQueryDto,
+	MAX_ITEMS_PER_PAGE,
+	RetriedExecutionPublicDto,
+	RetryExecutionPublicDto,
+	STOPPABLE_PUBLIC_TO_INTERNAL_STATUS,
+	StopManyExecutionsPublicDto,
+	StoppedExecutionPublicDto,
+	StoppedExecutionsPublicDto,
+	TagIdsPublicDto,
 } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionBase, IExecutionResponse } from '@n8n/db';
@@ -12,21 +23,30 @@ import {
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
 	Delete,
 	Get,
 	Param,
+	Post,
 	PublicApiController,
+	Put,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
-import { replaceCircularReferences } from 'n8n-workflow';
+import { replaceCircularReferences, WorkflowOperationError } from 'n8n-workflow';
 
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
+import type { StopResult } from '@/executions/execution.types';
+import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse>;
@@ -42,6 +62,41 @@ function assertNumericExecutionId(executionId: string): void {
 	}
 }
 
+function isCursorObject(
+	value: unknown,
+): value is { lastId?: unknown; offset?: unknown; limit?: unknown } {
+	return typeof value === 'object' && value !== null;
+}
+
+function resolveCursorPaging(
+	cursor: string | undefined,
+	queryLimit: number,
+): { lastId?: string; limit: number } {
+	if (!cursor) return { limit: queryLimit };
+
+	let decoded: unknown;
+	try {
+		decoded = decodeCursor(cursor);
+	} catch {
+		throw new BadRequestError('An invalid cursor was provided');
+	}
+
+	if (!isCursorObject(decoded)) throw new BadRequestError('An invalid cursor was provided');
+
+	const lastId =
+		typeof decoded.lastId === 'string' || typeof decoded.lastId === 'number'
+			? String(decoded.lastId)
+			: undefined;
+
+	const limit =
+		typeof decoded.limit === 'number' && Number.isInteger(decoded.limit)
+			? // TypeORM omits the SQL LIMIT clause for `take: 0`, so the floor cannot be 0.
+				Math.min(Math.max(decoded.limit, 1), MAX_ITEMS_PER_PAGE)
+			: queryLimit;
+
+	return { lastId, limit };
+}
+
 @PublicApiController('/executions')
 export class ExecutionsPublicController {
 	constructor(
@@ -52,11 +107,77 @@ export class ExecutionsPublicController {
 		private readonly eventService: EventService,
 	) {}
 
+	@Get('/')
+	@ApiKeyScope('execution:list')
+	@ApiSummary('Retrieve all executions')
+	@ApiDescription('Retrieve all executions from your instance.')
+	@ApiTags(['Executions'])
+	@ApiResponse(200, ExecutionListPublicDto)
+	@ApiErrorResponse(404)
+	async getExecutions(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListExecutionsQueryDto,
+	): Promise<ExecutionListPublicDto> {
+		const { lastId, limit } = resolveCursorPaging(query.cursor, query.limit);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:read'],
+			query.projectId,
+		);
+
+		if (
+			!sharedWorkflowsIds.length ||
+			(query.workflowId && !sharedWorkflowsIds.includes(query.workflowId))
+		) {
+			return { data: [], nextCursor: null };
+		}
+
+		const { executions, count } = await this.executionService.findManyAndCount(
+			query.workflowId ? [query.workflowId] : sharedWorkflowsIds,
+			{
+				status: query.status,
+				limit,
+				lastId,
+				includeData: query.includeData,
+				startedAfter: query.startedAfter,
+				startedBefore: query.startedBefore,
+				// for backward compatibility `running` executions are always excluded
+				// unless the user explicitly filters by `running` status
+				excludeRunning: query.status !== 'running',
+				maxDataSizeBytes: query.ignoreDataSizeLimit ? 0 : this.executionsConfig.maxDisplaySize,
+			},
+		);
+
+		const newLastId = executions.length === 0 ? '0' : executions.at(-1)!.id;
+
+		if (query.includeData) {
+			const redactableExecutions = executions.filter(isRedactableExecution);
+			await this.executionRedactionServiceProxy.processExecutions(redactableExecutions, {
+				user: req.user,
+				redactExecutionData: query.redactExecutionData,
+				ipAddress: req.ip ?? '',
+				userAgent: req.headers['user-agent'] ?? '',
+			});
+		}
+
+		this.eventService.emit('user-retrieved-all-executions', {
+			userId: req.user.id,
+			publicApi: true,
+		});
+
+		return toExecutionListPublicDto(
+			executions,
+			encodeNextCursor({ lastId: newLastId, limit, numberOfNextRecords: count }),
+		);
+	}
+
 	@Get('/:executionId')
 	@ApiKeyScope('execution:read')
 	@ApiSummary('Retrieve an execution')
 	@ApiDescription('Retrieve an execution from your instance.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, ExecutionPublicDto)
 	@ApiErrorResponse(404)
 	async getExecution(
@@ -113,7 +234,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('execution:delete')
 	@ApiSummary('Delete an execution')
 	@ApiDescription('Deletes an execution from your instance.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, DeletedExecutionPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
@@ -136,6 +257,202 @@ export class ExecutionsPublicController {
 		const execution = await this.executionService.deleteOne(executionId, sharedWorkflowsIds);
 
 		return toDeletedExecutionPublicDto(execution, executionId);
+	}
+
+	@Get('/:executionId/tags')
+	@ApiKeyScope('executionTags:list')
+	@ApiSummary('Get execution tags')
+	@ApiDescription('Get annotation tags for an execution.')
+	@ApiTags(['Executions'])
+	@ApiResponse(200, ExecutionTagsPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	async getExecutionTags(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('executionId') executionId: string,
+	): Promise<ExecutionTagsPublicDto> {
+		assertNumericExecutionId(executionId);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:read'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			throw new NotFoundError('Not Found');
+		}
+
+		const tags = await this.executionService.getExecutionTags(executionId, sharedWorkflowsIds);
+
+		return tags.map(toPublicTag);
+	}
+
+	@Put('/:executionId/tags')
+	@ApiKeyScope('executionTags:update')
+	@ApiSummary('Update tags of an execution')
+	@ApiDescription('Update annotation tags of an execution.')
+	@ApiTags(['Executions'])
+	@ApiResponse(200, ExecutionTagsPublicDto)
+	@ApiErrorResponse(404)
+	async updateExecutionTags(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('executionId') executionId: string,
+		@Body body: TagIdsPublicDto,
+	): Promise<ExecutionTagsPublicDto> {
+		assertNumericExecutionId(executionId);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:update'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			throw new NotFoundError('Not Found');
+		}
+
+		const tags = await this.executionService.updateExecutionTags(
+			executionId,
+			body.map((tag) => tag.id),
+			sharedWorkflowsIds,
+		);
+
+		return tags.map(toPublicTag);
+	}
+	@Post('/stop')
+	@ApiKeyScope('execution:stop')
+	@ApiSummary('Stop multiple executions')
+	@ApiDescription('Stop multiple executions from your instance based on filter criteria.')
+	@ApiTags(['Executions'])
+	@ApiResponse(200, StoppedExecutionsPublicDto)
+	@ApiErrorResponse(404)
+	async stopManyExecutions(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: StopManyExecutionsPublicDto,
+	): Promise<StoppedExecutionsPublicDto> {
+		const status = body.status.map((value) => STOPPABLE_PUBLIC_TO_INTERNAL_STATUS[value]);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:execute'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			return { stopped: 0 };
+		}
+
+		const { workflowId } = body;
+
+		if (workflowId && workflowId !== 'all' && !sharedWorkflowsIds.includes(workflowId)) {
+			throw new NotFoundError('Workflow not found or not accessible');
+		}
+
+		const stopped = await this.executionService.stopMany(
+			{
+				workflowId: workflowId ?? 'all',
+				status,
+				startedAfter: body.startedAfter,
+				startedBefore: body.startedBefore,
+			},
+			sharedWorkflowsIds,
+		);
+
+		return { stopped };
+	}
+
+	@Post('/:executionId/stop')
+	@ApiKeyScope('execution:stop')
+	@ApiSummary('Stop an execution')
+	@ApiDescription('Stop an execution by id.')
+	@ApiTags(['Executions'])
+	@ApiResponse(200, StoppedExecutionPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async stopExecution(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('executionId') executionId: string,
+	): Promise<StoppedExecutionPublicDto> {
+		assertNumericExecutionId(executionId);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:execute'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			throw new NotFoundError('Not Found');
+		}
+
+		try {
+			const stopResult = await this.executionService.stop(executionId, sharedWorkflowsIds);
+
+			return toStoppedExecutionPublicDto(stopResult);
+		} catch (error) {
+			if (error instanceof MissingExecutionStopError) {
+				throw new NotFoundError(error.message);
+			}
+
+			if (error instanceof WorkflowOperationError) {
+				throw new ConflictError(error.message);
+			}
+
+			throw error;
+		}
+	}
+
+	@Post('/:executionId/retry')
+	@ApiKeyScope('execution:retry')
+	@ApiSummary('Retry an execution')
+	@ApiDescription('Retry an execution from your instance.')
+	@ApiTags(['Executions'])
+	@ApiResponse(200, RetriedExecutionPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async retryExecution(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('executionId') executionId: string,
+		@Body body: RetryExecutionPublicDto,
+	): Promise<RetriedExecutionPublicDto> {
+		assertNumericExecutionId(executionId);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:execute'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			throw new NotFoundError('Not Found');
+		}
+
+		try {
+			const retriedExecution = await this.executionService.retry({
+				executionId,
+				options: { loadWorkflow: body.loadWorkflow },
+				sharedWorkflowIds: sharedWorkflowsIds,
+				user: req.user,
+			});
+
+			this.eventService.emit('user-retried-execution', {
+				userId: req.user.id,
+				publicApi: true,
+			});
+
+			return toRetriedExecutionPublicDto(retriedExecution);
+		} catch (error) {
+			if (
+				error instanceof QueuedExecutionRetryError ||
+				error instanceof AbortedExecutionRetryError
+			) {
+				throw new ConflictError(error.message);
+			}
+
+			throw error;
+		}
 	}
 }
 
@@ -160,6 +477,40 @@ function toBaseFields(execution: PublicExecution) {
 		workflowVersionId: execution.workflowVersionId ?? null,
 		usedPrivateCredentials: execution.usedPrivateCredentials ?? false,
 	};
+}
+
+function toExecutionListItem(execution: PublicExecution) {
+	return {
+		id: execution.id,
+		finished: execution.finished,
+		mode: execution.mode,
+		retryOf: execution.retryOf ?? null,
+		retrySuccessId: execution.retrySuccessId ?? null,
+		status: execution.status,
+		startedAt: execution.startedAt ? execution.startedAt.toISOString() : null,
+		stoppedAt: execution.stoppedAt ? execution.stoppedAt.toISOString() : null,
+		workflowId: execution.workflowId,
+		waitTill: execution.waitTill ? execution.waitTill.toISOString() : null,
+		...('storedAt' in execution && { storedAt: execution.storedAt }),
+		...('jsonSizeBytes' in execution && { jsonSizeBytes: execution.jsonSizeBytes }),
+		...('workflowVersionId' in execution && { workflowVersionId: execution.workflowVersionId }),
+		...('data' in execution && { data: execution.data }),
+		...('workflowData' in execution && { workflowData: execution.workflowData }),
+		...('customData' in execution && { customData: execution.customData }),
+		...('dataTooLargeToDisplay' in execution && {
+			dataTooLargeToDisplay: execution.dataTooLargeToDisplay,
+		}),
+	};
+}
+
+function toExecutionListPublicDto(
+	executions: PublicExecution[],
+	nextCursor: string | null,
+): ExecutionListPublicDto {
+	return replaceCircularReferences({
+		data: executions.map(toExecutionListItem),
+		nextCursor,
+	}) as unknown as ExecutionListPublicDto;
 }
 
 function toExecutionPublicDto(execution: PublicExecution): ExecutionPublicDto {
@@ -187,4 +538,43 @@ function toDeletedExecutionPublicDto(
 		id: Number(executionId),
 		...toBaseFields(execution),
 	};
+}
+
+function toPublicTag(tag: { id: string; name: string; createdAt: Date; updatedAt: Date }) {
+	return {
+		id: tag.id,
+		name: tag.name,
+		createdAt: tag.createdAt.toISOString(),
+		updatedAt: tag.updatedAt.toISOString(),
+	};
+}
+
+function toStoppedExecutionPublicDto(stopResult: StopResult): StoppedExecutionPublicDto {
+	return {
+		mode: stopResult.mode,
+		startedAt: stopResult.startedAt.toISOString(),
+		stoppedAt: stopResult.stoppedAt?.toISOString(),
+		finished: stopResult.finished,
+		status: stopResult.status,
+	};
+}
+
+function toRetriedExecutionPublicDto(
+	retried: Omit<IExecutionResponse, 'createdAt'>,
+): RetriedExecutionPublicDto {
+	return replaceCircularReferences({
+		id: retried.id,
+		mode: retried.mode,
+		startedAt: retried.startedAt.toISOString(),
+		workflowId: retried.workflowId,
+		finished: retried.finished,
+		retryOf: retried.retryOf ?? null,
+		status: retried.status,
+		waitTill: retried.waitTill instanceof Date ? retried.waitTill.toISOString() : retried.waitTill,
+		data: retried.data,
+		workflowData: retried.workflowData,
+		customData: retried.customData,
+		annotation: retried.annotation,
+		storedAt: retried.storedAt,
+	}) as unknown as RetriedExecutionPublicDto;
 }

@@ -64,6 +64,11 @@ export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
 	return `workflows:update:${workflowId}`;
 }
 
+/** Builds the thread-level grant for using a credential with one exact service origin. */
+export function buildCredentialDestinationGrantKey(workflowId: string, origin: string): string {
+	return `credential-destination:${encodeURIComponent(workflowId)}:${encodeURIComponent(origin)}`;
+}
+
 /**
  * Builds the thread-level "always allow" grant key for a data-tables action
  * (e.g. `create`, `insert-rows`). Must match the frontend key
@@ -287,6 +292,14 @@ export const runStartPayloadSchema = z.object({
 		.describe(
 			'Stable ID for the assistant message group that owns this run. Used to reconnect live activity back to the correct assistant bubble.',
 		),
+	langsmithRunId: z
+		.string()
+		.optional()
+		.describe('LangSmith root-run ID, so user feedback can annotate the trace after a restart.'),
+	langsmithTraceId: z
+		.string()
+		.optional()
+		.describe('LangSmith trace ID paired with langsmithRunId for feedback annotation.'),
 });
 
 export const runFinishPayloadSchema = z.object({
@@ -413,6 +426,18 @@ export const credentialPlaceholderDefSchema = z.object({
 });
 export type InstanceAiCredentialPlaceholderDef = z.infer<typeof credentialPlaceholderDefSchema>;
 
+const exactHttpOriginSchema = z
+	.string()
+	.max(300)
+	.refine((value) => {
+		try {
+			const url = new URL(value);
+			return ['http:', 'https:'].includes(url.protocol) && url.origin === value;
+		} catch {
+			return false;
+		}
+	}, 'Expected an exact HTTP origin');
+
 /**
  * Agent-supplied recipe for creating a Templated Custom Auth credential: the
  * auth request parts with `{{placeholder}}` markers where user-provided values
@@ -439,6 +464,9 @@ export const credentialSetupHintSchema = z.object({
 	 *  being set up (never model-supplied). Stamped into the created credential
 	 *  so setup surfaces only offer it to nodes calling the same service. */
 	serviceHost: z.string().optional(),
+	/** Exact origin of the API the recipe targets, derived server-side from the
+	 *  node being set up. Used to bind automatic credential tests to that API. */
+	serviceOrigin: exactHttpOriginSchema.optional(),
 });
 export type InstanceAiCredentialSetupHint = z.infer<typeof credentialSetupHintSchema>;
 
@@ -457,6 +485,19 @@ export const credentialFlowSchema = z.object({
 	stage: z.enum(['generic', 'finalize']),
 });
 export type InstanceAiCredentialFlow = z.infer<typeof credentialFlowSchema>;
+
+export const credentialDestinationSchema = z.object({
+	origin: exactHttpOriginSchema,
+	nodeNames: z.array(z.string().trim().min(1).max(255)).min(1),
+});
+export type InstanceAiCredentialDestination = z.infer<typeof credentialDestinationSchema>;
+
+export const credentialDestinationDecisionSchema = credentialDestinationSchema.pick({
+	origin: true,
+});
+export type InstanceAiCredentialDestinationDecision = z.infer<
+	typeof credentialDestinationDecisionSchema
+>;
 
 export const workflowSetupNodeSchema = z.object({
 	node: z.object({
@@ -622,7 +663,15 @@ export const mcpConnectServerSchema = z.object({
 	serverSlug: z.string(),
 	title: z.string(),
 	tagline: z.string().optional(),
-	credentialType: z.string(),
+	usesCredentials: z
+		.array(
+			z.object({
+				credentialType: z.string(),
+				name: z.string(),
+				value: z.string(),
+			}),
+		)
+		.min(1),
 });
 export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
 
@@ -718,6 +767,11 @@ export const confirmationRequestPayloadSchema = z.object({
 		.optional()
 		.describe(
 			'Credential flow stage — finalize renders post-verification credential picker with different copy',
+		),
+	credentialDestination: credentialDestinationSchema
+		.optional()
+		.describe(
+			'Exact destination that must be approved before a workflow credential setup card opens',
 		),
 	setupRequests: z
 		.array(workflowSetupNodeSchema)
@@ -955,7 +1009,9 @@ export const tasksUpdatePayloadSchema = z.object({
  */
 const setupItemBase = {
 	/** Stable identity: `${workflowId}:${kind}:${key}` — key = credentialType
-	 *  for credential items, nodeName for parameter items. */
+	 *  for credential items (`${credentialType}:${nodeName}` for generic auth
+	 *  types, where one credential serves many services so items are per
+	 *  node), nodeName for parameter items. */
 	id: z.string(),
 };
 
@@ -985,8 +1041,12 @@ export const setupItemsPayloadSchema = z.object({
 	workflowId: z.string().min(1).max(64),
 	/** FULL current list for this workflow. Each event replaces the previous
 	 *  snapshot — removal is implicit (an item absent from the next snapshot is
-	 *  gone). No delta/retraction protocol. */
-	items: z.array(setupItemSchema),
+	 *  gone). No delta/retraction protocol. Items that fail to parse (e.g. a
+	 *  kind added after this client was built) drop individually instead of
+	 *  failing the whole event — deployed clients keep the items they know. */
+	items: z
+		.array(setupItemSchema.nullable().catch(null))
+		.transform((items) => items.filter((item): item is InstanceAiSetupItem => item !== null)),
 });
 
 export const threadTitleUpdatedPayloadSchema = z.object({
@@ -1003,8 +1063,8 @@ const eventBase = {
 	userId: z.string().optional(),
 	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
 	responseId: z.string().optional(),
-	/** Epoch ms stamped once at publish — replays (SSE reconnect, snapshot
-	 *  rebuilds) use it to reconstruct real timing instead of "now". */
+	/** Epoch ms stamped once at publish — replays (SSE reconnect, history
+	 *  folds) use it to reconstruct real timing instead of "now". */
 	ts: z.number().optional(),
 };
 
@@ -1424,39 +1484,29 @@ export interface InstanceAiSendMessageResponse {
 	runId: string;
 }
 
+/**
+ * Why a run was refused admission, sent as `meta.reason` on the 429 so the editor can
+ * tell the two cases apart. They need different copy and different advice: an instance
+ * limit is transient and not the user's fault, so retrying is right; a user limit means
+ * they already have runs in flight and retrying is exactly wrong.
+ */
+export const INSTANCE_AI_RUN_LIMIT_REASONS = ['user_run_limit', 'instance_run_limit'] as const;
+
+export type InstanceAiRunLimitReason = (typeof INSTANCE_AI_RUN_LIMIT_REASONS)[number];
+
+export type InstanceAiRunLimitMeta = {
+	reason: InstanceAiRunLimitReason;
+	limit: number;
+};
+
 // ---------------------------------------------------------------------------
 // Frontend store types (shared so both sides agree on structure)
 // ---------------------------------------------------------------------------
 
-export interface InstanceAiConfirmation {
-	requestId: string;
-	inputThreadId?: string;
-	severity: InstanceAiConfirmationSeverity;
-	message: string;
-	targetApproval?: InstanceAiTargetApproval;
-	credentialRequests?: InstanceAiCredentialRequest[];
-	requireUserSelection?: boolean;
-	projectId?: string;
-	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
-	domainAccess?: DomainAccessMeta;
-	webSearch?: WebSearchMeta;
-	credentialFlow?: InstanceAiCredentialFlow;
-	setupRequests?: InstanceAiWorkflowSetupNode[];
-	workflowId?: string;
-	planItems?: PlannedTaskArg[];
-	questions?: Array<{
-		id: string;
-		question: string;
-		type: 'single' | 'multi' | 'text';
-		options?: string[];
-	}>;
-	introMessage?: string;
-	tasks?: TaskList;
-	resourceDecision?: GatewayConfirmationRequiredPayload;
-	channelConfig?: InstanceAiChannelConfig;
-	mcpConnectRequest?: InstanceAiMcpConnectRequest;
-	expired?: boolean;
-}
+export type InstanceAiConfirmation = Omit<
+	InstanceAiConfirmationRequestPayload,
+	'toolCallId' | 'toolName' | 'args'
+> & { expired?: boolean };
 
 export interface InstanceAiToolCallState {
 	toolCallId: string;
@@ -2207,6 +2257,15 @@ export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
 
 /** Enables adding selected canvas nodes as chat context in the AI Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
+
+/** Enables the conversation-history tool and the past-conversations first-turn hint */
+export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
+
+export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
+/** Enables the node-usage context surface for Instance AI: the `node-usage`
+
+ *  action and the `nodeTypes` filter on `workflows(action="list")`. */
+export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

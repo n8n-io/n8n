@@ -8,6 +8,7 @@ import {
 	webSearchMetaSchema,
 	channelConfigSchema,
 	mcpConnectRequestSchema,
+	credentialDestinationSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -339,6 +340,10 @@ function mapSuspendedChunk(
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
+	const credentialDestination = parseSchemaRecord(
+		suspendPayload.credentialDestination,
+		credentialDestinationSchema,
+	);
 	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
 	const workflowId = presentString(suspendPayload.workflowId);
 	const resourceDecision = parseSchemaRecord(
@@ -384,6 +389,7 @@ function mapSuspendedChunk(
 			...(domainAccess ? { domainAccess } : {}),
 			...(webSearch ? { webSearch } : {}),
 			...(credentialFlow ? { credentialFlow } : {}),
+			...(credentialDestination ? { credentialDestination } : {}),
 			...(setupRequests ? { setupRequests } : {}),
 			...(workflowId ? { workflowId } : {}),
 			...(questions ? { questions } : {}),

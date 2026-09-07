@@ -197,6 +197,61 @@ Buckets: `page` (whole document), `canvas`, `ndv`, `node-creator`, `sidebar`,
 `modal`. Defined in `fixtures/a11y.ts` (`A11Y_BUCKETS`). Scans run with WCAG 2.1
 A + AA rules; override per call with `a11y.check('modal', { tags, disableRules })`.
 
+When a journey acts as another user, `n8n.start.withUser()` returns a new
+`n8nPage`. Point the checker at it with `a11y.for(otherN8n)` - the derived
+checker reports into the same scan list.
+
+### Report and failure budget
+
+Every scan is attached to its test, so the raw axe results are always available
+on that test (including in Currents). Set `PLAYWRIGHT_A11Y_REPORT` to also
+register `reporters/a11y-reporter.ts`, which aggregates a run's scans into one
+axe HTML report at `a11y-report/index.html` plus a table in the GitHub job
+summary. Under sharding each shard reports the specs it ran. CI sets the
+variable for the e2e workflow, which uploads the report as its own artifact on a
+failing run; locally the reporter stays off unless asked for:
+
+```bash
+PLAYWRIGHT_A11Y_REPORT=1 pnpm --filter=n8n-playwright test:local
+```
+
+Violations are **reporting-only by default**. Set
+`PLAYWRIGHT_A11Y_MAX_VIOLATIONS` to the number of violations a single test may
+report before it fails:
+
+```bash
+# Fail any test reporting more than 5 violations
+PLAYWRIGHT_A11Y_MAX_VIOLATIONS=5 pnpm --filter=n8n-playwright test:local
+```
+
+Unset (the default), empty or malformed all mean "no budget", so the violations
+that already exist can't turn CI red. The budget is not applied to a test that
+already failed for another reason.
+
+### Per-bucket scores
+
+The reporter also scores each bucket the run exercised and writes one line for
+each of them, worst first:
+
+```
+[a11y] score bucket=canvas scans=2 rules=3 elements=7 score=31 critical=1 serious=3 moderate=1 minor=2
+```
+
+`elements` counts the distinct violating elements. An element is counted once
+for each screen it is broken on, however many rules it trips there, so a bucket
+the run scanned twice on the same screen reports its elements once. `score`
+weights those elements by impact (critical 10, serious 5, moderate 3, minor 1),
+taking the worst impact reported for each element, so it goes to zero as the
+bucket gets fixed. The same numbers go into the GitHub job summary as a bucket
+table.
+
+When `QA_METRICS_WEBHOOK_*` is set - CI sets it for the e2e workflow - the
+reporter sends the scores to the QA metrics webhook the perf metrics use. Each
+bucket writes three `qa_performance_metrics` rows (`a11y-score`,
+`a11y-violated-rules`, `a11y-violating-elements`) under the `a11y-buckets`
+benchmark, with the bucket in `dimensions`. The send is best-effort: a failure
+warns and the run carries on. See [.github/CI-TELEMETRY.md](../../../.github/CI-TELEMETRY.md).
+
 ## Test Isolation
 
 Tests run in parallel. Design tests to be fully isolated so they don't interfere with each other.

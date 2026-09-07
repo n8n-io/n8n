@@ -21,6 +21,10 @@ async function getQuickJSModule(): Promise<QuickJSModule> {
 
 const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 
+// Captured at module load so values rendered into generated code stay stable
+// even if the global is later replaced.
+const safeStringify = JSON.stringify;
+
 // ============================================================================
 // Sentinel helpers
 //
@@ -265,7 +269,7 @@ function hostValueToJson(value: unknown): string {
 	if (value === undefined) return 'undefined';
 	if (value === null) return 'null';
 	try {
-		return JSON.stringify(wrapSpecialValuesForGuest(value));
+		return safeStringify(wrapSpecialValuesForGuest(value));
 	} catch {
 		return 'undefined';
 	}
@@ -1156,7 +1160,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		// nested call can't leave the outer budget extended.
 		this.deadlines.push(Date.now() + timeout);
 		try {
-			const timezone = options?.timezone ? JSON.stringify(options.timezone) : 'undefined';
+			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
 
 			// The callback impls arrive as function arguments (scoped to this call),
 			// never as globals — see createCallbackHandles(). The runtime calls them

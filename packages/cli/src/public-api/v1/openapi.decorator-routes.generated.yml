@@ -3,11 +3,28 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /executions:
+    get:
+      $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
   /executions/{executionId}:
     get:
       $ref: ./handlers/executions/spec/paths/getExecution.generated.yml
     delete:
       $ref: ./handlers/executions/spec/paths/deleteExecution.generated.yml
+  /executions/{executionId}/tags:
+    get:
+      $ref: ./handlers/executions/spec/paths/getExecutionTags.generated.yml
+    put:
+      $ref: ./handlers/executions/spec/paths/updateExecutionTags.generated.yml
+  /executions/stop:
+    post:
+      $ref: ./handlers/executions/spec/paths/stopManyExecutions.generated.yml
+  /executions/{executionId}/stop:
+    post:
+      $ref: ./handlers/executions/spec/paths/stopExecution.generated.yml
+  /executions/{executionId}/retry:
+    post:
+      $ref: ./handlers/executions/spec/paths/retryExecution.generated.yml
   /git-connections:
     post:
       $ref: ./handlers/git-connections/spec/paths/createGitConnection.generated.yml
@@ -65,6 +82,9 @@ paths:
       $ref: ./handlers/roles/spec/paths/updateRole.generated.yml
     delete:
       $ref: ./handlers/roles/spec/paths/deleteRole.generated.yml
+  /source-control/status:
+    get:
+      $ref: ./handlers/source-control/spec/paths/getSourceControlStatus.generated.yml
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml

@@ -171,6 +171,24 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 	}
 
 	/**
+	 * Find the IDs of all the projects where a workflow is shared with one of
+	 * the given sharing roles.
+	 */
+	async findProjectIdsByRole(workflowId: string, roles: string[]) {
+		const rows = await this.find({
+			where: { workflowId, role: In(roles) },
+			select: ['projectId'],
+		});
+
+		const projectIds = rows.reduce<string[]>((acc, row) => {
+			if (row.projectId) acc.push(row.projectId);
+			return acc;
+		}, []);
+
+		return [...new Set(projectIds)];
+	}
+
+	/**
 	 * Pass `ctx` when calling from inside a transaction — the read then runs on that
 	 * transaction's connection instead of checking out a second one, which would
 	 * deadlock a single-connection pool.

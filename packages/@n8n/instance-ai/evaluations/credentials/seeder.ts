@@ -223,6 +223,7 @@ async function createTemplatedCustomAuthCredential(
 		placeholderDefs: JSON.stringify(hint.placeholders),
 		placeholderValues: JSON.stringify(placeholderValues),
 		serviceHost: hint.serviceHost ?? '',
+		serviceOrigin: hint.serviceOrigin ?? '',
 		docsUrl: hint.docsUrl ?? '',
 		testUrl: hint.testUrl ?? '',
 		acceptedStatusCodes: hint.acceptedStatusCodes ? JSON.stringify(hint.acceptedStatusCodes) : '',
