@@ -13,6 +13,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
@@ -26,6 +27,27 @@ import type { GitConnectionProjectRepository } from '../database/repositories/gi
 import type { GitConnectionRepository } from '../database/repositories/git-connection.repository';
 import type { GitConnectionsGitService } from '../git-connections-git.service';
 import { GitConnectionsService } from '../git-connections.service';
+import { WorkingCopyUpdater } from '../working-copy-updater';
+
+const emptyManifest = packageManifestSchema.parse({
+	packageFormatVersion: '1',
+	exportedAt: '2026-01-01T00:00:00.000Z',
+	sourceN8nVersion: '1.0.0',
+	sourceId: 'inst-1',
+});
+
+/** What an export writes for a workflow, so the branch can be read back. */
+const branchWorkflowFile = (id: string, name: string) =>
+	JSON.stringify({
+		id,
+		name,
+		nodes: [],
+		connections: {},
+		versionId: `version-${id}`,
+		parentFolderId: null,
+		isPublished: false,
+		isArchived: false,
+	});
 
 vi.mock('@/permissions.ee/check-access');
 const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
@@ -51,6 +73,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		n8nPackagesService,
 		cipher,
 		instanceSettings,
+		new WorkingCopyUpdater(instanceSettings),
 		logger,
 	);
 
@@ -259,6 +282,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 
 		beforeEach(async () => {
 			n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-git-connection-export-'));
+			const settings = mock<InstanceSettings>({ n8nFolder });
 			exportService = new GitConnectionsService(
 				repository,
 				gitConnectionProjectRepository,
@@ -267,7 +291,8 @@ describe('GitConnectionsService (credential state machine)', () => {
 				gitService,
 				n8nPackagesService,
 				cipher,
-				mock<InstanceSettings>({ n8nFolder }),
+				settings,
+				new WorkingCopyUpdater(settings),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -281,6 +306,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 					await writeFile(path.join(targetDir, 'manifest.json'), '{"projects":[]}');
 					await writeFile(path.join(targetDir, 'projects', 'alpha', 'project.json'), '{}');
 					return {
+						manifest: emptyManifest,
 						counts: {
 							workflows: 0,
 							folders: 0,
@@ -450,6 +476,221 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await expect(exportService.push('1', actor, { commitMessage: 'm' })).rejects.toThrow(
 				ServiceUnavailableError,
 			);
+		});
+	});
+
+	describe('selective push', () => {
+		let n8nFolder: string;
+		let selectiveService: GitConnectionsService;
+		let repositoryFolder: string;
+		let exportFolder: string;
+
+		const actor = mock<User>({
+			id: 'actor',
+			firstName: 'Ada',
+			lastName: 'Lovelace',
+			email: 'ada@example.com',
+		});
+
+		const buildManifest = (overrides: Record<string, unknown> = {}) =>
+			JSON.stringify(
+				{
+					packageFormatVersion: '1',
+					exportedAt: '2026-01-01T00:00:00.000Z',
+					sourceN8nVersion: '1.0.0',
+					sourceId: 'inst-1',
+					...overrides,
+				},
+				null,
+				'\t',
+			);
+
+		const writeExportTree = async (base: string, files: Record<string, string>) => {
+			for (const [filePath, content] of Object.entries(files)) {
+				const fullPath = path.join(base, filePath);
+				await mkdir(path.dirname(fullPath), { recursive: true });
+				await writeFile(fullPath, content);
+			}
+		};
+
+		/** Make the exporter write `files` (what a selection-aware export produces) into staging. */
+		const mockExport = (files: Record<string, string>) => {
+			n8nPackagesService.exportPackageToDirectory.mockImplementation(
+				async (_request, { targetDir }) => {
+					await writeExportTree(targetDir, files);
+					const manifest = packageManifestSchema.parse(JSON.parse(files['manifest.json']));
+					// The real exporter counts what it wrote, and a push returns those counts.
+					return {
+						manifest,
+						counts: {
+							workflows: manifest.workflows?.length ?? 0,
+							folders: manifest.folders?.length ?? 0,
+							credentials: manifest.credentials?.length ?? 0,
+							dataTables: manifest.dataTables?.length ?? 0,
+							variables: manifest.variables?.length ?? 0,
+							tags: manifest.tags?.length ?? 0,
+						},
+					};
+				},
+			);
+		};
+
+		const readExported = async (relative: string) =>
+			await readFile(path.join(exportFolder, relative), 'utf-8');
+		const readExportedManifest = async () => JSON.parse(await readExported('manifest.json'));
+
+		const alpha = { id: 'p1', name: 'Alpha', target: 'projects/alpha' };
+		const wf = (id: string, name = id.toUpperCase()) => ({
+			id,
+			name,
+			target: `projects/alpha/workflows/${id}`,
+		});
+		// The push reads the tree it wrote, so a fixture must be a readable export.
+		const workflowFile = (id: string) =>
+			JSON.stringify({
+				id,
+				name: id.toUpperCase(),
+				nodes: [],
+				connections: {},
+				versionId: `version-${id}`,
+				parentFolderId: null,
+				isPublished: false,
+				isArchived: false,
+			});
+
+		beforeEach(async () => {
+			n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-git-selective-'));
+			repositoryFolder = path.join(n8nFolder, 'git-connections', '1', 'repository');
+			exportFolder = path.join(repositoryFolder, 'n8n-export');
+			const selectiveInstanceSettings = mock<InstanceSettings>({
+				n8nFolder,
+				instanceId: 'inst-test',
+			});
+			selectiveService = new GitConnectionsService(
+				repository,
+				gitConnectionProjectRepository,
+				projectRepository,
+				projectService,
+				gitService,
+				n8nPackagesService,
+				cipher,
+				selectiveInstanceSettings,
+				new WorkingCopyUpdater(selectiveInstanceSettings),
+				logger,
+			);
+			repository.findOneBy.mockResolvedValue(sshEntity());
+			gitService.hasWorkingCopy.mockResolvedValue(true);
+			gitService.commitAndPush.mockResolvedValue({ commitSha: 'selsha', head: 'selsha' });
+			cipher.decryptV2.mockImplementation(async (value) => value.replace(/^enc:/, ''));
+			gitConnectionProjectRepository.findByProjectId.mockResolvedValue({
+				projectId: 'p1',
+				gitConnectionId: '1',
+			} as never);
+		});
+
+		afterEach(async () => {
+			await rm(n8nFolder, { recursive: true, force: true });
+		});
+
+		it('asks the exporter for the selected workflows of the project with reference-only dependencies', async () => {
+			await writeExportTree(exportFolder, { 'manifest.json': buildManifest() });
+			mockExport({ 'manifest.json': buildManifest({ projects: [alpha] }) });
+
+			await selectiveService.pushSelection(
+				'1',
+				actor,
+				{ commitMessage: 'm' },
+				{ projectId: 'p1', workflowIds: ['w1', 'w2'], deletedWorkflowIds: [] },
+			);
+
+			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalledWith(
+				expect.objectContaining({
+					projectIds: ['p1'],
+					projectWorkflowIds: ['w1', 'w2'],
+					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
+				}),
+				expect.any(Object),
+			);
+		});
+
+		it('bootstraps from an empty branch when no prior export exists', async () => {
+			await mkdir(repositoryFolder, { recursive: true });
+			mockExport({
+				'manifest.json': buildManifest({ workflows: [wf('w1')], projects: [alpha] }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+
+			const result = await selectiveService.pushSelection(
+				'1',
+				actor,
+				{ commitMessage: 'first selective' },
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+			);
+
+			expect(result.counts.workflows).toBe(1);
+			expect((await readExportedManifest()).workflows).toEqual([wf('w1')]);
+		});
+
+		it('cleans up the staging folder even when the export fails', async () => {
+			await writeExportTree(exportFolder, { 'manifest.json': buildManifest() });
+			n8nPackagesService.exportPackageToDirectory.mockRejectedValueOnce(
+				new BadRequestError('export failed'),
+			);
+
+			await expect(
+				selectiveService.pushSelection(
+					'1',
+					actor,
+					{ commitMessage: 'm' },
+					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				),
+			).rejects.toThrow(BadRequestError);
+
+			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
+			await expect(stat(stagingFolder)).rejects.toThrow();
+		});
+
+		it('validates the selection against the branch before running the export', async () => {
+			await writeExportTree(exportFolder, {
+				'manifest.json': buildManifest(),
+				'projects/alpha/project.json': JSON.stringify(alpha),
+				'projects/alpha/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
+			});
+
+			await expect(
+				selectiveService.pushSelection(
+					'1',
+					actor,
+					{ commitMessage: 'm' },
+					{ projectId: 'p1', workflowIds: [], deletedWorkflowIds: ['w-unknown'] },
+				),
+			).rejects.toThrow('Deleted workflows not found on the branch: w-unknown');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+		});
+
+		it('refuses a workflow that moved out of another project, before running the export', async () => {
+			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
+			await writeExportTree(exportFolder, {
+				'manifest.json': buildManifest({
+					projects: [alpha, beta],
+					workflows: [{ id: 'w1', name: 'W1', target: 'projects/beta/workflows/w1' }],
+				}),
+				'projects/alpha/project.json': JSON.stringify(alpha),
+				'projects/beta/project.json': JSON.stringify(beta),
+				'projects/beta/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
+			});
+
+			await expect(
+				selectiveService.pushSelection(
+					'1',
+					actor,
+					{ commitMessage: 'm' },
+					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				),
+			).rejects.toThrow('These workflows moved to another project: w1');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 		});
 	});
 
@@ -645,6 +886,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		beforeEach(async () => {
 			n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-git-connection-import-'));
 			exportFolder = path.join(n8nFolder, 'git-connections', '1', 'repository', 'n8n-export');
+			const settings = mock<InstanceSettings>({ n8nFolder });
 			importService = new GitConnectionsService(
 				repository,
 				gitConnectionProjectRepository,
@@ -653,7 +895,8 @@ describe('GitConnectionsService (credential state machine)', () => {
 				gitService,
 				n8nPackagesService,
 				cipher,
-				mock<InstanceSettings>({ n8nFolder }),
+				settings,
+				new WorkingCopyUpdater(settings),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
