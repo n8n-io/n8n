@@ -31,6 +31,7 @@ const node: INode = {
 const createMockExecuteFunction = (
 	nodeParameters: IDataObject,
 	continueOnFail: boolean = false,
+	evaluateExpression: (expression: string) => unknown = () => undefined,
 ) => {
 	const fakeExecuteFunction = {
 		getNodeParameter(
@@ -47,6 +48,7 @@ const createMockExecuteFunction = (
 		},
 		helpers: { constructExecutionMetaData },
 		continueOnFail: () => continueOnFail,
+		evaluateExpression: (expression: string) => evaluateExpression(expression),
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
 };
@@ -119,6 +121,29 @@ describe('test Set2, rawMode/json Mode', () => {
 			expect(parseJsonSpy).toHaveBeenCalledWith(jsonDataString, node, 0);
 			expect(resolveRawDataSpy).toHaveBeenCalledWith(jsonDataString, 0);
 			expect(result).toEqual({ json: jsonData, pairedItem: { item: 0 } });
+		});
+	});
+
+	describe('date expression', () => {
+		it('should quote a date expression that resolves to an ISO string', async () => {
+			const isoString = '2026-09-04T10:20:30.000+02:00';
+			const jsonOutputTemplate = '{\n  "time": {{ $now }}\n}\n';
+			const fakeExecuteFunction = createMockExecuteFunction(
+				{ jsonOutput: `=${jsonOutputTemplate}` },
+				false,
+				() => isoString,
+			);
+
+			const result = await execute.call(
+				fakeExecuteFunction,
+				item,
+				0,
+				options,
+				{ jsonOutput: jsonOutputTemplate },
+				node,
+			);
+
+			expect(result).toEqual({ json: { time: isoString }, pairedItem: { item: 0 } });
 		});
 	});
 

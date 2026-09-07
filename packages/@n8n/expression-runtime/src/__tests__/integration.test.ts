@@ -261,6 +261,62 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		});
 	});
 
+	describe('Luxon values returned to the host', () => {
+		it('should return $now as a luxon DateTime', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate('{{ $now }}', data, caller);
+
+			expect(result).toBeInstanceOf(DateTime);
+		});
+
+		it('should return a Duration as a luxon Duration', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate('{{ Duration.fromMillis(3600000) }}', data, caller);
+
+			expect(result).toBeInstanceOf(Duration);
+			expect((result as Duration).toMillis()).toBe(3600000);
+		});
+
+		it('should return an Interval as a luxon Interval', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ Interval.after(DateTime.fromISO("2024-01-01"), 86400000) }}',
+				data,
+				caller,
+			);
+
+			expect(result).toBeInstanceOf(Interval);
+			expect((result as Interval).length('milliseconds')).toBe(86400000);
+		});
+
+		it('should return a DateTime in an object as a luxon DateTime', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ ({ date: DateTime.fromISO("2024-01-15") }) }}',
+				data,
+				caller,
+			) as Record<string, unknown>;
+
+			expect(result.date).toBeInstanceOf(DateTime);
+		});
+
+		it('should return a DateTime in an array as a luxon DateTime', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ [DateTime.fromISO("2024-01-15")] }}',
+				data,
+				caller,
+			) as unknown[];
+
+			expect(result[0]).toBeInstanceOf(DateTime);
+		});
+	});
+
 	describe('Date marshaling from workflow data', () => {
 		it('should read a top-level or nested Date in $json as a Date, not {}', () => {
 			const iso = '2026-06-30T20:34:04.498Z';
