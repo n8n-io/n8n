@@ -10,6 +10,25 @@ const question = {
 };
 
 describe('ask-user', () => {
+	it.each([{ options: undefined }, { options: [] }])(
+		'shows a legacy text question on the first call with options $options',
+		async ({ options }) => {
+			const suspend = vi.fn().mockResolvedValue(undefined);
+			const input = askUserInputSchema.parse({
+				questions: [{ id: 'name', question: 'What is the project name?', type: 'text', options }],
+			});
+
+			await executeTool(createAskUserTool(), input, { suspend });
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					inputType: 'questions',
+					questions: [{ ...input.questions[0], recommendedOption: undefined }],
+				}),
+			);
+		},
+	);
+
 	it.each([
 		{ type: 'single', options: ['Email', 'Slack', 'Telegram'], count: 1 },
 		{ type: 'text', options: undefined, count: 1 },

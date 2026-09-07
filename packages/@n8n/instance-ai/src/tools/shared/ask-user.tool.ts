@@ -58,7 +58,15 @@ export const askUserInputSchema = z.object({
 
 const newAskUserInputSchema = askUserInputSchema.extend({
 	questions: z
-		.array(questionInputSchema)
+		.array(
+			questionInputSchema.or(
+				// Legacy text questions can have no suggested answer.
+				questionInputSchema.extend({
+					type: z.literal('text'),
+					recommendedOption: z.undefined(),
+				}),
+			),
+		)
 		.min(1)
 		.max(3, {
 			message:
@@ -146,17 +154,21 @@ export function createAskUserTool() {
 					message: input.introMessage ?? input.questions[0].question,
 					severity: 'info' as const,
 					inputType: 'questions' as const,
-					questions: questions.map(({ recommendedOption, ...question }) => ({
-						...question,
-						recommendedOption,
-						type: question.type === 'text' ? 'single' : question.type,
-						options: [
-							recommendedOption,
-							...(question.type === 'text' ? [] : (question.options ?? [])).filter(
-								(option) => option !== recommendedOption,
-							),
-						],
-					})),
+					questions: questions.map(({ recommendedOption, ...question }) =>
+						recommendedOption === undefined
+							? question
+							: {
+									...question,
+									recommendedOption,
+									type: question.type === 'text' ? 'single' : question.type,
+									options: [
+										recommendedOption,
+										...(question.type === 'text' ? [] : (question.options ?? [])).filter(
+											(option) => option !== recommendedOption,
+										),
+									],
+								},
+					),
 					introMessage: input.introMessage,
 				});
 			}
