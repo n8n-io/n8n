@@ -16,7 +16,7 @@ import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 
 const MIN_ITEMS_FOR_SEARCH = 6;
 
-type DependencyPillSource = 'workflow_card' | 'credential_card' | 'data_table_card';
+type DependencyPillSource = 'workflow_card' | 'credential_card' | 'data_table_card' | 'ndv';
 type DependencyPillResourceType = 'workflow' | 'credential' | 'dataTable';
 
 const props = defineProps<{
@@ -25,33 +25,55 @@ const props = defineProps<{
 	totalCount?: number;
 	source: DependencyPillSource;
 	dataTestId?: string;
+	// Limits the dropdown to these dependency types
+	dependencyTypes?: DependencyType[];
+	tooltip?: string;
 }>();
 
 const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const { getDependencies, fetchDependencies, getTotalCount } = useDependencies();
+const { getDependencies, fetchDependencies, getDependencyCounts, getTotalCount } =
+	useDependencies();
 
 const isLoadingDetails = ref(false);
 
 const depsResult = computed(() => getDependencies(props.resourceId));
 
-const effectiveCount = computed(() => {
-	const result = depsResult.value;
-	if (result) return result.dependencies.length + result.inaccessibleCount;
-	return getTotalCount(props.resourceId) ?? 0;
+const visibleDeps = computed(() => {
+	const deps = depsResult.value?.dependencies ?? [];
+	const types = props.dependencyTypes;
+	if (!types) return deps;
+	return deps.filter((dep) => types.includes(dep.type));
 });
 
-const hasHiddenDeps = computed(() => (depsResult.value?.inaccessibleCount ?? 0) > 0);
+const effectiveCount = computed(() => {
+	const types = props.dependencyTypes;
+	const result = depsResult.value;
+	if (result) {
+		// inaccessibleCount is not split by type, so include it only when unfiltered
+		if (types) return visibleDeps.value.length;
+		return result.dependencies.length + result.inaccessibleCount;
+	}
+	if (!types) return getTotalCount(props.resourceId) ?? 0;
+	const counts = getDependencyCounts(props.resourceId);
+	if (!counts) return 0;
+	return types.reduce((sum, type) => sum + counts[type], 0);
+});
 
-const tooltipText = computed(() =>
-	i18n.baseText(`workflows.dependencies.tooltip.${props.resourceType}` satisfies BaseTextKey),
+// The inaccessible count spans all types, so hide the notice when filtered
+const hasHiddenDeps = computed(
+	() => !props.dependencyTypes && (depsResult.value?.inaccessibleCount ?? 0) > 0,
 );
 
-const showSearch = computed(
-	() => (depsResult.value?.dependencies.length ?? 0) >= MIN_ITEMS_FOR_SEARCH,
+const tooltipText = computed(
+	() =>
+		props.tooltip ??
+		i18n.baseText(`workflows.dependencies.tooltip.${props.resourceType}` satisfies BaseTextKey),
 );
+
+const showSearch = computed(() => visibleDeps.value.length >= MIN_ITEMS_FOR_SEARCH);
 
 const searchTerm = ref('');
 
@@ -97,7 +119,7 @@ const displayOrder: DependencyType[] = [
 ];
 
 const menuItems = computed(() => {
-	const deps = depsResult.value?.dependencies ?? [];
+	const deps = visibleDeps.value;
 	if (deps.length === 0) return [];
 
 	const query = searchTerm.value.toLowerCase().trim();
@@ -233,13 +255,15 @@ async function onDropdownToggle(open: boolean) {
 			@update:model-value="onDropdownToggle"
 		>
 			<template #trigger>
-				<!-- We use a custom border to align color with the other related badges -->
-				<N8nBadge theme="tertiary" :show-border="false" :class="$style.badge">
-					<span :class="$style.badgeText">
-						<N8nIcon icon="link" size="small" />
-						{{ effectiveCount }}
-					</span>
-				</N8nBadge>
+				<slot name="trigger">
+					<!-- We use a custom border to align color with the other related badges -->
+					<N8nBadge theme="tertiary" :show-border="false" :class="$style.badge">
+						<span :class="$style.badgeText">
+							<N8nIcon icon="link" size="small" />
+							{{ effectiveCount }}
+						</span>
+					</N8nBadge>
+				</slot>
 			</template>
 			<template v-if="hasHiddenDeps" #footer>
 				<div :class="$style.hiddenNotice">

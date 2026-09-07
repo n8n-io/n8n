@@ -4427,6 +4427,8 @@
 	"nodeIssues.credentials.privateRequiresIdentityExtractor": "End-user credentials with this resolver need a trigger that extracts an identity. Configure an identity extractor on the trigger, or switch this credential to Fixed.",
 	"nodeIssues.input.missing": "No node connected to required input \"{inputName}\"",
 	"ndv.trigger.moreInfo": "More info",
+	"ndv.trigger.subWorkflow.usedBy": "Used by {count} workflow | Used by {count} workflows",
+	"ndv.trigger.subWorkflow.usedBy.tooltip": "Click to see the workflows that call this workflow",
 	"ndv.trigger.copiedTestUrl": "Test URL copied to clipboard",
 	"ndv.trigger.webhookBasedNode.executionsHelp.inactive": "<b>While building your workflow</b>, click the 'execute step' button, then go to {service} and make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /> <b>Once you're happy with your workflow</b>, publish it. Then every time there's a matching event in {service}, the workflow will execute. These executions will show up in the <a data-key=\"executions\">executions list</a>, but not in the editor.",
 	"ndv.trigger.webhookBasedNode.executionsHelp.active": "<b>While building your workflow</b>, click the 'execute step' button, then go to {service} and make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /> <b>Your workflow will also execute automatically</b>, since it's activated. Every time there’s a matching event in {service}, this node will trigger an execution. These executions will show up in the <a data-key=\"executions\">executions list</a>, but not in the editor. ",
