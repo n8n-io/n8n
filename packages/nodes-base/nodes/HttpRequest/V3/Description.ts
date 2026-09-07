@@ -3,10 +3,10 @@ import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import { optimizeResponseProperties } from '../shared/optimizeResponse';
 
 const webdavMethodOptions: INodePropertyOptions[] = [
-	'PROPFIND',
+	'COPY',
 	'MKCOL',
 	'MOVE',
-	'COPY',
+	'PROPFIND',
 	'REPORT',
 ].flatMap((method) => [
 	{
@@ -54,7 +54,6 @@ export const mainProperties: INodeProperties[] = [
 				name: 'HEAD',
 				value: 'HEAD',
 			},
-			...webdavMethodOptions,
 			{
 				name: 'OPTIONS',
 				value: 'OPTIONS',
@@ -71,6 +70,7 @@ export const mainProperties: INodeProperties[] = [
 				name: 'PUT',
 				value: 'PUT',
 			},
+			...webdavMethodOptions,
 		],
 		default: 'GET',
 		description: 'The request method to use',
