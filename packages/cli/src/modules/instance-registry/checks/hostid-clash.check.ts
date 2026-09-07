@@ -56,7 +56,9 @@ export class HostIdClashCheck implements IClusterCheck {
 		const hostIds = current.clashing.map((c) => c.hostId);
 
 		return buildCheckResult({
-			currentFingerprint: current.fingerprint,
+			hasProblem: current.clashing.length > 0,
+			hadProblem: previous.clashing.length > 0,
+			fingerprint: current.fingerprint,
 			previousFingerprint: previous.fingerprint,
 			code: CHECK_CODE,
 			severity: 'warning',

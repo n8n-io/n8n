@@ -29,10 +29,8 @@ function computeFingerprint(instances: Iterable<InstanceRegistration>): {
 		}))
 		.sort((a, b) => a.instanceKey.localeCompare(b.instanceKey));
 
-	const splitBrain = leaders.length > 1;
-
 	return {
-		fingerprint: splitBrain ? leaders.map((l) => l.instanceKey).join('|') : '',
+		fingerprint: leaders.map((l) => l.instanceKey).join('|'),
 		leaders,
 	};
 }
@@ -51,7 +49,9 @@ export class SplitBrainCheck implements IClusterCheck {
 		const leaderKeys = current.leaders.map((l) => l.instanceKey);
 
 		return buildCheckResult({
-			currentFingerprint: current.fingerprint,
+			hasProblem: current.leaders.length > 1,
+			hadProblem: previous.leaders.length > 1,
+			fingerprint: current.fingerprint,
 			previousFingerprint: previous.fingerprint,
 			code: CHECK_CODE,
 			severity: 'error',
