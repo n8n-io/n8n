@@ -974,6 +974,10 @@ export interface InstanceAiBrowserCreateLinkResponse {
 	ttlSeconds: number | null;
 }
 
+export class InstanceAiBrowserCreateLinkRequest extends Z.class({
+	pushRef: z.string().min(1).max(255).optional(),
+}) {}
+
 export interface InstanceAiBrowserStatusResponse {
 	connected: boolean;
 	connectedAt: string | null;
@@ -1418,6 +1422,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credentials_list',
 	'agent_builder_page',
 	'agent_preview',
+	'browser_recording',
 	'assistant_page',
 	// Experiment cleanup: remove with openWorkflowInAssistant.
 	'workflow_list_auto',

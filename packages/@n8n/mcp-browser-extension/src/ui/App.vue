@@ -2,7 +2,9 @@
 import { computed, ref } from 'vue';
 import { N8nButton, N8nCheckbox, N8nIcon, N8nLogo } from '@n8n/design-system';
 import { useConnection } from './composables/useConnection';
+import { useRecording } from './composables/useRecording';
 import InfoRow from './components/InfoRow.vue';
+import RecordingReview from './components/RecordingReview.vue';
 import RememberedHosts from './components/RememberedHosts.vue';
 import TabList from './components/TabList.vue';
 
@@ -24,6 +26,18 @@ const {
 	disconnect,
 	forgetHost,
 } = useConnection();
+
+const {
+	recording,
+	errorMessage: recordingError,
+	start: startRecording,
+	stop: stopRecording,
+	submit: submitRecording,
+	discard: discardRecording,
+	recordAgain,
+	removeAction,
+	maskAction,
+} = useRecording();
 
 const showTabSelection = ref(false);
 
@@ -57,6 +71,34 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 						<hr class="divider" />
 						<TabList :tabs="controlledTabs" />
 					</template>
+				</div>
+				<div v-if="recording" class="recording-panel">
+					<h2 class="recording-title">
+						{{
+							recording.status === 'recording'
+								? `Recording · ${recording.actions.length} actions`
+								: recording.status === 'submitted'
+									? 'Recording sent'
+									: recording.status === 'submitting'
+										? 'Sending recording…'
+										: 'Review recording'
+						}}
+					</h2>
+					<p v-if="recording.status === 'recording'" class="subtitle">
+						Use the browser as usual. Passwords and detected secrets are redacted.
+					</p>
+					<p v-else-if="recording.status === 'submitted'" class="subtitle">
+						The AI Assistant is processing your recording in a new conversation.
+					</p>
+					<p v-else-if="recording.status === 'submitting'" class="subtitle">
+						Keep this extension open while n8n starts the conversation.
+					</p>
+					<RecordingReview
+						v-else-if="recording.status === 'review'"
+						:actions="recording.actions"
+						@remove="removeAction"
+						@mask="maskAction"
+					/>
 				</div>
 				<RememberedHosts :hosts="approvedHosts" @forget="forgetHost" />
 			</template>
@@ -125,11 +167,28 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 				<RememberedHosts :hosts="approvedHosts" @forget="forgetHost" />
 			</template>
 
-			<p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+			<p v-if="errorMessage || recordingError" class="error">
+				{{ errorMessage || recordingError }}
+			</p>
 		</div>
 
 		<div v-if="isConnected" class="footer">
-			<N8nButton variant="outline" size="large" @click="disconnect">Disconnect</N8nButton>
+			<template v-if="recording?.status === 'recording'">
+				<N8nButton variant="outline" size="large" @click="discardRecording">Cancel</N8nButton>
+				<N8nButton size="large" @click="stopRecording">Stop recording</N8nButton>
+			</template>
+			<template v-else-if="recording?.status === 'review'">
+				<N8nButton variant="outline" size="large" @click="recordAgain">Record again</N8nButton>
+				<N8nButton size="large" :disabled="recording.actions.length === 0" @click="submitRecording">
+					Send to n8n
+				</N8nButton>
+			</template>
+			<template v-else>
+				<N8nButton variant="outline" size="large" @click="disconnect">Disconnect</N8nButton>
+				<N8nButton v-if="!recording" size="large" @click="startRecording"
+					>Start recording</N8nButton
+				>
+			</template>
 		</div>
 		<div v-else-if="showConnectPrompt" class="footer">
 			<N8nButton variant="ghost" size="large" @click="decline">Decline</N8nButton>
@@ -209,6 +268,24 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	font-size: var(--font-size--sm);
 	color: var(--text-color--subtler);
 	margin: 0 0 var(--spacing--sm);
+}
+
+.recording-panel {
+	display: flex;
+	flex-shrink: 0;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	margin-top: var(--spacing--md);
+	padding: var(--spacing--md);
+	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	border-radius: var(--radius--lg);
+	background: var(--background--base);
+}
+
+.recording-title {
+	margin: 0;
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
 }
 
 .divider {

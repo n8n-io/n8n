@@ -23,6 +23,7 @@ import {
 	disconnectBrowserSession,
 	disconnectGatewaySession,
 	getBrowserStatus,
+	updateBrowserPushRef,
 	getGatewayStatus,
 } from './instanceAi.api';
 import type {
@@ -363,6 +364,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			browserConnectedAt.value = status.connectedAt;
 			browserToolCategories.value = status.toolCategories ?? [];
 			if (status.connected) hasObservedBrowserConnection.value = true;
+			if (status.connected) void updateBrowserPushRef(rootStore.restApiContext);
 		} catch {
 		} finally {
 			browserStatusLoaded.value = true;

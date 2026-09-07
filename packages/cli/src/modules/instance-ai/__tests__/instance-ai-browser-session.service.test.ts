@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { UserRepository } from '@n8n/db';
+import type { ProjectRepository, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -110,6 +110,7 @@ describe('InstanceAiBrowserSessionService', () => {
 	const urlService = mock<UrlService>();
 	const push = mock<Push>();
 	const userRepository = mock<UserRepository>();
+	const projectRepository = mock<ProjectRepository>();
 	const credentialsService = mock<CredentialsService>();
 	const globalConfig = mock<GlobalConfig>({ port: 5678 });
 	const telemetry = mock<Telemetry>();
@@ -125,6 +126,7 @@ describe('InstanceAiBrowserSessionService', () => {
 			urlService,
 			push,
 			userRepository,
+			projectRepository,
 			credentialsService,
 			globalConfig,
 			telemetry,

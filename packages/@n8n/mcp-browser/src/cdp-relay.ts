@@ -22,6 +22,7 @@ import type {
 	ExtensionEvents,
 	ExtensionResponse,
 } from './cdp-relay-protocol';
+import { browserRecordingSchema } from './cdp-relay-protocol';
 import {
 	ConnectionLostError,
 	ExtensionNotConnectedError,
@@ -100,6 +101,11 @@ export class CDPRelayServer {
 
 	/** Called when the extension (re)connects. */
 	onExtensionConnect?: () => void;
+
+	/** Called after the extension submits a reviewed semantic recording. */
+	onRecordingCompleted?: (
+		recording: import('./cdp-relay-protocol').BrowserRecording,
+	) => Promise<{ threadUrl?: string }>;
 
 	private readonly connectionTimeoutMs: number;
 
@@ -857,6 +863,29 @@ export class CDPRelayServer {
 			} else if (method === 'tabClosed') {
 				const p = params as ExtensionEvents['tabClosed']['params'];
 				this.handleTabClosed(p.id, p.reason, p.blockingExtensionIds);
+			} else if (method === 'recordingCompleted') {
+				const parsed = browserRecordingSchema.safeParse(
+					(params as ExtensionEvents['recordingCompleted']['params']).recording,
+				);
+				if (!parsed.success || !this.onRecordingCompleted) return;
+				const connection = this.extensionConn;
+				void this.onRecordingCompleted(parsed.data)
+					.then(async ({ threadUrl }) => {
+						await connection?.send('recordingResult', {
+							recordingId: parsed.data.id,
+							accepted: true,
+							threadUrl,
+						});
+					})
+					.catch(async () => {
+						log.error('Could not process browser recording');
+						await connection
+							?.send('recordingResult', {
+								recordingId: parsed.data.id,
+								accepted: false,
+							})
+							.catch(() => {});
+					});
 			}
 		};
 	}

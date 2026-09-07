@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 /**
  * Protocol types for communication between the CDP relay server and the Chrome extension.
  *
@@ -7,7 +9,54 @@
  */
 
 /** Version of the extension protocol. Bump when commands/events change. */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 6;
+
+const browserRecordingTargetSchema = z
+	.object({
+		tag: z.string().min(1).max(30),
+		role: z.string().max(40).optional(),
+		label: z.string().max(160).optional(),
+		name: z.string().max(80).optional(),
+		inputType: z.string().max(40).optional(),
+	})
+	.strict();
+
+const browserRecordingActionSchema = z
+	.object({
+		id: z.string().uuid(),
+		type: z.enum([
+			'navigation',
+			'click',
+			'context_menu',
+			'copy',
+			'input',
+			'key',
+			'select',
+			'submit',
+			'tab_switch',
+		]),
+		timestamp: z
+			.number()
+			.int()
+			.nonnegative()
+			.max(24 * 60 * 60 * 1000),
+		url: z.string().max(500),
+		target: browserRecordingTargetSchema.optional(),
+		value: z.string().max(200).optional(),
+		redacted: z.boolean().optional(),
+	})
+	.strict();
+
+export const browserRecordingSchema = z
+	.object({
+		id: z.string().uuid(),
+		startedAt: z.string().datetime(),
+		status: z.enum(['submitting', 'submitted']),
+		actions: z.array(browserRecordingActionSchema).min(1).max(250),
+	})
+	.strict();
+
+export type BrowserRecording = z.infer<typeof browserRecordingSchema>;
 
 // ---------------------------------------------------------------------------
 // Commands: relay → extension
@@ -49,6 +98,14 @@ export interface ExtensionCommands {
 	listTabs: {
 		params: Record<string, never>;
 	};
+	/** Report whether a submitted recording started an Instance AI conversation. */
+	recordingResult: {
+		params: {
+			recordingId: string;
+			accepted: boolean;
+			threadUrl?: string;
+		};
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -80,6 +137,12 @@ export interface ExtensionEvents {
 			/** Absent on extension builds older than this field. */
 			reason?: 'blocked_by_extension';
 			blockingExtensionIds?: string[];
+		};
+	};
+	/** A user-reviewed semantic demonstration for Instance AI. */
+	recordingCompleted: {
+		params: {
+			recording: BrowserRecording;
 		};
 	};
 }

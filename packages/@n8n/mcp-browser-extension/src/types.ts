@@ -51,13 +51,102 @@ export interface ClearRelayUrlMessage {
 	type: 'clearRelayUrl';
 }
 
+export type BrowserRecordingActionType =
+	| 'navigation'
+	| 'click'
+	| 'context_menu'
+	| 'copy'
+	| 'input'
+	| 'key'
+	| 'select'
+	| 'submit'
+	| 'tab_switch';
+
+export interface BrowserRecordingTarget {
+	tag: string;
+	role?: string;
+	label?: string;
+	name?: string;
+	inputType?: string;
+}
+
+export interface BrowserRecordingAction {
+	id: string;
+	type: BrowserRecordingActionType;
+	timestamp: number;
+	url: string;
+	target?: BrowserRecordingTarget;
+	value?: string;
+	redacted?: boolean;
+}
+
+export interface BrowserRecording {
+	id: string;
+	startedAt: string;
+	status: 'recording' | 'review' | 'submitting' | 'submitted';
+	actions: BrowserRecordingAction[];
+}
+
+export interface StartRecordingMessage {
+	type: 'startRecording';
+}
+
+export interface StopRecordingMessage {
+	type: 'stopRecording';
+}
+
+export interface GetRecordingMessage {
+	type: 'getRecording';
+}
+
+export interface SubmitRecordingMessage {
+	type: 'submitRecording';
+}
+
+export interface DiscardRecordingMessage {
+	type: 'discardRecording';
+}
+
+export interface RemoveRecordingActionMessage {
+	type: 'removeRecordingAction';
+	actionId: string;
+}
+
+export interface MaskRecordingActionMessage {
+	type: 'maskRecordingAction';
+	actionId: string;
+}
+
+export interface RecordingActionMessage {
+	type: 'recordingAction';
+	action: {
+		type: Exclude<BrowserRecordingActionType, 'navigation' | 'tab_switch'>;
+		timestamp: number;
+		url: string;
+		target?: BrowserRecordingTarget;
+		value?: string;
+	};
+}
+
+export interface StopBrowserRecordingMessage {
+	type: 'stopBrowserRecording';
+}
+
 export type ExtensionMessage =
 	| GetTabsMessage
 	| ConnectMessage
 	| DisconnectMessage
 	| GetStatusMessage
 	| GetRelayUrlMessage
-	| ClearRelayUrlMessage;
+	| ClearRelayUrlMessage
+	| StartRecordingMessage
+	| StopRecordingMessage
+	| GetRecordingMessage
+	| SubmitRecordingMessage
+	| DiscardRecordingMessage
+	| RemoveRecordingActionMessage
+	| MaskRecordingActionMessage
+	| RecordingActionMessage;
 
 // ---------------------------------------------------------------------------
 // External messages (web page → background, via externally_connectable)
@@ -105,7 +194,16 @@ export interface StatusChangedMessage {
 	relayUrl?: string;
 }
 
-export type BackgroundPushMessage = RelayUrlReadyMessage | StatusChangedMessage;
+export interface RecordingChangedMessage {
+	type: 'recordingChanged';
+	recording: BrowserRecording | null;
+	error?: string;
+}
+
+export type BackgroundPushMessage =
+	| RelayUrlReadyMessage
+	| StatusChangedMessage
+	| RecordingChangedMessage;
 
 // ---------------------------------------------------------------------------
 // Type guards

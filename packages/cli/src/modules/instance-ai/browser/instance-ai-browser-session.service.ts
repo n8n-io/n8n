@@ -5,11 +5,12 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { UserRepository } from '@n8n/db';
+import { ProjectRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { BrowserExtensionTraceContext } from '@n8n/instance-ai';
 import type {
 	BrowserConnection,
+	BrowserRecording,
 	CDPRelayServer,
 	CreateCredentialPayload,
 	SecretsBuffer,
@@ -53,6 +54,19 @@ interface BrowserSession {
 	extensionVersion: string | null;
 	connection: BrowserConnection;
 	mcpServer: BrowserLocalMcpServer;
+	pushRef?: string;
+	completedRecordingIds: Set<string>;
+}
+
+interface BrowserRecordingCompletion {
+	userId: string;
+	projectId: string;
+	pushRef?: string;
+	recording: BrowserRecording;
+}
+
+interface BrowserRecordingCompletionResult {
+	threadId: string;
 }
 
 @Service()
@@ -63,11 +77,16 @@ export class InstanceAiBrowserSessionService {
 
 	private readonly logger: Logger;
 
+	private recordingCompletionHandler?: (
+		input: BrowserRecordingCompletion,
+	) => Promise<BrowserRecordingCompletionResult>;
+
 	constructor(
 		logger: Logger,
 		private readonly urlService: UrlService,
 		private readonly push: Push,
 		private readonly userRepository: UserRepository,
+		private readonly projectRepository: ProjectRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
@@ -75,8 +94,15 @@ export class InstanceAiBrowserSessionService {
 		this.logger = logger.scoped('instance-ai');
 	}
 
-	async createLink(userId: string): Promise<InstanceAiBrowserCreateLinkResponse> {
+	setRecordingCompletionHandler(
+		handler: (input: BrowserRecordingCompletion) => Promise<BrowserRecordingCompletionResult>,
+	): void {
+		this.recordingCompletionHandler = handler;
+	}
+
+	async createLink(userId: string, pushRef?: string): Promise<InstanceAiBrowserCreateLinkResponse> {
 		const session = this.sessions.get(userId) ?? (await this.createSession(userId));
+		session.pushRef = pushRef;
 
 		session.relayAuthToken = `bu_${nanoid(32)}`;
 		session.tokenCreatedAt = Date.now();
@@ -91,6 +117,11 @@ export class InstanceAiBrowserSessionService {
 			expiresAt: expiresAt.toISOString(),
 			ttlSeconds: Math.ceil(CONNECT_TOKEN_TTL_MS / 1000),
 		};
+	}
+
+	updatePushRef(userId: string, pushRef: string): void {
+		const session = this.sessions.get(userId);
+		if (session) session.pushRef = pushRef;
 	}
 
 	getStatus(userId: string): InstanceAiBrowserStatusResponse {
@@ -173,6 +204,8 @@ export class InstanceAiBrowserSessionService {
 		const relay = new CDPRelayServer({ noServer: true });
 		relay.onExtensionConnect = () => this.handleExtensionConnected(userId);
 		relay.onExtensionDisconnect = () => this.handleExtensionDisconnected(userId);
+		relay.onRecordingCompleted = async (recording) =>
+			await this.handleRecordingCompleted(userId, recording);
 
 		const toolkit = createBrowserTools(
 			{ mode: 'remote' },
@@ -204,6 +237,7 @@ export class InstanceAiBrowserSessionService {
 			extensionVersion: null,
 			connection: toolkit.connection,
 			mcpServer: new BrowserLocalMcpServer(toolkit, toolContext, this.logger),
+			completedRecordingIds: new Set(),
 		};
 		this.sessions.set(userId, session);
 		this.sessionsBySessionId.set(sessionId, session);
@@ -221,6 +255,33 @@ export class InstanceAiBrowserSessionService {
 		session.relay.stop();
 		session.connected = false;
 		session.connectedAt = null;
+		session.completedRecordingIds.clear();
+	}
+
+	private async handleRecordingCompleted(
+		userId: string,
+		recording: BrowserRecording,
+	): Promise<{ threadUrl?: string }> {
+		const session = this.sessions.get(userId);
+		const handler = this.recordingCompletionHandler;
+		if (!session || !handler || session.completedRecordingIds.has(recording.id)) return {};
+
+		session.completedRecordingIds.add(recording.id);
+		try {
+			const project = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
+			const { threadId } = await handler({
+				userId,
+				projectId: project.id,
+				pushRef: session.pushRef,
+				recording,
+			});
+			return {
+				threadUrl: `${this.urlService.getInstanceBaseUrl().replace(/\/$/, '')}/assistant/${threadId}`,
+			};
+		} catch (error) {
+			session.completedRecordingIds.delete(recording.id);
+			throw error;
+		}
 	}
 
 	private handleExtensionConnected(userId: string): void {

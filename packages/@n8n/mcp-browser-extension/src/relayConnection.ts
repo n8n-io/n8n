@@ -10,6 +10,7 @@
 import { DocumentPreparation } from './documentPreparation';
 import { ForeignFrames } from './foreignFrames';
 import { createLogger } from './logger';
+import type { BrowserRecording } from './types';
 
 interface ProtocolCommand {
 	id: number;
@@ -93,6 +94,7 @@ export class RelayConnection {
 
 	onclose?: () => void;
 	ontabcreated?: () => void;
+	onrecordingresult?: (recordingId: string, accepted: boolean, threadUrl?: string) => void;
 
 	constructor(ws: WebSocket) {
 		this.ws = ws;
@@ -197,6 +199,12 @@ export class RelayConnection {
 
 	isAgentCreatedTab(chromeTabId: number): boolean {
 		return this.agentCreatedChromeTabIds.has(chromeTabId);
+	}
+
+	sendRecording(recording: BrowserRecording): boolean {
+		if (this.ws.readyState !== WebSocket.OPEN) return false;
+		this.sendMessage({ method: 'recordingCompleted', params: { recording } });
+		return true;
 	}
 
 	markAsAgentCreated(chromeTabId: number): void {
@@ -509,6 +517,19 @@ export class RelayConnection {
 			case 'listTabs':
 			case 'listRegisteredTabs':
 				return await this.handleListTabs();
+			case 'recordingResult': {
+				const recordingId = message.params?.recordingId;
+				const accepted = message.params?.accepted;
+				const threadUrl = message.params?.threadUrl;
+				if (typeof recordingId === 'string' && typeof accepted === 'boolean') {
+					this.onrecordingresult?.(
+						recordingId,
+						accepted,
+						typeof threadUrl === 'string' ? threadUrl : undefined,
+					);
+				}
+				return {};
+			}
 			default:
 				log.debug(`unknown command: ${message.method}`);
 				return undefined;

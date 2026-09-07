@@ -10,6 +10,7 @@ import { createLogger } from './logger';
 import { getRelayHostKey, isAllowedPageOrigin, isAllowedRelayUrl } from './relayAllowlist';
 import { RelayConnection, isEligibleTab } from './relayConnection';
 import type {
+	BrowserRecording,
 	ExtensionMessage,
 	ExternalConnectResponse,
 	ExternalConnectResultResponse,
@@ -84,11 +85,11 @@ async function focusPendingConnectPage(): Promise<void> {
 chrome.runtime.onMessage.addListener(
 	(
 		message: ExtensionMessage,
-		_sender: chrome.runtime.MessageSender,
+		sender: chrome.runtime.MessageSender,
 		sendResponse: (response: unknown) => void,
 	) => {
 		log.debug('message received:', message.type);
-		void handleMessage(message).then((response) => {
+		void handleMessage(message, sender).then((response) => {
 			log.debug('message response:', message.type, response);
 			sendResponse(response);
 		});
@@ -96,7 +97,10 @@ chrome.runtime.onMessage.addListener(
 	},
 );
 
-async function handleMessage(message: ExtensionMessage): Promise<unknown> {
+async function handleMessage(
+	message: ExtensionMessage,
+	sender: chrome.runtime.MessageSender,
+): Promise<unknown> {
 	switch (message.type) {
 		case 'getTabs':
 			return await getEligibleTabs();
@@ -124,9 +128,404 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 			await chrome.storage.session.remove(RELAY_URL_KEY);
 			return { success: true };
 
+		case 'startRecording':
+			return await startRecording();
+
+		case 'stopRecording':
+			await stopRecording();
+			return { success: true };
+
+		case 'getRecording':
+			return recording;
+
+		case 'submitRecording':
+			return submitRecording();
+
+		case 'discardRecording':
+			await discardRecording();
+			return { success: true };
+
+		case 'removeRecordingAction':
+			if (recording?.status === 'review') {
+				recording.actions = recording.actions.filter((action) => action.id !== message.actionId);
+				broadcastRecordingChange();
+			}
+			return { success: true };
+
+		case 'maskRecordingAction':
+			if (recording?.status === 'review') {
+				const action = recording.actions.find((item) => item.id === message.actionId);
+				if (!action) return { success: true };
+				if (action.value !== undefined) action.value = '[REDACTED]';
+				action.redacted = true;
+				if (action.target) {
+					action.target.label = undefined;
+					action.target.name = undefined;
+				}
+				try {
+					action.url = new URL(action.url).origin;
+				} catch {
+					action.url = '';
+				}
+				broadcastRecordingChange();
+			}
+			return { success: true };
+
+		case 'recordingAction':
+			appendRecordingAction(message.action, sender);
+			return { success: true };
+
 		default:
 			return { error: 'Unknown message type' };
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Semantic action recording
+// ---------------------------------------------------------------------------
+
+const MAX_RECORDING_ACTIONS = 250;
+const RECORDING_SUBMIT_TIMEOUT_MS = 20_000;
+const SENSITIVE_FIELD_PATTERN =
+	/(?:password|passcode|secret|token|api[ _-]?key|access[ _-]?key|private[ _-]?key|authorization|credential|card[ _-]?number|security[ _-]?code|cvv|cvc|pin)/i;
+const SECRET_VALUE_PATTERNS = [
+	/-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+	/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/,
+	/\b(?:sk|pk|rk|ghp|gho|github_pat|xox[baprs])[-_][A-Za-z0-9_-]{16,}\b/i,
+];
+
+let recording: BrowserRecording | null = null;
+let recordingSubmitTimer: ReturnType<typeof setTimeout> | undefined;
+const pendingRecordingTabIds = new Set<number>();
+const recordingTabIds = new Set<number>();
+const activatingRecordingTabIds = new Set<number>();
+
+function isBlankTabUrl(url: string | undefined): boolean {
+	return (
+		url === 'about:blank' ||
+		url?.startsWith('chrome://newtab') === true ||
+		url?.startsWith('chrome://new-tab-page') === true
+	);
+}
+
+function isRecordableUrl(url: string): boolean {
+	return url.startsWith('https://') || url.startsWith('http://');
+}
+
+function sanitizeUrl(raw: string): string {
+	try {
+		const url = new URL(raw);
+		if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+		const path = url.pathname
+			.split('/')
+			.slice(0, 7)
+			.map((segment) => {
+				const decoded = decodeURIComponent(segment);
+				return /@|\d|[A-Fa-f0-9]{16,}|[A-Za-z0-9_-]{24,}/.test(decoded) ? ':id' : segment;
+			})
+			.join('/');
+		return `${url.origin}${path}`.slice(0, 500);
+	} catch {
+		return '';
+	}
+}
+
+function sanitizeText(value: string | undefined, limit: number): string | undefined {
+	const sanitized = value?.replace(/\s+/g, ' ').trim().slice(0, limit);
+	return sanitized === '' ? undefined : sanitized;
+}
+
+function sanitizeValue(
+	value: string | undefined,
+	target: { label?: string; name?: string; inputType?: string } | undefined,
+): { value?: string; redacted?: boolean } {
+	if (value === undefined) return {};
+	const fieldContext = `${target?.label ?? ''} ${target?.name ?? ''} ${target?.inputType ?? ''}`;
+	if (
+		target?.inputType === 'password' ||
+		SENSITIVE_FIELD_PATTERN.test(fieldContext) ||
+		SECRET_VALUE_PATTERNS.some((pattern) => pattern.test(value))
+	) {
+		return { value: '[REDACTED]', redacted: true };
+	}
+	return { value: sanitizeText(value, 200) };
+}
+
+async function injectRecorder(tabId: number, frameId?: number): Promise<void> {
+	try {
+		await chrome.scripting.executeScript({
+			target: frameId === undefined ? { tabId, allFrames: true } : { tabId, frameIds: [frameId] },
+			files: ['recorder.js'],
+			injectImmediately: true,
+		});
+	} catch {
+		// Internal and restricted pages cannot run the recorder.
+	}
+}
+
+async function startRecording(): Promise<{ success: boolean; error?: string }> {
+	if (!activeConnection)
+		return { success: false, error: 'Connect the extension before recording.' };
+
+	const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+	const pendingTabId =
+		activeTab?.id !== undefined && isBlankTabUrl(activeTab.url) ? activeTab.id : undefined;
+	if (activeTab?.id !== undefined && isEligibleTab(activeTab)) {
+		await activeConnection.relay.addTab(activeTab.id, activeTab.title ?? '', activeTab.url ?? '');
+	}
+
+	const controlledTabs = activeConnection.relay.getControlledIds();
+	if (controlledTabs.length === 0 && pendingTabId === undefined) {
+		return { success: false, error: 'Open a web page before recording.' };
+	}
+
+	recording = {
+		id: crypto.randomUUID(),
+		startedAt: new Date().toISOString(),
+		status: 'recording',
+		actions: [],
+	};
+	pendingRecordingTabIds.clear();
+	recordingTabIds.clear();
+	activatingRecordingTabIds.clear();
+	if (pendingTabId !== undefined) {
+		pendingRecordingTabIds.add(pendingTabId);
+		recordingTabIds.add(pendingTabId);
+	}
+	await Promise.all(
+		controlledTabs.map(async ({ chromeTabId }) => await injectRecorder(chromeTabId)),
+	);
+	broadcastStatusChange();
+	broadcastRecordingChange();
+	return { success: true };
+}
+
+async function stopRecording(): Promise<void> {
+	if (!recording || recording.status !== 'recording') return;
+	const tabIds = new Set([
+		...(activeConnection?.relay.getControlledIds().map(({ chromeTabId }) => chromeTabId) ?? []),
+		...recordingTabIds,
+	]);
+	await Promise.all(
+		[...tabIds].map(async (tabId) => {
+			try {
+				const frames = await chrome.webNavigation.getAllFrames({ tabId });
+				await Promise.all(
+					(frames ?? []).map(async ({ frameId }) => {
+						await chrome.tabs.sendMessage(tabId, { type: 'stopBrowserRecording' }, { frameId });
+					}),
+				);
+			} catch {
+				// The tab may have navigated or closed.
+			}
+		}),
+	);
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	pendingRecordingTabIds.clear();
+	recordingTabIds.clear();
+	activatingRecordingTabIds.clear();
+	if (!recording || recording.status !== 'recording') return;
+	recording.status = 'review';
+	broadcastRecordingChange();
+}
+
+function submitRecording(): { success: boolean; error?: string } {
+	if (!recording || recording.status !== 'review' || recording.actions.length === 0) {
+		return { success: false, error: 'Record at least one action before sending.' };
+	}
+	if (!activeConnection) return { success: false, error: 'Reconnect before sending.' };
+	recording.status = 'submitting';
+	broadcastRecordingChange();
+	if (!activeConnection.relay.sendRecording(recording)) {
+		recording.status = 'review';
+		broadcastRecordingChange('The recording could not be sent. Try again.');
+		return { success: false, error: 'The recording could not be sent. Try again.' };
+	}
+	recordingSubmitTimer = setTimeout(() => {
+		if (recording?.status !== 'submitting') return;
+		recording.status = 'review';
+		broadcastRecordingChange('n8n did not confirm the recording. Try again.');
+	}, RECORDING_SUBMIT_TIMEOUT_MS);
+	return { success: true };
+}
+
+async function discardRecording(): Promise<void> {
+	if (recordingSubmitTimer) clearTimeout(recordingSubmitTimer);
+	recordingSubmitTimer = undefined;
+	await stopRecording();
+	recording = null;
+	broadcastRecordingChange();
+}
+
+function appendRecordingAction(
+	action: {
+		type: 'click' | 'context_menu' | 'copy' | 'input' | 'key' | 'select' | 'submit';
+		timestamp: number;
+		url: string;
+		target?: { tag: string; role?: string; label?: string; name?: string; inputType?: string };
+		value?: string;
+	},
+	sender: chrome.runtime.MessageSender,
+): void {
+	if (
+		!recording ||
+		recording.status !== 'recording' ||
+		recording.actions.length >= MAX_RECORDING_ACTIONS
+	)
+		return;
+	const tabId = sender.tab?.id;
+	if (
+		sender.id !== chrome.runtime.id ||
+		tabId === undefined ||
+		(!activeConnection?.relay.isControlledTab(tabId) && !recordingTabIds.has(tabId))
+	) {
+		return;
+	}
+	const target = action.target
+		? {
+				tag: sanitizeText(action.target.tag, 30) ?? 'element',
+				role: sanitizeText(action.target.role, 40),
+				label: sanitizeContextText(action.target.label, 160),
+				name: sanitizeContextText(action.target.name, 80),
+				inputType: sanitizeText(action.target.inputType, 40),
+			}
+		: undefined;
+	const sanitizedLink =
+		(action.type === 'copy' || action.type === 'context_menu') && action.value
+			? sanitizeUrl(action.value)
+			: '';
+	const value =
+		action.type === 'context_menu'
+			? sanitizedLink
+				? { value: sanitizedLink }
+				: {}
+			: sanitizedLink
+				? { value: sanitizedLink }
+				: sanitizeValue(action.value, target);
+	recording.actions.push({
+		id: crypto.randomUUID(),
+		type: action.type,
+		timestamp: Math.max(0, action.timestamp - Date.parse(recording.startedAt)),
+		url: sanitizeUrl(action.url),
+		target,
+		...value,
+	});
+	broadcastRecordingChange();
+}
+
+function appendNavigation(url: string): void {
+	if (
+		!recording ||
+		recording.status !== 'recording' ||
+		recording.actions.length >= MAX_RECORDING_ACTIONS
+	)
+		return;
+	const sanitizedUrl = sanitizeUrl(url);
+	if (!sanitizedUrl) return;
+	const previous = recording.actions.at(-1);
+	if (previous?.type === 'navigation' && previous.url === sanitizedUrl) return;
+	recording.actions.push({
+		id: crypto.randomUUID(),
+		type: 'navigation',
+		timestamp: Date.now() - Date.parse(recording.startedAt),
+		url: sanitizedUrl,
+	});
+	broadcastRecordingChange();
+}
+
+function appendTabSwitch(url: string, title: string): void {
+	if (
+		!recording ||
+		recording.status !== 'recording' ||
+		recording.actions.length >= MAX_RECORDING_ACTIONS
+	)
+		return;
+	const sanitizedUrl = sanitizeUrl(url);
+	if (!sanitizedUrl) return;
+	const previous = recording.actions.at(-1);
+	if (previous?.type === 'tab_switch' && previous.url === sanitizedUrl) return;
+	recording.actions.push({
+		id: crypto.randomUUID(),
+		type: 'tab_switch',
+		timestamp: Date.now() - Date.parse(recording.startedAt),
+		url: sanitizedUrl,
+		target: {
+			tag: 'tab',
+			label: sanitizeContextText(title, 160),
+		},
+	});
+	broadcastRecordingChange();
+}
+
+async function activatePendingRecordingTab(
+	tabId: number,
+	url: string,
+	title = '',
+	action: 'navigation' | 'tab_switch' = 'navigation',
+): Promise<void> {
+	const relay = activeConnection?.relay;
+	if (!relay || recording?.status !== 'recording' || !pendingRecordingTabIds.has(tabId)) return;
+
+	pendingRecordingTabIds.delete(tabId);
+	activatingRecordingTabIds.add(tabId);
+	try {
+		await injectRecorder(tabId);
+		await relay.addTab(tabId, title, url);
+		if (relay !== activeConnection?.relay || recording?.status !== 'recording') return;
+		if (action === 'tab_switch') appendTabSwitch(url, title);
+		else appendNavigation(url);
+		broadcastStatusChange();
+		updateBadge(relay.getControlledIds().length);
+	} catch (error) {
+		if (relay === activeConnection?.relay && recording?.status === 'recording') {
+			pendingRecordingTabIds.add(tabId);
+		}
+		log.warn('Failed to activate pending recording tab', error);
+	} finally {
+		activatingRecordingTabIds.delete(tabId);
+	}
+}
+
+function broadcastRecordingChange(error?: string): void {
+	chrome.runtime.sendMessage({ type: 'recordingChanged', recording, error }).catch(() => {});
+}
+
+async function openRecordingThread(threadUrl: string): Promise<void> {
+	try {
+		const destination = new URL(threadUrl);
+		if (
+			!isAllowedPageOrigin(destination.origin) ||
+			getRelayHostKey(destination.origin) !== getRelayHostKey(activeConnection?.relayUrl)
+		) {
+			return;
+		}
+		const tabs = await chrome.tabs.query({});
+		const sameHostTabs = tabs.filter((tab) => getRelayHostKey(tab.url) === destination.host);
+		const target =
+			sameHostTabs.find((tab) => tab.url?.includes('/assistant')) ?? sameHostTabs.at(0);
+		if (target?.id === undefined) {
+			await chrome.tabs.create({ url: destination.href, active: true });
+			return;
+		}
+		await chrome.tabs.update(target.id, { url: destination.href, active: true });
+		if (target.windowId !== undefined) {
+			await chrome.windows.update(target.windowId, { focused: true });
+		}
+	} catch (error) {
+		log.warn('Failed to open browser recording thread', error);
+	}
+}
+
+function sanitizeContextText(value: string | undefined, limit: number): string | undefined {
+	const sanitized = sanitizeText(value, limit);
+	if (!sanitized) return undefined;
+	if (
+		SECRET_VALUE_PATTERNS.some((pattern) => pattern.test(sanitized)) ||
+		/\b[A-Za-z0-9_-]{32,}\b/.test(sanitized)
+	) {
+		return '[REDACTED]';
+	}
+	return sanitized;
 }
 
 // ---------------------------------------------------------------------------
@@ -346,6 +745,16 @@ chrome.tabs.onCreated.addListener((tab) => {
 	if (!activeConnection || !tab.id) return;
 
 	const relay = activeConnection.relay;
+	if (recording?.status === 'recording') {
+		recordingTabIds.add(tab.id);
+		pendingRecordingTabIds.add(tab.id);
+		const url = tab.pendingUrl ?? tab.url;
+		if (url && isRecordableUrl(url)) {
+			void activatePendingRecordingTab(tab.id, url, tab.title ?? '');
+		}
+		return;
+	}
+
 	const isAgentCreated = relay.isAgentCreatedTab(tab.id);
 
 	if (!isAgentCreated) return;
@@ -358,6 +767,7 @@ chrome.tabs.onCreated.addListener((tab) => {
 		log.debug('[onCreated] adding agent-created tab:', tab.id, url);
 		void relay.addTab(tab.id, tab.title ?? '', url).then(() => {
 			if (relay === activeConnection?.relay) {
+				if (recording?.status === 'recording') void injectRecorder(tab.id!);
 				broadcastStatusChange();
 				updateBadge(relay.getControlledIds().length);
 			}
@@ -372,6 +782,13 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 	if (!activeConnection) return;
 
 	const relay = activeConnection.relay;
+	if (recording?.status === 'recording' && recordingTabIds.has(details.tabId)) {
+		relay.markAsAgentCreated(details.tabId);
+		if (isRecordableUrl(details.url)) {
+			void activatePendingRecordingTab(details.tabId, details.url);
+		}
+		return;
+	}
 	const sourceIsControlled = relay.isControlledTab(details.sourceTabId);
 
 	log.debug(
@@ -395,6 +812,7 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 		log.debug('[onCreatedNavigationTarget] adding spawned tab:', details.tabId, url);
 		void relay.addTab(details.tabId, '', url).then(() => {
 			if (relay === activeConnection?.relay) {
+				if (recording?.status === 'recording') void injectRecorder(details.tabId);
 				broadcastStatusChange();
 				updateBadge(relay.getControlledIds().length);
 			}
@@ -407,8 +825,31 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 	}
 });
 
+chrome.webNavigation.onCommitted.addListener((details) => {
+	if (
+		details.frameId === 0 &&
+		pendingRecordingTabIds.has(details.tabId) &&
+		isRecordableUrl(details.url)
+	) {
+		void activatePendingRecordingTab(details.tabId, details.url);
+		return;
+	}
+	if (recording?.status === 'recording' && activeConnection?.relay.isControlledTab(details.tabId)) {
+		if (details.frameId === 0) appendNavigation(details.url);
+		void injectRecorder(details.tabId, details.frameId);
+	}
+});
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 	if (!activeConnection) return;
+	if (changeInfo.url && pendingRecordingTabIds.has(tabId) && isRecordableUrl(changeInfo.url)) {
+		void activatePendingRecordingTab(tabId, changeInfo.url, changeInfo.title ?? '');
+		return;
+	}
+	if (recording?.status === 'recording' && activeConnection.relay.isControlledTab(tabId)) {
+		if (changeInfo.url) appendNavigation(changeInfo.url);
+		if (changeInfo.status === 'complete') void injectRecorder(tabId);
+	}
 
 	// Only auto-register tabs created by the AI agent (or marked as spawned)
 	if (!activeConnection.relay.isAgentCreatedTab(tabId)) return;
@@ -428,7 +869,42 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 	}
 });
 
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+	if (recording?.status !== 'recording' || !activeConnection) return;
+	const relay = activeConnection.relay;
+	void chrome.tabs
+		.get(tabId)
+		.then((tab) => {
+			if (recording?.status !== 'recording' || relay !== activeConnection?.relay) return;
+			const url = tab.url ?? tab.pendingUrl;
+			if (!url) return;
+			if (
+				recordingTabIds.has(tabId) &&
+				(pendingRecordingTabIds.has(tabId) || activatingRecordingTabIds.has(tabId))
+			) {
+				return;
+			}
+			if (relay.isControlledTab(tabId)) {
+				appendTabSwitch(url, tab.title ?? '');
+				return;
+			}
+			if (isBlankTabUrl(url)) {
+				recordingTabIds.add(tabId);
+				pendingRecordingTabIds.add(tabId);
+				return;
+			}
+			if (!isRecordableUrl(url)) return;
+			recordingTabIds.add(tabId);
+			pendingRecordingTabIds.add(tabId);
+			void activatePendingRecordingTab(tabId, url, tab.title ?? '', 'tab_switch');
+		})
+		.catch(() => {});
+});
+
 chrome.tabs.onRemoved.addListener((tabId) => {
+	pendingRecordingTabIds.delete(tabId);
+	recordingTabIds.delete(tabId);
+	activatingRecordingTabIds.delete(tabId);
 	if (pendingConnectFlow?.tabId === tabId && !activeConnection) {
 		settleConnectFlow(false);
 	}
@@ -511,6 +987,17 @@ async function connectToRelay(
 			updateBadge(relay.getControlledIds().length);
 		};
 
+		relay.onrecordingresult = (recordingId, accepted, threadUrl) => {
+			if (recording?.id !== recordingId || recording.status !== 'submitting') return;
+			if (recordingSubmitTimer) clearTimeout(recordingSubmitTimer);
+			recordingSubmitTimer = undefined;
+			recording.status = accepted ? 'submitted' : 'review';
+			if (accepted && threadUrl) void openRecordingThread(threadUrl);
+			broadcastRecordingChange(
+				accepted ? undefined : 'The recording could not be processed. Try again.',
+			);
+		};
+
 		const tabCount = relay.getControlledIds().length;
 		log.debug('connected, controlling', tabCount, 'tabs');
 		updateBadge(tabCount);
@@ -538,6 +1025,7 @@ function disconnect(): void {
 		activeConnection = null;
 		updateBadge(0);
 	}
+	void discardRecording();
 }
 
 /** Notify all extension contexts (popup, connect.html tab) about connection state changes. */

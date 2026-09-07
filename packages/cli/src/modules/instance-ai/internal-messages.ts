@@ -36,6 +36,8 @@ export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
 export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
 export const PAST_CONVERSATIONS_OPEN_TAG = '<past-conversations>';
 export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
+export const BROWSER_RECORDING_OPEN_TAG = '<browser-recording>';
+export const BROWSER_RECORDING_CLOSE_TAG = '</browser-recording>';
 
 /**
  * Matches internal task-context prefix blocks injected by the service. The
@@ -44,7 +46,7 @@ export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>)(?:\n\n|$)/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<browser-recording>\n[\s\S]*?\n<\/browser-recording>)(?:\n\n|$)/;
 
 /** Captures the leading JSON line inside an editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
@@ -114,6 +116,13 @@ export function withProjectContext(message: string, projectSection: string): str
  */
 export function withPastConversations(message: string, section: string): string {
 	return `${message}\n\n${PAST_CONVERSATIONS_OPEN_TAG}\n${section}\n${PAST_CONVERSATIONS_CLOSE_TAG}`;
+}
+
+export function withBrowserRecordingContext(message: string, context: string): string {
+	const escaped = context
+		.replaceAll(BROWSER_RECORDING_OPEN_TAG, '&lt;browser-recording&gt;')
+		.replaceAll(BROWSER_RECORDING_CLOSE_TAG, '&lt;/browser-recording&gt;');
+	return `${BROWSER_RECORDING_OPEN_TAG}\n${escaped}\n${BROWSER_RECORDING_CLOSE_TAG}\n\n${message}`;
 }
 
 /** Neutralize delimiter tags in title-derived text placed inside the block. */
