@@ -304,6 +304,7 @@ export class PromotionConnectionsService {
 		if (!resolved) {
 			throw new BadRequestError('The stored promotion configuration cannot be read');
 		}
+		// Keep separate branches so TypeScript narrows the settings union by direction.
 		return resolved.direction === 'apply'
 			? { ...this.configFields(config), settings: resolved.settings }
 			: { ...this.configFields(config), settings: resolved.settings };

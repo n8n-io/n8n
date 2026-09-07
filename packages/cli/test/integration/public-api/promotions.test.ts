@@ -230,7 +230,7 @@ describe('Promotions in Public API', () => {
 		const response = await agent.put(`/promotions/providers/${providerId}`).send({});
 
 		expect(response.status).toBe(400);
-		expect(response.body.message).toBe('At least one field is required');
+		expect(response.body.message).toBe('request/body At least one field is required');
 	});
 
 	it.each(['providers', 'connections'])(
@@ -426,6 +426,29 @@ describe('Promotions in Public API', () => {
 	});
 
 	describe('configurations', () => {
+		it('rejects one of two concurrent first writes for the same direction', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const providerId = await createProvider(agent);
+			const create = await agent.post('/promotions/connections').send({
+				name: 'Deployments',
+				scope: 'instance',
+				providerId,
+				target: { schemaVersion: 1, remoteUrl: 'https://example.com/org/repo.git' },
+			});
+			const id = create.body.id as string;
+			const payload = { settings: { schemaVersion: 1, branchName: 'main' } };
+
+			const responses = await Promise.all([
+				agent.put(`/promotions/connections/${id}/configs/apply`).send(payload),
+				agent.put(`/promotions/connections/${id}/configs/apply`).send(payload),
+			]);
+
+			expect(responses.map(({ status }) => status).sort()).toEqual([200, 409]);
+			expect(await Container.get(PromotionConfigRepository).findByConnectionIds([id])).toHaveLength(
+				1,
+			);
+		});
+
 		it('creates, replaces, and removes one direction', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const providerId = await createProvider(agent);
