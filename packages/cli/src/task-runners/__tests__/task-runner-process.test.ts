@@ -231,7 +231,7 @@ describe('TaskRunnerProcess', () => {
 					NODE_OPTIONS: '--max-old-space-size-percentage=75',
 				}),
 			);
-    });
+		});
 
 		it('should build env with a null prototype', async () => {
 			authService.createGrantToken.mockResolvedValue('grantToken');
