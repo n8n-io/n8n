@@ -47,17 +47,20 @@ onMounted(() => {
 	</Message>
 </template>
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion' as motion;
 .chat-message-typing {
 	max-width: 80px;
 
 	&.chat-message-typing-animation-scaling .chat-message-typing-circle {
 		animation: chat-message-typing-animation-scaling 800ms ease-in-out infinite;
 		animation-delay: 3600ms;
+		@include motion.reduced-motion;
 	}
 
 	&.chat-message-typing-animation-bouncing .chat-message-typing-circle {
 		animation: chat-message-typing-animation-bouncing 800ms ease-in-out infinite;
 		animation-delay: 3600ms;
+		@include motion.reduced-motion;
 	}
 
 	.chat-message-typing-body {
