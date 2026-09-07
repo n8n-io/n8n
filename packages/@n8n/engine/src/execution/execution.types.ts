@@ -50,10 +50,9 @@ export type StepSlots = JsonValue[];
 export type TriggerOutputs = StepSlots;
 
 /**
- * The workflow the run came from, supplied by whoever starts the execution and
- * stored beside it, immutable for the execution's lifetime. Opaque: the engine
- * never reads a field out of it. Anything the engine must act on — a timeout, a
- * timezone, a failure handler — arrives as its own field instead.
+ * The full workflow the run came from, supplied by CP. Opaque: the engine
+ * never reads a field out of it. Different from WorkflowGraph, which
+ * is only the graph that is executed (e.g. without disabled nodes).
  */
 export type WorkflowDocument = JsonObject;
 
