@@ -330,6 +330,7 @@ const canExecuteOnCanvas = computed(() => {
 	if (isDemoRoute.value) {
 		return route.query.canExecute === 'true';
 	}
+	if (isReadOnlyEnvironment.value) return false;
 	if (workflowDocumentStore?.value?.isArchived) return false;
 	if (builderStore.streaming) return false;
 	if (externalReadOnly?.value) return false;

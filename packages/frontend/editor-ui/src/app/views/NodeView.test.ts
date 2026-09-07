@@ -1,4 +1,4 @@
-import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 import { EVALUATION_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import {
@@ -7,8 +7,10 @@ import {
 } from '../stores/workflowDocument.store';
 import { createPinia, setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '../stores/workflows.store';
+import { useWorkflowsListStore } from '../stores/workflowsList.store';
 import { useWorkflowExecutionStateStore } from '../stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
@@ -71,7 +73,7 @@ describe('NodeView', () => {
 						setup(_, { expose }) {
 							expose({ ensureNodesAreVisible });
 						},
-						template: '<div />',
+						template: '<div><slot /></div>',
 					}),
 				},
 			},
@@ -167,6 +169,45 @@ describe('NodeView', () => {
 			expect(
 				workflowDocumentStore.allNodes.filter((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE),
 			).toHaveLength(1);
+		});
+	});
+
+	describe('Protected instance', () => {
+		beforeEach(() => {
+			workflowDocumentStore.setNodes([
+				createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n0' }),
+			]);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: MANUAL_TRIGGER_NODE_TYPE,
+					group: ['trigger'],
+				}),
+			]);
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({
+					id: 'w0',
+					scopes: ['workflow:execute', 'workflow:read'],
+				}),
+			);
+		});
+
+		it('hides the execute workflow button when the instance is read-only', async () => {
+			useSourceControlStore().preferences.branchReadOnly = true;
+
+			const { queryByTestId, findByText } = renderNodeView();
+
+			await findByText(
+				"This workflow can't be edited or run manually because it's on a protected instance",
+			);
+			expect(queryByTestId('execute-workflow-button')).not.toBeInTheDocument();
+		});
+
+		it('shows the execute workflow button when the instance is writable', async () => {
+			useSourceControlStore().preferences.branchReadOnly = false;
+
+			const { findByTestId } = renderNodeView();
+
+			expect(await findByTestId('execute-workflow-button')).toBeInTheDocument();
 		});
 	});
 });

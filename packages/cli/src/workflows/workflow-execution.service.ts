@@ -40,12 +40,14 @@ import {
 } from 'n8n-workflow';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -75,6 +77,7 @@ export class WorkflowExecutionService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
 	async runWorkflow(
@@ -278,6 +281,8 @@ export class WorkflowExecutionService {
 		pushRef?: string,
 		n8nAuthCookie?: string,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
+		this.assertManualExecutionAllowed();
+
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(workflowData.id);
 
@@ -757,6 +762,15 @@ export class WorkflowExecutionService {
 			payload.destinationNode.nodeName,
 			payload.runData,
 		);
+	}
+
+	/** Production triggers still run on a protected instance. Block only user-started manual runs. */
+	private assertManualExecutionAllowed() {
+		if (this.instanceWriteAccess.isReadOnly()) {
+			throw new ForbiddenError(
+				'Cannot run workflows manually on a protected instance. This instance is in read-only mode.',
+			);
+		}
 	}
 }
 
