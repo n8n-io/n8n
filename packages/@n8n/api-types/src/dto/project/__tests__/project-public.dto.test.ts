@@ -5,6 +5,7 @@ import {
 	ProjectListPublicDto,
 	ProjectPublicDto,
 	projectPublicSchema,
+	UpdateProjectPublicDto,
 } from '../project-public.dto';
 
 const project = {
@@ -115,6 +116,31 @@ describe('CreateProjectPublicDto', () => {
 
 	test.each(['id', 'type'])('rejects %s as read-only', (key) => {
 		const result = CreateProjectPublicDto.safeParse({ name: 'Marketing', [key]: 'x' });
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0]).toMatchObject({ path: [key], message: 'is read-only' });
+	});
+});
+
+describe('UpdateProjectPublicDto', () => {
+	test('accepts a name', () => {
+		expect(UpdateProjectPublicDto.safeParse({ name: 'Marketing' }).success).toBe(true);
+	});
+
+	test.each([
+		['a missing name', {}, ['name']],
+		['an empty name', { name: '' }, ['name']],
+		['a name over 255 characters', { name: 'a'.repeat(256) }, ['name']],
+		['an unknown key', { name: 'Marketing', description: 'd' }, []],
+	])('rejects %s', (_label, payload, path) => {
+		const result = UpdateProjectPublicDto.safeParse(payload);
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0].path).toEqual(path);
+	});
+
+	test.each(['id', 'type'])('rejects %s as read-only', (key) => {
+		const result = UpdateProjectPublicDto.safeParse({ name: 'Marketing', [key]: 'x' });
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0]).toMatchObject({ path: [key], message: 'is read-only' });

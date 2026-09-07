@@ -79,6 +79,7 @@ export {
 	CreatedProjectPublicDto,
 	CreateProjectPublicDto,
 	ListProjectsQueryPublicDto,
+	UpdateProjectPublicDto,
 } from './project/project-public.dto';
 export type { ProjectPublic } from './project/project-public.dto';
 
