@@ -93,14 +93,9 @@ const resolveResource = async (path: string) =>
 	await Container.get(ProtectedResourceRegistry).getByResourcePath(`/${webhookEndpoint}/${path}`);
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true'; // gates the chat-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
 	webhookEndpoint = Container.get(GlobalConfig).endpoints.webhook;
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {
@@ -198,20 +193,6 @@ describe('protected resource metadata for chat triggers', () => {
 		const response = await testServer.restlessAgent.get(prmPathFor(path));
 
 		expect(response.statusCode).toBe(404);
-	});
-
-	test('should not resolve when the feature flag is disabled', async () => {
-		const path = chatPath();
-		await createPublishedChatWorkflow(path, chatTriggerNode());
-
-		delete process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2;
-		try {
-			// Also proves the generic webhook resolver does not pick a chat path up itself.
-			const response = await testServer.restlessAgent.get(prmPathFor(path));
-			expect(response.statusCode).toBe(404);
-		} finally {
-			process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true';
-		}
 	});
 
 	test('should not resolve when public chat is disabled instance-wide', async () => {

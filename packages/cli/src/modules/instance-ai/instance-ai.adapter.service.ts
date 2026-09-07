@@ -8,6 +8,8 @@ import {
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -27,6 +29,7 @@ import { redactTelemetryText } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
 	InstanceAiContext,
+	InstanceAiConversationHistoryReader,
 	InstanceAiWorkflowService,
 	InstanceAiExecutionService,
 	InstanceAiCredentialService,
@@ -372,15 +375,18 @@ export class InstanceAiAdapterService {
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
-			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
+			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
-			/** Per-user MCP registry gate (via `isMcpConnectionsEnabled`). Falsy →
+			/** Per-user MCP registry gate (via `resolveExperimentGates`). Falsy →
 			 *  mcp service/tool not wired. */
 			mcpConnectionsEnabled?: boolean;
-			/** Per-user node-usage gate (via `isNodeUsageEnabled`). Falsy → neither the
+			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
 			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
 			nodeUsageEnabled?: boolean;
+			/** Past-conversation recall, already bound to the run's user, project and
+			 *  thread by the caller. Absent → conversation-history tool not wired. */
+			conversationHistory?: InstanceAiConversationHistoryReader;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -397,6 +403,7 @@ export class InstanceAiAdapterService {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			nodeUsageEnabled,
+			conversationHistory,
 			modelId,
 		} = options ?? {};
 
@@ -429,6 +436,7 @@ export class InstanceAiAdapterService {
 					}
 				: {}),
 			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
+			conversationHistoryService: conversationHistory,
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -492,39 +500,39 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/** Per-user gate for config-based evals: on when the config-evaluations
-	 *  experiment is on the enabled variant, so we never create evals the user
-	 *  can't run. Fails closed: `getFeatureFlags` returns `{}` on a PostHog outage. */
-	async isConfigEvalsEnabled(user: User): Promise<boolean> {
-		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
-		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
-	}
-
 	/**
-	 * Gate for the node-usage context surface. PostHog owns cohort rollout;
-	 * `N8N_INSTANCE_AI_NODE_USAGE_ENABLED` force-enables because {@link PostHogClient}
-	 * layers that override on top of the resolved flags. Fails closed on any PostHog
-	 * error, so an outage never switches a context surface on by accident.
+	 * Every experiment gate from one PostHog fetch, so a caller wires its context
+	 * from one call. `mcpConnectionsEnabled` also folds in two instance-wide
+	 * preconditions. Fails closed: `getFeatureFlags` returns `{}` on a PostHog
+	 * outage.
 	 */
-	async isNodeUsageEnabled(user: User): Promise<boolean> {
-		try {
-			const flags = await Container.get(PostHogClient).getFeatureFlags(user);
-			return flags?.[INSTANCE_AI_NODE_USAGE_FLAG] === true;
-		} catch {
-			return false;
-		}
+	async resolveExperimentGates(user: User): Promise<{
+		/** Config-based evals: never create evals the user can't run. */
+		configEvalsEnabled: boolean;
+		/** MCP registry discovery: module active, MCP access allowed, user in the experiment. */
+		mcpConnectionsEnabled: boolean;
+		/** Past-conversation recall: tool, prompt section and first-turn hint. */
+		conversationHistoryEnabled: boolean;
+		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
+		nodeUsageEnabled: boolean;
+	}> {
+		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		return {
+			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
+			mcpConnectionsEnabled:
+				this.mcpPreconditionsHold() &&
+				flags[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+			conversationHistoryEnabled:
+				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
+				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
+		};
 	}
 
-	/** Gate for MCP registry discovery tool. All three must hold:
-	 * 1. the `mcp-registry` module is active
-	 * 2. the admin allows MCP access instance-wide
-	 * 3. the user is part of the MCP connections experiment */
-	async isMcpConnectionsEnabled(user: User): Promise<boolean> {
-		if (!Container.get(ModuleRegistry).isActive('mcp-registry')) return false;
-		if (!this.settingsService.isMcpAccessEnabled()) return false;
-		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+	private mcpPreconditionsHold(): boolean {
 		return (
-			flags?.[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT
+			Container.get(ModuleRegistry).isActive('mcp-registry') &&
+			this.settingsService.isMcpAccessEnabled()
 		);
 	}
 

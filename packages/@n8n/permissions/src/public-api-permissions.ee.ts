@@ -13,6 +13,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:changeRole',
 	'user:delete',
 	'sourceControl:pull',
+	'sourceControl:push',
 	'sourceControl:read',
 	'gitConnection:create',
 	'gitConnection:read',

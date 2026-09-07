@@ -21,9 +21,7 @@ const RUNNERS_IMAGES = process.env.SMOKE_RUNNERS_IMAGES
 			.filter(Boolean)
 	: [
 			'n8nio/runners:local',
-			...(process.env.DOCKER_BUILD_DISTROLESS === 'true'
-				? ['n8nio/runners:local-distroless']
-				: []),
+			...(process.env.DOCKER_BUILD_DISTROLESS === 'true' ? ['n8nio/runners:local-distroless'] : []),
 		];
 const TIMEOUT = '45s';
 // Matches an n8n runtime image ref (e.g. `n8nio/n8n:2.4.4`, `ghcr.io/n8n-io/n8n@sha256:…`)
@@ -72,15 +70,11 @@ async function fetchCloudInvocations() {
 	}
 }
 
-// Do not add to this list
-const KNOWN_DUPLICATED = new Map([
-	// pnpm materializes a package once per distinct peer resolution, and
-	// @langchain/community has optional peers (qdrant, mongodb, redis, …) that only
-	// nodes-langchain installs, so it splits into two variants, and its dependent
-	// @n8n/ai-utilities gets materialized twice with it. Versions already align;
-	// the fix is dropping ai-utilities' @langchain/community dependency
-	['@n8n/ai-utilities', 2],
-]);
+// Do not add to this list. The dedicated-lockfile deploy materializes every
+// workspace package once; the legacy deploy split @n8n/ai-utilities in two
+// because @langchain/community resolved its optional peers differently per
+// importer.
+const KNOWN_DUPLICATED = new Map();
 
 function reportFailure(name, err) {
 	echo(chalk.red(`✗ ${name}`));
@@ -98,7 +92,10 @@ async function runWorkspaceDedupCheck() {
 		})`docker run --rm --entrypoint ls ${IMAGE} /usr/local/lib/node_modules/n8n/node_modules/.pnpm`;
 		const variants = new Map();
 		for (const entry of stdout.split('\n')) {
-			const match = entry.match(/^(.+?)@file\+packages\+/);
+			// pnpm names an injected workspace package after its `file:` path, which the
+			// dedicated-lockfile deploy writes as an absolute URL:
+			// `<name>@file++++home+runner+…+packages+<dir>_<hash>`.
+			const match = entry.match(/^(.+?)@file\+.*packages\+/);
 			if (!match) continue;
 			const pkg = match[1].replace('+', '/');
 			variants.set(pkg, [...(variants.get(pkg) ?? []), entry]);
@@ -175,6 +172,36 @@ async function runRunnersInterpreterCheck(image) {
 	}
 }
 
+// Derived images add packages with `pnpm add` in the JS runner directory (docs:
+// "Adding extra dependencies"). pnpm prunes packages the recorded importer no
+// longer needs, so a deploy that records the closure differently makes this
+// delete the runner instead of extending it. Fails when pnpm cannot run, prunes,
+// or the added package and the runner no longer both resolve.
+// `minimum-release-age=0` mirrors the Dockerfile: the check is about the closure
+// shape, not about how fresh the latest uuid is.
+const RUNNER_JS_DIR = '/opt/runners/task-runner-javascript';
+
+async function runRunnersExtensionCheck(image) {
+	const name = `pnpm add extends the JS runner in ${image}`;
+	const script = [
+		`cd ${RUNNER_JS_DIR}`,
+		'before=$(ls node_modules/.pnpm | wc -l)',
+		'pnpm add uuid --prod --no-lockfile --config.minimum-release-age=0',
+		'after=$(ls node_modules/.pnpm | wc -l)',
+		'[ "$after" -gt "$before" ] || { echo "pnpm add pruned the closure: $before -> $after packages"; exit 1; }',
+		`node -e "require('uuid'); require('moment'); require.resolve('n8n-core')"`,
+	].join(' && ');
+	try {
+		await $({
+			timeout: '120s',
+		})`docker run --rm --user root --entrypoint sh ${image} -c ${script}`;
+		echo(chalk.green(`✓ ${name}`));
+		return true;
+	} catch (err) {
+		return reportFailure(name, err);
+	}
+}
+
 async function run({ name, user, entrypoint, args }) {
 	const dockerArgs = ['run', '--rm', '--user', `${user}:${user}`];
 	if (entrypoint) dockerArgs.push('--entrypoint', entrypoint);
@@ -213,6 +240,10 @@ const ok = (
 		runWorkspaceDedupCheck(),
 		runKafkaBindingCheck(),
 		...RUNNERS_IMAGES.map(runRunnersInterpreterCheck),
+		// The distroless image ships no shell or pnpm; only the standard image is extendable.
+		...RUNNERS_IMAGES.filter((image) => !image.endsWith('-distroless')).map(
+			runRunnersExtensionCheck,
+		),
 	])
 ).every(Boolean);
 if (!ok) process.exit(1);

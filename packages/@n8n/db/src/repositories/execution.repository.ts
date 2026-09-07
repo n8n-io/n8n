@@ -754,6 +754,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		);
 	}
 
+	async cancelManyRunning(executionIds: string[]) {
+		await this.update(
+			// The caller's ID list is a snapshot. The status match stops an execution that
+			// reached a terminal status in the meantime from being recorded as cancelled.
+			{ id: In(executionIds), status: 'running' },
+			{ status: 'canceled', stoppedAt: new Date(), waitTill: null },
+		);
+	}
+
 	// ----------------------------------
 	//            new API
 	// ----------------------------------
