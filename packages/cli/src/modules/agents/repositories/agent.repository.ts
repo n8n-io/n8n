@@ -1,6 +1,14 @@
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	In,
+	IsNull,
+	Not,
+	Repository,
+	type EntityManager,
+	type SelectQueryBuilder,
+} from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -297,6 +305,17 @@ export class AgentRepository extends Repository<Agent> {
 			.getMany();
 	}
 
+	/** The ids, from the given list, that belong to an agent with a published version. */
+	async findPublishedIds(agentIds: string[]): Promise<Set<string>> {
+		if (agentIds.length === 0) return new Set();
+
+		const rows = await this.find({
+			where: { id: In(agentIds), activeVersionId: Not(IsNull()) },
+			select: ['id'],
+		});
+		return new Set(rows.map((row) => row.id));
+	}
+
 	/**
 	 * Finds agents within a project whose `integrations` JSON column contains an
 	 * entry matching the given `type` + `credentialId`, excluding `excludeAgentId`.
@@ -321,5 +340,70 @@ export class AgentRepository extends Repository<Agent> {
 				agent.id !== excludeAgentId &&
 				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
 		);
+	}
+
+	/**
+	 * Atomically advances publication state only when the row's `revision` still
+	 * matches the value the caller observed at load — the optimistic revision
+	 * fence for publish/unpublish. Writes only the publication-owned columns
+	 * (`activeVersionId`, `versionId`) and bumps `revision`, so a concurrent
+	 * draft edit (autosave) that bumped `revision` in between makes this affect
+	 * zero rows instead of clobbering the newer draft. Returns whether this
+	 * caller won the fence.
+	 */
+	async setActiveVersionFenced(
+		id: string,
+		expectedRevision: number,
+		next: { activeVersionId: string | null; versionId: string },
+		trx?: EntityManager,
+	): Promise<boolean> {
+		const result = await (trx ?? this)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({
+				activeVersionId: next.activeVersionId,
+				versionId: next.versionId,
+				revision: () => 'revision + 1',
+			})
+			.where('id = :id AND revision = :expected', { id, expected: expectedRevision })
+			.execute();
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Persists a draft edit behind the same optimistic revision fence as
+	 * publish/unpublish. Writes only the draft-owned columns and bumps
+	 * `revision` in SQL, so it can neither clobber `activeVersionId` written by
+	 * a concurrent publish nor mask that publish by writing a stale in-memory
+	 * revision over the row. On a win the in-memory entity's `revision` and
+	 * `updatedAt` are synced to what was written. Returns whether this caller
+	 * won the fence.
+	 */
+	async saveDraftFenced(agent: Agent, trx?: EntityManager): Promise<boolean> {
+		const expectedRevision = agent.revision;
+		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
+		// so the in-memory entity can report the exact persisted timestamp.
+		const updatedAt = new Date();
+		const result = await (trx ?? this)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({
+				name: agent.name,
+				schema: agent.schema,
+				integrations: agent.integrations,
+				tools: agent.tools,
+				skills: agent.skills,
+				versionId: agent.versionId,
+				updatedAt,
+				revision: () => 'revision + 1',
+			})
+			.where('id = :id AND revision = :expected', { id: agent.id, expected: expectedRevision })
+			.execute();
+		const won = (result.affected ?? 0) > 0;
+		if (won) {
+			agent.revision = expectedRevision + 1;
+			agent.updatedAt = updatedAt;
+		}
+		return won;
 	}
 }

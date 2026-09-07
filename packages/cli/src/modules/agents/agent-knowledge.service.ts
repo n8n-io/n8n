@@ -5,8 +5,8 @@ import {
 } from '@n8n/api-types';
 import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
+import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { QueryFailedError } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
@@ -27,22 +27,6 @@ import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 const MAX_AGENT_FILE_METADATA_LENGTH = 255;
-
-function isUniqueConstraintError(error: unknown): boolean {
-	if (!(error instanceof QueryFailedError)) return false;
-
-	const driverError = error.driverError;
-	if (!driverError || typeof driverError !== 'object') return false;
-
-	const code =
-		'code' in driverError && typeof driverError.code === 'string' ? driverError.code : undefined;
-
-	if (code === '23505') return true;
-	if (code === 'SQLITE_CONSTRAINT_UNIQUE') return true;
-	if (code === 'SQLITE_CONSTRAINT' && /UNIQUE constraint/i.test(error.message)) return true;
-
-	return false;
-}
 
 @Service()
 export class AgentKnowledgeService {
@@ -89,9 +73,11 @@ export class AgentKnowledgeService {
 		return files.map((file) => toAgentFileDto(file));
 	}
 
-	async warmSandbox(agentId: string, projectId: string): Promise<void> {
+	async warmKnowledgeSandbox(agentId: string, projectId: string): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
-		await this.agentSandboxRuntimeService.warmSandbox(projectId, agentId);
+		if (!(await this.agentFileRepository.hasFilesForAgent(agentId))) return;
+
+		await this.agentSandboxRuntimeService.warmKnowledgeSandbox(projectId, agentId);
 	}
 
 	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
@@ -112,7 +98,11 @@ export class AgentKnowledgeService {
 					error: error instanceof Error ? error.message : error,
 				});
 			});
-		this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
+		if (await this.agentFileRepository.hasFilesForAgent(agentId)) {
+			this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
+		} else {
+			await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
+		}
 	}
 
 	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
@@ -136,8 +126,8 @@ export class AgentKnowledgeService {
 	}
 
 	/** Best-effort passthrough for agent/project deletion; never throws. */
-	async destroySandbox(projectId: string, agentId: string): Promise<void> {
-		await this.agentSandboxRuntimeService.destroySandbox(projectId, agentId);
+	async destroyKnowledgeSandbox(projectId: string, agentId: string): Promise<void> {
+		await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
 	}
 
 	/** Stores the file's bytes via AgentKnowledgeFileStore, then reserves its DB row. */

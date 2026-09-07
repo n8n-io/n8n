@@ -8,17 +8,40 @@ name: 'Docker Build Smoke Test'
 #             build base image (no Docker cache) →
 #             build n8n + runners images (no Docker cache)
 
+env:
+  # The images copy native bindings from the host build, so both have to use the same
+  # Node. dockerize-n8n.mjs reads this env for the image builds. Keep in sync with
+  # NODE_VERSION in docker-build-push.yml, which is what the published images use.
+  NODE_VERSION: '26.7.0'
+  # Also build the distroless runners image and exec-check
+  # both runners images' interpreters, so a broken runtime assembly (e.g. a
+  # missing shared library after a Node bump) fails at PR time. The smoke
+  # script derives the images to check from this same flag.
+  DOCKER_BUILD_DISTROLESS: 'true'
+
 on:
   schedule:
     - cron: '0 3 * * *' # 3:00 AM UTC, after the nightly Docker build at midnight
   pull_request:
     paths:
+      - 'docker/docker-bake.hcl'
       - 'docker/images/n8n/**'
       - 'docker/images/n8n-base/**'
       - 'docker/images/runners/**'
       - 'scripts/build-n8n.mjs'
       - 'scripts/dockerize-n8n.mjs'
       - 'scripts/smoke-n8n-image.mjs'
+      - '.github/scripts/docker/kafka-native-smoke-check.mjs'
+      - '.github/scripts/docker/should-smoke-build.mjs'
+      # These drive the build and the image distribution, so a change here can
+      # break the chain without touching a Dockerfile.
+      - '.github/actions/build-n8n-docker/action.yml'
+      - '.github/actions/load-n8n-docker/action.yml'
+      - '.github/workflows/docker-build-push.yml'
+      - 'patches/**'
+      # Pins the native deps this build compiles, but changes far more often
+      # than they do — the gate job narrows it to the pins that matter.
+      - 'pnpm-workspace.yaml'
   workflow_dispatch:
 
 concurrency:
@@ -26,10 +49,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    name: 'Check for relevant changes'
+    runs-on: ubuntu-slim
+    outputs:
+      build: ${{ steps.gate.outputs.build }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # HEAD is the PR merge commit, so HEAD^1 is the base tip.
+          fetch-depth: 2
+
+      - id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT" != 'pull_request' ]]; then
+            echo 'build=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed-files"
+          node .github/scripts/docker/should-smoke-build.mjs \
+            --base HEAD^1 --changed-files "$RUNNER_TEMP/changed-files"
+
   docker-smoke-test:
-    name: 'Docker Build (no cache)'
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    if: ${{ !github.event.pull_request.head.repo.fork }}
+    name: 'Docker Build (no cache, ${{ matrix.platform }})'
+    # Both architectures build natively: the runtime images assemble binaries
+    # across images with arch-specific paths (e.g. the ELF interpreter lives at
+    # /lib/ld-linux-aarch64.so.1 only on arm64), so amd64 alone can miss
+    # arm64-only runtime breaks.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: amd64
+            runner: blacksmith-4vcpu-ubuntu-2204
+          - platform: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
+    runs-on: ${{ matrix.runner }}
+    needs: gate
+    if: ${{ !github.event.pull_request.head.repo.fork && needs.gate.outputs.build == 'true' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -44,11 +104,12 @@ jobs:
       - name: Build full chain (no cache)
         uses: ./.github/actions/setup-nodejs
         with:
-          # Keep in sync with NODE_VERSION in docker/images/n8n/Dockerfile: the image
-          # copies native bindings from the host build.
-          node-version: '24.18.1'
+          node-version: ${{ env.NODE_VERSION }}
           build-command: 'pnpm build:docker:clean'
           enable-docker-cache: true
+          # Use a separate key. This job builds with --no-cache. A shared key
+          # would write an empty snapshot over the release layers.
+          docker-cache-key: docker-smoke
 
       - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
 

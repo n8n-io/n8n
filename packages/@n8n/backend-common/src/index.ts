@@ -21,6 +21,10 @@ export { TypedEmitter } from './typed-emitter';
 
 export { LockService } from './locking/lock.service';
 export {
+	SingleFlightLease,
+	type SingleFlightLeaseOptions,
+} from './locking/single-flight-lease';
+export {
 	type ILockService,
 	LockNamespace,
 	LockAcquisitionTimeoutError,

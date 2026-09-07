@@ -11,11 +11,15 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { assertJsonContentType } from '@/public-api/public-api-media-type';
 import {
 	apiKeyScopesSatisfy,
+	isDtoArg,
+	isRequestBodyRequired,
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
+import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
@@ -58,7 +62,12 @@ export class PublicApiControllerRegistry {
 				route.successStatus,
 			);
 
+			const bodyDto = resolvedArgs.find((arg) => isDtoArg(arg, 'body'))?.dto;
+			const bodyRequired = bodyDto ? isRequestBodyRequired(bodyDto) : false;
+
 			const handler = async (req: Request, res: Response) => {
+				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
+
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
@@ -68,7 +77,7 @@ export class PublicApiControllerRegistry {
 						if (output.success) {
 							args.push(output.data);
 						} else {
-							throw new BadRequestError(output.error.errors[0]?.message ?? 'Invalid request');
+							throw new BadRequestError(formatValidationError(arg.type, output.error));
 						}
 					}
 				}

@@ -9,6 +9,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ToolCredentialPicker from '@/features/shared/toolsConnection/ToolCredentialPicker.vue';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	hasToolConnection,
 	type McpServerConnectionItem,
 	type ToolCredentialRef,
 } from '@/features/shared/toolsConnection/types';
@@ -42,7 +43,7 @@ const preConnectedSlugs = ref<Set<string> | null>(null);
 
 void mcpStore.fetchCatalogLazy();
 void (async () => {
-	await mcpStore.fetchConnections();
+	await mcpStore.fetchConnectionsLazy();
 	preConnectedSlugs.value = new Set(mcpStore.connections.map((c) => c.serverSlug));
 })();
 void (async () => {
@@ -63,7 +64,6 @@ interface CardRow {
 	serverSlug: string;
 	subtitle: string;
 	icon: ConnectionRowIcon;
-	credentialType: string;
 	item: McpServerConnectionItem & { credentials: ToolCredentialRef[] };
 }
 
@@ -71,21 +71,23 @@ const rows = computed<CardRow[]>(() =>
 	props.servers.map((server) => {
 		const entry = catalogBySlug.value.get(server.serverSlug);
 		const connection = mcpStore.connections.find((c) => c.serverSlug === server.serverSlug);
-		const credentialType =
-			connection?.credentialType ?? entry?.credentialType ?? server.credentialType;
+		const credentialOptions = entry?.credentials ?? server.usesCredentials;
 		return {
 			serverSlug: server.serverSlug,
 			subtitle: entry?.tagline ?? server.tagline ?? '',
 			icon: iconForTool(entry?.icons ?? [], uiStore.appliedTheme),
-			credentialType,
 			item: {
 				id: connection?.id ?? server.serverSlug,
 				kind: 'mcp-server',
 				title: entry?.title ?? server.title,
-				isConnected: Boolean(connection),
-				credentials: [
-					{ authType: credentialType, credentialId: connection?.credentialId, required: true },
-				],
+				status: connection?.status ?? 'none',
+				credentials: credentialOptions.map(({ credentialType, name }) => ({
+					authType: credentialType,
+					displayName: name,
+					credentialId:
+						connection?.credentialType === credentialType ? connection.credentialId : undefined,
+					required: true,
+				})),
 				availableTools: [],
 			},
 		};
@@ -93,13 +95,17 @@ const rows = computed<CardRow[]>(() =>
 );
 
 const isActionable = computed(() => !props.readOnly && !props.expired);
-const anyConnected = computed(() => rows.value.some((row) => row.item.isConnected));
+const anyConnected = computed(() => rows.value.some(hasConnection));
+
+function hasConnection(row: CardRow): boolean {
+	return hasToolConnection(row.item.status);
+}
 
 function finish(approved: boolean) {
 	if (!isActionable.value) return;
 	emit('resolve', {
 		approved,
-		connectedSlugs: rows.value.filter((row) => row.item.isConnected).map((row) => row.serverSlug),
+		connectedSlugs: rows.value.filter(hasConnection).map((row) => row.serverSlug),
 	});
 }
 
@@ -108,8 +114,10 @@ watch(
 	[isActionable, rows, preConnectedSlugs],
 	([actionable, currentRows, preConnected]) => {
 		if (!actionable || autoFinished.value || !preConnected) return;
-		const connectedHere = currentRows.some((row) => !preConnected.has(row.serverSlug));
-		if (connectedHere && currentRows.every((row) => row.item.isConnected)) {
+		const connectedHere = currentRows.some(
+			(row) => !preConnected.has(row.serverSlug) && hasConnection(row),
+		);
+		if (connectedHere && currentRows.every(hasConnection)) {
 			autoFinished.value = true;
 			finish(true);
 		}
@@ -118,7 +126,7 @@ watch(
 );
 
 function showsCredentialPicker(row: CardRow): boolean {
-	return row.item.isConnected || isActionable.value;
+	return hasConnection(row) || isActionable.value;
 }
 
 async function runConnect(attempt: () => Promise<unknown>) {
@@ -131,9 +139,14 @@ async function runConnect(attempt: () => Promise<unknown>) {
 	}
 }
 
-async function connect(row: CardRow) {
+async function connect(row: CardRow, credentialType: string, credentialTypes?: readonly string[]) {
 	await runConnect(
-		async () => await connectServer({ slug: row.serverSlug, credentialType: row.credentialType }),
+		async () =>
+			await connectServer({
+				slug: row.serverSlug,
+				credentialType,
+				credentialTypes,
+			}),
 	);
 }
 
@@ -146,20 +159,20 @@ async function handleSelectCredential(row: CardRow, credentialId: string) {
 
 provide(
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
-	createCredentialAdapter((_authType, item) => {
+	createCredentialAdapter((authType, item, credentialTypes) => {
 		const row = rows.value.find((candidate) => candidate.item.id === item.id);
-		if (row) void connect(row);
+		if (row) void connect(row, authType, credentialTypes);
 	}),
 );
 
 function handleBrowseAll() {
-	mcpTelemetry.trackToolsListOpened();
+	mcpTelemetry.trackToolsListOpened('mcp_connect_card');
 	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 }
 
 function openSettings(row: CardRow) {
-	if (!row.item.isConnected) return;
-	mcpTelemetry.trackSettingsOpened(row.serverSlug);
+	if (!hasConnection(row)) return;
+	mcpTelemetry.trackSettingsOpened(row.serverSlug, 'mcp_connect_card');
 	uiStore.openModalWithData({
 		name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 		data: { connectionId: row.item.id },
@@ -190,8 +203,7 @@ function openSettings(row: CardRow) {
 				:name="row.item.title"
 				:subtitle="row.subtitle"
 				:icon="row.icon"
-				size="default"
-				:clickable="row.item.isConnected"
+				:clickable="hasConnection(row)"
 				@open-settings="openSettings(row)"
 			>
 				<template #action>
@@ -257,7 +269,8 @@ function openSettings(row: CardRow) {
 }
 
 .awaitingInput {
-	border: 2px solid var(--color--primary);
+	border: 0;
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .header {

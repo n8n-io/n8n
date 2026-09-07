@@ -499,6 +499,26 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it('passes the thread project to the prompt so the project-scope section renders', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'project-scope-prompt',
+				projectId: 'project-1',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'project-scope-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map()),
+		} as never);
+
+		expect(getSystemPrompt).toHaveBeenCalledWith(
+			expect.objectContaining({ projectId: 'project-1' }),
+		);
+	});
+
 	describe('connected MCP services', () => {
 		const lastDomainToolContext = () => {
 			const calls = createOrchestratorDomainTools.mock.calls as Array<
@@ -662,6 +682,35 @@ describe('createInstanceAgent', () => {
 		expect(agentTools.custom_plan).toMatchObject({ marker: 'custom-plan' });
 		expect(mcpContextTools.get('shared_tool')).toMatchObject({ marker: 'local-shared' });
 		expect(mcpContextTools.get('github_workflows')).toMatchObject({ marker: 'github-workflows' });
+	});
+
+	it('keeps native orchestrator-only tools when an MCP tool claims the same name', async () => {
+		const localMcpServer = {
+			getToolsByCategory: vi.fn().mockReturnValue([]),
+		};
+		createToolsFromLocalMcpServer.mockReturnValue(
+			new Map([['conversation-history', mockBuiltTool('conversation-history', 'mcp-history')]]),
+		);
+		createOrchestratorDomainTools.mockReturnValueOnce(
+			new Map([['conversation-history', mockBuiltTool('conversation-history', 'native-history')]]),
+		);
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'reserved-names',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer,
+				logger: mockLogger,
+			},
+			orchestrationContext: { runId: 'reserved-names' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attachedTools = getAttachedTools();
+		expect(attachedTools['conversation-history']).toMatchObject({ marker: 'native-history' });
 	});
 
 	it('defers evals behind tool search so the first prompt stays smaller', async () => {

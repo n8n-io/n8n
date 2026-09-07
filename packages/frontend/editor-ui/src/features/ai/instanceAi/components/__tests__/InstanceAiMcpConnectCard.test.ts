@@ -81,7 +81,7 @@ const BRAVE_PAYLOAD = {
 	serverSlug: 'brave',
 	title: 'Brave',
 	tagline: 'Search the web',
-	credentialType: 'braveMcpOAuth2Api',
+	usesCredentials: [{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 };
 
 const BRAVE_CATALOG_ENTRY = {
@@ -93,7 +93,7 @@ const BRAVE_CATALOG_ENTRY = {
 	version: '1',
 	updatedAt: '2026-01-01',
 	icons: [],
-	credentialType: 'braveMcpOAuth2Api',
+	credentials: [{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 	tools: [],
 	isOfficial: true,
 	status: 'active' as const,
@@ -104,6 +104,7 @@ const BRAVE_CONNECTION = {
 	serverSlug: 'brave',
 	credentialId: 'cred-1',
 	credentialType: 'braveMcpOAuth2Api',
+	status: 'connected' as const,
 };
 
 function makeMcpStore(overrides: Record<string, unknown> = {}) {
@@ -111,7 +112,7 @@ function makeMcpStore(overrides: Record<string, unknown> = {}) {
 		catalog: [BRAVE_CATALOG_ENTRY],
 		connections: [] as Array<Record<string, unknown>>,
 		fetchCatalogLazy: vi.fn(),
-		fetchConnections: vi.fn(),
+		fetchConnectionsLazy: vi.fn(),
 		disconnect: vi.fn(),
 		...overrides,
 	});
@@ -213,7 +214,13 @@ describe('InstanceAiMcpConnectCard', () => {
 			props: {
 				servers: [
 					BRAVE_PAYLOAD,
-					{ serverSlug: 'exa', title: 'Exa', credentialType: 'exaMcpOAuth2Api' },
+					{
+						serverSlug: 'exa',
+						title: 'Exa',
+						usesCredentials: [
+							{ credentialType: 'exaMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+						],
+					},
 				],
 			},
 		});
@@ -248,7 +255,13 @@ describe('InstanceAiMcpConnectCard', () => {
 			props: {
 				servers: [
 					BRAVE_PAYLOAD,
-					{ serverSlug: 'exa', title: 'Exa', credentialType: 'exaMcpOAuth2Api' },
+					{
+						serverSlug: 'exa',
+						title: 'Exa',
+						usesCredentials: [
+							{ credentialType: 'exaMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+						],
+					},
 				],
 			},
 		});
@@ -276,7 +289,7 @@ describe('InstanceAiMcpConnectCard', () => {
 
 		await fireEvent.click(getByTestId('instance-ai-mcp-connect-browse-all'));
 
-		expect(telemetryMock.trackToolsListOpened).toHaveBeenCalled();
+		expect(telemetryMock.trackToolsListOpened).toHaveBeenCalledWith('mcp_connect_card');
 		expect(uiStoreMock.openModal).toHaveBeenCalledWith(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 	});
 
@@ -294,7 +307,7 @@ describe('InstanceAiMcpConnectCard', () => {
 		mcpStoreMock.mockReturnValue(makeMcpStore({ catalog: null }));
 
 		const { getByTestId } = renderComponent({
-			props: { servers: [{ ...BRAVE_PAYLOAD, credentialType: 'braveMcpOAuth2Api' }] },
+			props: { servers: [BRAVE_PAYLOAD] },
 		});
 
 		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
@@ -399,7 +412,7 @@ describe('InstanceAiMcpConnectCard', () => {
 				serverSlug: 'duck',
 				title: 'Duck',
 				tagline: 'Search',
-				credentialType: 'braveMcpOAuth2Api',
+				usesCredentials: [{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 			};
 			mcpStoreMock.mockReturnValue(
 				makeMcpStore({
@@ -432,7 +445,9 @@ describe('InstanceAiMcpConnectCard', () => {
 							slug: 'duck',
 							name: 'duck',
 							title: 'Duck Search',
-							credentialType: 'duckMcpOAuth2Api',
+							credentials: [
+								{ credentialType: 'duckMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
 						},
 					],
 				}),
@@ -446,7 +461,13 @@ describe('InstanceAiMcpConnectCard', () => {
 				props: {
 					servers: [
 						BRAVE_PAYLOAD,
-						{ serverSlug: 'duck', title: 'Duck', credentialType: 'duckMcpOAuth2Api' },
+						{
+							serverSlug: 'duck',
+							title: 'Duck',
+							usesCredentials: [
+								{ credentialType: 'duckMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
 					],
 				},
 			});
@@ -471,7 +492,7 @@ describe('InstanceAiMcpConnectCard', () => {
 
 			await fireEvent.click(getByText('Brave Search'));
 
-			expect(telemetryMock.trackSettingsOpened).toHaveBeenCalledWith('brave');
+			expect(telemetryMock.trackSettingsOpened).toHaveBeenCalledWith('brave', 'mcp_connect_card');
 			expect(uiStoreMock.openModalWithData).toHaveBeenCalledWith({
 				name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 				data: { connectionId: 'conn-1' },

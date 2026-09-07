@@ -57,9 +57,9 @@ export default defineConfig({
 		rollupOptions: {
 			input: {
 				connect: resolve(__dirname, 'src/ui/connect.html'),
+				drawer: resolve(__dirname, 'src/ui/drawer.html'),
 			},
 			output: {
-				entryFileNames: 'connect.js',
 				assetFileNames: '[name][extname]',
 			},
 		},

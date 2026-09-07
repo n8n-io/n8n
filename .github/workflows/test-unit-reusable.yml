@@ -45,7 +45,7 @@ jobs:
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
       CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ inputs.ref }}
 
@@ -53,6 +53,13 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
+
+      # Confluent publishes prebuilds up to Node 24 only.
+      - name: Verify Kafka native binding installed
+        if: startsWith(inputs.nodeVersion, '24.')
+        env:
+          NODES_BASE_PACKAGE_JSON: packages/nodes-base/package.json
+        run: node .github/scripts/docker/kafka-native-smoke-check.mjs
 
       # cli is the only backend package wired into janitor scoping today, so
       # the workspace bulk run excludes it and a dedicated step invokes the
@@ -105,7 +112,7 @@ jobs:
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
       CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ inputs.ref }}
 
@@ -165,7 +172,7 @@ jobs:
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
       CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ inputs.ref }}
 
@@ -214,7 +221,7 @@ jobs:
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
       CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ inputs.ref }}
 

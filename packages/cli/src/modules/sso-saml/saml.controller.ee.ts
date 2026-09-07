@@ -12,6 +12,8 @@ import { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import { SSO_ACCESS_DENIED_REDIRECT_PATH } from '@/modules/provisioning.ee/constants';
+import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { UrlService } from '@/services/url.service';
@@ -190,6 +192,11 @@ export class SamlController {
 				userEmail: 'unknown',
 				authenticationMethod: 'saml',
 			});
+			// A login denied by role mapping is not a failure to authenticate: send the
+			// user to the sign-in page, which explains they have no access.
+			if (error instanceof SsoAccessDeniedError) {
+				return res.redirect(this.urlService.getInstanceBaseUrl() + SSO_ACCESS_DENIED_REDIRECT_PATH);
+			}
 			// Need to manually send the error response since we're using templates
 			return sendErrorResponse(
 				res,
@@ -256,7 +263,9 @@ export class SamlController {
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {
-			return res.send(getInitSSOFormView(result.context as PostBindingContext));
+			return res.send(
+				getInitSSOFormView(result.context as PostBindingContext, res.locals.cspNonce),
+			);
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}
@@ -267,7 +276,9 @@ export class SamlController {
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {
-			return res.send(getInitSSOFormView(result.context as PostBindingContext));
+			return res.send(
+				getInitSSOFormView(result.context as PostBindingContext, res.locals.cspNonce),
+			);
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}

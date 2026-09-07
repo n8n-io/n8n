@@ -30,7 +30,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		setCredentials: vi.fn(),
-		fetchAllCredentialsForWorkflow: fetchCredentials,
+		fetchUsableCredentials: fetchCredentials,
 		getCredentialTypeByName: vi.fn(),
 	}),
 }));

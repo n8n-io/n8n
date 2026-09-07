@@ -17,7 +17,7 @@ import type { TagService } from '@/services/tag.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import {
-	dropInvalidNodeGroups,
+	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
@@ -92,7 +92,11 @@ const buildOperationTypeSchema = (canvasGroupsEnabled: boolean) =>
 	canvasGroupsEnabled
 		? z.enum([...baseOperationTypes, ...gatedGroupOperationTypes])
 		: z.enum(baseOperationTypes);
-const positionInputSchema = z.array(z.number()).length(2).describe('Canvas [x, y].');
+// A factory, not a shared instance: reusing one Zod instance across two
+// properties makes the JSON Schema generator dedupe the second occurrence into
+// a `$ref` to a `#/properties/...` path, which strict MCP clients cannot
+// resolve. Mirrors `positionSchema` in workflow-operations.ts.
+const positionInputSchema = () => z.array(z.number()).length(2).describe('Canvas [x, y].');
 const credentialsInputSchema = z.record(
 	z.string(),
 	z.object({ id: z.string().optional(), name: z.string() }),
@@ -102,7 +106,7 @@ const nodeInputSchema = z.object({
 	type: z.string().describe('Node type, e.g. "n8n-nodes-base.set".'),
 	typeVersion: z.number(),
 	parameters: z.record(z.string(), z.unknown()).optional(),
-	position: positionInputSchema.optional(),
+	position: positionInputSchema().optional(),
 	credentials: credentialsInputSchema.optional(),
 	disabled: z.boolean().optional(),
 	notes: z.string().optional(),
@@ -168,7 +172,7 @@ const buildOperationInputSchema = (canvasGroupsEnabled: boolean) =>
 			credentialKey: z.string().optional().describe('For setNodeCredential.'),
 			credentialId: z.string().optional().describe('For setNodeCredential.'),
 			credentialName: z.string().optional().describe('For setNodeCredential.'),
-			position: positionInputSchema.optional().describe('For setNodePosition.'),
+			position: positionInputSchema().optional().describe('For setNodePosition.'),
 			disabled: z.boolean().optional().describe('For setNodeDisabled.'),
 			settings: combinedSettingsInputSchema
 				.optional()
@@ -786,7 +790,7 @@ function assertOperationsSupported(
  * are checked once here rather than per operation. A broken group is dropped
  * and reported; the update still goes through.
  *
- * NOT PURE: `dropInvalidNodeGroups` removes the offending groups from
+ * NOT PURE: `dropInvalidWorkflowGroups` removes the offending groups from
  * `result.workflow.nodeGroups` **in place**, and that mutation is what
  * `buildWorkflowUpdateEntity` later persists. `result` must be passed by
  * reference — cloning it makes the dropped groups silently come back.
@@ -814,12 +818,12 @@ function resolveNodeGroupViolations(
 	const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
 	const violations = canvasGroupsEnabled
 		? [
-				...dropInvalidNodeGroups(
+				...dropInvalidWorkflowGroups(
 					result.workflow,
 					getNodeType,
 					(violation) => result.groupOperations[violation.groupId] !== undefined,
 				),
-				...dropInvalidNodeGroups(result.workflow, getNodeType),
+				...dropInvalidWorkflowGroups(result.workflow, getNodeType),
 			]
 		: [];
 

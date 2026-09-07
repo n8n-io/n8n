@@ -7,6 +7,7 @@ import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '../executions.types';
 import { useToast } from '@n8n/composables/useToast';
 import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -71,6 +72,60 @@ describe('useExecutionDebugging()', () => {
 		executionStateStore = useWorkflowExecutionStateStore('test-id@latest');
 
 		executionDebugging = useExecutionDebugging();
+	});
+
+	it('asks before pinning AI-simulated output and skips those nodes when declined', async () => {
+		const mockExecution = {
+			data: {
+				resultData: {
+					runData: {
+						SimulatedTrigger: [{ data: { main: [[{ json: { id: 'msg_1' } }]] } }],
+						CleanTrigger: [{ data: { main: [[{ json: { real: true } }]] } }],
+					},
+				},
+			},
+		} as unknown as IExecutionResponse;
+		const workflowStore = mockedStore(useWorkflowsStore);
+		mockWorkflowDocumentStore.allNodes = [
+			{ name: 'SimulatedTrigger' },
+			{ name: 'CleanTrigger' },
+		] as INodeUi[];
+		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
+		const simulatedStore = mockedStore(useAiSimulatedExecutionsStore);
+		simulatedStore.isSimulatedNodeOutput.mockImplementation(
+			(executionId, nodeName) => executionId === '1' && nodeName === 'SimulatedTrigger',
+		);
+		mockConfirm.mockResolvedValueOnce('cancel');
+
+		await executionDebugging.applyExecutionData('1');
+
+		expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalledTimes(1);
+		expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalledWith('CleanTrigger', [
+			{ json: { real: true } },
+		]);
+	});
+
+	it('pins AI-simulated output when the adoption is confirmed', async () => {
+		const mockExecution = {
+			data: {
+				resultData: {
+					runData: {
+						SimulatedTrigger: [{ data: { main: [[{ json: { id: 'msg_1' } }]] } }],
+					},
+				},
+			},
+		} as unknown as IExecutionResponse;
+		const workflowStore = mockedStore(useWorkflowsStore);
+		mockWorkflowDocumentStore.allNodes = [{ name: 'SimulatedTrigger' }] as INodeUi[];
+		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
+		const simulatedStore = mockedStore(useAiSimulatedExecutionsStore);
+		simulatedStore.isSimulatedNodeOutput.mockReturnValue(true);
+
+		await executionDebugging.applyExecutionData('1');
+
+		expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalledWith('SimulatedTrigger', [
+			{ json: { id: 'msg_1' } },
+		]);
 	});
 
 	it('should not throw when runData node is an empty array', async () => {

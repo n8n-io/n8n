@@ -7,8 +7,11 @@ import type {
 import type { PackagePublishingResults } from '../entities/workflow/workflow-publisher';
 import { serializeBindings } from '../n8n-packages.types';
 import type {
+	RemovedFolderSummary,
+	RemovedWorkflowSummary,
 	ImportBindingMap,
 	ImportCredentialSummary,
+	ImportDataTableSummary,
 	ImportedFolderSummary,
 	ImportedProjectSummary,
 	ImportedWorkflowSummary,
@@ -51,6 +54,7 @@ export function toImportedWorkflowSummaries(
 			projectId,
 			parentFolderId: current.parentFolder?.id ?? null,
 			activeVersionId: current.activeVersionId ?? null,
+			isArchived: current.isArchived,
 			publishing: result?.publishing ?? { state: 'unchanged' },
 			status,
 		};
@@ -60,20 +64,26 @@ export function toImportedWorkflowSummaries(
 export function buildImportResult(input: {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
+	removedWorkflows: RemovedWorkflowSummary[];
+	removedFolders: RemovedFolderSummary[];
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
 	bindings: PackageImportBindings;
 	credentials: ImportCredentialSummary;
+	dataTables: ImportDataTableSummary;
 	variables: ImportVariableSummary;
 	tags: ImportTagSummary;
 }): ImportResult {
 	return {
 		package: input.package,
 		workflows: input.workflows,
+		removedWorkflows: input.removedWorkflows,
+		removedFolders: input.removedFolders,
 		folders: input.folders,
 		projects: input.projects,
 		bindings: serializeBindings(input.bindings),
 		credentials: input.credentials,
+		dataTables: input.dataTables,
 		variables: input.variables,
 		tags: input.tags,
 	};

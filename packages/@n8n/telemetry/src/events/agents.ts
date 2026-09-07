@@ -211,10 +211,11 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_SESSION_METRICS: {
 		name: 'Agent session metrics',
 		description:
-			'Six-hourly pulse of agent session and turn metrics, bucketed by agent, run type, turn status and configuration. Two token numbers exist across the agent events and they measure different things: token_count_sum here covers only the recorded turns, from the same usage as cost_sum so the two reconcile, while token_count on "Agent execution count" additionally covers LLM calls belonging to no turn (title generation, observational/episodic memory, embeddings) and so runs higher.',
+			'Six-hourly pulse of agent session and turn metrics, bucketed by agent, optional user, run type, turn status and configuration. Two token numbers exist across the agent events and they measure different things: token_count_sum here covers only the recorded turns, from the same usage as cost_sum so the two reconcile, while token_count on "Agent execution count" additionally covers LLM calls belonging to no turn (title generation, observational/episodic memory, embeddings) and so runs higher.',
 		properties: z.object({
 			event_version: z.literal('1'),
 			agent_id: z.string(),
+			user_id: z.string().optional(),
 			agent_type: z.literal('inline').optional(),
 			run_type: agentRunType,
 			turn_status: z.enum(['succeeded', 'failed']),
@@ -533,7 +534,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_STARTED_ADDING_AGENT_TOOL: {
 		name: 'User started adding agent tool',
 		description:
-			'The user clicked Connect on an available row in the tools modal, starting a new tool flow.',
+			'The user started adding an available tool manually by connecting it or creating a workflow.',
 		properties: z.object({
 			tool_type: z.enum(['custom', 'workflow', 'node']),
 			source: z.literal('manual'),

@@ -8,6 +8,10 @@ import type {
 } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
 import { getHighlightedResponseKey } from 'n8n-workflow';
+import {
+	getFailureType,
+	wrapLangChainParserError,
+} from '@utils/output_parsers/langchainParserError';
 
 import { buildExecutionContext, executeBatch, resolveSubAgentRequest } from './helpers';
 import { isExecuteFunctions } from '../../utils';
@@ -147,9 +151,12 @@ export async function toolsAgentExecute(
 		// Otherwise return execution data
 		return [returnData];
 	} catch (error) {
-		failureType =
-			error instanceof Error ? error.name || error.constructor.name || 'Error' : typeof error;
-		throw error;
+		failureType = getFailureType(error);
+		// Failures raised outside `executeBatch` (context building, parameter
+		// assertions) are still raw here, so enrich them the same way.
+		throw wrapLangChainParserError(error, this.getNode(), undefined, {
+			enrichNonParserErrors: true,
+		});
 	} finally {
 		if (isExecuteFunctions(this)) {
 			const tracing: ToolsAgentV3TracingMetadata = {

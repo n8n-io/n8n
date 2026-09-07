@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { LocationQueryRaw } from 'vue-router';
 
 import { useAgentSessionsStore } from '../agentSessions.store';
-import { CONTINUE_SESSION_ID_PARAM } from '../constants';
+import { CONTINUE_SESSION_ID_PARAM, NEW_SESSION_PARAM } from '../constants';
 import { useThreadTitle } from '../utils/thread-title';
 import { useRelativeTimestamp } from '../utils/relative-time';
 
@@ -153,7 +153,9 @@ export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptio
 		ephemeralSessionId.value = ephemeral ? id : null;
 		if (!routeBacked.value) return;
 		pendingRouteSessionId.value = id;
-		void router.replace({ query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id } });
+		const query: LocationQueryRaw = { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id };
+		if (ephemeral) delete query[NEW_SESSION_PARAM];
+		void router.replace({ query });
 	}
 
 	function setSessionInUrl(id: string) {

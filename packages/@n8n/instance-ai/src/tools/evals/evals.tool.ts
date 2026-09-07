@@ -140,7 +140,10 @@ const questionsResumeSchema = instanceAiApprovalResumeSchema.extend({
 		.optional(),
 });
 
-const resumeSchema = z.union([confirmResumeSchema, questionsResumeSchema]);
+/** The questions shape is a superset of the plain-approval one, so it covers both
+ *  suspend kinds. Deliberately not a `z.union`: the plain-approval branch would match
+ *  a questions payload first and strip `answers` on the way through. */
+export const evalsResumeSchema = questionsResumeSchema;
 
 type ConfirmResume = z.infer<typeof confirmResumeSchema>;
 type QuestionsResume = z.infer<typeof questionsResumeSchema>;
@@ -328,7 +331,7 @@ export function createEvalsTool(context: InstanceAiContext) {
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)
-		.resume(resumeSchema)
+		.resume(evalsResumeSchema)
 		.handler(async (input: Input, ctx) => {
 			switch (input.action) {
 				case 'offer':
@@ -531,13 +534,9 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 		});
 		const patched = applyPinData(wf, generated);
 		if (patched !== wf) {
-			const saved = await context.workflowService.updateFromWorkflowJSON(
-				input.workflowId,
-				patched,
-				{
-					...(input.projectId ? { projectId: input.projectId } : {}),
-				},
-			);
+			// No `projectId`: an update lands in the project the workflow already lives
+			// in, resolved by the adapter. Passing one here never did anything.
+			const saved = await context.workflowService.updateFromWorkflowJSON(input.workflowId, patched);
 			await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, {
 				versionId: saved.versionId,
 				checksum: saved.checksum,

@@ -48,7 +48,7 @@ vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn(() => vi.fn()) }
 vi.mock('../mock-handler', () => ({ createLlmMockHandler: vi.fn() }));
 
 const logger = mock<Logger>();
-const user = mock<User>();
+const user = mock<User>({ id: 'user/123:raw' });
 
 const findByIdAndProjectId = vi.fn();
 const reconstructFromAgentEntity = vi.fn();
@@ -263,20 +263,22 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(close).toHaveBeenCalledTimes(1);
 
 		// The runtime was built with the eval instrumentation, uncached.
-		const [entityArg, , runType, integrationType, userArg, instrumentation] =
-			reconstructFromAgentEntity.mock.calls[0] as [
-				AgentEntity,
-				unknown,
-				string,
-				string | undefined,
-				User,
-				{ modelFetch?: unknown },
-			];
+		const call = reconstructFromAgentEntity.mock.calls[0] as [
+			AgentEntity,
+			unknown,
+			string,
+			string | undefined,
+			User,
+			{ modelFetch?: unknown },
+			...unknown[],
+		];
+		const [entityArg, , runType, integrationType, userArg, instrumentation] = call;
 		expect(entityArg.id).toBe('agent-1');
 		expect(runType).toBe('test');
 		expect(integrationType).toBeUndefined();
 		expect(userArg).toBe(user);
 		expect(instrumentation.modelFetch).toBeDefined();
+		expect(call[7]).toBe('Gt4H3q6RzhJe9cTxQm6be0AdIZQlifuy3w9OPSykmYo');
 	});
 
 	it('attributes MCP calls when the server name requires normalization', async () => {

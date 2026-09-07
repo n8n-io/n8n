@@ -1,7 +1,7 @@
 import { ListWorkflowReviewInboxQueryDto } from '../list-workflow-review-inbox.dto';
 
 describe('ListWorkflowReviewInboxQueryDto', () => {
-	describe('Valid requests', () => {
+	describe('accepted', () => {
 		test.each([
 			{
 				name: 'no filters at all',
@@ -23,20 +23,20 @@ describe('ListWorkflowReviewInboxQueryDto', () => {
 				request: { category: 'authored', state: 'closed', limit: '30', cursor: 'abc' },
 				parsedResult: { category: 'authored', state: 'closed', limit: 30, cursor: 'abc' },
 			},
-		])('should validate $name', ({ request, parsedResult }) => {
+		])('accepts $name', ({ request, parsedResult }) => {
 			const result = ListWorkflowReviewInboxQueryDto.safeParse(request);
 			expect(result.success).toBe(true);
 			expect(result.data).toMatchObject(parsedResult);
 		});
 	});
 
-	describe('Invalid requests', () => {
+	describe('rejected', () => {
 		test.each([
 			{ name: 'unknown category', request: { category: 'mine' } },
 			{ name: 'empty category', request: { category: '' } },
 			{ name: 'boolean-ish category', request: { category: 'true' } },
 			{ name: 'category as an array', request: { category: ['waiting'] } },
-		])('should fail validation for $name', ({ request }) => {
+		])('rejects $name', ({ request }) => {
 			const result = ListWorkflowReviewInboxQueryDto.safeParse(request);
 			expect(result.success).toBe(false);
 			expect(result.error?.issues[0].path).toEqual(['category']);

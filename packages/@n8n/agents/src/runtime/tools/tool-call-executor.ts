@@ -196,7 +196,14 @@ export interface ToolCallExecutorDeps {
  * emission are owned by the caller.
  */
 export class ToolCallExecutor {
+	private offloadedToolResults = false;
+
 	constructor(private readonly deps: ToolCallExecutorDeps) {}
+
+	/** Whether any tool result was offloaded to the workspace filesystem during this runtime's lifetime. */
+	get hasOffloadedToolResults(): boolean {
+		return this.offloadedToolResults;
+	}
 
 	private get telemetry(): RuntimeTelemetry {
 		return this.deps.telemetry;
@@ -1053,9 +1060,17 @@ export class ToolCallExecutor {
 		list.setToolCallResult(toolCallId, guardedResult.historyOutput);
 
 		const customMessage = await builtTool.toMessage?.(toolResult);
-		const guardedCustomMessage = customMessage
+		let guardedCustomMessage = customMessage
 			? await guardToolMessageForModel(customMessage, this.deps.tokenCounter, storage)
 			: undefined;
+		// Stamp tool provenance so derived transcripts (e.g. the observation
+		// log observer) can keep this content inside untrusted-data boundaries.
+		if (guardedCustomMessage && 'role' in guardedCustomMessage) {
+			guardedCustomMessage = {
+				...guardedCustomMessage,
+				origin: { kind: 'tool', toolName },
+			};
+		}
 		if (guardedCustomMessage) {
 			list.addResponse([guardedCustomMessage]);
 		}
@@ -1081,7 +1096,9 @@ export class ToolCallExecutor {
 			filesystem,
 			runId: params.runId,
 			toolCallId: params.toolCallId,
-			...(params.persistence?.threadId ? { threadId: params.persistence.threadId } : {}),
+			onOffloaded: () => {
+				this.offloadedToolResults = true;
+			},
 			...(params.abortSignal ? { abortSignal: params.abortSignal } : {}),
 		};
 	}

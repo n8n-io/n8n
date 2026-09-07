@@ -12,11 +12,12 @@ import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
 export async function handleSessionExpired(router: Router, baseURL: string): Promise<void> {
 	const usersStore = useUsersStore();
 	const sessionExpiryStore = useSessionExpiryStore();
+	const rootStore = useRootStore();
 
 	if (
 		sessionExpiryStore.handled ||
 		!usersStore.currentUser ||
-		baseURL !== useRootStore().restApiContext.baseUrl
+		(baseURL !== rootStore.restApiContext.baseUrl && baseURL !== rootStore.publicApiContext.baseUrl)
 	) {
 		return;
 	}

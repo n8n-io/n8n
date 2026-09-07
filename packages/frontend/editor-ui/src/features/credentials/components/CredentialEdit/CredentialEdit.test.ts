@@ -45,6 +45,11 @@ vi.mock('@n8n/composables/useToast', () => ({
 	}),
 }));
 
+const telemetryTrackMock = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrackMock }),
+}));
+
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: confirmMock }),
 }));
@@ -783,6 +788,30 @@ describe('CredentialEdit', () => {
 			expect(queryByText('Custom Scopes Notice')).not.toBeInTheDocument();
 		});
 
+		test('shows scope fields when enabled for the managed OAuth credential type', async () => {
+			const credentialsStore = setupManagedCapableStores({
+				grantType: 'authorizationCode',
+				customScopes: true,
+			});
+			credentialsStore.state.credentialTypes[discordOAuth2ApiManagedCapable.name] = {
+				...discordOAuth2ApiManagedCapable,
+				__showManagedOAuthScopes: true,
+			};
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-2',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			expect(queryByText('Custom Scopes')).toBeInTheDocument();
+			expect(queryByText('Enabled Scopes')).toBeInTheDocument();
+		});
+
 		test('shows scope fields when managed OAuth is available but user has provided their own clientId/clientSecret', async () => {
 			const credentialsStore = setupManagedCapableStores({
 				grantType: 'authorizationCode',
@@ -1359,6 +1388,96 @@ describe('CredentialEdit', () => {
 			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
 		});
 
+		test('attributes the creation to the workflow the modal was opened for', async () => {
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType;
+			const { credentialsStore, pinia } = setupNewCredential(credentialType, {
+				workflowId: 'wf-artifact',
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+			await waitFor(() => expect(credentialsStore.createNewCredential).toHaveBeenCalled());
+			expect(telemetryTrackMock).toHaveBeenCalledWith(
+				'User created credentials',
+				expect.objectContaining({ workflow_id: 'wf-artifact' }),
+			);
+		});
+
+		test('calls onCredentialCreated with the newly created credential', async function () {
+			const onCredentialCreated = vi.fn();
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType;
+			const { credentialsStore, pinia } = setupNewCredential(credentialType, {
+				onCredentialCreated,
+			});
+			const createdCredential = createCredentialResponse({
+				id: 'new-credential',
+				name: 'Test API account',
+				type: credentialType.name,
+			});
+			credentialsStore.createNewCredential.mockResolvedValue(createdCredential);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+			await waitFor(() => expect(onCredentialCreated).toHaveBeenCalledWith(createdCredential));
+			expect(onCredentialCreated).toHaveBeenCalledTimes(1);
+		});
+
+		test('does not call onCredentialCreated when credential creation fails', async function () {
+			const onCredentialCreated = vi.fn();
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType;
+			const { credentialsStore, pinia } = setupNewCredential(credentialType, {
+				onCredentialCreated,
+			});
+			credentialsStore.createNewCredential.mockRejectedValue(new Error('Failed to create'));
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+			await waitFor(() => expect(credentialsStore.createNewCredential).toHaveBeenCalled());
+			expect(onCredentialCreated).not.toHaveBeenCalled();
+		});
+
 		test('creates the credential in the project the modal was opened for', async () => {
 			const credentialType = {
 				name: 'testApi',
@@ -1489,6 +1608,20 @@ describe('CredentialEdit', () => {
 
 			await waitFor(() => expect(credentialsStore.testCredential).toHaveBeenCalled());
 			expect(uiStore.closeModal).not.toHaveBeenCalled();
+		});
+
+		test('does not call onCredentialCreated when updating a credential', async function () {
+			const onCredentialCreated = vi.fn();
+			const { credentialsStore, getByTestId } = setupExistingOAuthCredential({
+				onCredentialCreated,
+			});
+
+			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
+			await userEvent.click(getByTestId('quick-connect-button'));
+
+			await waitFor(() => expect(credentialsStore.updateCredential).toHaveBeenCalled());
+			expect(onCredentialCreated).not.toHaveBeenCalled();
 		});
 
 		test('closes the modal only after a successful OAuth callback when closeOnSave is enabled', async () => {

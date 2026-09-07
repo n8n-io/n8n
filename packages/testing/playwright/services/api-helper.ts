@@ -261,6 +261,22 @@ export class ApiHelpers {
 		return data.cursor;
 	}
 
+	async getPollerFailureState(
+		workflowId: string,
+		nodeId: string,
+	): Promise<{ consecutiveErrors: number; backoffUntil: string | null }> {
+		const response = await this.request.get('/rest/e2e/poller-state', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to get poller failure state: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as {
+			data: { consecutiveErrors: number; backoffUntil: string | null };
+		};
+		return { consecutiveErrors: data.consecutiveErrors, backoffUntil: data.backoffUntil };
+	}
+
 	async clearWorkflowStaticData(workflowId: string): Promise<void> {
 		const response = await this.request.post('/rest/e2e/workflow-static-data/clear', {
 			data: { workflowId },
@@ -325,6 +341,23 @@ export class ApiHelpers {
 	}> {
 		const response = await this.request.get('/rest/e2e/env-feature-flags');
 		return await response.json();
+	}
+
+	/**
+	 * The backend modules this instance started with. A module the license did not
+	 * cover at boot is missing here, and `enableFeature` cannot add it later.
+	 */
+	async getActiveModules(): Promise<string[]> {
+		const response = await this.request.get('/rest/settings');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const { data } = await response.json();
+		return data.activeModules ?? [];
 	}
 
 	// ===== CONVENIENCE METHODS =====

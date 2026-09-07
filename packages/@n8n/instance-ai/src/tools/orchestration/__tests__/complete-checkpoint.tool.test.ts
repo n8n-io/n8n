@@ -36,10 +36,6 @@ function makeContext(
 		eventBus: {
 			publish: vi.fn(),
 			subscribe: vi.fn(),
-			getEventsAfter: vi.fn(),
-			getNextEventId: vi.fn(),
-			getEventsForRun: vi.fn().mockReturnValue([]),
-			getEventsForRuns: vi.fn().mockReturnValue([]),
 		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 		domainTools: createToolRegistry(),
@@ -137,6 +133,38 @@ describe('createCompleteCheckpointTool', () => {
 		expect(service.markCheckpointFailed).not.toHaveBeenCalled();
 	});
 
+	it('ignores pending setup on nodes the build did not change', async () => {
+		const graph = makeSetupRequiredGraph();
+		const buildTask = graph.tasks[0];
+		buildTask.outcome = { ...buildTask.outcome, changedNodeNames: ['Google Sheets'] };
+		const service = makeService({
+			getGraph: vi.fn().mockResolvedValue(graph),
+			markCheckpointSucceeded: vi
+				.fn()
+				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
+		});
+		// Pre-existing Slack node still needs setup, but this build never touched it.
+		vi.mocked(analyzeWorkflow).mockResolvedValue([
+			{
+				node: { name: 'Slack' } as SetupRequest['node'],
+				credentialType: 'slackApi',
+				needsAction: true,
+			},
+		] as SetupRequest[]);
+		const tool = createCompleteCheckpointTool(
+			makeContext(service, { domainContext: {} as OrchestrationContext['domainContext'] }),
+		);
+
+		const res = await executeTool(tool, {
+			taskId: 'verify-1',
+			status: 'succeeded',
+			result: 'Verified',
+		});
+
+		expect(res.ok).toBe(true);
+		expect(service.markCheckpointSucceeded).toHaveBeenCalled();
+	});
+
 	it('marks a setup-required checkpoint succeeded after setup has no pending action', async () => {
 		const service = makeService({
 			getGraph: vi.fn().mockResolvedValue(makeSetupRequiredGraph()),
@@ -160,6 +188,44 @@ describe('createCompleteCheckpointTool', () => {
 			result: 'Verified',
 			outcome: undefined,
 		});
+	});
+
+	it('names the setup the user skipped when it lets the checkpoint through', async () => {
+		// The guard can't block on these, but completing silently would report the workflow as
+		// done with no mention that part of it can't run.
+		const service = makeService({
+			getGraph: vi.fn().mockResolvedValue(makeSetupRequiredGraph()),
+			markCheckpointSucceeded: vi
+				.fn()
+				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
+		});
+		vi.mocked(analyzeWorkflow).mockResolvedValue([
+			{
+				node: { name: 'Slack' } as SetupRequest['node'],
+				credentialType: 'slackApi',
+				needsAction: true,
+				credentialNeedsAction: true,
+			},
+		] as SetupRequest[]);
+		const tool = createCompleteCheckpointTool(
+			makeContext(service, {
+				domainContext: {
+					sessionApprovedToolKeys: new Set(['workflows:setup-skip:cred:slackApi']),
+				} as unknown as OrchestrationContext['domainContext'],
+			}),
+		);
+
+		const res = await executeTool(tool, {
+			taskId: 'verify-1',
+			status: 'succeeded',
+			result: 'Verified',
+		});
+
+		expect(res.ok).toBe(true);
+		expect(service.markCheckpointSucceeded).toHaveBeenCalled();
+		expect(res.result).toContain('Slack (slackApi)');
+		expect(res.result).toContain('skipped');
+		expect(res.result).not.toContain('workflows(action="setup"');
 	});
 
 	it('marks a checkpoint failed via markCheckpointFailed', async () => {
