@@ -23,6 +23,8 @@ const {
 	uiStoreMock,
 	connectServerMock,
 	connectWithCredentialMock,
+	ignorePendingConnectResultMock,
+	isConnectLockedMock,
 	credentialsMock,
 } = vi.hoisted(() => ({
 	telemetryMock: {
@@ -42,6 +44,8 @@ const {
 	},
 	connectServerMock: vi.fn(),
 	connectWithCredentialMock: vi.fn(),
+	ignorePendingConnectResultMock: vi.fn(),
+	isConnectLockedMock: vi.fn(),
 	credentialsMock: {
 		credentials: [] as Array<{ id: string; name: string; type: string }>,
 	},
@@ -66,6 +70,8 @@ vi.mock('../../composables/useMcpServerConnect', () => ({
 	useMcpServerConnect: () => ({
 		connectServer: connectServerMock,
 		connectWithCredential: connectWithCredentialMock,
+		ignorePendingConnectResult: ignorePendingConnectResultMock,
+		isConnectLocked: isConnectLockedMock,
 		createCredentialAdapter: (
 			openNewCredential: ToolConnectionCredentialAdapter['openNewCredential'],
 		) => ({
@@ -124,6 +130,7 @@ describe('InstanceAiMcpConnectCard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		credentialsMock.credentials = [];
+		isConnectLockedMock.mockReturnValue(false);
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		mcpStoreMock.mockReturnValue(makeMcpStore());
 	});
@@ -155,6 +162,7 @@ describe('InstanceAiMcpConnectCard', () => {
 
 		await nextTick();
 		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+		await nextTick();
 
 		expect(telemetryMock.trackFirstCredentialConnectionStart).toHaveBeenCalledWith('brave');
 		expect(connectServerMock).toHaveBeenCalledWith({
@@ -232,6 +240,20 @@ describe('InstanceAiMcpConnectCard', () => {
 
 		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
 
+		expect(emitted().resolve).toBeUndefined();
+	});
+
+	it('shows an external connection lock as noninteractive', async () => {
+		isConnectLockedMock.mockReturnValue(true);
+		const { emitted, getByTestId, getByText, queryByTestId } = renderComponent({
+			props: { servers: [BRAVE_PAYLOAD] },
+		});
+
+		expect(getByTestId('tool-credential-picker-trigger-connecting')).toBeVisible();
+		expect(queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
+		await fireEvent.click(getByText('Brave Search'));
+
+		expect(uiStoreMock.openModalWithData).not.toHaveBeenCalled();
 		expect(emitted().resolve).toBeUndefined();
 	});
 
@@ -391,7 +413,11 @@ describe('InstanceAiMcpConnectCard', () => {
 			await findAllByTestId('tool-credential-picker-row');
 			await fireEvent.click(getByText('Brave key'));
 
+			expect(ignorePendingConnectResultMock).toHaveBeenCalledWith('brave');
 			expect(connectWithCredentialMock).toHaveBeenCalledWith('brave', 'cred-1');
+			expect(ignorePendingConnectResultMock.mock.invocationCallOrder[0]).toBeLessThan(
+				connectWithCredentialMock.mock.invocationCallOrder[0] ?? 0,
+			);
 			expect(connectServerMock).not.toHaveBeenCalled();
 		});
 
@@ -443,7 +469,7 @@ describe('InstanceAiMcpConnectCard', () => {
 			];
 			connectServerMock.mockReturnValue(new Promise(() => {}));
 
-			const { getAllByTestId, getByTestId, getByText, findAllByTestId } = renderComponent({
+			const { getAllByTestId, getByTestId, queryAllByTestId } = renderComponent({
 				props: {
 					servers: [
 						BRAVE_PAYLOAD,
@@ -454,10 +480,8 @@ describe('InstanceAiMcpConnectCard', () => {
 
 			await fireEvent.click(getAllByTestId('tool-credential-picker-trigger-connect')[1]);
 			expect(getByTestId('instance-ai-mcp-connect-resolve')).toBeDisabled();
-
-			await fireEvent.click(getAllByTestId('tool-credential-picker-trigger-connect')[0]);
-			await findAllByTestId('tool-credential-picker-row');
-			await fireEvent.click(getByText('Brave key'));
+			expect(queryAllByTestId('tool-credential-picker-trigger-connect')).toHaveLength(0);
+			expect(getAllByTestId('tool-credential-picker-trigger-connecting')).toHaveLength(2);
 
 			expect(connectWithCredentialMock).not.toHaveBeenCalled();
 			expect(getByTestId('instance-ai-mcp-connect-resolve')).toBeDisabled();

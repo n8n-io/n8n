@@ -35,7 +35,13 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
-const { connectServer, connectWithCredential, createCredentialAdapter } = useMcpServerConnect();
+const {
+	connectServer,
+	connectWithCredential,
+	createCredentialAdapter,
+	ignorePendingConnectResult,
+	isConnectLocked,
+} = useMcpServerConnect();
 
 const isConnecting = ref(false);
 
@@ -83,7 +89,10 @@ const rows = computed<CardRow[]>(() =>
 				id: connection?.id ?? server.serverSlug,
 				kind: 'mcp-server',
 				title: entry?.title ?? server.title,
-				status: connection?.status ?? 'none',
+				status:
+					isConnecting.value || isConnectLocked(server.serverSlug)
+						? 'connecting'
+						: (connection?.status ?? 'none'),
 				credentials: [
 					{ authType: credentialType, credentialId: connection?.credentialId, required: true },
 				],
@@ -97,7 +106,7 @@ const isActionable = computed(() => !props.readOnly && !props.expired);
 const anyConnected = computed(() => rows.value.some(hasConnection));
 
 function hasConnection(row: CardRow): boolean {
-	return hasToolConnection(row.item.status);
+	return row.item.status !== 'connecting' && hasToolConnection(row.item.status);
 }
 
 function finish(approved: boolean) {
@@ -146,6 +155,7 @@ async function connect(row: CardRow) {
 
 async function handleSelectCredential(row: CardRow, credentialId: string) {
 	await runConnect(async () => {
+		ignorePendingConnectResult(row.serverSlug);
 		mcpTelemetry.trackExistingCredentialSelected(row.serverSlug);
 		return await connectWithCredential(row.serverSlug, credentialId);
 	});
