@@ -5,6 +5,7 @@ import { SUB_AGENT_TASK_DIFFICULTIES, type SubAgentSource } from '@n8n/api-types
 import { z } from 'zod';
 
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
+import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentBackgroundJobService } from './agent-background-job.service';
 import type { SubAgentBackgroundRunner } from './sub-agent-background-runner';
 import type { SubAgentRunContext } from '../sub-agents/sub-agent-runner';
@@ -100,6 +101,14 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 				return {
 					status: 'rejected',
 					note: 'Background jobs need a persisted conversation thread; none is active.',
+				};
+			}
+			// A task session has no chat identity a wake could run as, so its jobs
+			// would never be delivered.
+			if (isTaskRunMemoryResourceId(parentResourceId)) {
+				return {
+					status: 'rejected',
+					note: 'Background jobs are unavailable in task sessions.',
 				};
 			}
 

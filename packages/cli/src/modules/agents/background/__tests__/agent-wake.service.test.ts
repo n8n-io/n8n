@@ -516,6 +516,22 @@ describe('formatWakeMessage', () => {
 		expect(message).toContain('Second job');
 	});
 
+	it('omits an error that no longer fits instead of emitting an empty string', () => {
+		const message = formatWakeMessage([
+			makeJob({ status: 'failed', result: 'a'.repeat(WAKE_RESULT_TEXT_MAX_CHARS), error: 'boom' }),
+		]);
+		const [job] = JSON.parse(
+			message.slice(
+				'<background-jobs-settled>'.length,
+				message.indexOf('</background-jobs-settled>'),
+			),
+		) as Array<{ error?: string; truncated?: boolean }>;
+
+		expect(job?.error).toBeUndefined();
+		expect(job?.truncated).toBe(true);
+		expect(message).not.toContain('"error":""');
+	});
+
 	it('keeps short results intact without a truncation marker', () => {
 		const message = formatWakeMessage([makeJob({ result: 'Done' })]);
 

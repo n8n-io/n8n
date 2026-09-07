@@ -45,6 +45,7 @@ import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
+import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
 import type {
 	WorkflowToolWorkflowLoader,
@@ -693,10 +694,13 @@ async function backgroundWaitingExecution(
 	const agentRun = context.agentRun ?? agentRunOf(context, ctx);
 	const parentResourceId = ctx.persistence?.resourceId;
 	const sandboxScope = decodeAgentSandboxHostMetadata(ctx.persistence?.hostMetadata);
+	// A task session has no chat identity a wake could run as, so it keeps the
+	// legacy wait handling instead of registering a job nobody can deliver.
 	if (
 		!agentRun ||
 		!reference.workflowId ||
 		!parentResourceId ||
+		isTaskRunMemoryResourceId(parentResourceId) ||
 		!sandboxScope ||
 		sandboxScope.projectId !== context.projectId
 	) {
@@ -742,7 +746,7 @@ async function backgroundWaitingExecution(
 			// matching the settle hook's projection.
 			const settlementStatus = settlementStatusForExecution(rawStatus);
 			const runData = full.data?.resultData?.runData;
-			const claimed = await jobService.settle(jobId, {
+			await jobService.settle(jobId, {
 				status: settlementStatus,
 				result:
 					settlementStatus === 'completed' && runData
@@ -750,8 +754,9 @@ async function backgroundWaitingExecution(
 						: null,
 				error: fresh.error ?? null,
 			});
-			// The model receives this result inline, so no wake needs to repeat it.
-			if (claimed) await jobService.markMailConsumed(agentRun.threadId, [jobId]);
+			// The model receives this result inline, so no wake needs to repeat it,
+			// whichever writer settled the row first.
+			await jobService.markMailConsumed(agentRun.threadId, [jobId]);
 
 			return { ...withoutWaitState(fresh), jobId };
 		}

@@ -4,6 +4,7 @@ import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -218,15 +219,15 @@ export class AgentWakeService {
 		if (userId) {
 			const expectedHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId });
 			if (expectedHash !== principalHash) {
-				throw new Error('Draft wake identity does not match its principal');
+				throw new UnexpectedError('Draft wake identity does not match its principal');
 			}
 
 			// The stored identity is a capability to run the agent later. It must
 			// not outlive the user's current access. The scope check reads the role.
 			const user = await this.userRepository.findByIdWithRole(userId);
-			if (!user || user.disabled) throw new Error('Draft wake user is no longer active');
+			if (!user || user.disabled) throw new OperationalError('Draft wake user is no longer active');
 			if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
-				throw new Error('Draft wake user can no longer execute this agent');
+				throw new OperationalError('Draft wake user can no longer execute this agent');
 			}
 			return { type: 'draft', user, principalHash: expectedHash };
 		}
@@ -237,7 +238,7 @@ export class AgentWakeService {
 			!this.integrationRegistry.get(integrationType) ||
 			!isAgentSandboxPrincipalHash(principalHash)
 		) {
-			throw new Error('Published wake identity is invalid');
+			throw new UnexpectedError('Published wake identity is invalid');
 		}
 		return { type: 'published', integrationType, principalHash };
 	}

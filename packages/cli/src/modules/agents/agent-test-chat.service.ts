@@ -33,8 +33,12 @@ export class AgentTestChatService {
 			(message) =>
 				!('role' in message) ||
 				message.role !== 'user' ||
+				!Array.isArray(message.content) ||
 				!message.content.some(
-					(part) => part.type === 'text' && part.text.startsWith(AGENT_BACKGROUND_WAKE_TAG),
+					(part) =>
+						part.type === 'text' &&
+						typeof part.text === 'string' &&
+						part.text.startsWith(AGENT_BACKGROUND_WAKE_TAG),
 				),
 		);
 	}

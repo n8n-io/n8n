@@ -70,6 +70,19 @@ describe('spawn_background_subagent', () => {
 		});
 	});
 
+	it('rejects inside a task session, which has no chat identity for a wake', async () => {
+		const { backgroundRunner, options } = setup();
+		const tool = createSpawnBackgroundSubAgentTool(options);
+
+		const output = await tool.handler!(
+			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ persistence: { ...persistence, resourceId: 'task:task-1' } },
+		);
+
+		expect(output).toMatchObject({ status: 'rejected' });
+		expect(backgroundRunner.spawn).not.toHaveBeenCalled();
+	});
+
 	it('rejects when the thread carries no host metadata', async () => {
 		const { backgroundRunner, options } = setup();
 		const tool = createSpawnBackgroundSubAgentTool(options);

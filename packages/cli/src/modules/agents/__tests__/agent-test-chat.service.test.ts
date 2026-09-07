@@ -56,6 +56,14 @@ describe('AgentTestChatService', () => {
 		]);
 	});
 
+	it('keeps a user row whose content is not an array', async () => {
+		const { service, memory } = makeService();
+		const malformed = { role: 'user', content: 'plain text' };
+		memory.getMessages.mockResolvedValue([malformed] as never);
+
+		await expect(service.getTestChatMessages(agentId, userId)).resolves.toEqual([malformed]);
+	});
+
 	it('clears one user thread without changing all-agent cleanup', async () => {
 		const { service, memory, attachmentService } = makeService();
 

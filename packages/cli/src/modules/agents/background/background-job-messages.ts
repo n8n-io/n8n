@@ -14,6 +14,12 @@ export function formatWakeMessage(jobs: AgentBackgroundJob[]): string {
 		let truncated = false;
 		const take = (value: string | null): string | undefined => {
 			if (value === null) return undefined;
+			// An exhausted budget omits the field instead of emitting an empty string
+			// the model could read as "no error".
+			if (remaining === 0) {
+				truncated = true;
+				return undefined;
+			}
 			const text = value.slice(0, remaining);
 			remaining -= text.length;
 			if (text.length < value.length) truncated = true;

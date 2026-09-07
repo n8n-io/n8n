@@ -959,6 +959,19 @@ describe('workflow tool → background job handoff', () => {
 		expect(suspend).not.toHaveBeenCalled();
 	});
 
+	it('consumes the mail of an inline result even when the settle hook won the claim', async () => {
+		setPersistence(settledInDb());
+		const jobService = setJobService();
+		jobService.settle.mockResolvedValue(false);
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(result).toMatchObject({ status: 'success', jobId: 'job-1' });
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+	});
+
 	it('settles a failed inline finish with its error and no result', async () => {
 		const failed = settledInDb();
 		failed.status = 'error';
@@ -989,6 +1002,7 @@ describe('workflow tool → background job handoff', () => {
 		],
 		['the thread carries no host metadata', { hostMetadata: undefined }],
 		['the thread has no memory resource', { resourceId: undefined }],
+		['the session belongs to a task run', { resourceId: 'task:task-1' }],
 	])('falls back to suspending when %s', async (_name, persistenceOverrides) => {
 		setPersistence({
 			status: 'waiting',
