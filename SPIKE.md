@@ -26,6 +26,42 @@ Reproduce with `packages/@n8n/agents/spike-validate-sandbox-build.mjs` and
 requirements (a running local sandbox stack + a running n8n instance with a
 webhook-triggered workflow).
 
+## PageContext / `@n8n/app-sdk`'s real transport: proven, with real binding enforcement
+
+The round-trip proof above used a webhook directly as a stand-in for
+`@n8n/app-sdk`'s `runWorkflow()`. This spikes the real thing: a
+`POST /apps/:namespace/api/run` endpoint (`packages/cli/src/modules/app-spike/run-workflow-endpoint.ts`)
+that resolves the target workflow, checks it against an App-level allow-list,
+and executes it via the exact mechanism Agents already use to call a
+"workflow tool" — `executeWorkflow()` from `workflow-tool-factory.ts`, which
+runs the workflow through `WorkflowRunner` starting from its
+`Execute Workflow Trigger` node and waits for the result. No webhook, no HTTP
+call to the workflow itself — this is the real bound-execution-service shape
+from plan.md Phase 0.
+
+Confirmed, with real workflows and real HTTP calls (see `git log` for the
+exact request/response pairs):
+- **An unbound workflow id is rejected** (403) for both a data-style call and
+  an action-style call — the App-level allow-list (fact-20) is load-bearing,
+  not decorative.
+- **Binding then calling** a "get records" workflow returns its real,
+  computed output as JSON.
+- **The same mechanism, with input, is an action**: binding and calling a
+  "mark resolved" workflow with `{id: 3}` returns a real confirmation with a
+  live timestamp — there is no separate "action" code path, exactly as
+  designed.
+- **A binding in one App namespace does not leak to another** — namespace
+  isolation holds.
+- **Both calls produced real, inspectable `execution_entity` rows**
+  (`status: success`, `mode: integrated`) — confirming the plan's specific
+  claim that an action "gets a first-class n8n execution record because it
+  really is a normal workflow execution underneath," not something invisible.
+
+Deliberately still a spike: bindings are the same in-memory `Map` as the
+`apps` tool (not the `AppBinding` entity), and there's no token/audience
+check on the endpoint itself (any caller can hit it, the same as everything
+else in this spike) — see plan.md Phase 4/6 for what's real there.
+
 ## Hot reload: investigated further, refines (doesn't confirm) plan.md Phase 7
 
 plan.md's Phase 7 said live HMR needs new background-process + port-exposure

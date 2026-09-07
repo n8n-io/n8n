@@ -28,6 +28,7 @@ import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
 // SPIKE (hackweek/n8nable-app-spike): see packages/@n8n/instance-ai/src/tools/apps.tool.ts
 import { registerAppSpikeServing } from './modules/app-spike/serve-app-spike';
+import { registerAppRunEndpoint } from './modules/app-spike/run-workflow-endpoint';
 
 @Service()
 export abstract class AbstractServer {
@@ -332,6 +333,10 @@ export abstract class AbstractServer {
 
 		// Setup body parsing middleware after the webhook handlers are setup
 		this.app.use(bodyParser);
+
+		// SPIKE (hackweek/n8nable-app-spike): needs parsed JSON bodies, so it's
+		// registered after bodyParser — unlike registerAppSpikeServing above.
+		registerAppRunEndpoint(this.app);
 
 		await this.configure();
 
