@@ -259,6 +259,7 @@ export const stepRequest = (
 		workflowId: 'wf-1',
 		mode: 'manual',
 		iteration: 0,
+		callerContext: { hostMode: 'manual' },
 	},
 });
 

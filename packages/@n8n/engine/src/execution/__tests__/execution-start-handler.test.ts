@@ -62,7 +62,7 @@ function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}):
 		mode: 'production',
 		graph,
 		triggerOutputs: null,
-		context: {},
+		callerContext: {},
 		...overrides,
 	};
 }

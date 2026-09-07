@@ -1,4 +1,4 @@
-import type { ExecutionContext, ExecutionMode, StepSlots } from '../execution';
+import type { CallerContext, ExecutionMode, StepSlots } from '../execution';
 import type { GraphNode } from '../graph';
 import type { LifecycleEventCallback } from '../lifecycle-events';
 
@@ -24,16 +24,15 @@ import type { LifecycleEventCallback } from '../lifecycle-events';
  * on every hop. This coercion is an accepted behavioural divergence from legacy.
  */
 
-/**
- * Ambient facts about the execution a step belongs to. The caller facts from
- * `ExecutionContext` are flattened in, so an executor reads one object.
- */
-export interface StepExecutionContext extends ExecutionContext {
+/** Ambient facts about the execution a step belongs to. */
+export interface StepExecutionContext {
 	executionId: string;
 	stepId: string;
 	workflowId: string;
 	mode: ExecutionMode;
 	iteration: number;
+	/** Supplied by the host at start. Opaque to the engine, which only forwards it. */
+	callerContext: CallerContext;
 }
 
 /** A single step handed to an executor. */

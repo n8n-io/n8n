@@ -17,7 +17,12 @@ import type {
 	ITaskDataConnections,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createRunExecutionData, Workflow, WorkflowExecuteModeList } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	UnexpectedError,
+	Workflow,
+	WorkflowExecuteModeList,
+} from 'n8n-workflow';
 
 import {
 	MAIN_CONNECTION_TYPE,
@@ -191,14 +196,20 @@ function toV1BatchNode(graphNode: GraphNode): INode {
 }
 
 /**
- * The v1 mode the host stored at start, when it is one v1 knows. Otherwise the
- * engine mode decides: a manual run is `manual`, and a production run is
- * `trigger`, the v1 mode of an unattended run.
+ * The v1 mode the host stored at start. This layer only runs v1 nodes, so a
+ * missing or unknown mode is a caller bug and the step fails.
  */
 export function toV1ExecuteMode(context: StepExecutionContext): WorkflowExecuteMode {
-	const { hostMode } = context;
-	if (hostMode !== undefined && isWorkflowExecuteMode(hostMode)) return hostMode;
-	return context.mode === 'manual' ? 'manual' : 'trigger';
+	const { hostMode } = context.callerContext;
+	if (hostMode === undefined) {
+		throw new UnexpectedError('The caller context has no v1 execution mode');
+	}
+	if (!isWorkflowExecuteMode(hostMode)) {
+		throw new UnexpectedError('The caller context has an unknown v1 execution mode', {
+			extra: { hostMode },
+		});
+	}
+	return hostMode;
 }
 
 const isWorkflowExecuteMode = (mode: string): mode is WorkflowExecuteMode =>
@@ -209,8 +220,8 @@ export function toAdditionalDataContext(context: StepExecutionContext): Addition
 		executionId: context.executionId,
 		workflowId: context.workflowId,
 		mode: toV1ExecuteMode(context),
-		userId: context.userId,
-		projectId: context.projectId,
+		userId: context.callerContext.userId,
+		projectId: context.callerContext.projectId,
 	};
 }
 

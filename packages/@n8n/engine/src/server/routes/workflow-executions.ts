@@ -44,14 +44,13 @@ const StartExecutionBody = z.object({
 	mode: z.enum(['production', 'manual']).optional(),
 	// `strict`, so a misspelled key fails loudly instead of running the step
 	// without the fact the caller meant to supply.
-	context: z
+	callerContext: z
 		.object({
 			userId: z.string().min(1).optional(),
 			projectId: z.string().min(1).optional(),
 			hostMode: z.string().min(1).optional(),
 		})
-		.strict()
-		.optional(),
+		.strict(),
 	/** The caller mints the id. v7 only, so ids stay time-ordered. */
 	executionId: z.string().regex(UUID_V7_PATTERN),
 });

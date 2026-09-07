@@ -30,6 +30,7 @@ const startBody = (overrides: Record<string, unknown> = {}) => ({
 	workflowId: 'wf-1',
 	graph: sampleGraph,
 	executionId: generateId(),
+	callerContext: {},
 	...overrides,
 });
 
@@ -101,7 +102,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 			const response = await request(url)
 				.post('/api/workflow-executions')
 				.set(authHeader())
-				.send({ workflowId: 'wf-1', graph: sampleGraph, executionId });
+				.send({ workflowId: 'wf-1', graph: sampleGraph, executionId, callerContext: {} });
 
 			expect(response.status).toBe(400);
 			expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -109,8 +110,8 @@ describe('POST /api/workflow-executions (integration)', () => {
 	);
 
 	it('stores the caller context with the row', async () => {
-		const context = { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' };
-		const body = startBody({ context });
+		const callerContext = { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' };
+		const body = startBody({ callerContext });
 
 		const response = await request(url)
 			.post('/api/workflow-executions')
@@ -121,25 +122,24 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
 			.findOneOrFail({ where: { id: body.executionId } });
-		expect(row.context).toEqual(context);
+		expect(row.callerContext).toEqual(callerContext);
 	});
 
-	it('stores an empty context when the body has none', async () => {
-		const body = startBody();
-
-		await request(url).post('/api/workflow-executions').set(authHeader()).send(body);
-
-		const row = await dataSource
-			.getRepository(WorkflowExecution)
-			.findOneOrFail({ where: { id: body.executionId } });
-		expect(row.context).toEqual({});
-	});
-
-	it('rejects a context with a key it does not know with 400', async () => {
+	it('rejects a body without a caller context with 400', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send(startBody({ context: { user: 'user-1' } }));
+			.send(startBody({ callerContext: undefined }));
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it('rejects a caller context with a key it does not know with 400', async () => {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(startBody({ callerContext: { user: 'user-1' } }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');

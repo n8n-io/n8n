@@ -1,6 +1,6 @@
 import type { WorkflowGraph } from '../graph';
 import type {
-	ExecutionContext,
+	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
 	TriggerOutputs,
@@ -8,20 +8,18 @@ import type {
 
 /** The fields the write side supplies and the execution path reads back. */
 interface BaseExecutionRecord {
+	/** Caller-minted id. The store never mints one. */
 	id: string;
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
 	graph: WorkflowGraph;
 	triggerOutputs: TriggerOutputs | null;
-	context: ExecutionContext;
+	callerContext: CallerContext;
 }
 
 /** A new execution to persist. Timestamps are assigned by the store. */
-export interface NewExecutionRecord extends BaseExecutionRecord {
-	/** Caller-minted id. The store never mints one. */
-	id: string;
-}
+export type NewExecutionRecord = BaseExecutionRecord;
 
 /**
  * What running an execution needs of its row. No timing: the execution path

@@ -127,12 +127,12 @@ export class StepReadyHandler {
 			node,
 			inputs,
 			context: {
-				...execution.context,
 				executionId: execution.id,
 				stepId: step.id,
 				workflowId: execution.workflowId,
 				mode: execution.mode,
 				iteration: step.iteration,
+				callerContext: execution.callerContext,
 			},
 		});
 		return outputs;

@@ -3,12 +3,12 @@ import type { MigrationInterface, QueryRunner } from '@n8n/typeorm';
 
 const TABLE = 'workflow_execution';
 
-export class AddWorkflowExecutionContext1788520000000 implements MigrationInterface {
+export class AddWorkflowExecutionCallerContext1788520000000 implements MigrationInterface {
 	async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.addColumn(
 			TABLE,
 			new TableColumn({
-				name: 'context',
+				name: 'caller_context',
 				type: 'jsonb',
 				default: "'{}'",
 				comment:
@@ -18,6 +18,6 @@ export class AddWorkflowExecutionContext1788520000000 implements MigrationInterf
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.dropColumn(TABLE, 'context');
+		await queryRunner.dropColumn(TABLE, 'caller_context');
 	}
 }

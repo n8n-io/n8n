@@ -13,7 +13,6 @@ import {
  */
 export const ACTION_SCOPES = ['lifecycle-events:write', 'credentials:read'] as const;
 
-/** Derived from the list, so a scope cannot exist in the type without the schema knowing it. */
 export type ActionScope = (typeof ACTION_SCOPES)[number];
 
 /**

@@ -75,9 +75,7 @@ describe('V1StepExecutor', () => {
 		request.context = {
 			...request.context,
 			mode: 'production',
-			hostMode: 'webhook',
-			userId: 'user-1',
-			projectId: 'project-1',
+			callerContext: { hostMode: 'webhook', userId: 'user-1', projectId: 'project-1' },
 		};
 
 		await executor.execute(request);

@@ -67,7 +67,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		mode: 'production',
 		graph,
 		triggerOutputs: null,
-		context: {},
+		callerContext: {},
 		...overrides,
 	};
 	return {
@@ -152,6 +152,7 @@ describe('StepReadyHandler', () => {
 				workflowId: 'wf-1',
 				mode: 'production',
 				iteration: 0,
+				callerContext: {},
 			},
 		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
@@ -165,9 +166,8 @@ describe('StepReadyHandler', () => {
 
 	it('hands the caller context of the execution to the executor', async () => {
 		const executor = makeExecutor();
-		const executionStore = makeExecutionStore({
-			context: { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' },
-		});
+		const callerContext = { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' };
+		const executionStore = makeExecutionStore({ callerContext });
 		const handler = makeHandler(executionStore, makeStepStore(), makeQueue(), {
 			v1StepExecutor: executor,
 		});
@@ -176,12 +176,7 @@ describe('StepReadyHandler', () => {
 
 		expect(executor.execute).toHaveBeenCalledWith(
 			expect.objectContaining({
-				context: expect.objectContaining({
-					executionId: 'exec-1',
-					userId: 'user-1',
-					projectId: 'project-1',
-					hostMode: 'webhook',
-				}) as unknown,
+				context: expect.objectContaining({ executionId: 'exec-1', callerContext }) as unknown,
 			}),
 		);
 	});

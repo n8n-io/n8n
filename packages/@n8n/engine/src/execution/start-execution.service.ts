@@ -2,7 +2,7 @@ import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
 import { validateExecutableGraph, type WorkflowGraph } from '../graph';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
-import type { ExecutionContext, ExecutionMode, TriggerOutputs } from './execution.types';
+import type { CallerContext, ExecutionMode, TriggerOutputs } from './execution.types';
 
 export interface StartExecutionRequest {
 	workflowId: string;
@@ -11,7 +11,7 @@ export interface StartExecutionRequest {
 	triggerOutputs?: TriggerOutputs | null;
 	mode?: ExecutionMode;
 	/** Stored with the execution and handed to every step executor. */
-	context?: ExecutionContext;
+	callerContext: CallerContext;
 	/**
 	 * Caller-minted, so the caller can record state against the run before it
 	 * starts. The engine never mints one.
@@ -53,7 +53,7 @@ export class StartExecutionService {
 			mode: request.mode ?? 'production',
 			graph: request.graph,
 			triggerOutputs: request.triggerOutputs ?? null,
-			context: request.context ?? {},
+			callerContext: request.callerContext,
 		});
 
 		// TODO(CAT-2938): the persist above and this publish aren't atomic — a

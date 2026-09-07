@@ -10,9 +10,10 @@ export type ExecutionMode = 'production' | 'manual';
  * Facts about the caller, supplied by the host at start and stored with the
  * execution. The engine never reads them: it passes them to the step executor,
  * which needs them to act on the caller's behalf, for example to resolve a
- * credential.
+ * credential. Named for what it holds, so it does not collide with an
+ * execution-wide context object the engine may introduce for its own use.
  */
-export interface ExecutionContext {
+export interface CallerContext {
 	/** The user on whose behalf the execution runs. */
 	userId?: string;
 	/** The project that owns the workflow. */

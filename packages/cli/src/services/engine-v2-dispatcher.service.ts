@@ -77,6 +77,12 @@ export class EngineV2Dispatcher {
 				graph,
 				triggerOutputs: this.toTriggerOutputs(triggerMain, toStepOutputs),
 				mode: 'manual',
+				// The step executor needs the v1 mode and the caller to resolve credentials.
+				callerContext: {
+					hostMode: data.executionMode,
+					userId: data.userId,
+					projectId: data.projectId,
+				},
 			});
 		} catch (error) {
 			// Assumes rejection: a dropped success response also releases a still-live session.

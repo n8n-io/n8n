@@ -214,21 +214,21 @@ describe('toV1ExecuteMode', () => {
 		workflowId: 'wf-1',
 		mode: 'production',
 		iteration: 0,
+		callerContext: {},
 		...overrides,
 	});
 
 	it('returns the host mode when v1 knows it', () => {
-		expect(toV1ExecuteMode(context({ hostMode: 'webhook' }))).toBe('webhook');
+		expect(toV1ExecuteMode(context({ callerContext: { hostMode: 'webhook' } }))).toBe('webhook');
 	});
 
-	it.each([
-		['manual', 'manual'],
-		['production', 'trigger'],
-	] as const)('derives %s from the engine mode when the host stored none', (mode, expected) => {
-		expect(toV1ExecuteMode(context({ mode }))).toBe(expected);
+	it('throws when the caller context has no host mode', () => {
+		expect(() => toV1ExecuteMode(context({}))).toThrow('no v1 execution mode');
 	});
 
-	it('falls back to the engine mode when the host mode is not one v1 knows', () => {
-		expect(toV1ExecuteMode(context({ mode: 'manual', hostMode: 'production' }))).toBe('manual');
+	it('throws when the host mode is not one v1 knows', () => {
+		expect(() => toV1ExecuteMode(context({ callerContext: { hostMode: 'production' } }))).toThrow(
+			'unknown v1 execution mode',
+		);
 	});
 });
