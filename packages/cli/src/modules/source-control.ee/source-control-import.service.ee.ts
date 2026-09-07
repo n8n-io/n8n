@@ -856,6 +856,7 @@ export class SourceControlImportService {
 			cleared = await this.policyEnforcementService.enforceContentImport({
 				workflow: { id, name: importedWorkflow.name, nodes },
 				projectId: targetOwnerProject.id,
+				transport: 'source-control',
 			});
 		} catch (error) {
 			// A blocked workflow is skipped, not fatal — the rest of the pull still lands. A check

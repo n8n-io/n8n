@@ -5,6 +5,7 @@ import type { ICredentialDataDecryptedObject, IUser, IWebhookFunctions } from 'n
 import { ChatTriggerAuthorizationError } from './error';
 import {
 	clearChatOAuthToken,
+	clearChatRefreshToken,
 	isChatOAuth2Enabled,
 	readChatOAuthToken,
 	readChatRefreshToken,
@@ -25,6 +26,34 @@ function expiryFrom(expiresIn: number): number {
  */
 function secondsUntil(expiresAt: number): number {
 	return Math.max(0, (expiresAt - Date.now()) / 1000);
+}
+
+function getCookie(cookieHeader: string | undefined, name: string): string {
+	const value = `; ${cookieHeader ?? ''}`;
+	const parts = value.split(`; ${name}=`);
+
+	if (parts.length === 2) {
+		return parts.pop()?.split(';').shift() ?? '';
+	}
+	return '';
+}
+
+/**
+ * The id of whoever is logged into the browser's *current* n8n session, independent of
+ * any chat-specific grant. `null` when there is no active session to compare against
+ * (e.g. it expired on its own shorter lifetime) — callers treat that as "nothing to
+ * contradict the cached grant", not as a mismatch.
+ */
+async function resolveCurrentSessionUserId(context: IWebhookFunctions): Promise<string | null> {
+	const authCookie = getCookie(context.getHeaderData()?.cookie, 'n8n-auth');
+	if (!authCookie) return null;
+
+	try {
+		const user = await context.validateCookieAuth(authCookie);
+		return user.id;
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -67,16 +96,6 @@ export async function validateAuth(context: IWebhookFunctions): Promise<IUser | 
 		const webhookName = context.getWebhookName();
 
 		if (webhookName !== 'setup') {
-			function getCookie(name: string) {
-				const value = `; ${headers.cookie}`;
-				const parts = value.split(`; ${name}=`);
-
-				if (parts.length === 2) {
-					return parts.pop()?.split(';').shift();
-				}
-				return '';
-			}
-
 			// The sandboxed frame carries this instead of the session cookie, which an opaque
 			// origin never sends. Checked first so the frame doesn't depend on that cookie.
 			// Verified against n8n's internal AS (not just decoded) so the token also seeds
@@ -100,7 +119,7 @@ export async function validateAuth(context: IWebhookFunctions): Promise<IUser | 
 				}
 			}
 
-			const authCookie = getCookie('n8n-auth');
+			const authCookie = getCookie(headers.cookie, 'n8n-auth');
 			if (!authCookie) {
 				throw new ChatTriggerAuthorizationError(401, 'User not authenticated!');
 			}
@@ -183,18 +202,24 @@ export async function establishChatSessionIdentity(
 		// Not an AS callback. If we just completed the flow, the token rides in the
 		// one-hop cookie set on the redirect above — leave it for the frame's own GET
 		// to consume, just confirm it's still good before rendering the shell around it.
+		const currentUserId = await resolveCurrentSessionUserId(context);
+
 		const session = readChatOAuthToken(req);
 		if (session) {
 			const validation = await context.validateN8nOAuth2Token(session.token, resourceUrl);
 			if (validation.valid) {
-				await context.establishTriggerIdentity(session.token, resourceUrl, validation.user.id);
-				return {
-					visitor: validation.user,
-					authToken: session.token,
-					expiresIn: secondsUntil(session.expiresAt),
-				};
+				if (currentUserId === null || validation.user.id === currentUserId) {
+					await context.establishTriggerIdentity(session.token, resourceUrl, validation.user.id);
+					return {
+						visitor: validation.user,
+						authToken: session.token,
+						expiresIn: secondsUntil(session.expiresAt),
+					};
+				}
+				clearChatOAuthToken(res, req, resourceUrl);
+				clearChatRefreshToken(res, req, resourceUrl);
 			}
-			// Stale/invalid cookie — fall through to restart the OAuth2 flow.
+			// Invalid cookie — fall through to restart the OAuth2 flow.
 		} else {
 			// A reload mid-conversation: the one-hop cookie is long gone, but the grant
 			// is still live in the refresh cookie. Rotating is cheaper than a full
@@ -206,15 +231,22 @@ export async function establishChatSessionIdentity(
 				// rendered for.
 				const validation = await context.validateN8nOAuth2Token(refreshed.token, resourceUrl);
 				if (validation.valid) {
-					await context.establishTriggerIdentity(refreshed.token, resourceUrl, validation.user.id);
-					return {
-						visitor: validation.user,
-						authToken: refreshed.token,
-						expiresIn: refreshed.expiresIn,
-					};
+					if (currentUserId === null || validation.user.id === currentUserId) {
+						await context.establishTriggerIdentity(
+							refreshed.token,
+							resourceUrl,
+							validation.user.id,
+						);
+						return {
+							visitor: validation.user,
+							authToken: refreshed.token,
+							expiresIn: refreshed.expiresIn,
+						};
+					}
+					clearChatOAuthToken(res, req, resourceUrl);
+					clearChatRefreshToken(res, req, resourceUrl);
 				}
 			}
-			// Refresh failed — fall through to restart the OAuth2 flow, which handles it.
 		}
 	}
 
@@ -298,6 +330,18 @@ export async function handleChatTokenRefresh(
 		res.status(401).json({ error: 'invalid_grant' });
 		res.end();
 		return;
+	}
+
+	const currentUserId = await resolveCurrentSessionUserId(context);
+	if (currentUserId !== null) {
+		const validation = await context.validateN8nOAuth2Token(refreshed.token, resourceUrl);
+		if (!validation.valid || validation.user.id !== currentUserId) {
+			clearChatOAuthToken(res, req, resourceUrl);
+			clearChatRefreshToken(res, req, resourceUrl);
+			res.status(401).json({ error: 'invalid_grant' });
+			res.end();
+			return;
+		}
 	}
 
 	// Only the access token crosses the wire; the rotated refresh token stays in its

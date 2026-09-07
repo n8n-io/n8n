@@ -138,6 +138,18 @@ function nodeResourceName(
 	return undefined;
 }
 
+export function rewriteNotFound(
+	this: IExecuteFunctions,
+	error: unknown,
+	message: string,
+	description: string,
+): unknown {
+	if (error instanceof NodeApiError && error.httpCode === '404') {
+		return new NodeOperationError(this.getNode(), message, { description });
+	}
+	return error;
+}
+
 /**
  * Binds the shared Microsoft Graph transport to a node's default credential type;
  * the node facade calls this once at module load and re-exports the returned
