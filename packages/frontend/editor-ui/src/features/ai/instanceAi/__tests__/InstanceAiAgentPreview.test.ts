@@ -35,7 +35,7 @@ const persistedAgent = {
 
 const AgentBuilderViewStub = {
 	name: 'AgentBuilderView',
-	props: ['artifactPreviewSessionId', 'artifactEditingLocked'],
+	props: ['artifactPreviewSessionId', 'artifactPreviewOpen', 'artifactEditingLocked'],
 	emits: ['persisted', 'name-saved', 'preview-open-change', 'assistant-handoff'],
 	template: '<div />',
 };
@@ -92,6 +92,7 @@ describe('InstanceAiAgentPreview', () => {
 				projectId: 'project-1',
 				agentId: 'agent-1',
 				previewSessionId: 'preview-session-1',
+				previewOpen: true,
 			},
 			global: {
 				stubs: { AgentBuilderView: AgentBuilderViewStub },
@@ -100,6 +101,7 @@ describe('InstanceAiAgentPreview', () => {
 
 		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
 		expect(builder.props('artifactPreviewSessionId')).toBe('preview-session-1');
+		expect(builder.props('artifactPreviewOpen')).toBe(true);
 		builder.vm.$emit('preview-open-change', true);
 		const handoff = {
 			projectId: 'project-1',
@@ -119,7 +121,7 @@ describe('InstanceAiAgentPreview', () => {
 		threadState.messages = [makeBuildingMessage('agent-1')];
 
 		const wrapper = mount(InstanceAiAgentPreview, {
-			props: { projectId: 'project-1', agentId: 'agent-1' },
+			props: { projectId: 'project-1', agentId: 'agent-1', previewOpen: false },
 			global: { stubs: { AgentBuilderView: AgentBuilderViewStub } },
 		});
 
@@ -135,7 +137,7 @@ describe('InstanceAiAgentPreview', () => {
 		threadState.messages = [makeBuildingMessage('agent-other')];
 
 		const wrapper = mount(InstanceAiAgentPreview, {
-			props: { projectId: 'project-1', agentId: 'agent-1' },
+			props: { projectId: 'project-1', agentId: 'agent-1', previewOpen: false },
 			global: { stubs: { AgentBuilderView: AgentBuilderViewStub } },
 		});
 
@@ -153,6 +155,7 @@ describe('InstanceAiAgentPreview', () => {
 				agentId: 'agent-1',
 				projectId: 'project-1',
 				pending: true,
+				previewOpen: false,
 			},
 			global: {
 				stubs: {

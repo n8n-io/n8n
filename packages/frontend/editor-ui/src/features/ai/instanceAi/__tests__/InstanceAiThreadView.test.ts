@@ -292,9 +292,14 @@ const InstanceAiAgentPreviewStub = defineComponent({
 		agentId: { type: String, required: true },
 		projectId: { type: String, required: true },
 		previewSessionId: { type: String, required: false },
+		previewOpen: { type: Boolean, required: true },
 	},
 	emits: ['preview-open-change', 'assistant-handoff'],
 	setup(props, { emit }) {
+		const openAgentChatPreview = inject<
+			((agentId: string, projectId: string) => boolean) | undefined
+		>('openAgentChatPreview', undefined);
+
 		return () =>
 			h(
 				'div',
@@ -303,6 +308,7 @@ const InstanceAiAgentPreviewStub = defineComponent({
 					'data-agent-id': props.agentId,
 					'data-project-id': props.projectId,
 					'data-preview-session-id': props.previewSessionId,
+					'data-preview-open': String(props.previewOpen),
 				},
 				[
 					h(
@@ -335,6 +341,14 @@ const InstanceAiAgentPreviewStub = defineComponent({
 								}),
 						},
 						'Fix with Assistant',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-preview-link',
+							onClick: () => openAgentChatPreview?.(props.agentId, props.projectId),
+						},
+						'Preview',
 					),
 				],
 			);
@@ -379,7 +393,6 @@ const InstanceAiArtifactsPanelStub = defineComponent({
 			'dismissPendingComposerContext',
 			undefined,
 		);
-
 		return () =>
 			h(
 				'button',
@@ -1695,6 +1708,18 @@ describe('InstanceAiThreadView', () => {
 		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 		expect(routerPushSpy).not.toHaveBeenCalled();
+	});
+
+	it('opens the embedded agent chat when an Instance AI preview link is selected', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		const preview = getByTestId('instance-ai-agent-preview-stub');
+
+		expect(preview).toHaveAttribute('data-preview-open', 'false');
+
+		await user.click(getByTestId('instance-ai-agent-preview-link'));
+
+		expect(preview).toHaveAttribute('data-preview-open', 'true');
+		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
 	});
 
 	it('restores the default or preferred preview width when available space grows', async () => {

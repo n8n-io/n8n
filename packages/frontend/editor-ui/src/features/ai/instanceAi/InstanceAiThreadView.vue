@@ -290,6 +290,14 @@ const preview = useCanvasPreview({
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
 });
+const isAgentPreviewDockOpen = ref(false);
+
+function openAgentChatPreview(agentId: string, projectId: string): boolean {
+	preview.openAgentPreview(agentId, projectId);
+	isAgentPreviewDockOpen.value = true;
+	return true;
+}
+
 const activeAgentPreviewSessionId = computed(() => {
 	const context = pendingComposerContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -306,6 +314,7 @@ const activeAgentPreviewSessionId = computed(() => {
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openAgentChatPreview', openAgentChatPreview);
 provide('pendingComposerContext', pendingComposerContext);
 provide('dismissPendingComposerContext', dismissPendingComposerContext);
 
@@ -448,13 +457,16 @@ const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
 const preferredPreviewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
-const isAgentPreviewDockOpen = ref(false);
 
-watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
-	if (activeTabId !== previousActiveTabId) {
-		isAgentPreviewDockOpen.value = false;
-	}
-});
+watch(
+	preview.activeTabId,
+	(activeTabId, previousActiveTabId) => {
+		if (activeTabId !== previousActiveTabId) {
+			isAgentPreviewDockOpen.value = false;
+		}
+	},
+	{ flush: 'sync' },
+);
 
 const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value * 0.7));
 // Preserve the default or manually selected width while temporarily
@@ -1426,6 +1438,7 @@ async function dismissComposerContextChip() {
 								:agent-id="preview.activeAgentId.value"
 								:project-id="preview.activeAgentProjectId.value"
 								:preview-session-id="activeAgentPreviewSessionId"
+								:preview-open="isAgentPreviewDockOpen"
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"

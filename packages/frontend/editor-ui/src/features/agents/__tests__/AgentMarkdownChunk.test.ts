@@ -14,7 +14,7 @@ describe('AgentMarkdownChunk', () => {
 		routerPush.mockReset();
 	});
 
-	it('routes agent Preview links through the current app tab', async () => {
+	it('routes legacy agent Preview links to the builder dock', async () => {
 		const wrapper = mount(AgentMarkdownChunk, {
 			props: {
 				source: '[Preview](/projects/project-1/agents/agent-1/preview)',
@@ -24,8 +24,23 @@ describe('AgentMarkdownChunk', () => {
 		await wrapper.find('a').trigger('click');
 
 		expect(routerPush).toHaveBeenCalledExactlyOnceWith(
-			'/projects/project-1/agents/agent-1/preview',
+			'/projects/project-1/agents/agent-1?openPreview=true',
 		);
+	});
+
+	it('opens agent Preview links in the embedded Instance AI panel', async () => {
+		const openAgentChatPreview = vi.fn(() => true);
+		const wrapper = mount(AgentMarkdownChunk, {
+			props: {
+				source: '[Preview](/projects/project-1/agents/agent-1?openPreview=true)',
+			},
+			global: { provide: { openAgentChatPreview } },
+		});
+
+		await wrapper.find('a').trigger('click');
+
+		expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
+		expect(routerPush).not.toHaveBeenCalled();
 	});
 
 	it('leaves Cmd/Ctrl-click Preview links to the browser', async () => {
@@ -35,7 +50,9 @@ describe('AgentMarkdownChunk', () => {
 			},
 		});
 
-		await wrapper.find('a').trigger('click', { metaKey: true });
+		const link = wrapper.find('a');
+		link.element.addEventListener('click', (event) => event.preventDefault(), { once: true });
+		await link.trigger('click', { metaKey: true });
 
 		expect(routerPush).not.toHaveBeenCalled();
 	});
