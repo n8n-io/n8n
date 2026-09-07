@@ -15,10 +15,7 @@ import type {
 	StatusResult,
 } from 'simple-git';
 
-import {
-	buildHttpsGitConfig,
-	buildSshCommand,
-} from '@/modules/git-connections.ee/git-connections-git.utils';
+import { buildHttpsGitConfig, buildSshCommand } from '@/modules/promotions.ee/promotions-git.utils';
 import { OwnershipService } from '@/services/ownership.service';
 
 import {
