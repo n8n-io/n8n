@@ -175,8 +175,10 @@ describe('compaction', () => {
 				timestamp = timestamp.plus({ minute: 1 });
 			}
 
+			const controller = new AbortController();
+
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			await insightsCompactionService.compactInsights(controller.signal);
 
 			// ASSERT
 			await expect(insightsRawRepository.count()).resolves.toBe(0);
@@ -221,8 +223,10 @@ describe('compaction', () => {
 				timestamp = timestamp.plus({ minute: 1 });
 			}
 
+			const controller = new AbortController();
+
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			await insightsCompactionService.compactInsights(controller.signal);
 
 			// ASSERT
 			await expect(insightsRawRepository.count()).resolves.toBe(0);
@@ -317,8 +321,10 @@ describe('compaction', () => {
 			}
 			await createRawInsightsEvents(workflow, events);
 
+			const controller = new AbortController();
+
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			await insightsCompactionService.compactInsights(controller.signal);
 
 			// ASSERT
 			await expect(insightsRawRepository.count()).resolves.toBe(0);
@@ -350,8 +356,10 @@ describe('compaction', () => {
 			}
 			await createRawInsightsEvents(workflow, events);
 
+			const controller = new AbortController();
+
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			await insightsCompactionService.compactInsights(controller.signal);
 
 			// ASSERT
 			await expect(insightsRawRepository.count()).resolves.toBe(0);
@@ -387,12 +395,14 @@ describe('compaction', () => {
 				.spyOn(insightsCompactionService, 'compactDayToWeek')
 				.mockResolvedValue(0);
 
-			// ACT + ASSERT
-			await expect(
-				insightsCompactionService.compactInsights(new AbortController().signal),
-			).rejects.toThrow('compaction failed');
+			const controller = new AbortController();
 
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			// ACT + ASSERT
+			await expect(insightsCompactionService.compactInsights(controller.signal)).rejects.toThrow(
+				'compaction failed',
+			);
+
+			await insightsCompactionService.compactInsights(controller.signal);
 			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
 			expect(hourToDaySpy).toHaveBeenCalledTimes(1);
 			expect(dayToWeekSpy).toHaveBeenCalledTimes(1);
@@ -413,15 +423,17 @@ describe('compaction', () => {
 			const workflow = await createWorkflow({}, project);
 			await createRawSuccessEvents(workflow, 5);
 
+			const controller = new AbortController();
+
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			await insightsCompactionService.compactInsights(controller.signal);
 
 			// ASSERT
 			await expectRawCount(1);
 			await expect(getCompactedTotal('hour')).resolves.toBe(4);
 
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			await insightsCompactionService.compactInsights(controller.signal);
 
 			// ASSERT
 			await expectRawCount(0);
@@ -467,8 +479,10 @@ describe('compaction', () => {
 					.startOf('day'),
 			});
 
+			const controller = new AbortController();
+
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			await insightsCompactionService.compactInsights(controller.signal);
 
 			// ASSERT
 			await expectRawCount(0);
@@ -495,8 +509,10 @@ describe('compaction', () => {
 				.mockReturnValueOnce(0)
 				.mockReturnValue(1000);
 
+			const controller = new AbortController();
+
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			await insightsCompactionService.compactInsights(controller.signal);
 
 			// ASSERT
 			await expectRawCount(3);
@@ -506,7 +522,7 @@ describe('compaction', () => {
 			overrideCompactionConfig({ compactionMaxRuntimeSeconds: 0 });
 
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			await insightsCompactionService.compactInsights(controller.signal);
 
 			// ASSERT
 			await expectRawCount(0);
@@ -567,7 +583,8 @@ describe('compaction', () => {
 			await expect(getCompactedTotal('hour')).resolves.toBe(2);
 
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			const laterRunController = new AbortController();
+			await insightsCompactionService.compactInsights(laterRunController.signal);
 
 			// ASSERT
 			await expectRawCount(0);
@@ -622,8 +639,10 @@ describe('compaction', () => {
 				);
 			}
 
+			const controller = new AbortController();
+
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			await insightsCompactionService.compactInsights(controller.signal);
 
 			// ASSERT
 			const remainingAfterFirstRun = await insightsRawRepository.find({ order: { id: 'ASC' } });
@@ -633,7 +652,7 @@ describe('compaction', () => {
 			await expect(getCompactedTotal('hour')).resolves.toBe(2);
 
 			// ACT
-			await insightsCompactionService.compactInsights(new AbortController().signal);
+			await insightsCompactionService.compactInsights(controller.signal);
 
 			// ASSERT
 			await expectRawCount(0);
