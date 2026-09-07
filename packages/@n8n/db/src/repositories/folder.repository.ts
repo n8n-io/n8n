@@ -279,6 +279,18 @@ export class FolderRepository extends Repository<Folder> {
 		}
 	}
 
+	/** Folders in a project whose name matches exactly, case-insensitively — not a
+	 *  `LIKE` scan, so a caller resolving a known name is never crowded out of a
+	 *  capped, `updatedAt`-ordered page by unrelated folders sharing a substring. */
+	async findManyByExactName(projectId: string, name: string, take: number): Promise<Folder[]> {
+		return await this.createQueryBuilder('folder')
+			.select(['folder.id', 'folder.name'])
+			.where('folder.projectId = :projectId', { projectId })
+			.andWhere('LOWER(folder.name) = LOWER(:name)', { name })
+			.take(take)
+			.getMany();
+	}
+
 	async findOneOrFailFolderInProject(
 		folderId: string,
 		projectId: string,

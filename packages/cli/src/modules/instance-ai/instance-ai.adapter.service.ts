@@ -841,13 +841,21 @@ export class InstanceAiAdapterService {
 					? normalizeFolderPath(requested.folderPath).split('/').at(-1)
 					: undefined;
 
+			// Checked once per project and reused below by both the direct lookup and
+			// the fallback scan, instead of running the same scope query twice.
+			const scopedProjectIds: string[] = [];
+			for (const projectId of projectIds) {
+				if (await userHasScopes(user, ['folder:list'], false, { projectId })) {
+					scopedProjectIds.push(projectId);
+				}
+			}
+
 			const byId = new Map<string, FolderInScope>();
 			const add = (row: { id: string; name: string }, projectId: string) => {
 				if (!byId.has(row.id))
 					byId.set(row.id, { id: row.id, name: row.name, path: row.name, projectId });
 			};
-			for (const projectId of projectIds) {
-				if (!(await userHasScopes(user, ['folder:list'], false, { projectId }))) continue;
+			for (const projectId of scopedProjectIds) {
 				if (requested.folderId !== undefined && requested.folderId !== '') {
 					try {
 						add(
@@ -858,21 +866,23 @@ export class InstanceAiAdapterService {
 						// Not in this project; the miss is reported after every project was tried.
 					}
 				} else if (wantedLeaf) {
-					// The repository matches names with LIKE; the resolver applies the exact rules.
-					const rows = await folderRepository.getMany({
-						filter: { projectId, name: wantedLeaf },
-						take: FOLDER_SCAN_LIMIT,
-					});
+					// Exact, not `LIKE`: the resolver applies the exact rules, and an exact
+					// match must never be crowded out of a capped page by a substring one.
+					const rows = await folderRepository.findManyByExactName(
+						projectId,
+						wantedLeaf,
+						FOLDER_SCAN_LIMIT,
+					);
 					for (const row of rows) add(row, projectId);
 				}
 			}
 
 			// Nothing matched directly: scan (capped) so the miss can list real folders.
 			if (byId.size === 0) {
-				for (const projectId of projectIds) {
-					if (!(await userHasScopes(user, ['folder:list'], false, { projectId }))) continue;
+				for (const projectId of scopedProjectIds) {
 					const rows = await folderRepository.getMany({
 						filter: { projectId },
+						select: { name: true },
 						take: FOLDER_SCAN_LIMIT,
 					});
 					for (const row of rows) add(row, projectId);
