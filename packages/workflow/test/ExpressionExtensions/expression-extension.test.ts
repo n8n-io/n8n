@@ -198,6 +198,18 @@ describe('Expression Parser', () => {
 			]);
 		});
 
+		test('numberList should reject a NaN bound', () => {
+			expect(() => evaluate('={{ numberList(NaN, 5) }}')).toThrow(
+				'numberList(): expected integer args, e.g. numberList(1, 10)',
+			);
+		});
+
+		test('numberList should reject a fractional bound', () => {
+			expect(() => evaluate('={{ numberList(1.5, 5) }}')).toThrow(
+				'numberList(): expected integer args, e.g. numberList(1, 10)',
+			);
+		});
+
 		test('zip', () => {
 			expect(evaluate('={{ zip(["test1", "test2", "test3"], [1, 2, 3]) }}')).toEqual({
 				test1: 1,

@@ -203,8 +203,9 @@ function smartJoin(value: unknown[], extraArgs: string[]): object {
 
 function chunk(value: unknown[], extraArgs: number[]) {
 	const [chunkSize] = extraArgs;
-	if (typeof chunkSize !== 'number' || chunkSize === 0) {
-		throw new ExpressionExtensionError('chunk(): expected non-zero numeric arg, e.g. .chunk(5)');
+	// Reject non-positive sizes so the stepping loop below always progresses.
+	if (typeof chunkSize !== 'number' || !Number.isInteger(chunkSize) || chunkSize <= 0) {
+		throw new ExpressionExtensionError('chunk(): expected positive integer arg, e.g. .chunk(5)');
 	}
 	const chunks: unknown[][] = [];
 	for (let i = 0; i < value.length; i += chunkSize) {
