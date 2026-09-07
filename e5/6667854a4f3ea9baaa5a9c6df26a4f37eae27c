@@ -1,0 +1,22 @@
+packages/nodes-base/utils/atlassian.ts
+  s_24615e7b7bf287::t_68048f8de0bb9c 235-243,255-260
+packages/nodes-base/utils/__tests__/atlassian.test.ts
+  s_24615e7b7bf287::t_0d146f08ed9095 14
+  s_24615e7b7bf287::t_71ff7890739e03 576-637
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e56667854a4f3ea9baaa5a9c6df26a4f37eae27c",
+  "prompts": {},
+  "sessions": {
+    "s_24615e7b7bf287": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d94b6d6a-e08c-4f8a-9905-70591c8aed8a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
