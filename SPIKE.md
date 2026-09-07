@@ -62,6 +62,35 @@ Deliberately still a spike: bindings are the same in-memory `Map` as the
 check on the endpoint itself (any caller can hit it, the same as everything
 else in this spike) — see plan.md Phase 4/6 for what's real there.
 
+## Multi-page navigation after an action: no dedicated mechanism needed, and it works
+
+An open question after the above: how does a workflow tell the app where to
+navigate next (e.g. after "mark resolved," go to a success page)? There's no
+dedicated redirect feature to design — it's a plain convention on the JSON
+the workflow already returns (e.g. a `redirectTo` field), read and acted on
+by the generated frontend code (`if (result.redirectTo) navigate(result.redirectTo)`
+using React Router). No new backend piece is needed; the run-workflow
+endpoint above already carries this without any change.
+
+What hadn't been tested was whether an actual multi-route app navigates
+correctly once built and served this way — every earlier spike used a single
+static page. Built a two-route app (`react-router-dom`, a list page + a
+`/success` page) and confirmed both directions:
+- **Client-side navigation** — clicking an action button, whose workflow
+  returns `{redirectTo: "/success"}`, navigates the app to the success page
+  with no full page reload, confirmed visually in a real browser.
+- **Direct/hard navigation** to the same sub-path (`GET /apps/:namespace/success`,
+  no client-side router involved yet) also resolves correctly — the static-serving
+  route's existing fallback (serve `index.html` for any path with no matching
+  file) already handles this; it didn't need new code.
+
+One real bug found and fixed along the way (in the spike's own test app, not
+the platform): the run-endpoint's response nests output by node name
+(`{data: {Code: [...]}}`, same shape for both data and action calls) — an
+early version of the action handler read a field off the wrong nesting level
+and silently failed to navigate. Worth calling out in the `app-builder`
+skill's guidance so generated code gets this shape right from the start.
+
 ## Hot reload: investigated further, refines (doesn't confirm) plan.md Phase 7
 
 plan.md's Phase 7 said live HMR needs new background-process + port-exposure
