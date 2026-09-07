@@ -360,10 +360,13 @@ export class InstanceContextService {
 		cursor: InstanceContextCursor | null;
 		now: Date;
 	}): Promise<RunSummary[]> {
-		// Consecutive windows abut rather than overlap: a delta starts exactly where the last one
-		// ended and closes at this read, so a run is summarised once and a second block carries
-		// additions only. Re-reading a lag window instead would report the same runs twice, and the
-		// counts of two blocks disagreeing is the failure the delta exists to avoid.
+		// Consecutive windows tile the timeline: half-open `[after, before)`, so a delta starts
+		// exactly where the last one ended and a run is summarised once. Re-reading a lag window
+		// instead would report the same runs twice, and the counts of two blocks disagreeing is the
+		// failure the delta exists to avoid. Half-open rather than fully closed because a run
+		// committing after a read, with a stop time exactly on the boundary, would otherwise be in
+		// neither window — absent from the first because it had not committed, excluded from the
+		// second by the bound.
 		//
 		// The cost is stated rather than hidden: a run whose row commits after this read but whose
 		// `stoppedAt` precedes it is never summarised. Runs have no gap-tolerant cursor the way

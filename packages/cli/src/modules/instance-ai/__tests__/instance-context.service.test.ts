@@ -328,7 +328,11 @@ describe('InstanceContextService', () => {
 				const service = serviceWith();
 				activityEventRepository.findFeed
 					.mockResolvedValueOnce([]) // arrivals above the mark
-					.mockResolvedValueOnce([entry({ id: 498, resourceName: 'Committed late' })]);
+					// 499 is inside the band and already in `activitySeen`; 498 is not.
+					.mockResolvedValueOnce([
+						entry({ id: 499, resourceName: 'Shown already' }),
+						entry({ id: 498, resourceName: 'Committed late' }),
+					]);
 
 				const built = await service.buildBlock({
 					user: USER,
@@ -347,6 +351,10 @@ describe('InstanceContextService', () => {
 					expect.objectContaining({ afterId: 300, beforeId: 500, limit: 200 }),
 				);
 				expect(built?.block).toContain('[498]');
+				// The band deliberately re-reads what the mark already covered, so de-duplicating
+				// against the seen ids is what stops an entry appearing in two blocks.
+				expect(built?.block).not.toContain('[499]');
+				expect(built?.block).not.toContain('Shown already');
 			});
 
 			/**

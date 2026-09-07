@@ -689,11 +689,13 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	async summariseRunsForProjects(query: {
 		projectIds: string[];
 		/**
-		 * Runs that finished strictly after this. Exclusive so consecutive windows cannot overlap:
-		 * a caller that passes the previous window's end gets additions only.
+		 * Start of the window, inclusive. Half-open with `stoppedBefore` — `[after, before)` — so
+		 * consecutive windows tile the timeline with neither a gap nor an overlap: a caller passing
+		 * the previous window's end gets additions only, and a run landing exactly on that boundary
+		 * belongs to the later window rather than falling between the two.
 		 */
 		stoppedAfter: Date;
-		/** Runs that finished at or before this — the caller's read time, closing the window. */
+		/** End of the window, exclusive. The caller's read time. */
 		stoppedBefore: Date;
 		/** How many workflows may contribute, so schedules cannot crowd out everything else. */
 		workflowLimit: number;
@@ -739,8 +741,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			// activity feed used to keep eval runs in their own category for the same reason.
 			.andWhere('execution.mode != :evaluationMode', { evaluationMode: 'evaluation' })
 			.andWhere('execution.stoppedAt IS NOT NULL')
-			.andWhere('execution.stoppedAt > :stoppedAfter', { stoppedAfter: query.stoppedAfter })
-			.andWhere('execution.stoppedAt <= :stoppedBefore', { stoppedBefore: query.stoppedBefore })
+			.andWhere('execution.stoppedAt >= :stoppedAfter', { stoppedAfter: query.stoppedAfter })
+			.andWhere('execution.stoppedAt < :stoppedBefore', { stoppedBefore: query.stoppedBefore })
 			.setParameter('failureStatuses', failureStatuses)
 			.groupBy('execution.workflowId')
 			.orderBy('MAX(execution.stoppedAt)', 'DESC')

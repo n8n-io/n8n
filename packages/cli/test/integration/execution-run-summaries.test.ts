@@ -221,6 +221,43 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 		expect(second).toEqual([]);
 	});
 
+	/**
+	 * The boundary belongs to the later window. A run that commits after a read, with a stop time
+	 * exactly on that read's edge, is absent from the first window because it was not yet
+	 * committed — so a closed upper bound plus an exclusive lower bound would drop it for good.
+	 */
+	it('hands a run landing exactly on the boundary to the next window', async () => {
+		const workflow = await createWorkflow({}, project);
+		const boundary = new Date(Date.now() - 30_000);
+		// Stored to second precision on some drivers, so align the boundary with what was written.
+		await createExecution({ status: 'success', stoppedAt: boundary }, workflow);
+		const [written] = await repository.summariseRunsForProjects({
+			projectIds: [project.id],
+			stoppedAfter: windowStart(),
+			stoppedBefore: readTime(),
+			workflowLimit: 10,
+		});
+		const exactStop = written.lastStoppedAt;
+
+		// The earlier window ends exactly at that stop time and must not contain it.
+		const before = await repository.summariseRunsForProjects({
+			projectIds: [project.id],
+			stoppedAfter: windowStart(),
+			stoppedBefore: exactStop,
+			workflowLimit: 10,
+		});
+		// The next window starts there and must.
+		const after = await repository.summariseRunsForProjects({
+			projectIds: [project.id],
+			stoppedAfter: exactStop,
+			stoppedBefore: readTime(),
+			workflowLimit: 10,
+		});
+
+		expect(before).toEqual([]);
+		expect(after[0]).toMatchObject({ total: 1 });
+	});
+
 	it('reads nothing when no project is in scope', async () => {
 		const workflow = await createWorkflow({}, project);
 		await createExecution({ stoppedAt: recently() }, workflow);
