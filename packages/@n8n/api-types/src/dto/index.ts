@@ -281,6 +281,11 @@ export {
 export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
+export { CreateAppDto } from './app/create-app.dto';
+export { UpdateAppDto } from './app/update-app.dto';
+export { CreatePageDto } from './app/create-page.dto';
+export { UpdatePageDto } from './app/update-page.dto';
+
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export { PublicApiCreateDataTableDto } from './data-table/public-api-create-data-table.dto';

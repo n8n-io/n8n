@@ -1,5 +1,6 @@
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { DataTableModule } from '@/features/core/dataTable/module.descriptor';
+import { AppsModule } from '@/features/apps/module.descriptor';
 import { InsightsModule } from '@/features/execution/insights/module.descriptor';
 import { MCPModule } from '@/features/ai/mcpAccess/module.descriptor';
 import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
@@ -16,6 +17,7 @@ import { PromotionsModule } from '@/features/integrations/promotions.ee/module.d
 export const modules: FrontendModuleDescription[] = [
 	InsightsModule,
 	DataTableModule,
+	AppsModule,
 	MCPModule,
 	ChatModule,
 	InstanceAiModule,

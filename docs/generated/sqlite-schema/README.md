@@ -39,6 +39,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agents_threads](agents_threads.md) | 6 |  | table |
 | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) | 4 |  | table |
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
+| [app](app.md) | 7 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -96,6 +97,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [oauth_clients](oauth_clients.md) | 10 |  | table |
 | [oauth_refresh_tokens](oauth_refresh_tokens.md) | 8 |  | table |
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
+| [page](page.md) | 7 |  | table |
 | [poller_state](poller_state.md) | 7 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
 | [project](project.md) | 9 |  | table |
@@ -200,6 +202,7 @@ erDiagram
 "agents_observations" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "auth_identity" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_tools" : "FOREIGN KEY (toolId) REFERENCES chat_hub_tools (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_agents" : "FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -277,6 +280,8 @@ erDiagram
 "oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"page" }o--o| "page" : "FOREIGN KEY (parentPageId) REFERENCES page (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"page" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "poller_state" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "processed_data" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project" }o--o| "user" : "FOREIGN KEY (creatorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -696,6 +701,15 @@ erDiagram
   datetime_3_ createdAt
   varchar_16_ id PK
   varchar_24_ name
+  datetime_3_ updatedAt
+}
+"app" {
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_128_ name
+  varchar_128_ namespace
+  varchar_36_ projectId FK
+  TEXT theme
   datetime_3_ updatedAt
 }
 "auth_identity" {
@@ -1240,6 +1254,15 @@ erDiagram
   INTEGER id
   TEXT scope
   varchar userId FK
+}
+"page" {
+  varchar_36_ appId FK
+  TEXT content
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_36_ parentPageId FK
+  varchar_255_ route
+  datetime_3_ updatedAt
 }
 "poller_state" {
   datetime_3_ backoffUntil
