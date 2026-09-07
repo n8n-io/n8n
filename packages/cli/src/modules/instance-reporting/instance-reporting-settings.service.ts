@@ -53,11 +53,9 @@ export class InstanceReportingSettingsService {
 	 * first call and healing a time the current compaction interval has made
 	 * unsafe.
 	 *
-	 * Called by `InstanceReportingScheduler` on every tick, not just once — cheap
-	 * (one settings read, most calls no-op) and it means the healing check runs
-	 * against the compaction interval's current value on every pass rather than
-	 * only at startup. The interval is an env var, so in practice it only ever
-	 * changes across a restart, but nothing here assumes that.
+	 * Called on every scheduler tick rather than once at startup: it costs one
+	 * settings read and mostly no-ops, and the healing check then always runs
+	 * against the compaction interval's current value.
 	 */
 	async getReportTime(): Promise<string> {
 		const stored = await this.readReportTime();
@@ -94,10 +92,9 @@ export class InstanceReportingSettingsService {
 	 * and persisted so the instance keeps the corrected one from here on.
 	 *
 	 * Raising the compaction interval is what puts a previously fine time inside
-	 * the window; the report generated before this heals under-counts the tail of
-	 * its day, which is the accepted cost of not pinning the time to a config value
-	 * forever. The shift is derived from the stored time rather than re-rolled, so
-	 * every main computes the same corrected value and concurrent writes converge.
+	 * the window. The shift is derived from the stored time rather than re-rolled,
+	 * so every main computes the same corrected value and concurrent writes
+	 * converge.
 	 */
 	private async clearCompactionWindow(reportTime: string): Promise<string> {
 		const floor = this.compactionFloorMinutes();

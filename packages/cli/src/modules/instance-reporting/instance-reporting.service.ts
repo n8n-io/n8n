@@ -16,18 +16,13 @@ import { CentralInstanceMonitoringReportRepository } from './database/repositori
 import { InstanceReportingConfig } from './instance-reporting.config';
 import { INSTANCE_REPORTS_PATH } from './instance-reporting.constants';
 
-/**
- * Measures and delivers one instance report. *When* that happens is
- * {@link InstanceReportingScheduler}'s concern.
- */
 /** A hung receiver must not hold a delivery open until the next report is due. */
 const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 /**
- * Attempts one report gets before the day is left to the next slot.
- *
- * Counted on the row rather than in the scheduler, so a restart resumes the
- * report's budget instead of granting a fresh one.
+ * Attempts one report gets before the day is left to the next slot. The count
+ * lives on the report row, so a restart resumes the budget instead of granting
+ * a fresh one.
  */
 const MAX_ATTEMPTS = 3;
 
@@ -44,6 +39,10 @@ export const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
  */
 const MAX_BACKFILL_DAYS = 30;
 
+/**
+ * Measures and delivers one instance report. *When* that happens is
+ * {@link InstanceReportingScheduler}'s concern.
+ */
 @Service()
 export class InstanceReportingService {
 	private readonly http: HttpRequestClient;
@@ -81,9 +80,10 @@ export class InstanceReportingService {
 	 * has a final number, so the newest day reported is always the previous
 	 * completed UTC one.
 	 *
-	 * The report row is written before the request goes out and carries the
-	 * `batchId`, so a redelivery reuses it and the receiver deduplicates. Cumulative
-	 * points carry no date; the receiver keeps the most recently received value.
+	 * Not sending a day twice is this instance's job — the receiver stores whatever
+	 * arrives. The row is written before the request goes out and its id travels as
+	 * `batchId`, so a redelivery reuses the row instead of measuring the day again,
+	 * and only a delivered report crosses its days off.
 	 *
 	 * A retry resends today's pending report exactly as measured instead of taking
 	 * fresh numbers. The cumulative point is a lifetime total sampled at this
@@ -142,7 +142,7 @@ export class InstanceReportingService {
 			const message = error instanceof Error ? error.message : String(error);
 			await this.reportRepository.recordFailure(report.id, message, new Date());
 
-			// The row carries the budget, so this attempt is the one just recorded.
+			// `recordFailure` incremented the count, so the in-memory row is one behind.
 			if (report.attempts + 1 >= MAX_ATTEMPTS) {
 				await this.reportRepository.markSkipped(report.id);
 				this.logger.error('Giving up on the instance report after repeated delivery failures', {
@@ -162,9 +162,9 @@ export class InstanceReportingService {
 	 * How long the scheduler must wait before attempting today's report again, or
 	 * `0` when it may attempt now.
 	 *
-	 * Derived from the row rather than from a timer, so the wait survives a
-	 * restart. Without it, a process that starts after a crash attempts at once,
-	 * and a crash loop spends the whole budget in seconds.
+	 * Derived from the report row, so the wait survives a restart. Without it, a
+	 * crash loop would attempt at once every time and spend the whole budget in
+	 * seconds.
 	 */
 	async msUntilRetryAllowed(now: Date): Promise<number> {
 		const pending = await this.reportRepository.findTodaysPending(now);
@@ -180,9 +180,8 @@ export class InstanceReportingService {
 	 * yesterday. Empty when yesterday is already reported.
 	 *
 	 * A day the instance was down for is still unreported once it comes back, so
-	 * the days since the last delivered report are collected too. Without that,
-	 * downtime silently loses days from the daily series with nothing to show a
-	 * gap happened.
+	 * the whole gap since the last delivered report is collected. Without that,
+	 * downtime silently loses days from the daily series.
 	 */
 	private async missedDays(now: Date): Promise<string[]> {
 		const lastCoveredDay = await this.reportRepository.findLastCoveredDay();

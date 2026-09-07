@@ -16,15 +16,12 @@ const MINUTES_PER_DAY = 24 * 60;
 /**
  * Fires the daily instance report at this instance's configured report time.
  *
- * **Deliberately not built on the durable scheduler.** That framework has no
- * first-class support for system-owned jobs yet; rather than bend it into a
- * shape its owners would have to unpick later, this uses a plain in-process
- * timer, the same way pruning and compaction do. It is the intended home for
- * this job once the scheduler grows that support, so the surface here is kept
- * deliberately small: decide *when*, and call
- * {@link InstanceReportingService.sendReport}.
+ * Uses a plain in-process timer, the same way pruning and compaction do,
+ * because the durable scheduler has no support for system-owned jobs yet. It is
+ * the intended home for this job once it does, so this class does one thing:
+ * decide *when*, then call {@link InstanceReportingService.sendReport}.
  *
- * What replaces the durability the scheduler would have given:
+ * Durability comes from elsewhere instead:
  *
  * - **Leader-only.** In multi-main, followers hold no timer, so exactly one
  *   instance reports. Handover moves the timer with leadership.
@@ -33,7 +30,7 @@ const MINUTES_PER_DAY = 24 * 60;
  *   handover that straddles the report time still reports that day.
  * - **Bounded retry, held in the database.** The report row carries the attempts
  *   made and when the last one finished, so a restart resumes that budget rather
- *   than starting a fresh one. This class keeps no attempt state.
+ *   than starting a fresh one.
  */
 @Service()
 export class InstanceReportingScheduler {
@@ -120,10 +117,6 @@ export class InstanceReportingScheduler {
 	/**
 	 * One pass: report if due, then arm the next one. Never throws — a pass that
 	 * fails still re-arms, otherwise one bad day would stop reporting for good.
-	 *
-	 * The retry budget and the wait between attempts both live on the report row,
-	 * so this holds no attempt state of its own and a restart resumes where the
-	 * last process stopped.
 	 */
 	private async tick(): Promise<void> {
 		try {

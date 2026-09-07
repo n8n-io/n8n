@@ -14,10 +14,8 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 	 * Today's report, if one was already generated and never reached the receiver.
 	 *
 	 * Resending it — same `batchId`, same data points — is what keeps a retry from
-	 * re-measuring: the metrics were sampled at this instance's report time, and the
-	 * cumulative series is only comparable day to day while that sampling interval
-	 * stays a fixed 24 hours. It also lets a receiver that accepted the first
-	 * attempt (and only lost the response) deduplicate instead of double-counting.
+	 * re-measuring: the cumulative series is only comparable day to day while its
+	 * sampling interval stays a fixed 24 hours.
 	 *
 	 * Scoped to `now`'s UTC day on purpose: an older undelivered report measured a
 	 * different day, so it must not stand in for today's. It stays as it is, a
@@ -44,8 +42,7 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 	 *
 	 * A skipped day counts as settled, so the instance stops for the day instead
 	 * of generating a second report with a second budget. The day itself is not
-	 * lost: only a delivered report crosses a day off, so the next report covers
-	 * it again.
+	 * lost — only a delivered report crosses a day off.
 	 */
 	async hasSettledToday(now: Date): Promise<boolean> {
 		return await this.existsBy({
@@ -55,9 +52,8 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 	}
 
 	/**
-	 * Record a freshly measured report, before any attempt to deliver it. Written
-	 * with its data points rather than filled in afterwards, so a row always carries
-	 * the measurement it stands for.
+	 * Record a freshly measured report, with its data points, before any attempt
+	 * to deliver it. A row therefore always carries the measurement it stands for.
 	 */
 	async createPending(
 		dataPoints: InstanceReportDataPoint[],
@@ -75,11 +71,9 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 	 * still owed and the next report covers it again. That is also why the same
 	 * day may go out under a second `batchId`: nothing was saved the first time.
 	 *
-	 * Read from the daily points themselves rather than from a column of their
-	 * own, since that is where the covered days already live. The maximum is
-	 * taken over every delivered row instead of the newest one, so the answer
-	 * does not depend on `createdAt` being unique. The table gains one row a day
-	 * and only `dataPoints` is selected, so the scan stays cheap.
+	 * The maximum is taken over every delivered row instead of the newest one, so
+	 * the answer does not depend on `createdAt` being unique. The table gains one
+	 * row a day and only `dataPoints` is selected, so the scan stays cheap.
 	 */
 	async findLastCoveredDay(): Promise<string | null> {
 		const delivered = await this.find({ where: { status: 'DELIVERED' }, select: ['dataPoints'] });
