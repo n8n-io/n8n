@@ -40,6 +40,10 @@ export class AppRepository extends Repository<App> {
 		return await this.save(Object.assign(app, updates));
 	}
 
+	async setActiveVersionId(id: string, activeVersionId: string | null) {
+		await this.update({ id }, { activeVersionId });
+	}
+
 	async deleteApp(id: string) {
 		await this.delete({ id });
 	}

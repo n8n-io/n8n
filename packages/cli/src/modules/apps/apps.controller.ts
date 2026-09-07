@@ -11,17 +11,47 @@ import {
 	ProjectScope,
 	RestController,
 } from '@n8n/decorators';
-import { NextFunction, Response } from 'express';
+import { NextFunction, RequestHandler, Response } from 'express';
+import multer from 'multer';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 
+import { MAX_TARBALL_BYTES } from './app-version.service';
 import { AppsService } from './apps.service';
 import { AppNamespaceConflictError } from './errors/app-namespace-conflict.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
+
+type TarballUploadRequest = AuthenticatedRequest<{ projectId: string }> & {
+	files?: Record<string, Express.Multer.File[]>;
+	fileUploadError?: Error;
+};
+
+const tarballFields = multer({
+	storage: multer.memoryStorage(),
+	limits: { fileSize: MAX_TARBALL_BYTES, files: 2 },
+}).fields([
+	{ name: 'source', maxCount: 1 },
+	{ name: 'dist', maxCount: 1 },
+]);
+
+/** Parks a multer failure on the request so the handler can answer 400 instead of the default 500. */
+const uploadTarballs: RequestHandler = (req, res, next) => {
+	void tarballFields(req, res, (error: unknown) => {
+		if (error instanceof Error) Object.assign(req, { fileUploadError: error });
+		next();
+	});
+};
+
+const uploadedTarball = (req: TarballUploadRequest, field: 'source' | 'dist'): Buffer => {
+	const file = req.files?.[field]?.[0];
+	if (!file) throw new BadRequestError(`Missing '${field}' tarball`);
+	return file.buffer;
+};
 
 @RestController('/projects/:projectId/apps')
 export class AppsController {
@@ -124,6 +154,34 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		await this.appsService.deleteApp(appId);
+	}
+
+	@Post('/:appId/versions', { middlewares: [uploadTarballs] })
+	@ProjectScope('app:update')
+	async createVersion(req: TarballUploadRequest, _res: Response, @Param('appId') appId: string) {
+		this.checkInstanceWriteAccess();
+		if (req.fileUploadError) {
+			const message =
+				req.fileUploadError instanceof multer.MulterError
+					? req.fileUploadError.message
+					: 'File upload failed';
+			throw new BadRequestError(message);
+		}
+		return await this.appsService.createVersion(
+			appId,
+			uploadedTarball(req, 'source'),
+			uploadedTarball(req, 'dist'),
+		);
+	}
+
+	@Get('/:appId/versions')
+	@ProjectScope('app:read')
+	async listVersions(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+	) {
+		return await this.appsService.listVersions(appId);
 	}
 
 	@Post('/:appId/pages')

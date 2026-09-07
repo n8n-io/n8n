@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { AppVersionService } from './app-version.service';
 import { AppRepository } from './app.repository';
 import { AppNotFoundError } from './errors/app-not-found.error';
 import { DataWorkflowNotFoundError } from './errors/data-workflow-not-found.error';
@@ -19,6 +20,7 @@ export class AppsService {
 		private readonly appRepository: AppRepository,
 		private readonly pageRepository: PageRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly appVersionService: AppVersionService,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto) {
@@ -42,7 +44,19 @@ export class AppsService {
 
 	async deleteApp(appId: string) {
 		await this.getApp(appId);
+		await this.appVersionService.deleteAllForApp(appId);
 		await this.appRepository.deleteApp(appId);
+	}
+
+	async createVersion(appId: string, source: Buffer, dist: Buffer) {
+		const version = await this.appVersionService.create(appId, source, dist);
+		return this.appVersionService.toResponse(version);
+	}
+
+	async listVersions(appId: string) {
+		await this.getApp(appId);
+		const versions = await this.appVersionService.list(appId);
+		return versions.map((version) => this.appVersionService.toResponse(version));
 	}
 
 	async createPage(appId: string, dto: CreatePageDto) {

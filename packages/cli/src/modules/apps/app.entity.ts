@@ -23,4 +23,8 @@ export class App extends WithTimestampsAndStringId {
 
 	@Column()
 	projectId: string;
+
+	/** Version served at `/apps/<namespace>/`. No FK: the service sets it only to a version it just inserted. */
+	@Column({ type: String, nullable: true })
+	activeVersionId: string | null;
 }
