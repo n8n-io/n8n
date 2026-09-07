@@ -398,8 +398,12 @@ export async function loadPrebakedRuntimeSkillsBundle({
 	});
 }
 
-function linkedFilesFor(entry: RuntimeSkillRegistryEntry): RuntimeSkillLinkedFile[] {
-	return LINKED_FILE_GROUPS.flatMap((group) => entry.linkedFiles[group]);
+function linkedFilesFor(
+	entry: RuntimeSkillRegistryEntry,
+): Array<{ group: RuntimeSkillLinkedFileGroup; linkedFile: RuntimeSkillLinkedFile }> {
+	return LINKED_FILE_GROUPS.flatMap((group) =>
+		entry.linkedFiles[group].map((linkedFile) => ({ group, linkedFile })),
+	);
 }
 
 function warnIfExceedsLoadSkillLimit(
@@ -455,7 +459,7 @@ export async function buildRuntimeSkillWorkspaceBundle({
 			}
 
 			await Promise.all(
-				linkedFiles.map(async (linkedFile) => {
+				linkedFiles.map(async ({ group, linkedFile }) => {
 					const { relativePath, materializedPath } = safeLinkedFilePath(
 						directory,
 						entry,
@@ -474,7 +478,10 @@ export async function buildRuntimeSkillWorkspaceBundle({
 						workspaceRoot,
 						skillsRoot,
 					);
-					warnIfExceedsLoadSkillLimit(logger, entry, materializedPath, materializedContent);
+					// Templates are copied by tools, never read through load_skill, so the read limit does not apply.
+					if (group !== 'templates') {
+						warnIfExceedsLoadSkillLimit(logger, entry, materializedPath, materializedContent);
+					}
 					files.set(materializedPath, materializedContent);
 				}),
 			);
