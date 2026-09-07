@@ -83,6 +83,28 @@ describe('DeprecationService', () => {
 		toTest(envVar, value, mustWarn);
 	});
 
+	describe('N8N_SSRF_PROTECTION_ENABLED', () => {
+		beforeEach(() => {
+			process.env.N8N_SSRF_PROTECTION_ENABLED = 'true';
+		});
+
+		test.each([undefined, 'default', 'DEFAULT , 100.64.0.0/10'])(
+			'should warn when N8N_SSRF_BLOCKED_IP_RANGES is `%s`',
+			(ranges) => {
+				if (ranges === undefined) delete process.env.N8N_SSRF_BLOCKED_IP_RANGES;
+				else process.env.N8N_SSRF_BLOCKED_IP_RANGES = ranges;
+				deprecationService.warn();
+				expect(logger.warn.mock.lastCall?.[0] ?? '').toContain('N8N_SSRF_PROTECTION_ENABLED');
+			},
+		);
+
+		test('should not warn when N8N_SSRF_BLOCKED_IP_RANGES lists literal ranges only', () => {
+			process.env.N8N_SSRF_BLOCKED_IP_RANGES = '10.0.0.0/8,192.168.0.0/16';
+			deprecationService.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain('N8N_SSRF_PROTECTION_ENABLED');
+		});
+	});
+
 	describe('running outside a container', () => {
 		const message = 'Running n8n outside a container is deprecated';
 
