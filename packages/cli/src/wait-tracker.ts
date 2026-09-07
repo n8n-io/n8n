@@ -161,7 +161,7 @@ export class WaitTracker {
 				this.waitingExecutions[executionId] = {
 					executionId,
 					timer: setTimeout(() => {
-						void this.startExecution(executionId).catch((error) => {
+						void this.startExecution(executionId, this.trackingAbort?.signal).catch((error) => {
 							// Another process already resumed this execution (e.g. multi-main
 							// duplicate timer) — expected, nothing to do.
 							if (error instanceof ExecutionAlreadyResumingError) {
@@ -189,13 +189,14 @@ export class WaitTracker {
 		delete this.waitingExecutions[executionId];
 	}
 
-	async startExecution(executionId: string) {
-		// Capture the session signal before any await — leadership can change while
-		// `findSingleExecution` or `workflowRunner.run` is pending, leaving
-		// `trackingAbort` pointing at the new session (or undefined). The resume
-		// must observe the session that started the work, not the post-handoff one.
-		const sessionSignal = this.trackingAbort?.signal;
-
+	/**
+	 * @param abortSignal Leader-tracking timer passes `this.trackingAbort?.signal`;
+	 * `resumeParentExecution` forwards its own (undefined for webhook-started
+	 * resumes). Never fall back to `this.trackingAbort?.signal` here: that would
+	 * re-apply the leader signal to a nested webhook cascade and let a stepdown
+	 * abort it.
+	 */
+	async startExecution(executionId: string, abortSignal?: AbortSignal) {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
@@ -243,8 +244,7 @@ export class WaitTracker {
 				promise,
 				{ executionId, workflowId },
 				runId,
-				// Leader-tracking path only — webhook callers omit this so stepdown does not abort them.
-				sessionSignal,
+				abortSignal,
 			);
 		}
 	}
@@ -363,7 +363,7 @@ export class WaitTracker {
 
 					try {
 						await this.withRetry(
-							async () => await this.startExecution(parentExecution.executionId),
+							async () => await this.startExecution(parentExecution.executionId, abortSignal),
 							MAX_PARENT_RESUME_ATTEMPTS,
 							(error) =>
 								!(error instanceof ExecutionAlreadyResumingError) && isRetryableResumeError(error),
@@ -482,28 +482,36 @@ export class WaitTracker {
 			if (winner.kind === 'promise') return winner.run;
 
 			try {
-				const child = await this.executionPersistence.findSingleExecution(childExecutionId, {
-					includeData: true,
-					unflattenData: true,
+				// Lightweight status check — avoid loading the full run data every tick.
+				// Only refetch with data when the child is terminal, so a 60min wait at
+				// 1s intervals does at most one heavy query instead of ~3600.
+				const childStatus = await this.executionPersistence.findSingleExecution(childExecutionId, {
+					includeData: false,
 				});
-				lastKnownChildStatus = child?.status;
-				if (child && isTerminalExecutionStatus(child.status) && child.data) {
-					const run = executionResponseToRun(child);
-					// The in-memory promise never settled, so neither did the capacity-releasing
-					// `.finally` on that run. Finalize with the runId captured alongside the
-					// promise — a live `getRunId` could return a replacement's identity.
-					if (childRunId !== undefined) {
-						this.activeExecutions.finalizeExecution(childExecutionId, run, childRunId);
+				lastKnownChildStatus = childStatus?.status;
+				if (childStatus && isTerminalExecutionStatus(childStatus.status)) {
+					const child = await this.executionPersistence.findSingleExecution(childExecutionId, {
+						includeData: true,
+						unflattenData: true,
+					});
+					if (child?.data) {
+						const run = executionResponseToRun(child);
+						// The in-memory promise never settled, so neither did the capacity-releasing
+						// `.finally` on that run. Finalize with the runId captured alongside the
+						// promise: a live `getRunId` could return a replacement's identity.
+						if (childRunId !== undefined) {
+							this.activeExecutions.finalizeExecution(childExecutionId, run, childRunId);
+						}
+						this.logger.warn(
+							'Child execution finished in DB but post-execute promise did not settle; resuming parent from DB',
+							{
+								parentExecutionId,
+								childExecutionId,
+								childStatus: child.status,
+							},
+						);
+						return run;
 					}
-					this.logger.warn(
-						'Child execution finished in DB but post-execute promise did not settle; resuming parent from DB',
-						{
-							parentExecutionId,
-							childExecutionId,
-							childStatus: child.status,
-						},
-					);
-					return run;
 				}
 			} catch (error) {
 				this.logger.debug('Failed to poll child execution status while waiting to resume parent', {

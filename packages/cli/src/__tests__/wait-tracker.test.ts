@@ -127,7 +127,10 @@ describe('WaitTracker', () => {
 
 				vi.advanceTimersByTime(2_000);
 
-				expect(startExecutionSpy).toHaveBeenCalledWith(execution.id);
+				expect(startExecutionSpy).toHaveBeenCalledWith(
+					execution.id,
+					expect.anything(), // tracking abort signal
+				);
 			});
 		});
 	});
@@ -1155,7 +1158,8 @@ describe('WaitTracker', () => {
 						return execution;
 					});
 
-					await waitTracker.startExecution(execution.id);
+					// Leader-timer path: pass the tracking signal so stepdown aborts.
+					await waitTracker.startExecution(execution.id, waitTracker['trackingAbort']?.signal);
 					postExecutePromise.resolve(subworkflowResults);
 					// Let the park poll start sleeping, then step down.
 					await vi.advanceTimersByTimeAsync(100);
@@ -1184,7 +1188,8 @@ describe('WaitTracker', () => {
 						return execution;
 					});
 
-					await waitTracker.startExecution(execution.id);
+					// Leader-timer path: pass the tracking signal so stepdown aborts.
+					await waitTracker.startExecution(execution.id, waitTracker['trackingAbort']?.signal);
 					await vi.advanceTimersByTimeAsync(100);
 					waitTracker.stopTracking();
 					await vi.advanceTimersByTimeAsync(2000);
@@ -1243,6 +1248,112 @@ describe('WaitTracker', () => {
 
 					expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
 						executionId: parentExecution.id,
+						expectedStatus: 'waiting',
+					});
+					expect(logger.info).not.toHaveBeenCalledWith(
+						'Stopped resuming parent after leader stepdown',
+						expect.anything(),
+					);
+				});
+
+				it('does not abort a nested webhook-started resume that is still polling after stepdown', async () => {
+					// Webhook starts resume(child→parent) with no signal. That resume claims
+					// the parent via startExecution(parentId), which starts a new
+					// resume(parent→grandparent). The nested resume must stay signal-free
+					// end to end: even if stepdown fires WHILE the nested resume is still
+					// polling for the grandparent to park, it must keep going and claim.
+					const { parentExecution, postExecutePromise, subworkflowResults } =
+						setupParentExecutionTest(true);
+					parentExecution.status = 'waiting';
+
+					// Grandparent starts `running` and only parks AFTER stepdown.
+					let grandparentParked = false;
+					const grandparentExecution: IExecutionResponse = {
+						id: 'grandparent_execution_id',
+						finished: false,
+						status: 'running',
+						waitTill: undefined,
+						workflowData: mock<IWorkflowBase>({ id: 'grandparent_workflow_id', nodes: [] }),
+						customData: {},
+						annotation: { tags: [] },
+						createdAt: new Date(),
+						startedAt: new Date(),
+						mode: 'manual',
+						workflowId: 'grandparent_workflow_id',
+						storedAt: 'db',
+						data: createRunExecutionData({
+							executionData: {
+								nodeExecutionStack: [
+									{
+										node: mock<INode>({ name: 'Execute Sub Workflow' }),
+										data: { main: [[{ json: { data: 'Parent input data' } }]] },
+										source: { main: [{ previousNode: 'Manual Trigger' }] },
+										metadata: { waitingChildExecutionIds: [parentExecution.id] },
+									},
+								],
+							},
+						}),
+					};
+					parentExecution.data.parentExecution = {
+						executionId: grandparentExecution.id,
+						workflowId: grandparentExecution.workflowData.id,
+						shouldResume: true,
+					};
+
+					const parentPostExecutePromise = createDeferredPromise<IRun | undefined>();
+					activeExecutions.getPostExecutePromiseWithRunId
+						.calledWith(parentExecution.id)
+						.mockReturnValue({
+							promise: parentPostExecutePromise.promise,
+							runId: 'parent-run-id',
+						});
+
+					workflowRunner.run.mockReset();
+					workflowRunner.run.mockResolvedValue(execution.id);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+					executionPersistence.findSingleExecution.mockImplementation(async (id, opts) => {
+						if (id === execution.id) return execution;
+						if (id === parentExecution.id) return parentExecution;
+						if (id === grandparentExecution.id) {
+							const status = grandparentParked ? 'waiting' : 'running';
+							const waitTill = grandparentParked ? WAIT_INDEFINITELY : undefined;
+							if (opts?.includeData) {
+								return { ...grandparentExecution, status, waitTill };
+							}
+							return { ...grandparentExecution, status };
+						}
+						return undefined;
+					});
+
+					// Webhook-style: no abort signal on the outer resume.
+					const outer = waitTracker.resumeParentExecution(
+						{
+							executionId: parentExecution.id,
+							workflowId: parentExecution.workflowData.id,
+							shouldResume: true,
+						},
+						postExecutePromise.promise,
+						{ executionId: execution.id, workflowId: execution.workflowData.id },
+						'child-run-id',
+					);
+					postExecutePromise.resolve(subworkflowResults);
+					// Let the outer resume claim the parent and the nested resume start.
+					await vi.advanceTimersByTimeAsync(1000);
+					parentPostExecutePromise.resolve(subworkflowResults);
+					// Let the nested resume start polling the grandparent (still running).
+					await vi.advanceTimersByTimeAsync(1000);
+
+					// Stepdown fires WHILE the nested resume is still polling.
+					waitTracker.stopTracking();
+					// Grandparent parks after stepdown. The nested resume must still pick it up.
+					grandparentParked = true;
+
+					await vi.advanceTimersByTimeAsync(2000);
+					await outer;
+
+					expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
+						executionId: grandparentExecution.id,
 						expectedStatus: 'waiting',
 					});
 					expect(logger.info).not.toHaveBeenCalledWith(
