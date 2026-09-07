@@ -10,17 +10,16 @@ import { ExecutionRecoveryService } from '@/executions/execution-recovery.servic
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 
 import { createExecution } from '../shared/db/executions';
-import { findWorkflowStatistic } from '../shared/workflow-statistics';
+import { findWorkflowStatistic, useWorkflowStatisticsEvents } from '../shared/workflow-statistics';
 
 describe('ExecutionRecoveryService auto-deactivation', () => {
 	let recoveryService: ExecutionRecoveryService;
 	let maxLastExecutions: number;
 	let workflow: WorkflowEntity;
-	const originalSkipStatisticsEvents = process.env.SKIP_STATISTICS_EVENTS;
+
+	useWorkflowStatisticsEvents();
 
 	beforeAll(async () => {
-		delete process.env.SKIP_STATISTICS_EVENTS;
-
 		await testDb.init();
 
 		Container.get(WorkflowStatisticsService);
@@ -56,10 +55,6 @@ describe('ExecutionRecoveryService auto-deactivation', () => {
 	});
 
 	afterAll(async () => {
-		if (originalSkipStatisticsEvents !== undefined) {
-			process.env.SKIP_STATISTICS_EVENTS = originalSkipStatisticsEvents;
-		}
-
 		await testDb.terminate();
 	});
 

@@ -12,16 +12,19 @@ import { ScalingService } from '@/scaling/scaling.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 
 import { createExecution } from '../shared/db/executions';
-import { findWorkflowStatistic, findWorkflowStatistics } from '../shared/workflow-statistics';
+import {
+	findWorkflowStatistic,
+	findWorkflowStatistics,
+	useWorkflowStatisticsEvents,
+} from '../shared/workflow-statistics';
 
 describe('ScalingService queue recovery', () => {
 	let scalingService: ScalingService;
 	let workflow: WorkflowEntity;
-	const originalSkipStatisticsEvents = process.env.SKIP_STATISTICS_EVENTS;
+
+	useWorkflowStatisticsEvents();
 
 	beforeAll(async () => {
-		delete process.env.SKIP_STATISTICS_EVENTS;
-
 		await testDb.init();
 
 		Container.get(InstanceSettings).markAsLeader();
@@ -56,10 +59,6 @@ describe('ScalingService queue recovery', () => {
 	});
 
 	afterAll(async () => {
-		if (originalSkipStatisticsEvents !== undefined) {
-			process.env.SKIP_STATISTICS_EVENTS = originalSkipStatisticsEvents;
-		}
-
 		await testDb.terminate();
 	});
 
@@ -71,32 +70,24 @@ describe('ScalingService queue recovery', () => {
 	const findStatistics = async (name: StatisticsNames, workflowId: string = workflow.id) =>
 		await findWorkflowStatistic(workflowId, name);
 
-	it('records a production error against the workflow for an execution recovered as crashed', async () => {
-		const execution = await createDanglingExecution('trigger');
+	it('records a production error for every execution of the same workflow recovered as crashed in one sweep', async () => {
+		const first = await createDanglingExecution('trigger');
+		const second = await createDanglingExecution('trigger');
 
 		await scalingService.recoverFromQueue();
 
-		await expect(
-			Container.get(ExecutionRepository).findOneBy({ id: execution.id }),
-		).resolves.toMatchObject({ status: 'crashed' });
-
-		await vi.waitFor(async () => {
-			const statistics = await findStatistics(StatisticsNames.productionError);
-
-			expect(statistics).toMatchObject({ count: 1, rootCount: 1, workflowName: workflow.name });
+		const executionRepository = Container.get(ExecutionRepository);
+		await expect(executionRepository.findOneBy({ id: first.id })).resolves.toMatchObject({
+			status: 'crashed',
 		});
-	});
-
-	it('counts every crashed execution of the same workflow in one sweep', async () => {
-		await createDanglingExecution('trigger');
-		await createDanglingExecution('trigger');
-
-		await scalingService.recoverFromQueue();
+		await expect(executionRepository.findOneBy({ id: second.id })).resolves.toMatchObject({
+			status: 'crashed',
+		});
 
 		await vi.waitFor(async () => {
 			const statistics = await findStatistics(StatisticsNames.productionError);
 
-			expect(statistics).toMatchObject({ count: 2, rootCount: 2 });
+			expect(statistics).toMatchObject({ count: 2, rootCount: 2, workflowName: workflow.name });
 		});
 	});
 

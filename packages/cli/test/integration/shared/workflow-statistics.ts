@@ -13,6 +13,23 @@ const foldPendingIncrements = async () => {
 	await repository.rollupIncrements(repository.manager, 10_000);
 };
 
+/**
+ * Let the statistics listeners run for this test file, which the shared test setup switches
+ * off, and put the original setting back afterwards. Call it at the top of the `describe`,
+ * so the hooks it registers run before the file's own.
+ */
+export const useWorkflowStatisticsEvents = () => {
+	const original = process.env.SKIP_STATISTICS_EVENTS;
+
+	beforeAll(() => {
+		delete process.env.SKIP_STATISTICS_EVENTS;
+	});
+
+	afterAll(() => {
+		if (original !== undefined) process.env.SKIP_STATISTICS_EVENTS = original;
+	});
+};
+
 export const findWorkflowStatistic = async (workflowId: string, name: StatisticsNames) => {
 	await foldPendingIncrements();
 

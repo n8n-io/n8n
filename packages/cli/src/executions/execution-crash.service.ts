@@ -19,7 +19,6 @@ export class ExecutionCrashService {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) => this.count(batch));
 	}
 
-	/** Mark the workflow's in-progress executions as `crashed`. */
 	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
 		const crashed = await this.executionRepository.markWorkflowExecutionsAsCrashed(workflowId);
 

@@ -382,8 +382,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Set in-progress executions to `crashed` in batches. Returns the executions this
-	 * call transitioned, and calls `onBatchTransitioned` after each batch commits.
+	 * Set in-progress executions to `crashed` in batches. Calls `onBatchTransitioned`
+	 * after each batch commits.
 	 */
 	async markAsCrashed(
 		executionIds: string | string[],
@@ -406,10 +406,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return crashed;
 	}
 
-	/**
-	 * Set the workflow's in-progress executions to `crashed`. Returns the executions this
-	 * call transitioned.
-	 */
+	/** Set the workflow's in-progress executions to `crashed`. */
 	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
 		const transitioned = await this.transitionToCrashed({ workflowId });
 
@@ -423,9 +420,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Set the rows matching `where` to `crashed`, and return the rows this call transitioned.
-	 * The caller's predicate selects the candidates; the status guard and the identity of the
-	 * written rows are added here.
+	 * Set the rows matching `where` to `crashed`. The caller's predicate selects the
+	 * candidates; the status guard and the identity of the written rows are added here.
 	 */
 	private async transitionToCrashed(
 		where: FindOptionsWhere<ExecutionEntity>,
@@ -445,8 +441,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 				{ status: 'crashed', stoppedAt, waitTill: null },
 			);
 
-			// An UPDATE that matched nothing has nothing to report. An unreported `affected`
-			// is unknown rather than zero, so it falls through to the read.
+			// An unreported `affected` is unknown rather than zero, so it falls through to the read.
 			if (updateResult?.affected === 0) return [];
 
 			const rows = await tx.find(ExecutionEntity, {
