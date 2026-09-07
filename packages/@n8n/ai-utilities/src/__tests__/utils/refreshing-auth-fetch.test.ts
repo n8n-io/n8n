@@ -259,4 +259,57 @@ describe('createRefreshingAuthFetch', () => {
 			]);
 		});
 	});
+
+	describe('proactive refresh', () => {
+		it('refreshes before sending a request when the token is close to expiry', async () => {
+			const baseFetch = vi.fn().mockResolvedValue(new Response('ok'));
+			let refreshDue = true;
+			const refreshHeaders = vi.fn().mockImplementation(async () => {
+				refreshDue = false;
+				return { Authorization: 'Bearer fresh' };
+			});
+			const fetchWithAuth = createRefreshingAuthFetch({
+				baseFetch,
+				initialHeaders: { Authorization: 'Bearer stale' },
+				refreshHeaders,
+				shouldRefresh: () => refreshDue,
+			});
+
+			const response = await fetchWithAuth('https://example.com/mcp');
+
+			expect(response.status).toBe(200);
+			expect(refreshHeaders).toHaveBeenCalledTimes(1);
+			expect(baseFetch).toHaveBeenCalledTimes(1);
+			expect(authorizationOf(baseFetch.mock.calls[0])).toBe('Bearer fresh');
+		});
+
+		it('shares one proactive refresh between concurrent requests', async () => {
+			const baseFetch = vi.fn().mockResolvedValue(new Response('ok'));
+			let finishRefresh: ((headers: HeadersInit) => void) | undefined;
+			const refreshHeaders = vi.fn().mockImplementation(
+				async () =>
+					await new Promise<HeadersInit>((resolve) => {
+						finishRefresh = resolve;
+					}),
+			);
+			const fetchWithAuth = createRefreshingAuthFetch({
+				baseFetch,
+				initialHeaders: { Authorization: 'Bearer stale' },
+				refreshHeaders,
+				shouldRefresh: () => true,
+			});
+
+			const requests = [
+				fetchWithAuth('https://example.com/first'),
+				fetchWithAuth('https://example.com/second'),
+			];
+			await vi.waitFor(() => expect(refreshHeaders).toHaveBeenCalledTimes(1));
+			finishRefresh?.({ Authorization: 'Bearer fresh' });
+			await Promise.all(requests);
+
+			expect(refreshHeaders).toHaveBeenCalledTimes(1);
+			expect(baseFetch).toHaveBeenCalledTimes(2);
+			expect(baseFetch.mock.calls.map(authorizationOf)).toEqual(['Bearer fresh', 'Bearer fresh']);
+		});
+	});
 });
