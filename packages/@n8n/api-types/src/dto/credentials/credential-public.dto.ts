@@ -2,9 +2,9 @@ import '../../openapi-extend';
 
 import { z } from 'zod';
 
-import { readOnlyPublicSchema } from '../read-only-public-schema';
 import { publicApiCredentialResponseSchema } from '../../schemas/credential-response.schema';
 import { Z } from '../../zod-class';
+import { readOnlyPublicSchema } from '../read-only-public-schema';
 
 export const credentialSharedPublicSchema = z.object({
 	id: z.string(),
