@@ -63,7 +63,7 @@ import type {
 } from '@vue-flow/core';
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
-import { onKeyDown, onKeyUp, useDebounceFn, useThrottleFn } from '@vueuse/core';
+import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
 import { shouldIgnoreCanvasShortcut, type CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
@@ -707,15 +707,26 @@ const { fullySelectedGroupMemberIds, selectedElementCount, selectionBoxBounds } 
 		isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
 	});
 
-// Debounced, edge-triggered: one event per multi-select gesture.
-const trackMultiSelection = useDebounceFn(() => {
-	if (selectedElementCount.value > 1) {
-		selectionTelemetry.trackMultipleNodesSelected(selectedNodeIdsWithGroupMembers.value);
-	}
-}, getDebounceTime(DEBOUNCE_TIME.TELEMETRY.TRACK));
+// Real node count for telemetry purposes
+const selectedNodeCount = computed(() => selectedNodeIdsWithGroupMembers.value.length);
 
-watch(selectedElementCount, (count, previousCount) => {
-	if (count > 1 && (previousCount ?? 0) <= 1) {
+// Debounced: fires once the selection count settles above one. Re-arms on
+// every change
+let trackMultiSelectionTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
+function trackMultiSelection() {
+	clearTimeout(trackMultiSelectionTimeoutId);
+	trackMultiSelectionTimeoutId = setTimeout(() => {
+		if (selectedNodeCount.value > 1) {
+			selectionTelemetry.trackMultipleNodesSelected(selectedNodeIdsWithGroupMembers.value);
+		}
+	}, getDebounceTime(DEBOUNCE_TIME.TELEMETRY.TRACK));
+}
+
+watch(selectedNodeCount, (count, previousCount) => {
+	// Skip transitions that never touch multi-select (e.g. plain single-node
+	// clicks) — scheduling a debounce for those would never fire anyway.
+	if (count > 1 || (previousCount ?? 0) > 1) {
 		trackMultiSelection();
 	}
 });
@@ -1708,6 +1719,7 @@ onUnmounted(() => {
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);
+	clearTimeout(trackMultiSelectionTimeoutId);
 });
 
 onPaneReady(async () => {

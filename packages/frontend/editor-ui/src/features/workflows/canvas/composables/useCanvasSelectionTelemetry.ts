@@ -4,9 +4,9 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 /**
- * Telemetry for canvas selection: capturing when a user selects more than
- * one element (node or group) at once, regardless of whether they go on to
- * act on the selection.
+ * Telemetry for canvas selection: capturing when a user's selection spans
+ * more than one node at once — including every member of a selected group —
+ * regardless of whether they go on to act on the selection.
  */
 export function useCanvasSelectionTelemetry() {
 	const telemetry = useTelemetry();

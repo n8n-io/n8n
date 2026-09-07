@@ -34,6 +34,9 @@ import {
 	type CanvasNodeGroupView,
 } from '../composables/useCanvasNodeGroupView';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { DEBOUNCE_TIME } from '@/app/constants';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
@@ -998,6 +1001,146 @@ describe('Canvas', () => {
 				expect(style.getPropertyValue('--canvas-selection-box--left')).toBe('0px');
 				expect(style.getPropertyValue('--canvas-selection-box--width')).toBe('800px');
 			});
+		});
+	});
+
+	describe('multi-select telemetry', () => {
+		const TRACK_DEBOUNCE_MS = getDebounceTime(DEBOUNCE_TIME.TELEMETRY.TRACK);
+		// A dedicated VueFlow id, isolated from the shared `canvasId` store other
+		// tests in this file mutate — reusing it would leak stale `node-1..3`
+		// selection state into these debounce-timing-sensitive assertions.
+		const multiSelectCanvasId = 'multi-select-telemetry-canvas';
+
+		const setupThreeNodes = async () => {
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1' }),
+				createCanvasNodeElement({ id: 'node-2', position: { x: 200, y: 0 } }),
+				createCanvasNodeElement({ id: 'node-3', position: { x: 400, y: 0 } }),
+			];
+
+			const { container } = renderComponent({ props: { id: multiSelectCanvasId, nodes } });
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(3));
+
+			return useVueFlow(multiSelectCanvasId);
+		};
+
+		const multiSelectCalls = () =>
+			(useTelemetry().track as ReturnType<typeof vi.fn>).mock.calls.filter(
+				([event]) => event === TELEMETRY_EVENT.WORKFLOW.USER_SELECTED_MULTIPLE_NODES,
+			);
+
+		it('tracks each settled selection size when the selection grows across separate gestures', async () => {
+			vi.useFakeTimers();
+			const vueFlow = await setupThreeNodes();
+
+			vueFlow.addSelectedNodes([vueFlow.findNode('node-1')!, vueFlow.findNode('node-2')!]);
+			await vi.advanceTimersByTimeAsync(TRACK_DEBOUNCE_MS);
+
+			// addSelectedNodes replaces the selection outright (outside multi-selection
+			// mode), so the extended gesture must restate the nodes already selected.
+			vueFlow.addSelectedNodes([
+				vueFlow.findNode('node-1')!,
+				vueFlow.findNode('node-2')!,
+				vueFlow.findNode('node-3')!,
+			]);
+			await vi.advanceTimersByTimeAsync(TRACK_DEBOUNCE_MS);
+
+			const calls = multiSelectCalls();
+			expect(calls).toHaveLength(2);
+			expect(calls[0][1]).toEqual(
+				expect.objectContaining({
+					node_count: 2,
+					node_ids: expect.arrayContaining(['node-1', 'node-2']),
+				}),
+			);
+			expect(calls[1][1]).toEqual(
+				expect.objectContaining({
+					node_count: 3,
+					node_ids: expect.arrayContaining(['node-1', 'node-2', 'node-3']),
+				}),
+			);
+		});
+
+		it('tracks each settled selection size when the selection shrinks across separate gestures', async () => {
+			vi.useFakeTimers();
+			const vueFlow = await setupThreeNodes();
+
+			vueFlow.addSelectedNodes([
+				vueFlow.findNode('node-1')!,
+				vueFlow.findNode('node-2')!,
+				vueFlow.findNode('node-3')!,
+			]);
+			await vi.advanceTimersByTimeAsync(TRACK_DEBOUNCE_MS);
+
+			vueFlow.removeSelectedNodes([vueFlow.findNode('node-3')!]);
+			await vi.advanceTimersByTimeAsync(TRACK_DEBOUNCE_MS);
+
+			const calls = multiSelectCalls();
+			expect(calls).toHaveLength(2);
+			expect(calls[0][1]).toEqual(expect.objectContaining({ node_count: 3 }));
+			expect(calls[1][1]).toEqual(expect.objectContaining({ node_count: 2 }));
+		});
+
+		it('does not track a selection blip that drops back to one node within the debounce window', async () => {
+			vi.useFakeTimers();
+			const vueFlow = await setupThreeNodes();
+
+			vueFlow.addSelectedNodes([vueFlow.findNode('node-1')!, vueFlow.findNode('node-2')!]);
+			await vi.advanceTimersByTimeAsync(TRACK_DEBOUNCE_MS / 2);
+
+			vueFlow.removeSelectedNodes([vueFlow.findNode('node-2')!]);
+			await vi.advanceTimersByTimeAsync(TRACK_DEBOUNCE_MS);
+
+			expect(multiSelectCalls()).toHaveLength(0);
+		});
+
+		it('tracks a group selection by its member count, not as a single element', async () => {
+			vi.useFakeTimers();
+
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'node-1', name: 'Node 1' }),
+				createTestNode({ id: 'node-2', name: 'Node 2' }),
+				createTestNode({ id: 'node-3', name: 'Node 3' }),
+			]);
+			const group = workflowDocumentStore.createGroup(['node-1', 'node-2', 'node-3'], 'My Group');
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['node-1', 'node-2', 'node-3'],
+				isCollapsed: false,
+			});
+
+			const { container } = renderComponent({
+				props: {
+					id: multiSelectCanvasId,
+					nodes: [
+						groupNode,
+						createCanvasNodeElement({ id: 'node-1' }),
+						createCanvasNodeElement({ id: 'node-2', position: { x: 200, y: 0 } }),
+						createCanvasNodeElement({ id: 'node-3', position: { x: 400, y: 0 } }),
+					],
+				},
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(4));
+
+			const vueFlow = useVueFlow(multiSelectCanvasId);
+			// Selecting only the group's title bar — its three members follow via
+			// the group-selection invariant, not an explicit multi-select gesture.
+			vueFlow.addSelectedNodes([vueFlow.findNode(groupNode.id)!]);
+			await vi.advanceTimersByTimeAsync(TRACK_DEBOUNCE_MS);
+
+			const calls = multiSelectCalls();
+			expect(calls).toHaveLength(1);
+			expect(calls[0][1]).toEqual(
+				expect.objectContaining({
+					node_count: 3,
+					node_ids: expect.arrayContaining(['node-1', 'node-2', 'node-3']),
+				}),
+			);
 		});
 	});
 
