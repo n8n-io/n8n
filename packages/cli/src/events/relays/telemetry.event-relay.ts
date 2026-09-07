@@ -1864,7 +1864,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.identify(
 			{
 				user_role: user?.role?.slug,
-				user_email: user.email,
+				...(this.globalConfig.deployment.type === 'cloud' && { user_email: user.email }),
 			},
 			user.id,
 		);
