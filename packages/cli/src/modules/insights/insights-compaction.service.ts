@@ -11,9 +11,10 @@ type CompactionRunState = {
 	startedAt: number;
 	batchesProcessed: number;
 	rowsCompacted: number;
+	signal: AbortSignal;
 };
 
-type CompactionStopReason = 'max-batches' | 'max-runtime';
+type CompactionStopReason = 'max-batches' | 'max-runtime' | 'aborted';
 
 /**
  * This service is responsible for compacting lower granularity insights data
@@ -33,11 +34,12 @@ export class InsightsCompactionService {
 	}
 
 	/** One full compaction run: raw→hour, hour→day, day→week, in bounded batches. */
-	async compactInsights() {
+	async compactInsights(signal: AbortSignal) {
 		const runState: CompactionRunState = {
 			startedAt: Date.now(),
 			batchesProcessed: 0,
 			rowsCompacted: 0,
+			signal,
 		};
 
 		const stoppedAfterRawToHour = await this.compactStage({
@@ -105,7 +107,7 @@ export class InsightsCompactionService {
 				return true;
 			}
 
-			await this.waitBeforeNextBatchIfFull(numberOfCompactedData);
+			await this.waitBeforeNextBatchIfFull(numberOfCompactedData, runState);
 		} while (numberOfCompactedData === this.insightsConfig.compactionBatchSize);
 
 		return false;
@@ -114,6 +116,10 @@ export class InsightsCompactionService {
 	private getCompactionRunStopReason(
 		runState: CompactionRunState,
 	): CompactionStopReason | undefined {
+		if (runState.signal.aborted) {
+			return 'aborted';
+		}
+
 		if (
 			this.insightsConfig.compactionMaxBatchesPerRun > 0 &&
 			runState.batchesProcessed >= this.insightsConfig.compactionMaxBatchesPerRun
@@ -137,17 +143,25 @@ export class InsightsCompactionService {
 		stageName: string,
 		runState: CompactionRunState,
 	) {
-		this.logger.warn('Stopping insights compaction because a per-run limit was reached', {
+		const details = {
 			reason,
 			stageName,
 			batchesProcessed: runState.batchesProcessed,
 			rowsCompacted: runState.rowsCompacted,
 			compactionMaxBatchesPerRun: this.insightsConfig.compactionMaxBatchesPerRun,
 			compactionMaxRuntimeSeconds: this.insightsConfig.compactionMaxRuntimeSeconds,
-		});
+		};
+		if (reason === 'aborted') {
+			this.logger.debug('Stopping insights compaction because the run was aborted', details);
+		} else {
+			this.logger.warn('Stopping insights compaction because a per-run limit was reached', details);
+		}
 	}
 
-	private async waitBeforeNextBatchIfFull(numberOfCompactedData: number) {
+	private async waitBeforeNextBatchIfFull(
+		numberOfCompactedData: number,
+		runState: CompactionRunState,
+	) {
 		if (
 			numberOfCompactedData !== this.insightsConfig.compactionBatchSize ||
 			this.insightsConfig.compactionBatchDelayMilliseconds <= 0
@@ -155,7 +169,11 @@ export class InsightsCompactionService {
 			return;
 		}
 
-		await sleep(this.insightsConfig.compactionBatchDelayMilliseconds);
+		try {
+			await sleep(this.insightsConfig.compactionBatchDelayMilliseconds, runState.signal);
+		} catch {
+			// `sleep` rejects only on abort, which the loop checks for on its own.
+		}
 	}
 
 	/**

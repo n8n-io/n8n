@@ -19,9 +19,11 @@ describe('InsightsCompactionTask', () => {
 		expect(task.durable).toBe(false);
 	});
 
-	it('should compact insights on run', async () => {
-		await task.run();
+	it('should compact insights on run, handing it the run signal', async () => {
+		const { signal } = new AbortController();
 
-		expect(compactionService.compactInsights).toHaveBeenCalledTimes(1);
+		await task.run(signal);
+
+		expect(compactionService.compactInsights).toHaveBeenCalledExactlyOnceWith(signal);
 	});
 });

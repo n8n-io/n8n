@@ -180,7 +180,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	): Promise<void> {
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
-			await insightsCompactionService.compactInsights();
+			await insightsCompactionService.compactInsights(new AbortController().signal);
 
 			const compactedInsights = await insightsByPeriodRepository.find({
 				where: {

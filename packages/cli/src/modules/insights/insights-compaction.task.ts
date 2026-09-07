@@ -27,7 +27,7 @@ export class InsightsCompactionTask implements SystemTask {
 		private readonly compactionService: InsightsCompactionService,
 	) {}
 
-	async run(): Promise<void> {
-		await this.compactionService.compactInsights();
+	async run(signal: AbortSignal): Promise<void> {
+		await this.compactionService.compactInsights(signal);
 	}
 }
