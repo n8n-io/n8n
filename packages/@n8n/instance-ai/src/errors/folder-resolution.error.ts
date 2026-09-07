@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import type { FolderResolutionFailure } from '../types';
 
@@ -10,8 +10,8 @@ import type { FolderResolutionFailure } from '../types';
  * exists to remove. Carries the same `FolderResolutionFailure` the list
  * action returns, so tools render both the same way.
  */
-export class FolderResolutionError extends OperationalError {
+export class FolderResolutionError extends UserError {
 	constructor(readonly folderResolution: FolderResolutionFailure) {
-		super(`Folder "${folderResolution.requested}" could not be resolved`, { level: 'warning' });
+		super(`Folder "${folderResolution.requested}" could not be resolved`);
 	}
 }
