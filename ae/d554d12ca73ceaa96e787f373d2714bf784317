@@ -1,0 +1,25 @@
+packages/@n8n/nodes-langchain/utils/oauth2-token-provider.ts
+  s_894c4e86d9aaa6::t_428fd0fdaca9a7 48-61
+  s_894c4e86d9aaa6::t_2d05c74b790c6d 97-98,100-107
+  s_894c4e86d9aaa6::t_dead1cd3208f75 115-116
+  s_894c4e86d9aaa6::t_c4fe5992376656 99
+packages/@n8n/nodes-langchain/utils/tests/oauth2-token-provider.test.ts
+  s_894c4e86d9aaa6::t_72e613a713ed9e 130-131,139-182
+  s_894c4e86d9aaa6::t_b3a70f9b4b2ed5 183-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aed554d12ca73ceaa96e787f373d2714bf784317",
+  "prompts": {},
+  "sessions": {
+    "s_894c4e86d9aaa6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56ec0584-63f8-42b4-aa55-e67df50c5303",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
