@@ -15,6 +15,7 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import {
+	ensureNodeParameters,
 	sanitizeNodeCredentials,
 	toNodeGroupSummary,
 	toTagSummary,
@@ -38,15 +39,6 @@ type WorkflowDetailsLevel = z.infer<typeof inputSchema.detailLevel>;
 export type WorkflowDetailsOutputSchema = typeof workflowDetailsOutputSchema;
 
 const SUPPORTED_TRIGGER_TYPES = Object.keys(SUPPORTED_MCP_TRIGGERS);
-
-/**
- * Drafts can be persisted with nodes that have no `parameters` key at all (the
- * REST write paths accept them), even though INode types the field as required.
- * Normalize at the read boundary so the trigger-info builders and the response
- * payload always see an object, and future readers cannot regress (ADO-5355).
- */
-const ensureNodeParameters = (nodes: INode[]): INode[] =>
-	nodes.map((node) => (node.parameters ? node : { ...node, parameters: {} }));
 
 /**
  * Splits a version's nodes into the triggers MCP can execute directly and the
