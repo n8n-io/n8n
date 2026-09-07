@@ -40,7 +40,7 @@ export class InstanceMonitoringReport extends WithTimestamps {
 	dataPoints: InstanceReportDataPoint[];
 
 	/** Where the report stands. See {@link InstanceReportStatus}. */
-	@Column({ type: 'varchar', length: 255, default: 'pending' })
+	@Column({ type: 'varchar', length: 64, default: 'pending' })
 	status: InstanceReportStatus;
 
 	/** When the receiver accepted the report; `null` while undelivered. */

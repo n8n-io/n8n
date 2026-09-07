@@ -1181,7 +1181,7 @@ erDiagram
   varchar id PK
   datetime_3_ lastAttemptAt
   TEXT lastError
-  varchar_255_ status
+  varchar_64_ status
   datetime_3_ updatedAt
 }
 "instance_version_history" {

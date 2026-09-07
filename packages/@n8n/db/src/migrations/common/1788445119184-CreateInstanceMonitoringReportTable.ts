@@ -13,7 +13,7 @@ export class CreateInstanceMonitoringReportTable1788445119184 implements Reversi
 				'The data point array exactly as sent to the receiver.',
 			),
 			column('status')
-				.varchar(255)
+				.varchar(64)
 				.notNull.default("'pending'")
 				.withEnumCheck(['pending', 'delivered', 'skipped_after_max_retries'])
 				.comment(

@@ -11,7 +11,7 @@
 | id | uuid |  | false |  |  | UUID; travels with the payload as its `batchId`. |
 | lastAttemptAt | timestamp(3) with time zone |  | true |  |  | When the last attempt finished; NULL before the first. Paces retries across a restart. |
 | lastError | text |  | true |  |  | Message of the most recent delivery failure. |
-| status | varchar(255) | 'pending'::character varying | false |  |  | Skipped means the instance stopped trying that day, not that the numbers were lost: only a delivered report crosses a day off, so a skipped day is covered by the next report. |
+| status | varchar(64) | 'pending'::character varying | false |  |  | Skipped means the instance stopped trying that day, not that the numbers were lost: only a delivered report crosses a day off, so a skipped day is covered by the next report. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -47,7 +47,7 @@ erDiagram
   uuid id
   timestamp_3__with_time_zone lastAttemptAt
   text lastError
-  varchar_255_ status
+  varchar_64_ status
   timestamp_3__with_time_zone updatedAt
 }
 ```

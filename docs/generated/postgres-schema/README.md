@@ -1194,7 +1194,7 @@ erDiagram
   uuid id
   timestamp_3__with_time_zone lastAttemptAt
   text lastError
-  varchar_255_ status
+  varchar_64_ status
   timestamp_3__with_time_zone updatedAt
 }
 "public.instance_version_history" {
