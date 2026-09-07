@@ -190,6 +190,12 @@ export class WaitTracker {
 	}
 
 	async startExecution(executionId: string) {
+		// Capture the session signal before any await — leadership can change while
+		// `findSingleExecution` or `workflowRunner.run` is pending, leaving
+		// `trackingAbort` pointing at the new session (or undefined). The resume
+		// must observe the session that started the work, not the post-handoff one.
+		const sessionSignal = this.trackingAbort?.signal;
+
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
@@ -238,7 +244,7 @@ export class WaitTracker {
 				{ executionId, workflowId },
 				runId,
 				// Leader-tracking path only — webhook callers omit this so stepdown does not abort them.
-				this.trackingAbort?.signal,
+				sessionSignal,
 			);
 		}
 	}
