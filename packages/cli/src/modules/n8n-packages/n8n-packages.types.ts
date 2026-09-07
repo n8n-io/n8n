@@ -22,6 +22,7 @@ import type {
 	WorkflowPublishingOutcome,
 	WorkflowPublishingPolicy,
 } from './entities/workflow/workflow-publishing-policy.types';
+import type { PackageManifest } from './spec/manifest.schema';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
@@ -421,6 +422,15 @@ export interface ExportPackageSummary {
  */
 export interface ExportPackageResult extends ExportPackageSummary {
 	stream: Readable;
+}
+
+/**
+ * Result of an export written to a directory. It carries the manifest the
+ * export built, so a caller that keeps working with the directory does not
+ * have to read `manifest.json` back.
+ */
+export interface ExportPackageDirectoryResult extends ExportPackageSummary {
+	manifest: PackageManifest;
 }
 
 /**
