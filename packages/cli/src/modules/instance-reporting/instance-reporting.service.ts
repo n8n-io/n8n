@@ -139,9 +139,16 @@ export class InstanceReportingService {
 				disableFollowRedirect: true,
 			});
 
-			// The endpoint answers 201 on success. Anything else, including a 2xx or a
-			// 3xx (redirects are not followed), means the report did not land.
-			if (response.statusCode !== 201) {
+			if (response.statusCode === 409) {
+				this.logger.error(
+					'Instance report was rejected due to a report with the same instanceId and batchId already being recorded.',
+					{
+						batchId: report.id,
+					},
+				);
+			} else if (response.statusCode !== 201) {
+				// The endpoint answers 201 on success. Anything else, including a 2xx or a
+				// 3xx (redirects are not followed), means the report did not land.
 				throw new OperationalError(
 					`Instance report was rejected with status ${response.statusCode}`,
 				);

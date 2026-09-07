@@ -317,6 +317,17 @@ describe('InstanceReportingService', () => {
 			expect(reportRepository.markDelivered).not.toHaveBeenCalled();
 		});
 
+		test('marks a report the receiver already holds as delivered, without retrying', async () => {
+			const { service, reportRepository, http } = makeHarness();
+			vi.mocked(http.request).mockResolvedValue({ statusCode: 409, body: '', headers: {} });
+
+			// Resolving is what stops the retry: the scheduler waits for the next slot.
+			await expect(service.sendReport()).resolves.toBeUndefined();
+
+			expect(reportRepository.markDelivered).toHaveBeenCalledWith(BATCH_ID, expect.any(Date));
+			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
+		});
+
 		test('reuses the same batchId when an undelivered report is retried', async () => {
 			const { service, reportRepository, http } = makeHarness();
 			vi.mocked(http.request).mockRejectedValueOnce(new Error('Network error'));
