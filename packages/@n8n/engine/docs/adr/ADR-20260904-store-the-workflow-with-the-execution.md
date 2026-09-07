@@ -23,7 +23,7 @@ By making it an immutable, opaque snapshot we don't take "ownership" of the unde
 
 This moves in the direction of a generic "opaque metadata attached by the caller, to be used later by the caller".
 
-We believe we can mitigate possible performance concerns through content addressing.
+We believe we can mitigate possible performance concerns in the future, for example by storing the workflow once and content-addressing it across executions.
 
 
 ## Alternatives Considered
