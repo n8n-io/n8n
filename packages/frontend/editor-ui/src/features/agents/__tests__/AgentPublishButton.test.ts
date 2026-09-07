@@ -508,6 +508,38 @@ describe('AgentPublishButton', () => {
 			expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 		});
 
+		it('lets a live agent without draft changes republish a workflow tool that lost its published version', async () => {
+			const { publishAgent, getAgentUnpublishedDependencies } = await import(
+				'../composables/useAgentApi'
+			);
+			vi.mocked(getAgentUnpublishedDependencies).mockResolvedValue([lookup]);
+			const liveAgent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
+			vi.mocked(publishAgent).mockResolvedValue(liveAgent);
+
+			const wrapper = await renderComponent({
+				agent: liveAgent,
+				configValidationStatus: 'invalid',
+				configValidationIssues: [notPublishedIssue],
+			});
+			const button = wrapper.find('[data-testid="publish-agent-button"]');
+			expect(button.text()).toContain('agents.publish.button.publish');
+			expect(button.attributes('disabled')).toBeUndefined();
+			// Nothing to revert: the draft still matches the live version.
+			expect(
+				wrapper.find('[data-action="revert-to-published"]').attributes('disabled'),
+			).toBeDefined();
+
+			await button.trigger('click');
+			await flushPromises();
+			await getModalCallbacks().onConfirm();
+			await flushPromises();
+
+			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
+				publishDependencies: true,
+			});
+			expect(wrapper.emitted('published')?.[0]).toEqual([liveAgent]);
+		});
+
 		it('hands the workflows that could not be published back to the modal instead of closing it', async () => {
 			const { publishAgent, getAgentUnpublishedDependencies } = await import(
 				'../composables/useAgentApi'

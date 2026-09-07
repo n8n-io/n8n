@@ -7,7 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import type { AgentResource } from '../types';
-import { hasBlockingIssues } from '../utils/validationIssues';
+import { hasBlockingIssues, isWarningIssue } from '../utils/validationIssues';
 import AgentValidationTooltip from './AgentValidationTooltip.vue';
 
 const props = withDefaults(
@@ -65,32 +65,35 @@ const isConfigInvalid = computed(
 const invalidConfigTooltip = computed(() =>
 	locale.baseText('agents.publish.button.invalidConfigTooltip'),
 );
+const hasUnpublishedDependencies = computed(() =>
+	props.configValidationIssues.some(isWarningIssue),
+);
 
 const buttonConfig = computed(() => {
-	switch (publishState.value) {
-		case 'not-published':
-			return {
-				text: locale.baseText('agents.publish.button.publish'),
-				enabled: true,
-				showIndicator: false,
-				indicatorClass: '',
-			};
-		case 'published-with-changes':
-			return {
-				text: locale.baseText('agents.publish.button.publish'),
-				enabled: true,
-				showIndicator: true,
-				indicatorClass: 'changes',
-			};
-		case 'published-no-changes':
-		default:
-			return {
-				text: locale.baseText('agents.publish.button.published'),
-				enabled: false,
-				showIndicator: true,
-				indicatorClass: 'published',
-			};
+	if (publishState.value === 'not-published') {
+		return {
+			text: locale.baseText('agents.publish.button.publish'),
+			enabled: true,
+			showIndicator: false,
+			indicatorClass: '',
+		};
 	}
+	// A live agent can lose a workflow tool's published version. The publish
+	// flow republishes it, so the button stays usable for that repair.
+	if (publishState.value === 'published-with-changes' || hasUnpublishedDependencies.value) {
+		return {
+			text: locale.baseText('agents.publish.button.publish'),
+			enabled: true,
+			showIndicator: true,
+			indicatorClass: 'changes',
+		};
+	}
+	return {
+		text: locale.baseText('agents.publish.button.published'),
+		enabled: false,
+		showIndicator: true,
+		indicatorClass: 'published',
+	};
 });
 
 const dropdownActions = computed(() => {
@@ -184,7 +187,9 @@ async function onDropdownSelect(action: string) {
 						}"
 					/>
 					<span
-						:class="{ [$style.indicatorPublishedText]: publishState === 'published-no-changes' }"
+						:class="{
+							[$style.indicatorPublishedText]: buttonConfig.indicatorClass === 'published',
+						}"
 					>
 						{{ buttonConfig.text }}
 					</span>

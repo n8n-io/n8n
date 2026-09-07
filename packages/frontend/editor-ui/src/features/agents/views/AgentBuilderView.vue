@@ -644,6 +644,8 @@ function onPublished(updated: AgentResource) {
 	if (updated.id !== agent.value?.id) return;
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
+	// The publish may have published workflow tools, which clears their warnings.
+	void refreshConfigValidation(projectId.value, agentId.value);
 }
 
 function onUnpublished(updated: AgentResource) {
