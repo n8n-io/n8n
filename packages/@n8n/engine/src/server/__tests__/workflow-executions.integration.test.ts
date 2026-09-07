@@ -109,16 +109,13 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it.each(['not-a-uuid', '9f1b7d0e-2c4a-4f8b-9d3e-6a5c1b2d3e4f', undefined])(
 		'rejects the execution id %p with 400',
 		async (executionId) => {
-			const response = await request(url)
-				.post('/api/workflow-executions')
-				.set(authHeader())
-				.send({
-					workflowId: 'wf-1',
-					graph: sampleGraph,
-					workflow: sampleWorkflow,
-					executionId,
-					callerContext: {},
-				});
+			const response = await request(url).post('/api/workflow-executions').set(authHeader()).send({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				workflow: sampleWorkflow,
+				executionId,
+				callerContext: {},
+			});
 
 			expect(response.status).toBe(400);
 			expect((response.body as { error: string }).error).toBe('invalid_request');

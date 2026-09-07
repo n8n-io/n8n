@@ -80,6 +80,7 @@ describe('StartExecutionService', () => {
 		await service.start({
 			workflowId: 'wf-1',
 			graph: sampleGraph,
+			workflow: sampleWorkflow,
 			executionId: 'exec-id-1',
 			callerContext,
 		});
