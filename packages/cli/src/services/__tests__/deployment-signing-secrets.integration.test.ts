@@ -87,6 +87,19 @@ describe('deployment signing secrets (integration)', () => {
 		);
 	});
 
+	it('throws on a storage format this version cannot read', async () => {
+		await repo.insertOrIgnore({
+			type: 'signing.jwt',
+			value: 'value-in-some-future-format',
+			status: 'active',
+			algorithm: 'aes-256-cbc',
+		});
+
+		await expect(repo.findActiveSigningSecret('signing.jwt')).rejects.toThrow(
+			"unsupported storage format 'aes-256-cbc'",
+		);
+	});
+
 	it('throws a usable error when a wrapped value cannot be read', async () => {
 		await repo.seedSigningSecret('signing.binary_data', 'the-binary-secret');
 		const row = await repo.findActiveByType('signing.binary_data');

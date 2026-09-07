@@ -44,6 +44,9 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 	 * rewritten in place to the wrapped form. The conditional update keys on
 	 * `algorithm IS NULL`, so concurrent instances upgrading the same row
 	 * cannot double-wrap it, and the returned secret is identical either way.
+	 * The flag exists because not every reader may write: one-off CLI commands
+	 * must not mutate deployment state and may run with read-only DB
+	 * credentials, so callers opt into the rewrite explicitly.
 	 */
 	async findActiveSigningSecret(
 		type: string,
@@ -59,6 +62,14 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 					`Deployment key '${type}' cannot be read with this instance encryption key`,
 				);
 			}
+		}
+		// Only the pre-wrap form (algorithm NULL) may pass through as-is; any
+		// other marker means a format this version cannot read — fail loudly
+		// instead of handing ciphertext to the caller as if it were the secret.
+		if (row.algorithm !== null) {
+			throw new UnexpectedError(
+				`Deployment key '${type}' has an unsupported storage format '${row.algorithm}'`,
+			);
 		}
 		if (rewrapLegacy) {
 			await this.update(
