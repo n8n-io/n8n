@@ -338,7 +338,7 @@ const getFormResponseCustomizations = (context: IWebhookFunctions) => {
 
 // Block requests from Microsoft Preview Service to prevent accidental
 // approval/disapproval when sending links in Teams
-const isMicrosoftPreviewService = (userAgent?: string) => {
+export const isMicrosoftPreviewService = (userAgent?: string) => {
 	// The request that the Preview Service makes when the message is sent in
 	// Teams does not have a user-agent header
 	if (!userAgent) {
