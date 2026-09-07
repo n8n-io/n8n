@@ -107,12 +107,21 @@ export function assignCredentialToNode(
  * anything that doesn't parse as an http(s) URL with a host.
  */
 export function extractServiceHost(raw: unknown): string | undefined {
+	return extractServiceUrl(raw)?.hostname.toLowerCase();
+}
+
+/** Exact origin of a node's statically derivable HTTP URL. */
+export function extractServiceOrigin(raw: unknown): string | undefined {
+	return extractServiceUrl(raw)?.origin;
+}
+
+function extractServiceUrl(raw: unknown): URL | undefined {
 	if (typeof raw !== 'string') return undefined;
 	const plain = (raw.startsWith('=') ? raw.slice(1) : raw).split('{{')[0].trim();
 	if (!/^https?:\/\//i.test(plain)) return undefined;
 	try {
-		const host = new URL(plain).hostname.toLowerCase();
-		return host || undefined;
+		const url = new URL(plain);
+		return url.hostname ? url : undefined;
 	} catch {
 		return undefined;
 	}

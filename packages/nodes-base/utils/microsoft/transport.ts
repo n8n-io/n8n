@@ -67,7 +67,7 @@ export function validateMicrosoftGraphId(id: string, node: INode): string {
 		throw new NodeOperationError(node, 'A required ID is empty', {
 			// Teams wording; make it injectable (UserTargetMessages pattern in
 			// nodes/Microsoft/GenericFunctions.ts) when the second consumer (SharePoint v2) lands.
-			description: 'Set the team, channel, plan, bucket or task ID and try again.',
+			description: 'Set the team, channel, plan, bucket, task or meeting ID and try again.',
 		});
 	}
 	let value: string;

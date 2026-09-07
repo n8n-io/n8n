@@ -196,6 +196,37 @@ describe('useMcpServerConnect', () => {
 			});
 		});
 
+		it('opens the authentication selector when the server supports multiple credential types', async () => {
+			mockCanQuickConnect.mockReturnValue(true);
+			const connecting = useMcpServerConnect().connectServer({
+				slug: 'git-hub',
+				credentialType: 'githubOAuth2Api',
+				credentialTypes: ['githubOAuth2Api', 'githubApi'],
+			});
+			await flushPromises();
+
+			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]).toMatchObject({
+				open: true,
+				activeId: 'githubOAuth2Api',
+				showAuthSelector: true,
+				contextNode: {
+					name: 'git-hub',
+					type: '@n8n/mcp-registry.gitHub',
+					typeVersion: 1.1,
+				},
+			});
+			expect(mockCreateAndAuthorize).not.toHaveBeenCalled();
+
+			emitCredentialCreated('cred-new', 'githubApi');
+			await closeCredentialModal();
+
+			expect(mcpStore.connect).toHaveBeenCalledWith({
+				serverSlug: 'git-hub',
+				credentialId: 'cred-new',
+			});
+			await expect(connecting).resolves.toBe('conn-new');
+		});
+
 		it('rejects and stops listening when the credential modal fails to open', async () => {
 			vi.spyOn(uiStore, 'openNewCredential').mockImplementation(() => {
 				throw new Error('modal unavailable');

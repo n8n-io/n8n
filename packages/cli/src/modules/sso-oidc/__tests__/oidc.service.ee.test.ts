@@ -63,6 +63,12 @@ describe('OidcService', () => {
 		loadOnStartup: true,
 	};
 
+	const setOidcState = (loginEnabled: boolean, isActive: boolean) => {
+		vi.spyOn(ssoHelpers, 'isOidcCurrentAuthenticationMethod').mockReturnValue(isActive);
+		const svc = oidcService as unknown as { oidcConfig: Record<string, unknown> };
+		svc.oidcConfig = { ...svc.oidcConfig, loginEnabled };
+	};
+
 	beforeEach(async () => {
 		vi.resetAllMocks();
 		Container.reset();
@@ -109,6 +115,7 @@ describe('OidcService', () => {
 		);
 
 		await oidcService.init();
+		setOidcState(true, true);
 	});
 
 	describe('reload', () => {
@@ -736,6 +743,38 @@ describe('OidcService', () => {
 			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
 			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
 			expect(userRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('login flow requires OIDC to be the active, enabled method', () => {
+		const login = async () =>
+			await oidcService.loginUser(
+				new URL('https://example.com/callback'),
+				oidcService.generateState().signed,
+				oidcService.generateNonce().signed,
+			);
+
+		it('generateLoginUrl is rejected when login is disabled', async () => {
+			setOidcState(false, true);
+			await expect(oidcService.generateLoginUrl()).rejects.toThrow(ForbiddenError);
+		});
+
+		it('generateLoginUrl is rejected when another method is active', async () => {
+			setOidcState(true, false);
+			await expect(oidcService.generateLoginUrl()).rejects.toThrow(ForbiddenError);
+		});
+
+		it('loginUser is rejected and issues no session when login is disabled', async () => {
+			setOidcState(false, true);
+			await expect(login()).rejects.toThrow(ForbiddenError);
+			expect(client.authorizationCodeGrant).not.toHaveBeenCalled();
+			expect(authIdentityRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it('loginUser is rejected when another method is active', async () => {
+			setOidcState(true, false);
+			await expect(login()).rejects.toThrow(ForbiddenError);
+			expect(client.authorizationCodeGrant).not.toHaveBeenCalled();
 		});
 	});
 

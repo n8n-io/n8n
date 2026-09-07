@@ -231,10 +231,11 @@ parallelism). See the `--build-via-mcp` section in
 
 ### On PR Close/Merge
 
-| Event                      | Workflow                    |
-|----------------------------|-----------------------------|
-| PR closed (any)            | `util-notify-pr-status.yml` |
-| PR merged to `release/*`   | `release-publish.yml`       |
+| Event                              | Workflow                       |
+|------------------------------------|--------------------------------|
+| PR closed (any)                    | `util-notify-pr-status.yml`    |
+| PR merged to `release/*`           | `release-publish.yml`          |
+| PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
 
 ### Manual Triggers (PR Comments)
 
@@ -243,6 +244,97 @@ parallelism). See the `--build-via-mcp` section in
 | `/test-workflows`  | `test-workflows-callable.yml`| admin/write/maintain|
 
 **Why:** Re-run tests without pushing commits. Useful for flaky test investigation.
+
+### Label Triggers
+
+| Label                 | Workflow                     | Effect                                             |
+|-----------------------|------------------------------|----------------------------------------------------|
+| `codespace-preview`   | `util-codespace-preview.yml` | Runs the PR in a Codespace, comments the URL        |
+| `preview:enterprise`  | `util-codespace-preview.yml` | Re-serves the instance with an enterprise licence   |
+| `preview:debug`       | `util-codespace-preview.yml` | Re-serves the instance with `N8N_LOG_LEVEL=debug`   |
+
+**Why:** A reviewer gets a running instance of the PR without a Docker build or a
+cloud deploy. The workflow calls `scripts/preview.mjs`, which keeps one codespace
+for each PR (display name `preview/pr-<number>`) and shares port 5678 with the
+organization. A later push serves the new head in the same box. Removing the
+label, or closing the PR, deletes the box.
+
+Only a PR from a branch in this repository is eligible: a codespace token is
+scoped to `n8n-io/n8n` and cannot check out a fork head.
+
+#### Preview toggles
+
+A `preview:*` label configures an instance that already exists, so adding or
+removing one re-serves the box instead of creating or deleting it. It does
+nothing on a PR without `codespace-preview`.
+
+The vocabulary lives in `scripts/preview-labels.mjs`, which both ends import:
+`preview.mjs` turns the PR's labels into slugs, and `preview-serve.mjs` turns
+those slugs into environment inside the box. Add a toggle there, in one place.
+
+Only slugs cross the gap. The `gh codespace ssh` command is a shell string that
+appears in the box's process list, so a value is never passed through it —
+`preview:enterprise` resolves to a licence key inside the box, not on the runner.
+
+`preview:enterprise` needs a **Codespaces** secret named
+`N8N_LICENSE_ACTIVATION_KEY`, scoped to `n8n-io/n8n`. That is a Codespaces
+secret, not an Actions secret, and it is unrelated to `CODESPACE_PREVIEW_TOKEN`.
+Use the sandbox key: the preview sets tenant `1001` to match, and the default
+tenant (`1`) rejects it. Without the secret the preview still serves, unlicensed,
+and says so in the log.
+
+Note what the label does and does not control. Codespaces injects the secret into
+**every** preview box, so the label decides whether the licence reaches n8n, not
+whether the key reaches the box. Anyone who can run PR-head code can read
+`/workspaces/.codespaces/shared/.env-secrets`. Previews are limited to branches
+in this repository, so that is the set of people who already have write access.
+
+#### The `CODESPACE_PREVIEW_TOKEN` secret
+
+The job needs `CODESPACE_PREVIEW_TOKEN`, a **fine-grained** personal access token,
+held in the `codespaces` environment. Set the resource owner to `n8n-io` and limit
+repository access to `n8n-io/n8n`. Grant these repository permissions:
+
+| Permission | Level | What it unlocks |
+|---|---|---|
+| Metadata | Read | Mandatory, selected for you |
+| Codespaces | Read and write | Create, list and delete a box |
+| Codespaces metadata | Read | `GET .../codespaces/machines`, which resolves the machine type |
+| Codespaces lifecycle admin | Read and write | Start a stopped box, which is what `gh codespace ssh` does |
+| Contents | Read | Read the repository |
+| Pull requests | Read | `gh pr view`, to resolve the head ref and SHA |
+
+`Codespaces metadata` is a **different permission** from `Codespaces`. Without it
+the run fails with `HTTP 403: Resource not accessible by personal access token` on
+the `machines` endpoint, after the org billing check has already printed a tick —
+so the failure looks unrelated to permissions.
+
+An organization owner may have to approve the token. It stays pending until then.
+
+No other credential can do this:
+
+- `GITHUB_TOKEN` has no Codespaces access.
+- A GitHub App **installation** token cannot create a codespace at all. The
+  Codespaces API belongs to a user, not to an installation.
+- A **classic** token is refused by org policy:
+  `` `n8n-io` forbids access via a personal access token (classic) ``. So no
+  combination of classic scopes works, whatever the API reference says about the
+  `codespace` scope.
+
+The environment keeps the token away from every other workflow: only a job that
+names `codespaces` can read it. **The environment must allow every branch.** A
+`pull_request` run has the ref `refs/pull/<n>/merge`, which no deployment branch
+policy matches, so a branch rule would block every preview. Add required
+reviewers only if a click for each preview is acceptable.
+
+The codespace belongs to whoever owns the token, and shows up in that account's
+codespace list. Billing still goes to the organization, because the repository is
+organization-owned and has a Codespaces budget. A service account is therefore
+better than a person's account for quota attribution, though the token is scoped
+to one repository either way.
+
+The job checks out the base branch, never the PR head, so a PR cannot supply the
+script that reads that token.
 
 ### Other Manual Workflows
 
@@ -324,7 +416,10 @@ test-workflows-pr-comment.yml
 │  │   ├─ ensure-provenance-fields.mjs ───▶ Add license fields               │
 │  │   └─ npm publish (tag: rc or latest)                                    │
 │  ├─ publish-to-docker-hub ────────▶ docker-build-push.yml                  │
-│  │   └─ Multi-arch: amd64 + arm64                                          │
+│  │   ├─ Build the application once on amd64                                │
+│  │   ├─ Build/push images on native amd64 + arm64 runners                  │
+│  │   └─ Merge manifests, then add release provenance                       │
+│  │       └─ Release VEX/SBOM attestations follow provenance                 │
 │  ├─ create-github-release                                                  │
 │  ├─ create-sentry-release (sourcemaps)                                     │
 │  ├─ generate-sbom ────────────────▶ sbom-generation-callable.yml           │
@@ -479,11 +574,27 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.18.1'
+  node-version:        # default: '26.5.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
 ```
+
+The pnpm version comes from the `packageManager` field in the root
+`package.json`, through `resolve-pnpm-version.mjs`. There is no version input to
+keep in sync: a bump in `package.json` moves the setup step, the cache key and
+the version check together.
+
+The action caches the pnpm executable in `~/setup-pnpm` by OS, architecture and
+version. A cache miss runs `pnpm/setup` and retries once if the registry request
+fails. The action verifies the version and saves the cache before the rest of
+the job can fail.
+
+Concurrent jobs can all miss a new key before the first save completes. Jobs
+that start after the save use the cached executable. Windows keeps the standard
+`pnpm/setup` path because its runner cannot activate the cached POSIX home path.
+The existing `actions/setup-node` cache continues to store the pnpm package
+store.
 
 The Blacksmith layer cache lives on a sticky disk identified by
 `docker-cache-key`, and commits are last-writer-wins. Splitting the key per
@@ -526,7 +637,7 @@ Workflows with `workflow_call` trigger:
 | `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
-| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag` | Docker build |
+| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag`, `create_attestations` | Docker build |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
@@ -555,7 +666,7 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|------------------------|
 | `docker/docker-config.mjs`| Build context   | `docker-build-push.yml`|
 | `docker/docker-tags.mjs`  | Image tags      | `docker-build-push.yml`|
-| `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-push.yml`|
+| `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 
@@ -565,9 +676,21 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|---------------------------|
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
+| `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
+
+### Preview Scripts
+
+| Script                          | Purpose                                                                 | Called By                      |
+|---------------------------------|-------------------------------------------------------------------------|--------------------------------|
+| `codespace-preview.mjs`         | Map a `pull_request` event onto a preview operation, comment the result  | `util-codespace-preview.yml`   |
+| `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
+
+`scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
+In `--json` mode it prints one object on stdout and sends all progress to stderr,
+so a workflow can read the URL from a run that also streams an in-box build log.
 
 ### Branch Replay Scripts
 

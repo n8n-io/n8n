@@ -7,7 +7,7 @@ import {
 	ExecutionRepository,
 	SettingsRepository,
 } from '@n8n/db';
-import { Command } from '@n8n/decorators';
+import { Command, SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import { sleep } from '@n8n/utils/sleep';
@@ -38,6 +38,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
+import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
@@ -426,6 +427,11 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(N8NCheckpointStorage).init();
 		Container.get(SystemTaskRunner).init();
 		Container.get(DurableScheduler).start();
+
+		const systemTaskMetadata = Container.get(SystemTaskMetadata);
+		for (const taskClass of mainSystemTasks()) {
+			systemTaskMetadata.register(taskClass);
+		}
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			const { EnqueuedExecutionRecoveryService } = await import(

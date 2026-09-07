@@ -70,6 +70,7 @@ const emit = defineEmits<{
 	focus: [id: string];
 	'replace:node': [id: string];
 	'add:ai': [id: string];
+	'add-nodes-to-chat': [id: string];
 }>();
 
 const style = useCssModule();
@@ -298,6 +299,10 @@ function onAddToAi(id: string) {
 	emit('add:ai', id);
 }
 
+function onAddNodesToChat(id: string) {
+	emit('add-nodes-to-chat', id);
+}
+
 function onUpdateClass({ className, add = true }: CanvasNodeEventBusEvents['update:node:class']) {
 	nodeClasses.value = add
 		? [...new Set([...nodeClasses.value, className])]
@@ -427,6 +432,7 @@ onBeforeUnmount(() => {
 			@open:contextmenu="onOpenContextMenuFromToolbar"
 			@focus="onFocus"
 			@add:ai="onAddToAi"
+			@add-nodes-to-chat="onAddNodesToChat"
 		/>
 
 		<CanvasNodeRenderer

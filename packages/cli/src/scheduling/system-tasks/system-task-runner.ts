@@ -147,15 +147,16 @@ export class SystemTaskRunner {
 
 	/**
 	 * Resolve a registered class and give its task a mode. Resolving eagerly is
-	 * safe: `@SystemTask()` makes the class injectable before it registers, and
-	 * the name and schedule the routing needs live on the instance.
+	 * safe: `@SystemTask()` makes the class injectable at declaration, before
+	 * anything can register it, and the name and schedule the routing needs live
+	 * on the instance.
 	 *
-	 * @throws {UnexpectedError} When a name is registered more than once, whether by
-	 * two tasks claiming it or by one task's module being loaded twice. It surfaces
-	 * out of {@link init} for a task registered before it, and out of the task's own
-	 * `@SystemTask()` decorator for one registered after. Either way the runner is
-	 * left half-routed and startup fails, which is the point: a duplicate name is a
-	 * coding mistake.
+	 * @throws {UnexpectedError} When a name is registered more than once, whether
+	 * by two tasks claiming it or by one task being registered twice. It surfaces
+	 * out of {@link init} for a task registered before it, and out of the
+	 * `SystemTaskMetadata.register` call for one registered after. Either way the
+	 * runner is left half-routed and startup fails, which is the point: a
+	 * duplicate name is a coding mistake.
 	 *
 	 * @throws {UnexpectedError} When a task declares a `retryDelaySeconds` that is
 	 * not an integer between 1 and {@link MAX_RETRY_DELAY_SECONDS}. A timeout would
