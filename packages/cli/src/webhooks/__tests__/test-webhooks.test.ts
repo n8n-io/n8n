@@ -331,13 +331,8 @@ describe('TestWebhooks', () => {
 				executionContextService.buildManualExecutionCredentials.mockResolvedValue(carrier);
 			});
 
-			afterEach(() => {
-				vi.unstubAllEnvs();
-			});
-
 			test('mints and stores the carrier for an identity-bearing chat trigger', async () => {
 				// ARRANGE
-				vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
 				vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(chatWorkflow(IDENTITY_BEARING));
 				vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([chatWebhook()]);
 
@@ -353,7 +348,6 @@ describe('TestWebhooks', () => {
 
 			test('mints only once for a trigger that registers several webhooks', async () => {
 				// ARRANGE
-				vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
 				vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(chatWorkflow(IDENTITY_BEARING));
 				vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
 					chatWebhook(),
@@ -369,17 +363,9 @@ describe('TestWebhooks', () => {
 
 			test.each([
 				{
-					reason: 'the feature flag is off',
-					flag: 'false',
-					parameters: IDENTITY_BEARING,
-					type: CHAT_TRIGGER_NODE_TYPE,
-					cookie: n8nAuthCookie,
-				},
-				{
 					// A `n8nOAuth2` webhook node is identity-bearing too, but establishes its own
 					// stronger carrier while its webhook runs, so this gate stays out of its way.
 					reason: 'the trigger is not a chat trigger',
-					flag: 'true',
 					parameters: { authentication: 'n8nOAuth2' },
 					type: 'n8n-nodes-base.webhook',
 					cookie: n8nAuthCookie,
@@ -389,42 +375,36 @@ describe('TestWebhooks', () => {
 					// granting it identity in test mode would diverge from production. Expected to
 					// start minting once IAM-1263 makes it identity-bearing.
 					reason: 'the chat trigger is n8nUserAuth but not available in chat',
-					flag: 'true',
 					parameters: { authentication: 'n8nUserAuth' },
 					type: CHAT_TRIGGER_NODE_TYPE,
 					cookie: n8nAuthCookie,
 				},
 				{
 					reason: 'authentication is basicAuth',
-					flag: 'true',
 					parameters: { authentication: 'basicAuth' },
 					type: CHAT_TRIGGER_NODE_TYPE,
 					cookie: n8nAuthCookie,
 				},
 				{
 					reason: 'the chat trigger carries no relevant parameters',
-					flag: 'true',
 					parameters: {},
 					type: CHAT_TRIGGER_NODE_TYPE,
 					cookie: n8nAuthCookie,
 				},
 				{
 					reason: 'availableInChat is an unresolved expression',
-					flag: 'true',
 					parameters: { availableInChat: '={{ $json.inChat }}' },
 					type: CHAT_TRIGGER_NODE_TYPE,
 					cookie: n8nAuthCookie,
 				},
 				{
 					reason: 'no cookie was supplied',
-					flag: 'true',
 					parameters: IDENTITY_BEARING,
 					type: CHAT_TRIGGER_NODE_TYPE,
 					cookie: undefined,
 				},
-			])('does not mint a carrier when $reason', async ({ flag, parameters, type, cookie }) => {
+			])('does not mint a carrier when $reason', async ({ parameters, type, cookie }) => {
 				// ARRANGE
-				vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', flag);
 				vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(chatWorkflow(parameters, type));
 				vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([chatWebhook()]);
 
@@ -438,7 +418,6 @@ describe('TestWebhooks', () => {
 
 			test('stores the carrier only on the chat trigger registration', async () => {
 				// ARRANGE
-				vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
 				vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(
 					mock<Workflow>({
 						id: workflowEntity.id,
