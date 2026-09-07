@@ -643,4 +643,58 @@ describe('handleRequests', () => {
 		expect(resumingNode.metadata).not.toHaveProperty('preserveSourceOverwrite');
 		expect(resumingNode.metadata).not.toHaveProperty('preservedSourceOverwrite');
 	});
+
+	test('schedules the tools and resumes the requesting node when it has no source data', () => {
+		// ARRANGE
+		const toolNode = createNodeData({ name: 'Gmail Tool', type: types.passThrough });
+		const agentNode = createNodeData({ name: 'AI Agent', type: types.passThrough });
+
+		const workflow = new DirectedGraph()
+			.addNodes(toolNode, agentNode)
+			.toWorkflow({ name: '', active: false, nodeTypes });
+
+		const executionData: IExecuteData = {
+			data: {
+				main: [[{ json: { chatInput: 'hello' } }]],
+			},
+			source: null,
+			node: agentNode,
+		};
+
+		const request: EngineRequest = {
+			actions: [
+				{
+					actionType: 'ExecutionNodeAction',
+					nodeName: 'Gmail Tool',
+					input: { subject: 'Test Email' },
+					type: 'ai_tool',
+					id: 'tool_call_no_source',
+					metadata: { itemIndex: 0 },
+				},
+			],
+			metadata: {},
+		};
+
+		const runData: IRunData = {};
+
+		// ACT
+		const result = handleRequest({
+			workflow,
+			currentNode: agentNode,
+			request,
+			runIndex: 0,
+			executionData,
+			runData,
+		});
+
+		// ASSERT
+		expect(result.nodesToBeExecuted.map((n) => n.inputConnectionData.node)).toEqual([
+			'AI Agent',
+			'Gmail Tool',
+		]);
+
+		const resumingNode = result.nodesToBeExecuted[0];
+		expect(resumingNode.metadata).toHaveProperty('nodeWasResumed', true);
+		expect(resumingNode.parentNode).toBe('AI Agent');
+	});
 });
