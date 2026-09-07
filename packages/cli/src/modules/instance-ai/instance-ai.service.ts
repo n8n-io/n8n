@@ -75,6 +75,7 @@ import {
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
+	createSetupItemsEmitter,
 	orchestratorAgentId,
 	resolveAgentPreviewSession,
 	saveAgentBuilderTarget,
@@ -145,6 +146,7 @@ import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-a
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
+import { InstanceAiConversationHistoryService } from './instance-ai-conversation-history.service';
 import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import {
@@ -168,6 +170,7 @@ import {
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
 	withCurrentDateTime,
+	withPastConversations,
 	withProjectContext,
 	getProjectContextSection,
 } from './internal-messages';
@@ -840,6 +843,7 @@ export class InstanceAiService {
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
 		private readonly push: Push,
+		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -2427,9 +2431,16 @@ export class InstanceAiService {
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
 				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
 
-		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
-		const mcpConnectionsEnabled = await this.adapterService.isMcpConnectionsEnabled(user);
-		const nodeUsageEnabled = await this.adapterService.isNodeUsageEnabled(user);
+		const {
+			configEvalsEnabled,
+			mcpConnectionsEnabled,
+			conversationHistoryEnabled,
+			nodeUsageEnabled,
+		} = await this.adapterService.resolveExperimentGates(user);
+		// One scoped reader backs both the tool and the first-turn hint.
+		const conversationHistory = conversationHistoryEnabled
+			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
+			: undefined;
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2441,6 +2452,7 @@ export class InstanceAiService {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			nodeUsageEnabled,
+			conversationHistory,
 			modelId,
 		});
 
@@ -2470,6 +2482,17 @@ export class InstanceAiService {
 		}
 
 		context.runId = runId;
+
+		// Setup panel v2: wire the durable `setup-items` sink only while the flag
+		// is on — its presence is the package-side gate.
+		if (this.settingsService.isInstanceAiSetupPanelEnabled()) {
+			context.setupItemsEmitter = createSetupItemsEmitter({
+				eventBus: this.eventBus,
+				threadId,
+				runId,
+				agentId: orchestratorAgentId(runId),
+			});
+		}
 
 		context.browserCredentialSetup = this.createBrowserCredentialSetupTracker(runId, user.id);
 
@@ -2741,6 +2764,7 @@ export class InstanceAiService {
 			plannedTaskService,
 			modelId,
 			orchestrationContext,
+			conversationHistory,
 		};
 	}
 
@@ -3807,6 +3831,7 @@ export class InstanceAiService {
 				plannedTaskService,
 				modelId,
 				orchestrationContext,
+				conversationHistory,
 			} = environment;
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
 			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
@@ -3932,8 +3957,10 @@ export class InstanceAiService {
 			// message), so title it with the workflow name and mark it refined so
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
+			// The heuristic title lands on the opening turn, so "no title yet" marks it.
+			const isOpeningTurn = Boolean(thread && !thread.title);
 
-			if (thread && !thread.title) {
+			if (isOpeningTurn) {
 				const handoffTitle =
 					contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback;
 
@@ -3945,7 +3972,11 @@ export class InstanceAiService {
 									title: truncateToTitle(handoffTitle),
 									metadata: { ...metadata, titleRefined: true },
 								}
-							: { title: truncateToTitle(message) },
+							: // Attachment-only openers keep a title too, so the opening-turn signal holds.
+								{
+									title:
+										truncateToTitle(message) || truncateToTitle(fileAttachments[0]?.fileName ?? ''),
+								},
 				});
 			}
 
@@ -3990,15 +4021,24 @@ export class InstanceAiService {
 				.join('\n\n');
 			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
 			// so putting it in the cached system prefix would break caching.
-			const projectSection = await this.resolveProjectContextSection(context);
+			//
+			// The opening turn names the project's recent conversations; otherwise the
+			// agent has no reason to believe the conversation-history tool holds anything.
+			const [projectSection, pastConversationsSection] = await Promise.all([
+				this.resolveProjectContextSection(context),
+				isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
+			]);
 			const messageWithProject = projectSection
 				? withProjectContext(messageWithContext, projectSection)
 				: messageWithContext;
+			const messageWithPastConversations = pastConversationsSection
+				? withPastConversations(messageWithProject, pastConversationsSection)
+				: messageWithProject;
 
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
-				messageWithProject,
+				messageWithPastConversations,
 				getDateTimeSection(timeZone ?? this.defaultTimeZone),
 			);
 

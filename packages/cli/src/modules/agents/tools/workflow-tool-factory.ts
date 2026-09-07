@@ -4,6 +4,7 @@ import {
 	getWorkflowToolIncompatibilityReason,
 	WORKFLOW_WAIT_ACTION_CANCEL,
 	WORKFLOW_WAIT_ACTION_CHECK,
+	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
 	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type AgentJsonToolConfig,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
@@ -29,13 +30,9 @@ import type {
 import {
 	createRunExecutionData,
 	isTerminalExecutionStatus,
-	CHAT_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
 	WAIT_INDEFINITELY,
-	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
@@ -47,6 +44,7 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
+import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
 import type {
 	WorkflowToolWorkflowLoader,
 	WorkflowToolWorkflowReference,
@@ -71,11 +69,7 @@ import { sanitizeToolName } from '../json-config/agent-config-composition';
  * Available list can't drift.
  */
 const SUPPORTED_TRIGGERS: Record<string, string> = {
-	[MANUAL_TRIGGER_NODE_TYPE]: 'manual',
 	[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: 'executeWorkflow',
-	[CHAT_TRIGGER_NODE_TYPE]: 'chat',
-	[FORM_TRIGGER_NODE_TYPE]: 'form',
-	[WEBHOOK_NODE_TYPE]: 'webhook',
 };
 
 // Compile-time check: `SUPPORTED_TRIGGERS` must cover every trigger the shared
@@ -166,8 +160,6 @@ export interface WorkflowToolContext {
 	 * workflows (draft for test runs, published version for production).
 	 */
 	usePublishedWorkflowVersion?: boolean;
-	/** Base URL for webhooks/forms (e.g. http://localhost:5678/) */
-	webhookBaseUrl?: string;
 	agentId?: string;
 	/** Chat platform the run came from, if any. */
 	integrationType?: string;
@@ -205,9 +197,13 @@ export function detectTriggerNode(workflow: WorkflowEntity): DetectedTrigger {
 		}
 	}
 
-	throw new Error(
-		`Workflow "${workflow.name}" has no supported trigger node. ` +
-			`Supported triggers: ${Object.keys(SUPPORTED_TRIGGERS).join(', ')}`,
+	throw noSupportedTriggerError(workflow);
+}
+
+function noSupportedTriggerError(workflow: WorkflowEntity): WorkflowToolUnavailableError {
+	return new WorkflowToolUnavailableError(
+		'incompatible',
+		`Workflow "${workflow.name}" needs a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger to run as an agent tool.`,
 	);
 }
 
@@ -228,74 +224,18 @@ export function validateCompatibility(workflow: WorkflowEntity): void {
 			.filter((n) => !n.disabled && incompatibility.nodeTypes.includes(n.type))
 			.map((n) => `${n.name} (${n.type})`)
 			.join(', ');
-		throw new Error(
+		throw new WorkflowToolUnavailableError(
+			'incompatible',
 			`Workflow "${workflow.name}" contains nodes that aren't supported as agent tools: ${names}. ` +
 				'Remove them or pick another workflow.',
 		);
 	}
 
-	// `no_supported_trigger` — surface the supported set so the message is fixable.
-	throw new Error(
-		`Workflow "${workflow.name}" has no supported trigger node. ` +
-			`Supported triggers: ${Object.keys(SUPPORTED_TRIGGERS).join(', ')}`,
-	);
+	throw noSupportedTriggerError(workflow);
 }
 
 // ---------------------------------------------------------------------------
-// 3. normalizeTriggerInput
-// ---------------------------------------------------------------------------
-
-export function normalizeTriggerInput(
-	triggerNode: INode,
-	triggerType: string,
-	inputData: Record<string, unknown>,
-	executionMode: WorkflowToolExecutionMode,
-): IPinData {
-	switch (triggerType) {
-		case 'chat':
-			return {
-				[triggerNode.name]: [
-					{
-						json: {
-							sessionId: `agent-${Date.now()}`,
-							action: 'sendMessage',
-							chatInput:
-								typeof inputData.message === 'string'
-									? inputData.message
-									: JSON.stringify(inputData),
-						},
-					},
-				],
-			};
-
-		case 'webhook': {
-			const { body, headers, params, query } = inputData;
-			return {
-				[triggerNode.name]: [
-					{
-						json: {
-							headers: isRecord(headers) ? headers : {},
-							params: isRecord(params) ? params : {},
-							query: isRecord(query) ? query : {},
-							body: isRecord(body) ? body : inputData,
-							webhookUrl: '',
-							executionMode: executionMode === 'manual' ? 'test' : 'production',
-						},
-					},
-				],
-			};
-		}
-
-		default:
-			// manual, executeWorkflow, and any other trigger type
-			return {
-				[triggerNode.name]: [{ json: inputData as IDataObject }],
-			};
-	}
-}
-
-// ---------------------------------------------------------------------------
-// 4. inferInputSchema
+// 3. inferInputSchema
 // ---------------------------------------------------------------------------
 
 /** Execute Workflow Trigger `inputSource` values (mirror nodes-base constants). */
@@ -392,17 +332,6 @@ export function inferInputSchema(
 	triggerType: string,
 ): z.ZodObject<z.ZodRawShape> {
 	switch (triggerType) {
-		case 'chat':
-			return z.object({ message: z.string() });
-
-		case 'manual':
-			return z.object({ input: z.string().optional() });
-
-		case 'form':
-			return z.object({
-				reason: z.string().optional().describe('Why the user should fill out this form'),
-			});
-
 		case 'executeWorkflow': {
 			const inputSource = getExecuteWorkflowInputSource(triggerNode);
 			if (inputSource === PASSTHROUGH) {
@@ -480,13 +409,12 @@ export function mergeWorkflowToolInput(
 }
 
 // ---------------------------------------------------------------------------
-// 5. executeWorkflow
+// 4. executeWorkflow
 // ---------------------------------------------------------------------------
 
 export async function executeWorkflow(
 	workflow: WorkflowEntity,
 	triggerNode: INode,
-	triggerType: string,
 	inputData: Record<string, unknown>,
 	context: WorkflowToolRunContext,
 	allOutputs = false,
@@ -498,12 +426,9 @@ export async function executeWorkflow(
 	await subworkflowPolicyChecker.checkForProject(workflow, context.projectId);
 
 	// Build pin data for the trigger
-	const triggerPinData = normalizeTriggerInput(
-		triggerNode,
-		triggerType,
-		inputData,
-		context.executionMode,
-	);
+	const triggerPinData: IPinData = {
+		[triggerNode.name]: [{ json: inputData as IDataObject }],
+	};
 	const workflowData =
 		workflow.pinData === undefined ? workflow : { ...workflow, pinData: undefined };
 
@@ -616,7 +541,7 @@ export async function executeWorkflow(
 }
 
 // ---------------------------------------------------------------------------
-// 6. extractResult
+// 5. extractResult
 // ---------------------------------------------------------------------------
 
 /** Map an execution's raw status into the tool's simplified status value. */
@@ -970,7 +895,7 @@ async function pollIfDueSoon(
 }
 
 // ---------------------------------------------------------------------------
-// 7. resolveWorkflowTool — resolve a single workflow tool descriptor
+// 6. resolveWorkflowTool — resolve a single workflow tool descriptor
 // ---------------------------------------------------------------------------
 
 export async function resolveWorkflowTool(
@@ -980,106 +905,92 @@ export async function resolveWorkflowTool(
 	return await buildWorkflowTool(descriptor, context);
 }
 
+/**
+ * Stands in for a workflow tool that cannot be built right now (workflow gone,
+ * unpublished, or incompatible). It keeps the configured name in the tool list and
+ * shares the real tool's handler, which reloads and re-validates the workflow on
+ * every call: the model gets the current reason instead of a bare "tool not found",
+ * and a workflow the user has fixed since works on the next call.
+ *
+ * Interim until AGENT-790: the runtime cache keeps this stub alive for up to 30 idle
+ * minutes because nothing invalidates an agent runtime when one of its workflows
+ * changes. Until the runtime is rebuilt the model only sees a free-form input
+ * schema, not the workflow's declared inputs. Once AGENT-790 invalidates the
+ * runtimes of dependent agents on workflow changes, a rebuilt runtime carries the
+ * real tool and this stub lives only while the workflow is actually broken.
+ */
+export function buildUnavailableWorkflowTool(
+	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
+	context: WorkflowToolContext,
+): BuiltTool {
+	return assembleWorkflowTool(descriptor, context, {
+		reference: toReference(descriptor),
+		inputSchema: z.object({}).passthrough(),
+	});
+}
+
+function toReference(
+	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
+): WorkflowToolWorkflowReference {
+	return {
+		workflowName: descriptor.workflow,
+		...(descriptor.workflowId !== undefined ? { workflowId: descriptor.workflowId } : {}),
+	};
+}
+
 async function buildWorkflowTool(
 	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
-	const workflowName = descriptor.workflow;
-	const initialReference: WorkflowToolWorkflowReference = {
-		workflowName,
-		...(descriptor.workflowId !== undefined ? { workflowId: descriptor.workflowId } : {}),
-	};
-	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, initialReference, {
-		usePublishedVersion: context.usePublishedWorkflowVersion === true,
-	});
+	const workflow = await context.workflowLoader.loadWorkflow(
+		context.projectId,
+		toReference(descriptor),
+		{
+			usePublishedVersion: context.usePublishedWorkflowVersion === true,
+		},
+	);
 	if (!workflow) {
-		throw new Error(`Workflow "${workflowName}" not found`);
+		throw new WorkflowToolUnavailableError(
+			'not_found',
+			`Workflow "${descriptor.workflow}" not found`,
+		);
 	}
 
 	validateCompatibility(workflow);
 	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);
+	const fullInputSchema = inferInputSchema(triggerNode, triggerType);
 
+	return assembleWorkflowTool(descriptor, context, {
+		reference: { workflowId: workflow.id, workflowName: workflow.name },
+		inputSchema: omitFixedFieldsFromSchema(fullInputSchema, descriptor.inputs),
+		triggerType,
+	});
+}
+
+/** The handler reloads `reference` on every call, so it never relies on build-time state. */
+function assembleWorkflowTool(
+	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
+	context: WorkflowToolContext,
+	tool: {
+		reference: WorkflowToolWorkflowReference;
+		inputSchema: z.ZodTypeAny;
+		triggerType?: string;
+	},
+): BuiltTool {
+	const { reference, inputSchema, triggerType } = tool;
 	// Always run through `toToolName` even when the user supplied `descriptor.name`.
 	// Anthropic and OpenAI both require tool names to match `^[a-zA-Z0-9_-]{1,128}$`,
 	// so a workflow display name like "D&D Invite" must be sanitized before reaching
 	// the model. Schema validation rejects invalid names on save (see
 	// `agent-json-config.ts`); this is the runtime safety net for legacy configs.
-	const toolName = toToolName(descriptor.name ?? workflowName);
-	const toolDescription = descriptor.description ?? `Execute the "${workflowName}" workflow`;
-	const fullInputSchema = inferInputSchema(triggerNode, triggerType);
-	const inputSchema = omitFixedFieldsFromSchema(fullInputSchema, descriptor.inputs);
+	const toolName = toToolName(descriptor.name ?? descriptor.workflow);
+	const toolDescription = descriptor.description ?? `Execute the "${descriptor.workflow}" workflow`;
 	const toolInputs = descriptor.inputs;
 	const allOutputs = descriptor.allOutputs ?? false;
-	const reference: WorkflowToolWorkflowReference = {
-		workflowId: workflow.id,
-		workflowName: workflow.name,
-	};
 
-	// Form triggers return a link — the user fills out the form in their browser,
-	// and the workflow executes independently when they submit.
-	if (triggerType === 'form') {
-		const builder = new Tool(toolName)
-			.description(
-				toolDescription === `Execute the "${workflowName}" workflow`
-					? `Send the user a link to the "${workflowName}" form. The workflow runs automatically when they submit.`
-					: toolDescription,
-			)
-			.input(inputSchema)
-			.output(
-				z.object({
-					status: z.literal('form_link_sent'),
-					formUrl: z.string(),
-					message: z.string(),
-				}),
-			)
-			.toMessage(
-				(output) =>
-					({
-						type: 'custom',
-						components: [
-							{
-								type: 'section',
-								text: `📋 *<${output.formUrl}|Click here to open the form>*`,
-							},
-						],
-					}) as never,
-			)
-			.handler(async (input: Record<string, unknown>) => {
-				const current = await loadCurrentWorkflow(context, reference, triggerType);
-				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
-				const currentSchema = omitFixedFieldsFromSchema(currentFullSchema, toolInputs);
-				const parsedInput = mergeWorkflowToolInput(
-					currentSchema.parse(input) as Record<string, unknown>,
-					toolInputs,
-					currentFullSchema,
-				);
-				const formUrl = getFormUrl(current.workflow, current.triggerNode, context.webhookBaseUrl);
-				const reason = parsedInput.reason;
-				return {
-					status: 'form_link_sent' as const,
-					formUrl,
-					message:
-						typeof reason === 'string'
-							? reason
-							: `Please fill out the ${current.workflow.name} form`,
-				};
-			});
-
-		const built = builder.build();
-		return {
-			...built,
-			metadata: {
-				kind: 'workflow',
-				workflowId: workflow.id,
-				workflowName: workflow.name,
-				triggerType,
-			},
-		};
-	}
-
-	// Standard execution-based tool for all other triggers. A body Wait node parks
-	// the sub-execution and hands off to the user — but only where a suspension can
-	// be resumed; elsewhere it reports the waiting status instead of parking forever.
+	// A body Wait node parks the sub-execution and hands off to the user — but only
+	// where a suspension can be resumed; elsewhere it reports the waiting status
+	// instead of parking forever.
 	const supportsHitl = context.supportsHitl ?? true;
 	const builder = new Tool(toolName)
 		.description(toolDescription)
@@ -1108,7 +1019,7 @@ async function buildWorkflowTool(
 			if (pending.success) {
 				result = await extractResult(pending.data.executionId, allOutputs);
 			} else {
-				current = await loadCurrentWorkflow(context, reference, triggerType);
+				current = await loadCurrentWorkflow(context, reference);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
 				const currentSchema = omitFixedFieldsFromSchema(currentFullSchema, toolInputs);
 				const parsedInput = mergeWorkflowToolInput(
@@ -1119,7 +1030,6 @@ async function buildWorkflowTool(
 				result = await executeWorkflow(
 					current.workflow,
 					current.triggerNode,
-					current.triggerType,
 					parsedInput,
 					{ ...context, agentRun: agentRunOf(context, ctx) },
 					allOutputs,
@@ -1156,7 +1066,7 @@ async function buildWorkflowTool(
 
 			if (result.status !== 'waiting' || !supportsHitl) return withoutWaitState(result);
 
-			current ??= await loadCurrentWorkflow(context, reference, triggerType);
+			current ??= await loadCurrentWorkflow(context, reference);
 			return await ctx.suspend(buildWaitCard(current.workflow.name, result.wait), {
 				continuation: { executionId: result.executionId },
 			});
@@ -1167,9 +1077,9 @@ async function buildWorkflowTool(
 		...built,
 		metadata: {
 			kind: 'workflow',
-			workflowId: workflow.id,
-			workflowName: workflow.name,
-			triggerType,
+			workflowId: reference.workflowId,
+			workflowName: reference.workflowName,
+			...(triggerType !== undefined && { triggerType }),
 		},
 	};
 }
@@ -1177,42 +1087,21 @@ async function buildWorkflowTool(
 async function loadCurrentWorkflow(
 	context: WorkflowToolContext,
 	reference: WorkflowToolWorkflowReference,
-	expectedTriggerType: string,
 ) {
 	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, reference, {
 		usePublishedVersion: context.usePublishedWorkflowVersion === true,
 	});
 	if (!workflow) {
-		throw new Error(`Workflow "${reference.workflowName}" is no longer accessible`);
+		throw new WorkflowToolUnavailableError(
+			'not_found',
+			`Workflow "${reference.workflowName}" is no longer accessible`,
+		);
 	}
 
 	validateCompatibility(workflow);
 	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);
-	if (triggerType !== expectedTriggerType) {
-		throw new Error(
-			`Workflow "${reference.workflowName}" changed trigger type from ${expectedTriggerType} to ${triggerType}`,
-		);
-	}
 
 	return { workflow, triggerNode, triggerType };
-}
-
-function getFormUrl(
-	workflow: WorkflowEntity,
-	triggerNode: INode,
-	webhookBaseUrl: string | undefined,
-): string {
-	const directPath = triggerNode.parameters?.path;
-	const options: unknown = triggerNode.parameters?.options;
-	const optionPath = isRecord(options) ? options.path : undefined;
-	const formPath =
-		typeof directPath === 'string'
-			? directPath
-			: typeof optionPath === 'string'
-				? optionPath
-				: (triggerNode.webhookId ?? workflow.id);
-	const baseUrl = (webhookBaseUrl ?? 'http://localhost:5678/').replace(/\/$/, '');
-	return `${baseUrl}/form/${formPath}`;
 }
 
 // ---------------------------------------------------------------------------

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
 import { BaseSandbox } from './base-sandbox';
+import { toShellCommand } from './shell-command';
 import { raceWithAbort } from '../../sdk/abort';
 import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
 
@@ -13,15 +14,6 @@ export interface N8nSandboxServiceSandboxOptions {
 	serviceUrl?: string;
 	timeout?: number;
 	env?: Record<string, string>;
-}
-
-function shellEscape(value: string): string {
-	return /^[A-Za-z0-9_./:=+-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`;
-}
-
-function toShellCommand(command: string, args: string[] = []): string {
-	if (args.length === 0) return command;
-	return [command, ...args.map((arg) => shellEscape(arg))].join(' ');
 }
 
 /** Native agents sandbox adapter backed by the n8n sandbox service HTTP API. */
