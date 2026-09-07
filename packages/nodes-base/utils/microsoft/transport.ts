@@ -137,6 +137,18 @@ function nodeResourceName(
 	return undefined;
 }
 
+export function rewriteNotFound(
+	this: IExecuteFunctions,
+	error: unknown,
+	message: string,
+	description: string,
+): unknown {
+	if (error instanceof NodeApiError && error.httpCode === '404') {
+		return new NodeOperationError(this.getNode(), message, { description });
+	}
+	return error;
+}
+
 /**
  * Binds the shared Microsoft Graph transport to a node's default credential type;
  * the node facade calls this once at module load and re-exports the returned
@@ -153,18 +165,6 @@ function nodeResourceName(
  * hints, safe-message allowlist, per-page headers and a negative-limit guard on
  * `microsoftApiRequestAllItems`.
  */
-export function rewriteNotFound(
-	this: IExecuteFunctions,
-	error: unknown,
-	message: string,
-	description: string,
-): never {
-	if (error instanceof NodeApiError && error.httpCode === '404') {
-		throw new NodeOperationError(this.getNode(), message, { description });
-	}
-	throw error;
-}
-
 export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	defaultCredentialType: TDefault;
 }) {
