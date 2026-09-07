@@ -10,8 +10,11 @@ export type ExecutionMode = 'production' | 'manual';
  * Facts about the caller, supplied by the host at start and stored with the
  * execution. The engine never reads them: it passes them to the step executor,
  * which needs them to act on the caller's behalf, for example to resolve a
- * credential. Named for what it holds, so it does not collide with an
- * execution-wide context object the engine may introduce for its own use.
+ * credential.
+ *
+ * This is caller-supplied, opaque data. It is distinct from any per-request
+ * context the engine builds for its own use (database handle, request id,
+ * principal), which is never persisted and never given to a step executor.
  */
 export interface CallerContext {
 	/** The user on whose behalf the execution runs. */

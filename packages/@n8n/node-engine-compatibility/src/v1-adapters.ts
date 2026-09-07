@@ -226,7 +226,7 @@ export function toAdditionalDataContext(context: StepExecutionContext): Addition
 }
 
 export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode {
-	return {
+	const node: INode = {
 		id: graphNode.id,
 		name: graphNode.name,
 		type: config.nodeType,
@@ -234,8 +234,9 @@ export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode 
 		position: [0, 0],
 		parameters: config.parameters,
 		continueOnFail: config.continueOnFail,
-		...(config.credentials !== undefined && { credentials: config.credentials }),
 	};
+	if (config.credentials !== undefined) node.credentials = config.credentials;
+	return node;
 }
 
 /**

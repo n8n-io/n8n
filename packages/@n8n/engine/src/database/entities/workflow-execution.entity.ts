@@ -37,6 +37,7 @@ export class WorkflowExecution {
 	@Column('jsonb', { name: 'trigger_outputs', nullable: true })
 	triggerOutputs!: TriggerOutputs | null;
 
+	/** Caller-supplied, opaque to the engine. See `CallerContext`. */
 	@Column('jsonb', { name: 'caller_context', default: () => "'{}'" })
 	callerContext!: CallerContext;
 
