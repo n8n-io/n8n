@@ -67,13 +67,28 @@ describe('CredentialsHelper', () => {
 	const dynamicCredentialProxy = new DynamicCredentialsProxy(mockLogger);
 
 	// Setup cipher for testing
+	const encryptionKeyProxy = new EncryptionKeyProxy();
 	const cipher = new Cipher(
 		mock<InstanceSettings>({ encryptionKey: 'test_key_for_testing' }),
 		new CipherAes256GCM(),
 		new CipherAes256CBC(),
-		new EncryptionKeyProxy(),
+		encryptionKeyProxy,
 	);
 	Container.set(Cipher, cipher);
+
+	// The default deployment: no rotation, so the active key is the legacy
+	// instance-key descriptor (no-prefix, instance-key-wrapped).
+	const legacyDescriptor = {
+		id: 'instance-key',
+		value: cipher.encryptDEKWithInstanceKey('test_key_for_testing'),
+		algorithm: 'aes-256-cbc' as const,
+		format: 'no-prefix' as const,
+	};
+	encryptionKeyProxy.setProvider({
+		getActiveKey: async () => legacyDescriptor,
+		getKeyById: async () => null,
+		getLegacyKey: async () => legacyDescriptor,
+	});
 
 	const credentialsHelper = new CredentialsHelper(
 		new CredentialTypes(mockNodesAndCredentials),
