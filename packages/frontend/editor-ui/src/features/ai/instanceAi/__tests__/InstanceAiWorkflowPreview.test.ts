@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { createRunExecutionData, type IPinData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, inject, nextTick, reactive } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	usePushConnectionStore,
 	type OnPushMessageHandler,
@@ -13,7 +13,11 @@ import {
 	disposeWorkflowExecutionStateStore,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { requestCanvasTidyUp } from '@/features/workflows/canvas/pendingCanvasTidyUp';
 import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -44,6 +48,10 @@ const thread = reactive({
 
 vi.mock('../instanceAi.store', () => ({
 	useThread: () => thread,
+}));
+
+vi.mock('@/features/workflows/canvas/pendingCanvasTidyUp', () => ({
+	requestCanvasTidyUp: vi.fn(),
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -117,7 +125,12 @@ function makeExecution(id: string, options: MakeExecutionOptions = {}): IExecuti
 interface MountPreviewOptions {
 	executionFactory?: (executionId: string) => IExecutionResponse;
 	executionResult?: { executionId: string; status: 'success' | 'error' };
+	pendingTidyWorkflowId?: string | null;
 }
+
+// Unmounted after each test — a stale mounted component would keep reacting to
+// the shared `thread` mock and pollute later tests.
+const mountedWrappers: Array<{ unmount: () => void }> = [];
 
 async function mountPreview(options: MountPreviewOptions = {}) {
 	const listeners: OnPushMessageHandler[] = [];
@@ -143,6 +156,7 @@ async function mountPreview(options: MountPreviewOptions = {}) {
 		props: {
 			workflowId: 'wf-1',
 			executionResult,
+			pendingTidyWorkflowId: options.pendingTidyWorkflowId ?? null,
 		},
 		global: {
 			stubs: {
@@ -151,6 +165,7 @@ async function mountPreview(options: MountPreviewOptions = {}) {
 		},
 	});
 	await flushPromises();
+	mountedWrappers.push(wrapper);
 
 	return { wrapper, listeners, workflowsStore };
 }
@@ -164,6 +179,12 @@ describe('InstanceAiWorkflowPreview', () => {
 		thread.consumePendingHandoff.mockReset();
 		thread.sendMessage.mockReset();
 		rememberedManualExecutions.clear();
+	});
+
+	afterEach(() => {
+		for (const wrapper of mountedWrappers.splice(0)) {
+			wrapper.unmount();
+		}
 	});
 
 	describe('editing lock', () => {
@@ -187,6 +208,124 @@ describe('InstanceAiWorkflowPreview', () => {
 			await nextTick();
 
 			expect(readOnly(wrapper)).toBe('true');
+		});
+	});
+
+	describe('post-build auto tidy-up', () => {
+		const tidyPayload = {
+			workflowId: 'wf-1',
+			source: 'builder-update',
+			trackEvents: false,
+			trackHistory: false,
+			trackBulk: false,
+		};
+
+		function addGroupToDocument() {
+			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+			docStore.setNodeGroups([{ id: 'group-1', name: 'Group', nodeIds: ['node-1'] }]);
+		}
+
+		// The module mock is shared across tests — reset per test
+		function tidyRequestMock() {
+			const mock = vi.mocked(requestCanvasTidyUp);
+			mock.mockClear();
+			return mock;
+		}
+
+		function tidyEmits(mock: ReturnType<typeof tidyRequestMock>) {
+			return mock.mock.calls;
+		}
+
+		it('emits a deferred tidy-up once loaded and idle, and consumes the marker', async () => {
+			const emitSpy = tidyRequestMock();
+			const { wrapper } = await mountPreview({ pendingTidyWorkflowId: 'wf-1' });
+			addGroupToDocument();
+
+			// Reload still in flight (no workflow-loaded yet) → nothing emitted
+			expect(tidyEmits(emitSpy)).toHaveLength(0);
+			expect(wrapper.emitted('tidy-up-consumed')).toBeUndefined();
+
+			await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+			await flushPromises();
+
+			expect(tidyEmits(emitSpy)).toHaveLength(1);
+			expect(tidyEmits(emitSpy)[0][0]).toEqual(tidyPayload);
+			expect(wrapper.emitted('tidy-up-consumed')).toHaveLength(1);
+		});
+
+		it('tidies intermediate reloads without consuming, then consumes on the final tidy', async () => {
+			const emitSpy = tidyRequestMock();
+			thread.isStreaming = true;
+			const { wrapper } = await mountPreview({ pendingTidyWorkflowId: 'wf-1' });
+			addGroupToDocument();
+
+			await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+			await flushPromises();
+
+			// Agent still working → intermediate (visual) tidy, marker kept
+			expect(tidyEmits(emitSpy)).toHaveLength(1);
+			expect(wrapper.emitted('tidy-up-consumed')).toBeUndefined();
+
+			thread.isStreaming = false;
+			await flushPromises();
+
+			// Agent idle → final tidy, marker consumed
+			expect(tidyEmits(emitSpy)).toHaveLength(2);
+			expect(wrapper.emitted('tidy-up-consumed')).toHaveLength(1);
+		});
+
+		it('does nothing when the marker is for a different workflow', async () => {
+			const emitSpy = tidyRequestMock();
+			const { wrapper } = await mountPreview({ pendingTidyWorkflowId: 'wf-other' });
+			addGroupToDocument();
+
+			await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+			await flushPromises();
+
+			expect(tidyEmits(emitSpy)).toHaveLength(0);
+			expect(wrapper.emitted('tidy-up-consumed')).toBeUndefined();
+		});
+
+		it('consumes the marker without tidying when the workflow has no groups', async () => {
+			const emitSpy = tidyRequestMock();
+			const { wrapper } = await mountPreview({ pendingTidyWorkflowId: 'wf-1' });
+
+			await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+			await flushPromises();
+
+			expect(tidyEmits(emitSpy)).toHaveLength(0);
+			expect(wrapper.emitted('tidy-up-consumed')).toHaveLength(1);
+		});
+
+		it('skips while a refresh is in flight and retries on the next workflow-loaded', async () => {
+			const emitSpy = tidyRequestMock();
+			thread.isStreaming = true;
+			const { wrapper } = await mountPreview({ pendingTidyWorkflowId: 'wf-1' });
+			addGroupToDocument();
+
+			// Establish a loaded baseline first, so the refresh below is a real
+			// mid-flight reload and not just "never loaded yet".
+			await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+			await flushPromises();
+			expect(tidyEmits(emitSpy)).toHaveLength(1);
+
+			// A refresh starts (e.g. the next build chunk's own reload).
+			await wrapper.setProps({ refreshKey: 1 });
+			await flushPromises();
+
+			// The agent goes idle *while that reload is still in flight* — this
+			// would normally fire the final tidy, but must be skipped and retried
+			// once the canvas reports loaded again, not silently dropped.
+			thread.isStreaming = false;
+			await flushPromises();
+			expect(tidyEmits(emitSpy)).toHaveLength(1);
+			expect(wrapper.emitted('tidy-up-consumed')).toBeUndefined();
+
+			await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+			await flushPromises();
+
+			expect(tidyEmits(emitSpy)).toHaveLength(2);
+			expect(wrapper.emitted('tidy-up-consumed')).toHaveLength(1);
 		});
 	});
 

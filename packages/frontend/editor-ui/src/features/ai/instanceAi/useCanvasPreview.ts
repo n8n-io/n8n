@@ -1,6 +1,8 @@
 import { computed, ref, watch } from 'vue';
+import { useEventListener } from '@vueuse/core';
 import type { IconName } from '@n8n/design-system';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
+import { LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY } from '@/app/constants/localStorage';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -220,6 +222,43 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 
 	const workflowRefreshKey = ref(0);
 
+	// One storage key per workflow so mark/clear is a single set/remove, never a shared-array merge.
+	function pendingTidyStorageKey(workflowId: string): string {
+		return `${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:${workflowId}`;
+	}
+
+	// Dependency to make pendingTidyWorkflowId reactive; the marker itself lives only in localStorage.
+	const pendingTidyTick = ref(0);
+
+	useEventListener(window, 'storage', (event: StorageEvent) => {
+		if (event.key?.startsWith(`${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:`)) {
+			pendingTidyTick.value++;
+		}
+	});
+
+	const pendingTidyWorkflowId = computed(() => {
+		pendingTidyTick.value;
+		const active = activeWorkflowId.value;
+		return active && window.localStorage.getItem(pendingTidyStorageKey(active)) !== null
+			? active
+			: null;
+	});
+
+	function markPendingTidy(workflowId: string) {
+		window.localStorage.setItem(pendingTidyStorageKey(workflowId), '1');
+		pendingTidyTick.value++;
+	}
+
+	function clearPendingTidy() {
+		const active = activeWorkflowId.value;
+		if (!active) {
+			return;
+		}
+
+		window.localStorage.removeItem(pendingTidyStorageKey(active));
+		pendingTidyTick.value++;
+	}
+
 	const latestBuildResult = computed(() => {
 		for (let i = thread.messages.length - 1; i >= 0; i--) {
 			const msg = thread.messages[i];
@@ -249,6 +288,8 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			activeTabId.value = latestBuildResult.value.workflowId;
 			isPreviewOpen.value = true;
 			workflowRefreshKey.value++;
+
+			markPendingTidy(latestBuildResult.value.workflowId);
 		},
 		{ flush: 'sync' },
 	);
@@ -464,6 +505,8 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		dataTableRefreshKey,
 		isPreviewVisible,
 		workflowRefreshKey,
+		pendingTidyWorkflowId,
+		clearPendingTidy,
 		selectTab,
 		closePreview,
 		openWorkflowPreview,

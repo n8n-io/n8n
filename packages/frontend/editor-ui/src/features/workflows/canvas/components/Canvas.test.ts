@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 import { createEvent, fireEvent, waitFor, within } from '@testing-library/vue';
-import { computed } from 'vue';
+import { computed, nextTick } from 'vue';
+import {
+	consumePendingCanvasTidyUp,
+	requestCanvasTidyUp,
+	usePendingCanvasTidyUp,
+} from '../pendingCanvasTidyUp';
 import { createComponentRenderer } from '@/__tests__/render';
 import Canvas from './Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -11,6 +16,7 @@ import {
 	type CanvasGroupNode,
 	type CanvasNode,
 } from '../canvas.types';
+import type { CanvasRenderData } from '../canvas.utils';
 import {
 	createCanvasConnection,
 	createCanvasGroupElement,
@@ -247,6 +253,99 @@ describe('Canvas', () => {
 			expect(getByTestId('canvas-node-group-frame')).toHaveStyle({
 				height: `${240 + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM}px`,
 			});
+		});
+	});
+
+	describe('canvas tidy-up queue', () => {
+		// jsdom never measures nodes, so VueFlow's nodesInitialized hook must be
+		// fired by hand to simulate the graph settling.
+		const triggerNodesInitialized = () => {
+			const { hooks, getNodes } = useVueFlow(canvasId);
+			hooks.value.nodesInitialized.trigger(getNodes.value);
+		};
+
+		// The Canvas consumes requests targeting its injected document store's workflow id
+		const canvasWorkflowId = () => workflowDocumentStore.workflowId;
+
+		// layout() sizes unmeasured Default nodes analytically from render data
+		const renderData = {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+		} as unknown as CanvasRenderData;
+
+		afterEach(() => {
+			// Drain the single-slot queue so tests stay independent
+			consumePendingCanvasTidyUp(usePendingCanvasTidyUp().value?.workflowId ?? '');
+		});
+
+		it('should consume a request parked before the canvas mounted, once nodes initialize', async () => {
+			const node = createCanvasNodeElement({ id: 'node-1' });
+
+			// Parked while no Canvas exists — a bus emit would be dropped here
+			requestCanvasTidyUp({
+				workflowId: canvasWorkflowId(),
+				source: 'builder-update',
+				trackEvents: false,
+				trackHistory: false,
+				trackBulk: false,
+			});
+
+			const { container, emitted } = renderComponent({
+				props: { nodes: [node], renderData },
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+			expect(emitted('tidy-up')).toBeUndefined();
+
+			triggerNodesInitialized();
+
+			await waitFor(() => expect(emitted('tidy-up')).toHaveLength(1));
+			const [payload] = emitted('tidy-up')[0] as Array<Record<string, unknown>>;
+			expect(payload).toMatchObject({
+				source: 'builder-update',
+				target: 'all',
+			});
+			expect(usePendingCanvasTidyUp().value).toBeNull();
+		});
+
+		it('should run a request immediately when nodes are already initialized', async () => {
+			const node = createCanvasNodeElement({ id: 'node-1' });
+
+			const { container, emitted } = renderComponent({
+				props: { nodes: [node], renderData },
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+			triggerNodesInitialized();
+
+			requestCanvasTidyUp({
+				workflowId: canvasWorkflowId(),
+				source: 'builder-update',
+				trackEvents: false,
+			});
+
+			await waitFor(() => expect(emitted('tidy-up')).toHaveLength(1));
+		});
+
+		it('should leave requests for other workflows untouched', async () => {
+			const node = createCanvasNodeElement({ id: 'node-1' });
+
+			const { container, emitted } = renderComponent({
+				props: { nodes: [node], renderData },
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+			triggerNodesInitialized();
+
+			requestCanvasTidyUp({
+				workflowId: 'some-other-workflow',
+				source: 'builder-update',
+				trackEvents: false,
+			});
+			await nextTick();
+
+			expect(emitted('tidy-up')).toBeUndefined();
+			expect(usePendingCanvasTidyUp().value?.workflowId).toBe('some-other-workflow');
 		});
 	});
 

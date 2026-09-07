@@ -1407,7 +1407,9 @@ async function dismissComposerContextChip() {
 								:workflow-id="preview.activeWorkflowId.value"
 								:refresh-key="preview.workflowRefreshKey.value"
 								:execution-result="preview.activeWorkflowExecutionResult.value"
+								:pending-tidy-workflow-id="preview.pendingTidyWorkflowId.value"
 								@workflow-failures="handleWorkflowFailures"
+								@tidy-up-consumed="preview.clearPendingTidy()"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

@@ -60,13 +60,17 @@ type AgentArtifactTarget = Pick<AgentArtifactResult, 'agentId' | 'projectId'>;
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * and toolCallId from the latest successful build-workflow / submit-workflow tool result.
+ * and toolCallId from the latest successful build-workflow / submit-workflow
+ * tool result.
  */
 export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
 		const childResult = getLatestBuildResult(node.children[i]);
-		if (childResult) return childResult;
+		if (childResult) {
+			return childResult;
+		}
 	}
+
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		if (
@@ -77,7 +81,10 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 		) {
 			const result = tc.result as Record<string, unknown>;
 			if (result.success === true && typeof result.workflowId === 'string') {
-				return { workflowId: result.workflowId, toolCallId: tc.toolCallId };
+				return {
+					workflowId: result.workflowId,
+					toolCallId: tc.toolCallId,
+				};
 			}
 		}
 	}

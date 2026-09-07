@@ -8,6 +8,7 @@ import type {
 import { useCanvasPreview } from '../useCanvasPreview';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import type { ResourceEntry } from '../useResourceRegistry';
+import { LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY } from '@/app/constants/localStorage';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -153,6 +154,8 @@ function setup(options?: { threadOverrides?: Partial<MockThread> }) {
 describe('useCanvasPreview', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		// The pending-tidy marker is localStorage-backed — reset between tests
+		localStorage.clear();
 	});
 
 	describe('allArtifactTabs', () => {
@@ -516,6 +519,143 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.workflowRefreshKey.value).toBe(initialKey + 1);
+		});
+	});
+
+	describe('pending tidy marker (post-build auto tidy-up)', () => {
+		test('sets the marker to the built workflow id on a successful build', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-build',
+								toolName: 'build-workflow',
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.pendingTidyWorkflowId.value).toBe('wf-1');
+		});
+
+		test('does not set the marker while hydrating historical messages', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-build',
+								toolName: 'build-workflow',
+								result: { success: true, workflowId: 'wf-historical' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.pendingTidyWorkflowId.value).toBeNull();
+		});
+
+		test('does not set the marker on non-build workflow updates', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-1' },
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.pendingTidyWorkflowId.value).toBeNull();
+		});
+
+		test('marking one workflow never touches another workflow marker key', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-mine');
+
+			// Simulate a different tab having already marked its own workflow.
+			localStorage.setItem(`${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:wf-other`, '1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-1',
+								toolName: 'build-workflow',
+								result: { success: true, workflowId: 'wf-mine' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(localStorage.getItem(`${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:wf-other`)).toBe('1');
+			expect(localStorage.getItem(`${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:wf-mine`)).toBe('1');
+		});
+
+		test('reacts to a marker written by another tab via the storage event', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-mine');
+			ctx.selectTab('wf-mine');
+			expect(ctx.pendingTidyWorkflowId.value).toBeNull();
+
+			localStorage.setItem(`${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:wf-mine`, '1');
+			window.dispatchEvent(
+				new StorageEvent('storage', { key: `${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:wf-mine` }),
+			);
+			await nextTick();
+
+			expect(ctx.pendingTidyWorkflowId.value).toBe('wf-mine');
+		});
+
+		test('clearPendingTidy clears the marker', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-build',
+								toolName: 'build-workflow',
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+			expect(ctx.pendingTidyWorkflowId.value).toBe('wf-1');
+
+			ctx.clearPendingTidy();
+
+			expect(ctx.pendingTidyWorkflowId.value).toBeNull();
 		});
 	});
 
