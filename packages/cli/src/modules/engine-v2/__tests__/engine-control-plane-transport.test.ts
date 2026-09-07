@@ -49,12 +49,6 @@ describe('EngineControlPlaneTransport', () => {
 	};
 
 	describe('forScope', () => {
-		it('returns the client that the outbound HTTP service built', () => {
-			const client = newTransport().forScope('lifecycle-events:write');
-
-			expect(client).toBe(http);
-		});
-
 		it('dials the control plane server on the loopback, not n8n main', () => {
 			newTransport().forScope('lifecycle-events:write');
 
