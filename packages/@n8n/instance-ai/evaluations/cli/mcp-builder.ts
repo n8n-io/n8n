@@ -15,11 +15,13 @@
 // ---------------------------------------------------------------------------
 
 import { spawn } from 'child_process';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
+import { setTimeout as delay } from 'node:timers/promises';
 import { homedir, tmpdir } from 'os';
 import { join } from 'path';
 import { z } from 'zod';
 
+import { isTransientProviderError, providerRetryBackoffMs } from '../harness/transient-error';
 import type { ConversationTurn, WorkflowTestCase } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -59,6 +61,24 @@ export function uniqueProjectScopes(scopes: Array<string | undefined>): string[]
 	return uniqueDefined(scopes);
 }
 
+// Every staged config embeds a bearer token, so exit cleanup is intrinsic to
+// staging: writeMcpConfig tracks each path and the exit hook unlinks whatever
+// is left. Callers that finish normally unlink eagerly via unlinkStagedMcpConfig.
+const stagedConfigPaths = new Set<string>();
+process.on('exit', () => {
+	for (const staged of stagedConfigPaths) unlinkStagedMcpConfig(staged);
+});
+
+/** Eagerly remove a staged MCP config (and drop it from exit cleanup). */
+export function unlinkStagedMcpConfig(path: string): void {
+	stagedConfigPaths.delete(path);
+	try {
+		unlinkSync(path);
+	} catch {
+		// best-effort
+	}
+}
+
 function writeMcpConfig(serverName: string, block: unknown, filePrefix: string): string {
 	// A random suffix (not just pid+time) keeps concurrent lane stages from
 	// colliding when several are written in the same millisecond.
@@ -67,6 +87,7 @@ function writeMcpConfig(serverName: string, block: unknown, filePrefix: string):
 		`${filePrefix}-${String(process.pid)}-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}.json`,
 	);
 	writeFileSync(tmpPath, JSON.stringify({ mcpServers: { [serverName]: block } }), { mode: 0o600 });
+	stagedConfigPaths.add(tmpPath);
 	return tmpPath;
 }
 
@@ -100,10 +121,11 @@ export function stageMcpConfigFromClaudeJson(
 }
 
 /**
- * Stage an MCP config for one eval lane directly from its URL + API key, with no
+ * Stage an MCP config for one build directly from a lane URL + API key, with no
  * dependency on `~/.claude.json`. Used by the fused `--build-via-mcp` path where
- * the eval CLI mints an MCP key per lane and points `claude` at that lane's MCP
- * server. Returns the temp config path; the caller owns cleanup.
+ * the eval CLI mints an MCP key per build user and points `claude` at that
+ * lane's MCP server. Returns the temp config path; removed on process exit, or
+ * earlier via unlinkStagedMcpConfig.
  */
 export function stageLaneMcpConfig(opts: {
 	serverName: string;
@@ -132,12 +154,13 @@ export function buildAllowedTools(serverName: string): readonly string[] {
 type McpBuildKeySupport = 'supported' | 'orchestrator-only';
 
 /**
- * Classification of EVERY test-case schema key for the `claude -p` MCP build
- * path. `orchestrator-only` keys are build-side setup the orchestrator seeds
- * before driving the in-product agent (credential creation, conversation/thread
- * seeding), while `claude` receives only the flattened conversation prompt — a
- * case relying on them would build without its prerequisites and fail
- * misleadingly, so callers skip cases that declare them.
+ * Classification of EVERY test-case schema key for the fused `--build-via-mcp`
+ * build path (the standalone manifest builder does not consult this filter).
+ * `orchestrator-only` keys are build-side setup the orchestrator seeds
+ * before driving the in-product agent (conversation/thread seeding), while
+ * `claude` receives only the flattened conversation prompt — a case relying on
+ * them would build without its prerequisites and fail misleadingly, so callers
+ * skip cases that declare them.
  *
  * Deliberately exhaustive rather than a blocklist: the type covers the
  * WorkflowTestCase interface (plus the schema's forbidden legacy key), and a
@@ -165,10 +188,14 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// Forbidden legacy key — the schema rejects it at load, so it can never
 	// reach this check; classified only to keep the map schema-complete.
 	buildExpectations: 'supported',
-	credentials: 'orchestrator-only',
-	seedFile: 'orchestrator-only',
-	priorConversation: 'orchestrator-only',
-	seedThread: 'orchestrator-only',
+	// The fused --build-via-mcp path seeds these into the per-build member
+	// user's personal project (the standalone manifest builder cannot — it has
+	// no n8n session).
+	credentials: 'supported',
+	// The fixture server, Chromium and the relay are booted around the build;
+	// `claude` gets a flattened prompt and no browser.
+	credentialFixture: 'orchestrator-only',
+	seed: 'orchestrator-only',
 	datasets: 'supported',
 };
 
@@ -189,7 +216,7 @@ export function unsupportedMcpBuildSetupFields(testCase: WorkflowTestCase): stri
 	return ORCHESTRATOR_ONLY_KEYS.filter((key) => {
 		const value = values[key];
 		if (value === undefined || value === null || value === '') return false;
-		// An empty array (e.g. credentials: []) declares nothing to seed.
+		// An empty array declares nothing to seed.
 		return !Array.isArray(value) || value.length > 0;
 	});
 }
@@ -431,6 +458,16 @@ export interface McpBuildResult {
  * The log lines are surfaced through `log` (defaults to `console.log`) so the
  * standalone builder and the eval CLI can route them to their own sinks.
  */
+
+/** Provider-outage evidence lives in the session's free-text result; keep enough
+ *  of it to classify on without dragging a whole transcript into an error. */
+function truncateForReason(result: unknown): string | undefined {
+	if (typeof result !== 'string') return undefined;
+	const text = result.trim();
+	if (!text) return undefined;
+	return text.length > 300 ? `${text.slice(0, 300)}…` : text;
+}
+
 export async function buildWorkflowViaMcp(opts: {
 	conversation: ConversationTurn[];
 	slug: string;
@@ -494,10 +531,28 @@ export async function buildWorkflowViaMcp(opts: {
 			);
 			break;
 		}
-		failureReason = session?.subtype ?? 'no-stdout';
+		// The session's own result text, not just its subtype: a provider outage
+		// inside `claude` (AI_APICallError / overloaded_error / HTTP 529) shows up
+		// ONLY there, and the orchestrator classifies off this string. Without it
+		// `findProviderOutage` has nothing to match and an upstream outage is
+		// filed as a builder failure (TRUST-374). Truncated — it rides in an
+		// error message, and the tail is boilerplate.
+		failureReason = [session?.subtype ?? 'no-stdout', truncateForReason(session?.result)]
+			.filter(Boolean)
+			.join(': ');
 		log(
 			`  [${slug}#${String(iteration)}] attempt ${String(attempt)}: no WORKFLOW_ID (${failureReason}, log: ${logFile})`,
 		);
+		// A provider outage is upstream of every lane and every attempt, so an
+		// instant retry just re-hits it and burns the remaining attempts at the
+		// speed of the failures. Same backoff the non-MCP build path uses.
+		if (isTransientProviderError(failureReason) && attempt < settings.maxAttempts) {
+			const backoffMs = providerRetryBackoffMs(attempt);
+			log(
+				`  [${slug}#${String(iteration)}] provider outage — waiting ${String(Math.round(backoffMs / 1000))}s before attempt ${String(attempt + 1)}`,
+			);
+			await delay(backoffMs);
+		}
 	}
 
 	if (!workflowId) {

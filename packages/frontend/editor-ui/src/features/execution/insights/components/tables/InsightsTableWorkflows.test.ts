@@ -13,7 +13,7 @@ const { emitters, addEmitter } = useEmitters<'n8nDataTableServer'>();
 const mockTelemetry = {
 	track: vi.fn(),
 };
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => mockTelemetry,
 }));
 

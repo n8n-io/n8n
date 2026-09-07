@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
 import { FloatingUiHelper } from './FloatingUiHelper';
 
@@ -33,14 +33,33 @@ export class NodeCredentials {
 		return this.root.getByTestId('node-credentials-select');
 	}
 
+	/**
+	 * Wrapper around a single credential slot. `.nth(eq)` indexes slots in
+	 * document order, so `eq` selects the eq-th credential field regardless of
+	 * which empty-state kind each slot happens to render.
+	 */
+	getSlot(eq: number = 0): Locator {
+		return this.root.getByTestId('node-credentials-slot').nth(eq);
+	}
+
 	/** Empty state shown when no credential is set */
 	getEmptyState(): Locator {
 		return this.root.getByTestId('node-credentials-empty-state');
 	}
 
+	/** Direct create button shown for standard empty states with no alternate credential choice */
+	getEmptyStateCreateButton(eq: number = 0): Locator {
+		return this.getSlot(eq).getByTestId('node-credentials-empty-state').getByRole('button');
+	}
+
 	/** Quick-connect empty state (MCP / OAuth quick connect flows) */
 	getQuickConnectEmptyState(): Locator {
 		return this.root.getByTestId('quick-connect-empty-state');
+	}
+
+	/** Primary quick-connect action shown in the quick-connect empty state */
+	getQuickConnectButton(eq: number = 0): Locator {
+		return this.getSlot(eq).getByTestId('quick-connect-empty-state').getByRole('button').first();
 	}
 
 	/** Combobox input that holds the selected credential name */
@@ -73,6 +92,20 @@ export class NodeCredentials {
 		return this.floatingUi.getVisiblePopper().getByText(text);
 	}
 
+	/**
+	 * Select an existing credential by name and wait for the picker to hold it.
+	 *
+	 * Prefer this over relying on the NDV's implicit auto-selection, which picks
+	 * the most recently updated credential of the type — in a parallel run that
+	 * is often one created by another spec.
+	 */
+	async selectByName(name: string): Promise<void> {
+		const combobox = this.getCombobox();
+		await combobox.click();
+		await this.getOptionByText(name).click();
+		await expect(combobox).toHaveValue(name);
+	}
+
 	/** `node-credentials-select-item-new` row inside the open dropdown */
 	getCreateNewItem(eq: number = 0): Locator {
 		return this.floatingUi
@@ -82,39 +115,62 @@ export class NodeCredentials {
 	}
 
 	getSetupManuallyLink(eq: number = 0): Locator {
-		return this.root.getByTestId('setup-manually-link').nth(eq);
-	}
-
-	getSetupCredentialButton(eq: number = 0): Locator {
-		return this.root.getByTestId('setup-credential-button').nth(eq);
+		return this.getSlot(eq).getByTestId('setup-manually-link');
 	}
 
 	/**
 	 * Enter the "create new credential" flow. Handles the three possible
 	 * UI states for an empty credential slot:
 	 *
+	 *  - Quick-connect button (when quick connect is the only setup path)
 	 *  - "Set up manually" link (when the picker offers auth alternatives)
-	 *  - "Set up credential" button (quick-connect empty state)
+	 *  - Standard empty-state button → opens the credential modal directly
+	 *  - Standard empty-state picker with choices → opens the compact select
+	 *    and clicks "Use my own credential"
 	 *  - Existing picker → opens the dropdown and clicks "Create new"
+	 *
+	 * The dropdown states share the same create row (`node-credentials-select-item-new`);
+	 * they differ only in which trigger opens the dropdown.
+	 *
+	 * `eq` indexes credential slots in document order (via {@link getSlot}), so
+	 * it resolves the right field even when slots render different empty-state
+	 * kinds (e.g. slot 0 quick-connect, slot 1 standard empty).
 	 */
 	async clickCreateNew(eq: number = 0): Promise<void> {
+		const slot = this.getSlot(eq);
 		const setupManually = this.getSetupManuallyLink(eq);
-		const setupCredential = this.getSetupCredentialButton(eq);
-		const credentialSelect = this.getSelect().nth(eq);
+		const emptyState = slot.getByTestId('node-credentials-empty-state');
+		const emptyStateCreateButton = this.getEmptyStateCreateButton(eq);
+		const quickConnectEmptyState = slot.getByTestId('quick-connect-empty-state');
+		const credentialSelect = slot.getByTestId('node-credentials-select');
 
 		await Promise.race([
+			quickConnectEmptyState.waitFor({ state: 'visible', timeout: 10_000 }),
 			setupManually.waitFor({ state: 'visible', timeout: 10_000 }),
-			setupCredential.waitFor({ state: 'visible', timeout: 10_000 }),
+			emptyState.waitFor({ state: 'visible', timeout: 10_000 }),
 			credentialSelect.waitFor({ state: 'visible', timeout: 10_000 }),
 		]);
 
 		if (await setupManually.isVisible()) {
 			await setupManually.click();
-		} else if (await setupCredential.isVisible()) {
-			await setupCredential.click();
-		} else {
-			await credentialSelect.click();
-			await this.getCreateNewItem(eq).click();
+			return;
 		}
+
+		if (await quickConnectEmptyState.isVisible()) {
+			await this.getQuickConnectButton(eq).click();
+			return;
+		}
+
+		if (await emptyStateCreateButton.isVisible()) {
+			await emptyStateCreateButton.click();
+			return;
+		}
+
+		// Both the populated picker and the empty-state select open a dropdown
+		// whose footer row creates a new credential. `eq` picks which slot's
+		// trigger to open; the resulting popper holds a single create row.
+		const trigger = (await credentialSelect.isVisible()) ? credentialSelect : emptyState;
+		await trigger.click();
+		await this.getCreateNewItem().click();
 	}
 }

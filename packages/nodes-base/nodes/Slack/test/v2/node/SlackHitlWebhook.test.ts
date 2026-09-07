@@ -32,6 +32,8 @@ interface ContextOptions {
 	payload?: Record<string, unknown>;
 	approvers?: string[];
 	authentication?: string;
+	unauthorizedReplyText?: string;
+	postDecisionBehavior?: string;
 }
 
 function createContext(opts: ContextOptions) {
@@ -55,6 +57,8 @@ function createContext(opts: ContextOptions) {
 	ctx.getNodeParameter.mockImplementation((name: string, fallback?: unknown) => {
 		if (name === 'approvers') return (opts.approvers ?? []) as never;
 		if (name === 'authentication') return (opts.authentication ?? fallback) as never;
+		if (name === 'unauthorizedReplyText') return (opts.unauthorizedReplyText ?? fallback) as never;
+		if (name === 'postDecisionBehavior') return (opts.postDecisionBehavior ?? fallback) as never;
 		return fallback as never;
 	});
 
@@ -287,6 +291,98 @@ describe('slackSendAndWaitWebhook', () => {
 		// Must acknowledge with a 200 so Slack doesn't time out and retry the same click.
 		expect(status).toHaveBeenCalledWith(200);
 		expect(send).toHaveBeenCalledWith('');
+	});
+
+	it('sends the configured unauthorized reply text to an ignored responder', async () => {
+		const { ctx } = createContext({
+			interaction: true,
+			signatureSecret: 'secret',
+			approvers: ['U_ALLOWED'],
+			unauthorizedReplyText: 'Only managers can approve.',
+			payload: {
+				user: { id: 'U_OTHER' },
+				actions: [{ action_id: HITL_APPROVE_ACTION_ID, value: APPROVE_VALUE }],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockResolvedValue({ ok: true });
+
+		await slackSendAndWaitWebhook.call(ctx);
+
+		expect(slackApiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/chat.postEphemeral',
+			expect.objectContaining({
+				channel: 'C1',
+				user: 'U_OTHER',
+				text: 'Only managers can approve.',
+			}),
+		);
+	});
+
+	it('removes the buttons without an outcome line when After Decision is removeButtons', async () => {
+		const { ctx, httpRequest } = createContext({
+			interaction: true,
+			signatureSecret: 'secret',
+			postDecisionBehavior: 'removeButtons',
+			payload: {
+				user: { id: 'U1' },
+				actions: [
+					{ action_id: HITL_APPROVE_ACTION_ID, value: APPROVE_VALUE, action_ts: '1700000000.000' },
+				],
+				channel: { id: 'C1' },
+				message: {
+					ts: '111.222',
+					blocks: [
+						{ type: 'section', text: { type: 'mrkdwn', text: 'Please approve this request' } },
+						{ type: 'actions', elements: [{ type: 'button' }] },
+					],
+				},
+				response_url: 'https://hooks.slack.com/actions/xxx',
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockResolvedValue({ user: { profile: {} } });
+		httpRequest.mockResolvedValue({});
+
+		await slackSendAndWaitWebhook.call(ctx);
+
+		const lockBody = httpRequest.mock.calls[0][0].body as string;
+		// The original message survives and the buttons are stripped, but no "Approved by @user" line is added.
+		expect(lockBody).toContain('Please approve this request');
+		expect(lockBody).not.toContain('"type":"actions"');
+		expect(lockBody).not.toContain('<@U1>');
+	});
+
+	it('leaves the message untouched when After Decision is keepMessage', async () => {
+		const { ctx, httpRequest } = createContext({
+			interaction: true,
+			signatureSecret: 'secret',
+			postDecisionBehavior: 'keepMessage',
+			payload: {
+				user: { id: 'U1' },
+				actions: [
+					{ action_id: HITL_APPROVE_ACTION_ID, value: APPROVE_VALUE, action_ts: '1700000000.000' },
+				],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+				response_url: 'https://hooks.slack.com/actions/xxx',
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockResolvedValue({ user: { profile: {} } });
+		httpRequest.mockResolvedValue({});
+
+		const result = (await slackSendAndWaitWebhook.call(ctx)) as {
+			workflowData: Array<Array<{ json: { data: { approved: boolean } } }>>;
+		};
+
+		// No lock attempt (neither response_url nor chat.update), but the execution still resumes.
+		expect(httpRequest).not.toHaveBeenCalled();
+		expect(slackApiRequest).not.toHaveBeenCalledWith('POST', '/chat.update', expect.anything());
+		expect(result.workflowData[0][0].json.data.approved).toBe(true);
 	});
 
 	it('resumes when the responder is on the approver list', async () => {

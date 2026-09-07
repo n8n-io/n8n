@@ -13,7 +13,7 @@ This folder contains n8n's GitHub Actions infrastructure.
 | `workflows/` | GitHub Actions workflows |
 | `actions/` | Reusable composite actions |
 | `scripts/` | Release & Docker automation |
-| `CODEOWNERS` | Team review ownership |
+| `scripts/owners/` | Team review ownership scripts; the OWNERS file is at the repo root (`required` entries gate merges) |
 
 ### Workflow Naming
 
@@ -30,7 +30,12 @@ Reusable workflows: add `-reusable` or `-callable` suffix.
 
 ### Common Tasks
 
-**Add workflow:** Create in `workflows/`, document in `WORKFLOWS.md`
+**Add workflow:** Create in `workflows/`, document in `WORKFLOWS.md`.
+Always declare a least-privilege top-level `permissions:` block (usually
+`contents: read`) — without one the workflow runs with the repo's broad
+default token and review flags it. Jobs needing more override at job level;
+a job calling a reusable workflow must grant at least what that workflow
+declares.
 
 **Add script:** Create `.mjs` in `scripts/`, document in `WORKFLOWS.md`
 

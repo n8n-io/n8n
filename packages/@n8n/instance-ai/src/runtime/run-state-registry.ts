@@ -1,4 +1,7 @@
-import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
+import type {
+	InstanceAiCredentialDestinationDecision,
+	InstanceAiThreadStatusResponse,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext, ModelConfig, OrchestrationContext } from '../types';
@@ -14,11 +17,15 @@ export interface ActiveRunState {
 	runId: string;
 	threadId: string;
 	abortController: AbortController;
+	/** Prevents an older finalizer from clearing a newer executor for the same thread. */
+	executionToken?: symbol;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
 	modelId?: ModelConfig;
 	startedAt?: number;
 	lastActivityAt?: number;
+	/** Owner of the run, resolved at entry so concurrency can be counted per user. */
+	userId?: string;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
@@ -65,6 +72,8 @@ export interface ConfirmationData {
 	domainAccessAction?: string;
 	action?: 'apply' | 'test-trigger';
 	nodeParameters?: Record<string, Record<string, unknown>>;
+	/** Workflow-setup cards the user actively skipped, by node name. */
+	skippedNodes?: string[];
 	testTriggerNode?: string;
 	answers?: Array<{
 		questionId: string;
@@ -79,7 +88,9 @@ export interface ConfirmationData {
 	/** `'session'` means the user chose "always allow": the resuming tool should
 	 *  persist a thread-level grant so the same action isn't re-asked. */
 	scope?: 'once' | 'session';
-	autoSetup?: { credentialType: string };
+	autoSetup?: { credentialType: string; attemptId?: string };
+	credentialDestination?: InstanceAiCredentialDestinationDecision;
+	connectedSlugs?: string[];
 }
 
 export interface PendingConfirmation {
@@ -136,6 +147,13 @@ export class RunStateRegistry<TUser = unknown> {
 	/** IANA time zone captured at initial-run entry and reused by follow-up runs. */
 	private readonly threadTimeZones = new Map<string, string>();
 
+	/**
+	 * Resolves a user id from the opaque `TUser` the registry is parameterised over.
+	 * Required rather than optional: per-user concurrency counting depends on it, and a
+	 * missing extractor would silently report every user as holding zero runs.
+	 */
+	constructor(private readonly getUserId: (user: TUser) => string) {}
+
 	startRun(options: StartRunOptions<TUser>): StartedRunState {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
@@ -149,6 +167,7 @@ export class RunStateRegistry<TUser = unknown> {
 			messageGroupId,
 			startedAt: now,
 			lastActivityAt: now,
+			userId: this.getUserId(options.user),
 		});
 		this.threadUsers.set(options.threadId, options.user);
 
@@ -249,9 +268,44 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.activeRuns.get(threadId)?.runId;
 	}
 
-	/** Number of runs currently executing (excludes suspended/pending runs). */
+	/**
+	 * Runs holding a slot on this process, which is what the instance cap admits against.
+	 *
+	 * Includes a run parked on an inline approval card, which stays in `activeRuns`.
+	 * Excludes a suspended run, which leaves `activeRuns` but keeps its agent in memory.
+	 * So this bounds concurrent execution, not resident memory.
+	 */
 	activeRunCount(): number {
 		return this.activeRuns.size;
+	}
+
+	/**
+	 * Number of runs this user currently has executing, across all their threads.
+	 *
+	 * Excludes everything parked on a human, because none of it is spending anything and
+	 * counting it would lock a user out for the whole confirmation timeout after a few
+	 * abandoned cards. That means two things, not one:
+	 *
+	 *  - suspended runs, which have left `activeRuns` entirely; and
+	 *  - runs blocked in `waitForConfirmation`, which stay in `activeRuns` while an inline
+	 *    approval card is open. `sweepTimedOut` skips these for the same reason.
+	 *
+	 * {@link activeRunCount} differs on the second case only. An inline-parked run is still
+	 * in `activeRuns`, so it holds a slot there. A suspended run holds a slot in neither,
+	 * although it still retains its agent -- see {@link activeRunCount}.
+	 *
+	 * The scan is linear in concurrently-executing runs. That stays small in practice
+	 * regardless of the caps -- each run costs ~12-20MB, so a process cannot hold many --
+	 * and it is negligible next to the model call that follows.
+	 */
+	activeRunCountForUser(userId: string): number {
+		let count = 0;
+		for (const [threadId, run] of this.activeRuns) {
+			if (run.userId !== userId) continue;
+			if (this.hasPendingConfirmationForThread(threadId)) continue;
+			count++;
+		}
+		return count;
 	}
 
 	getActiveRun(threadId: string): ActiveRunState | undefined {
@@ -273,7 +327,8 @@ export class RunStateRegistry<TUser = unknown> {
 		});
 	}
 
-	clearActiveRun(threadId: string): void {
+	clearActiveRun(threadId: string, executionToken?: symbol): void {
+		if (this.activeRuns.get(threadId)?.executionToken !== executionToken) return;
 		this.activeRuns.delete(threadId);
 	}
 
@@ -290,6 +345,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.activeRuns.delete(threadId);
 		state.startedAt = state.startedAt ?? activeRun?.startedAt ?? state.createdAt;
 		state.lastActivityAt = state.lastActivityAt ?? state.createdAt;
+		state.userId = state.userId ?? activeRun?.userId;
 		this.suspendedRuns.set(threadId, state);
 
 		// Re-seed group indexes: on a restart-resumed orphan these maps start
@@ -314,7 +370,10 @@ export class RunStateRegistry<TUser = unknown> {
 		return suspended;
 	}
 
-	activateSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
+	activateSuspendedRun(
+		threadId: string,
+		executionToken?: symbol,
+	): SuspendedRunState<TUser> | undefined {
 		const suspended = this.suspendedRuns.get(threadId);
 		if (!suspended) return undefined;
 
@@ -324,11 +383,13 @@ export class RunStateRegistry<TUser = unknown> {
 			runId: suspended.runId,
 			threadId,
 			abortController: suspended.abortController,
+			executionToken,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,
 			modelId: suspended.modelId,
 			startedAt: suspended.startedAt ?? suspended.createdAt,
 			lastActivityAt: now,
+			userId: suspended.userId ?? this.getUserId(suspended.user),
 		});
 
 		// Re-seed group indexes for the reactivated run (empty after a restart).

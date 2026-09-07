@@ -29,6 +29,7 @@ const mockWorkflowIssue = {
 			description: 'Please update to the latest version',
 		},
 	],
+	migratable: false,
 	nbAffectedWorkflows: 5,
 };
 
@@ -44,6 +45,7 @@ const mockInstanceIssue = {
 			description: 'Update your instance configuration',
 		},
 	],
+	migratable: false,
 	instanceIssues: [
 		{
 			title: 'Configuration issue',
@@ -109,7 +111,7 @@ describe('MigrationRules', () => {
 			document.title = '';
 			renderComponent();
 
-			expect(document.title).toContain('Migration Report');
+			expect(document.title).toContain('Migration report');
 		});
 
 		it('should render correctly and load data on mount', async () => {
@@ -120,7 +122,7 @@ describe('MigrationRules', () => {
 
 			// After loading, shows title, description, and data
 			await waitFor(() => {
-				expect(screen.getByText('Migration Report')).toBeInTheDocument();
+				expect(screen.getByText('Migration report')).toBeInTheDocument();
 				expect(
 					screen.getByText(/5 of your 10 workflows are already compatible/, { exact: false }),
 				).toBeInTheDocument();
@@ -539,7 +541,7 @@ describe('MigrationRules', () => {
 
 			// Component still renders title
 			await waitFor(() => {
-				expect(screen.getByText('Migration Report')).toBeInTheDocument();
+				expect(screen.getByText('Migration report')).toBeInTheDocument();
 			});
 		});
 
@@ -556,7 +558,7 @@ describe('MigrationRules', () => {
 
 			// Component still works after error
 			await waitFor(() => {
-				expect(screen.getByText('Migration Report')).toBeInTheDocument();
+				expect(screen.getByText('Migration report')).toBeInTheDocument();
 			});
 		});
 

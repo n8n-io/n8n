@@ -1,5 +1,12 @@
 import z from 'zod';
 
+import {
+	contentSecurityPolicyReportOnlySchema,
+	contentSecurityPolicySchema,
+	DEFAULT_CONTENT_SECURITY_POLICY,
+	type ContentSecurityPolicyReportOnlySetting,
+	type ContentSecurityPolicySetting,
+} from './content-security-policy';
 import { Config, Env } from '../decorators';
 
 const crossOriginOpenerPolicySchema = z.enum(['same-origin', 'same-origin-allow-popups']);
@@ -54,7 +61,7 @@ export class SecurityConfig {
 	 * Separate multiple patterns with semicolons. Default blocks `.git`. Set to empty to disable pattern-based blocking.
 	 */
 	@Env('N8N_BLOCK_FILE_PATTERNS')
-	blockFilePatterns: string = '^(.*\\/)*\\.git(\\/.*)*$';
+	blockFilePatterns: string = '^(?:[^/]*/)*\\.git(?:/.*)?$';
 
 	/**
 	 * In a [security audit](https://docs.n8n.io/hosting/securing/security-audit/), how many days for a workflow to be considered abandoned if not executed.
@@ -63,18 +70,44 @@ export class SecurityConfig {
 	daysAbandonedWorkflow: number = 90;
 
 	/**
-	 * Set [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) headers as [helmet.js](https://helmetjs.github.io/#content-security-policy) nested directives object.
-	 * Example: { "frame-ancestors": ["http://localhost:3000"] }
+	 * The [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) n8n serves
+	 * on its HTML pages, replacing the nonce-based default policy. Two formats are accepted:
+	 *
+	 * - a [helmet.js](https://helmetjs.github.io/#content-security-policy) nested directives object,
+	 *   e.g. `{ "frame-ancestors": ["http://localhost:3000"] }`
+	 * - a policy string, as the header itself is written,
+	 *   e.g. `frame-ancestors http://localhost:3000`
+	 *
+	 * Write `<nonce>` where the per-request nonce should go to keep n8n's own scripts working,
+	 * e.g. `script-src <nonce> 'strict-dynamic'`.
+	 *
+	 * Set to `default` to enforce n8n's own policy without transcribing it.
+	 *
+	 * Empty by default: n8n enforces nothing until a policy is set here. See
+	 * `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` for the policy it reports on.
+	 *
+	 * Parsed on read, so this holds the policy to send, or `undefined` to send no header.
+	 * A value that cannot be read warns and leaves this `undefined`: a policy n8n cannot
+	 * parse must not be enforced.
 	 */
-	// TODO: create a new type that parses and validates this string into a strongly-typed object
-	@Env('N8N_CONTENT_SECURITY_POLICY')
-	contentSecurityPolicy: string = '{}';
+	@Env('N8N_CONTENT_SECURITY_POLICY', contentSecurityPolicySchema)
+	contentSecurityPolicy: ContentSecurityPolicySetting = undefined;
 
 	/**
-	 * Whether to set the `Content-Security-Policy-Report-Only` header instead of `Content-Security-Policy`.
+	 * The policy n8n serves as `Content-Security-Policy-Report-Only`, in the same two formats
+	 * `N8N_CONTENT_SECURITY_POLICY` accepts. This header blocks nothing, so use it to try a
+	 * policy out first. Both headers report violations, but only the enforced one blocks.
+	 *
+	 * Defaults to n8n's Level 3 policy. Set it to `default` for that policy explicitly, or to
+	 * `{}` to send no report-only header.
+	 *
+	 * Parsed on read, as `N8N_CONTENT_SECURITY_POLICY` is. The variable held a boolean until
+	 * it took a policy, so a boolean parses to `{ legacyBoolean }` for the caller to honor
+	 * with a deprecation warning.
 	 */
-	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY')
-	contentSecurityPolicyReportOnly: boolean = false;
+	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY', contentSecurityPolicyReportOnlySchema)
+	contentSecurityPolicyReportOnly: ContentSecurityPolicyReportOnlySetting =
+		DEFAULT_CONTENT_SECURITY_POLICY;
 
 	/**
 	 * Configuration for the `Cross-Origin-Opener-Policy` header.
@@ -84,8 +117,11 @@ export class SecurityConfig {
 		'same-origin-allow-popups';
 
 	/**
-	 * Whether to disable HTML sandboxing for webhooks. The sandboxing mechanism uses CSP headers now,
-	 * but the name is kept for backwards compatibility.
+	 * Whether to disable the `sandbox` directive in the CSP header for webhooks.
+	 * The sandboxing mechanism uses CSP headers now, but the name is kept for backwards compatibility.
+	 *
+	 * To disable the entire CSP, use `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` or override the policy with
+	 * `N8N_CONTENT_SECURITY_POLICY`.
 	 */
 	@Env('N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX')
 	disableWebhookHtmlSandboxing: boolean = false;
@@ -97,6 +133,9 @@ export class SecurityConfig {
 	 * malicious user can build a workflow that makes requests using other users' credentials.
 	 * The correct way to prevent this is to configure forms to be served from a different
 	 * (sub)domain instead of disabling the sandbox.
+	 *
+	 * To disable the entire CSP, use `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` or override the policy with
+	 * `N8N_CONTENT_SECURITY_POLICY`.
 	 */
 	@Env('N8N_INSECURE_DISABLE_FORM_HTML_SANDBOX')
 	disableFormHtmlSandboxing: boolean = false;
@@ -133,4 +172,16 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_GIT_NODE_ENABLE_ALL_CONFIG_KEYS')
 	enableGitNodeAllConfigKeys: boolean = false;
+
+	/**
+	 * Origins that are allowed to exchange `postMessage` commands with the editor iframe
+	 * (used by the workflow preview / demo embed). Separate multiple origins with a comma.
+	 * When empty (the default), messages from any origin are accepted, preserving the
+	 * existing embedding behavior. Set this to restrict which parent pages may drive the
+	 * embedded editor.
+	 *
+	 * @example N8N_POSTMESSAGE_ALLOWED_ORIGINS=https://n8n.io,https://app.example.com
+	 */
+	@Env('N8N_POSTMESSAGE_ALLOWED_ORIGINS')
+	postMessageAllowedOrigins: string = '';
 }

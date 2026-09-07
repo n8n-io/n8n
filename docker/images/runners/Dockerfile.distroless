@@ -12,7 +12,8 @@
 # - Uses distroless nonroot user (UID 65532)
 # ==============================================================================
 
-ARG NODE_VERSION=24.16.0
+ARG NODE_VERSION=26.7.0
+ARG PNPM_VERSION=11.25.0
 ARG PYTHON_VERSION=3.13
 
 
@@ -25,16 +26,9 @@ COPY ./dist/task-runner-javascript /app/task-runner-javascript
 WORKDIR /app/task-runner-javascript
 
 # Pin pnpm to the repo's packageManager version. `pnpm deploy` drops the
-# packageManager field from the deployed package.json, so a bare
-# `corepack enable pnpm` resolves to corepack's bundled latest (pnpm 11.x).
-# pnpm 11 defaults minimumReleaseAge to 1440 (24h), so the `pnpm add` below
-# re-resolves the deployed graph and rejects any dependency published less
-# than a day ago — e.g. a first-party @n8n_io/ai-assistant-sdk bump landed
-# within hours of its npm publish. This container step only re-resolves an
-# already-vetted, already-pinned dependency set; the real supply-chain age
-# policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
-ARG PNPM_VERSION=10.32.1
-RUN corepack enable pnpm && corepack prepare "pnpm@${PNPM_VERSION}" --activate
+# packageManager field from the deployed package.json, so nothing else here pins it.
+ARG PNPM_VERSION
+RUN npm i -g "pnpm@${PNPM_VERSION}"
 
 # Remove `catalog` and `workspace` references from package.json to allow `pnpm add`
 RUN node -e "const pkg = require('./package.json'); \
@@ -51,9 +45,14 @@ RUN node -e "const pkg = require('./package.json'); \
     delete pkg.devDependencies; \
     require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
 
+# `--config.minimum-release-age=0`: pnpm 11 defaults it to 1440 (24h), which would make
+# this reject any dependency published less than a day ago — e.g. a first-party
+# @n8n_io/ai-assistant-sdk bump landed within hours of its npm publish. This step only
+# re-resolves an already-vetted, already-pinned dependency set; the real supply-chain age
+# policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
 # Install moment by default (special case for n8n cloud)
 RUN rm -f node_modules/.modules.yaml && \
-    pnpm add moment@2.30.1 --prod --no-lockfile
+    pnpm add moment@2.30.1 --prod --no-lockfile --config.minimum-release-age=0
 
 # Rebuild isolated-vm for the container platform. Install build tools as
 # fallback in case prebuild-install cannot find a prebuilt binary.
@@ -66,9 +65,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
 # Produces a relocatable venv tied to the python version used
 # ==============================================================================
-FROM python:${PYTHON_VERSION}-slim-bookworm AS python-runner-builder
+FROM python:${PYTHON_VERSION}-slim-trixie AS python-runner-builder
 ARG TARGETPLATFORM
 ARG UV_VERSION=0.8.14
+
+# Stage the multiarch lib dir under a name COPY can grab without flattening it.
+# This image must stay on the same Debian release as the distroless cc base:
+# the final image runs this stage's glibc against the base's libstdc++/libgcc.
+RUN mkdir /staged-libs && cp -a /usr/lib/*-linux-gnu* /staged-libs/
 
 RUN set -e; \
   apt-get update && apt-get install -y --no-install-recommends wget ca-certificates && \
@@ -154,16 +158,23 @@ COPY --from=python-runner-builder /usr/local/bin/python3.13 /runtime/usr/local/b
 COPY --from=python-runner-builder /usr/local/lib/python3.13 /runtime/usr/local/lib/python3.13
 COPY --from=python-runner-builder /usr/local/lib/libpython3.13.so* /runtime/usr/local/lib/
 
-# Copy Python dependencies (architecture-specific directories)
-# The /* glob will match x86_64-linux-gnu or aarch64-linux-gnu
-# Stage glibc into /usr/lib/ because cc-debian13 completes the usr-merge:
+# Copy Python dependencies and glibc as one set, preserving the
+# x86_64-linux-gnu / aarch64-linux-gnu directory. A COPY glob on the dir
+# would flatten its contents into /usr/lib/, putting this loader on the
+# arm64 ELF interp path (/lib/ld-linux-aarch64.so.1) while libc still
+# resolved from the base's multiarch dir - a mismatched loader/libc pair
+# breaks on GLIBC_PRIVATE symbols whenever either image updates.
+# Staged into /usr/lib/ because cc-debian13 completes the usr-merge:
 # /lib is a symlink to /usr/lib, so a final COPY into /lib/ would collide
 # with that symlink at the runtime stage.
-COPY --from=python-runner-builder /lib/*-linux-gnu* /runtime/usr/lib/
-COPY --from=python-runner-builder /usr/lib/*-linux-gnu* /runtime/usr/lib/
+COPY --from=python-runner-builder /staged-libs/ /runtime/usr/lib/
 
 # Copy Node.js runtime
 COPY --from=node-debian /usr/local/bin/node /runtime/usr/local/bin/node
+
+# Node 26+ links against libatomic, which neither the python image above nor
+# the distroless cc base provides, so stage it from the node image.
+COPY --from=node-debian /usr/lib/*-linux-gnu*/libatomic.so.1* /runtime/usr/lib/
 
 # Copy task runners
 COPY --from=javascript-runner-builder /app/task-runner-javascript /runtime/opt/runners/task-runner-javascript

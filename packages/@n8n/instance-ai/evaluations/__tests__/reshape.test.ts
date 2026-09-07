@@ -205,6 +205,9 @@ describe('reshapeLangSmithRuns', () => {
 		expect(s2.success).toBe(false);
 		expect(s2.reasoning).toBe('No run result for this scenario');
 		expect(s2.score).toBe(0);
+		// Unowned and unmeasured: visible as a gap, but out of the pass rate.
+		expect(s2.attribution).toBe('verification_gap');
+		expect(s2.incomplete).toBe(true);
 	});
 
 	it('skips a malformed run output rather than scoring it as a failure', () => {
@@ -216,6 +219,8 @@ describe('reshapeLangSmithRuns', () => {
 		const s1 = result[0][0].executionScenarioResults[0];
 		expect(s1.success).toBe(false);
 		expect(s1.reasoning).toBe('Malformed run output — skipped');
+		expect(s1.attribution).toBe('verification_gap');
+		expect(s1.incomplete).toBe(true);
 	});
 
 	it('groups runs into separate iterations by the injected _iteration index', () => {

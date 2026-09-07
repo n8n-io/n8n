@@ -29,12 +29,6 @@ async function addOpenAILanguageModelWithCredentials(
 	await n8n.ndv.clickBackToCanvasButton();
 }
 
-async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 3000) {
-	await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-		timeout,
-	});
-}
-
 async function setEditorText(n8n: n8nPage, parameterName: string, value: string) {
 	const codeEditor = n8n.ndv.getParameterEditor(parameterName);
 	await codeEditor.click();
@@ -56,6 +50,10 @@ const ANTHROPIC_RESPONSE = {
 
 interface AnthropicMessagesRequest {
 	tools?: Array<{ name?: string }>;
+}
+
+interface OpenAIResponsesRequest {
+	input?: Array<{ type?: string; output?: string; call_id?: string }>;
 }
 
 const hitlForToolsTestConfig = {
@@ -163,7 +161,99 @@ test.describe(
 			const approveButton = n8n.canvas.manualChat.getApproveButton();
 			await expect(approveButton).toBeVisible({ timeout: 15000 });
 			await approveButton.click({ button: 'middle' });
-			await waitForWorkflowSuccess(n8n);
+
+			// Approving resumes the run, the tool executes, and the Chat node posts the
+			// agent's answer back. A chat run on an unsaved workflow shows no
+			// execution-success toast, so that reply is the completion signal.
+			await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText(
+				'sent the welcome email to john@gmail.com',
+				{ timeout: 15000 },
+			);
+		});
+
+		// Regression test for the community forum issue AI-2656: after clicking
+		// Approve on a tool gated behind a Human Review node, the tool must actually
+		// execute and its real result must be returned to the agent. The bug returns
+		// the Human Review approval object (e.g. { approved: true }) to the agent
+		// instead of the gated tool's result, so the agent never sees the tool output
+		// and loops until it hits max iterations.
+		// https://community.n8n.io/t/human-review-before-ai-tool-works-in-n8n-2-6-0-but-does-not-execute-the-tool-in-2-27-5-hitl/304110/1
+		test('should return the real tool result to the agent after approval, not the approval object', async ({
+			n8n,
+			services,
+		}) => {
+			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
+
+			await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
+
+			await n8n.canvas.addSupplementalNodeToParent(
+				MANUAL_CHAT_TRIGGER_NODE_NAME,
+				'ai_tool',
+				AGENT_NODE_NAME,
+				{ closeNDV: true, subcategory: HITL_TOOL_SUBCATEGORY, exactMatch: true },
+			);
+
+			await n8n.canvas.addSupplementalNodeToParent(
+				AI_TOOL_CODE_NODE_NAME,
+				'ai_tool',
+				MANUAL_CHAT_TRIGGER_NODE_NAME,
+				{ closeNDV: false },
+			);
+
+			// The gated tool returns a distinctive result we can assert reached the agent.
+			await n8n.ndv.getParameterTextarea('description').fill('Send email');
+			await setEditorText(n8n, 'jsCode', 'return "Email sent";');
+
+			await n8n.ndv.setParameterSwitch('specifyInputSchema', true);
+			await setEditorText(n8n, 'jsonSchemaExample', '{"receiver": "",    "body": ""}');
+
+			await n8n.ndv.clickBackToCanvasButton();
+
+			await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, {
+				closeNDV: false,
+				action: 'Send a message',
+				fromNode: AGENT_NODE_NAME,
+			});
+			await n8n.ndv.openExpressionEditorModal('message');
+			await n8n.ndv.fillExpressionEditorModalInput('{{ $json.output }}');
+			await n8n.ndv.getExpressionEditorModalOutput().click();
+			await n8n.page.keyboard.press('Escape');
+			await n8n.ndv.clickBackToCanvasButton();
+
+			await n8n.canvas.openNode(CHAT_TRIGGER_NODE_DISPLAY_NAME);
+			await n8n.ndv.addParameterOptionByName('Response mode');
+			await n8n.ndv.selectOptionInParameterDropdown('responseMode', 'Using Response Nodes');
+			await n8n.ndv.clickBackToCanvasButton();
+
+			await n8n.canvas.clickManualChatButton();
+			await n8n.canvas.logsPanel.sendManualChatMessage('Send welcome email to john@gmail.com');
+			const approveButton = n8n.canvas.manualChat.getApproveButton();
+			await expect(approveButton).toBeVisible({ timeout: 15000 });
+			await approveButton.click({ button: 'middle' });
+
+			// After approval, the agent sends the model a follow-up request that carries
+			// the gated tool's result back as a `function_call_output`. Inspect what the
+			// agent actually sent to the model to verify the tool result — not the Human
+			// Review approval payload — reached it.
+			const getToolOutputs = async () =>
+				(await services.proxy.getAllRequestsMade())
+					.filter((request) => request.httpRequest?.path === '/v1/responses')
+					.flatMap((request) => {
+						const input =
+							(request.httpRequest?.body as { json?: OpenAIResponsesRequest })?.json?.input ?? [];
+						return input.filter((item) => item?.type === 'function_call_output');
+					});
+
+			await expect
+				.poll(async () => (await getToolOutputs()).length, { timeout: 30_000 })
+				.toBeGreaterThan(0);
+
+			const combinedOutput = (await getToolOutputs()).map((item) => item.output ?? '').join('\n');
+
+			// The agent must receive the gated tool's real result...
+			expect(combinedOutput).toContain('Email sent');
+			// ...and never the raw Human Review approval object.
+			expect(combinedOutput).not.toContain('approved');
 		});
 
 		// The duplicated-module bug this guards against only reproduces in the packaged image (container mode)

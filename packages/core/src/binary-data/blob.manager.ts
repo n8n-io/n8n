@@ -10,7 +10,14 @@ import type { BinaryData } from './types';
 import { FileLocation } from './utils';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
+/** Captures `workflowId` (group 1) and `executionId` (group 2) from an execution fileId. */
 const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\/binary_data\//;
+
+/** Execution id encoded in a path-format fileId, or null for non-execution paths. */
+export function getExecutionIdFromFileId(fileId: string): string | null {
+	const match = fileId.match(EXECUTION_PATH_MATCHER);
+	return match ? match[2] : null;
+}
 
 /**
  * Stores binary data as blobs via a {@link ByteStore}.
@@ -18,8 +25,9 @@ const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\/binary
  * Backend differences are capability-driven:
  * - Backends with native object metadata (S3, Azure) store it on the object.
  * FS keeps it in companion `{fileId}.metadata` entries.
- * - Deletion happens only on backends that can delete by prefix (FS). Others
- * delegate deletion, e.g. to bucket lifecycle policies.
+ * - Deletion by file id works on all backends. Location-wide deletion happens
+ * only on backends that can delete by prefix (FS); others delegate it, e.g. to
+ * bucket lifecycle policies.
  */
 export class BinaryDataBlobManager implements BinaryData.Manager {
 	constructor(
@@ -77,18 +85,22 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 	}
 
 	async deleteManyByFileId(ids: string[]) {
-		if (!this.byteStore.deletePrefix) return;
-
-		const locations = ids.flatMap((id) => {
+		const keys = ids.flatMap((fileId) => {
 			try {
-				return [this.parseFileId(id)];
+				this.parseFileId(fileId);
 			} catch {
-				this.errorReporter.warn(`Could not parse file ID ${id}. Skip deletion`);
+				this.errorReporter.warn('Could not parse file ID. Skip deletion', {
+					extra: { fileId },
+				});
 				return [];
 			}
+
+			return this.byteStore.getMetadata ? [fileId] : [fileId, this.metadataKey(fileId)];
 		});
 
-		await this.deleteBinaryDataDirs(locations);
+		if (keys.length > 0) {
+			await this.byteStore.delete(keys);
+		}
 	}
 
 	async copyByFileId(targetLocation: BinaryData.FileLocation, sourceFileId: string) {

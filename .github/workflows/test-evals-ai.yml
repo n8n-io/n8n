@@ -1,4 +1,5 @@
 name: 'Test: Evals AI'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Test: Evals AI on {0} (eval_type={1}, spec_repetitions={2}, spec_judges={3})', inputs.branch, inputs.eval_type, inputs.spec_repetitions, inputs.spec_judges) || '' }}"
 
 on:
   push:

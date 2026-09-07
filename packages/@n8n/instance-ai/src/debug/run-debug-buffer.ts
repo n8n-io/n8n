@@ -1,5 +1,5 @@
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
-import type { OnStepFinishEvent, OnStepStartEvent } from 'ai';
+import type { GenerateTextStepEndEvent, GenerateTextStepStartEvent } from 'ai';
 
 import type { Logger } from '../logger';
 import { sanitizeDebugSnapshotRecord, sanitizeDebugSnapshotValue } from './sanitize-debug-snapshot';
@@ -53,16 +53,18 @@ export interface RunDebugStepHookOptions {
 	threadId: string;
 }
 
-function captureStepStartPayload(event: OnStepStartEvent): Record<string, unknown> {
-	const { abortSignal: _abortSignal, ...capturable } = event;
-	return sanitizeDebugSnapshotRecord(capturable);
-}
-
-function captureStepFinishPayload(event: OnStepFinishEvent): Record<string, unknown> {
+function captureStepStartPayload(event: GenerateTextStepStartEvent): Record<string, unknown> {
 	return sanitizeDebugSnapshotRecord(event);
 }
 
-export function sanitizeStepStart(event: OnStepStartEvent, stepNumber: number): SanitizedStepStart {
+function captureStepFinishPayload(event: GenerateTextStepEndEvent): Record<string, unknown> {
+	return sanitizeDebugSnapshotRecord(event);
+}
+
+export function sanitizeStepStart(
+	event: GenerateTextStepStartEvent,
+	stepNumber: number,
+): SanitizedStepStart {
 	return {
 		...captureStepStartPayload(event),
 		stepNumber,
@@ -71,7 +73,7 @@ export function sanitizeStepStart(event: OnStepStartEvent, stepNumber: number): 
 }
 
 export function sanitizeStepFinish(
-	event: OnStepFinishEvent,
+	event: GenerateTextStepEndEvent,
 	stepNumber: number,
 ): SanitizedStepFinish {
 	return {
@@ -85,21 +87,26 @@ export function createRunDebugStepHooks(
 	buffer: RunDebugBuffer,
 	options: RunDebugStepHookOptions,
 ): {
-	onStepStart: (event: OnStepStartEvent) => void;
-	onStepFinish: (event: OnStepFinishEvent) => void;
+	onStepStart: (event: GenerateTextStepStartEvent) => void;
+	onStepEnd: (event: GenerateTextStepEndEvent) => void;
+	/** @deprecated Use `onStepEnd` instead. */
+	onStepFinish: (event: GenerateTextStepEndEvent) => void;
 } {
 	// The agent runtime calls streamText/generateText once per loop iteration. The AI SDK
 	// resets stepNumber to 0 on each call, so we allocate a run-scoped sequence instead.
 	let stepIndex = buffer.getNextStepIndex(options.runId);
 
+	const onStepEnd = (event: GenerateTextStepEndEvent) => {
+		buffer.recordStepFinish(options.runId, stepIndex, event);
+		stepIndex++;
+	};
+
 	return {
 		onStepStart: (event) => {
 			buffer.recordStepStart(options.runId, stepIndex, event);
 		},
-		onStepFinish: (event) => {
-			buffer.recordStepFinish(options.runId, stepIndex, event);
-			stepIndex++;
-		},
+		onStepEnd,
+		onStepFinish: onStepEnd,
 	};
 }
 
@@ -153,7 +160,7 @@ export class RunDebugBuffer {
 		return this.records.get(runId)?.nextStepIndex ?? 0;
 	}
 
-	recordStepStart(runId: string, stepIndex: number, event: OnStepStartEvent): void {
+	recordStepStart(runId: string, stepIndex: number, event: GenerateTextStepStartEvent): void {
 		const record = this.records.get(runId);
 		if (!record) return;
 
@@ -171,7 +178,7 @@ export class RunDebugBuffer {
 		record.steps.sort((a, b) => a.stepNumber - b.stepNumber);
 	}
 
-	recordStepFinish(runId: string, stepIndex: number, event: OnStepFinishEvent): void {
+	recordStepFinish(runId: string, stepIndex: number, event: GenerateTextStepEndEvent): void {
 		const record = this.records.get(runId);
 		if (!record) return;
 

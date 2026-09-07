@@ -376,6 +376,12 @@ export class SamlService {
 			metadataOverride,
 		);
 
+		// Deny a blocked login before any account is created or session issued
+		await this.provisioningService.assertSsoLoginAllowed(
+			buildSamlClaimsContext(rawAttributes),
+			attributes.n8nInstanceRole,
+		);
+
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
 
@@ -446,9 +452,8 @@ export class SamlService {
 			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
 			return;
 		}
-		if (attributes?.n8nInstanceRole) {
-			await this.provisioningService.provisionInstanceRoleForUser(user, attributes.n8nInstanceRole);
-		}
+		// Called even when the attribute is missing so the configured default condition applies
+		await this.provisioningService.provisionInstanceRoleForUser(user, attributes?.n8nInstanceRole);
 		if (attributes?.n8nProjectRoles) {
 			await this.provisioningService.provisionProjectRolesForUser(
 				user.id,
@@ -704,7 +709,7 @@ export class SamlService {
 		try {
 			const response = await this.outboundHttp
 				.requests({
-					ssrf: 'disabled', // The metadata URL is admin-configured and may point at an internal IdP, so SSRF protection is disabled.
+					useDefaultSsrfPolicy: 'unsafe', // The metadata URL is admin-configured and may point at an internal IdP, so SSRF protection is disabled.
 				})
 				.request({
 					url,

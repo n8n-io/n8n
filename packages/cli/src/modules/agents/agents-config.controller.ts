@@ -67,7 +67,9 @@ export class AgentsConfigController {
 	) {
 		const { projectId } = req.params;
 		const { config } = payload;
-		return await this.agentConfigService.updateConfig(agentId, projectId, config);
+		return await this.agentConfigService.updateConfig(agentId, projectId, config, req.user, {
+			modifiedBy: 'user',
+		});
 	}
 
 	@Delete('/:agentId/tools/:toolId')
@@ -79,7 +81,10 @@ export class AgentsConfigController {
 		@Param('toolId') toolId: string,
 	) {
 		const { projectId } = req.params;
-		await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, toolId);
+		await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, toolId, {
+			user: req.user,
+			modifiedBy: 'user',
+		});
 		return { ok: true };
 	}
 }

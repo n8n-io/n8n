@@ -23,7 +23,7 @@ vi.mock('../composables/useAgentConfirmationModal', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mocks.showMessage,
 		showError: mocks.showError,

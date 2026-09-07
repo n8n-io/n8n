@@ -20,11 +20,17 @@ import './v2/wait-node-subworkflow.rule';
 import './v2/workflow-hooks-deprecated.rule';
 
 // v3 rules
+import './v3/agent-node-version.rule';
+import './v3/agent-removed-modes.rule';
+import './v3/ai-transform-deprecated.rule';
 import './v3/always-output-data-multi-output.rule';
+import './v3/caller-policy-any-removed.rule';
+import './v3/caller-policy-default-any.rule';
 import './v3/chat-trigger-embedded-json.rule';
 import './v3/compression-node-limits.rule';
 import './v3/docker-only-deployment.rule';
 import './v3/execute-workflow-each-mode.rule';
+import './v3/execute-workflow-source-modes.rule';
 import './v3/get-paired-item.rule';
 import './v3/gmail-trigger-version.rule';
 import './v3/in-memory-binary-data.rule';

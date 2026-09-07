@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { getLocalTimeZone, isToday } from '@internationalized/date';
 import type {
 	DateRange,

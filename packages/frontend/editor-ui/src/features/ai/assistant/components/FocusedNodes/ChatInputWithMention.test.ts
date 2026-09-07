@@ -5,7 +5,7 @@ import { defineComponent, h } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import ChatInputWithMention from './ChatInputWithMention.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
 import type { FocusedNode } from '../../focusedNodes.types';
 
@@ -93,7 +93,7 @@ vi.mock('@/app/stores/posthog.store', () => ({
 }));
 
 // Mock telemetry
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 

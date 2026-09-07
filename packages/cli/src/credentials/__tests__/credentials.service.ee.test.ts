@@ -47,6 +47,24 @@ describe('EnterpriseCredentialsService', () => {
 		vi.resetAllMocks();
 	});
 
+	describe('shareWithProjects', () => {
+		it('rejects credentials that are not available to workflows', async () => {
+			const manager = {
+				exists: vi.fn().mockResolvedValue(false),
+				find: vi.fn(),
+				save: vi.fn(),
+			};
+
+			// @ts-expect-error - Mocking manager for testing
+			sharedCredentialsRepository.manager = manager;
+
+			await expect(
+				service.shareWithProjects(mock<User>(), 'credential-id', ['project-id']),
+			).rejects.toThrow('Credential not found');
+			expect(manager.find).not.toHaveBeenCalled();
+		});
+	});
+
 	/**
 	 * Helper function to mock the transaction manager for credential transfer tests
 	 */
@@ -265,6 +283,7 @@ describe('EnterpriseCredentialsService', () => {
 				credentialId,
 				user,
 				['credential:connect'],
+				{ includeInstanceCredentials: true },
 			);
 			expect(result).toHaveProperty('data', redacted);
 		});
@@ -297,6 +316,7 @@ describe('EnterpriseCredentialsService', () => {
 				credentialId,
 				user,
 				['credential:connect'],
+				{ includeInstanceCredentials: true },
 			);
 			expect(result).not.toHaveProperty('data');
 		});

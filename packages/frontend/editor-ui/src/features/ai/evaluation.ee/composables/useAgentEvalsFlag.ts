@@ -2,7 +2,7 @@ import { AGENT_EVALS_FLAG } from '@n8n/api-types';
 import { computed } from 'vue';
 
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 /**
  * Frontend gate for the agent-evals feature surface, matching the

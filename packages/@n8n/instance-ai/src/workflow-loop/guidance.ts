@@ -22,6 +22,14 @@ export function formatWorkflowLoopGuidance(
 		case 'continue_building':
 			return `BUILD FAILED: ${action.reason}. Fix the workflow source file: ${formatSourceFileInstruction(action.sourceFilePath)}.`;
 		case 'done': {
+			if (action.setupSkippedByUser) {
+				return (
+					'Workflow verified successfully. The credentials it still needs are ones the user ' +
+					'skipped earlier in this conversation, so do NOT open the setup card again. Tell them ' +
+					'which parts stay unconfigured and what that means when the workflow runs, and offer ' +
+					'to set them up whenever they want.'
+				);
+			}
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
 					'Workflow verified successfully with temporary mock data. ' +
@@ -35,7 +43,7 @@ export function formatWorkflowLoopGuidance(
 		}
 		case 'verify':
 			return (
-				`VERIFY: Inspect the persisted workflow ${action.workflowId} with \`workflows(action="get-as-code", workflowId)\` or read the bound workspace source file, then compare it to the requested outcome. ` +
+				`VERIFY: Inspect the persisted workflow ${action.workflowId}: read the bound workspace source file you just built, or call \`workflows(action="get-as-code", workflowId)\` when you need to check for outside changes — it refreshes the file when the saved workflow changed and returns a node index. If it reports status "conflict", the file has unbuilt edits: build or discard them and call it again before trusting the index. Compare the relevant lines to the requested outcome. ` +
 				'Build/save success only means a workflow was saved. ' +
 				`Use \`verify-built-workflow\` with workflowId "${action.workflowId ?? 'unknown'}"` +
 				(options.workItemId ? ` and workItemId "${options.workItemId}"` : '') +

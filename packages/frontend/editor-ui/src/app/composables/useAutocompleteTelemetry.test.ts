@@ -10,7 +10,7 @@ import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 const trackSpy = vi.fn();
 const setAutocompleteOnboardedSpy = vi.fn();
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
 }));
 

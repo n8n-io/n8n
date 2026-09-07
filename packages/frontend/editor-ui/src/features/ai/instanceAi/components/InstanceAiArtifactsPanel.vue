@@ -1,11 +1,16 @@
 <script lang="ts" setup>
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
-import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import { N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import {
+	isIconOrEmoji,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	type IconName,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, inject, ref, type Ref } from 'vue';
+import { computed, inject, type Ref } from 'vue';
+import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import {
@@ -14,7 +19,6 @@ import {
 	getDismissedContextKeys,
 	handoffContextKey,
 } from '../instanceAi.handoffContext';
-import ConnectionsCard from './ConnectionsCard.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const projectsStore = useProjectsStore();
@@ -38,7 +42,6 @@ const project = computed(() => {
 		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,
 	};
 });
-const panelRef = ref<HTMLElement>();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
 	'openDataTablePreview',
@@ -48,8 +51,12 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 	'openAgentPreview',
 	undefined,
 );
-const pendingComposerContext = inject<Ref<InstanceAiHandoffContext | null> | undefined>(
+const pendingComposerContext = inject<Readonly<Ref<InstanceAiHandoffContext | null>> | undefined>(
 	'pendingComposerContext',
+	undefined,
+);
+const dismissPendingComposerContext = inject<((key: string) => boolean) | undefined>(
+	'dismissPendingComposerContext',
 	undefined,
 );
 
@@ -61,6 +68,7 @@ interface ContextEntry {
 }
 
 function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
+	if (artifact.type === 'agent' && artifact.pending) e.preventDefault();
 	if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 
 	if (artifact.type === 'workflow' && artifact.id) {
@@ -95,6 +103,8 @@ const statusIconMap: Record<
 };
 
 // --- Artifacts ---
+const buildingArtifactIds = useBuildingArtifactIds();
+
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
 	for (const entry of thread.producedArtifacts.values()) {
@@ -119,6 +129,7 @@ function artifactHref(artifact: ResourceEntry) {
 			: '/data-tables';
 	}
 	if (artifact.type === 'agent') {
+		if (artifact.pending) return '#';
 		return artifact.projectId
 			? `/projects/${artifact.projectId}/agents/${artifact.id}`
 			: '/home/agents';
@@ -182,8 +193,9 @@ const contextEntries = computed<ContextEntry[]>(() => {
 
 async function dismissContext(key: string) {
 	const pending = pendingComposerContext?.value;
-	if (pendingComposerContext && pending && handoffContextKey(pending) === key) {
-		pendingComposerContext.value = null;
+	if (pending && handoffContextKey(pending) === key) {
+		dismissPendingComposerContext?.(key);
+		return;
 	}
 	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
 	dismissedKeys.add(key);
@@ -194,7 +206,7 @@ async function dismissContext(key: string) {
 </script>
 
 <template>
-	<aside ref="panelRef" :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
+	<aside :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
 		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
 			<!-- Project section -->
 			<div :class="$style.section">
@@ -270,6 +282,15 @@ async function dismissContext(key: string) {
 					>
 						<span :class="$style.artifactIconWrap">
 							<N8nIcon
+								v-if="buildingArtifactIds.has(artifact.id)"
+								icon="spinner"
+								spin
+								size="large"
+								:class="$style.artifactIcon"
+								data-test-id="instance-ai-artifact-building-spinner"
+							/>
+							<N8nIcon
+								v-else
 								:icon="artifactIconMap[artifact.type] ?? 'file'"
 								size="large"
 								:class="$style.artifactIcon"
@@ -318,9 +339,6 @@ async function dismissContext(key: string) {
 					</div>
 				</div>
 			</div>
-
-			<!-- Connections section -->
-			<ConnectionsCard :dropdown-portal-target="panelRef" />
 		</div>
 	</aside>
 </template>

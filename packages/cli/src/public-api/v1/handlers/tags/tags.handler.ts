@@ -12,7 +12,6 @@ type TagHandlers = {
 	createTag: PublicAPIEndpoint<TagRequest.Create>;
 	updateTag: PublicAPIEndpoint<TagRequest.Update>;
 	deleteTag: PublicAPIEndpoint<TagRequest.Delete>;
-	getTags: PublicAPIEndpoint<TagRequest.GetAll>;
 	getTag: PublicAPIEndpoint<TagRequest.Get>;
 };
 
@@ -68,22 +67,6 @@ const tagHandlers: TagHandlers = {
 
 			await Container.get(TagService).delete(id);
 			return res.json(tag);
-		},
-	],
-	/**
-	 * Not the reference implementation — that is TagsPublicController
-	 * (PublicApiControllerRegistry mounts before eov and owns runtime GET /tags).
-	 *
-	 * Kept only so scope-parity.test.ts can match openapi.yml `x-required-scope`
-	 * against a handler middleware tagged with `__apiKeyScope`. Once that test
-	 * also reads `@ApiKeyScope` from public controllers, this stub can go.
-	 */
-	getTags: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:list' }),
-		async (_req, res) => {
-			return res.status(500).json({
-				message: 'Unexpected: GET /tags should be handled by TagsPublicController',
-			});
 		},
 	],
 	getTag: [

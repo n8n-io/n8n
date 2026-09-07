@@ -72,7 +72,7 @@ describe('configure_channel tool', () => {
 		const ctx = makeCtx();
 
 		const result = await buildTool().handler!(
-			{ integrationType: 'discord' },
+			{ integrationType: 'carrier-pigeon' },
 			ctx as unknown as InterruptibleToolContext,
 		);
 
@@ -82,7 +82,7 @@ describe('configure_channel tool', () => {
 				ok: false,
 				errors: [
 					expect.objectContaining({
-						message: expect.stringContaining('Unsupported chat channel "discord"'),
+						message: expect.stringContaining('Unsupported chat channel "carrier-pigeon"'),
 					}),
 				],
 			}),
@@ -95,7 +95,7 @@ describe('configure_channel tool', () => {
 		expect(emptyResult.errors[0].message).toContain('No chat channels are currently available.');
 	});
 
-	it('resume leg is handled before validation and returns connected: true on approval', async () => {
+	it('resume leg is handled before validation and returns configured: true on approval', async () => {
 		const ctx = makeCtx({ resumeData: { approved: true } });
 
 		// Deliberately pass a type not in the catalog — checkpoint-rebuild safety
@@ -107,13 +107,13 @@ describe('configure_channel tool', () => {
 		);
 
 		expect(ctx.suspend).not.toHaveBeenCalled();
-		expect(result).toEqual({ connected: true });
+		expect(result).toEqual({ configured: true });
 		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
 			trigger_type: 'slack',
 		});
 	});
 
-	it('returns connected: false when the user skips (dismissal), without tracking a trigger', async () => {
+	it('returns configured: false when the user skips (dismissal), without tracking a trigger', async () => {
 		const ctx = makeCtx({ resumeData: { approved: false } });
 
 		const result = await buildTool().handler!(
@@ -121,7 +121,7 @@ describe('configure_channel tool', () => {
 			ctx as unknown as InterruptibleToolContext,
 		);
 
-		expect(result).toEqual({ connected: false });
+		expect(result).toEqual({ configured: false });
 		expect(track).not.toHaveBeenCalled();
 	});
 });

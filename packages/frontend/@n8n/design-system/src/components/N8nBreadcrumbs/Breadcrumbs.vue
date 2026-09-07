@@ -1,7 +1,6 @@
-<script lang="ts" setup generic="UserType extends IUser">
+<script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 
-import type { IUser } from '../../types';
 import N8nActionToggle from '../N8nActionToggle';
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nLink from '../N8nLink';
@@ -444,7 +443,6 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color--text);
 		font-size: var(--font-size--sm);
-		line-height: var(--line-height--xs);
 	}
 
 	.item {

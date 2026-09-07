@@ -1,4 +1,4 @@
-import type { StreamChunk } from '@n8n/agents';
+import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
@@ -7,10 +7,16 @@ import {
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
 	channelConfigSchema,
+	mcpConnectRequestSchema,
+	credentialDestinationSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
+
+import { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
+
+export { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
 
 const questionItemSchema = z.object({
 	id: z.string(),
@@ -119,43 +125,23 @@ interface ErrorInfo {
 	code?: 'quota_exhausted';
 }
 
-/**
- * Machine-readable code the AI service sets when the credit/quota pool is exhausted.
- * Wire contract — kept in sync with the service/SDK and `INSTANCE_AI_ERROR_CODES`.
- */
-export const QUOTA_EXHAUSTED_ERROR_CODE = 'quota_exhausted';
-
-/**
- * Whether an error means the user has run out of AI credits/quota. Keyed off a
- * machine-readable code, never the message text: the SDK exposes `errorCode` on
- * the token-endpoint 403, and the ai-sdk carries the proxy's `error.type` in
- * `responseBody`. The error can arrive wrapped, so its `cause` chain is inspected too.
- */
-export function isQuotaExhaustedError(error: unknown): boolean {
-	return readErrorCode(error) === QUOTA_EXHAUSTED_ERROR_CODE;
+/** Find an ai-sdk `statusCode` on the error or its `cause` chain, alongside the response body. */
+function readStatusCode(error: unknown, visited = new WeakSet<object>()): number | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
+	if (visited.has(error)) return undefined;
+	visited.add(error);
+	if ('statusCode' in error && typeof error.statusCode === 'number') return error.statusCode;
+	if ('cause' in error && error.cause !== error) return readStatusCode(error.cause, visited);
+	return undefined;
 }
 
-/** Read the machine-readable code from the error, its ai-sdk `responseBody`, or its `cause`. */
-function readErrorCode(error: unknown): string | undefined {
+/** Find an ai-sdk `responseBody` on the error or its `cause` chain (the API error can arrive wrapped). */
+function readResponseBody(error: unknown, visited = new WeakSet<object>()): string | undefined {
 	if (typeof error !== 'object' || error === null) return undefined;
-
-	// SDK APIResponseError carries the parsed code directly.
-	if ('errorCode' in error && typeof error.errorCode === 'string') {
-		return error.errorCode;
-	}
-
-	// ai-sdk APICallError exposes the raw provider body; the service tags the code
-	// top-level (`code`), with a nested `error.type` as the fallback shape.
-	if ('responseBody' in error && typeof error.responseBody === 'string') {
-		const { code } = parseResponseBody(error.responseBody);
-		if (code) return code;
-	}
-
-	// The SDK error can reach us wrapped (thrown inside the model fetch); unwrap the cause chain.
-	if ('cause' in error && error.cause !== error) {
-		return readErrorCode(error.cause);
-	}
-
+	if (visited.has(error)) return undefined;
+	visited.add(error);
+	if ('responseBody' in error && typeof error.responseBody === 'string') return error.responseBody;
+	if ('cause' in error && error.cause !== error) return readResponseBody(error.cause, visited);
 	return undefined;
 }
 
@@ -183,14 +169,23 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 		const info: ErrorInfo = { content: error.message };
 
 		// APICallError from ai-sdk carries statusCode and responseBody
-		if ('statusCode' in error && typeof error.statusCode === 'number') {
-			info.statusCode = error.statusCode;
+		const statusCode = readStatusCode(error);
+		if (statusCode !== undefined) {
+			info.statusCode = statusCode;
 		}
 
 		if ('responseBody' in error && typeof error.responseBody === 'string') {
 			info.technicalDetails = error.responseBody;
 			const { message } = parseResponseBody(error.responseBody);
 			if (message) info.content = message;
+		} else {
+			// No direct responseBody — unwrap the cause chain (mirrors `readErrorCode`).
+			const wrappedBody = readResponseBody(error.cause);
+			if (wrappedBody) {
+				info.technicalDetails = wrappedBody;
+				const { message } = parseResponseBody(wrappedBody);
+				if (message) info.content = message;
+			}
 		}
 
 		// Extract provider from error name or URL if available
@@ -203,6 +198,15 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 		if (isQuotaExhaustedError(error)) info.code = QUOTA_EXHAUSTED_ERROR_CODE;
 
 		return info;
+	}
+
+	if (isRecord(error)) {
+		if (error.type === 'overloaded_error') {
+			return { content: 'The model is overloaded. Try again in a few minutes.' };
+		}
+
+		const message = nonEmptyString(error.message);
+		if (message) return { content: message };
 	}
 
 	return { content: 'Unknown error' };
@@ -326,6 +330,7 @@ function mapSuspendedChunk(
 		suspendPayload.credentialRequests,
 		credentialRequestSchema,
 	);
+	const requireUserSelection = suspendPayload.requireUserSelection === true;
 	const projectId = presentString(suspendPayload.projectId);
 	const inputType = parseInputType(suspendPayload.inputType);
 	const questions = parseSchemaArray(suspendPayload.questions, questionItemSchema);
@@ -335,6 +340,10 @@ function mapSuspendedChunk(
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
+	const credentialDestination = parseSchemaRecord(
+		suspendPayload.credentialDestination,
+		credentialDestinationSchema,
+	);
 	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
 	const workflowId = presentString(suspendPayload.workflowId);
 	const resourceDecision = parseSchemaRecord(
@@ -342,6 +351,22 @@ function mapSuspendedChunk(
 		gatewayConfirmationRequiredPayloadSchema,
 	);
 	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
+	const mcpConnectRequest = parseSchemaRecord(
+		suspendPayload.mcpConnectRequest,
+		mcpConnectRequestSchema,
+	);
+	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
+		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
+		: undefined;
+	const targetApproval = targetApprovalResult?.success
+		? {
+				toolName: targetApprovalResult.data.toolName,
+				...(targetApprovalResult.data.displayName
+					? { displayName: targetApprovalResult.data.displayName }
+					: {}),
+				args: targetApprovalResult.data.args,
+			}
+		: undefined;
 
 	return {
 		type: 'confirmation-request',
@@ -356,12 +381,15 @@ function mapSuspendedChunk(
 				typeof suspendPayload.message === 'string'
 					? suspendPayload.message
 					: 'Confirmation required',
+			...(targetApproval ? { targetApproval } : {}),
 			...(credentialRequests ? { credentialRequests } : {}),
+			...(requireUserSelection ? { requireUserSelection } : {}),
 			...(projectId ? { projectId } : {}),
 			...(inputType ? { inputType } : {}),
 			...(domainAccess ? { domainAccess } : {}),
 			...(webSearch ? { webSearch } : {}),
 			...(credentialFlow ? { credentialFlow } : {}),
+			...(credentialDestination ? { credentialDestination } : {}),
 			...(setupRequests ? { setupRequests } : {}),
 			...(workflowId ? { workflowId } : {}),
 			...(questions ? { questions } : {}),
@@ -370,6 +398,7 @@ function mapSuspendedChunk(
 			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
 			...(channelConfig ? { channelConfig } : {}),
+			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
 		},
 	};
 }

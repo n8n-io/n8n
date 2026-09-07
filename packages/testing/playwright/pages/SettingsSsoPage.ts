@@ -45,7 +45,7 @@ export class SettingsSsoPage extends BasePage {
 		const isEnabled = await this.isOidcLoginEnabled();
 		if (!isEnabled) {
 			await this.getOidcLoginToggle().locator('.el-select').click();
-			await this.page.locator('.el-select-dropdown__item').filter({ hasText: 'Enabled' }).click();
+			await this.page.getByTestId('sso-oidc-toggle-option').filter({ hasText: 'Enabled' }).click();
 		}
 	}
 

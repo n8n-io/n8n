@@ -25,7 +25,7 @@ import {
 	resolveRelativePath,
 } from 'n8n-workflow';
 
-import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system';
 
 import type { CodeNodeLanguageOption } from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -52,6 +52,7 @@ import {
 	shouldSkipParamValidation,
 } from '@/features/ndv/shared/ndv.utils';
 import { hasExpressionMapping, isValueExpression } from '@/app/utils/nodeTypesUtils';
+import { useParameterInputContribution } from '@/features/ndv/parameters/composables/useParameterInputContribution';
 
 import {
 	AI_TRANSFORM_NODE_TYPE,
@@ -62,22 +63,22 @@ import {
 	ExpressionLocalResolveContextSymbol,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
+	ToolConfigCredentialSelectedKey,
 } from '@/app/constants';
 
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
-import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -147,6 +148,7 @@ type Props = {
 	errorHighlight?: boolean;
 	isForCredential?: boolean;
 	canBeOverridden?: boolean;
+	externalIssues?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -160,6 +162,7 @@ const props = withDefaults(defineProps<Props>(), {
 	eventBus: () => createEventBus(),
 	additionalExpressionData: () => ({}),
 	label: () => ({ size: 'small' }),
+	externalIssues: () => [],
 });
 
 const emit = defineEmits<{
@@ -183,7 +186,6 @@ const ndvStore = injectNDVStoreIfProvided();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
-const { askAi } = useEditorContext();
 const aiGateway = useAiGateway();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -194,6 +196,7 @@ const builderStore = useBuilderStore();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const onToolConfigCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
 
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
@@ -266,6 +269,22 @@ const isModelValueExpression = computed(() => isValueExpression(props.parameter,
 
 const isResourceLocatorParameter = computed<boolean>(() => {
 	return isResourceLocatorParameterType(props.parameter.type);
+});
+
+const parameterType = computed(() => props.parameter.type);
+const { contributedComponent, capabilities: contributedCapabilities } =
+	useParameterInputContribution(parameterType);
+
+/**
+ * A contributed input that owns expression rendering replaces every built-in
+ * branch. One that does not yields to the expression editor first, exactly as a
+ * built-in non-resource-locator type does.
+ */
+const showContributedComponent = computed<boolean>(() => {
+	if (!contributedComponent.value) return false;
+	if (contributedCapabilities.value.ownsExpressionRendering) return true;
+
+	return !isModelValueExpression.value && !props.forceShowExpression;
 });
 
 const isSecretParameter = computed<boolean>(() => {
@@ -547,12 +566,16 @@ const dependentParametersValues = computedAsync(async () => {
 }, null);
 
 const getStringInputType = computed(() => {
+	const rows = editorRows.value;
+	const isMultiline = rows !== undefined && rows > 1;
+
 	if (getTypeOption('password') === true) {
-		return 'password';
+		// A multiline masked field must be a textarea: a single-line
+		// <input type="password"> strips newlines and corrupts pasted keys.
+		return isMultiline ? 'textarea' : 'password';
 	}
 
-	const rows = editorRows.value;
-	if (rows !== undefined && rows > 1) {
+	if (isMultiline) {
 		return 'textarea';
 	}
 
@@ -563,11 +586,17 @@ const getStringInputType = computed(() => {
 	return 'text';
 });
 
+// A password field rendered as a textarea (multiline secret) still needs to be
+// visually masked and kept out of PostHog capture.
+const isMaskedTextarea = computed(
+	() => getStringInputType.value === 'textarea' && getTypeOption('password') === true,
+);
+
 const getIssues = computed<string[]>(() => {
 	const validationError = jsonValidationError.value;
 
 	if (validationError) {
-		return [validationError];
+		return [validationError, ...props.externalIssues];
 	}
 
 	if (props.hideIssues || !node.value) {
@@ -647,10 +676,10 @@ const getIssues = computed<string[]>(() => {
 	}
 
 	if (issues?.parameters?.[props.parameter.name] !== undefined) {
-		return issues.parameters[props.parameter.name];
+		return [...issues.parameters[props.parameter.name], ...props.externalIssues];
 	}
 
-	return [];
+	return props.externalIssues;
 });
 
 const displayTitle = computed<string>(() => {
@@ -741,7 +770,9 @@ const remoteParameterOptionsKeys = computed<string[]>(() => {
 });
 
 const shouldRedactValue = computed<boolean>(() => {
-	return getStringInputType.value === 'password' || props.isForCredential;
+	// Keyed off the field being a password (not the rendered control type) so a
+	// multiline masked field stays redacted even outside credential contexts.
+	return getTypeOption('password') === true || props.isForCredential;
 });
 
 const isCodeNode = computed(
@@ -758,7 +789,7 @@ const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression === true ||
 		props.isReadOnly ||
-		isResourceLocatorParameter.value ||
+		contributedCapabilities.value.disableDrop ||
 		isModelValueExpression.value,
 );
 const showDragnDropTip = computed(
@@ -802,6 +833,9 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 		// Update the issues
 		nodeHelpers.updateNodeCredentialIssues(updateNode);
 	}
+
+	// Tool-config hosts keep a separate local draft; sync credentials onto it.
+	onToolConfigCredentialSelected?.(updateInformation);
 
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 }
@@ -1212,9 +1246,9 @@ function onJsonPasswordFieldChange(value: string) {
 	onUpdateTextInputDebounced(value);
 }
 
-function onUpdateTextInput(value: string) {
+function onUpdateTextInput(value: string | number) {
 	valueChanged(value);
-	onTextInputChange(value);
+	onTextInputChange(typeof value === 'string' ? value : String(value));
 }
 
 const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
@@ -1480,6 +1514,7 @@ onUpdated(async () => {
 			:event-source="eventSource || 'ndv'"
 			:is-read-only="isReadOnly"
 			:redact-values="shouldRedactValue"
+			:additional-expression-data="additionalExpressionData"
 			@close-dialog="closeExpressionEditDialog"
 			@update:model-value="expressionUpdated"
 		/>
@@ -1503,8 +1538,30 @@ onUpdated(async () => {
 			:style="parameterInputWrapperStyle"
 			:data-parameter-path="path"
 		>
+			<component
+				:is="contributedComponent"
+				v-if="showContributedComponent"
+				:parameter="parameter"
+				:model-value="modelValue"
+				:path="path"
+				:node="node"
+				:display-title="displayTitle"
+				:is-read-only="isReadOnly"
+				:is-value-expression="isModelValueExpression"
+				:expression-display-value="expressionDisplayValue"
+				:expression-computed-value="expressionEvaluated"
+				:dependent-parameters-values="dependentParametersValues"
+				:parameter-issues="getIssues"
+				:droppable="droppable ?? false"
+				:event-bus="eventBus"
+				@update:model-value="valueChangedDebounced"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
 			<ResourceLocator
-				v-if="parameter.type === 'resourceLocator'"
+				v-else-if="parameter.type === 'resourceLocator'"
 				ref="resourceLocator"
 				:parameter="parameter"
 				:model-value="modelValueResourceLocator"
@@ -1617,7 +1674,6 @@ onUpdated(async () => {
 							:default-value="parameter.default"
 							:language="editorLanguage"
 							:is-read-only="isReadOnly"
-							:disable-ask-ai="!askAi"
 							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
@@ -1690,7 +1746,6 @@ onUpdated(async () => {
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
 					:ai-button-enabled="settingsStore.isCloudDeployment"
-					:disable-ask-ai="!askAi"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
@@ -1833,7 +1888,6 @@ onUpdated(async () => {
 						:language="editorLanguage"
 						:is-read-only="true"
 						:rows="editorRows"
-						:disable-ask-ai="!askAi"
 					/>
 				</div>
 				<N8nInput
@@ -1843,6 +1897,7 @@ onUpdated(async () => {
 					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
 					:size="parameterInputSize"
 					:type="getStringInputType"
+					:masked="isMaskedTextarea"
 					:rows="editorRows"
 					:disabled="
 						isReadOnly ||
@@ -1943,7 +1998,7 @@ onUpdated(async () => {
 				v-else-if="parameter.type === 'number'"
 				ref="inputField"
 				:size="inputSize"
-				:model-value="displayValue"
+				:model-value="typeof displayValue === 'number' ? displayValue : undefined"
 				:controls="false"
 				:max="getTypeOption('maxValue')"
 				:min="getTypeOption('minValue')"

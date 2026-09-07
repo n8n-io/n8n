@@ -27,6 +27,52 @@ function isSecretKey(key: string): boolean {
 	return SECRET_KEY_PATTERNS.some((p) => p.test(key));
 }
 
+// Agent-supplied credential recipes (`credentialHints` on workflows.setup,
+// `setupHint` on credentials.setup) are secret-free by contract: the secret
+// slots are `{{placeholder}}` markers (enforced at the tool boundary) and the
+// statics are things like header names. Blanket key-redaction (`/credential/i`,
+// `/authorization/i`) would blind the eval judge to them, so traverse hints
+// with inline content masking only — defense-in-depth against a misbehaving
+// model, while markers and statics stay readable.
+const HINT_KEYS = new Set(['credentialHints', 'setupHint']);
+
+const TEMPLATE_MARKER = /\{\{\s*[\w.-]+\s*\}\}/g;
+
+// A secret-shaped key (a template's `Authorization`/`X-Api-Key` header) should
+// hold only `{{marker}}`s plus benign scaffolding: short scheme words (`Bearer`,
+// `Key`, vendor schemes like `SSWS`) and separators. Any other residue — even a
+// literal token sitting next to a valid marker — reads as a leaked secret.
+function isMarkerOnlyValue(value: string): boolean {
+	const staticParts = value.split(TEMPLATE_MARKER);
+	if (staticParts.length === 1) return false; // no marker at all
+	return staticParts
+		.flatMap((part) => part.split(/[\s:=,;]+/))
+		.every((word) => /^[A-Za-z]{0,12}$/.test(word));
+}
+
+function redactHintValue(value: unknown, depth: number, key?: string): unknown {
+	if (depth > 10 || value === null || value === undefined) return value;
+	if (typeof value === 'string') {
+		// Content masking can't spot an arbitrary token, so anything beyond
+		// marker-plus-scaffolding under a secret-shaped key is redacted wholesale.
+		if (key !== undefined && isSecretKey(key) && !isMarkerOnlyValue(value)) {
+			return '[REDACTED]';
+		}
+		return redactSecretsInText(value);
+	}
+	if (Array.isArray(value)) {
+		return value.map((entry) => redactHintValue(entry, depth + 1, key));
+	}
+	if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+		const out: Record<string, unknown> = {};
+		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+			out[k] = redactHintValue(v, depth + 1, k);
+		}
+		return out;
+	}
+	return value;
+}
+
 /**
  * Recursively replaces values under secret-shaped keys with `'[REDACTED]'`.
  * Only walks plain objects and arrays — class instances (Error, Date, etc.)
@@ -41,7 +87,11 @@ export function redactSecrets(value: unknown, depth = 0): unknown {
 	if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
 		const out: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-			out[k] = isSecretKey(k) ? '[REDACTED]' : redactSecrets(v, depth + 1);
+			out[k] = HINT_KEYS.has(k)
+				? redactHintValue(v, depth + 1)
+				: isSecretKey(k)
+					? '[REDACTED]'
+					: redactSecrets(v, depth + 1);
 		}
 		return out;
 	}
@@ -63,6 +113,17 @@ const SECRET_TEXT_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
 		/\b(api[-_]?key|access[-_]?key|x-api-key|access[-_]?token|refresh[-_]?token|client[-_]?secret|private[-_]?key|secret|token|password|passwd|cookie|set-cookie|session[-_]?id)("?\s*[:=]\s*"?)[^\s"',&}]+/gi,
 		'$1$2[REDACTED]',
 	],
+	// Bare well-known credential formats — recognizable with no key or scheme
+	// around them. Length floors keep prose lookalikes (sk-learn, xoxo, the
+	// AKIA prefix mentioned in text) unmatched.
+	// OpenAI/Anthropic-style: sk-…, sk-ant-…, sk-proj-….
+	[/\bsk-(?:[a-z0-9]+-)*[A-Za-z0-9_-]{16,}\b/g, '[REDACTED]'],
+	// Slack tokens: xoxb-/xoxp-/xoxa-/xoxs-… plus app-level xapp-….
+	[/\b(?:xox[a-z]|xapp)-[A-Za-z0-9-]{8,}\b/gi, '[REDACTED]'],
+	// GitHub tokens: ghp_/gho_/ghu_/ghs_/ghr_ + fine-grained github_pat_.
+	[/\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{20,}\b/g, '[REDACTED]'],
+	// AWS access key ids.
+	[/\bAKIA[0-9A-Z]{16}\b/g, '[REDACTED]'],
 ];
 
 /** Mask secrets embedded inline in free text (e.g. a token in a tool-error string). */
@@ -71,6 +132,28 @@ export function redactSecretsInText(text: string): string {
 		(acc, [pattern, replacement]) => acc.replace(pattern, replacement),
 		text,
 	);
+}
+
+/**
+ * Content-based pass over a value tree: applies `redactSecretsInText` to every
+ * string leaf. Complements the key-based `redactSecrets` for payloads where a
+ * token sits inline in a value under a non-secret-shaped key. Same walk rules
+ * as `redactSecrets`: plain objects and arrays only, depth-capped.
+ */
+export function redactSecretsInTextDeep(value: unknown, depth = 0): unknown {
+	if (depth > 10 || value === null || value === undefined) return value;
+	if (typeof value === 'string') return redactSecretsInText(value);
+	if (Array.isArray(value)) {
+		return value.map((entry) => redactSecretsInTextDeep(entry, depth + 1));
+	}
+	if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+		const out: Record<string, unknown> = {};
+		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+			out[k] = redactSecretsInTextDeep(v, depth + 1);
+		}
+		return out;
+	}
+	return value;
 }
 
 /**

@@ -53,11 +53,16 @@ vi.mock('@/features/agents/composables/useAgentProjectNameResolver', () => ({
 	useAgentProjectNameResolver: () => ({ resolveProjectName: () => null }),
 }));
 
+const inlineAgentsEnabled = ref(true);
+vi.mock('@/experiments/inlineAgents/useInlineAgentsExperiment', () => ({
+	useInlineAgentsExperiment: () => ({ isFeatureEnabled: inlineAgentsEnabled }),
+}));
+
 const render = createComponentRenderer(AgentsMode);
 
 function pushAgentsViewStack() {
 	useViewStacks().pushViewStack({
-		title: 'AI Agent V1',
+		title: 'AI Agent V2',
 		hasSearch: true,
 		mode: 'agents',
 		items: [],
@@ -78,6 +83,7 @@ describe('AgentsMode', () => {
 		locatorState.loadError.value = null;
 		locatorState.hasMoreAgentsToLoad.value = false;
 		locatorState.searchFilter.value = '';
+		inlineAgentsEnabled.value = true;
 	});
 
 	it('renders the create-new entry, divider and agent rows', async () => {
@@ -93,6 +99,38 @@ describe('AgentsMode', () => {
 		expect(screen.getByText('Or message an existing agent')).toBeInTheDocument();
 		expect(screen.getByText('Support Triage')).toBeInTheDocument();
 		expect(screen.getByText('Sales Researcher')).toBeInTheDocument();
+	});
+
+	it('hides the create-new entry and divider when the inline agents flag is off', async () => {
+		inlineAgentsEnabled.value = false;
+		locatorState.agentsResources.value = [
+			{ name: 'Support Triage', value: 'agent-1', personalisation: null },
+		];
+		pushAgentsViewStack();
+		const { emitted } = render({ pinia });
+		await nextTick();
+
+		expect(screen.queryByText('Create new agent')).not.toBeInTheDocument();
+		expect(screen.queryByText('Or message an existing agent')).not.toBeInTheDocument();
+
+		await userEvent.click(screen.getByText('Support Triage'));
+
+		expect(emitted('nodeTypeSelected')).toEqual([[[{ type: MESSAGE_AN_AGENT_NODE_TYPE }]]]);
+		expect(setAddedNodeActionParameters).toHaveBeenCalledWith(
+			expect.objectContaining({
+				value: expect.objectContaining({ agentSource: 'referenced' }),
+			}),
+		);
+	});
+
+	it('shows the empty state without the create-new entry when the flag is off and there are no agents', async () => {
+		inlineAgentsEnabled.value = false;
+		pushAgentsViewStack();
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.getByTestId('agents-panel-empty')).toBeInTheDocument();
+		expect(screen.queryByText('Create new agent')).not.toBeInTheDocument();
 	});
 
 	it('adds the node preset to an inline agent when create-new is clicked', async () => {

@@ -1,3 +1,4 @@
+import type { Result } from '@n8n/utils/result';
 import type { DateTime } from 'luxon';
 
 import { UserError } from '../errors/base/user.error';
@@ -10,7 +11,7 @@ import type {
 	ValidationResult,
 } from '../interfaces';
 import * as LoggerProxy from '../logger-proxy';
-import type { Result } from '@n8n/utils/result';
+import { parseRegexLiteral, safeRegex } from '../safe-regex';
 import { validateFieldType } from '../type-validation';
 
 type FilterConditionMetadata = {
@@ -19,6 +20,9 @@ type FilterConditionMetadata = {
 	itemIndex: number;
 	errorFormat: 'full' | 'inline';
 };
+
+type RegexTest = (pattern: string, input: string, flags?: string) => boolean;
+type RegexTestAsync = (pattern: string, input: string, flags?: string) => Promise<boolean>;
 
 export class FilterError extends UserError {
 	constructor(
@@ -193,19 +197,6 @@ function parseFilterConditionValues(
 	};
 }
 
-function parseRegexPattern(pattern: string): RegExp {
-	const regexMatch = (pattern || '').match(new RegExp('^/(.*?)/([gimusy]*)$'));
-	let regex: RegExp;
-
-	if (!regexMatch) {
-		regex = new RegExp((pattern || '').toString());
-	} else {
-		regex = new RegExp(regexMatch[1], regexMatch[2]);
-	}
-
-	return regex;
-}
-
 export function arrayContainsValue(array: unknown[], value: unknown, ignoreCase: boolean): boolean {
 	if (ignoreCase && typeof value === 'string') {
 		return array.some((item) => {
@@ -218,46 +209,86 @@ export function arrayContainsValue(array: unknown[], value: unknown, ignoreCase:
 	return array.includes(value);
 }
 
-// eslint-disable-next-line complexity
-export function executeFilterCondition(
+type PreparedFilterCondition = {
+	exists: boolean;
+	ignoreCase: boolean;
+	leftValue: unknown;
+	rightValue: unknown;
+};
+
+function prepareFilterCondition(
 	condition: FilterConditionValue,
 	filterOptions: FilterOptionsValue,
 	metadata: Partial<FilterConditionMetadata> = {},
-): boolean {
+): PreparedFilterCondition {
 	const ignoreCase = !filterOptions.caseSensitive;
-	const { operator } = condition;
 	const parsedValues = parseFilterConditionValues(condition, filterOptions, metadata);
 
 	if (!parsedValues.ok) {
 		throw parsedValues.error;
 	}
 
-	let { left: leftValue, right: rightValue } = parsedValues.result;
-
+	const { left: leftValue, right: rightValue } = parsedValues.result;
 	const exists = leftValue !== undefined && leftValue !== null && !Number.isNaN(leftValue);
+
+	return { exists, ignoreCase, leftValue, rightValue };
+}
+
+function evaluateExistsOperation(
+	condition: FilterConditionValue,
+	exists: boolean,
+): boolean | undefined {
 	if (condition.operator.operation === 'exists') {
 		return exists;
 	} else if (condition.operator.operation === 'notExists') {
 		return !exists;
 	}
 
+	return undefined;
+}
+
+function prepareStringFilterValues(
+	condition: FilterConditionValue,
+	prepared: PreparedFilterCondition,
+): { left: string; right: string } {
+	let { leftValue, rightValue } = prepared;
+
+	if (prepared.ignoreCase) {
+		if (typeof leftValue === 'string') {
+			leftValue = leftValue.toLocaleLowerCase();
+		}
+
+		if (
+			typeof rightValue === 'string' &&
+			!(condition.operator.operation === 'regex' || condition.operator.operation === 'notRegex')
+		) {
+			rightValue = rightValue.toLocaleLowerCase();
+		}
+	}
+
+	return {
+		left: (leftValue ?? '') as string,
+		right: (rightValue ?? '') as string,
+	};
+}
+
+// eslint-disable-next-line complexity
+function executeFilterConditionWithRegexTest(
+	condition: FilterConditionValue,
+	filterOptions: FilterOptionsValue,
+	metadata: Partial<FilterConditionMetadata>,
+	regexTest: RegexTest,
+): boolean {
+	const { operator } = condition;
+	const prepared = prepareFilterCondition(condition, filterOptions, metadata);
+	const { leftValue, rightValue, exists, ignoreCase } = prepared;
+
+	const existsResult = evaluateExistsOperation(condition, exists);
+	if (existsResult !== undefined) return existsResult;
+
 	switch (operator.type) {
 		case 'string': {
-			if (ignoreCase) {
-				if (typeof leftValue === 'string') {
-					leftValue = leftValue.toLocaleLowerCase();
-				}
-
-				if (
-					typeof rightValue === 'string' &&
-					!(condition.operator.operation === 'regex' || condition.operator.operation === 'notRegex')
-				) {
-					rightValue = rightValue.toLocaleLowerCase();
-				}
-			}
-
-			const left = (leftValue ?? '') as string;
-			const right = (rightValue ?? '') as string;
+			const { left, right } = prepareStringFilterValues(condition, prepared);
 
 			switch (condition.operator.operation) {
 				case 'empty':
@@ -280,10 +311,14 @@ export function executeFilterCondition(
 					return left.endsWith(right);
 				case 'notEndsWith':
 					return !left.endsWith(right);
-				case 'regex':
-					return parseRegexPattern(right).test(left);
-				case 'notRegex':
-					return !parseRegexPattern(right).test(left);
+				case 'regex': {
+					const { source, flags } = parseRegexLiteral(right);
+					return regexTest(source, left, flags);
+				}
+				case 'notRegex': {
+					const { source, flags } = parseRegexLiteral(right);
+					return !regexTest(source, left, flags);
+				}
 			}
 
 			break;
@@ -411,6 +446,72 @@ export function executeFilterCondition(
 	LoggerProxy.warn(`Unknown filter parameter operator "${operator.type}:${operator.operation}"`);
 
 	return false;
+}
+
+export function executeFilterCondition(
+	condition: FilterConditionValue,
+	filterOptions: FilterOptionsValue,
+	metadata: Partial<FilterConditionMetadata> = {},
+): boolean {
+	return executeFilterConditionWithRegexTest(
+		condition,
+		filterOptions,
+		metadata,
+		(pattern, input, flags) => safeRegex.test(pattern, input, flags),
+	);
+}
+
+/**
+ * Identical to executeFilterCondition, but accepts custom regex test function.
+ * This method should be used on frontend where safe regex test is async only, while on backend executeFilterCondition can be used with default sync regex test.
+ */
+export async function executeFilterConditionAsync(
+	condition: FilterConditionValue,
+	filterOptions: FilterOptionsValue,
+	regexTest: RegexTestAsync,
+	metadata: Partial<FilterConditionMetadata> = {},
+): Promise<boolean> {
+	const { operator } = condition;
+	const prepared = prepareFilterCondition(condition, filterOptions, metadata);
+
+	const existsResult = evaluateExistsOperation(condition, prepared.exists);
+	if (existsResult !== undefined) return existsResult;
+
+	// This function is provided as a placeholder, where regex operations are unreachable and handled by outer code.
+	const disabledRegexTest = () => {
+		throw new Error('Not implemented');
+	};
+
+	if (operator.type !== 'string') {
+		return executeFilterConditionWithRegexTest(
+			condition,
+			filterOptions,
+			metadata,
+			// string operations are intercepted, so a placeholder regex test function is provided
+			disabledRegexTest,
+		);
+	}
+
+	const { left, right } = prepareStringFilterValues(condition, prepared);
+
+	switch (condition.operator.operation) {
+		case 'regex': {
+			const { source, flags } = parseRegexLiteral(right);
+			return await regexTest(source, left, flags);
+		}
+		case 'notRegex': {
+			const { source, flags } = parseRegexLiteral(right);
+			return !(await regexTest(source, left, flags));
+		}
+		default:
+			return executeFilterConditionWithRegexTest(
+				condition,
+				filterOptions,
+				metadata,
+				// regex operations are intercepted, so a placeholder regex test function is provided
+				disabledRegexTest,
+			);
+	}
 }
 
 type ExecuteFilterOptions = {

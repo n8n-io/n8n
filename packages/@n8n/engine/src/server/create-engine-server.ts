@@ -1,42 +1,34 @@
-import type { DataSource } from '@n8n/typeorm';
 import express, { type Application } from 'express';
 
-import type { AdmittanceService } from '../admittance';
-import { TypeOrmExecutionStore, WorkflowExecution } from '../database';
-import { StartExecutionService } from '../execution/start-execution.service';
-import type { WorkQueue } from '../queue';
+import { createAuthenticationMiddleware } from '../auth/authenticate';
+import type { IdentityVerifier } from '../auth/identity.types';
+import type { ExecutionQueryService } from '../execution';
+import type { StartExecutionService } from '../execution/start-execution.service';
+import type { EngineLogger } from '../logging';
 import { createWorkflowExecutionsRouter } from './routes/workflow-executions';
 
+/** Services the engine API is built on, handed in at construction. */
 export interface EngineServerDeps {
-	dataSource: DataSource;
-	admittance: AdmittanceService;
-	workQueue: WorkQueue;
+	startExecution: StartExecutionService;
+	executionQuery: ExecutionQueryService;
+	identityVerifier: IdentityVerifier;
+	/** Where the engine writes its own messages. Defaults to the console. */
+	logger?: EngineLogger;
 }
 
-/**
- * Builds the engine HTTP app. Without `deps` it serves only `/healthz`; with
- * `deps` it also mounts the execution API. Deps are all-or-nothing so the API
- * can't be half-wired.
- */
-export function createEngineServer(deps?: EngineServerDeps): { app: Application } {
+/** Builds the engine HTTP app: `/healthz` plus the authenticated execution API. */
+export function createEngineServer(deps: EngineServerDeps): { app: Application } {
 	const app = express();
-	app.use(express.json());
 
+	// Stays open: a liveness probe, and it reveals nothing.
 	app.get('/healthz', (_req, res) => {
 		res.status(200).json({ status: 'ok' });
 	});
 
-	if (deps) {
-		const executionStore = new TypeOrmExecutionStore(
-			deps.dataSource.getRepository(WorkflowExecution),
-		);
-		const startExecution = new StartExecutionService(
-			deps.admittance,
-			executionStore,
-			deps.workQueue,
-		);
-		app.use('/api/workflow-executions', createWorkflowExecutionsRouter(startExecution));
-	}
+	// Mounted on the prefix, not on each router, so a future router cannot forget it.
+	app.use('/api', createAuthenticationMiddleware(deps.identityVerifier, deps.logger));
+	app.use('/api', express.json());
+	app.use('/api/workflow-executions', createWorkflowExecutionsRouter(deps));
 
 	return { app };
 }

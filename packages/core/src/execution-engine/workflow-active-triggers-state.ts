@@ -89,10 +89,14 @@ export class WorkflowActiveTriggersState {
 		return this.registrationsByNodeId.keys();
 	}
 
-	/** All recorded trigger responses, in insertion order. */
-	*triggerResponses(): IterableIterator<ITriggerResponse> {
-		for (const registration of this.registrationsByNodeId.values()) {
-			if (registration.response) yield registration.response;
+	/**
+	 * Registrations that hold a trigger response to close, with their node ids,
+	 * in insertion order. Response-less registrations (schedule and poll
+	 * markers) are excluded — they have nothing to close.
+	 */
+	*closableTriggers() {
+		for (const [nodeId, registration] of this.registrationsByNodeId.entries()) {
+			if (registration.response) yield { nodeId, response: registration.response };
 		}
 	}
 }

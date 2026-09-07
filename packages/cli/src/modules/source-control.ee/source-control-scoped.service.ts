@@ -119,7 +119,8 @@ export class SourceControlScopedService {
 		context: SourceControlContext,
 	): FindOptionsWhere<CredentialsEntity> {
 		if (context.hasAccessToAllProjects()) {
-			return {};
+			// Instance credentials (provider connections) are instance-local and never synced
+			return { usageScope: 'project' };
 		}
 
 		return {

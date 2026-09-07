@@ -6,7 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { TOOLS_MANAGER_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import AgentEditorModal from './AgentEditorModal.vue';
 import { waitFor, fireEvent, within } from '@testing-library/vue';
@@ -55,7 +55,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 
 const mockShowError = vi.fn();
 const mockShowMessage = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mockShowError, showMessage: mockShowMessage }),
 }));
 

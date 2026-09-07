@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "scheduled_task" ("id" integer PRIMARY KEY NOT NULL, "jobId" integer NOT NULL, "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "scheduledFor" datetime(3) NOT NULL, "runAt" datetime(3) NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('pending'), "attempts" integer NOT NULL DEFAULT (0), "maxAttempts" integer NOT NULL DEFAULT (1), "claimedBy" varchar(255), "leaseExpiresAt" datetime(3), "leaseEpoch" integer NOT NULL DEFAULT (0), "startedAt" datetime(3), "finishedAt" datetime(3), "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "dispatchedAt" datetime(3), CONSTRAINT "CHK_scheduled_task_running_lease" CHECK ("status" <> 'running' OR "leaseExpiresAt" IS NOT NULL), CONSTRAINT "CHK_scheduled_task_status" CHECK ("status" IN ('pending', 'running', 'succeeded', 'failed', 'missed', 'cancelled')), CONSTRAINT "FK_scheduled_task_jobId" FOREIGN KEY ("jobId") REFERENCES "scheduled_job" ("id") ON DELETE CASCADE)
+CREATE TABLE "scheduled_task" ("id" integer PRIMARY KEY NOT NULL, "jobId" integer NOT NULL, "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "scheduledFor" datetime(3) NOT NULL, "runAt" datetime(3) NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('pending'), "attempts" integer NOT NULL DEFAULT (0), "maxAttempts" integer NOT NULL DEFAULT (1), "claimedBy" varchar(255), "leaseExpiresAt" datetime(3), "leaseEpoch" integer NOT NULL DEFAULT (0), "startedAt" datetime(3), "finishedAt" datetime(3), "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "dispatchedAt" datetime(3), "missedAfter" datetime(3), CONSTRAINT "CHK_scheduled_task_running_lease" CHECK ("status" <> 'running' OR "leaseExpiresAt" IS NOT NULL), CONSTRAINT "CHK_scheduled_task_status" CHECK ("status" IN ('pending', 'running', 'succeeded', 'failed', 'missed', 'cancelled')), CONSTRAINT "FK_scheduled_task_jobId" FOREIGN KEY ("jobId") REFERENCES "scheduled_job" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -26,6 +26,7 @@ CREATE TABLE "scheduled_task" ("id" integer PRIMARY KEY NOT NULL, "jobId" intege
 | leaseEpoch | INTEGER | 0 | false |  |  |  |
 | leaseExpiresAt | datetime(3) |  | true |  |  |  |
 | maxAttempts | INTEGER | 1 | false |  |  |  |
+| missedAfter | datetime(3) |  | true |  |  |  |
 | payload | TEXT | '{}' | false |  |  |  |
 | runAt | datetime(3) |  | false |  |  |  |
 | scheduledFor | datetime(3) |  | false |  |  |  |
@@ -49,6 +50,7 @@ CREATE TABLE "scheduled_task" ("id" integer PRIMARY KEY NOT NULL, "jobId" intege
 | IDX_scheduled_task_finishedAt | CREATE INDEX "IDX_scheduled_task_finishedAt" ON "scheduled_task" ("finishedAt") WHERE "finishedAt" IS NOT NULL |
 | IDX_scheduled_task_jobId_scheduledFor | CREATE UNIQUE INDEX "IDX_scheduled_task_jobId_scheduledFor" ON "scheduled_task" ("jobId", "scheduledFor")  |
 | IDX_scheduled_task_leaseExpiresAt | CREATE INDEX "IDX_scheduled_task_leaseExpiresAt" ON "scheduled_task" ("leaseExpiresAt") WHERE "status" = 'running' |
+| IDX_scheduled_task_missedAfter | CREATE INDEX "IDX_scheduled_task_missedAfter" ON "scheduled_task" ("missedAfter") WHERE "status" = 'pending' AND "missedAfter" IS NOT NULL |
 | IDX_scheduled_task_runAt | CREATE INDEX "IDX_scheduled_task_runAt" ON "scheduled_task" ("runAt") WHERE "status" = 'pending' |
 
 ## Relations
@@ -70,6 +72,7 @@ erDiagram
   INTEGER leaseEpoch
   datetime_3_ leaseExpiresAt
   INTEGER maxAttempts
+  datetime_3_ missedAfter
   TEXT payload
   datetime_3_ runAt
   datetime_3_ scheduledFor
@@ -87,16 +90,20 @@ erDiagram
   varchar_16_ kind
   datetime_3_ lastFiredAt
   INTEGER maxAttempts
+  INT misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_255_ name
   datetime_3_ nextRunAt
-  varchar_36_ nodeId
+  datetime_3_ orphanedAt
+  varchar_255_ ownerId
+  varchar_36_ ownerMemberId
+  varchar_32_ ownerType
   TEXT payload
   INT recurrenceSize
   varchar_16_ recurrenceUnit
   varchar_128_ taskType
   varchar_64_ timezone
   datetime_3_ updatedAt
-  varchar_36_ workflowId FK
 }
 ```
 

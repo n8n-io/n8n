@@ -19,9 +19,13 @@ import {
 	isIgnoreStatusErrorConfig,
 	isProxyPotentiallyActive,
 	isRedirectStatus,
+	resolveLegacyRequestTarget,
+	resolveLegacyRequestUrl,
 	searchForHeader,
 	setAxiosAgents,
+	throwIfDomainNotAllowed,
 	tryParseUrl,
+	validateProxySsrf,
 } from '../utils';
 
 // Agent construction is owned by `buildNodeAgents` (./factory).
@@ -91,6 +95,59 @@ describe('getHostFromRequestObject', () => {
 	test('should return null for invalid URLs', () => {
 		expect(getHostFromRequestObject({ url: 'not-a-url' })).toBeNull();
 		expect(getHostFromRequestObject({})).toBeNull();
+	});
+});
+
+describe('throwIfDomainNotAllowed', () => {
+	test('should not throw when the host is on the allowlist', () => {
+		expect(() =>
+			throwIfDomainNotAllowed({ url: 'https://example.com/api' }, 'example.com'),
+		).not.toThrow();
+	});
+
+	test('should not throw when no allowlist is configured', () => {
+		expect(() => throwIfDomainNotAllowed({ url: 'https://other.com/api' })).not.toThrow();
+	});
+
+	test('should throw when the host is off the allowlist', () => {
+		expect(() => throwIfDomainNotAllowed({ url: 'https://other.com/api' }, 'example.com')).toThrow(
+			'Domain not allowed: This credential is restricted from accessing other.com. Only the following domains are allowed: example.com',
+		);
+	});
+
+	test('should exclude query parameters from the message', () => {
+		expect(() =>
+			throwIfDomainNotAllowed(
+				{ url: 'https://other.com/api', params: { api_key: 'query-param-value' } },
+				'example.com',
+			),
+		).not.toThrow(/query-param-value/);
+	});
+
+	test('should exclude a query string already present on the url', () => {
+		expect(() =>
+			throwIfDomainNotAllowed({ url: 'https://other.com/api?api_key=inline-value' }, 'example.com'),
+		).not.toThrow(/inline-value/);
+	});
+
+	test('should resolve the target against baseURL', () => {
+		expect(() =>
+			throwIfDomainNotAllowed({ baseURL: 'https://example.com', url: '/api' }, 'example.com'),
+		).not.toThrow();
+
+		expect(() =>
+			throwIfDomainNotAllowed(
+				{ baseURL: 'https://other.com', url: '/api', params: { api_key: 'base-url-value' } },
+				'example.com',
+			),
+		).not.toThrow(/base-url-value/);
+	});
+
+	test('should accept a plain url string', () => {
+		expect(() => throwIfDomainNotAllowed('https://example.com/api', 'example.com')).not.toThrow();
+		expect(() => throwIfDomainNotAllowed('https://other.com/api', 'example.com')).toThrow(
+			'Domain not allowed',
+		);
 	});
 });
 
@@ -429,6 +486,66 @@ describe('getUrlFromProxyConfig', () => {
 	});
 });
 
+describe('validateProxySsrf', () => {
+	const denyingBridge = (deniedHostname: string, error: Error) =>
+		makeSsrfBridge({
+			validateUrl: vi.fn(async (url: string | URL) => {
+				const hostname = typeof url === 'string' ? new URL(url).hostname : url.hostname;
+				return await Promise.resolve(
+					hostname === deniedHostname
+						? { ok: false as const, error }
+						: { ok: true as const, result: undefined },
+				);
+			}),
+		});
+
+	it.each([
+		['a proxy URL string', 'http://proxy.example.com:8080'],
+		['a proxy config object', { host: 'proxy.example.com', port: 8080 }],
+	])('throws when the policy denies the host of %s', async (_label, proxyConfig) => {
+		const error = new Error('The proxy host is not permitted by policy');
+
+		await expect(
+			validateProxySsrf(proxyConfig, denyingBridge('proxy.example.com', error)),
+		).rejects.toBe(error);
+	});
+
+	it('validates the URL composed from a proxy config object', async () => {
+		const bridge = makeSsrfBridge();
+
+		await validateProxySsrf(
+			{
+				protocol: 'https',
+				host: 'proxy.example.com',
+				port: 9443,
+				auth: { username: 'user', password: 'pass' },
+			},
+			bridge,
+		);
+
+		expect(bridge.validateUrl).toHaveBeenCalledWith(
+			expect.objectContaining({ href: 'https://user:pass@proxy.example.com:9443/' }),
+		);
+	});
+
+	it.each([
+		['no proxy is configured', undefined],
+		['the proxy config has no host', { host: '', port: 8080 }],
+		['the proxy scheme is not supported', 'socks5://proxy.example.com:1080'],
+		['the proxy value is not a URL', 'not-a-url'],
+	])('does not consult the policy when %s', async (_label, proxyConfig) => {
+		const bridge = makeSsrfBridge();
+
+		await validateProxySsrf(proxyConfig, bridge);
+
+		expect(bridge.validateUrl).not.toHaveBeenCalled();
+	});
+
+	it('does not consult the policy when no bridge is provided', async () => {
+		await expect(validateProxySsrf('http://proxy.example.com:8080')).resolves.toBeUndefined();
+	});
+});
+
 describe('buildTargetUrl', () => {
 	it('should return url as-is when no baseURL', () => {
 		expect(buildTargetUrl('https://example.com/path')).toBe('https://example.com/path');
@@ -438,9 +555,14 @@ describe('buildTargetUrl', () => {
 		expect(buildTargetUrl('/path', 'https://example.com')).toBe('https://example.com/path');
 	});
 
-	it('should return undefined for falsy url', () => {
+	it('should return undefined for falsy url without a baseURL', () => {
 		expect(buildTargetUrl(undefined)).toBeUndefined();
 		expect(buildTargetUrl('')).toBeUndefined();
+	});
+
+	it('should fall back to baseURL for a falsy url', () => {
+		expect(buildTargetUrl(undefined, 'https://example.com/path')).toBe('https://example.com/path');
+		expect(buildTargetUrl('', 'https://example.com/path')).toBe('https://example.com/path');
 	});
 
 	it('should return undefined for invalid URL combination', () => {
@@ -450,6 +572,56 @@ describe('buildTargetUrl', () => {
 	it('should prefer absolute url over baseURL', () => {
 		expect(buildTargetUrl('https://other.com/path', 'https://example.com')).toBe(
 			'https://other.com/path',
+		);
+	});
+});
+
+describe('resolveLegacyRequestTarget', () => {
+	it('should return the url', () => {
+		expect(resolveLegacyRequestTarget({ url: 'https://example.com/path' })).toBe(
+			'https://example.com/path',
+		);
+	});
+
+	it('should return the uri when no url is set', () => {
+		expect(resolveLegacyRequestTarget({ uri: 'https://example.com/path' })).toBe(
+			'https://example.com/path',
+		);
+	});
+
+	it('should prefer url over uri when both are set', () => {
+		expect(
+			resolveLegacyRequestTarget({
+				uri: 'https://uri.example.com/path',
+				url: 'https://url.example.com/path',
+			}),
+		).toBe('https://url.example.com/path');
+	});
+
+	it('should return undefined when neither url nor uri is set', () => {
+		expect(resolveLegacyRequestTarget({})).toBeUndefined();
+	});
+});
+
+describe('resolveLegacyRequestUrl', () => {
+	it('should prefer url over uri when both are set', () => {
+		expect(
+			resolveLegacyRequestUrl({
+				uri: 'https://uri.example.com/path',
+				url: 'https://url.example.com/path',
+			}),
+		).toBe('https://url.example.com/path');
+	});
+
+	it('should resolve a relative target against the baseURL', () => {
+		expect(resolveLegacyRequestUrl({ url: '/path', baseURL: 'https://example.com' })).toBe(
+			'https://example.com/path',
+		);
+	});
+
+	it('should resolve to the baseURL when no target is set', () => {
+		expect(resolveLegacyRequestUrl({ baseURL: 'https://example.com/path' })).toBe(
+			'https://example.com/path',
 		);
 	});
 });
@@ -643,5 +815,15 @@ describe('buildAgentOptions', () => {
 		});
 		expect(options.keepAlive).toBe(true);
 		expect(options.servername).toBe('api.example.com');
+	});
+
+	// SNI takes a hostname, never an IP literal (RFC 6066 §3).
+	it.each([
+		['IPv4', 'https://185.90.154.8/v1'],
+		['IPv6', 'https://[2001:db8::1]/v1'],
+	])('sets no servername when the host is an %s literal', (_label, url) => {
+		const options = buildAgentOptions({ method: 'GET', url });
+
+		expect(options.servername).toBeUndefined();
 	});
 });

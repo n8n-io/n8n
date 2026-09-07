@@ -25,7 +25,7 @@ const { mockToast, mockI18n, mockSettingsStore, mockWorkflowsStore } = vi.hoiste
 	},
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => mockToast,
 }));
 
@@ -37,7 +37,7 @@ vi.mock('@/app/composables/useActivationError', () => ({
 	useActivationError: () => ({ errorMessage: { value: 'Node error details' } }),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => mockSettingsStore,
 }));
 

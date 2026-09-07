@@ -3,7 +3,7 @@ import InsightsSummary from '@/features/execution/insights/components/InsightsSu
 import { createComponentRenderer } from '@/__tests__/render';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import { createTestingPinia } from '@pinia/testing';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date';
 
 vi.mock('vue-router', () => ({

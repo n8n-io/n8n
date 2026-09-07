@@ -2,24 +2,38 @@ import type { EventService } from '@/events/event.service';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
+import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
-import type { WorkflowImportOutcome } from '../entities/workflow/workflow-import.types';
-import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
-import type { ImportOrchestrationResult } from './import-orchestrator';
+import type { PersistedWorkflowOutcome } from '../entities/workflow/workflow-import.types';
+import { VariableParentPolicy } from '../n8n-packages.types';
+import type {
+	ImportContext,
+	ResolvedImportPackageRequest,
+	ImportResult,
+} from '../n8n-packages.types';
+import type { ImportContentResult } from './import-orchestrator';
+import { reconcileVariableSummary } from './import-result';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 export interface PackageImportScope {
 	context: ImportContext;
-	imported: ImportOrchestrationResult;
+	/** The apply phase's output — telemetry counts what was written, not what was published. */
+	imported: ImportContentResult;
 	credentialRequest: CredentialBindingRequest;
 	dataTableRequest: DataTableImportRequest;
 	variableRequest: VariableImportRequest;
+	tagRequest: TagImportRequest;
+}
+
+export interface ImportOutcome {
+	result: ImportResult;
+	scopes: PackageImportScope[];
 }
 
 export function emitPackageImportedEvent(
 	eventService: EventService,
 	params: {
-		request: ImportPackageRequest;
+		request: ResolvedImportPackageRequest;
 		manifest: PackageManifest;
 		scopes: PackageImportScope[];
 	},
@@ -27,9 +41,10 @@ export function emitPackageImportedEvent(
 	const { request, manifest, scopes } = params;
 
 	const workflowOutcomes = scopes.flatMap(({ imported }) => imported.workflowOutcomes);
+	const removedWorkflows = scopes.flatMap(({ imported }) => imported.removedWorkflows);
 	const credentialResults = scopes.map(({ imported }) => imported.credentialResult);
 	const importedWorkflows = workflowOutcomes.filter(({ status }) => status !== 'skipped');
-	const countByStatus = (status: WorkflowImportOutcome['status']) =>
+	const countByStatus = (status: PersistedWorkflowOutcome['status']) =>
 		workflowOutcomes.filter((outcome) => outcome.status === status).length;
 	const credentialRequirements = scopes.reduce(
 		(total, { credentialRequest }) => total + (credentialRequest.requirements?.length ?? 0),
@@ -54,13 +69,33 @@ export function emitPackageImportedEvent(
 		0,
 	);
 
-	const variablePlans = scopes.map(({ imported }) => imported.variablePlan);
 	const variableRequirements = scopes.reduce(
 		(total, { variableRequest }) => total + (variableRequest.requirements?.length ?? 0),
 		0,
 	);
-	const variablesMatched = variablePlans.reduce((total, plan) => total + plan.matched.length, 0);
-	const variablesMissing = variablePlans.reduce((total, plan) => total + plan.missing.length, 0);
+	// Reconciled once across every scope, by the same helper the API response uses, so a name one
+	// scope stubbed and another found occupied is not also reported as pre-existing.
+	const variableSummary = reconcileVariableSummary({
+		matched: scopes.flatMap(({ imported }) => imported.variablePlan.matched),
+		missing: scopes.flatMap(({ imported }) =>
+			imported.variablePlan.missing.map(({ name }) => name),
+		),
+		created: scopes.flatMap(({ imported }) => imported.variableResult.created),
+		stubbed: scopes.flatMap(({ imported }) => imported.variableResult.stubbed),
+		skipped: scopes.flatMap(({ imported }) => imported.variableResult.skippedExisting),
+		updated: scopes.flatMap(({ imported }) => imported.variableResult.updated),
+	});
+	// Rows, not reconciled names: a name written in two projects is two rows.
+	const countRows = (pick: (result: ImportContentResult) => string[]) =>
+		scopes.reduce((total, { imported }) => total + pick(imported).length, 0);
+
+	// Tags are global, so several scopes may plan the same tag; count each id once.
+	const tagPlans = scopes.map(({ imported }) => imported.tagPlan);
+	const uniqueTagIds = (pick: (plan: TagImportPlan) => Array<{ id: string }>) =>
+		new Set(tagPlans.flatMap((plan) => pick(plan).map(({ id }) => id))).size;
+	const tagRequirements = new Set(
+		scopes.flatMap(({ tagRequest }) => (tagRequest.requirements ?? []).map(({ id }) => id)),
+	).size;
 
 	const folderId = scopes.length === 1 ? scopes[0].context.folderId : null;
 
@@ -76,10 +111,20 @@ export function emitPackageImportedEvent(
 			credentialMissingMode: request.credentialMissingMode,
 			workflowPublishingPolicy: request.workflowPublishingPolicy,
 			missingNodeTypeMode: request.missingNodeTypeMode,
+			projectConflictPolicy: request.projectConflictPolicy,
+			// Settled by the dispatcher before any importer runs, so analytics see what the import
+			// actually ran under rather than a blank meaning "same as the project policy".
+			folderConflictPolicy: request.folderConflictPolicy,
+			overwriteDeletionPolicy: request.overwriteDeletionPolicy,
 			dataTableMatchingMode: request.dataTableMatchingMode,
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 			variableMissingMode: request.variableMissingMode,
+			variableConflictPolicy: request.variableConflictPolicy,
+			// An omitted policy places variables in the project, so report what the import did.
+			variableParentPolicy: request.variableParentPolicy ?? VariableParentPolicy.Project,
+			tagMissingMode: request.tagMissingMode,
+			tagConflictPolicy: request.tagConflictPolicy,
 		},
 		packageSourceId: manifest.sourceId,
 		packageVersion: manifest.packageFormatVersion,
@@ -93,6 +138,13 @@ export function emitPackageImportedEvent(
 				created: countByStatus('created'),
 				updated: countByStatus('updated'),
 				skipped: countByStatus('skipped'),
+				// Reconciliation removals, split by what actually happened — a `hard-delete` whose
+				// row could not be dropped yet counts as archived, like the API response reports it.
+				archived: removedWorkflows.filter(({ deletion }) => deletion === 'archived').length,
+				deleted: removedWorkflows.filter(({ deletion }) => deletion === 'deleted').length,
+			},
+			folders: {
+				removed: scopes.reduce((total, { imported }) => total + imported.removedFolders.length, 0),
 			},
 			credentials: {
 				matched: matchedCredentialIds.length,
@@ -105,9 +157,20 @@ export function emitPackageImportedEvent(
 				requirements: dataTableRequirements,
 			},
 			variables: {
-				matched: variablesMatched,
-				missing: variablesMissing,
+				matched: variableSummary.matched.length,
+				missing: variableSummary.missing.length,
+				created: countRows(({ variableResult }) => variableResult.created),
+				stubbed: countRows(({ variableResult }) => variableResult.stubbed),
+				updated: countRows(({ variableResult }) => variableResult.updated),
 				requirements: variableRequirements,
+			},
+			tags: {
+				matched: uniqueTagIds((plan) => plan.matched),
+				created: uniqueTagIds((plan) => plan.creations),
+				renamed: uniqueTagIds((plan) => plan.renames),
+				reconciled: uniqueTagIds((plan) => plan.reconciles),
+				skipped: uniqueTagIds((plan) => plan.dropped),
+				requirements: tagRequirements,
 			},
 		},
 	});

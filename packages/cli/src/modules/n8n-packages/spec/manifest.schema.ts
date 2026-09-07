@@ -41,6 +41,7 @@ export const packageManifestSchema = z
 		credentials: z.array(manifestEntrySchema).optional(),
 		dataTables: z.array(manifestEntrySchema).optional(),
 		variables: z.array(manifestEntrySchema).optional(),
+		tags: z.array(manifestEntrySchema).optional(),
 		requirements: packageRequirementsSchema.optional(),
 	})
 	.superRefine((manifest, ctx) => {
@@ -50,6 +51,7 @@ export const packageManifestSchema = z
 		assertNoDuplicateIds(manifest.credentials, 'credential', ctx);
 		assertNoDuplicateIds(manifest.dataTables, 'data table', ctx);
 		assertNoDuplicateIds(manifest.variables, 'variable', ctx);
+		assertNoDuplicateIds(manifest.tags, 'tag', ctx);
 	});
 
 export type ManifestEntry = z.infer<typeof manifestEntrySchema>;

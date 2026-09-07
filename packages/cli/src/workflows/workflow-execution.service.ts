@@ -1,8 +1,15 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import type { Project, User, CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import type {
+	Project,
+	User,
+	CreateExecutionPayload,
+	WorkflowEntity,
+	PollLeaseFence,
+} from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
 import {
@@ -22,14 +29,17 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
+	PollCursor,
 } from 'n8n-workflow';
 import {
+	OperationalError,
 	SubworkflowOperationError,
 	UnexpectedError,
 	Workflow,
 	createRunExecutionData,
 } from 'n8n-workflow';
 
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
@@ -40,6 +50,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
@@ -62,6 +73,8 @@ export class WorkflowExecutionService {
 		private readonly executionContextService: ExecutionContextService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly pollCursorService: PollCursorService,
+		private readonly executionRepository: ExecutionRepository,
 	) {}
 
 	async runWorkflow(
@@ -106,6 +119,144 @@ export class WorkflowExecutionService {
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+	}
+
+	/**
+	 * Starts an execution for polled items, committing its row in the same transaction
+	 * as the poll's cursor advance so neither can exist without the other.
+	 */
+	async runPolledWorkflow(
+		workflowData: IWorkflowBase,
+		node: INode,
+		data: INodeExecutionData[][],
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		cursor: PollCursor,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		fence?: PollLeaseFence,
+	): Promise<string | undefined> {
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node,
+				data: {
+					main: data,
+				},
+				source: null,
+			},
+		];
+
+		const executionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack,
+			},
+		});
+
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflowData.id,
+		);
+
+		const runData: IWorkflowExecutionDataProcess = {
+			userId: additionalData.userId,
+			executionMode: mode,
+			executionData,
+			workflowData,
+			projectId,
+			projectName,
+		};
+
+		// Mask the trigger items before the payload is committed, so the persisted row
+		// never holds raw header data. `run` below establishes the context again, which
+		// early-exits once it is in place.
+		const establishContextError = await this.workflowRunner.establishContextForPersistence(runData);
+
+		if (establishContextError) {
+			this.errorReporter.error(establishContextError, { shouldBeLogged: false });
+			this.logger.error('Failed to prepare a polled execution, so its cursor was not committed', {
+				workflowId: workflowData.id,
+				nodeName: node.name,
+				error: establishContextError,
+			});
+
+			responsePromise?.reject(ensureError(establishContextError));
+
+			return undefined;
+		}
+
+		const payload: CreateExecutionPayload = {
+			data: executionData,
+			mode,
+			finished: false,
+			workflowData,
+			status: 'new',
+			workflowId: workflowData.id,
+			retryOf: runData.retryOf ?? undefined,
+			tracingContext: runData.tracingContext ?? null,
+		};
+
+		const commitResult = await this.pollCursorService.commitWithExecution({
+			workflowId: workflowData.id,
+			nodeId: node.id,
+			cursor,
+			payload,
+			fence,
+		});
+
+		if (commitResult === null) {
+			this.logger.debug('Poll cursor commit skipped: the poll no longer holds its lease', {
+				workflowId: workflowData.id,
+				nodeId: node.id,
+				nodeName: node.name,
+			});
+			responsePromise?.reject(
+				new OperationalError('Poll cursor commit skipped: the poll no longer holds its lease'),
+			);
+			return undefined;
+		}
+
+		const { executionId } = commitResult;
+
+		// The row was committed at `new`; `expectedStatus` claims it and moves it to
+		// running, so a concurrent starter cannot run it a second time.
+		try {
+			await this.workflowRunner.run(
+				runData,
+				true,
+				undefined,
+				{ executionId, expectedStatus: 'new' },
+				responsePromise,
+			);
+		} catch (error) {
+			if (error instanceof ExecutionAlreadyResumingError) {
+				this.logger.debug('Polled execution was already claimed, leaving it to its owner', {
+					executionId,
+				});
+			} else {
+				await this.crashFailedPolledExecution(executionId, error, responsePromise);
+			}
+		}
+
+		return executionId;
+	}
+
+	/**
+	 * Marks a committed row that failed to start as crashed, so it does not sit at
+	 * `new` indefinitely.
+	 */
+	private async crashFailedPolledExecution(
+		executionId: string,
+		error: unknown,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<void> {
+		this.errorReporter.error(error, { executionId, shouldBeLogged: false });
+		this.logger.error('Failed to start the execution committed for a poll', {
+			executionId,
+			error,
+		});
+
+		responsePromise?.reject(ensureError(error));
+
+		await this.executionRepository.markAsCrashed(executionId);
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {
@@ -182,6 +333,7 @@ export class WorkflowExecutionService {
 					destinationNode: payload.destinationNode,
 					chatSessionId: payload.chatSessionId,
 					workflowIsActive,
+					n8nAuthCookie,
 				}))
 			) {
 				return { waitingForWebhook: true };
@@ -219,6 +371,7 @@ export class WorkflowExecutionService {
 					pushRef,
 					destinationNode: payload.destinationNode,
 					workflowIsActive,
+					n8nAuthCookie,
 				}))
 			) {
 				return { waitingForWebhook: true };

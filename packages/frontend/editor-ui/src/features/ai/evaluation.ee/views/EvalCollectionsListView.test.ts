@@ -14,7 +14,7 @@ import type { TestRunRecord } from '../evaluation.api';
 
 import EvalCollectionsListView from './EvalCollectionsListView.vue';
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: vi.fn(),
 		showMessage: vi.fn(),

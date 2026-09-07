@@ -1,15 +1,19 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { createWorkflowWithHistory, testDb } from '@n8n/backend-test-utils';
 import {
 	DataSource,
 	type ScheduledJob,
 	ScheduledJobRepository,
 	ScheduledTaskRepository,
+	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createScheduler } from '@n8n/scheduler';
+import { createScheduler, totalDiscarded } from '@n8n/scheduler';
 import type { SchedulerDeps } from '@n8n/scheduler';
+import { v4 as uuid } from 'uuid';
 
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
+
+import { selfOwned, workflowOwned } from './shared/job-factory';
 
 describe('scheduler materialization', () => {
 	let jobRepo: ScheduledJobRepository;
@@ -33,10 +37,20 @@ describe('scheduler materialization', () => {
 	let seq = 0;
 	const secondsFromNow = (seconds: number) => new Date(Date.now() + seconds * 1000);
 
-	const createJob = async (overrides: Partial<ScheduledJob> = {}) =>
-		await jobRepo.save(
+	const claimOpts = () => ({
+		host: 'materialize-test',
+		taskTypes: ['test'],
+		lookaheadMs: 0,
+		leaseMs: 60_000,
+		batchSize: 10,
+	});
+
+	const createJob = async (overrides: Partial<ScheduledJob> = {}) => {
+		const name = `job-${++seq}`;
+		return await jobRepo.save(
 			jobRepo.create({
-				name: `job-${++seq}`,
+				name,
+				...selfOwned(name),
 				taskType: 'test',
 				payload: {},
 				kind: 'interval',
@@ -47,6 +61,7 @@ describe('scheduler materialization', () => {
 				...overrides,
 			}),
 		);
+	};
 
 	/** Compose a scheduler over the production storage bindings, with per-test tuning. */
 	const composeScheduler = (materializer?: SchedulerDeps['materializer']) =>
@@ -91,8 +106,53 @@ describe('scheduler materialization', () => {
 		expect(advanced.nextRunAt!.getTime() - advanced.lastFiredAt!.getTime()).toBe(3600 * 1000);
 	});
 
-	it('drains a backlog in maxPerJob-sized batches across successive passes', async () => {
-		// A job far behind (interval 10s, ~100s of backlog) so more than maxPerJob fires are due.
+	it('stops offering a coalesce occurrence once it is past its deadline', async () => {
+		await createJob({ misfirePolicy: 'coalesce', misfireGraceSeconds: 60 });
+
+		await runMaterialization(0);
+
+		const [task] = await taskRepo.find();
+		await taskRepo.update(
+			{ id: task.id },
+			{ runAt: secondsFromNow(-86_400), missedAfter: secondsFromNow(-86_340) },
+		);
+
+		expect(await taskRepo.claimDueTasks(claimOpts())).toHaveLength(0);
+		expect(await taskRepo.retireMissedPending(10)).toBe(1);
+		expect((await taskRepo.findOneByOrFail({ id: task.id })).status).toBe('missed');
+	});
+
+	it.each(['skip', 'coalesce'] as const)(
+		'gives a %s occurrence a deadline the claim can refuse it by',
+		async (misfirePolicy) => {
+			await createJob({ misfirePolicy, misfireGraceSeconds: 60 });
+
+			await runMaterialization(0);
+
+			const [task] = await taskRepo.find();
+			expect(task.missedAfter).not.toBeNull();
+			expect(task.missedAfter!.getTime()).toBeGreaterThan(task.runAt.getTime());
+		},
+	);
+
+	it('retires the queued occurrences a later catch-up run supersedes', async () => {
+		const job = await createJob({ intervalSeconds: 10, misfireGraceSeconds: 30 });
+
+		await runMaterialization(0);
+		const [queued] = await taskRepo.find();
+		expect(queued.status).toBe('pending');
+
+		await jobRepo.update({ id: job.id }, { nextRunAt: secondsFromNow(-300) });
+		const summary = await runMaterialization(0);
+
+		expect(summary.retiredOccurrences).toBe(1);
+		expect((await taskRepo.findOneByOrFail({ id: queued.id })).status).toBe('missed');
+		expect(await taskRepo.countBy({ status: 'pending' })).toBe(1);
+	});
+
+	it('drops a capped backlog rather than firing a stale run per pass', async () => {
+		// A job far behind (interval 10s, ~100s of backlog) so more than maxPerJob fires
+		// are due, forcing the walk to stop at the cap.
 		await createJob({ intervalSeconds: 10, nextRunAt: secondsFromNow(-100) });
 		const drainScheduler = composeScheduler({
 			windowSeconds: 0,
@@ -102,28 +162,29 @@ describe('scheduler materialization', () => {
 			defaultTimezone: 'UTC',
 		});
 
-		// The first pass records exactly maxPerJob, capping the batch rather than draining it all.
+		// Records nothing: every fire in this backlog is already stale by the time it's discarded.
 		const first = await drainScheduler.materialize();
-		expect(first.occurrences).toBe(5);
-		expect(await taskRepo.count()).toBe(5);
+		expect(first.occurrences).toBe(0);
+		expect(totalDiscarded(first.misfires)).toBe(5);
+		expect(await taskRepo.count()).toBe(0);
 
-		// Successive passes continue draining, each recording at most maxPerJob, until the
-		// backlog is exhausted. The claim reaches a poll interval ahead of due, so with
-		// windowSeconds: 0 the job keeps being claimed for its near-future fire even once
-		// drained; exhaustion shows as a pass that records nothing new, not an unclaimed job.
-		for (let i = 0; i < 10; i++) {
+		// Draining stops being a misfire once the remaining instants are inside their
+		// grace window, so a capped backlog costs at most a grace window of fires.
+		let passes = 0;
+		while (passes < 10) {
 			const summary = await drainScheduler.materialize();
-			expect(summary.occurrences).toBeLessThanOrEqual(5);
-			if (summary.occurrences === 0) break;
+			passes += 1;
+			if (summary.occurrences === 0 && totalDiscarded(summary.misfires) === 0) break;
 		}
 
-		// Drained: the backlog is fully recorded, every occurrence distinct (no duplicate from batching).
-		const drained = await drainScheduler.materialize();
-		expect(drained.occurrences).toBe(0);
 		const tasks = await taskRepo.find();
 		const distinctInstants = new Set(tasks.map((t) => t.scheduledFor.getTime()));
 		expect(distinctInstants.size).toBe(tasks.length);
-		expect(tasks.length).toBeGreaterThanOrEqual(10);
+		// The ~40s beyond the grace window are gone; only the recent tail was recorded.
+		expect(tasks.length).toBeLessThan(10);
+		for (const task of tasks) {
+			expect(task.scheduledFor.getTime()).toBeGreaterThan(Date.now() - 70_000);
+		}
 	});
 
 	it('records the upcoming occurrences within the window, ahead of time', async () => {
@@ -134,6 +195,32 @@ describe('scheduler materialization', () => {
 		// A sub-minute schedule fills the window in one pass instead of one fire at a time.
 		expect(summary.occurrences).toBeGreaterThan(1);
 		expect(await taskRepo.count()).toBe(summary.occurrences);
+	});
+
+	it('fires a backlog in full when every occurrence is still inside its grace window', async () => {
+		// Known residual: the misfire policy only acts once an occurrence is past its
+		// deadline. A backlog that fits entirely inside the grace window is not a
+		// misfire at all, so it is recorded and later claimed in full rather than
+		// coalesced/skipped down to one run: the burst this guards against is bounded by
+		// grace/interval, not eliminated.
+		await createJob({
+			intervalSeconds: 10,
+			misfireGraceSeconds: 60,
+			nextRunAt: secondsFromNow(-45),
+		});
+
+		const summary = await runMaterialization(0);
+
+		// -45s, -35s, -25s, -15s, -5s: five due instants, all newer than now-60s.
+		expect(summary.occurrences).toBe(5);
+		expect(totalDiscarded(summary.misfires)).toBe(0);
+		const tasks = await taskRepo.find();
+		expect(tasks).toHaveLength(5);
+
+		// Not just recorded: every one of them is still claimable, so this really is a
+		// five-execution burst on the next executor tick, not a discarded backlog.
+		const claimed = await taskRepo.claimDueTasks(claimOpts());
+		expect(claimed).toHaveLength(5);
 	});
 
 	it('records the same occurrence only once (idempotent)', async () => {
@@ -289,5 +376,103 @@ describe('scheduler materialization', () => {
 			expect(job.lastFiredAt!.getTime()).toBe(task!.scheduledFor.getTime());
 			expect(job.nextRunAt!.getTime() - job.lastFiredAt!.getTime()).toBe(3600 * 1000);
 		}
+	});
+
+	describe('rules of one node under the owner-wide coalesce policy', () => {
+		let workflowId: string;
+		let nodeId: string;
+		let owner: ReturnType<typeof workflowOwned>;
+
+		const createRule = async () =>
+			await createJob({
+				...owner,
+				intervalSeconds: 3600,
+				misfirePolicy: 'coalesce_owner',
+				misfireGraceSeconds: 3600,
+				nextRunAt: secondsFromNow(3600),
+			});
+
+		beforeEach(async () => {
+			const workflow = await createWorkflowWithHistory({ active: true });
+			await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+				workflow.id,
+				workflow.versionId,
+			);
+			workflowId = workflow.id;
+			nodeId = uuid();
+			owner = workflowOwned(workflowId, nodeId);
+		});
+
+		it('leaves one catch-up run pending and retires the occurrences it supersedes', async () => {
+			const rules = [await createRule(), await createRule(), await createRule()];
+			await jobRepo.backdateNextRunAt(owner, 200);
+
+			const firstPass = await runMaterialization(0);
+			expect(firstPass).toMatchObject({ claimedJobs: 3, occurrences: 3 });
+			const queued = await taskRepo.find();
+			expect(queued).toHaveLength(3);
+			expect(queued.every((task) => task.status === 'pending')).toBe(true);
+
+			await jobRepo.update({ ...owner }, { misfireGraceSeconds: 30 });
+			await jobRepo.backdateNextRunAt(owner, 100);
+
+			const secondPass = await runMaterialization(0);
+
+			expect(secondPass).toMatchObject({
+				claimedJobs: 3,
+				occurrences: 1,
+				retiredOccurrences: 3,
+			});
+
+			const tasks = await taskRepo.find();
+			const pending = tasks.filter((task) => task.status === 'pending');
+			expect(pending).toHaveLength(1);
+			expect(pending[0].jobId).toBe(Math.min(...rules.map((rule) => rule.id)));
+			expect(pending[0].runAt.getTime()).toBeGreaterThan(pending[0].scheduledFor.getTime());
+
+			const missedIds = tasks
+				.filter((task) => task.status === 'missed')
+				.map((task) => task.id)
+				.sort();
+			expect(missedIds).toEqual(queued.map((task) => task.id).sort());
+		});
+
+		it('never groups self-owned jobs together, whatever their policy', async () => {
+			// A system task is its own owner, so unrelated system jobs cannot coalesce
+			// into one another's catch-up run even under the owner-wide policy.
+			const first = await createJob({
+				intervalSeconds: 3600,
+				misfirePolicy: 'coalesce_owner',
+				misfireGraceSeconds: 30,
+				nextRunAt: secondsFromNow(-100),
+			});
+			const second = await createJob({
+				intervalSeconds: 3600,
+				misfirePolicy: 'coalesce_owner',
+				misfireGraceSeconds: 30,
+				nextRunAt: secondsFromNow(-100),
+			});
+
+			const summary = await runMaterialization(0);
+
+			expect(summary).toMatchObject({ claimedJobs: 2, occurrences: 2 });
+			const pending = await taskRepo.find({ where: { status: 'pending' } });
+			expect(pending.map((task) => task.jobId).sort()).toEqual([first.id, second.id].sort());
+		});
+
+		it('advances every rule clock even though only one catch-up run was recorded', async () => {
+			const rules = [await createRule(), await createRule(), await createRule()];
+			await jobRepo.update({ ...owner }, { misfireGraceSeconds: 30 });
+			await jobRepo.backdateNextRunAt(owner, 100);
+
+			await runMaterialization(0);
+
+			for (const rule of rules) {
+				const advanced = await jobRepo.findOneByOrFail({ id: rule.id });
+				expect(advanced.nextRunAt!.getTime()).toBeGreaterThan(Date.now());
+				expect(advanced.lastFiredAt).not.toBeNull();
+			}
+			expect(await taskRepo.count()).toBe(1);
+		});
 	});
 });

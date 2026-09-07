@@ -24,7 +24,7 @@ export async function twitterApiRequest(
 		method,
 		body,
 		qs,
-		url: uri || `https://api.twitter.com/2${resource}`,
+		url: uri || `https://api.x.com/2${resource}`,
 		json: true,
 	};
 	try {

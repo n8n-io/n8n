@@ -13,15 +13,17 @@ import {
 	isStreamingTimelineEntry,
 	type ArtifactInfo,
 } from '../agentTimeline.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
+import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ThinkingBlock from './ThinkingBlock.vue';
+import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
 
 const i18n = useI18n();
@@ -112,6 +114,20 @@ const childrenById = computed(() => {
 	return map;
 });
 
+/**
+ * Changes whenever the run visibly advances: a new run, a new timeline entry,
+ * or the tail entry growing. Drives the activity indicator's clock — an
+ * entry-derived key can't, because the tail entry's identity is stable while
+ * its content streams.
+ */
+const progressToken = computed(() => {
+	const entries = timelineEntries.value;
+	const tail = entries.at(-1);
+	const tailSize =
+		tail && (tail.type === 'text' || tail.type === 'reasoning') ? tail.content.length : 0;
+	return `${thread.activeRunId}:${entries.length}:${tailSize}`;
+});
+
 const renderBlocks = computed(() =>
 	buildTimelineBlocks(
 		timelineEntries.value,
@@ -152,16 +168,15 @@ function isPlanReviewUpdating(tc: InstanceAiToolCallState): boolean {
 	return thread.updatingPlanRequestIds.has(requestId);
 }
 
-/** PlanReviewPanel is read-only when its tool call has settled OR when the
- *  underlying confirmation has already been resolved client-side. Without the
- *  resolvedConfirmationIds check, a freshly-loading create-tasks call could
- *  briefly re-enable the old card's footer (toolCall.isLoading flips back to
- *  true on tool-call-start before the previous card's read-only catches up). */
-function isPlanCardReadOnly(tc: InstanceAiToolCallState): boolean {
+/** An in-transcript card is read-only once its tool call has settled OR its
+ *  confirmation was resolved client-side. Without the resolvedConfirmationIds
+ *  check, a freshly-loading create-tasks call could briefly re-enable the old
+ *  card's footer (toolCall.isLoading flips back to true on tool-call-start
+ *  before the previous card's read-only catches up). */
+function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	if (!tc.isLoading) return true;
 	const requestId = tc.confirmation?.requestId;
-	if (requestId && thread.resolvedConfirmationIds.has(requestId)) return true;
-	return false;
+	return !!requestId && thread.resolvedConfirmationIds.has(requestId);
 }
 
 function handlePlanApprove(tc: InstanceAiToolCallState) {
@@ -194,7 +209,7 @@ function handlePlanApprove(tc: InstanceAiToolCallState) {
 
 function handlePlanAskForEdits(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
-	if (!requestId || isPlanCardReadOnly(tc)) return;
+	if (!requestId || isCardReadOnly(tc)) return;
 
 	thread.startPlanEdit({
 		requestId,
@@ -274,15 +289,31 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				:planned-tasks="getPlanTasks(block.toolCall)"
 				:status="getPlanReviewStatus(block.toolCall)"
 				:updating="isPlanReviewUpdating(block.toolCall)"
-				:read-only="isPlanCardReadOnly(block.toolCall)"
+				:read-only="isCardReadOnly(block.toolCall)"
 				:expired="block.toolCall.confirmation?.expired"
 				@approve="handlePlanApprove(block.toolCall)"
 				@ask-for-edits="handlePlanAskForEdits(block.toolCall)"
 				@deny="handlePlanDeny(block.toolCall)"
 			/>
 
+			<InstanceAiMcpConnect
+				v-else-if="block.type === 'mcp-connect' && block.toolCall.confirmation?.mcpConnectRequest"
+				:key="block.toolCall.confirmation.requestId"
+				:request-id="block.toolCall.confirmation.requestId"
+				:input-thread-id="block.toolCall.confirmation.inputThreadId"
+				:servers="block.toolCall.confirmation.mcpConnectRequest.servers"
+				:read-only="isCardReadOnly(block.toolCall)"
+				:expired="block.toolCall.confirmation.expired"
+			/>
+
 			<!-- Answered questions (read-only after resolution) -->
 			<AnsweredQuestions v-else-if="block.type === 'questions'" :tool-call="block.toolCall" />
+
+			<!-- The run is live but a committed answer settled the block behind it -->
+			<TimelineActivityIndicator
+				v-else-if="block.type === 'activity' && !thread.isAwaitingConfirmation"
+				:progress-token="progressToken"
+			/>
 
 			<!-- Child agent — flat section -->
 			<template v-else-if="block.type === 'child'">

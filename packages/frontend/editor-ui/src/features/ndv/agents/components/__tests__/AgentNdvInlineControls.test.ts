@@ -11,6 +11,8 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => key,
 	}),
+	// The i18n singleton is used at module load by some transitively-imported utils.
+	i18n: { baseText: (key: string) => key },
 }));
 
 const CapabilitiesStub = {

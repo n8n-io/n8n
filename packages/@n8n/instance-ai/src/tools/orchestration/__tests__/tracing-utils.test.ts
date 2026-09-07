@@ -41,6 +41,8 @@ describe('createDetachedSubAgentTraceFactory', () => {
 						agent_id: 'agent-1',
 						n8n_version: '1.123.4',
 						workflow_sdk_version: '0.13.0',
+						browser_connection_state: 'connected',
+						browser_extension_version: '0.0.6',
 					},
 				},
 			},
@@ -61,7 +63,53 @@ describe('createDetachedSubAgentTraceFactory', () => {
 				metadata: { task_id: 'task-1' },
 				n8nVersion: '1.123.4',
 				workflowSdkVersion: '0.13.0',
+				browserExtension: { connectionState: 'connected', version: '0.0.6' },
 			}),
 		);
 	});
+
+	it.each([
+		[
+			'connected without a reported version',
+			{ browser_connection_state: 'connected' },
+			{ connectionState: 'connected' },
+		],
+		[
+			'disconnected',
+			{ browser_connection_state: 'disconnected' },
+			{ connectionState: 'disconnected' },
+		],
+		['absent from the parent', {}, undefined],
+		['not a known state', { browser_connection_state: 'sideways' }, undefined],
+	])(
+		'propagates the browser extension dimensions when the parent is %s',
+		async (_case, parentMetadata, expected) => {
+			mockCreateDetachedSubAgentTraceContext.mockResolvedValue({
+				rootRun: { id: 'sub-root', traceId: 'sub-trace' },
+			});
+			const context = {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				userId: 'user-1',
+				orchestratorAgentId: 'orchestrator-1',
+				tracing: {
+					projectName: 'project-1',
+					rootRun: { traceId: 'root-trace' },
+					actorRun: { id: 'actor-run', metadata: parentMetadata },
+				},
+			} as unknown as OrchestrationContext;
+
+			const createTrace = createDetachedSubAgentTraceFactory(context, {
+				agentId: 'sub-agent',
+				role: 'builder',
+				kind: 'background',
+			});
+
+			await createTrace();
+
+			expect(mockCreateDetachedSubAgentTraceContext).toHaveBeenCalledWith(
+				expect.objectContaining({ browserExtension: expected }),
+			);
+		},
+	);
 });

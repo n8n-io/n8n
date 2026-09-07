@@ -130,7 +130,11 @@ export class ErrorReporter {
 			const { executionId } = options ?? {};
 			const context = executionId ? ` (execution ${executionId})` : '';
 
+			// Prevent infinite loops in cyclic cause chains.
+			const seen = new Set<Error>();
+
 			do {
+				seen.add(e);
 				let stack = '';
 				let meta = undefined;
 				if (e instanceof ApplicationError || e instanceof BaseError) {
@@ -147,7 +151,7 @@ export class ErrorReporter {
 					this.logger.error(msg, meta);
 				}
 				e = e.cause as Error;
-			} while (e);
+			} while (e && !seen.has(e));
 		}
 	}
 
@@ -432,7 +436,9 @@ export class ErrorReporter {
 		originalException: ApplicationError | BaseError,
 	) {
 		const { level, extra, tags } = originalException;
-		event.level = level;
+		// Sentry initializes exception events at `error`. A different level was
+		// explicitly supplied in the capture context and must take precedence.
+		if (event.level === undefined || event.level === 'error') event.level = level;
 		if (extra) event.extra = { ...event.extra, ...extra };
 		if (tags) event.tags = { ...event.tags, ...tags };
 	}

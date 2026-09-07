@@ -80,7 +80,7 @@ Use \`patch_config\` with:
 
 #### Configure Native Provider Features
 
-- Thinking lives under \`config.thinking\`.
+- Reasoning effort lives under \`config.reasoning\` (\`low\`, \`medium\`, or \`high\`).
 - Prompt caching follows Agent Config Rules above; the write path enforces it
   automatically.
 - Web search lives under \`config.webSearch\`.

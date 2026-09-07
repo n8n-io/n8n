@@ -1,14 +1,13 @@
 <script lang="ts" setup>
 import AnnotationTagsDropdown from '@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue';
-import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import type { IWorkflowDb, IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterMetadata, ExecutionFilterType } from '../executions.types';
 import { i18n as locale } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
@@ -64,12 +63,10 @@ const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
 const isAnnotationFiltersEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
-const showTags = computed(() => false);
 
 const getDefaultFilter = (): ExecutionFilterType => ({
 	status: 'all',
 	workflowId: 'all',
-	tags: [],
 	annotationTags: [],
 	startDate: '',
 	endDate: '',
@@ -156,7 +153,6 @@ const countSelectedFilterProps = computed(() => {
 	const nonDefaultFilters = [
 		filter.status !== 'all',
 		filter.workflowId !== 'all' && props.workflows.length,
-		!isEmpty(filter.tags),
 		!isEmpty(filter.annotationTags),
 		filter.vote !== 'all',
 		filter.workflowVersionId !== 'all',
@@ -192,12 +188,8 @@ const onFilterMetaChange = <K extends keyof ExecutionFilterMetadata>(
 	debouncedEmit('filterChanged', filter);
 };
 
-// Can't use v-model on TagsDropdown component and thus vModel.tags is useless
+// Can't use v-model on TagsDropdown component and thus vModel.annotationTags is useless
 // We just emit the updated filter
-const onTagsChange = () => {
-	emit('filterChanged', filter);
-};
-
 const onAnnotationTagsChange = () => {
 	emit('filterChanged', filter);
 };
@@ -274,17 +266,6 @@ onBeforeMount(() => {
 							/>
 						</div>
 					</N8nSelect>
-				</div>
-				<div v-if="showTags" :class="$style.group">
-					<label for="execution-filter-tags">{{ locale.baseText('workflows.filters.tags') }}</label>
-					<WorkflowTagsDropdown
-						id="execution-filter-tags"
-						v-model="filter.tags"
-						:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
-						:create-enabled="false"
-						data-test-id="executions-filter-tags-select"
-						@update:model-value="onTagsChange"
-					/>
 				</div>
 				<div :class="$style.group">
 					<label for="execution-filter-status">{{

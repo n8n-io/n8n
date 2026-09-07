@@ -97,7 +97,7 @@ describe('scheduler cascade-delete safety', () => {
 		expect(staleComplete).toBe(0);
 
 		// The now-empty table gives every other pass nothing to do, not an error.
-		expect(await scheduler.reap()).toEqual({ reclaimed: 0, deadLettered: 0 });
+		expect(await scheduler.reap()).toEqual({ reclaimed: 0, deadLettered: 0, missed: 0 });
 		expect(await scheduler.execute()).toEqual([]);
 		expect(executed).toHaveLength(0);
 	});
@@ -120,7 +120,7 @@ describe('scheduler cascade-delete safety', () => {
 		await jobRepo.delete({ id: job.id });
 
 		expect(await taskRepo.countBy({ jobId: job.id })).toBe(0);
-		expect(await scheduler.reap()).toEqual({ reclaimed: 0, deadLettered: 0 });
+		expect(await scheduler.reap()).toEqual({ reclaimed: 0, deadLettered: 0, missed: 0 });
 		expect(await scheduler.execute()).toEqual([]);
 	});
 });

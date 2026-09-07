@@ -2,11 +2,6 @@ import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-typ
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { VariablesRequest } from '@/requests';
-
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
@@ -14,6 +9,10 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { paginateArray } from '../../shared/services/pagination.service';
+
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { VariablesRequest } from '@/requests';
 
 type VariablesHandlers = {
 	createVariable: PublicAPIEndpoint<AuthenticatedRequest>;
@@ -31,7 +30,7 @@ const variablesHandlers: VariablesHandlers = {
 			if (payload.error) {
 				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
 			}
-			await Container.get(VariablesController).createVariable(req, res, payload.data);
+			await Container.get(VariablesService).create(req.user, payload.data);
 
 			return res.status(201).send();
 		},
@@ -44,7 +43,7 @@ const variablesHandlers: VariablesHandlers = {
 			if (payload.error) {
 				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
 			}
-			await Container.get(VariablesController).updateVariable(req, res, payload.data);
+			await Container.get(VariablesService).update(req.user, req.params.id, payload.data);
 
 			return res.status(204).send();
 		},
@@ -53,7 +52,7 @@ const variablesHandlers: VariablesHandlers = {
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:delete' }),
 		async (req, res) => {
-			await Container.get(VariablesController).deleteVariable(req);
+			await Container.get(VariablesService).deleteForUser(req.user, req.params.id);
 
 			return res.status(204).send();
 		},

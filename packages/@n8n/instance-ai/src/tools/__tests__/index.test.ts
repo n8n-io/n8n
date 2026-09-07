@@ -1,6 +1,7 @@
 import { createAllTools, createOrchestrationTools, createOrchestratorDomainTools } from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext } from '../../types';
+import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
 
 vi.mock('../../parsers/structured-file-parser', () => ({
 	isParseableAttachment: vi.fn(() => false),
@@ -36,8 +37,16 @@ vi.mock('../n8n-docs.tool', () => ({
 	createN8nDocsTool: vi.fn(() => ({ id: 'n8n-docs' })),
 }));
 
+vi.mock('../mcp-servers.tool', () => ({
+	createMcpServersTool: vi.fn(() => ({ id: 'mcp-servers' })),
+}));
+
 vi.mock('../orchestration/build-agent.tool', () => ({
 	createBuildAgentTool: vi.fn(() => ({ id: 'build-agent' })),
+}));
+
+vi.mock('../orchestration/list-agent-capabilities.tool', () => ({
+	createListAgentCapabilitiesTool: vi.fn(() => ({ id: 'list-agent-capabilities' })),
 }));
 
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
@@ -208,6 +217,30 @@ describe('domain tool construction', () => {
 		expect(createOrchestratorDomainTools(enabled).get('eval-config')).toBeDefined();
 	});
 
+	it('gates the mcp-servers tool on the host-wired mcpService', () => {
+		// Gates off: adapter leaves mcpService unset → tool absent.
+		const disabled = makeContext();
+		expect(createOrchestratorDomainTools(disabled).get('mcp-servers')).toBeUndefined();
+
+		const enabled = makeContext({ mcpService: {} as InstanceAiContext['mcpService'] });
+		expect(createOrchestratorDomainTools(enabled).get('mcp-servers')).toBeDefined();
+		// Orchestrator only — a sub-agent can't offer the user a connection.
+		expect(createAllTools(enabled).get('mcp-servers')).toBeUndefined();
+	});
+
+	it('never defers mcp-servers behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
+	});
+
+	it('pairs list-agent-capabilities with build-agent in the always-loaded set', () => {
+		// Both are gated on the agents feature flag at module load time, so they
+		// must always be in or out together — the orchestrator needs to check
+		// support during intent recognition on the same footing as build-agent.
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('list-agent-capabilities')).toBe(
+			ALWAYS_LOADED_TOOL_NAMES.has('build-agent'),
+		);
+	});
+
 	it('registers create-tasks but not the removed plan orchestration tool', () => {
 		const context = makeContext({
 			workflowTaskService: {},
@@ -226,6 +259,7 @@ describe('domain tool construction', () => {
 			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
 		);
 		expect(withoutDelegate.has('build-agent')).toBe(false);
+		expect(withoutDelegate.has('list-agent-capabilities')).toBe(false);
 
 		const withDelegate = createOrchestrationTools(
 			makeContext({
@@ -234,6 +268,7 @@ describe('domain tool construction', () => {
 		);
 		expect(Object.fromEntries(withDelegate)).toMatchObject({
 			'build-agent': { id: 'build-agent' },
+			'list-agent-capabilities': { id: 'list-agent-capabilities' },
 		});
 	});
 

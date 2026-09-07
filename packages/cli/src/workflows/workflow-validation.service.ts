@@ -1,8 +1,8 @@
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import {
 	validateWorkflowHasTriggerLikeNode,
 	NodeHelpers,
@@ -23,6 +23,7 @@ import type {
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
+import { isChatOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
@@ -229,6 +230,53 @@ export class WorkflowValidationService {
 	}
 
 	/**
+	 * Rejects trigger nodes whose ids do not uniquely identify them.
+	 *
+	 * Publication records one `workflow_publication_trigger_status` row per
+	 * enabled trigger node, keyed by the composite primary key
+	 * `(workflowId, nodeId)`. A shared or absent id therefore collapses two
+	 * triggers onto one key: the diff in `computeTriggerDiff` loses one of them,
+	 * and the row insert fails on the constraint. Catching it here turns a
+	 * constraint violation raised mid-publication into a message naming the
+	 * offending nodes.
+	 *
+	 * An absent id is the same defect as a shared one — `undefined` is just an id
+	 * that every id-less node has in common — so both are reported together.
+	 */
+	validateTriggerNodeIds(triggerNodes: INode[]): WorkflowValidationResult {
+		const violations: string[] = [];
+		const namesById = new Map<string, string[]>();
+
+		for (const node of triggerNodes) {
+			if (!node.id) {
+				violations.push(`trigger "${node.name}" has no node ID`);
+				continue;
+			}
+
+			const names = namesById.get(node.id);
+			if (names) {
+				names.push(node.name);
+			} else {
+				namesById.set(node.id, [node.name]);
+			}
+		}
+
+		for (const [nodeId, names] of namesById) {
+			if (names.length < 2) continue;
+
+			const nameList = names.map((name) => `"${name}"`).join(', ');
+			violations.push(`triggers ${nameList} share the node ID "${nodeId}"`);
+		}
+
+		if (violations.length === 0) return { isValid: true };
+
+		return {
+			isValid: false,
+			error: `Cannot publish workflow: ${violations.join('; ')}. Remove and re-add the affected nodes to give them new IDs.`,
+		};
+	}
+
+	/**
 	 * Returns the credential types that are actively in use on a node — the
 	 * subset of `node.credentials` keys we should validate against.
 	 *
@@ -301,7 +349,7 @@ export class WorkflowValidationService {
 	 * - A custom resolver (OAuth, Slack, …) keys on an external identity extracted
 	 *   from trigger data, so it needs a trigger with a context establishment hook.
 	 * - The default/system resolver keys on the n8n user identity, so it needs a
-	 *   manual, chat, or sub-workflow trigger.
+	 *   trigger that establishes it (manual, sub-workflow, Chat Hub chat, MCP, form, or webhook with n8n user auth).
 	 */
 	async validateDynamicCredentials(
 		nodes: INode[],
@@ -314,7 +362,7 @@ export class WorkflowValidationService {
 		}
 
 		const resolvableCredentials = await this.credentialsRepository.find({
-			where: { id: In([...credentialIds]), isResolvable: true },
+			where: { id: In([...credentialIds]), isResolvable: true, usageScope: 'project' },
 			select: ['id', 'name'],
 		});
 
@@ -355,16 +403,29 @@ export class WorkflowValidationService {
 		const { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity } = triggers;
 
 		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
-			// System resolver: every trigger must establish the n8n user identity.
-			return allTriggersProvideN8nIdentity
-				? undefined
-				: `end-user credentials (${credNames}) are only supported in workflows triggered manually, via chat, or as a sub-workflow.`;
+			// System resolver: every trigger must establish the n8n user identity. Chat and MCP only
+			// qualify in their identity-carrying configurations.
+			if (allTriggersProvideN8nIdentity) return undefined;
+
+			const triggersList = this.getN8nUserAuthTriggersList();
+			return `end-user credentials (${credNames}) are only supported with ${triggersList}. To use another trigger, switch the credential to Fixed.`;
 		}
 
 		// Custom resolver: every trigger must provide an external identity.
-		return allTriggersProvideExternalIdentity
-			? undefined
-			: `end-user credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
+		if (allTriggersProvideExternalIdentity) return undefined;
+		return `end-user credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
+	}
+
+	/**
+	 * Describes which trigger configurations the system resolver currently accepts,
+	 * for the publish-error copy. Chat qualifies when available in Chat Hub, or with
+	 * `n8nUserAuth` in hosted-chat mode specifically — embedded/webhook-mode chat has
+	 * no page to run the OAuth2 handshake on, so it establishes no identity regardless
+	 * of the chat OAuth2 flag; MCP only with n8n user auth (OAuth2). Mirrors
+	 * `classifyTriggerIdentity`.
+	 */
+	private getN8nUserAuthTriggersList(): string {
+		return 'manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication';
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
@@ -387,7 +448,7 @@ export class WorkflowValidationService {
 	 * - `allTriggersProvideExternalIdentity`: every enabled trigger provides an external
 	 *   identity (context hook, Chat Hub, sub-workflow).
 	 * - `allTriggersProvideN8nIdentity`: every enabled trigger provides the n8n user
-	 *   identity (manual/chat, Chat Hub, sub-workflow).
+	 *   identity (manual, Chat Hub, MCP with n8n OAuth2, sub-workflow).
 	 *
 	 * A single unsupported trigger disqualifies the whole workflow, so a manual trigger
 	 * cannot mask another trigger that can't establish identity. A workflow with no
@@ -399,7 +460,10 @@ export class WorkflowValidationService {
 	private classifyTriggerIdentities(
 		nodes: INode[],
 		nodeTypes: NodeTypes,
-	): { allTriggersProvideExternalIdentity: boolean; allTriggersProvideN8nIdentity: boolean } {
+	): {
+		allTriggersProvideExternalIdentity: boolean;
+		allTriggersProvideN8nIdentity: boolean;
+	} {
 		let allTriggersProvideExternalIdentity = true;
 		let allTriggersProvideN8nIdentity = true;
 		let hasTrigger = false;
@@ -418,6 +482,7 @@ export class WorkflowValidationService {
 			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
 				node.type,
 				node.parameters,
+				{ isChatOAuth2Enabled: isChatOAuth2Enabled() },
 			);
 			allTriggersProvideExternalIdentity &&= providesExternalIdentity;
 			allTriggersProvideN8nIdentity &&= providesN8nIdentity;

@@ -53,6 +53,7 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 		displayTitle: 'Create Workflow from Code',
 	},
 	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive Workflow' },
+	MCP_UPDATE_WORKFLOW_TOOL: { toolName: 'update_workflow', displayTitle: 'Update Workflow' },
 	CODE_BUILDER_SEARCH_NODES_TOOL: { toolName: 'search', displayTitle: 'Search' },
 	CODE_BUILDER_GET_NODE_TYPES_TOOL: { toolName: 'get', displayTitle: 'Get' },
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: { toolName: 'suggest', displayTitle: 'Suggest' },
@@ -124,12 +125,14 @@ describe('create-workflow-from-code MCP tool', () => {
 		nodeTypes = mockInstance(NodeTypes);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 			if (type === '@n8n/n8n-nodes-langchain.agent') {
-				return { description: { outputs: [NodeConnectionTypes.Main] } };
+				return { description: { group: ['transform'], outputs: [NodeConnectionTypes.Main] } };
 			}
 			if (type === '@n8n/n8n-nodes-langchain.agentTool') {
-				return { description: { outputs: [NodeConnectionTypes.AiTool] } };
+				return { description: { group: ['transform'], outputs: [NodeConnectionTypes.AiTool] } };
 			}
-			return { description: {} };
+			// The group validator resolves trigger-ness via description.group; an
+			// empty (non-trigger) group keeps that check from crashing on `undefined`.
+			return { description: { group: ['transform'] } };
 		}) as typeof nodeTypes.getByNameAndVersion);
 
 		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
@@ -166,7 +169,6 @@ describe('create-workflow-from-code MCP tool', () => {
 	const workflowFinderService = mockInstance(WorkflowFinderService, {
 		findWorkflowForUser: vi.fn().mockResolvedValue(null),
 	});
-
 	const aiGatewayService = mock<AiGatewayService>();
 	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 
@@ -240,6 +242,38 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(result.isError).toBe(true);
 			const response = parseResult(result);
 			expect(response.error).toBe('projectId is required when folderId is provided');
+		});
+
+		test('passes the folder to the creation service and echoes it as targetFolder', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow) =>
+				Object.assign(new WorkflowEntity(), {
+					...workflow,
+					id: 'wf-saved-1',
+					parentFolder: { id: 'folder-1', name: 'Marketing Campaigns' },
+				}),
+			);
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+				folderId: 'folder-1',
+			});
+
+			expect(result.isError).toBeUndefined();
+			expect(createWorkflowMock).toHaveBeenCalledWith(
+				user,
+				expect.anything(),
+				expect.objectContaining({ projectId: 'custom-project-id', parentFolderId: 'folder-1' }),
+			);
+			const response = parseResult(result);
+			expect(response.targetFolder).toEqual({ id: 'folder-1', name: 'Marketing Campaigns' });
+		});
+
+		test('omits targetFolder when no folderId is provided', async () => {
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			expect(result.isError).toBeUndefined();
+			expect(parseResult(result).targetFolder).toBeUndefined();
 		});
 	});
 
@@ -443,6 +477,35 @@ describe('create-workflow-from-code MCP tool', () => {
 				name: 'Marketing',
 				type: 'team',
 			});
+			expect(response.note).toContain('post-save operation failed');
+		});
+
+		test('includes targetFolder in recovery output from the persisted parent folder', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
+				workflow.id = 'wf-recovery-2';
+				throw new Error('Post-save hook failed');
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValueOnce({
+				id: 'wf-recovery-2',
+				name: 'Recovered',
+				nodes: mockNodes,
+				parentFolder: { id: 'folder-1', name: 'Marketing Campaigns' },
+			});
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+				folderId: 'folder-1',
+			});
+
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				'wf-recovery-2',
+				user,
+				['workflow:read'],
+				{ includeParentFolder: true },
+			);
+			const response = parseResult(result);
+			expect(response.targetFolder).toEqual({ id: 'folder-1', name: 'Marketing Campaigns' });
 			expect(response.note).toContain('post-save operation failed');
 		});
 
@@ -891,7 +954,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					},
 					{
 						nodeName: 'OpenAI',
-						credentialName: 'n8n credits',
+						credentialName: 'Gateway credits',
 						credentialType: 'openAiApi',
 						source: 'aiGateway',
 					},
@@ -978,7 +1041,13 @@ describe('create-workflow-from-code MCP tool', () => {
 
 		test('flag on: groups from the code are persisted on the created workflow', async () => {
 			mockParseAndValidate.mockResolvedValue({
-				workflow: { ...mockWorkflowJson, nodeGroups },
+				workflow: {
+					...mockWorkflowJson,
+					// Webhook -> Set, so { Webhook, Set } is a structurally valid group
+					// (a single connected subgraph) once structural rules are enforced.
+					connections: { Webhook: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
+					nodeGroups,
+				},
 				warnings: [],
 			});
 
@@ -1003,32 +1072,267 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2, groupCount: 0 });
 		});
 
-		test('flag on: invalid groups fail the creation with the save-path message', async () => {
-			// The save path rejects invalid groups (`validateWorkflowNodeGroups`);
-			// the tool intentionally lets that error fail the call so no workflow
-			// is silently created without the authored groups.
-			const saveError = new Error(
-				'Node group "Ingestion" (g1) cannot contain trigger nodes: Webhook.',
-			);
-			mockParseAndValidate.mockResolvedValue({
-				workflow: { ...mockWorkflowJson, nodeGroups },
-				warnings: [],
+		// Structural group rules (no triggers, single connected subgraph, no non-main connection
+		// crossing the group boundary) aren't checked before `workflowCreationService.createWorkflow`
+		// yet — that service's own `validateWorkflowNodeGroups` (a shared safety net used by the public
+		// API, editor controller, importer, etc.) still rejects the whole creation for an invalid group.
+		// These tests describe the target behavior for that follow-up: with canvasGroupsEnabled on, an
+		// invalid group should be dropped and reported in `skippedGroups` instead, while the rest of the
+		// workflow is still created.
+		describe('structural validation', () => {
+			beforeEach(() => {
+				// The group validator resolves trigger-ness via description.group.
+				nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === 'n8n-nodes-base.webhook') {
+						return { description: { group: ['trigger'], outputs: [NodeConnectionTypes.Main] } };
+					}
+					if (type === '@n8n/n8n-nodes-langchain.agent') {
+						return { description: { group: ['transform'], outputs: [NodeConnectionTypes.Main] } };
+					}
+					if (type === '@n8n/n8n-nodes-langchain.agentTool') {
+						return {
+							description: { group: ['transform'], outputs: [NodeConnectionTypes.AiTool] },
+						};
+					}
+					return { description: { group: ['transform'], outputs: [NodeConnectionTypes.Main] } };
+				}) as typeof nodeTypes.getByNameAndVersion);
 			});
-			createWorkflowMock.mockRejectedValue(saveError);
 
-			const result = await callHandler(
-				{ code: 'const wf = ...' },
-				createTool({ canvasGroupsEnabled: true }),
-			);
+			test('a group with a trigger inside is skipped; the rest of the workflow is still created', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: { ...mockWorkflowJson, nodeGroups }, // Ingestion = [Webhook (trigger), Set]
+					warnings: [],
+				});
 
-			expect(result.isError).toBe(true);
-			expect(parseResult(result).error).toBe(saveError.message);
-			expect(telemetry.track).toHaveBeenCalledWith(
-				'User called mcp tool',
-				expect.objectContaining({
-					results: expect.objectContaining({ success: false, error: saveError.message }),
-				}),
-			);
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				expect(result.isError).toBeUndefined();
+				expect(parseResult(result).workflowId).toBe('wf-saved-1');
+
+				const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+				expect(passedWorkflow.nodeGroups).toEqual([]);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups).toEqual([
+					expect.objectContaining({
+						groupName: 'Ingestion',
+						reason: expect.stringContaining('cannot contain trigger nodes') as string,
+					}),
+				]);
+			});
+
+			test('a group that splits an AI sub-node from its Agent is skipped', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						name: 'Code Workflow',
+						nodes: [
+							{
+								id: 'agent',
+								name: 'Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'model',
+								name: 'Model',
+								type: '@n8n/n8n-nodes-langchain.agentTool',
+								typeVersion: 1,
+								position: [200, 0],
+								parameters: {},
+							},
+						],
+						connections: {
+							Model: {
+								ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+							},
+						},
+						settings: {},
+						pinData: {},
+						meta: {},
+						nodeGroups: [{ id: 'g2', name: 'Group', nodeIds: ['agent'] }],
+					},
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+				expect(passedWorkflow.nodeGroups).toEqual([]);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups).toEqual([
+					expect.objectContaining({
+						groupName: 'Group',
+						reason: expect.stringContaining('cannot cross the') as string,
+					}),
+				]);
+			});
+
+			test('a group whose nodes form a disconnected subgraph is skipped', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						name: 'Code Workflow',
+						nodes: [
+							{
+								id: 'a',
+								name: 'A',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'b',
+								name: 'B',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [200, 0],
+								parameters: {},
+							},
+						],
+						connections: {},
+						settings: {},
+						pinData: {},
+						meta: {},
+						nodeGroups: [{ id: 'g3', name: 'Group', nodeIds: ['a', 'b'] }],
+					},
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+				expect(passedWorkflow.nodeGroups).toEqual([]);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups).toEqual([
+					expect.objectContaining({
+						groupName: 'Group',
+						reason: expect.stringContaining('single connected subgraph') as string,
+					}),
+				]);
+			});
+
+			test('one invalid group among valid ones only drops the invalid one', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						name: 'Code Workflow',
+						nodes: [
+							{
+								id: 'node-1',
+								name: 'Webhook',
+								type: 'n8n-nodes-base.webhook',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'a',
+								name: 'A',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [200, 0],
+								parameters: {},
+							},
+							{
+								id: 'b',
+								name: 'B',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [400, 0],
+								parameters: {},
+							},
+						],
+						connections: { Webhook: { main: [[{ node: 'A', type: 'main', index: 0 }]] } },
+						settings: {},
+						pinData: {},
+						meta: {},
+						nodeGroups: [
+							{ id: 'g1', name: 'Bad', nodeIds: ['node-1'] },
+							{ id: 'g2', name: 'Good', nodeIds: ['a'] },
+						],
+					},
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+				expect(passedWorkflow.nodeGroups).toEqual([{ id: 'g2', name: 'Good', nodeIds: ['a'] }]);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups).toEqual([
+					expect.objectContaining({
+						groupName: 'Bad',
+						reason: expect.stringContaining('cannot contain trigger nodes') as string,
+					}),
+				]);
+			});
+
+			test('all groups valid: no skippedGroups are reported', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['node-2'] }],
+					},
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+				expect(passedWorkflow.nodeGroups).toEqual([
+					{ id: 'g1', name: 'Group', nodeIds: ['node-2'] },
+				]);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups ?? []).toEqual([]);
+			});
+
+			test('the response reports skippedGroups with a human-readable reason', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: { ...mockWorkflowJson, nodeGroups },
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups).toEqual([
+					{
+						groupName: 'Ingestion',
+						reason: expect.stringContaining('cannot contain trigger nodes') as string,
+					},
+				]);
+			});
 		});
 	});
 });

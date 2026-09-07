@@ -95,7 +95,7 @@ const handleClick = (event: MouseEvent) => {
 		:disabled="componentTag === 'button' ? isDisabled || undefined : undefined"
 		:aria-disabled="isDisabled || undefined"
 		:aria-busy="loading || undefined"
-		:tabindex="componentTag === 'a' && isDisabled ? -1 : undefined"
+		:tabindex="componentTag === 'a' && isDisabled ? -1 : attrs.tabindex"
 		:class="classes"
 		:data-icon-only="iconOnly ? 'true' : undefined"
 		aria-live="polite"
@@ -110,7 +110,7 @@ const handleClick = (event: MouseEvent) => {
 		</Transition>
 
 		<div :class="$style['button-inner']">
-			<slot name="icon" v-if="!loading">
+			<slot v-if="!loading" name="icon">
 				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
 			</slot>
 
@@ -254,12 +254,12 @@ const handleClick = (event: MouseEvent) => {
 		--button--color--background-hover: color-mix(
 			in srgb,
 			var(--button--color--background),
-			var(--background--hover)
+			light-dark(var(--color--neutral-black), var(--color--neutral-white)) 5%
 		);
 		--button--color--background-active: color-mix(
 			in srgb,
 			var(--button--color--background),
-			var(--background--active)
+			light-dark(var(--color--neutral-black), var(--color--neutral-white)) 10%
 		);
 		--button--shadow: var(--shadow--xs);
 		--button--shadow--hover: var(--shadow--xs);

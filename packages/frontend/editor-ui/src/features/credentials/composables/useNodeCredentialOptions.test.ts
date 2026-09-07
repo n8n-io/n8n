@@ -89,7 +89,12 @@ const slackNode: INodeUi = {
 	credentials: {},
 };
 
-function createCredential(overrides: { id: string; name: string; type: string }) {
+function createCredential(overrides: {
+	id: string;
+	name: string;
+	type: string;
+	usageScope?: 'project' | 'instance';
+}) {
 	return {
 		...overrides,
 		isManaged: false,
@@ -114,7 +119,9 @@ describe('useNodeCredentialOptions', () => {
 			slackApi: slackApiType,
 			slackOAuth2Api: slackOAuth2ApiType,
 		};
-		credentialsStore.state.credentials = {
+		// The picker reads the slice the scoped fetch writes, not the flat map.
+		credentialsStore.hasFetchedUsableCredentials = true;
+		credentialsStore.usableCredentials = {
 			'token-cred': createCredential({
 				id: 'token-cred',
 				name: 'Team Slack Token',
@@ -191,7 +198,7 @@ describe('useNodeCredentialOptions', () => {
 				}) as INodeTypeDescription,
 		);
 		credentialsStore.state.credentialTypes.httpBasicAuth = httpBasicAuth;
-		credentialsStore.state.credentials['basic-auth-cred'] = createCredential({
+		credentialsStore.usableCredentials['basic-auth-cred'] = createCredential({
 			id: 'basic-auth-cred',
 			name: 'Webhook Basic Auth',
 			type: 'httpBasicAuth',
@@ -210,6 +217,75 @@ describe('useNodeCredentialOptions', () => {
 		expect(
 			credentialTypesNodeDescriptionDisplayed.value[1].options.map((option) => option.type),
 		).toEqual(['httpBasicAuth']);
+	});
+
+	it('excludes instance credentials from node options', () => {
+		credentialsStore.usableCredentials['instance-cred'] = createCredential({
+			id: 'instance-cred',
+			name: 'Instance Slack Token',
+			type: 'slackApi',
+			usageScope: 'instance',
+		});
+
+		const { credentialTypesNodeDescriptionDisplayed } = setupOptions();
+
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[0].options.map((option) => option.id),
+		).not.toContain('instance-cred');
+	});
+
+	it('ignores credentials the scoped fetch left out, even when the flat map holds them', () => {
+		credentialsStore.state.credentials = {
+			'personal-cred': createCredential({
+				id: 'personal-cred',
+				name: 'Personal Slack Token',
+				type: 'slackApi',
+			}),
+		};
+
+		const { credentialTypesNodeDescriptionDisplayed } = setupOptions('slackApi');
+
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[0].options.map((option) => option.id),
+		).toEqual(['token-cred']);
+	});
+
+	it('reports a configured out-of-scope credential as missing once the scope is fetched', () => {
+		const nodeWithForeignCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'personal-cred', name: 'Personal Slack Token' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithForeignCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(false);
+	});
+
+	it('treats a configured credential as existing until the scope has been fetched', () => {
+		// Reporting it missing before the first fetch flashes "credential unavailable"
+		// and raises an NDV credential issue that isn't one.
+		credentialsStore.hasFetchedUsableCredentials = false;
+		credentialsStore.usableCredentials = {};
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'token-cred', name: 'Team Slack Token' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(true);
 	});
 
 	it('disables mixed credential behavior when override is set', () => {

@@ -1,5 +1,16 @@
+import isEqual from 'lodash/isEqual';
+import pick from 'lodash/pick';
 import type { INode } from 'n8n-workflow';
 import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
+
+// Only these properties affect how a trigger is registered. Comparing more
+// (notes, error-handling settings, ...) would deregister and re-register live
+// triggers on edits that don't change how they run.
+const registrationProps = ['name', 'type', 'typeVersion', 'webhookId', 'credentials', 'parameters'];
+
+function registrationEqual(base: INode | undefined, target: INode | undefined): boolean {
+	return isEqual(pick(base, registrationProps), pick(target, registrationProps));
+}
 
 /**
  * The trigger nodes that need to be deregistered (`toRemove`) and registered
@@ -22,7 +33,7 @@ export function computeTriggerDiff(
 	oldTriggerNodes: INode[],
 	newTriggerNodes: INode[],
 ): TriggerDiff {
-	const diff = compareWorkflowsNodes(oldTriggerNodes, newTriggerNodes);
+	const diff = compareWorkflowsNodes(oldTriggerNodes, newTriggerNodes, registrationEqual);
 
 	const toAdd: Set<INode['id']> = new Set();
 	const toRemove: Set<INode['id']> = new Set();

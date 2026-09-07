@@ -4,6 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 
 /**
  * `ChannelSetupCard` owns the body + orchestration for the `configure_channel`
@@ -17,13 +18,31 @@ const mocks = vi.hoisted(() => {
 		icon: 'slack',
 		credentialTypes: ['slackOAuth2Api'],
 	};
+	const linearIntegration = {
+		type: 'linear',
+		label: 'Linear',
+		icon: 'linear',
+		credentialTypes: ['linearOAuth2Api'],
+	};
 	return {
 		slackIntegration,
+		linearIntegration,
 		ensureLoaded: vi.fn(),
+		reloadCatalog: vi.fn(),
+		setCatalog: vi.fn<(integrations: ChatIntegrationDescriptor[]) => void>(),
 		fetchStatus: vi.fn(),
 		connect: vi.fn(),
+		disconnect: vi.fn(),
+		isConnected: vi.fn(),
+		isConfigured: vi.fn(),
 		getAgent: vi.fn(),
 		createSlackAgentApp: vi.fn(),
+		createSlackManagerCredential: vi.fn(),
+		finalizeSlackManagerCredential: vi.fn(),
+		getSlackManagedSetup: vi.fn(),
+		installSlackManagedApp: vi.fn(),
+		authorizeNewCredential: vi.fn(),
+		fetchCredentials: vi.fn(),
 	};
 });
 
@@ -41,12 +60,22 @@ vi.mock('@n8n/permissions', () => ({
 	}),
 }));
 
-vi.mock('@/features/agents/composables/useAgentIntegrationsCatalog', () => ({
-	useAgentIntegrationsCatalog: () => ({
-		catalog: ref([mocks.slackIntegration]),
-		ensureLoaded: mocks.ensureLoaded,
-	}),
-}));
+vi.mock('@/features/agents/composables/useAgentIntegrationsCatalog', () => {
+	const catalog = ref<ChatIntegrationDescriptor[]>([
+		mocks.slackIntegration,
+		mocks.linearIntegration,
+	]);
+	mocks.setCatalog.mockImplementation((integrations) => {
+		catalog.value = integrations;
+	});
+	return {
+		useAgentIntegrationsCatalog: () => ({
+			catalog,
+			ensureLoaded: mocks.ensureLoaded,
+			reload: mocks.reloadCatalog,
+		}),
+	};
+});
 
 vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 	useAgentIntegrationStatus: () => ({
@@ -57,18 +86,42 @@ vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 		errorIsConflict: ref<Record<string, boolean>>({}),
 		fetchStatus: mocks.fetchStatus,
 		connect: mocks.connect,
-		isConnected: () => false,
+		disconnect: mocks.disconnect,
+		isConnected: mocks.isConnected,
+		isConfigured: mocks.isConfigured,
 	}),
 }));
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	getAgent: mocks.getAgent,
+}));
+
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({
+		setCredentials: vi.fn(),
+		fetchUsableCredentials: mocks.fetchCredentials,
+		deleteCredential: vi.fn(),
+	}),
+}));
+
+vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
+	useCredentialOAuth: () => ({
+		authorize: vi.fn(),
+		authorizeNewCredential: mocks.authorizeNewCredential,
+	}),
+}));
+
+vi.mock('@/features/agents/channels/slack/api', () => ({
 	createSlackAgentApp: mocks.createSlackAgentApp,
+	createSlackManagerCredential: mocks.createSlackManagerCredential,
+	finalizeSlackManagerCredential: mocks.finalizeSlackManagerCredential,
+	getSlackManagedSetup: mocks.getSlackManagedSetup,
+	installSlackManagedApp: mocks.installSlackManagedApp,
 }));
 
 vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 	default: {
-		props: ['modelValue', 'setupMode', 'setupSlackApp'],
+		props: ['modelValue', 'setupMode', 'setupSlackApp', 'connected'],
 		emits: ['update:modelValue', 'connect'],
 		// `setupSlackApp` can reject (e.g. popup blocked) — mirror the real
 		// component catching that itself, so the test doesn't see an unhandled
@@ -84,7 +137,11 @@ vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 			return { runSlackAppSetup };
 		},
 		template: `
-			<div data-testid="mock-slack-setup" :data-setup-mode="setupMode">
+			<div
+				data-testid="mock-slack-setup"
+				:data-setup-mode="setupMode"
+				:data-connected="connected"
+			>
 				<button
 					data-testid="mock-slack-connect"
 					@click="$emit('update:modelValue', 'cred-1'); $emit('connect')"
@@ -99,6 +156,36 @@ vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 				>Install Slack app</button>
 			</div>
 		`,
+	},
+}));
+
+vi.mock('@/features/agents/components/AgentChannelSlackManagedSetup.vue', () => ({
+	default: {
+		props: ['setup', 'connectManager', 'installApp'],
+		setup(props: {
+			connectManager?: (credentialId?: string) => Promise<boolean>;
+			installApp?: (managerCredentialId: string, workspaceId: string) => Promise<boolean>;
+		}) {
+			async function connectManager() {
+				await props.connectManager?.();
+			}
+			async function install() {
+				await props.installApp?.('manager-credential', 'T123');
+			}
+			return { connectManager, install };
+		},
+		template: `<div data-testid="mock-slack-managed-setup">
+			<button data-testid="mock-slack-manager-connect" @click="connectManager">Connect manager</button>
+			<button data-testid="mock-slack-managed-install" @click="install">Install</button>
+		</div>`,
+	},
+}));
+
+vi.mock('@/features/agents/channels/linear/AgentChannelLinearSetup.vue', () => ({
+	default: {
+		props: ['connectedDescription'],
+		template:
+			'<div data-testid="mock-linear-setup" :data-connected-description="connectedDescription" />',
 	},
 }));
 
@@ -123,6 +210,10 @@ function mountCard(props: Record<string, unknown> = {}) {
 					props: ['disabled'],
 				},
 				N8nIcon: { template: '<i />', props: ['icon', 'size', 'color'] },
+				N8nLoading: {
+					template: '<div v-bind="$attrs" />',
+					props: ['loading', 'rows'],
+				},
 				N8nText: { template: '<span><slot/></span>', props: ['size', 'bold', 'color', 'tag'] },
 			},
 		},
@@ -133,11 +224,40 @@ describe('ChannelSetupCard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
-		mocks.ensureLoaded.mockResolvedValue([mocks.slackIntegration]);
+		mocks.setCatalog([mocks.slackIntegration, mocks.linearIntegration]);
+		mocks.ensureLoaded.mockResolvedValue([mocks.slackIntegration, mocks.linearIntegration]);
+		mocks.reloadCatalog.mockResolvedValue([mocks.slackIntegration, mocks.linearIntegration]);
 		mocks.fetchStatus.mockResolvedValue(undefined);
 		mocks.connect.mockResolvedValue({ status: 'connected' });
+		mocks.disconnect.mockResolvedValue(undefined);
+		mocks.isConnected.mockReturnValue(false);
+		mocks.isConfigured.mockReturnValue(false);
 		mocks.getAgent.mockResolvedValue({ name: 'Agent', id: 'agent-1' });
 		mocks.createSlackAgentApp.mockResolvedValue({ installUrl: 'https://slack.com/oauth/install' });
+		mocks.createSlackManagerCredential.mockResolvedValue({
+			id: 'manager-credential',
+			name: 'Slack manager',
+			type: 'slackManagerOAuth2Api',
+			isResolvable: false,
+		});
+		mocks.fetchCredentials.mockResolvedValue([
+			{
+				id: 'manager-credential',
+				name: 'Slack manager',
+				type: 'slackManagerOAuth2Api',
+			},
+		]);
+		mocks.authorizeNewCredential.mockResolvedValue(true);
+		mocks.finalizeSlackManagerCredential.mockResolvedValue(undefined);
+		mocks.getSlackManagedSetup.mockResolvedValue({
+			managedSetupAvailable: false,
+			managerCredentials: [],
+		});
+		mocks.installSlackManagedApp.mockResolvedValue({
+			status: 'connected',
+			appId: 'A123',
+			credentialId: 'slack-credential',
+		});
 	});
 
 	it('renders the setup UI for the requested integration type', async () => {
@@ -149,6 +269,40 @@ describe('ChannelSetupCard', () => {
 		);
 	});
 
+	it('renders a loading skeleton until managed Slack setup availability is known', async () => {
+		let resolveManagedSetup: (value: {
+			managedSetupAvailable: boolean;
+			managerCredentials: [];
+		}) => void = () => {};
+		mocks.getSlackManagedSetup.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveManagedSetup = resolve;
+			}),
+		);
+		const wrapper = mountCard();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-slack-managed-setup"]').exists()).toBe(false);
+
+		resolveManagedSetup({ managedSetupAvailable: false, managerCredentials: [] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(true);
+	});
+
+	it('does not describe a configured draft integration as connected', async () => {
+		mocks.isConfigured.mockReturnValue(true);
+		const wrapper = mountCard({ integrationType: 'linear' });
+		await flushPromises();
+
+		expect(
+			wrapper.get('[data-testid="mock-linear-setup"]').attributes('data-connected-description'),
+		).toBe('');
+	});
+
 	it('emits resolve({ approved: true }) after the channel connects', async () => {
 		const wrapper = mountCard();
 		await flushPromises();
@@ -157,6 +311,110 @@ describe('ChannelSetupCard', () => {
 		await flushPromises();
 
 		expect(mocks.connect).toHaveBeenCalledWith('slack', 'cred-1', undefined);
+		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+	});
+
+	it('uses managed Slack setup and resolves after the app installs', async () => {
+		mocks.getSlackManagedSetup.mockResolvedValueOnce({
+			managedSetupAvailable: true,
+			managerCredentials: [
+				{
+					id: 'manager-credential',
+					name: 'Slack manager',
+					connected: true,
+					reconnectRequired: false,
+					workspaces: [{ id: 'T123', name: 'Workspace', connected: false }],
+				},
+			],
+		});
+		const wrapper = mountCard();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="mock-slack-managed-setup"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
+
+		await wrapper.find('[data-testid="mock-slack-managed-install"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.installSlackManagedApp).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			'manager-credential',
+			'T123',
+		);
+		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+	});
+
+	it('keeps skip disabled while managed Slack authorization is in flight', async () => {
+		let resolveAuthorization: (connected: boolean) => void = () => {};
+		mocks.authorizeNewCredential.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveAuthorization = resolve;
+			}),
+		);
+		mocks.getSlackManagedSetup.mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [],
+		});
+		const wrapper = mountCard();
+		await flushPromises();
+
+		await wrapper.get('[data-testid="mock-slack-manager-connect"]').trigger('click');
+		await flushPromises();
+
+		const skipButton = wrapper.get('[data-testid="channel-setup-card-skip"]');
+		expect(skipButton.attributes('disabled')).toBeDefined();
+		await skipButton.trigger('click');
+		expect(wrapper.emitted('resolve')).toBeUndefined();
+
+		resolveAuthorization(true);
+		await flushPromises();
+
+		expect(skipButton.attributes('disabled')).toBeUndefined();
+	});
+
+	it('keeps skip disabled while managed Slack installation is in flight', async () => {
+		let resolveInstall: (result: {
+			status: 'connected';
+			appId: string;
+			credentialId: string;
+		}) => void = () => {};
+		mocks.installSlackManagedApp.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveInstall = resolve;
+			}),
+		);
+		mocks.getSlackManagedSetup.mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [
+				{
+					id: 'manager-credential',
+					name: 'Slack manager',
+					connected: true,
+					reconnectRequired: false,
+					workspaces: [{ id: 'T123', name: 'Workspace', connected: false }],
+				},
+			],
+		});
+		const wrapper = mountCard();
+		await flushPromises();
+
+		await wrapper.get('[data-testid="mock-slack-managed-install"]').trigger('click');
+		await flushPromises();
+
+		const skipButton = wrapper.get('[data-testid="channel-setup-card-skip"]');
+		expect(skipButton.attributes('disabled')).toBeDefined();
+		await skipButton.trigger('click');
+		expect(wrapper.emitted('resolve')).toBeUndefined();
+
+		resolveInstall({
+			status: 'connected',
+			appId: 'A123',
+			credentialId: 'slack-credential',
+		});
+		await flushPromises();
+
 		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
 	});
 
@@ -179,7 +437,7 @@ describe('ChannelSetupCard', () => {
 		}
 	});
 
-	it('does not notify agent surfaces when the connect fails or setup is skipped', async () => {
+	it('does not notify agent surfaces when the connect fails', async () => {
 		mocks.connect.mockRejectedValueOnce(new Error('connect failed'));
 		const onAgentUpdated = vi.fn();
 		agentsEventBus.on('agentUpdated', onAgentUpdated);
@@ -189,7 +447,6 @@ describe('ChannelSetupCard', () => {
 
 			await wrapper.find('[data-testid="mock-slack-connect"]').trigger('click');
 			await flushPromises();
-			await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
 
 			expect(onAgentUpdated).not.toHaveBeenCalled();
 		} finally {
@@ -197,13 +454,49 @@ describe('ChannelSetupCard', () => {
 		}
 	});
 
-	it('emits resolve({ approved: false }) when the user skips setup', async () => {
+	it('removes the draft integration before resolving skipped setup and refreshing the agent', async () => {
+		let finishDisconnect: () => void = () => {};
+		const onAgentUpdated = vi.fn();
+		agentsEventBus.on('agentUpdated', onAgentUpdated);
+		mocks.disconnect.mockReturnValueOnce(
+			new Promise<void>((resolve) => {
+				finishDisconnect = resolve;
+			}),
+		);
+		try {
+			const wrapper = mountCard();
+			await flushPromises();
+
+			await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.disconnect).toHaveBeenCalledWith('slack', '');
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+			expect(onAgentUpdated).not.toHaveBeenCalled();
+
+			finishDisconnect();
+			await flushPromises();
+
+			expect(onAgentUpdated).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				source: 'channel-setup-card',
+			});
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: false }]]);
+		} finally {
+			agentsEventBus.off('agentUpdated', onAgentUpdated);
+		}
+	});
+
+	it('keeps setup pending when removing the draft integration fails', async () => {
+		mocks.disconnect.mockRejectedValueOnce(new Error('disconnect failed'));
 		const wrapper = mountCard();
 		await flushPromises();
 
 		await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
+		await flushPromises();
 
-		expect(wrapper.emitted('resolve')).toEqual([[{ approved: false }]]);
+		expect(mocks.disconnect).toHaveBeenCalledWith('slack', '');
+		expect(wrapper.emitted('resolve')).toBeUndefined();
 	});
 
 	it('does not connect twice when setup emits connect twice synchronously', async () => {
@@ -254,13 +547,66 @@ describe('ChannelSetupCard', () => {
 		expect(wrapper.emitted('resolve')).toBeUndefined();
 	});
 
-	it('renders the unsupported-channel placeholder instead of a blank body when the catalog descriptor is missing', async () => {
-		// Catalog loaded successfully but has no entry for this (known) type —
-		// e.g. a fetch failure that fell back to an empty/partial list.
+	it('renders the safe fallback for an unknown catalog integration', async () => {
+		const wrapper = mountCard({ integrationType: 'unknown-channel' });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="channel-setup-catalog-error"]').exists()).toBe(false);
+	});
+
+	it('shows a loading state until the integration catalog arrives', async () => {
+		let resolveCatalog: (integrations: ChatIntegrationDescriptor[]) => void = () => {};
+		mocks.setCatalog([]);
+		mocks.ensureLoaded.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveCatalog = resolve;
+			}),
+		);
+		const wrapper = mountCard({ integrationType: 'linear' });
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="mock-linear-setup"]').exists()).toBe(false);
+
+		mocks.setCatalog([mocks.slackIntegration, mocks.linearIntegration]);
+		resolveCatalog([mocks.slackIntegration, mocks.linearIntegration]);
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-linear-setup"]').exists()).toBe(true);
+	});
+
+	it('refreshes a stale catalog before showing an error', async () => {
+		mocks.setCatalog([mocks.slackIntegration]);
+		mocks.ensureLoaded.mockResolvedValueOnce([mocks.slackIntegration]);
+		mocks.reloadCatalog.mockImplementationOnce(async () => {
+			mocks.setCatalog([mocks.slackIntegration, mocks.linearIntegration]);
+			return [mocks.slackIntegration, mocks.linearIntegration];
+		});
 		const wrapper = mountCard({ integrationType: 'linear' });
 		await flushPromises();
 
-		expect(wrapper.text()).toContain('agents.channels.modal.setupPlaceholder');
+		expect(wrapper.find('[data-testid="channel-setup-catalog-error"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-linear-setup"]').exists()).toBe(true);
+	});
+
+	it('retries loading the integration catalog after an error', async () => {
+		mocks.setCatalog([]);
+		mocks.ensureLoaded.mockRejectedValueOnce(new Error('catalog unavailable'));
+		mocks.reloadCatalog.mockImplementationOnce(async () => {
+			mocks.setCatalog([mocks.slackIntegration, mocks.linearIntegration]);
+			return [mocks.slackIntegration, mocks.linearIntegration];
+		});
+		const wrapper = mountCard({ integrationType: 'linear' });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-error"]').exists()).toBe(true);
+
+		await wrapper.find('[data-testid="channel-setup-catalog-retry"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-error"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-linear-setup"]').exists()).toBe(true);
 	});
 
 	it('does not call connect or emit resolve when the disabled prop is already true', async () => {

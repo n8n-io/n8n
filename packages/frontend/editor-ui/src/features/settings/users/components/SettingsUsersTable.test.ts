@@ -7,7 +7,7 @@ import { type UserAction } from '@n8n/design-system';
 import SettingsUsersTable from './SettingsUsersTable.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters, mockedStore, type MockedStore } from '@/__tests__/utils';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 
 const { emitters, addEmitter } = useEmitters<

@@ -13,7 +13,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps, TabOptions } from '@n8n/design-system';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { getMcpClientCatalog } from '@/features/ai/mcpAccess/mcp.clients.catalog';
 import type { McpClientSetup } from '@/features/ai/mcpAccess/mcp.clients.catalog';

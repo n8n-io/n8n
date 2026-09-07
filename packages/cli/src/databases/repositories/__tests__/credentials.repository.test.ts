@@ -12,53 +12,16 @@ describe('CredentialsRepository', () => {
 		vi.resetAllMocks();
 	});
 
-	describe('findMany', () => {
-		const credentialsId = 'cred_123';
-		const credential = mock<CredentialsEntity>({ id: credentialsId });
+	describe('findStartingWith', () => {
+		it('only searches project credential names', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
 
-		test('return `data` property if `includeData:true` and select is using the record syntax', async () => {
-			// ARRANGE
-			entityManager.find.mockResolvedValueOnce([credential]);
+			await repository.findStartingWith('API key');
 
-			// ACT
-			const credentials = await repository.findMany({ includeData: true, select: { id: true } });
-
-			// ASSERT
-			expect(credentials).toHaveLength(1);
-			expect(credentials[0]).toHaveProperty('data');
-		});
-
-		test('return `data` property if `includeData:true` and select is using the array syntax', async () => {
-			// ARRANGE
-			entityManager.find.mockResolvedValueOnce([credential]);
-
-			// ACT
-			const credentials = await repository.findMany({
-				includeData: true,
-				//TODO: fix this
-				// The function's type does not support this but this is what it
-				// actually gets from the service because the middlewares are typed
-				// loosely.
-				select: ['id'] as never,
-			});
-
-			// ASSERT
-			expect(credentials).toHaveLength(1);
-			expect(credentials[0]).toHaveProperty('data');
-		});
-
-		test('should include isGlobal in default select', async () => {
-			// ARRANGE
-			entityManager.find.mockResolvedValueOnce([credential]);
-
-			// ACT
-			await repository.findMany();
-
-			// ASSERT
 			expect(entityManager.find).toHaveBeenCalledWith(
 				CredentialsEntity,
 				expect.objectContaining({
-					select: expect.arrayContaining(['isGlobal']),
+					where: expect.objectContaining({ usageScope: 'project' }),
 				}),
 			);
 		});
@@ -240,6 +203,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { project: { type: 'personal' } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -271,6 +235,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { project: { sharedWorkflows: { workflowId } } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -303,6 +268,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { projectId },
 			});
 			expect(credentials).toHaveLength(2);

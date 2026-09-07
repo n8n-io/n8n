@@ -165,6 +165,11 @@ export class ParseValidateHandler {
 
 		const jsonValidation = validateWorkflow(json, {
 			nodeTypesProvider: this.nodeTypesProvider,
+			// The graph pass above already reports these via its default plugin
+			// validators; re-checking them here duplicates the same warning with
+			// different wording.
+			allowDisconnectedNodes: true,
+			allowNoTrigger: true,
 		});
 		this.collectValidationIssues(
 			jsonValidation.errors,
@@ -238,6 +243,11 @@ export class ParseValidateHandler {
 			// Run JSON-based validation for additional checks
 			const validationResult = validateWorkflow(json, {
 				nodeTypesProvider: this.nodeTypesProvider,
+				// The graph pass above already reports these via its default plugin
+				// validators; re-checking them here duplicates the same warning with
+				// different wording.
+				allowDisconnectedNodes: true,
+				allowNoTrigger: true,
 			});
 
 			// Collect JSON validation errors as warnings for agent self-correction

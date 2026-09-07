@@ -16,7 +16,7 @@
 			</details>
 		{{/if}}
 		Failed to connect. The window can be closed now.
-		<script>
+		<script nonce="{{cspNonce}}">
 			(function messageParent() {
 				const broadcastChannel = new BroadcastChannel('oauth-callback');
 				broadcastChannel.postMessage('error');

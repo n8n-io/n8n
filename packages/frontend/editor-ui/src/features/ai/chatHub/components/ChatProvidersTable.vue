@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import { type TableHeader } from '@n8n/design-system';
 import {
 	N8nEmptyState,
 	N8nActionToggle,

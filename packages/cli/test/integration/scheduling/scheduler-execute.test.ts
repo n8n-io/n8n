@@ -7,6 +7,8 @@ import type { ClaimedTask, Scheduler, SchedulerPasses } from '@n8n/scheduler';
 
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
+import { selfOwned } from './shared/job-factory';
+
 /**
  * The composed path against a real database: the storage bindings
  * (`buildMaterializerTransaction` plus the repositories as the task store)
@@ -57,10 +59,12 @@ describe('scheduler execution over the storage bindings', () => {
 	});
 
 	let seq = 0;
-	const createJob = async (overrides: Partial<ScheduledJob> = {}) =>
-		await jobRepo.save(
+	const createJob = async (overrides: Partial<ScheduledJob> = {}) => {
+		const jobName = `job-exec-${++seq}`;
+		return await jobRepo.save(
 			jobRepo.create({
-				name: `job-exec-${++seq}`,
+				name: jobName,
+				...selfOwned(jobName),
 				taskType: TASK_TYPE,
 				payload: {},
 				kind: 'interval',
@@ -71,6 +75,7 @@ describe('scheduler execution over the storage bindings', () => {
 				...overrides,
 			}),
 		);
+	};
 
 	const waitFor = async (predicate: () => Promise<boolean>, timeoutMs = 10_000) => {
 		const deadline = Date.now() + timeoutMs;
@@ -130,7 +135,7 @@ describe('scheduler execution over the storage bindings', () => {
 
 		const result = await scheduler.reap();
 
-		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
 		const recovered = await taskRepo.findOneByOrFail({ jobId: job.id });
 		expect(recovered.status).toBe('pending');
 		expect(recovered.claimedBy).toBeNull();
@@ -160,7 +165,7 @@ describe('scheduler execution over the storage bindings', () => {
 
 		const result = await scheduler.reap();
 
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 1, missed: 0 });
 		const failed = await taskRepo.findOneByOrFail({ jobId: job.id });
 		expect(failed.status).toBe('failed');
 		expect(failed.claimedBy).toBe('main-dead');

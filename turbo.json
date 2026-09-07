@@ -27,12 +27,17 @@
 			"env": ["RELEASE"]
 		},
 		"typecheck": {
-			"dependsOn": ["^typecheck", "^build"]
+			"dependsOn": ["^build"]
 		},
 		"format": {},
 		"format:check": {},
 		"lint": {
 			"dependsOn": ["^build", "@n8n/eslint-config#build"]
+		},
+		// The n8n-nodes-base lint script also validates load-options methods
+		// against dist/methods/*.json, which only its own build emits.
+		"n8n-nodes-base#lint": {
+			"dependsOn": ["^build", "build", "@n8n/eslint-config#build"]
 		},
 		"lint:fix": {},
 		"lint:styles": {

@@ -1,0 +1,14 @@
+{
+	"credentialType": "anthropicApi",
+	"hosts": ["platform.claude.com", "console.anthropic.com"],
+	"secretPrefix": "sk-ant-api03-",
+	"routes": {
+		"/settings/keys": "console.html",
+		"/dashboard": "dashboard.html"
+	},
+	"defaultRoute": "/dashboard",
+	"verify": {
+		"path": "/v1/models",
+		"header": "x-api-key"
+	}
+}

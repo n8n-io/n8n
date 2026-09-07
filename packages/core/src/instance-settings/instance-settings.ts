@@ -60,7 +60,24 @@ export class InstanceSettings {
 	 */
 	instanceId: string;
 
+	/**
+	 * Encryption-key-derived value of `instanceId`, before any env or DB
+	 * override is applied by `initialize()`. Used as the license device
+	 * fingerprint when the override is too short for the license server.
+	 */
+	readonly derivedInstanceId: string;
+
 	hmacSignatureSecret: string;
+
+	/**
+	 * Whether this process may create deployment-wide state, e.g. seed
+	 * deployment keys. Server processes (`start`, `worker`, `webhook`) may;
+	 * a one-off CLI command must not pin state for the whole deployment and
+	 * may run with restricted DB credentials. Set by `initialize()` from the
+	 * command's `seedsInstanceIdentity`; defaults to true for processes that
+	 * never call `initialize()` (e.g. tests).
+	 */
+	canSeedDeploymentState = true;
 
 	readonly instanceType: InstanceType;
 
@@ -73,7 +90,8 @@ export class InstanceSettings {
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
-		this.instanceId = this.generateInstanceId();
+		this.derivedInstanceId = this.generateInstanceId();
+		this.instanceId = this.derivedInstanceId;
 		this.hmacSignatureSecret = this.getOrGenerateHmacSignatureSecret();
 	}
 
@@ -83,22 +101,31 @@ export class InstanceSettings {
 	 *
 	 * Precedence for each key: env var → DB active row → derive-from-key (and persist).
 	 *
+	 * When `canSeed` is false, missing rows are not created: only server
+	 * processes hold the deployment's encryption key, so a one-off CLI command
+	 * must not pin the identity for the whole deployment.
+	 *
 	 * The repo parameter is typed inline rather than imported from @n8n/db to
 	 * avoid a circular package dependency: @n8n/db depends on n8n-core at runtime.
 	 */
-	async initialize(repo: {
-		findActiveByType(type: string): Promise<{ value: string } | null>;
-		insertOrIgnore(entity: {
-			type: string;
-			value: string;
-			status: string;
-			algorithm: null;
-		}): Promise<void>;
-	}): Promise<void> {
+	async initialize(
+		repo: {
+			findActiveByType(type: string): Promise<{ value: string } | null>;
+			insertOrIgnore(entity: {
+				type: string;
+				value: string;
+				status: string;
+				algorithm: null;
+			}): Promise<void>;
+		},
+		{ canSeed = true }: { canSeed?: boolean } = {},
+	): Promise<void> {
+		this.canSeedDeploymentState = canSeed;
 		await this.initSecret(
 			repo,
 			'instance.id',
 			process.env.N8N_INSTANCE_ID,
+			canSeed,
 			() => this.instanceId,
 			(v) => {
 				this.instanceId = v;
@@ -108,6 +135,7 @@ export class InstanceSettings {
 			repo,
 			'signing.hmac',
 			process.env.N8N_HMAC_SIGNATURE_SECRET,
+			canSeed,
 			() => this.hmacSignatureSecret,
 			(v) => {
 				this.hmacSignatureSecret = v;
@@ -127,6 +155,7 @@ export class InstanceSettings {
 		},
 		type: string,
 		envValue: string | undefined,
+		canSeed: boolean,
 		get: () => string,
 		set: (v: string) => void,
 	): Promise<void> {
@@ -139,6 +168,7 @@ export class InstanceSettings {
 			set(existing.value);
 			return;
 		}
+		if (!canSeed) return;
 		await repo.insertOrIgnore({ type, value: get(), status: 'active', algorithm: null });
 		const winner = await repo.findActiveByType(type);
 		if (winner) set(winner.value);

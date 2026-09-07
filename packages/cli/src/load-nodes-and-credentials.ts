@@ -80,7 +80,7 @@ export class LoadNodesAndCredentials {
 			.filter(Boolean)
 			.join(delimiter);
 
-		// @ts-ignore
+		// @ts-expect-error Node internal _initPaths
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		module.constructor._initPaths();
 
@@ -351,12 +351,26 @@ export class LoadNodesAndCredentials {
 			}
 			if (credType.authenticate !== undefined) return true;
 
-			return (
-				Array.isArray(credType.extends) &&
-				credType.extends.some((parentType) =>
-					['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
-				)
-			);
+			return this.extendsProxyAuthBaseType(credType);
+		});
+	}
+
+	/**
+	 * Whether a credential type reaches one of the OAuth base types through its
+	 * `extends` chain. Walks the chain transitively (cycle-guarded), since OAuth
+	 * credentials often extend a vendor intermediate (e.g. `atlassianOAuth2Api`)
+	 * rather than a base type directly.
+	 */
+	private extendsProxyAuthBaseType(credType: ICredentialType, seen = new Set<string>()): boolean {
+		if (!Array.isArray(credType.extends)) return false;
+
+		return credType.extends.some((parentName) => {
+			if (['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentName)) return true;
+			if (seen.has(parentName)) return false;
+			seen.add(parentName);
+
+			const parent = this.types.credentials.find((t) => t.name === parentName);
+			return parent !== undefined && this.extendsProxyAuthBaseType(parent, seen);
 		});
 	}
 
@@ -541,24 +555,24 @@ export class LoadNodesAndCredentials {
 	}
 
 	async postProcessLoaders() {
-		this.known = { nodes: {}, credentials: {} };
-		this.loaded = { nodes: {}, credentials: {} };
-		this.types = { nodes: [], credentials: [] };
+		const known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
+		const loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
+		const types: Types = { nodes: [], credentials: [] };
 
 		for (const loader of Object.values(this.loaders)) {
 			// Reload types if they were released from memory
 			await loader.ensureTypesLoaded();
 
 			// list of node & credential types that will be sent to the frontend
-			const { known, types, packageName } = loader;
-			this.types.nodes = this.types.nodes.concat(
-				types.nodes.map(({ name, ...rest }) => ({
+			const { known: loaderKnown, types: loaderTypes, packageName } = loader;
+			types.nodes = types.nodes.concat(
+				loaderTypes.nodes.map(({ name, ...rest }) => ({
 					...rest,
 					name: `${packageName}.${name}`,
 				})),
 			);
 
-			const processedCredentials = types.credentials.map((credential) => ({
+			const processedCredentials = loaderTypes.credentials.map((credential) => ({
 				...credential,
 				properties: injectDomainRestrictionFields(credential),
 				supportedNodes:
@@ -567,30 +581,30 @@ export class LoadNodesAndCredentials {
 						: undefined,
 			}));
 
-			this.types.credentials = this.types.credentials.concat(processedCredentials);
+			types.credentials = types.credentials.concat(processedCredentials);
 
 			// Add domain restriction fields to loaded credentials
-			for (const credentialTypeName in known.credentials) {
+			for (const credentialTypeName in loaderKnown.credentials) {
 				const credentialType = loader.getCredential(credentialTypeName);
 				credentialType.type.properties = injectDomainRestrictionFields(credentialType.type);
 			}
 
-			for (const type in known.nodes) {
-				const { className, sourcePath } = known.nodes[type];
-				this.known.nodes[`${packageName}.${type}`] = {
+			for (const type in loaderKnown.nodes) {
+				const { className, sourcePath } = loaderKnown.nodes[type];
+				known.nodes[`${packageName}.${type}`] = {
 					className,
 					sourcePath: loader.resolveSourcePath(sourcePath),
 				};
 			}
 
-			for (const type in known.credentials) {
+			for (const type in loaderKnown.credentials) {
 				const {
 					className,
 					sourcePath,
 					supportedNodes,
 					extends: extendsArr,
-				} = known.credentials[type];
-				this.known.credentials[type] = {
+				} = loaderKnown.credentials[type];
+				known.credentials[type] = {
 					className,
 					sourcePath: loader.resolveSourcePath(sourcePath),
 					supportedNodes:
@@ -601,6 +615,12 @@ export class LoadNodesAndCredentials {
 				};
 			}
 		}
+
+		// Publish the rebuilt registry. Everything below runs synchronously until the
+		// post-processor loop, so no reader can observe a half-built registry.
+		this.known = known;
+		this.loaded = loaded;
+		this.types = types;
 
 		createAiTools(this.types, this.known);
 		createHitlTools(this.types, this.known);

@@ -1,21 +1,11 @@
-import { FsByteStore, JsonStore } from '@n8n/blob-storage';
+import { JsonStore } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
-import { ErrorReporter, StorageConfig } from 'n8n-core';
+import { ErrorReporter, FsByteStoreService } from 'n8n-core';
 
 import { EXECUTION_DATA_BUNDLE_FILENAME, EXECUTION_DATA_BUNDLE_VERSION } from './constants';
 import { CorruptedExecutionDataError } from './corrupted-execution-data.error';
 import { ExecutionDataWriteError } from './execution-data-write.error';
 import type { ExecutionDataPayload, ExecutionRef } from './types';
-
-@Service()
-export class ExecutionDataFsByteStore extends FsByteStore {
-	constructor(storageConfig: StorageConfig, errorReporter: ErrorReporter) {
-		super({
-			storagePath: storageConfig.storagePath,
-			reportError: (error) => errorReporter.error(error),
-		});
-	}
-}
 
 /**
  * Stores execution data bundles as JSON blobs. The `fs` backend is always
@@ -23,7 +13,7 @@ export class ExecutionDataFsByteStore extends FsByteStore {
  */
 @Service()
 export class ExecutionDataJsonStore extends JsonStore<ExecutionRef, ExecutionDataPayload> {
-	constructor(fsByteStore: ExecutionDataFsByteStore, errorReporter: ErrorReporter) {
+	constructor(fsByteStore: FsByteStoreService, errorReporter: ErrorReporter) {
 		super({
 			byteStores: { fs: fsByteStore },
 			version: EXECUTION_DATA_BUNDLE_VERSION,

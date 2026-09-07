@@ -1,10 +1,16 @@
 import {
+	createTeamProject,
 	createWorkflow,
 	createWorkflowHistory,
 	createWorkflowWithHistory,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { WorkflowHistoryRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
+import {
+	WorkflowHistoryRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowReviewRequestRepository,
+	WorkflowReviewRequestWorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { RULES, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -27,10 +33,13 @@ describe('WorkflowHistoryRepository', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate([
+			'WorkflowReviewRequestWorkflow',
+			'WorkflowReviewRequest',
 			'WorkflowPublishedVersion',
 			'WorkflowPublishHistory',
 			'WorkflowHistory',
 			'WorkflowEntity',
+			'Project',
 			'User',
 		]);
 	});
@@ -337,6 +346,90 @@ describe('WorkflowHistoryRepository', () => {
 			expect(remainingIds).toContain(vPublished); // preserved: referenced as published
 			expect(remainingIds).toContain(vCurrent); // preserved: current version
 			expect(remainingIds).not.toContain(vOther); // pruned: old and unreferenced
+		});
+
+		// The open-review exclusion must hold even when named-version preservation
+		// is off (unlicensed), because review pins are named versions and would
+		// otherwise be pruned mid-review. A closed review no longer protects its pin.
+		it('should preserve versions pinned by an open review but not by a closed one', async () => {
+			const vCurrent = uuid();
+			const vOpenPinned = uuid();
+			const vClosedPinned = uuid();
+
+			const tenDaysAgo = new Date();
+			tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+			const oneDayAgo = new Date();
+			oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+			const workflow = await createWorkflow({
+				versionId: vCurrent,
+				nodes: [{ ...testNode1, parameters: { a: 'current' } }],
+			});
+			await createWorkflowHistory(
+				{
+					...workflow,
+					versionId: vOpenPinned,
+					nodes: [{ ...testNode1, parameters: { a: 'open-pinned' } }],
+				},
+				undefined,
+				undefined,
+				{ createdAt: tenDaysAgo, name: 'Open review pin' },
+			);
+			await createWorkflowHistory(
+				{
+					...workflow,
+					versionId: vClosedPinned,
+					nodes: [{ ...testNode1, parameters: { a: 'closed-pinned' } }],
+				},
+				undefined,
+				undefined,
+				{ createdAt: tenDaysAgo, name: 'Closed review pin' },
+			);
+			await createWorkflowHistory(workflow);
+
+			const project = await createTeamProject('Reviews Project');
+			const requestRepository = Container.get(WorkflowReviewRequestRepository);
+			const linkRepository = Container.get(WorkflowReviewRequestWorkflowRepository);
+
+			const openRequest = await requestRepository.createRequest(
+				{ projectId: project.id, title: 'Open review', createdById: null },
+				{},
+			);
+			await linkRepository.createWorkflowRow(
+				{
+					workflowReviewRequestId: openRequest.id,
+					workflowId: workflow.id,
+					workflowVersionId: vOpenPinned,
+				},
+				{},
+			);
+
+			const closedRequest = await requestRepository.createRequest(
+				{ projectId: project.id, title: 'Closed review', state: 'closed', createdById: null },
+				{},
+			);
+			await linkRepository.createWorkflowRow(
+				{
+					workflowReviewRequestId: closedRequest.id,
+					workflowId: workflow.id,
+					workflowVersionId: vClosedPinned,
+				},
+				{},
+			);
+
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			// preserveNamedVersions = false: the name on the pins must not save them here
+			await repository.deleteEarlierThanExceptCurrentAndActive(oneDayAgo, false);
+
+			const remainingIds = (await repository.find()).map((r) => r.versionId);
+			expect(remainingIds).toContain(vOpenPinned); // preserved: pinned by an open review
+			expect(remainingIds).not.toContain(vClosedPinned); // pruned: its review is closed
+
+			// The pin was nulled by the FK, not left dangling
+			const closedLinkRows = await linkRepository.findByRequestId(closedRequest.id, {});
+			expect(closedLinkRows[0]?.workflowVersionId).toBeNull();
 		});
 	});
 

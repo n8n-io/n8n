@@ -6,7 +6,7 @@ import type {
 	DataTableColumnCreatePayload,
 } from '@/features/core/dataTable/dataTable.types';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';

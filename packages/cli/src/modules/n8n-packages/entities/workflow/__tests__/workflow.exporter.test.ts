@@ -14,6 +14,7 @@ import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
 } from '../../package-export.errors';
+import { TagRequirementsExtractor } from '../../tag/tag-requirements.extractor';
 import { VariableRequirementsExtractor } from '../../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../../variable/variable.types';
 import { WorkflowExporter } from '../workflow.exporter';
@@ -51,6 +52,7 @@ function makeExporter(
 		credentialExtractor ?? new CredentialRequirementsExtractor(),
 		dataTableExtractor ?? new DataTableRequirementsExtractor(),
 		variableExtractor ?? new VariableRequirementsExtractor(),
+		new TagRequirementsExtractor(),
 	);
 	return { exporter, finder };
 }
@@ -61,13 +63,19 @@ describe('WorkflowExporter', () => {
 		const { exporter, finder } = makeExporter([workflow]);
 		const writer = new CapturingWriter();
 
-		await exporter.export({ user, workflowIds: [workflow.id], writer });
+		await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
 
 		expect(finder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(
 			[workflow.id],
 			user,
 			['workflow:export'],
-			{ includeParentFolder: true },
+			{ includeParentFolder: true, includeTags: true, includeActiveVersion: false },
 		);
 	});
 
@@ -81,6 +89,8 @@ describe('WorkflowExporter', () => {
 				user,
 				workflowIds: ['present-1', 'missing-or-denied'],
 				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
 			}),
 		).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
 	});
@@ -92,7 +102,13 @@ describe('WorkflowExporter', () => {
 		const writer = new CapturingWriter();
 
 		await expect(
-			exporter.export({ user, workflowIds: ['present-1', 'missing'], writer }),
+			exporter.export({
+				user,
+				workflowIds: ['present-1', 'missing'],
+				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			}),
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
 
@@ -103,7 +119,13 @@ describe('WorkflowExporter', () => {
 		const writer = new CapturingWriter();
 
 		await expect(
-			exporter.export({ user, workflowIds: ['present-1', 'denied-1'], writer }),
+			exporter.export({
+				user,
+				workflowIds: ['present-1', 'denied-1'],
+				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			}),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
@@ -113,7 +135,13 @@ describe('WorkflowExporter', () => {
 		const writer = new CapturingWriter();
 
 		await expect(
-			exporter.export({ user, workflowIds: ['present-1', 'missing'], writer }),
+			exporter.export({
+				user,
+				workflowIds: ['present-1', 'missing'],
+				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			}),
 		).rejects.toThrow();
 
 		expect(finder.findExistingWorkflowIds).toHaveBeenCalledWith(['missing']);
@@ -128,14 +156,16 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [workflow.id, workflow.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(entries).toEqual([
-			{ id: workflow.id, name: workflow.name, target: 'workflows/repeated' },
+			{ id: workflow.id, name: workflow.name, target: 'workflows/repeated-wf-repeated' },
 		]);
-		expect(writer.files.filter((f) => f.path === 'workflows/repeated/workflow.json')).toHaveLength(
-			1,
-		);
+		expect(
+			writer.files.filter((f) => f.path === 'workflows/repeated-wf-repeated/workflow.json'),
+		).toHaveLength(1);
 	});
 
 	it('preserves the requested workflow order even when the finder returns a different order', async () => {
@@ -148,12 +178,14 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [a.id, b.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(entries.map(({ id }) => id)).toEqual([a.id, b.id]);
 		expect(writer.files.map(({ path }) => path)).toEqual([
-			'workflows/alpha/workflow.json',
-			'workflows/beta/workflow.json',
+			'workflows/alpha-wf-a/workflow.json',
+			'workflows/beta-wf-b/workflow.json',
 		]);
 	});
 
@@ -176,9 +208,17 @@ describe('WorkflowExporter', () => {
 		const { exporter } = makeExporter([workflow]);
 		const writer = new CapturingWriter();
 
-		await exporter.export({ user, workflowIds: [workflow.id], writer });
+		await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
 
-		const workflowFile = writer.files.find((f) => f.path === 'workflows/my-workflow/workflow.json');
+		const workflowFile = writer.files.find(
+			(f) => f.path === 'workflows/my-workflow-wf-abc1234567/workflow.json',
+		);
 		expect(workflowFile).toBeDefined();
 		expect(jsonParse<unknown>(workflowFile!.content)).toMatchObject({
 			nodes: [
@@ -189,6 +229,52 @@ describe('WorkflowExporter', () => {
 				},
 			],
 		});
+	});
+
+	it('writes node groups into workflow.json', async () => {
+		const workflow = makeWorkflow({
+			nodeGroups: [
+				{ id: 'group-1', name: 'Ingest', nodeIds: ['node-1'], description: 'Pulls the data in' },
+			],
+		});
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
+
+		const workflowFile = writer.files.find(
+			(f) => f.path === 'workflows/my-workflow-wf-abc1234567/workflow.json',
+		);
+		expect(jsonParse<unknown>(workflowFile!.content)).toMatchObject({
+			nodeGroups: [
+				{ id: 'group-1', name: 'Ingest', nodeIds: ['node-1'], description: 'Pulls the data in' },
+			],
+		});
+	});
+
+	it('omits nodeGroups from workflow.json when the workflow has none', async () => {
+		const workflow = makeWorkflow({ nodeGroups: [] });
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
+
+		const workflowFile = writer.files.find(
+			(f) => f.path === 'workflows/my-workflow-wf-abc1234567/workflow.json',
+		);
+		expect(jsonParse<object>(workflowFile!.content)).not.toHaveProperty('nodeGroups');
 	});
 
 	it('nests output under `<basePrefix>/workflows` when a basePrefix is given', async () => {
@@ -202,12 +288,14 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [workflow.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 			basePrefix: 'folders/in_progress',
 		});
 
-		expect(entries[0].target).toBe('folders/in_progress/workflows/triage');
+		expect(entries[0].target).toBe('folders/in_progress/workflows/triage-wf-nested');
 		expect(writer.files.map((f) => f.path)).toContain(
-			'folders/in_progress/workflows/triage/workflow.json',
+			'folders/in_progress/workflows/triage-wf-nested/workflow.json',
 		);
 	});
 
@@ -217,14 +305,20 @@ describe('WorkflowExporter', () => {
 		const { exporter } = makeExporter([a, b]);
 		const writer = new CapturingWriter();
 
-		const { entries } = await exporter.export({ user, workflowIds: [a.id, b.id], writer });
+		const { entries } = await exporter.export({
+			user,
+			workflowIds: [a.id, b.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
 
 		const targets = entries.map((e) => e.target);
-		expect(targets).toEqual(['workflows/same-name', 'workflows/same-name-2']);
+		expect(targets).toEqual(['workflows/same-name-wf-aaaaa', 'workflows/same-name-wf-bbbbb']);
 
 		const writtenPaths = writer.files.map((f) => f.path);
-		expect(writtenPaths).toContain('workflows/same-name/workflow.json');
-		expect(writtenPaths).toContain('workflows/same-name-2/workflow.json');
+		expect(writtenPaths).toContain('workflows/same-name-wf-aaaaa/workflow.json');
+		expect(writtenPaths).toContain('workflows/same-name-wf-bbbbb/workflow.json');
 	});
 
 	it('runs the extractor on each workflow and concatenates the results into requirements.credentials', async () => {
@@ -248,6 +342,8 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [a.id, b.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(extractor.extract).toHaveBeenCalledTimes(2);
@@ -281,6 +377,8 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [a.id, b.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(extractor.extract).toHaveBeenCalledTimes(2);
@@ -304,6 +402,8 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [a.id, b.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(extractor.extract).toHaveBeenCalledTimes(2);
@@ -331,6 +431,8 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [a.id, b.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(requirements.nodeTypes).toEqual([

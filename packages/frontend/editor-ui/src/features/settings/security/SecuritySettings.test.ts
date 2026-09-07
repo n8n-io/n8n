@@ -5,8 +5,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import SecuritySettings from './SecuritySettings.vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 const getSecuritySettings = vi.fn();
 const updateSecuritySettings = vi.fn();
@@ -18,7 +18,7 @@ vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
 
 const showToast = vi.fn();
 const showError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showToast, showError }),
 }));
 
@@ -849,6 +849,16 @@ describe('SecuritySettings', () => {
 			await waitFor(() => {
 				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
 			});
+		});
+
+		it('should show a Preview tag on the workflow reviews toggle', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('security-workflow-reviews-preview-tag')).toHaveTextContent('Preview');
 		});
 
 		it('should persist workflow reviews toggle changes', async () => {

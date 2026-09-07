@@ -1,3 +1,5 @@
+import { retryabilityFromError } from '@n8n/backend-network';
+import { sleep } from '@n8n/utils/sleep';
 import { OperationalError } from 'n8n-workflow';
 
 const AI_SERVICE_MAX_ATTEMPTS = 3;
@@ -21,10 +23,6 @@ type RetryOptions = {
 };
 
 class AiServiceCallTimeoutError extends Error {}
-
-async function sleep(ms: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 // The SDK's fetch calls carry no timeout, so a stalled connection would hang the caller
 // forever and never reach the retry loop; the race unblocks the caller (the underlying
@@ -54,13 +52,12 @@ async function callWithTimeout<T>(call: () => Promise<T>, label: string): Promis
 	}
 }
 
-// The AI assistant service SDK carries upstream HTTP status as numeric statusCode;
-// gateway HTML bodies and network failures are re-wrapped without one.
+// The AI service SDK re-wraps gateway bodies and network failures without a status.
+// Those status-less failures are treated as transient here.
 function isTransientAiServiceError(error: unknown): boolean {
 	if (typeof error !== 'object' || error === null) return false;
-	const status = 'statusCode' in error ? error.statusCode : undefined;
-	if (typeof status !== 'number') return true;
-	return status >= 500 || status === 408 || status === 429;
+	const { retryable, status } = retryabilityFromError(error);
+	return retryable === 'yes' || (retryable === 'unknown' && status === undefined);
 }
 
 export async function callAiServiceWithRetry<T>(

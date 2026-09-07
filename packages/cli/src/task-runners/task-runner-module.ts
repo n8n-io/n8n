@@ -3,8 +3,8 @@ import { TaskRunnersConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import { ErrorReporter } from 'n8n-core';
-import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
 import { EventService } from '@/events/event.service';
@@ -67,6 +67,14 @@ export class TaskRunnerModule {
 
 	@OnShutdown()
 	async stop() {
+		// Stop the broker server first: its drain lets in-flight tasks finish, so the
+		// runner processes are idle by the time they are stopped and exit within the
+		// short grace before the SIGKILL escalation.
+		if (this.taskBrokerHttpServer) {
+			await this.taskBrokerHttpServer.stop();
+			this.taskBrokerHttpServer = undefined;
+		}
+
 		const stopRunnerProcessTask = (async () => {
 			if (this.jsRunnerProcess) {
 				await this.jsRunnerProcess.stop();
@@ -81,14 +89,7 @@ export class TaskRunnerModule {
 			}
 		})();
 
-		const stopRunnerServerTask = (async () => {
-			if (this.taskBrokerHttpServer) {
-				await this.taskBrokerHttpServer.stop();
-				this.taskBrokerHttpServer = undefined;
-			}
-		})();
-
-		await Promise.all([stopRunnerProcessTask, stopPythonRunnerProcessTask, stopRunnerServerTask]);
+		await Promise.all([stopRunnerProcessTask, stopPythonRunnerProcessTask]);
 	}
 
 	private async loadTaskRequester() {

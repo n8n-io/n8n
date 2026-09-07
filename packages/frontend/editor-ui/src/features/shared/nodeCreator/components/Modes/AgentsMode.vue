@@ -13,6 +13,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useAgentProjectNameResolver } from '@/features/agents/composables/useAgentProjectNameResolver';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { useAgentResourcesLocator } from '@/features/ndv/parameters/composables/useAgentResourcesLocator';
+import { useInlineAgentsExperiment } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -54,15 +55,26 @@ const search = computed(() => useViewStacks().activeViewStack.search ?? '');
 
 // The panel search bar writes into the view stack; forward it to the remote
 // agent catalog instead of the node creator's local fuzzy search.
-const debouncedSearchFilter = debounce((term: string) => void onSearchFilter(term), {
-	debounceTime: getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
-	trailing: true,
-});
+const debouncedSearchFilter = debounce(
+	(term: string) => {
+		void onSearchFilter(term);
+	},
+	{
+		debounceTime: getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
+		trailing: true,
+	},
+);
 watch(search, (term) => debouncedSearchFilter(term));
+
+const { isFeatureEnabled: isInlineAgentsEnabled } = useInlineAgentsExperiment();
 
 // Static entries above the agent list. Stable uuids keep the active keyboard
 // item intact when load-more appends agents.
 const staticElements = computed<INodeCreateElement[]>(() => {
+	// Inline agent creation is feature-flagged; without it the panel only
+	// offers existing agents, so the divider label is dropped too.
+	if (!isInlineAgentsEnabled.value) return [];
+
 	const createNew: AgentCreateElement = {
 		key: 'agent-create-new',
 		uuid: 'agent-create-new',
@@ -114,7 +126,9 @@ const loadMoreSentinel = ref<HTMLElement | null>(null);
 const observerRoot = ref<Element | null>(null);
 const { observe: observeForLoadMore } = useIntersectionObserver({
 	root: observerRoot,
-	onIntersect: () => void loadMore(),
+	onIntersect: () => {
+		void loadMore();
+	},
 });
 
 watch(

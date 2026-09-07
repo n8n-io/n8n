@@ -61,6 +61,8 @@ describe('CredentialsPermissionChecker', () => {
 		node.credentials!.someCredential.id = credentialId;
 		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(personalProject);
 		projectService.findProjectsWorkflowIsIn.mockResolvedValueOnce([personalProject.id]);
+		credentialsRepository.find.mockResolvedValue([]);
+		credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([]);
 	});
 
 	it('should throw if a node has a credential without an id', async () => {
@@ -70,7 +72,6 @@ describe('CredentialsPermissionChecker', () => {
 			'Node "Test Node" uses invalid credential',
 		);
 
-		expect(projectService.findProjectsWorkflowIsIn).toHaveBeenCalledWith(workflowId);
 		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
 	});
 
@@ -109,7 +110,6 @@ describe('CredentialsPermissionChecker', () => {
 	it('should not throw an error if the workflow has no credentials', async () => {
 		await expect(permissionChecker.check(workflowId, [])).resolves.not.toThrow();
 
-		expect(projectService.findProjectsWorkflowIsIn).toHaveBeenCalledWith(workflowId);
 		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
 	});
 
@@ -139,6 +139,42 @@ describe('CredentialsPermissionChecker', () => {
 		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
 	});
 
+	it('should reject instance credentials even when the home project owner has global scope', async () => {
+		const projectOwner = mock<User>({ role: GLOBAL_OWNER_ROLE });
+		ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(projectOwner);
+		const instanceCredential = mock<CredentialsEntity>({
+			id: credentialId,
+			usageScope: 'instance',
+		});
+		credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValueOnce([
+			instanceCredential,
+		]);
+
+		await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+			'Node "Test Node" does not have access to the credential',
+		);
+
+		expect(credentialsRepository.findNonProjectCredentialsByIds).toHaveBeenCalledWith([
+			credentialId,
+		]);
+		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
+	});
+
+	it('should reject instance credentials for member workflows', async () => {
+		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
+		const instanceCredential = mock<CredentialsEntity>({
+			id: credentialId,
+			usageScope: 'instance',
+		});
+		credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValueOnce([
+			instanceCredential,
+		]);
+
+		await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+			'Node "Test Node" does not have access to the credential',
+		);
+	});
+
 	it('should allow global credentials for any project', async () => {
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
@@ -159,6 +195,7 @@ describe('CredentialsPermissionChecker', () => {
 			select: ['id'],
 			where: {
 				isGlobal: true,
+				usageScope: 'project',
 			},
 		});
 	});
@@ -175,11 +212,12 @@ describe('CredentialsPermissionChecker', () => {
 		projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+		credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([]);
 		const globalCredential = mock<CredentialsEntity>({
 			id: credentialId,
 			isGlobal: true,
 		});
-		credentialsRepository.find.mockResolvedValue([globalCredential]);
+		credentialsRepository.find.mockResolvedValueOnce([globalCredential]);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
 
@@ -192,6 +230,7 @@ describe('CredentialsPermissionChecker', () => {
 			select: ['id'],
 			where: {
 				isGlobal: true,
+				usageScope: 'project',
 			},
 		});
 	});
@@ -233,6 +272,7 @@ describe('CredentialsPermissionChecker', () => {
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 			projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);
+			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([]);
 		});
 
 		it('should only check the active credential type for nodes with nodeCredentialType', async () => {
@@ -385,6 +425,131 @@ describe('CredentialsPermissionChecker', () => {
 			);
 		});
 
+		describe('with the credential-type parameters declared in the node type', () => {
+			// The other cases in this block mock descriptions without `properties`, which
+			// takes the "parameter not declared, trust its value" path. A real HTTP Request
+			// description declares both selectors and gates them on `authentication`, so
+			// their values only count while the matching auth mode is selected. The runtime
+			// agrees because HttpRequestV3 reads `authentication` first and only fetches the
+			// credential for that branch (its default is `none`).
+			const description = {
+				credentials: [
+					{
+						name: 'httpSslAuth',
+						required: true,
+						displayOptions: { show: { provideSslCertificates: [true] } },
+					},
+				],
+				properties: [
+					{
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+					{
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			};
+
+			const makeNode = (parameters: INode['parameters']): INode => ({
+				id: 'node-5',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.3,
+				position: [0, 0],
+				parameters,
+				credentials: {
+					googleOAuth2Api: { id: staleCredentialId, name: 'Google OAuth2' },
+					httpHeaderAuth: { id: activeCredentialId, name: 'Header Auth' },
+				},
+			});
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({ description } as never);
+				credentialsRepository.find.mockResolvedValue([]);
+			});
+
+			it('should not check a credential whose selector parameter is hidden', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+					activeCredentialId,
+				]);
+
+				const node = makeNode({
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+					// Left over from a previous setup; hidden while generic auth is selected
+					nodeCredentialType: 'googleOAuth2Api',
+				});
+
+				await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[activeCredentialId],
+				);
+			});
+
+			it('should check a credential whose selector parameter is displayed', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+
+				const node = makeNode({
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'googleOAuth2Api',
+				});
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "HTTP Request" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[staleCredentialId],
+				);
+			});
+
+			it('should ignore an expression in a hidden selector parameter', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+					activeCredentialId,
+				]);
+
+				const node = makeNode({
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+					nodeCredentialType: '={{ $json.credType }}',
+				});
+
+				await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
+
+				// A hidden parameter resolves to nothing, so the expression must not force
+				// the fallback that checks every credential reference.
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[activeCredentialId],
+				);
+			});
+
+			it('should check every credential for an expression in a displayed selector parameter', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+
+				const node = makeNode({
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: '={{ $json.credType }}',
+				});
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "HTTP Request" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					expect.arrayContaining([staleCredentialId, activeCredentialId]),
+				);
+			});
+		});
+
 		it('should fall back to checking all credentials if node type cannot be resolved', async () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
 				throw new Error('Unknown node type');
@@ -454,6 +619,18 @@ describe('CredentialsPermissionChecker', () => {
 			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
 
 			await expect(permissionChecker.checkForUser(userId, [node])).resolves.not.toThrow();
+			expect(credentialsFinderService.findCredentialsForUser).not.toHaveBeenCalled();
+		});
+
+		it('should reject instance credentials before the global-scope shortcut', async () => {
+			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
+			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: credentialId, usageScope: 'instance' }),
+			]);
+
+			await expect(permissionChecker.checkForUser(userId, [node])).rejects.toThrow(
+				'Node "Test Node" uses a credential you do not have access to',
+			);
 			expect(credentialsFinderService.findCredentialsForUser).not.toHaveBeenCalled();
 		});
 	});

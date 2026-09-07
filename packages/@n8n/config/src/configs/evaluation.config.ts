@@ -51,4 +51,11 @@ export class EvaluationConfig {
 	 */
 	@Env('N8N_AGENT_EVALS_ENABLED')
 	agentEvalsEnabled: boolean = false;
+
+	/**
+	 * Wall-clock ceiling on one agent-eval run, in minutes; non-positive disables.
+	 * Stops further cases starting — an in-flight one runs out its own timeout.
+	 */
+	@Env('N8N_AGENT_EVALS_RUN_TIMEOUT_MINUTES')
+	agentEvalsRunTimeoutMinutes: number = 60;
 }

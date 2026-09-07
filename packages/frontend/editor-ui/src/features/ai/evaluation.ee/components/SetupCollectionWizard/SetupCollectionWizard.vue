@@ -12,7 +12,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useEvalCollectionsStore } from '../../evalCollections.store';
 import { useEvaluationStore } from '../../evaluation.store';
 import type { EvalVersionEntry } from '../../evalCollections.types';

@@ -716,7 +716,7 @@ export const operationFields: INodeProperties[] = [
 								default: 'UTC',
 								displayOptions: {
 									show: {
-										'../operator': [
+										operator: [
 											...MULTI_STEP_DATE_OPERATORS,
 											...DEPRECATED_TIMEZONE_NUMBER_OPERATORS,
 											...DEPRECATED_TIMEZONE_ONLY_OPERATORS,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	CRON_NODE_TYPE,
 	INTERVAL_NODE_TYPE,
@@ -35,7 +35,7 @@ import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
-import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nSegmentControl, N8nText } from '@n8n/design-system';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
@@ -93,9 +93,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
-const showDraggableHintWithDelay = ref(false);
 const draggableHintShown = ref(false);
-
 const mappedNode = ref<string | null>(null);
 const collapsingColumnName = ref<string | null>(null);
 const inputModes = [
@@ -143,6 +141,7 @@ const inputMode = ref<MappingMode>(
 );
 
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
+
 const showDraggableHint = computed(() => {
 	const toIgnore = [MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
 	if (!currentNode.value || toIgnore.includes(currentNode.value.type)) {
@@ -275,8 +274,6 @@ const waitingMessage = computed(() => {
 	);
 });
 
-const isNDVV2 = computed(() => true);
-
 const nodeNameToExecute = computed(
 	() => (isActiveNodeConfig.value ? rootNode.value : activeNode.value?.name) ?? '',
 );
@@ -295,24 +292,21 @@ watch(
 	{ immediate: true },
 );
 
-watch(showDraggableHint, (curr, prev) => {
-	if (curr && !prev) {
-		setTimeout(() => {
-			if (draggableHintShown.value) {
-				return;
-			}
-			showDraggableHintWithDelay.value = showDraggableHint.value;
-			if (showDraggableHintWithDelay.value) {
-				draggableHintShown.value = true;
+// The drag-from-previous hint itself only ever rendered in the legacy NDV, but the
+// "user had a mappable input focused with nothing to map from" signal is still live
+// here, so keep reporting it. Fires at most once per mount, and only if the input is
+// still focused a second later.
+watch(showDraggableHint, (isHinting, wasHinting) => {
+	if (!isHinting || wasHinting) return;
 
-				telemetry.track('User viewed data mapping tooltip', {
-					type: 'unexecuted input pane',
-				});
-			}
-		}, 1000);
-	} else if (!curr) {
-		showDraggableHintWithDelay.value = false;
-	}
+	setTimeout(() => {
+		if (draggableHintShown.value || !showDraggableHint.value) return;
+
+		draggableHintShown.value = true;
+		telemetry.track('User viewed data mapping tooltip', {
+			type: 'unexecuted input pane',
+		});
+	}, 1000);
 });
 
 function filterOutConnectionType(
@@ -405,7 +399,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 <template>
 	<RunData
-		:class="[$style.runData, { [$style.runDataV2]: isNDVV2 }]"
+		:class="$style.runData"
 		:node="currentNode"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
 		:workflow-object="workflowObject"
@@ -440,16 +434,16 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		@collapsing-table-column-changed="handleChangeCollapsingColumn"
 	>
 		<template #header>
-			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
+			<div :class="$style.titleSection">
 				<N8nText
 					:bold="true"
 					color="text-light"
 					:size="compact ? 'small' : 'medium'"
-					:class="[$style.title, { [$style.titleV2]: isNDVV2 }]"
+					:class="$style.title"
 				>
 					{{ i18n.baseText('ndv.input') }}
 				</N8nText>
-				<N8nRadioButtons
+				<N8nSegmentControl
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
 					:options="inputModes"
@@ -505,25 +499,22 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					</I18nT>
 				</NDVEmptyState>
 
-				<template v-else-if="isNDVV2">
-					<NDVEmptyState
-						v-if="readOnly"
-						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
-					/>
+				<template v-else>
+					<NDVEmptyState v-if="readOnly" :title="i18n.baseText('ndv.input.noOutputData.title')" />
 					<NDVEmptyState
 						v-else-if="isMappingEnabled || hasRootNodeRun"
-						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
+						:title="i18n.baseText('ndv.input.noOutputData.title')"
 						icon="arrow-right-to-line"
 					>
-						<I18nT tag="span" keypath="ndv.input.noOutputData.v2.description" scope="global">
+						<I18nT tag="span" keypath="ndv.input.noOutputData.description" scope="global">
 							<template #link>
 								<NodeExecuteButton
 									hide-icon
 									transparent
 									variant="subtle"
 									:node-name="nodeNameToExecute"
-									:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
-									:tooltip="i18n.baseText('ndv.input.noOutputData.v2.tooltip')"
+									:label="i18n.baseText('ndv.input.noOutputData.action')"
+									:tooltip="i18n.baseText('ndv.input.noOutputData.tooltip')"
 									tooltip-placement="bottom"
 									telemetry-source="inputs"
 									data-test-id="execute-previous-node"
@@ -559,74 +550,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						</template>
 					</NDVEmptyState>
 				</template>
-
-				<template v-else>
-					<template v-if="isMappingEnabled || hasRootNodeRun">
-						<NDVEmptyState :title="i18n.baseText('ndv.input.noOutputData.title')" />
-					</template>
-					<template v-else>
-						<NDVEmptyState :title="i18n.baseText('ndv.input.rootNodeHasNotRun.title')">
-							<I18nT tag="span" keypath="ndv.input.rootNodeHasNotRun.description" scope="global">
-								<template #link>
-									<a
-										href="#"
-										data-test-id="switch-to-mapping-mode-link"
-										@click.prevent="onInputModeChange('mapping')"
-										>{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}</a
-									>
-								</template>
-							</I18nT>
-						</NDVEmptyState>
-					</template>
-					<NodeExecuteButton
-						v-if="!readOnly"
-						variant="subtle"
-						hide-icon
-						:transparent="true"
-						:node-name="nodeNameToExecute"
-						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
-						class="mt-m"
-						telemetry-source="inputs"
-						data-test-id="execute-previous-node"
-						execution-mode="exclusive"
-						tooltip-placement="bottom"
-						:show-loading-spinner="false"
-						@execute="onNodeExecute"
-					>
-						<template
-							v-if="showDraggableHint && showDraggableHintWithDelay"
-							#persistentTooltipContent
-						>
-							<div
-								v-n8n-html="
-									i18n.baseText('dataMapping.dragFromPreviousHint', {
-										interpolate: { name: focusedMappableInput },
-									})
-								"
-							></div>
-						</template>
-					</NodeExecuteButton>
-					<N8nText v-if="!readOnly" tag="div" size="small">
-						<I18nT keypath="ndv.input.noOutputData.hint" scope="global">
-							<template #info>
-								<N8nTooltip placement="bottom">
-									<template #content>
-										{{ i18n.baseText('ndv.input.noOutputData.hint.tooltip') }}
-									</template>
-									<N8nIcon icon="circle-help" />
-								</N8nTooltip>
-							</template>
-						</I18nT>
-					</N8nText>
-				</template>
 			</div>
 			<div v-else :class="$style.notConnected">
-				<NDVEmptyState v-if="isNDVV2" :title="i18n.baseText('ndv.input.notConnected.v2.title')">
+				<NDVEmptyState :title="i18n.baseText('ndv.input.notConnected.title')">
 					<template #icon>
 						<WireMeUp />
 					</template>
 					<template #description>
-						<I18nT tag="span" keypath="ndv.input.notConnected.v2.description" scope="global">
+						<I18nT tag="span" keypath="ndv.input.notConnected.description" scope="global">
 							<template #link>
 								<a
 									href="https://docs.n8n.io/workflows/components/connections/"
@@ -639,25 +570,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						</I18nT>
 					</template>
 				</NDVEmptyState>
-
-				<template v-else>
-					<div>
-						<WireMeUp />
-					</div>
-					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-						i18n.baseText('ndv.input.notConnected.title')
-					}}</N8nText>
-					<N8nText tag="div">
-						{{ i18n.baseText('ndv.input.notConnected.message') }}
-						<a
-							href="https://docs.n8n.io/workflows/components/connections/"
-							target="_blank"
-							@click="onConnectionHelpClick"
-						>
-							{{ i18n.baseText('ndv.input.notConnected.learnMore') }}
-						</a>
-					</N8nText>
-				</template>
 			</div>
 		</template>
 
@@ -701,11 +613,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 <style lang="scss" module>
 .runData {
-	background-color: var(--run-data--color--background);
-}
-
-.runDataV2 {
-	background-color: var(--ndvv2--run-data--color--background);
+	background-color: var(--ndv--run-data--color--background);
 }
 
 .mappedNode {
@@ -716,15 +624,13 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	display: flex;
 	max-width: 300px;
 	align-items: center;
+	padding-left: var(--spacing--4xs);
 
 	> * {
 		margin-right: var(--spacing--2xs);
 	}
 }
 
-.titleSectionV2 {
-	padding-left: var(--spacing--4xs);
-}
 .inputModeTab {
 	margin-left: auto;
 }
@@ -750,10 +656,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 .title {
 	text-transform: uppercase;
-	letter-spacing: 3px;
-}
-
-.titleV2 {
 	letter-spacing: 2px;
 	font-size: var(--font-size--xs);
 }
