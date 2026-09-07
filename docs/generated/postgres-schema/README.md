@@ -1191,7 +1191,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   json dataPoints
   timestamp_3__with_time_zone deliveredAt
-  varchar_36_ id
+  uuid id
   timestamp_3__with_time_zone lastAttemptAt
   text lastError
   varchar_255_ status

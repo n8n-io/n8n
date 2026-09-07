@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, MoreThanOrEqual, Not, Repository } from '@n8n/typeorm';
+import { v4 as uuid } from 'uuid';
 
 import type { InstanceReportDataPoint } from '../entities/instance-monitoring-report';
 import { InstanceMonitoringReport } from '../entities/instance-monitoring-report';
@@ -56,7 +57,9 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 	 * to deliver it. A row therefore always carries the measurement it stands for.
 	 */
 	async createPending(dataPoints: InstanceReportDataPoint[]): Promise<InstanceMonitoringReport> {
-		return await this.save(this.create({ dataPoints, status: 'pending', deliveredAt: null }));
+		return await this.save(
+			this.create({ id: uuid(), dataPoints, status: 'pending', deliveredAt: null }),
+		);
 	}
 
 	/**

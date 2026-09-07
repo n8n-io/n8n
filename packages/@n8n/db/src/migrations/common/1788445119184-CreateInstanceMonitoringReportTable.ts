@@ -8,9 +8,7 @@ export class CreateInstanceMonitoringReportTable1788445119184 implements Reversi
 		// against it (newest undelivered, gap since the last delivered) scan a
 		// trivial number of rows. `createdAt` is when the report was generated.
 		createTable(TABLE_NAME).withColumns(
-			column('id')
-				.varchar(36)
-				.primary.comment('Nanoid; travels with the payload as its `batchId`.'),
+			column('id').uuid.primary.notNull.comment('UUID; travels with the payload as its `batchId`.'),
 			column('dataPoints').json.notNull.comment(
 				'The data point array exactly as sent to the receiver.',
 			),

@@ -1,5 +1,5 @@
-import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity } from '@n8n/typeorm';
+import { DateTimeColumn, JsonColumn, WithTimestamps } from '@n8n/db';
+import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
 /** One measurement in a report; the shape the receiver accepts. */
 export type InstanceReportDataPoint =
@@ -31,7 +31,10 @@ export type InstanceReportStatus = 'pending' | 'delivered' | 'skipped_after_max_
  * report's budget instead of granting a fresh one.
  */
 @Entity()
-export class InstanceMonitoringReport extends WithTimestampsAndStringId {
+export class InstanceMonitoringReport extends WithTimestamps {
+	@PrimaryColumn('uuid')
+	id: string;
+
 	/** The data point array exactly as sent. */
 	@JsonColumn()
 	dataPoints: InstanceReportDataPoint[];

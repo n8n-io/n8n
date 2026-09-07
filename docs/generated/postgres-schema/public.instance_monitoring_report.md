@@ -8,7 +8,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | dataPoints | json |  | false |  |  | The data point array exactly as sent to the receiver. |
 | deliveredAt | timestamp(3) with time zone |  | true |  |  | When the receiver accepted the report; NULL while undelivered. |
-| id | varchar(36) |  | false |  |  | Nanoid; travels with the payload as its `batchId`. |
+| id | uuid |  | false |  |  | UUID; travels with the payload as its `batchId`. |
 | lastAttemptAt | timestamp(3) with time zone |  | true |  |  | When the last attempt finished; NULL before the first. Paces retries across a restart. |
 | lastError | text |  | true |  |  | Message of the most recent delivery failure. |
 | status | varchar(255) | 'pending'::character varying | false |  |  | Skipped means the instance stopped trying that day, not that the numbers were lost: only a delivered report crosses a day off, so a skipped day is covered by the next report. |
@@ -44,7 +44,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   json dataPoints
   timestamp_3__with_time_zone deliveredAt
-  varchar_36_ id
+  uuid id
   timestamp_3__with_time_zone lastAttemptAt
   text lastError
   varchar_255_ status

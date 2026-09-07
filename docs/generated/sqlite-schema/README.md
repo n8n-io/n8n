@@ -1178,7 +1178,7 @@ erDiagram
   datetime_3_ createdAt
   TEXT dataPoints
   datetime_3_ deliveredAt
-  varchar_36_ id PK
+  varchar id PK
   datetime_3_ lastAttemptAt
   TEXT lastError
   varchar_255_ status
