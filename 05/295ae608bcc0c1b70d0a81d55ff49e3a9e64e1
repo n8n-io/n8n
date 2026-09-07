@@ -1,0 +1,27 @@
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/retryExecution.generated.yml
+  ai_agent 1-19,22,24-173
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 6-11,31-33
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredential.generated.yml
+  ai_agent 1-18,24-30,32-63
+pnpm-lock.yaml
+  ai_agent 181-182,752,1304,1404,1637-1639,2181-2183,3804-3806,4008-4010,4204-4206,4320,4330-4332,5555-5560,6047-6050,6087-6092,6129-6131,6144-6146,6150-6152,6159-6161,6168-6170,6174-6176,6180-6182,6186-6188,6192-6194,6198-6245,6249-6263,6282-6284,6300-6302,6309-6314,6342-6344,6348-6350,6375-6377,6387-6389,6396-6401,6420-6422,6426-6428,6432-6434,6438-6443,6453-6470,6495-6497,6610-6612,6738-6740,6937-6938,7321-7323,8271-8274,8302-8305,8330-8336,10068-10069,10976-10977,13585-13586,15765-15767,20427-20429,23160-23162,26324-26334,26377-26385,26435,26437-26438,26440-26453,26458,26545,29436,30408,33050,35711-35717,41527,41529,41533,44986,44988,44990-44994
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredentials.generated.yml
+  ai_agent 1-79
+packages/@n8n/instance-ai/src/tools/index.ts
+  ai_agent 20-22,170-177
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  ai_agent 78,154,178,851,2440-2449,2461,2492-2502,2776,3843,3969-3970,3972,3984-3988,4063-4069,4073-4075,4080
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  ai_agent 19,80
+packages/@n8n/instance-ai/src/types.ts
+  ai_agent 23,36,51-58,598-605,657,1210-1240,1269-1271,1352-1358,1421-1441
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  ai_agent 11-12,32,75,146-150,381,384,387,390-392,409,442,511-514,516-536,539,541-542,598-612
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "05295ae608bcc0c1b70d0a81d55ff49e3a9e64e1",
+  "prompts": {}
+}
