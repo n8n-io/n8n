@@ -1,6 +1,8 @@
 export type ChatActionCopyStatus = 'success' | 'error';
 export type ChatActionReadAloudStatus = 'started' | 'stopped' | 'ended';
 
+export type RatingFeedback = { rating?: 'up' | 'down'; feedback?: string };
+
 export interface ChatActionCopyResult {
 	text: string;
 	status: ChatActionCopyStatus;
@@ -12,6 +14,12 @@ export interface ChatActionReadAloudResult {
 }
 
 export interface ChatActionsProps {
+	/** Show the message rating actions. Defaults to false. */
+	showRating?: boolean;
+	/** Show the feedback field after a negative rating. Defaults to true. */
+	showRatingFeedback?: boolean;
+	/** Called when the message receives rating feedback. */
+	onRating?: (feedback: RatingFeedback) => void;
 	/** Message content used by the copy and read-aloud actions. */
 	content: string;
 	/** Show the copy action. Defaults to true. */

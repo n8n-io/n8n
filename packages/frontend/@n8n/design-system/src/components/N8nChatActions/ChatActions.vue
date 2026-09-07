@@ -3,6 +3,7 @@ import { useClipboard, useSpeechSynthesis } from '@vueuse/core';
 import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nInput from '../N8nInput';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
@@ -15,6 +16,8 @@ const { t } = useI18n();
 const props = withDefaults(defineProps<ChatActionsProps>(), {
 	showCopy: true,
 	showReadAloud: true,
+	showRating: false,
+	showRatingFeedback: true,
 });
 
 const COPY_FEEDBACK_DURATION_MS = 2000;
@@ -25,6 +28,12 @@ defineSlots<{
 
 const clipboard = useClipboard({ legacy: true });
 const showCopiedFeedback = ref(false);
+const showRatingButtons = ref(true);
+const showFeedbackArea = ref(false);
+const showRatingSuccess = ref(false);
+const selectedRating = ref<'up' | 'down' | null>(null);
+const feedback = ref('');
+const feedbackInput = ref<HTMLInputElement | null>(null);
 let copyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 const speech = useSpeechSynthesis(toRef(props, 'content'), {
 	pitch: 1,
@@ -54,6 +63,35 @@ async function copyMessage() {
 	} catch {
 		props.onCopy?.({ text: props.content, status: 'error' });
 	}
+}
+
+function rateMessage(rating: 'up' | 'down') {
+	selectedRating.value = rating;
+	showRatingButtons.value = false;
+	props.onRating?.({ rating });
+	if (props.showRatingFeedback && rating === 'down') {
+		showFeedbackArea.value = true;
+		setTimeout(function focusFeedbackInput() {
+			feedbackInput.value?.focus();
+		}, 0);
+	} else {
+		showRatingSuccess.value = true;
+	}
+}
+
+function submitRatingFeedback() {
+	if (selectedRating.value) {
+		props.onRating?.({ feedback: feedback.value });
+		showFeedbackArea.value = false;
+		showRatingSuccess.value = true;
+	}
+}
+
+function cancelRatingFeedback() {
+	showFeedbackArea.value = false;
+	showRatingButtons.value = true;
+	selectedRating.value = null;
+	feedback.value = '';
 }
 
 function readMessageAloud() {
@@ -137,6 +175,33 @@ onBeforeUnmount(function cleanUpActions() {
 				:aria-pressed="isReadingAloud"
 				:data-test-id="readAloudTestId"
 				@click="readMessageAloud"
+			/>
+		</N8nTooltip>
+
+		<N8nTooltip v-if="showRating" :content="t('assistantChat.rating.thumbsUp')" placement="bottom">
+			<N8nIconButton
+				variant="ghost"
+				size="small"
+				icon="thumbs-up"
+				icon-size="medium"
+				:aria-label="t('assistantChat.rating.thumbsUp')"
+				data-test-id="message-thumbs-up-button"
+				@click="rateMessage('up')"
+			/>
+		</N8nTooltip>
+		<N8nTooltip
+			v-if="showRating"
+			:content="t('assistantChat.rating.thumbsDown')"
+			placement="bottom"
+		>
+			<N8nIconButton
+				variant="ghost"
+				size="small"
+				icon="thumbs-down"
+				icon-size="medium"
+				:aria-label="t('assistantChat.rating.thumbsDown')"
+				data-test-id="message-thumbs-down-button"
+				@click="rateMessage('down')"
 			/>
 		</N8nTooltip>
 		<slot />

@@ -8,7 +8,6 @@ import {
 	N8nChatMessage,
 	N8nIcon,
 	N8nIconButton,
-	N8nMessageRating,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -255,20 +254,12 @@ function formatJson(value: unknown): string {
 				:content="props.message.content"
 				:show-copy="hasSettledText"
 				copy-test-id="instance-ai-message-copy"
+				:show-rating="isRateable"
+				@rating="onFeedback"
 				:show-read-aloud="hasSettledText"
 				read-aloud-test-id="instance-ai-message-read-aloud"
 			>
-				<N8nMessageRating
-					v-if="isRateable"
-					minimal
-					data-test-id="instance-ai-message-rating"
-					@feedback="onFeedback"
-				/>
-				<N8nTooltip
-					v-if="store.debugMode && !isUser"
-					placement="bottom"
-					:content="debugActionLabel"
-				>
+				<N8nTooltip v-if="store.debugMode" placement="bottom" :content="debugActionLabel">
 					<N8nIconButton
 						icon="code"
 						variant="ghost"
