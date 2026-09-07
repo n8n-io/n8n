@@ -881,7 +881,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				createContext: Mock;
 				getNodeDefinitionDirs: Mock;
 				resolveExperimentGates: Mock;
-				isFolderExplorationEnabled: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
@@ -933,8 +932,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				mcpConnectionsEnabled: false,
 				conversationHistoryEnabled: false,
 				nodeUsageEnabled: false,
+				folderExplorationEnabled: false,
 			}),
-			isFolderExplorationEnabled: vi.fn().mockResolvedValue(false),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
 		service.modelService = {
@@ -1160,7 +1159,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				createContext: Mock;
 				getNodeDefinitionDirs: Mock;
 				resolveExperimentGates: Mock;
-				isFolderExplorationEnabled: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
@@ -1213,8 +1211,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				mcpConnectionsEnabled: false,
 				conversationHistoryEnabled: false,
 				nodeUsageEnabled: false,
+				folderExplorationEnabled: true,
 			}),
-			isFolderExplorationEnabled: vi.fn().mockResolvedValue(true),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
 		service.modelService = {
@@ -1282,7 +1280,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			new AbortController().signal,
 		);
 
-		expect(service.adapterService.isFolderExplorationEnabled).toHaveBeenCalledTimes(1);
+		expect(service.adapterService.resolveExperimentGates).toHaveBeenCalledTimes(1);
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ folderExplorationEnabled: true }),

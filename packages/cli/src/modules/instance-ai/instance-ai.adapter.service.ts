@@ -420,7 +420,7 @@ export class InstanceAiAdapterService {
 			/** Past-conversation recall, already bound to the run's user, project and
 			 *  thread by the caller. Absent → conversation-history tool not wired. */
 			conversationHistory?: InstanceAiConversationHistoryReader;
-			/** Per-user folder-exploration gate (via `isFolderExplorationEnabled`).
+			/** Per-user folder-exploration gate (via `resolveExperimentGates`).
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
@@ -557,6 +557,10 @@ export class InstanceAiAdapterService {
 		conversationHistoryEnabled: boolean;
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
+		/** Per-user folder-exploration gate, passed into `createContext`. Fails
+		 *  closed with every other gate: `getFeatureFlags` never throws, it
+		 *  returns `{}` on a PostHog outage. */
+		folderExplorationEnabled: boolean;
 	}> {
 		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
 		return {
@@ -568,6 +572,7 @@ export class InstanceAiAdapterService {
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
+			folderExplorationEnabled: flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] === true,
 		};
 	}
 
@@ -576,18 +581,6 @@ export class InstanceAiAdapterService {
 			Container.get(ModuleRegistry).isActive('mcp-registry') &&
 			this.settingsService.isMcpAccessEnabled()
 		);
-	}
-
-	/** Per-user folder-exploration gate. Resolved once per run by the service
-	 *  and passed into `createContext`. Fails closed: a PostHog error must never
-	 *  turn a context surface on. */
-	async isFolderExplorationEnabled(user: User): Promise<boolean> {
-		try {
-			const flags = await Container.get(PostHogClient).getFeatureFlags(user);
-			return flags?.[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] === true;
-		} catch {
-			return false;
-		}
 	}
 
 	private createMcpAdapter(user: User): InstanceAiMcpService {

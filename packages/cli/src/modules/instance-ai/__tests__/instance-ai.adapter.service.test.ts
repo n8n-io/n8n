@@ -71,6 +71,7 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -5073,9 +5074,10 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
+		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true,
 	};
 
-	it('resolves every gate from one flag fetch', async () => {
+	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
 		const getFeatureFlags = stubContainer(allEnabled);
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5083,6 +5085,7 @@ describe('resolveExperimentGates', () => {
 			mcpConnectionsEnabled: true,
 			conversationHistoryEnabled: true,
 			nodeUsageEnabled: true,
+			folderExplorationEnabled: true,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -5094,6 +5097,7 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
+			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: false,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5101,6 +5105,7 @@ describe('resolveExperimentGates', () => {
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
 			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
 		});
 	});
 
@@ -5112,6 +5117,7 @@ describe('resolveExperimentGates', () => {
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
 			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
 		});
 	});
 
@@ -5132,39 +5138,6 @@ describe('resolveExperimentGates', () => {
 		const gates = await createAdapter(false).resolveExperimentGates(user);
 
 		expect(gates.mcpConnectionsEnabled).toBe(false);
-	});
-});
-
-describe('isFolderExplorationEnabled', () => {
-	const user = { id: 'user-1' } as unknown as User;
-
-	afterEach(() => vi.restoreAllMocks());
-
-	it('resolves true when the flag is on for the user', async () => {
-		const { service } = createNodeAdapterServiceForTests([]);
-		vi.spyOn(Container, 'get').mockReturnValue({
-			getFeatureFlags: vi.fn().mockResolvedValue({ '110_instance_ai_folder_exploration': true }),
-		} as unknown as PostHogClient);
-
-		await expect(service.isFolderExplorationEnabled(user)).resolves.toBe(true);
-	});
-
-	it('resolves false when the flag is absent', async () => {
-		const { service } = createNodeAdapterServiceForTests([]);
-		vi.spyOn(Container, 'get').mockReturnValue({
-			getFeatureFlags: vi.fn().mockResolvedValue({}),
-		} as unknown as PostHogClient);
-
-		await expect(service.isFolderExplorationEnabled(user)).resolves.toBe(false);
-	});
-
-	it('fails closed when PostHog rejects', async () => {
-		const { service } = createNodeAdapterServiceForTests([]);
-		vi.spyOn(Container, 'get').mockReturnValue({
-			getFeatureFlags: vi.fn().mockRejectedValue(new Error('PostHog unreachable')),
-		} as unknown as PostHogClient);
-
-		await expect(service.isFolderExplorationEnabled(user)).resolves.toBe(false);
 	});
 });
 
