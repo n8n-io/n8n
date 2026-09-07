@@ -14,6 +14,18 @@ export interface Page {
 	parentPageId: string | null;
 	route: string;
 	content: unknown[] | null;
+	dataWorkflowId: string | null;
 	createdAt: string;
 	updatedAt: string;
+}
+
+/** A workflow a page can wire up as its `dataWorkflowId`, i.e. it starts with a compatible trigger. */
+export interface DataWorkflowOption {
+	id: string;
+	name: string;
+}
+
+export interface UpdatePageInput {
+	route?: string;
+	dataWorkflowId?: string | null;
 }

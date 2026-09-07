@@ -59,6 +59,7 @@ erDiagram
   varchar_36_ appId FK
   TEXT content
   datetime_3_ createdAt
+  varchar_36_ dataWorkflowId FK
   varchar_36_ id PK
   varchar_36_ parentPageId FK
   varchar_255_ route

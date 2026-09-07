@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { createWorkflow, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -247,6 +247,36 @@ describe('App pages', () => {
 		await authOwnerAgent
 			.post(`/projects/${ownerProject.id}/apps/${appB.id}/pages`)
 			.send({ route: 'child', parentPageId: pageInA.id })
+			.expect(404);
+	});
+
+	test("sets and clears a page's dataWorkflowId", async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, 'home');
+		const workflow = await createWorkflow({}, ownerProject);
+
+		const setResponse = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ dataWorkflowId: workflow.id })
+			.expect(200);
+		expect(setResponse.body.data.dataWorkflowId).toBe(workflow.id);
+
+		const clearResponse = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ dataWorkflowId: null })
+			.expect(200);
+		expect(clearResponse.body.data.dataWorkflowId).toBeNull();
+	});
+
+	test("rejects a dataWorkflowId the caller can't read", async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, 'home');
+		// Owned by no one, so no SharedWorkflow row grants the owner access to it.
+		const workflow = await createWorkflow();
+
+		await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ dataWorkflowId: workflow.id })
 			.expect(404);
 	});
 });

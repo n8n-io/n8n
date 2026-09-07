@@ -8,18 +8,20 @@ import {
 	deleteAppApi,
 	deletePageApi,
 	fetchAppsApi,
+	fetchDataWorkflowsApi,
 	fetchPagesApi,
 	getAppApi,
 	updatePageApi,
 } from '@/features/apps/apps.api';
 import { APPS_STORE } from '@/features/apps/apps.constants';
-import type { App, Page } from '@/features/apps/apps.types';
+import type { App, DataWorkflowOption, Page, UpdatePageInput } from '@/features/apps/apps.types';
 
 export const useAppsStore = defineStore(APPS_STORE, () => {
 	const rootStore = useRootStore();
 
 	const apps = ref<App[]>([]);
 	const pages = ref<Page[]>([]);
+	const dataWorkflowOptions = ref<DataWorkflowOption[]>([]);
 
 	const fetchApps = async (projectId: string) => {
 		apps.value = await fetchAppsApi(rootStore.restApiContext, projectId);
@@ -61,10 +63,19 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		return page;
 	};
 
-	const updatePage = async (projectId: string, appId: string, pageId: string, route: string) => {
-		const page = await updatePageApi(rootStore.restApiContext, projectId, appId, pageId, route);
+	const updatePage = async (
+		projectId: string,
+		appId: string,
+		pageId: string,
+		updates: UpdatePageInput,
+	) => {
+		const page = await updatePageApi(rootStore.restApiContext, projectId, appId, pageId, updates);
 		pages.value = pages.value.map((p) => (p.id === pageId ? page : p));
 		return page;
+	};
+
+	const fetchDataWorkflows = async (projectId: string) => {
+		dataWorkflowOptions.value = await fetchDataWorkflowsApi(rootStore.restApiContext, projectId);
 	};
 
 	const deletePage = async (projectId: string, appId: string, pageId: string) => {
@@ -78,6 +89,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 	return {
 		apps,
 		pages,
+		dataWorkflowOptions,
 		fetchApps,
 		getApp,
 		createApp,
@@ -86,5 +98,6 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		createPage,
 		updatePage,
 		deletePage,
+		fetchDataWorkflows,
 	};
 });
