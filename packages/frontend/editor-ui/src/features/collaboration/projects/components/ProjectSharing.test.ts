@@ -1,4 +1,4 @@
-import { within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems, getSelectedDropdownValue } from '@/__tests__/utils';
@@ -8,7 +8,7 @@ import type { AllRolesMap } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import type * as I18nModule from '@n8n/i18n';
 import type { ProjectListItem } from '../projects.types';
-import type { ProjectSearchFn } from '../projects.utils';
+import type { ProjectSearchFn, ProjectSearchResult } from '../projects.utils';
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
 	const actual = await importOriginal<typeof I18nModule>();
@@ -458,6 +458,86 @@ describe('ProjectSharing', () => {
 			// "All users and projects" should not be in dropdown when already shared globally
 			expect(dropdownItems[0]).not.toHaveTextContent('All users and projects');
 			expect(dropdownItems).toHaveLength(personalProjects.length);
+		});
+	});
+
+	describe('pending search', () => {
+		const namedProjects: ProjectListItem[] = [
+			{ ...createProjectListItem('team'), name: 'Project 1' },
+			{ ...createProjectListItem('team'), name: 'Project 2' },
+			{ ...createProjectListItem('team'), name: 'Project 3' },
+		];
+
+		/**
+		 * Answers the initial load at once, then holds every later search open until the test
+		 * resolves it. This keeps the component in the window between the keystroke and the
+		 * search response.
+		 */
+		const createDeferredSearchFn = (projects: ProjectListItem[]) => {
+			let resolvePendingSearch: ((result: ProjectSearchResult) => void) | undefined;
+			let initialLoadDone = false;
+
+			const searchFn: ProjectSearchFn = async () => {
+				if (!initialLoadDone) {
+					initialLoadDone = true;
+					return { count: projects.length, data: projects };
+				}
+				return await new Promise<ProjectSearchResult>((resolve) => {
+					resolvePendingSearch = resolve;
+				});
+			};
+
+			return {
+				searchFn,
+				hasPendingSearch: () => resolvePendingSearch !== undefined,
+				resolvePendingSearch: (result: ProjectSearchResult) => resolvePendingSearch?.(result),
+			};
+		};
+
+		const getOptionNames = () =>
+			Array.from(document.querySelectorAll('.el-select-dropdown__item')).map((item) =>
+				item.textContent?.trim(),
+			);
+
+		const search = async (projectSelect: HTMLElement, query: string) => {
+			await fireEvent.update(within(projectSelect).getByRole('combobox'), query);
+		};
+
+		it('should drop the options of the previous query as soon as the user types', async () => {
+			const { searchFn } = createDeferredSearchFn(namedProjects);
+			const { getByTestId } = renderComponent({
+				props: { searchFn, modelValue: null },
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			expect(await getDropdownItems(projectSelect)).toHaveLength(namedProjects.length);
+
+			await search(projectSelect, 'Project 2');
+
+			// The search response is still pending, so these are the previous query's projects
+			// filtered locally. Without that filter the dropdown would still offer all three.
+			expect(getOptionNames()).toEqual(['Project 2']);
+		});
+
+		it('should show the search results as they are once they land', async () => {
+			const { searchFn, hasPendingSearch, resolvePendingSearch } =
+				createDeferredSearchFn(namedProjects);
+			const { getByTestId } = renderComponent({
+				props: { searchFn, modelValue: null },
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			await getDropdownItems(projectSelect);
+
+			await search(projectSelect, 'Project 2');
+			await waitFor(() => expect(hasPendingSearch()).toBe(true));
+
+			// The server decides what matches, so a result the local filter would have hidden
+			// is still offered once the response is in.
+			const serverResults = [{ ...createProjectListItem('team'), name: 'Second project' }];
+			resolvePendingSearch({ count: serverResults.length, data: serverResults });
+
+			await waitFor(() => expect(getOptionNames()).toEqual(['Second project']));
 		});
 	});
 });

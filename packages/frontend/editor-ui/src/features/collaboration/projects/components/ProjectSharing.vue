@@ -85,9 +85,21 @@ const noDataText = computed(
 const searchResults = ref<ProjectListItem[]>([]);
 const searchCount = ref(0);
 const filter = ref('');
+// The query the current searchResults belong to. It differs from `filter` while the
+// remote search for the typed query is still pending.
+const searchedFilter = ref('');
+const isSearchPending = computed(() => filter.value !== searchedFilter.value);
 
 const filteredProjects = computed(() => {
 	let list = searchResults.value;
+
+	// The search is debounced, so between the keystroke and the response the list still
+	// holds the results of the previous query. Filter it locally in that window, so the
+	// dropdown never offers an option that does not match what the user typed.
+	if (isSearchPending.value) {
+		const query = filter.value.toLowerCase();
+		list = list.filter((p) => p.name?.toLowerCase().includes(query) ?? false);
+	}
 
 	// Apply consumer's filterFn
 	if (props.filterFn) {
@@ -119,6 +131,11 @@ const sortedProjects = computed((): ProjectListItem[] => {
 });
 
 const moreResultsCount = computed(() => {
+	// The count belongs to the last completed search. While a newer query is pending the
+	// list is filtered locally, so the count does not describe what is on screen.
+	if (isSearchPending.value) {
+		return 0;
+	}
 	return Math.max(0, searchCount.value - searchResults.value.length);
 });
 
@@ -145,18 +162,35 @@ const executeSearch = async (query: string) => {
 		if (generation !== searchGeneration) return; // stale response, discard
 		searchResults.value = result.data ?? [];
 		searchCount.value = result.count ?? 0;
+		searchedFilter.value = query;
 	} catch {
 		if (generation !== searchGeneration) return;
 		searchResults.value = [];
 		searchCount.value = 0;
+		searchedFilter.value = query;
 	}
 };
 
 const debouncedSearch = useDebounceFn(executeSearch, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 const setFilter = (query: string) => {
+	if (query === filter.value) {
+		return;
+	}
 	filter.value = query;
 	void debouncedSearch(query);
+};
+
+/**
+ * element-plus debounces its own `remote-method` by 300ms, so the select tells us the
+ * query long after the user typed it. Read the query from the input event instead, so
+ * the list filters at once. `remote-method` still resets the filter when the select
+ * clears the query itself, e.g. when the dropdown closes.
+ */
+const onSearchInput = (event: Event) => {
+	if (event.target instanceof HTMLInputElement) {
+		setFilter(event.target.value);
+	}
 };
 
 // Load initial results
@@ -232,6 +266,7 @@ watch(
 				:disabled="props.readonly || !!props.disabledTooltip"
 				:clearable
 				:popper-class="$style.popper"
+				@input="onSearchInput"
 				@update:model-value="onProjectSelected"
 				@clear="emit('clear')"
 			>

@@ -150,13 +150,13 @@ test.describe(
 			).toHaveCount(2);
 		});
 
-		// Reproduces the flakiness of 'should move the workflow to expected projects'.
-		// The destination select is a remote select with a 300ms debounce, so the options on
-		// screen right after the user types are still the unfiltered list from when the modal
-		// opened. The move flow clicks the destination as soon as its option is visible, which
-		// is inside that window: when the filtered response lands it replaces the option list
-		// under the pointer, so the click can select a different project than the one asked
-		// for. The workflow then lands in the wrong project and the later count assertions fail.
+		// Guards the fix for the flakiness of 'should move the workflow to expected projects'.
+		// The destination select searches on the server, so the options on screen used to stay
+		// the unfiltered list from when the modal opened until the response landed. The move
+		// flow clicks the destination as soon as its option is visible, which was inside that
+		// window: the response then replaced the option list under the pointer and the click
+		// could select a different project. The select now filters the offered options as the
+		// user types, so the list the click lands in always matches the query.
 		test('should offer only projects matching the typed search in the move modal @auth:owner', async ({
 			n8n,
 		}) => {
