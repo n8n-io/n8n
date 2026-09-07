@@ -862,6 +862,7 @@ export function getLifecycleHooksForScalingWorker(
 	hookFunctionsSaveWorker(hooks, optionalParameters);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsStatistics(hooks, source);
+	hookFunctionsPreExecute(hooks, source);
 	hookFunctionsPostExecute(hooks);
 
 	if (executionMode === 'manual' && Container.get(InstanceSettings).isWorker) {

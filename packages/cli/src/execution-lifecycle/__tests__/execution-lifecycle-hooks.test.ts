@@ -1583,13 +1583,18 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
-		it('should not run workflow.preExecute when legacy flag is on', async () => {
+		it('should run workflow.preExecute when legacy flag is on', async () => {
 			executionsConfig.preExecuteErrorCreatesExecution = true;
 			lifecycleHooks = createHooks();
 
 			await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
 
-			expect(externalHooks.run).not.toHaveBeenCalled();
+			expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
+				workflow,
+				'manual',
+				workflowHookContext,
+				undefined,
+			]);
 		});
 
 		describe('saving static data', () => {
