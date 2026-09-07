@@ -1,4 +1,5 @@
 import type { WorkflowLoopStorage } from '../../storage/workflow-loop-storage';
+import { MAX_VERIFY_ATTEMPTS } from '../remediation';
 import type { WorkflowBuildOutcome } from '../workflow-loop-state';
 import { WorkflowTaskCoordinator } from '../workflow-task-service';
 
@@ -6,6 +7,21 @@ function createStorage() {
 	const records = new Map<string, Record<string, unknown>>();
 
 	const storage = {
+		updateBuildOutcome: vi.fn(
+			async (
+				_threadId: string,
+				workItemId: string,
+				update: (outcome: WorkflowBuildOutcome) => WorkflowBuildOutcome,
+			) => {
+				const record = records.get(workItemId);
+				if (!record?.lastBuildOutcome) throw new Error('Missing outcome');
+				records.set(workItemId, {
+					...record,
+					lastBuildOutcome: update(record.lastBuildOutcome as WorkflowBuildOutcome),
+				});
+				await Promise.resolve();
+			},
+		),
 		getWorkItem: vi.fn(async (_threadId: string, workItemId: string) => {
 			return await Promise.resolve(
 				(records.get(workItemId) ?? null) as Awaited<
@@ -52,6 +68,41 @@ function createBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): Work
 }
 
 describe('WorkflowTaskCoordinator', () => {
+	it('counts reservations and stops at the attempt limit', async () => {
+		const { storage } = createStorage();
+		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+		await coordinator.reportBuildOutcome(createBuildOutcome());
+		for (let attempt = 0; attempt < MAX_VERIFY_ATTEMPTS; attempt++) {
+			await coordinator.startVerification('wi_1');
+		}
+		await expect(coordinator.startVerification('wi_1')).rejects.toThrow('attempt limit');
+		expect((await coordinator.getBuildOutcome('wi_1'))?.verifyAttempts).toBe(MAX_VERIFY_ATTEMPTS);
+	});
+
+	it('merges completed trigger runs against the latest stored coverage', async () => {
+		const { storage } = createStorage();
+		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+		await coordinator.reportBuildOutcome(createBuildOutcome({ verificationProgress: {} }));
+		await coordinator.startVerification('wi_1', 'A');
+		await coordinator.startVerification('wi_1', 'B');
+		for (const triggerNodeName of ['B', 'A']) {
+			await coordinator.recordVerification(
+				'wi_1',
+				{
+					attempted: true,
+					success: true,
+					executionId: triggerNodeName,
+					evidence: { triggerNodeName, nodesExecuted: [triggerNodeName] },
+				},
+				[],
+			);
+		}
+		expect((await coordinator.getBuildOutcome('wi_1'))?.verificationProgress).toEqual({
+			A: ['A'],
+			B: ['B'],
+		});
+	});
+
 	it('persists build outcomes and returns the next action', async () => {
 		const { storage } = createStorage();
 		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);

@@ -53,6 +53,7 @@ import type {
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
 	WorkflowLoopState,
+	WorkflowVerificationEvidence,
 	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
@@ -1746,6 +1747,12 @@ export interface WorkflowTaskService {
 	getLatestBuildOutcomeForWorkflow(workflowId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
+	startVerification(workItemId: string, triggerNodeName?: string): Promise<string[]>;
+	recordVerification(
+		workItemId: string,
+		verification: WorkflowVerificationEvidence,
+		previousNodes: string[],
+	): Promise<void>;
 }
 
 // ── Orchestration context (plan tools) ──────────────────────────────────────

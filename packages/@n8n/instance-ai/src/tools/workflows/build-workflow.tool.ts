@@ -1066,7 +1066,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const heldForNewCredentialTypes = mockResult.heldForNewCredentialTypes;
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
 				const triggerNodes = (json.nodes ?? [])
-					.filter((n) => isTriggerNodeType(n.type))
+					.filter((n) => !n.disabled && isTriggerNodeType(n.type))
 					.map((n) => ({ nodeName: n.name, nodeType: n.type }))
 					.filter(
 						(t): t is { nodeName: string; nodeType: string } =>

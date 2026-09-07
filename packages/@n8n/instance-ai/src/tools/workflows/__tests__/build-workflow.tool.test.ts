@@ -1743,7 +1743,7 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
-	it('reports planned multi-trigger outcomes with empty progress and no source artifact', async () => {
+	it.each([false, true])('tracks only enabled triggers (disabled=%s)', async (disabled) => {
 		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
 			success: true,
 			workflow: {
@@ -1753,6 +1753,7 @@ describe('createBuildWorkflowTool', () => {
 					{
 						id: 'schedule-1',
 						name: 'Schedule',
+						disabled,
 						type: 'n8n-nodes-base.scheduleTrigger',
 						typeVersion: 1,
 						position: [0, 100],
@@ -1803,8 +1804,11 @@ describe('createBuildWorkflowTool', () => {
 			owner: { type: 'planned', taskId: 'task-1' },
 			plannedTaskId: 'task-1',
 			sourceFilePath: filePath,
-			verificationProgress: {},
+			verificationProgress: disabled ? undefined : {},
 		});
+		expect(storedOutcome?.triggerNodes?.some((trigger) => trigger.nodeName === 'Schedule')).toBe(
+			!disabled,
+		);
 		expect(storedOutcome).not.toHaveProperty('sourceArtifact');
 
 		const reportedOutcome = reportBuildOutcome.mock.calls[0]?.[0] as

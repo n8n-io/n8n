@@ -2211,6 +2211,15 @@ export class InstanceAiService {
 				await sync();
 			},
 			getBuildOutcome: async (workItemId) => await workflowTasks.getBuildOutcome(workItemId),
+			startVerification: async (workItemId, triggerNodeName) => {
+				const previousNodes = await workflowTasks.startVerification(workItemId, triggerNodeName);
+				await sync();
+				return previousNodes;
+			},
+			recordVerification: async (workItemId, verification, previousNodes) => {
+				await workflowTasks.recordVerification(workItemId, verification, previousNodes);
+				await sync();
+			},
 			getLatestBuildOutcomeForWorkflow: async (workflowId) =>
 				await workflowTasks.getLatestBuildOutcomeForWorkflow(workflowId),
 			getWorkflowLoopState: async (workItemId) =>

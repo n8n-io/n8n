@@ -1,3 +1,4 @@
+import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { getThread, patchThread, type PatchableThreadMemory } from './thread-patch';
@@ -95,6 +96,28 @@ export class WorkflowLoopStorage {
 			}
 		}
 		return null;
+	}
+
+	async updateBuildOutcome(
+		threadId: string,
+		workItemId: string,
+		update: (outcome: WorkflowBuildOutcome) => WorkflowBuildOutcome,
+	): Promise<void> {
+		const thread = await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const all = this.parse(metadata[METADATA_KEY]);
+				const record = all[workItemId];
+				if (!record?.lastBuildOutcome) {
+					throw new OperationalError('Verification state is unavailable. Rebuild the workflow.');
+				}
+				all[workItemId] = { ...record, lastBuildOutcome: update(record.lastBuildOutcome) };
+				return { metadata: { ...metadata, [METADATA_KEY]: all } };
+			},
+		});
+		if (!thread) {
+			throw new OperationalError('Verification state could not be saved. Reopen the conversation.');
+		}
 	}
 
 	async listWorkItems(threadId: string): Promise<WorkflowLoopWorkItemRecord[]> {

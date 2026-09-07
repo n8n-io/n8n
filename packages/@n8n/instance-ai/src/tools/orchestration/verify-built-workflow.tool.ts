@@ -203,6 +203,10 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				buildOutcome.verificationProgress && selectedTriggerNodeName && workflow
 					? getTriggerMainFlowScope(workflow.connections, selectedTriggerNodeName)
 					: undefined;
+			const previousNodes = await workflowTaskService.startVerification(
+				resolvedInput.workItemId,
+				verificationScope ? selectedTriggerNodeName : undefined,
+			);
 
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
@@ -259,9 +263,8 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				workflowId,
 				result,
 				analysis,
-				buildOutcome,
 				scopedTriggerNodeName: verificationScope ? selectedTriggerNodeName : undefined,
-				verifyAttempts: (buildOutcome.verifyAttempts ?? 0) + 1,
+				previousNodes,
 			});
 
 			const maxDataChars = resolvedInput.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;

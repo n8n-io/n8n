@@ -231,6 +231,22 @@ describe('deriveWorkflowVerificationObligation', () => {
 		},
 	);
 
+	it('does not treat a reserved run as failed setup evidence', () => {
+		const obligation = deriveWorkflowVerificationObligationFromOutcome(
+			'thread-1',
+			makeMultiTriggerOutcome({
+				setupRequirement: {
+					status: 'required',
+					reason: 'mocked-credentials',
+					guidance: 'Connect the account after verification.',
+				},
+				verifyAttempts: 1,
+				verification: undefined,
+			}),
+		);
+		expect(obligation.status).toBe('ready_to_verify');
+	});
+
 	it('keeps incomplete multi-trigger progress blocked when the loop state is blocked', () => {
 		const obligation = deriveWorkflowVerificationObligation('thread-1', {
 			state: makeState({ status: 'blocked' }),
