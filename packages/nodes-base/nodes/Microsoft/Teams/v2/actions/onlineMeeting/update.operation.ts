@@ -108,7 +108,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	try {
 		return await meetingRequest.call(this, 'PATCH', endpoint, body);
 	} catch (error) {
-		rewriteNotFound.call(
+		throw rewriteNotFound.call(
 			this,
 			error,
 			"The meeting you are trying to update doesn't exist",
