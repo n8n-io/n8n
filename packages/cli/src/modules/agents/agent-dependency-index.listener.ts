@@ -31,9 +31,15 @@ export class AgentDependencyIndexListener {
 				await this.indexService.remove(agentId);
 			});
 		});
+		this.subscribeToWorkflowEvents();
+	}
 
-		// `workflow-deleted` is not subscribed: the FK cascade removes the index rows
-		// before the event fires. Deleting requires archiving first, which is covered.
+	/**
+	 * Any workflow change invalidates the cached runtimes of the agents that depend on it.
+	 * `workflow-deleted` is not subscribed: the FK cascade removes the index rows
+	 * before the event fires. Deleting requires archiving first, which is covered.
+	 */
+	private subscribeToWorkflowEvents(): void {
 		const invalidate = async ({ workflowId }: { workflowId: string }) => {
 			await this.run('invalidate dependent agent runtimes', async () => {
 				await this.indexService.invalidateRuntimesForWorkflow(workflowId);
