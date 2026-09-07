@@ -333,6 +333,27 @@ describe('InstanceAiMarkdown', () => {
 			},
 		);
 
+		it('uses the builder artifact target for its Preview link', () => {
+			const openAgentChatPreview = vi.fn(() => true);
+			const { getByTestId } = renderComponent({
+				props: {
+					content: agentPreviewLinks[0].content,
+					agentPreviewTarget: { agentId: 'agent-2', projectId: 'project-2' },
+				},
+				global: { provide: { openAgentChatPreview } },
+			});
+			const link = getByTestId('markdown-output').querySelector('a');
+			if (!link) throw new Error('expected Preview anchor');
+
+			expect(link.getAttribute('href')).toBe('/projects/project-2/agents/agent-2?openPreview=true');
+
+			const event = clickEvent();
+			link.dispatchEvent(event);
+
+			expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-2', 'project-2');
+			expect(event.defaultPrevented).toBe(true);
+		});
+
 		it('opens a Preview link after the markdown child replaces its enhanced content', () => {
 			const openAgentChatPreview = vi.fn(() => true);
 			const { getByTestId } = renderComponent({

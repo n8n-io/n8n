@@ -1,11 +1,16 @@
 <script lang="ts" setup>
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
-import { resolveAgentPreviewLink } from '@/features/agents/utils/agentPreviewUrl';
+import {
+	buildAgentPreviewHref,
+	resolveAgentPreviewLink,
+	type AgentPreviewTarget,
+} from '@/features/agents/utils/agentPreviewUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useThread } from '../instanceAi.store';
 
 const props = defineProps<{
 	content: string;
+	agentPreviewTarget?: AgentPreviewTarget;
 	/**
 	 * True while the source text is still streaming in. While streaming we skip
 	 * the resource-name decoration — O(content × resources), re-run on every
@@ -271,6 +276,19 @@ function buildResourceUrl(type: string, id: string, projectId: string | undefine
 	return URL_BUILDERS[type]?.(id) ?? '#';
 }
 
+function resolveContextualAgentPreviewLink(href: string) {
+	const resolved = resolveAgentPreviewLink(href);
+	if (!resolved || !props.agentPreviewTarget) return resolved;
+
+	return {
+		...props.agentPreviewTarget,
+		href: buildAgentPreviewHref(
+			props.agentPreviewTarget.projectId,
+			props.agentPreviewTarget.agentId,
+		),
+	};
+}
+
 /**
  * Post-process the rendered DOM to transform resource links into
  * styled resource chips with icons. Handles both:
@@ -318,7 +336,7 @@ function enhanceResourceLinks(): void {
 		}
 
 		// 2. Handle standard links pointing to internal n8n routes
-		const agentPreviewTarget = resolveAgentPreviewLink(href);
+		const agentPreviewTarget = resolveContextualAgentPreviewLink(href);
 		if (agentPreviewTarget) {
 			const { projectId, agentId } = agentPreviewTarget;
 			link.href = agentPreviewTarget.href;
@@ -367,7 +385,7 @@ function handleLinkClick(event: MouseEvent): void {
 	const clickedLink = event.target.closest('a');
 	if (!(clickedLink instanceof HTMLAnchorElement)) return;
 
-	const previewTarget = resolveAgentPreviewLink(clickedLink.getAttribute('href') ?? '');
+	const previewTarget = resolveContextualAgentPreviewLink(clickedLink.getAttribute('href') ?? '');
 	if (previewTarget && openAgentChatPreview) {
 		event.preventDefault();
 		openAgentChatPreview(previewTarget.agentId, previewTarget.projectId);

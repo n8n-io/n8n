@@ -1,8 +1,11 @@
 import { OPEN_PREVIEW_PARAM } from '../constants';
 
-export interface AgentPreviewLinkTarget {
+export interface AgentPreviewTarget {
 	projectId: string;
 	agentId: string;
+}
+
+export interface AgentPreviewLinkTarget extends AgentPreviewTarget {
 	href: string;
 }
 
@@ -16,6 +19,11 @@ function decodePathSegment(value: string): string {
 	} catch {
 		return value;
 	}
+}
+
+export function buildAgentPreviewHref(projectId: string, agentId: string): string {
+	const searchParams = new URLSearchParams({ [OPEN_PREVIEW_PARAM]: 'true' });
+	return `/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}?${searchParams.toString()}`;
 }
 
 export function resolveAgentPreviewLink(
