@@ -121,7 +121,7 @@ export class DataTableImporter {
 					name: table.name,
 					columns: table.columns,
 					kind: table.kind ?? 'list',
-					metadata: table.metadata,
+					metadata: table.metadata ?? undefined,
 				},
 				table.id,
 			);
