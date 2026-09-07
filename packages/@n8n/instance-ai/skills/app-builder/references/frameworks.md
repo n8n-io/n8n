@@ -6,8 +6,9 @@ must be a static site with `index.html` at the root of `outDir`. n8n serves
 unknown paths with `index.html` (SPA fallback), so client-side routing works.
 
 Pass `command` and `outDir` to `build` when they differ from the defaults
-(`npm run build`, `dist`). Most frameworks want the base without the trailing
-slash; strip it where noted.
+(`npm run build`, `dist`). The command runs with `node_modules/.bin` on `PATH`,
+so `vite build` works without `npx`. Most frameworks want the base without the
+trailing slash; strip it where noted.
 
 ## Vite (Vue, React, Svelte, vanilla) — default
 

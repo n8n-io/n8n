@@ -26,6 +26,12 @@ const LOG_TAIL_BYTES = 4096;
 const CHECK_FAIL_MARKER = 'APP_CHECK_FAIL:';
 /** Sandboxes have no git identity configured; without one `git commit` refuses to run. */
 const GIT_COMMIT = 'git -c user.name=n8n -c user.email=n8n@localhost commit -qm';
+/** A node process that dies of heap exhaustion leaves a core dump in the app directory. */
+const NO_CORE_DUMPS = 'ulimit -c 0;';
+/** Custom build commands get the local binaries the way npm scripts do (`vite build` instead of `npx vite build`). */
+const BUILD_COMMAND_PREFIX = `${NO_CORE_DUMPS} export PATH="$PWD/node_modules/.bin:$PATH";`;
+/** Core dump names: `core`, `core.<pid>`, `<name>.core`. Anchored to the app root so `src/core/` stays in. */
+const CORE_DUMP_EXCLUDES = ['./core', './core.*', './*.core'];
 
 const createSchema = z.object({
 	action: z.literal('create'),
@@ -108,11 +114,11 @@ export function buildCheckScript(input: {
 		`if [ -d ${q(`${outDir}/server`)} ] || [ -d .output/server ]; then echo ${q(`${CHECK_FAIL_MARKER} server output found (${outDir}/server or .output/server). Only a static export can be served.`)}; exit 1; fi`,
 		`mkdir -p ${q(dirnamePosix(input.distTarball))}`,
 		`tar -czf ${q(input.distTarball)} -C ${q(outDir)} .`,
-		`tar -czf ${q(input.sourceTarball)} --exclude=node_modules --exclude=${q(outDir)} --exclude=.git -C . .`,
+		`tar -czf ${q(input.sourceTarball)} --exclude=node_modules --exclude=${q(outDir)} --exclude=.git ${CORE_DUMP_EXCLUDES.map((pattern) => `--exclude=${q(pattern)}`).join(' ')} -C . .`,
 		`dist_size=$(stat -c %s ${q(input.distTarball)})`,
 		`src_size=$(stat -c %s ${q(input.sourceTarball)})`,
 		`if [ "$dist_size" -gt ${maxBytes} ]; then echo "${CHECK_FAIL_MARKER} build output is $dist_size bytes compressed; the limit is ${maxBytes}. Remove large assets from ${outDir}."; exit 1; fi`,
-		`if [ "$src_size" -gt ${maxBytes} ]; then echo "${CHECK_FAIL_MARKER} source is $src_size bytes compressed; the limit is ${maxBytes}. Remove large files from the app directory."; exit 1; fi`,
+		`if [ "$src_size" -gt ${maxBytes} ]; then largest=$(du -ah --exclude=node_modules --exclude=.git --exclude=${q(outDir)} . | sort -rh | awk -F'\\t' '$2 != "." { printf "%s%s %s", (n ? ", " : ""), $1, $2; if (++n == 5) exit }'); echo "${CHECK_FAIL_MARKER} source is $src_size bytes compressed; the limit is ${maxBytes}. Largest entries: $largest. Delete them or move them out of the app directory."; exit 1; fi`,
 		`(git add -A && ${GIT_COMMIT} build) >/dev/null 2>&1 || true`,
 		'echo "APP_CHECK_OK $dist_size $src_size"',
 	].join('\n');
@@ -266,7 +272,7 @@ async function handleBuild(
 	const command = input.command ?? DEFAULT_BUILD_COMMAND;
 
 	const install = await run(
-		`if [ -f package.json ] && [ ! -d node_modules ]; then npm install ${NPM_INSTALL_FLAGS}; fi`,
+		`${NO_CORE_DUMPS} if [ -f package.json ] && [ ! -d node_modules ]; then npm install ${NPM_INSTALL_FLAGS}; fi`,
 		{ cwd: appDir, env: { CI: 'true' }, timeout: COMMAND_TIMEOUT_MS },
 	);
 	if (install.exitCode !== 0) {
@@ -274,7 +280,7 @@ async function handleBuild(
 	}
 
 	const appBase = `/${APPS_DIR}/${app.namespace}/`;
-	const build = await run(command, {
+	const build = await run(`${BUILD_COMMAND_PREFIX} ${command}`, {
 		cwd: appDir,
 		env: { APP_BASE: appBase, CI: 'true' },
 		timeout: COMMAND_TIMEOUT_MS,

@@ -19,6 +19,8 @@ const APP = {
 	createdAt: '2024-01-01T00:00:00.000Z',
 };
 
+const BUILD_PREFIX = 'ulimit -c 0; export PATH="$PWD/node_modules/.bin:$PATH";';
+
 const ok = (stdout = '') => ({ exitCode: 0, stdout, stderr: '' });
 const fail = (stdout: string, exitCode = 1) => ({ exitCode, stdout, stderr: '' });
 
@@ -105,7 +107,7 @@ describe('apps tool', () => {
 		it('accepts a bare build call; defaults are applied by the handler', async () => {
 			const context = createMockContext();
 			await runBuild(context);
-			expect(commandsRun(context)[1]).toBe('npm run build');
+			expect(commandsRun(context)[1]).toBe(`${BUILD_PREFIX} npm run build`);
 			expect(commandsRun(context)[2]).toContain("'dist/index.html'");
 		});
 
@@ -243,9 +245,11 @@ describe('apps tool', () => {
 			const calls = executeCommandMock(context).mock.calls as Array<
 				[string, string[], { cwd: string; env?: Record<string, string>; timeout?: number }]
 			>;
-			expect(calls[0][0]).toContain('[ ! -d node_modules ]');
+			expect(calls[0][0]).toMatch(
+				/^ulimit -c 0; if \[ -f package.json \] && \[ ! -d node_modules \]/,
+			);
 			expect(calls[0][0]).toContain('npm install');
-			expect(calls[1][0]).toBe('npm run build');
+			expect(calls[1][0]).toBe(`${BUILD_PREFIX} npm run build`);
 			expect(calls[1][2]).toEqual({
 				cwd: '/home/daytona/workspace/apps/greeter',
 				env: { APP_BASE: '/apps/greeter/', CI: 'true' },
@@ -279,8 +283,18 @@ describe('apps tool', () => {
 			await runBuild(context, { command: 'npx vite build', outDir: 'out/' });
 
 			const commands = commandsRun(context);
-			expect(commands[1]).toBe('npx vite build');
+			expect(commands[1]).toBe(`${BUILD_PREFIX} npx vite build`);
 			expect(commands[2]).toContain("'out/index.html'");
+		});
+
+		it('puts node_modules/.bin on PATH and disables core dumps without altering the command', async () => {
+			const context = createMockContext();
+			const command = 'vite build --mode "my mode" && echo \'done\'';
+			await runBuild(context, { command });
+
+			expect(commandsRun(context)[1]).toBe(
+				`ulimit -c 0; export PATH="$PWD/node_modules/.bin:$PATH"; ${command}`,
+			);
 		});
 
 		it('reports the install stage when npm install fails', async () => {
@@ -428,14 +442,29 @@ describe('apps tool', () => {
 				if [ -d 'dist/server' ] || [ -d .output/server ]; then echo 'APP_CHECK_FAIL: server output found (dist/server or .output/server). Only a static export can be served.'; exit 1; fi
 				mkdir -p '/home/daytona/workspace/.app-builds'
 				tar -czf '/home/daytona/workspace/.app-builds/greeter-1-dist.tgz' -C 'dist' .
-				tar -czf '/home/daytona/workspace/.app-builds/greeter-1-src.tgz' --exclude=node_modules --exclude='dist' --exclude=.git -C . .
+				tar -czf '/home/daytona/workspace/.app-builds/greeter-1-src.tgz' --exclude=node_modules --exclude='dist' --exclude=.git --exclude='./core' --exclude='./core.*' --exclude='./*.core' -C . .
 				dist_size=$(stat -c %s '/home/daytona/workspace/.app-builds/greeter-1-dist.tgz')
 				src_size=$(stat -c %s '/home/daytona/workspace/.app-builds/greeter-1-src.tgz')
 				if [ "$dist_size" -gt 20971520 ]; then echo "APP_CHECK_FAIL: build output is $dist_size bytes compressed; the limit is 20971520. Remove large assets from dist."; exit 1; fi
-				if [ "$src_size" -gt 20971520 ]; then echo "APP_CHECK_FAIL: source is $src_size bytes compressed; the limit is 20971520. Remove large files from the app directory."; exit 1; fi
+				if [ "$src_size" -gt 20971520 ]; then largest=$(du -ah --exclude=node_modules --exclude=.git --exclude='dist' . | sort -rh | awk -F'\\t' '$2 != "." { printf "%s%s %s", (n ? ", " : ""), $1, $2; if (++n == 5) exit }'); echo "APP_CHECK_FAIL: source is $src_size bytes compressed; the limit is 20971520. Largest entries: $largest. Delete them or move them out of the app directory."; exit 1; fi
 				(git add -A && git -c user.name=n8n -c user.email=n8n@localhost commit -qm build) >/dev/null 2>&1 || true
 				echo "APP_CHECK_OK $dist_size $src_size""
 			`);
+		});
+
+		it('excludes core dumps from the source tarball and lists the largest entries when the cap is hit', () => {
+			const script = buildCheckScript({
+				appDir: '/ws/apps/greeter',
+				outDir: 'out',
+				distTarball: '/ws/.app-builds/d.tgz',
+				sourceTarball: '/ws/.app-builds/s.tgz',
+			});
+			const tarLine = script.split('\n').find((line) => line.includes("'/ws/.app-builds/s.tgz'"));
+			expect(tarLine).toContain("--exclude='./core' --exclude='./core.*' --exclude='./*.core'");
+			expect(script).toContain(
+				"du -ah --exclude=node_modules --exclude=.git --exclude='out' . | sort -rh",
+			);
+			expect(script).toContain('Largest entries: $largest.');
 		});
 
 		it('quotes paths that contain a single quote', () => {
