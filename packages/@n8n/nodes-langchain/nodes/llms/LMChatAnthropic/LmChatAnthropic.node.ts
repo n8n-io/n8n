@@ -740,11 +740,25 @@ export class LmChatAnthropic implements INodeType {
 					message,
 				);
 			if (mentionsThinking && isRejection) {
+				// Node versions below 1.5 have the Enable Thinking toggle instead of Thinking Mode.
+				const guidance =
+					version >= 1.5
+						? {
+								manual: 'Set Thinking Mode to Adaptive and choose an Effort level.',
+								disabled:
+									'Set Thinking Mode to Adaptive, or remove the Thinking Mode option to use the model default.',
+							}
+						: {
+								manual:
+									'Turn off Enable Thinking, or add a new Anthropic Chat Model node to use Adaptive thinking.',
+								disabled:
+									'Remove the Enable Thinking option, or add a new Anthropic Chat Model node to use Adaptive thinking.',
+							};
 				throw new NodeOperationError(
 					this.getNode(),
 					thinkingMode === 'manual'
-						? `The model "${modelName}" does not support the legacy Manual thinking mode. Set Thinking Mode to Adaptive and choose an Effort level.`
-						: `The model "${modelName}" does not support disabling thinking. Set Thinking Mode to Adaptive, or remove the Thinking Mode option to use the model default.`,
+						? `The model "${modelName}" does not support the legacy Manual thinking mode. ${guidance.manual}`
+						: `The model "${modelName}" does not support disabling thinking. ${guidance.disabled}`,
 					{ itemIndex },
 				);
 			}

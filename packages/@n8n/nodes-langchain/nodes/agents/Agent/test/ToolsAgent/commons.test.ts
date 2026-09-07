@@ -1077,6 +1077,23 @@ describe('getAgentStepsParser', () => {
 				log: 'Final response formatted',
 			});
 		});
+
+		it('should hand the parser an empty string when the model returns only thinking blocks', async () => {
+			// Token budget spent on thinking: no text block exists, so there is no answer to parse
+			const steps: AgentFinish = {
+				returnValues: {
+					output: [{ type: 'thinking', thinking: 'Let me work out the temperature…', index: 0 }],
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({});
+
+			const parser = getAgentStepsParser(mockOutputParser, undefined);
+			await parser(steps);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('');
+		});
 	});
 
 	describe('without output parser', () => {
