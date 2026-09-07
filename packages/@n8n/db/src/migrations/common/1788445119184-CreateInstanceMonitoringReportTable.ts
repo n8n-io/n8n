@@ -1,10 +1,8 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-const TABLE_NAME = 'central_instance_monitoring_report';
+const TABLE_NAME = 'instance_monitoring_report';
 
-export class CreateCentralInstanceMonitoringReportTable1788445119184
-	implements ReversibleMigration
-{
+export class CreateInstanceMonitoringReportTable1788445119184 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await // No secondary index: the table grows by one row a day, so the lookups
 		// against it (newest undelivered, gap since the last delivered) scan a

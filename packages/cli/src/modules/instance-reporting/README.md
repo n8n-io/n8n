@@ -8,7 +8,7 @@ Each report carries two data points for the previous completed UTC day:
 - a `daily` billable-execution count, from the `insights` module
 - a `cumulative` lifetime total, from the license metrics repository
 
-Every report is persisted in `central_instance_monitoring_report` before it is
+Every report is persisted in `instance_monitoring_report` before it is
 sent, so a retry resends the exact same measurement under the same `batchId`
 rather than taking fresh numbers — the cumulative total's day-to-day diff is
 only meaningful while every sample sits a fixed 24 hours apart.

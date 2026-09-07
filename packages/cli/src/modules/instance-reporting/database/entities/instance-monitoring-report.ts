@@ -31,7 +31,7 @@ export type InstanceReportStatus = 'pending' | 'delivered' | 'skipped_after_max_
  * report's budget instead of granting a fresh one.
  */
 @Entity()
-export class CentralInstanceMonitoringReport extends WithTimestampsAndStringId {
+export class InstanceMonitoringReport extends WithTimestampsAndStringId {
 	/** The data point array exactly as sent. */
 	@JsonColumn()
 	dataPoints: InstanceReportDataPoint[];

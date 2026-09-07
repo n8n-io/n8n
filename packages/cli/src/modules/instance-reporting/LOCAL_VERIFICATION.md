@@ -156,7 +156,7 @@ yesterday's UTC date, not today's.
 ```bash
 sqlite3 -header "$N8N_DB" \
   "SELECT id, createdAt, deliveredAt, attempts, lastError, dataPoints
-   FROM central_instance_monitoring_report ORDER BY createdAt DESC LIMIT 5;"
+   FROM instance_monitoring_report ORDER BY createdAt DESC LIMIT 5;"
 ```
 
 Expected: one row, `deliveredAt` set, `attempts` = 1, `lastError` NULL, and
@@ -184,7 +184,7 @@ Run these after step 4. Each is short.
 `clear today's row` means:
 
 ```bash
-sqlite3 "$N8N_DB" "DELETE FROM central_instance_monitoring_report;"
+sqlite3 "$N8N_DB" "DELETE FROM instance_monitoring_report;"
 ```
 
 ## 6. Optional: compaction-window healing
@@ -198,7 +198,7 @@ Reset the variable afterwards.
 ## 7. Cleanup
 
 ```bash
-sqlite3 "$N8N_DB" "DELETE FROM central_instance_monitoring_report;"
+sqlite3 "$N8N_DB" "DELETE FROM instance_monitoring_report;"
 sqlite3 "$N8N_DB" "DELETE FROM settings WHERE key = 'features.centralInstanceMonitoring';"
 ```
 

@@ -6,7 +6,7 @@ import { UserError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CentralInstanceMonitoringReportRepository } from '../database/repositories/central-instance-monitoring-report.repository';
+import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
 import type { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
 import { InstanceReportingConfig } from '../instance-reporting.config';
@@ -23,7 +23,7 @@ const AFTER_SLOT = '2026-03-26T07:43:00.000Z';
 interface Harness {
 	scheduler: InstanceReportingScheduler;
 	reportingService: Mocked<InstanceReportingService>;
-	reportRepository: Mocked<CentralInstanceMonitoringReportRepository>;
+	reportRepository: Mocked<InstanceMonitoringReportRepository>;
 	settingsService: Mocked<InstanceReportingSettingsService>;
 	instanceSettings: Mocked<InstanceSettings>;
 	modulesConfig: Mocked<ModulesConfig>;
@@ -41,7 +41,7 @@ function makeHarness({
 	// No attempt has been made yet, so nothing is holding the next one back.
 	reportingService.msUntilRetryAllowed.mockResolvedValue(0);
 
-	const reportRepository = mock<CentralInstanceMonitoringReportRepository>();
+	const reportRepository = mock<InstanceMonitoringReportRepository>();
 	reportRepository.hasSettledToday.mockResolvedValue(false);
 
 	const settingsService = mock<InstanceReportingSettingsService>();

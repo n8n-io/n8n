@@ -11,8 +11,8 @@ import { N8N_VERSION } from '@/constants';
 import { InsightsService } from '@/modules/insights/insights.service';
 import { OwnershipService } from '@/services/ownership.service';
 
-import type { InstanceReportDataPoint } from './database/entities/central-instance-monitoring-report';
-import { CentralInstanceMonitoringReportRepository } from './database/repositories/central-instance-monitoring-report.repository';
+import type { InstanceReportDataPoint } from './database/entities/instance-monitoring-report';
+import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingConfig } from './instance-reporting.config';
 import { INSTANCE_REPORTS_PATH } from './instance-reporting.constants';
 
@@ -49,7 +49,7 @@ export class InstanceReportingService {
 
 	constructor(
 		private readonly config: InstanceReportingConfig,
-		private readonly reportRepository: CentralInstanceMonitoringReportRepository,
+		private readonly reportRepository: InstanceMonitoringReportRepository,
 		private readonly insightsService: InsightsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,

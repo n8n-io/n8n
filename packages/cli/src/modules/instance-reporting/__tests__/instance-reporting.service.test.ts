@@ -13,8 +13,8 @@ import { mock } from 'vitest-mock-extended';
 import type { InsightsService } from '@/modules/insights/insights.service';
 import type { OwnershipService } from '@/services/ownership.service';
 
-import type { CentralInstanceMonitoringReport } from '../database/entities/central-instance-monitoring-report';
-import type { CentralInstanceMonitoringReportRepository } from '../database/repositories/central-instance-monitoring-report.repository';
+import type { InstanceMonitoringReport } from '../database/entities/instance-monitoring-report';
+import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingConfig } from '../instance-reporting.config';
 import { InstanceReportingService } from '../instance-reporting.service';
 
@@ -65,9 +65,7 @@ function makeConfig(overrides: Partial<InstanceReportingConfig> = {}): InstanceR
 	return Object.assign(config, overrides);
 }
 
-function makeReport(
-	overrides: Partial<CentralInstanceMonitoringReport> = {},
-): CentralInstanceMonitoringReport {
+function makeReport(overrides: Partial<InstanceMonitoringReport> = {}): InstanceMonitoringReport {
 	return {
 		id: BATCH_ID,
 		dataPoints: [],
@@ -77,19 +75,19 @@ function makeReport(
 		lastAttemptAt: null,
 		lastError: null,
 		...overrides,
-	} as CentralInstanceMonitoringReport;
+	} as InstanceMonitoringReport;
 }
 
 interface Harness {
 	service: InstanceReportingService;
-	reportRepository: Mocked<CentralInstanceMonitoringReportRepository>;
+	reportRepository: Mocked<InstanceMonitoringReportRepository>;
 	insightsService: Mocked<InsightsService>;
 	http: HttpRequestClient;
 	clientOptions: HttpRequestClientOptions | undefined;
 }
 
 function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
-	const reportRepository = mock<CentralInstanceMonitoringReportRepository>();
+	const reportRepository = mock<InstanceMonitoringReportRepository>();
 	reportRepository.findTodaysPending.mockResolvedValue(null);
 	// A report already covers the day before the one under test, so the default
 	// harness reports exactly one day.
@@ -337,7 +335,7 @@ describe('InstanceReportingService', () => {
 			const measured = [
 				{ kind: 'cumulative', name: 'billableExecutions', value: 800 },
 				{ kind: 'daily', name: 'billableExecutions', value: 40, date: REPORT_DATE },
-			] as CentralInstanceMonitoringReport['dataPoints'];
+			] as InstanceMonitoringReport['dataPoints'];
 			reportRepository.findTodaysPending.mockResolvedValue(makeReport({ dataPoints: measured }));
 
 			await service.sendReport();

@@ -1,27 +1,27 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
-import type { CentralInstanceMonitoringReport } from '../../entities/central-instance-monitoring-report';
-import { CentralInstanceMonitoringReportRepository } from '../central-instance-monitoring-report.repository';
+import type { InstanceMonitoringReport } from '../../entities/instance-monitoring-report';
+import { InstanceMonitoringReportRepository } from '../instance-monitoring-report.repository';
 
 const REPORT_DATE = '2026-03-25';
 
 const DATA_POINTS = [
 	{ kind: 'cumulative', name: 'billableExecutions', value: 815 },
 	{ kind: 'daily', name: 'billableExecutions', value: 42, date: REPORT_DATE },
-] as CentralInstanceMonitoringReport['dataPoints'];
+] as InstanceMonitoringReport['dataPoints'];
 
-describe('CentralInstanceMonitoringReportRepository', () => {
-	let repository: CentralInstanceMonitoringReportRepository;
+describe('InstanceMonitoringReportRepository', () => {
+	let repository: InstanceMonitoringReportRepository;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['instance-reporting']);
 		await testDb.init();
-		repository = Container.get(CentralInstanceMonitoringReportRepository);
+		repository = Container.get(InstanceMonitoringReportRepository);
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['CentralInstanceMonitoringReport']);
+		await testDb.truncate(['InstanceMonitoringReport']);
 	});
 
 	afterAll(async () => {
@@ -131,7 +131,7 @@ describe('CentralInstanceMonitoringReportRepository', () => {
 	});
 
 	describe('findLastCoveredDay', () => {
-		function daily(date: string, value: number): CentralInstanceMonitoringReport['dataPoints'] {
+		function daily(date: string, value: number): InstanceMonitoringReport['dataPoints'] {
 			return [{ kind: 'daily', name: 'billableExecutions', value, date }];
 		}
 

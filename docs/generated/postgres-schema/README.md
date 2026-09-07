@@ -42,7 +42,6 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
-| [public.central_instance_monitoring_report](public.central_instance_monitoring_report.md) | 9 |  | BASE TABLE |
 | [public.chat_hub_agent_tools](public.chat_hub_agent_tools.md) | 2 |  | BASE TABLE |
 | [public.chat_hub_agents](public.chat_hub_agents.md) | 13 |  | BASE TABLE |
 | [public.chat_hub_messages](public.chat_hub_messages.md) | 17 |  | BASE TABLE |
@@ -89,6 +88,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_workflow_snapshots](public.instance_ai_workflow_snapshots.md) | 7 |  | BASE TABLE |
 | [public.instance_credential_assignment](public.instance_credential_assignment.md) | 4 |  | BASE TABLE |
+| [public.instance_monitoring_report](public.instance_monitoring_report.md) | 9 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
@@ -743,17 +743,6 @@ erDiagram
   varchar_50_ sourceType
   timestamp_3__with_time_zone updatedAt
 }
-"public.central_instance_monitoring_report" {
-  integer attempts
-  timestamp_3__with_time_zone createdAt
-  json dataPoints
-  timestamp_3__with_time_zone deliveredAt
-  varchar_36_ id
-  timestamp_3__with_time_zone lastAttemptAt
-  text lastError
-  varchar_255_ status
-  timestamp_3__with_time_zone updatedAt
-}
 "public.chat_hub_agent_tools" {
   uuid agentId FK
   uuid toolId FK
@@ -1195,6 +1184,17 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ credentialId FK
   varchar_128_ credentialUseId
+  timestamp_3__with_time_zone updatedAt
+}
+"public.instance_monitoring_report" {
+  integer attempts
+  timestamp_3__with_time_zone createdAt
+  json dataPoints
+  timestamp_3__with_time_zone deliveredAt
+  varchar_36_ id
+  timestamp_3__with_time_zone lastAttemptAt
+  text lastError
+  varchar_255_ status
   timestamp_3__with_time_zone updatedAt
 }
 "public.instance_version_history" {

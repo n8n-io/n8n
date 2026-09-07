@@ -1,13 +1,13 @@
 import { Service } from '@n8n/di';
 import { DataSource, MoreThanOrEqual, Not, Repository } from '@n8n/typeorm';
 
-import type { InstanceReportDataPoint } from '../entities/central-instance-monitoring-report';
-import { CentralInstanceMonitoringReport } from '../entities/central-instance-monitoring-report';
+import type { InstanceReportDataPoint } from '../entities/instance-monitoring-report';
+import { InstanceMonitoringReport } from '../entities/instance-monitoring-report';
 
 @Service()
-export class CentralInstanceMonitoringReportRepository extends Repository<CentralInstanceMonitoringReport> {
+export class InstanceMonitoringReportRepository extends Repository<InstanceMonitoringReport> {
 	constructor(dataSource: DataSource) {
-		super(CentralInstanceMonitoringReport, dataSource.manager);
+		super(InstanceMonitoringReport, dataSource.manager);
 	}
 
 	/**
@@ -24,7 +24,7 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 	 *
 	 * A report that ran out of attempts is not pending, so it is never resent.
 	 */
-	async findTodaysPending(now: Date): Promise<CentralInstanceMonitoringReport | null> {
+	async findTodaysPending(now: Date): Promise<InstanceMonitoringReport | null> {
 		return await this.findOne({
 			where: { status: 'pending', createdAt: MoreThanOrEqual(startOfUtcDay(now)) },
 			order: { createdAt: 'DESC' },
@@ -55,9 +55,7 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 	 * Record a freshly measured report, with its data points, before any attempt
 	 * to deliver it. A row therefore always carries the measurement it stands for.
 	 */
-	async createPending(
-		dataPoints: InstanceReportDataPoint[],
-	): Promise<CentralInstanceMonitoringReport> {
+	async createPending(dataPoints: InstanceReportDataPoint[]): Promise<InstanceMonitoringReport> {
 		return await this.save(this.create({ dataPoints, status: 'pending', deliveredAt: null }));
 	}
 

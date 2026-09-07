@@ -25,10 +25,10 @@ export class InstanceReportingModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { CentralInstanceMonitoringReport } = await import(
-			'./database/entities/central-instance-monitoring-report.js'
+		const { InstanceMonitoringReport } = await import(
+			'./database/entities/instance-monitoring-report.js'
 		);
 
-		return [CentralInstanceMonitoringReport];
+		return [InstanceMonitoringReport];
 	}
 }

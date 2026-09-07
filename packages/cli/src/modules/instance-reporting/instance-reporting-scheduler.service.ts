@@ -6,7 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
-import { CentralInstanceMonitoringReportRepository } from './database/repositories/central-instance-monitoring-report.repository';
+import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
 import { InstanceReportingConfig } from './instance-reporting.config';
 import { InstanceReportingService, RETRY_DELAY_MS } from './instance-reporting.service';
@@ -41,7 +41,7 @@ export class InstanceReportingScheduler {
 	constructor(
 		private readonly config: InstanceReportingConfig,
 		private readonly reportingService: InstanceReportingService,
-		private readonly reportRepository: CentralInstanceMonitoringReportRepository,
+		private readonly reportRepository: InstanceMonitoringReportRepository,
 		private readonly settingsService: InstanceReportingSettingsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly modulesConfig: ModulesConfig,

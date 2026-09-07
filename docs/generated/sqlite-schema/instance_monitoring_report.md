@@ -1,4 +1,4 @@
-# central_instance_monitoring_report
+# instance_monitoring_report
 
 ## Description
 
@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "central_instance_monitoring_report" ("id" varchar(36) PRIMARY KEY NOT NULL, "dataPoints" text NOT NULL, "status" varchar(255) NOT NULL DEFAULT ('pending'), "deliveredAt" datetime(3), "attempts" integer NOT NULL DEFAULT (0), "lastAttemptAt" datetime(3), "lastError" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_central_instance_monitoring_report_status" CHECK ("status" IN ('pending', 'delivered', 'skipped_after_max_retries')))
+CREATE TABLE "instance_monitoring_report" ("id" varchar(36) PRIMARY KEY NOT NULL, "dataPoints" text NOT NULL, "status" varchar(255) NOT NULL DEFAULT ('pending'), "deliveredAt" datetime(3), "attempts" integer NOT NULL DEFAULT (0), "lastAttemptAt" datetime(3), "lastError" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_instance_monitoring_report_status" CHECK ("status" IN ('pending', 'delivered', 'skipped_after_max_retries')))
 ```
 
 </details>
@@ -31,13 +31,13 @@ CREATE TABLE "central_instance_monitoring_report" ("id" varchar(36) PRIMARY KEY 
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK ("status" IN ('pending', 'delivered', 'skipped_after_max_retries')) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
-| sqlite_autoindex_central_instance_monitoring_report_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_instance_monitoring_report_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| sqlite_autoindex_central_instance_monitoring_report_1 | PRIMARY KEY (id) |
+| sqlite_autoindex_instance_monitoring_report_1 | PRIMARY KEY (id) |
 
 ## Relations
 
@@ -45,7 +45,7 @@ CREATE TABLE "central_instance_monitoring_report" ("id" varchar(36) PRIMARY KEY 
 erDiagram
 
 
-"central_instance_monitoring_report" {
+"instance_monitoring_report" {
   INTEGER attempts
   datetime_3_ createdAt
   TEXT dataPoints

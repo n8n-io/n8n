@@ -1,4 +1,4 @@
-# public.central_instance_monitoring_report
+# public.instance_monitoring_report
 
 ## Columns
 
@@ -18,20 +18,20 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_central_instance_monitoring_report_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'delivered'::character varying, 'skipped_after_max_retries'::character varying])::text[]))) |
-| PK_813b97cbafab6a2ac45aa10de6a | PRIMARY KEY | PRIMARY KEY (id) |
-| central_instance_monitoring_report_attempts_not_null | n | NOT NULL attempts |
-| central_instance_monitoring_report_createdAt_not_null | n | NOT NULL "createdAt" |
-| central_instance_monitoring_report_dataPoints_not_null | n | NOT NULL "dataPoints" |
-| central_instance_monitoring_report_id_not_null | n | NOT NULL id |
-| central_instance_monitoring_report_status_not_null | n | NOT NULL status |
-| central_instance_monitoring_report_updatedAt_not_null | n | NOT NULL "updatedAt" |
+| CHK_instance_monitoring_report_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'delivered'::character varying, 'skipped_after_max_retries'::character varying])::text[]))) |
+| PK_4a5cb8aa51c67e4f5a7eb0f9509 | PRIMARY KEY | PRIMARY KEY (id) |
+| instance_monitoring_report_attempts_not_null | n | NOT NULL attempts |
+| instance_monitoring_report_createdAt_not_null | n | NOT NULL "createdAt" |
+| instance_monitoring_report_dataPoints_not_null | n | NOT NULL "dataPoints" |
+| instance_monitoring_report_id_not_null | n | NOT NULL id |
+| instance_monitoring_report_status_not_null | n | NOT NULL status |
+| instance_monitoring_report_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_813b97cbafab6a2ac45aa10de6a | CREATE UNIQUE INDEX "PK_813b97cbafab6a2ac45aa10de6a" ON public.central_instance_monitoring_report USING btree (id) |
+| PK_4a5cb8aa51c67e4f5a7eb0f9509 | CREATE UNIQUE INDEX "PK_4a5cb8aa51c67e4f5a7eb0f9509" ON public.instance_monitoring_report USING btree (id) |
 
 ## Relations
 
@@ -39,7 +39,7 @@
 erDiagram
 
 
-"public.central_instance_monitoring_report" {
+"public.instance_monitoring_report" {
   integer attempts
   timestamp_3__with_time_zone createdAt
   json dataPoints
