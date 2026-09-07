@@ -1043,4 +1043,61 @@ describe('DirectoryLoader', () => {
 			expect(nodeType.description.properties).toEqual([]);
 		});
 	});
+
+	describe('declarative webhook trigger synthesis', () => {
+		// Plain objects (not deep mocks): synthesis must see undefined members.
+		const makeWebhookTriggerNode = (extra: Partial<INodeType> = {}): INodeType =>
+			({
+				description: {
+					displayName: 'node1',
+					name: 'node1',
+					group: ['trigger'],
+					version: 1,
+					description: '',
+					defaults: {},
+					inputs: [],
+					outputs: ['main'],
+					properties: [],
+					webhooks: [
+						{ name: 'default', httpMethod: 'POST', responseMode: 'onReceived', path: 'webhook' },
+					],
+					trigger: {
+						type: 'webhook',
+						lifecycle: {
+							create: { routing: { request: { method: 'POST', url: '/hooks' } } },
+						},
+					},
+				},
+				...extra,
+			}) as unknown as INodeType;
+
+		test('synthesizes webhookMethods and webhook', async () => {
+			mockNode1 = makeWebhookTriggerNode();
+			const loader = new CustomDirectoryLoader(directory);
+			await loader.loadAll();
+
+			const nodeType = loader.getNode('node1').type as INodeType;
+			expect(nodeType.webhookMethods?.default?.checkExists).toBeInstanceOf(Function);
+			expect(nodeType.webhookMethods?.default?.create).toBeInstanceOf(Function);
+			expect(nodeType.webhookMethods?.default?.delete).toBeInstanceOf(Function);
+			expect(nodeType.webhook).toBeInstanceOf(Function);
+		});
+
+		test('class-defined webhook and lifecycle slots win, missing slots are filled', async () => {
+			const ownWebhook = vi.fn();
+			const ownCreate = vi.fn();
+			mockNode1 = makeWebhookTriggerNode({
+				webhook: ownWebhook,
+				webhookMethods: { default: { create: ownCreate } },
+			} as unknown as Partial<INodeType>);
+			const loader = new CustomDirectoryLoader(directory);
+			await loader.loadAll();
+
+			const nodeType = loader.getNode('node1').type as INodeType;
+			expect(nodeType.webhook).toBe(ownWebhook);
+			expect(nodeType.webhookMethods?.default?.create).toBe(ownCreate);
+			expect(nodeType.webhookMethods?.default?.checkExists).toBeInstanceOf(Function);
+			expect(nodeType.webhookMethods?.default?.delete).toBeInstanceOf(Function);
+		});
+	});
 });

@@ -2824,6 +2824,185 @@ export interface IDeclarativePollingTrigger {
 	manual?: { maxResults?: number };
 }
 
+/** A hand-written lifecycle method — full-control escape hatch per slot. */
+export type DeclarativeHookMethod = (this: IHookFunctions) => Promise<boolean>;
+
+/**
+ * Answers "is our webhook still registered with the vendor?" on activation.
+ * With `matchOn`: true iff some returned item satisfies ALL clauses (`$item` =
+ * the candidate); `store` then recovers values from the matched item.
+ * Without `matchOn`: any 2xx ⇒ true; a status in `notFoundHttpCodes` (default
+ * [404]) ⇒ clear the keys written by `create.store`, return false; skipped
+ * (⇒ false) when `$staticData[idKey]` is absent.
+ */
+export interface DeclarativeWebhookCheckExists {
+	routing: INodePropertyRouting;
+	matchOn?: Array<{ itemProperty: string; value: string }>;
+	/** Static-data writes from the matched item; exprs over `$item`. */
+	store?: Record<string, string>;
+	notFoundHttpCodes?: number[];
+	/** Static-data key required before requesting. Default 'webhookId'. Only used without `matchOn`. */
+	idKey?: string;
+}
+
+/**
+ * Registers the webhook. `store` writes static data from the response
+ * (`$response` = the response body); its keys are the "managed set" cleared by
+ * delete and by checkExists-not-found. `generate` mints random values before
+ * the request, available as `$generated.<name>` in the routing and in `store`.
+ */
+export interface DeclarativeWebhookCreate {
+	routing: INodePropertyRouting;
+	store?: Record<string, string>;
+	generate?: Record<string, DeclarativeSecretGenerator>;
+	/** Refuse to register a `//localhost` webhook URL with a clear error. Default false. */
+	rejectLocalhostUrl?: boolean;
+	/** Boolean expression over `$response`; falsy ⇒ registration fails. */
+	validateResponse?: string;
+}
+
+/**
+ * Deregisters. Skipped (⇒ true) when `$staticData[idKey]` is absent. Request
+ * errors ⇒ return false, keep static data. On success the keys written by
+ * `create.store` are cleared.
+ */
+export interface DeclarativeWebhookDelete {
+	routing: INodePropertyRouting;
+	/** Default 'webhookId'. */
+	idKey?: string;
+}
+
+/**
+ * A vendor endpoint-ownership handshake. On a `setup` endpoint every request
+ * is treated as a handshake (`when`, if set, must additionally hold or the
+ * request is answered 401); on the `default` endpoint the handshake applies
+ * only when `when` (expr over `$request`) is truthy. Runs before verification,
+ * never starts a workflow.
+ */
+export interface DeclarativeWebhookHandshake {
+	when?: string;
+	/** Static-data writes from the handshake request; exprs over `$request`. */
+	store?: Record<string, string>;
+	respond?: {
+		/** Expr over `$request`, e.g. '={{ $request.query["hub.challenge"] }}'. Default 'OK'. */
+		body?: string;
+		statusCode?: number;
+		contentType?: string;
+		/** Response headers; values are exprs over `$request`. */
+		headers?: Record<string, string>;
+	};
+}
+
+/**
+ * Runtime handling of incoming deliveries; omitted stages default to "emit the
+ * body". Pipeline order: handshake → verification → ping → filter → output.
+ */
+export interface DeclarativeWebhookHandler {
+	handshake?: DeclarativeWebhookHandshake;
+	/**
+	 * Signature verification, composed from explicit primitives (no vendor
+	 * presets). A failed check answers 401 without starting the workflow.
+	 */
+	verification?: DeclarativeWebhookVerification;
+	/**
+	 * Vendor liveness-check short-circuit: when `when` (expr over `$request`)
+	 * is truthy, answer with `response` (default 'OK') and start no workflow —
+	 * unconditionally, before any event filtering.
+	 */
+	ping?: { when: string; response?: string };
+	/**
+	 * Drop deliveries whose event doesn't match: `actual` (expr over `$request`)
+	 * must be included in `allowed` (expr, usually '={{ $parameter.events }}';
+	 * a plain string counts as a one-element list). A miss responds 200 without
+	 * starting the workflow. `wildcard` names a value inside `allowed` that
+	 * accepts everything (e.g. '*').
+	 */
+	filter?: { allowed: string; actual: string; wildcard?: string };
+	/** Shape of the emitted item. Omitted: the request body. */
+	output?: {
+		/**
+		 * Expression selecting the emitted data, over `$request`. Default: the
+		 * request body. Arrays fan out into one item each.
+		 */
+		data?: string;
+		/** Wrap the emitted data as `{ body, headers, query }` — the classic trigger item shape. */
+		includeMeta?: boolean;
+	};
+}
+
+export interface IDeclarativeWebhookTrigger {
+	type: 'webhook';
+	/**
+	 * Webhook registration lifecycle, synthesized into `webhookMethods.default`.
+	 * Requests are `routing` blocks (same shape as an operation's routing) run by
+	 * `RoutingNode`; expressions see `$webhookUrl` and `$staticData` next to
+	 * `$parameter` and `$credentials`. Slots the node class defines itself are
+	 * left untouched, and any slot may be a plain function instead of config.
+	 */
+	lifecycle: {
+		/** Omit to always re-register on activation. */
+		checkExists?: DeclarativeHookMethod | DeclarativeWebhookCheckExists;
+		create: DeclarativeHookMethod | DeclarativeWebhookCreate;
+		/** Omit when the vendor has nothing to deregister. */
+		delete?: DeclarativeHookMethod | DeclarativeWebhookDelete;
+	};
+	handler?: DeclarativeWebhookHandler;
+}
+
+/** A random value minted before a lifecycle request, exposed as `$generated.<name>`. */
+export interface DeclarativeSecretGenerator {
+	type: 'hex' | 'base64' | 'uuid' | 'alphanumericLower';
+	/** Random bytes (hex/base64) or characters (alphanumericLower). Default: 32, or 10 for alphanumericLower. */
+	length?: number;
+	/** Literal prefix, e.g. 'n8n-'. */
+	prefix?: string;
+}
+
+/**
+ * Declarative webhook signature verification. Composes the same primitives the
+ * shared `webhook-signature-verification` util gives programmatic triggers:
+ * constant-time comparison, an optional replay window, and a
+ * skip-when-unsigned escape for hooks registered before secrets existed.
+ */
+export interface DeclarativeWebhookVerification {
+	/**
+	 * 'hmac-sha256' / 'hmac-sha1': HMAC over `signedPayload` with `secret`.
+	 * 'token': constant-time comparison of `secret` itself against the header
+	 * (the shared-token pattern, e.g. Telegram's secret_token).
+	 */
+	algorithm: 'hmac-sha256' | 'hmac-sha1' | 'token';
+	/** Header carrying the signature (or token), e.g. 'x-hub-signature-256'. */
+	signatureHeader: string;
+	/**
+	 * Expression yielding the secret: '={{ $staticData.webhookSecret }}',
+	 * '={{ $parameter.secret }}', or — with `credentialType` set —
+	 * '={{ $credentials.signatureSecret }}'.
+	 */
+	secret: string;
+	/**
+	 * Credential type to load and expose as `$credentials` for the `secret`
+	 * expression (e.g. 'slackApi'), for vendors whose signing secret lives in
+	 * the credential rather than being minted at registration.
+	 */
+	credentialType?: string;
+	/** Digest encoding for HMAC. Default 'hex'. */
+	encoding?: 'hex' | 'base64';
+	/** Literal prefix the vendor puts before the digest, e.g. 'sha256='. */
+	prefix?: string;
+	/** What was signed. Default 'rawBody'; some vendors sign the JSON-stringified parsed body. */
+	signedPayload?: 'rawBody' | 'jsonStringifiedBody';
+	/** Header carrying a unix timestamp; enables the replay window when set. */
+	timestampHeader?: string;
+	/** Replay window in seconds. Default 300. */
+	maxTimestampAgeSeconds?: number;
+	/**
+	 * Accept unsigned deliveries when the secret expression resolves empty —
+	 * for hooks registered before the node minted secrets. Default false
+	 * (no secret ⇒ reject).
+	 */
+	skipIfNoSecret?: boolean;
+}
+
 export type PostReceiveAction =
 	| ((
 			this: IExecuteSingleFunctions,
@@ -3064,10 +3243,12 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: true | undefined;
 	/**
-	 * Declarative trigger. The loader synthesizes `poll()` from it, so the node
-	 * class needs no trigger code. Ignored when the class defines `poll()`.
+	 * Declarative trigger. The loader synthesizes the trigger methods from it —
+	 * `poll()` for `type: 'polling'`, `webhookMethods`/`webhook()` for
+	 * `type: 'webhook'` — so the node class needs no trigger code. Members the
+	 * class defines itself always win, per slot.
 	 */
-	trigger?: IDeclarativePollingTrigger;
+	trigger?: IDeclarativePollingTrigger | IDeclarativeWebhookTrigger;
 	supportsCORS?: true | undefined;
 	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;

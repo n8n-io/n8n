@@ -105,6 +105,10 @@ export { commitStagedCursor, runPollInStagingScope } from './poll-cursor-hooks';
 export { PollJobManager } from './poll-job-manager';
 export { PollTriggerExecutor } from './poll-trigger-executor';
 export { isEngineRequest } from './requests-response';
+export {
+	createDeclarativeWebhook,
+	createDeclarativeWebhookMethods,
+} from './declarative-webhook';
 export * from './routing-node';
 export * from './scheduled-task-manager';
 export { TriggersAndPollers } from './triggers-and-pollers';

@@ -100,7 +100,11 @@ export const isPositiveInteger = (maybeInt: string) => /^[1-9]\d*$/.test(maybeIn
  * Check if a execute method should be assigned to the node
  */
 export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
-	const isDeclarativeNode = nodeType?.description?.requestDefaults !== undefined;
+	// A declarative webhook trigger carries requestDefaults for its lifecycle
+	// requests without being a declarative (routing) action node.
+	const isDeclarativeNode =
+		nodeType?.description?.requestDefaults !== undefined &&
+		nodeType.description.trigger?.type !== 'webhook';
 
 	return (
 		!nodeType.execute &&
