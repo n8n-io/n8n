@@ -299,7 +299,10 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		waitTimeoutMs: 10_000,
 		leaseTtlMs: 30_000,
 		onLeaseTimeout: (error) => {
-			ctx.logger.warn(`Could not acquire refresh lock for credential "${credentialId}"`, { error });
+			ctx.logger.warn(
+				`Could not acquire refresh lock for credential "${credentialId}"; refreshing without cross-process coordination`,
+				{ error },
+			);
 		},
 	});
 }

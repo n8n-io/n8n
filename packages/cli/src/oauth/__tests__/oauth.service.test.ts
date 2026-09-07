@@ -5517,8 +5517,18 @@ describe('OauthService', () => {
 			expect(ClientOAuth2).not.toHaveBeenCalled();
 		});
 
-		it('does not refresh without a credential lease', async () => {
+		it('refreshes without a credential lease when lease acquisition times out', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockToken = {
+				refresh: vi.fn().mockResolvedValue({
+					data: { access_token: 'new-token', token_type: 'bearer' },
+					accessToken: 'new-token',
+				}),
+				client: {},
+			};
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
 			lockService.withLease.mockRejectedValue(
 				new LockAcquisitionTimeoutError('Timed out waiting for the credential lock'),
 			);
@@ -5529,16 +5539,17 @@ describe('OauthService', () => {
 				grantType: 'authorizationCode',
 				oauthTokenData: { access_token: 'stale', refresh_token: 'refresh-token' },
 			} as unknown as OAuth2CredentialData);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 
-			await expect(
-				service.refreshOAuth2CredentialById(credentialId, projectId, {
-					accessToken: 'stale',
-				}),
-			).rejects.toThrow(LockAcquisitionTimeoutError);
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId, {
+				accessToken: 'stale',
+			});
 
-			expect(ClientOAuth2).not.toHaveBeenCalled();
+			expect(result).toEqual({ headers: { Authorization: 'Bearer new-token' } });
+			expect(mockToken.refresh).toHaveBeenCalledTimes(1);
+			expect(service.encryptAndSaveData).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Could not acquire the OAuth2 credential refresh lock',
+				'Refreshing the OAuth2 credential without cross-process coordination',
 				expect.objectContaining({ credentialId }),
 			);
 		});

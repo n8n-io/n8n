@@ -9,6 +9,7 @@ export interface SingleFlightLeaseOptions {
 	namespace: LockNamespace;
 	waitTimeoutMs?: number;
 	leaseTtlMs?: number;
+	/** Called before `fn` runs without a lease after an acquisition timeout. */
 	onLeaseTimeout?: (error: LockAcquisitionTimeoutError) => void;
 }
 
@@ -28,10 +29,10 @@ export class SingleFlightLease<T> {
 
 		const promise = lockService
 			.withLease(namespace, key, fn, { waitTimeoutMs, leaseTtlMs })
-			.catch((error: unknown) => {
+			.catch(async (error: unknown) => {
 				if (!(error instanceof LockAcquisitionTimeoutError)) throw error;
 				onLeaseTimeout?.(error);
-				throw error;
+				return await fn(new AbortController().signal);
 			})
 			.finally(() => this.inFlight.delete(inFlightKey));
 

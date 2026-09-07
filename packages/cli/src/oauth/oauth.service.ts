@@ -888,7 +888,7 @@ export class OauthService {
 			waitTimeoutMs: 10_000,
 			leaseTtlMs: 30_000,
 			onLeaseTimeout: (error) => {
-				this.logger.warn('Could not acquire the OAuth2 credential refresh lock', {
+				this.logger.warn('Refreshing the OAuth2 credential without cross-process coordination', {
 					credentialId,
 					error: error.message,
 				});

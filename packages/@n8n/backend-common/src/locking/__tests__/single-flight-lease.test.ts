@@ -62,20 +62,23 @@ describe('SingleFlightLease', () => {
 		expect(secondOperation).toHaveBeenCalledTimes(1);
 	});
 
-	it('does not run work when lease acquisition times out', async () => {
+	it('runs work without a lease when lease acquisition times out', async () => {
 		const lockService = mock<ILockService>();
 		const timeout = new LockAcquisitionTimeoutError('Timed out waiting for lock');
 		lockService.withLease.mockRejectedValueOnce(timeout);
 		const coordinator = new SingleFlightLease<string>();
 		const operation = vi.fn().mockResolvedValue('result');
+		const onLeaseTimeout = vi.fn();
 
 		await expect(
 			coordinator.run('credential', operation, {
 				lockService,
 				namespace: LockNamespace.CREDENTIALS,
+				onLeaseTimeout,
 			}),
-		).rejects.toBe(timeout);
-		expect(operation).not.toHaveBeenCalled();
+		).resolves.toBe('result');
+		expect(operation).toHaveBeenCalledTimes(1);
+		expect(onLeaseTimeout).toHaveBeenCalledWith(timeout);
 
 		lockService.withLease.mockImplementationOnce(
 			async (_namespace, _key, fn) => await fn(new AbortController().signal),
@@ -86,5 +89,6 @@ describe('SingleFlightLease', () => {
 				namespace: LockNamespace.CREDENTIALS,
 			}),
 		).resolves.toBe('result');
+		expect(operation).toHaveBeenCalledTimes(2);
 	});
 });
