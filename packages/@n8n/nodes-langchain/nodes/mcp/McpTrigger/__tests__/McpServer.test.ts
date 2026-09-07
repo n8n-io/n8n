@@ -14,6 +14,7 @@ import {
 import type { McpServerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { z } from 'zod';
 
 import { QueuedExecutionStrategy } from '../execution/QueuedExecutionStrategy';
 import { McpServer } from '../McpServer';
@@ -35,6 +36,83 @@ describe('McpServer', () => {
 		setEvictionConfig(60 * 60 * 1000, 5 * 60 * 1000);
 		mockLogger = createMockLogger();
 		mcpServer = McpServer.instance(mockLogger);
+	});
+
+	describe('tools/list schema dialect', () => {
+		const sessionId = 'dialect-session';
+
+		const toolWithTuple = () =>
+			createMockTool('with_tuple', {
+				schema: z.object({ range: z.tuple([z.number(), z.number()]).rest(z.number()) }),
+			});
+
+		type ListToolsHandler = (
+			request: unknown,
+			extra: { sessionId?: string },
+		) => { tools: Array<{ name: string; inputSchema: Record<string, unknown> }> };
+
+		async function advertisedTools() {
+			const server = createMockServer();
+			const internals = mcpServer as unknown as {
+				sessionManager: SessionManager;
+				setupHandlers(server: unknown): void;
+			};
+
+			await internals.sessionManager.registerSession(
+				sessionId,
+				server,
+				createMockTransport(sessionId, 'streamableHttp'),
+				[toolWithTuple()],
+			);
+			internals.setupHandlers(server);
+
+			const listTools = server.setRequestHandler.mock.calls[0][1] as unknown as ListToolsHandler;
+			return listTools({}, { sessionId }).tools;
+		}
+
+		it('declares JSON Schema 2020-12', async () => {
+			const [tool] = await advertisedTools();
+
+			expect(tool.inputSchema.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
+		});
+
+		it('advertises tuples with the 2020-12 keywords', async () => {
+			const [tool] = await advertisedTools();
+
+			expect(tool.inputSchema.properties).toMatchObject({
+				range: {
+					type: 'array',
+					prefixItems: [{ type: 'number' }, { type: 'number' }],
+					items: { type: 'number' },
+				},
+			});
+			expect(JSON.stringify(tool.inputSchema)).not.toContain('additionalItems');
+		});
+
+		it('keeps plain objects open to extra keys', async () => {
+			const [tool] = await advertisedTools();
+
+			expect(tool.inputSchema.additionalProperties).toBe(true);
+		});
+
+		it('relays the same dialect over SSE', async () => {
+			const server = createMockServer();
+			const transport = createMockTransport(sessionId, 'sse');
+			const internals = mcpServer as unknown as { sessionManager: SessionManager };
+
+			await internals.sessionManager.registerSession(sessionId, server, transport, [
+				toolWithTuple(),
+			]);
+			mcpServer.handleWorkerResponse(sessionId, 'msg-1', { _listToolsRequest: true });
+
+			const [message] = transport.send.mock.calls[0] as unknown as [
+				{ result: { tools: Array<{ inputSchema: Record<string, unknown> }> } },
+			];
+			expect(message.result.tools[0].inputSchema).toMatchObject({
+				$schema: 'https://json-schema.org/draft/2020-12/schema',
+				properties: { range: { prefixItems: [{ type: 'number' }, { type: 'number' }] } },
+			});
+		});
 	});
 
 	afterEach(() => {

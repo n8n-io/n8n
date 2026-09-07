@@ -14,6 +14,10 @@ import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
+import {
+	getSkippedSetupSubjects,
+	partitionSkippedSetupRequests,
+} from '../workflows/setup-skip-state';
 import { analyzeWorkflow } from '../workflows/setup-workflow.service';
 
 const inputSchema = z.object({
@@ -47,10 +51,17 @@ function getWorkflowId(outcome: Record<string, unknown> | undefined): string | u
 	return typeof workflowId === 'string' && workflowId.length > 0 ? workflowId : undefined;
 }
 
+/** Nodes the build changed — pending setup on other (pre-existing) nodes must not gate the checkpoint. */
+function getChangedNodeNames(outcome: Record<string, unknown> | undefined): string[] | undefined {
+	const changedNodeNames = outcome?.changedNodeNames;
+	if (!Array.isArray(changedNodeNames)) return undefined;
+	return changedNodeNames.filter((name): name is string => typeof name === 'string');
+}
+
 async function rejectIfSetupStillRequired(
 	context: OrchestrationContext,
 	checkpointTaskId: string,
-): Promise<{ ok: true } | { ok: false; result: string }> {
+): Promise<{ ok: true; skippedNote?: string } | { ok: false; result: string }> {
 	const graph = await context.plannedTaskService?.getGraph(context.threadId);
 	if (!graph) return { ok: true };
 
@@ -58,13 +69,19 @@ async function rejectIfSetupStillRequired(
 	if (!checkpoint || checkpoint.kind !== 'checkpoint') return { ok: true };
 	if (checkpoint.status !== 'running') return { ok: true };
 
-	const dependentWorkflowIds = graph.tasks
+	const dependentWorkflows = graph.tasks
 		.filter((task) => checkpoint.deps.includes(task.id))
 		.filter((task) => task.kind === 'build-workflow' && requiresWorkflowSetup(task.outcome))
-		.map((task) => getWorkflowId(task.outcome))
-		.filter((workflowId): workflowId is string => workflowId !== undefined);
+		.map((task) => ({
+			workflowId: getWorkflowId(task.outcome),
+			changedNodeNames: getChangedNodeNames(task.outcome),
+		}))
+		.filter(
+			(entry): entry is { workflowId: string; changedNodeNames: string[] | undefined } =>
+				entry.workflowId !== undefined,
+		);
 
-	if (dependentWorkflowIds.length === 0) return { ok: true };
+	if (dependentWorkflows.length === 0) return { ok: true };
 
 	const domainContext = context.domainContext;
 	if (!domainContext) {
@@ -76,10 +93,37 @@ async function rejectIfSetupStillRequired(
 		};
 	}
 
-	for (const workflowId of dependentWorkflowIds) {
+	const skippedNotes: string[] = [];
+
+	for (const { workflowId, changedNodeNames } of dependentWorkflows) {
 		try {
 			const setupRequests = await analyzeWorkflow(domainContext, workflowId);
-			const pendingRequests = setupRequests.filter((request) => request.needsAction);
+			// Credentials the user skipped can never be satisfied by another setup call, so
+			// counting them here would deadlock the checkpoint against a card that must not reopen.
+			const { pending, skippedByUser } = partitionSkippedSetupRequests(
+				setupRequests,
+				workflowId,
+				getSkippedSetupSubjects(domainContext),
+			);
+			// Nodes this build never touched don't gate the checkpoint either, and are not worth
+			// reporting: the user was never asked about them.
+			const blocks = (request: (typeof setupRequests)[number]) =>
+				request.needsAction === true &&
+				(!changedNodeNames || changedNodeNames.includes(request.node.name));
+			const pendingRequests = pending.filter(blocks);
+			// Passing the guard silently would let the checkpoint report a workflow as done with
+			// no mention that parts of it can't run — the one thing the user needs to hear.
+			const skipped = skippedByUser.filter(blocks);
+			if (skipped.length > 0) {
+				const described = skipped
+					.map((request) =>
+						request.credentialType
+							? `${request.node.name} (${request.credentialType})`
+							: request.node.name,
+					)
+					.join(', ');
+				skippedNotes.push(`workflow "${workflowId}": ${described}`);
+			}
 			if (pendingRequests.length > 0) {
 				const nodeNames = pendingRequests
 					.map((request) => request.node.name)
@@ -104,6 +148,16 @@ async function rejectIfSetupStillRequired(
 		}
 	}
 
+	if (skippedNotes.length > 0) {
+		return {
+			ok: true,
+			skippedNote:
+				`Setup the user skipped earlier is still outstanding — ${skippedNotes.join('; ')}. ` +
+				'Do not re-open the setup card. Say in your summary which parts stay unconfigured and ' +
+				'what that means when the workflow runs.',
+		};
+	}
+
 	return { ok: true };
 }
 
@@ -122,9 +176,11 @@ export function createCompleteCheckpointTool(context: OrchestrationContext) {
 				return { ok: false, result: 'Error: planned task service not available.' };
 			}
 
+			let skippedNote: string | undefined;
 			if (input.status === 'succeeded') {
 				const setupGuard = await rejectIfSetupStillRequired(context, input.taskId);
 				if (!setupGuard.ok) return setupGuard;
+				skippedNote = setupGuard.skippedNote;
 			}
 
 			const settleResult =
@@ -148,7 +204,9 @@ export function createCompleteCheckpointTool(context: OrchestrationContext) {
 			if (settleResult.ok) {
 				return {
 					ok: true,
-					result: `Checkpoint ${input.taskId} marked ${input.status}.`,
+					result:
+						`Checkpoint ${input.taskId} marked ${input.status}.` +
+						(skippedNote ? ` ${skippedNote}` : ''),
 				};
 			}
 

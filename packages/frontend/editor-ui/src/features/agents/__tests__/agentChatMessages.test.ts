@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
+	WAIT_TOOL_NAME,
 	type AgentPersistedMessageContentPart,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -50,6 +51,37 @@ describe('rebuildInteractiveFromHistory', () => {
 		expect(result?.resolvedValue).toBeUndefined();
 	});
 
+	it('restores preview-only tool details from a persisted suspension payload', () => {
+		const details = {
+			toolName: 'check_ledger',
+			kind: 'node',
+			input: {},
+			node: { parameters: { resource: 'row', operation: 'get', returnAll: true } },
+		};
+		const [message] = convertDbMessages([
+			{
+				id: 'assistant-approval',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'check_ledger',
+						toolCallId: 'call-approval-details',
+						input: {},
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'check_ledger',
+							args: {},
+							details,
+						},
+					},
+				],
+			},
+		]);
+
+		expect(message.interactive?.input).toMatchObject({ details });
+	});
+
 	it('rebuilds a rejected approval card from a declined tool result', () => {
 		const result = rebuildInteractiveFromHistory({
 			tool: 'calculator',
@@ -66,6 +98,56 @@ describe('rebuildInteractiveFromHistory', () => {
 		expect(result?.toolName).toBe(APPROVAL_TOOL_NAME);
 		expect(result?.resolvedAt).toBeDefined();
 		expect(result?.resolvedValue).toEqual({ approved: false });
+	});
+
+	// The workflow tool's name is per-workflow, so the payload's own marker is
+	// what makes the card renderable here as well as on the chat platforms.
+	it('rebuilds an OPEN waiting card from a Wait-node suspend payload', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'approval_workflow',
+			toolCallId: 'call-wait-1',
+			input: { input: 'go' },
+			suspendPayload: {
+				type: 'workflow_wait',
+				title: 'Waiting on "Approval workflow"',
+				components: [
+					{ type: 'section', text: 'The "Approval workflow" workflow is paused.' },
+					{ type: 'button', label: 'Check for the result', value: 'continue', style: 'primary' },
+					{ type: 'button', label: 'Stop waiting', value: 'cancel', style: 'danger' },
+				],
+			},
+			state: 'suspended',
+		});
+
+		expect(result?.toolName).toBe(WAIT_TOOL_NAME);
+		expect(result?.input).toEqual({
+			card: {
+				title: 'Waiting on "Approval workflow"',
+				components: [
+					{ type: 'section', text: 'The "Approval workflow" workflow is paused.' },
+					{ type: 'button', label: 'Check for the result', value: 'continue', style: 'primary' },
+					{ type: 'button', label: 'Stop waiting', value: 'cancel', style: 'danger' },
+				],
+			},
+		});
+		expect(result?.resolvedAt).toBeUndefined();
+	});
+
+	it('resolves the waiting card with the button the user clicked', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'approval_workflow',
+			toolCallId: 'call-wait-1',
+			suspendPayload: {
+				type: 'workflow_wait',
+				title: 'Waiting on "Approval workflow"',
+				components: [{ type: 'button', value: 'cancel' }],
+			},
+			output: { type: 'button', value: 'cancel' },
+			state: 'done',
+		});
+
+		expect(result?.resolvedAt).toBe(1);
+		expect(result?.resolvedValue).toEqual({ type: 'button', value: 'cancel' });
 	});
 
 	it('does not show a declined nested approval as approved from the delegate result', () => {
@@ -628,6 +710,40 @@ describe('buildDisplayGroups — interactive payloads', () => {
 });
 
 describe('applyOpenSuspensions', () => {
+	it('preserves persisted preview details when the checkpoint payload is applied', () => {
+		const details = { node: { parameters: { operation: 'get', returnAll: true } } };
+		const chat: ChatMessage[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{
+						tool: 'check_ledger',
+						toolCallId: 'call-1',
+						state: 'running',
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'check_ledger',
+							args: {},
+							details,
+						},
+					},
+				],
+			},
+		];
+
+		const result = applyOpenSuspensions(chat, [
+			{
+				toolCallId: 'call-1',
+				runId: 'run-1',
+				suspendPayload: { type: 'approval', toolName: 'check_ledger', args: {} },
+			},
+		]);
+
+		expect(result[0].interactive?.input).toMatchObject({ details });
+	});
+
 	it('rebuilds a nested approval and leaves resolved cards closed', () => {
 		const delegateInput = {
 			subAgentId: 'inline',

@@ -1,4 +1,7 @@
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+
 import type { WorkflowSourceCompileFailureReason } from './workflow-source-compiler';
+import { isWorkflowEditorLockedError } from '../../errors/workflow-editor-locked.error';
 import { isWorkflowNotFoundError } from '../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { createRemediation } from '../../workflow-loop/remediation';
@@ -10,7 +13,7 @@ export const INVALID_WORKFLOW_ID_GUIDANCE =
 	'workflowId must be a real n8n workflow id from a prior build-workflow or workflows() tool result — never the first argument of workflow(slug, name).';
 
 function getFailureText(error: unknown): string {
-	return (error instanceof Error ? error.message : String(error)).toLowerCase();
+	return getErrorMessage(error).toLowerCase();
 }
 
 function isCredentialSaveFailure(text: string): boolean {
@@ -54,7 +57,17 @@ export function createWorkflowModifiedExternallyRemediation(): RemediationMetada
 	return createCodeFixableRemediation({
 		reason: 'workflow_modified_externally',
 		guidance:
-			'The workflow was modified outside this conversation since your last save (canvas edit, setup, credential change, or version revert). Call workflows(action="get-as-code", workflowId), re-apply your intended change to the returned code, write it to the same filePath, then call build-workflow again with the same filePath.',
+			'The workflow was modified outside this conversation since your last save (canvas edit, setup, credential change, or version revert). Call workflows(action="get-as-code", workflowId): it regenerates the bound source file from the saved workflow. Re-apply your intended change in that file with workspace_str_replace_file, then call build-workflow again with the same filePath. If get-as-code reports status "conflict", the file still holds your unbuilt edits on top of the old version: delete the file, call get-as-code again, and re-apply the change before building.',
+	});
+}
+
+export function createWorkflowLockedByEditorRemediation(): RemediationMetadata {
+	return createRemediation({
+		category: 'blocked',
+		shouldEdit: false,
+		reason: 'workflow_locked_by_editor',
+		guidance:
+			'The workflow could not be saved because someone is editing it in the n8n editor right now — saving would overwrite their work. Stop editing the source and tell the user to finish or close their editing session, then retry.',
 	});
 }
 
@@ -64,6 +77,10 @@ export function createSaveFailureRemediation(
 ): RemediationMetadata {
 	if (error instanceof WorkflowSaveConflictError) {
 		return createWorkflowModifiedExternallyRemediation();
+	}
+
+	if (isWorkflowEditorLockedError(error)) {
+		return createWorkflowLockedByEditorRemediation();
 	}
 
 	const text = getFailureText(error);

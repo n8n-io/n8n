@@ -46,11 +46,23 @@ jobs:
     with:
       ref: ${{ github.sha }}
 
+  # CodSpeed benchmarks run post-merge only. On PRs they failed for reasons
+  # unrelated to the change, so the red check gave authors no usable signal.
   performance:
     name: Performance
     uses: ./.github/workflows/test-bench-reusable.yml
     with:
       ref: ${{ github.sha }}
+
+  # Scoped to the packages this push touched, so it stays cheap enough to run on every commit.
+  verify-single-instance-npm:
+    name: Verify single-instance deps (npm-install)
+    uses: ./.github/workflows/test-single-instance-npm.yml
+    permissions:
+      contents: read
+    with:
+      scope: changed
+      base-ref: ${{ github.event.before }}
 
   notify-on-failure:
     name: Notify Slack on failure

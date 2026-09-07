@@ -7,6 +7,28 @@ export type ExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'c
 export type ExecutionMode = 'production' | 'manual';
 
 /**
+ * Facts about the caller, supplied by the host at start and stored with the
+ * execution. The engine never reads them: it passes them to the step executor,
+ * which needs them to act on the caller's behalf, for example to resolve a
+ * credential.
+ *
+ * This is caller-supplied, opaque data. It is distinct from any per-request
+ * context the engine builds for its own use (database handle, request id,
+ * principal), which is never persisted and never given to a step executor.
+ */
+export interface CallerContext {
+	/** The user on whose behalf the execution runs. */
+	userId?: string;
+	/** The project that owns the workflow. */
+	projectId?: string;
+	/**
+	 * The host's own execution mode, which is finer than `ExecutionMode`. Opaque
+	 * to the engine; a v1 host stores its `WorkflowExecuteMode` here.
+	 */
+	hostMode?: string;
+}
+
+/**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
  * never runs.
@@ -40,3 +62,42 @@ export function isSettledStatus(status: StepStatus): boolean {
  * the same thing — a step that ran and produced zero items is still live.
  */
 export type StepSlots = JsonValue[];
+
+/**
+ * The trigger step's outputs, supplied by whoever starts the execution: one
+ * entry per output slot, `null` for a slot the trigger didn't fire. Same shape
+ * and same opacity as any other step's `StepSlots` — a v1 host puts JSON-shaped
+ * `INodeExecutionData[]` in each slot.
+ */
+export type TriggerOutputs = StepSlots;
+
+/** Slots recorded for a trigger that fired without a payload: no slots at all. */
+export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
+
+/**
+ * The error that failed a step, as persisted on its row. Shared: the execution
+ * path writes it, the read path reports it.
+ */
+export interface StepError {
+	name: string;
+	message: string;
+	stack?: string;
+	/**
+	 * Step-type-specific error detail, persisted without inspection — the engine
+	 * owns only `name`/`message`/`stack`. Unpopulated until executors have a way
+	 * to hand structured detail across the seam; they only throw today.
+	 */
+	details?: JsonValue;
+}
+
+export interface StepKey {
+	nodeId: string;
+	iteration: number;
+}
+
+/** A step key in the string form that keys instance-keyed lookups. */
+export type StepKeyId = string;
+
+export function stepKeyId({ nodeId, iteration }: StepKey): StepKeyId {
+	return `${nodeId}@${iteration}`;
+}

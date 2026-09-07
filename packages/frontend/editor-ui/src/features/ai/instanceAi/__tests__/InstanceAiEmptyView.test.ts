@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, reactive, ref } from 'vue';
+import { defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -316,6 +316,7 @@ const InstanceAiInputStub = defineComponent({
 		const currentText = ref('');
 		expose({
 			focus: vi.fn(),
+			isDirty: () => currentText.value.length > 0,
 			setText: (text: string) => {
 				currentText.value = text;
 			},
@@ -383,6 +384,20 @@ const InstanceAiInputStub = defineComponent({
 	},
 });
 
+const InstanceAiFreeNudgeStub = defineComponent({
+	name: 'InstanceAiFreeNudgeStub',
+	props: {
+		eligible: { type: Boolean, required: true },
+	},
+	setup(props) {
+		return () =>
+			h('div', {
+				'data-test-id': 'instance-ai-free-nudge-stub',
+				'data-eligible': String(props.eligible),
+			});
+	},
+});
+
 const renderView = createComponentRenderer(InstanceAiEmptyView, {
 	global: {
 		provide: {
@@ -390,6 +405,7 @@ const renderView = createComponentRenderer(InstanceAiEmptyView, {
 		},
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
+			InstanceAiFreeNudge: InstanceAiFreeNudgeStub,
 		},
 	},
 });
@@ -437,9 +453,13 @@ describe('InstanceAiEmptyView', () => {
 			isAwaitingConfirmation: false,
 			amendContext: null,
 			contextualSuggestion: null,
-			sendMessage: vi.fn().mockResolvedValue(undefined),
+			sendMessage: vi.fn().mockResolvedValue(true),
 		} as unknown as ThreadRuntime;
 		store.getOrCreateRuntime.mockReturnValue(thread);
+		store.deleteThread.mockResolvedValue(true);
+		store.creditsQuota = 100;
+		store.showCreditWarning = false;
+		store.quotaLocked = false;
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
 		experimentMocks.splitBelowInputVariant.value = false;
@@ -633,6 +653,7 @@ describe('InstanceAiEmptyView', () => {
 
 		expect(getByTestId('instance-ai-proactive-starter')).toHaveTextContent('starter');
 		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-free-nudge-stub')).not.toBeInTheDocument();
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
@@ -646,6 +667,18 @@ describe('InstanceAiEmptyView', () => {
 
 		expect(getByTestId('instance-ai-split-empty-state')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-free-nudge-stub')).not.toBeInTheDocument();
+	});
+
+	// The split layout's input is detached and fully rounded, so a banner styled to
+	// fuse onto a sidebar input reads as a stray inset box floating above it.
+	it('renders the credit banner as a self-contained card in the split layout', () => {
+		experimentMocks.splitBelowInputVariant.value = true;
+		store.showCreditWarning = true;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('credit-warning-banner')).toHaveClass('standalone');
 	});
 
 	it('passes the experiment placeholder key and fixed-rows to the input inside the split layout', () => {
@@ -715,7 +748,38 @@ describe('InstanceAiEmptyView', () => {
 		const { getByTestId, queryByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-empty-state')).toBeInTheDocument();
+		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
+		expect(getByTestId('instance-ai-free-nudge-stub').parentElement).toContainElement(
+			getByTestId('instance-ai-input-stub'),
+		);
 		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
+	});
+
+	it('keeps the free nudge ineligible until credits are loaded', async () => {
+		store.creditsQuota = undefined;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'false');
+
+		store.creditsQuota = 100;
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
+	});
+
+	it('keeps the free nudge mounted and reveals it after the credit warning is dismissed', async () => {
+		store.showCreditWarning = true;
+
+		const { getByTestId } = renderView();
+		const nudge = getByTestId('instance-ai-free-nudge-stub');
+
+		expect(nudge).toHaveAttribute('data-eligible', 'false');
+
+		await fireEvent.click(getByTestId('credit-banner-dismiss'));
+		await flushPromises();
+
+		expect(nudge).toHaveAttribute('data-eligible', 'true');
 	});
 
 	it('tracks personalized prompt suggestions exposure for the control variant', () => {
@@ -834,6 +898,54 @@ describe('InstanceAiEmptyView', () => {
 		expect(showErrorMock).not.toHaveBeenCalled();
 	});
 
+	it('stays on the empty view and restores the draft when the send is refused', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		vi.mocked(thread.sendMessage).mockResolvedValue(false);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+		await nextTick();
+
+		expect(thread.sendMessage).toHaveBeenCalledWith('hello', undefined, 'test-push-ref');
+		// Navigating would drop the user into a blank thread, and the destination cannot be
+		// handed the draft either: it reads localStorage once, synchronously, on mount.
+		expect(replaceMock).not.toHaveBeenCalled();
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+		// syncThread already persisted the thread and sendMessage opened its SSE; leaving
+		// them behind would strand a blank sidebar entry and an EventSource per attempt.
+		// Silent: the refusal was already reported, so a second toast would only confuse.
+		expect(store.deleteThread).toHaveBeenCalledWith('thread-placeholder', { silent: true });
+		expect(store.disposeRuntime).not.toHaveBeenCalled();
+	});
+
+	// A refused delete returns before the store's own teardown, so the SSE would otherwise
+	// stay open -- the exact leak this cleanup exists to prevent.
+	it('still disposes the runtime when the cleanup delete is refused', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		vi.mocked(thread.sendMessage).mockResolvedValue(false);
+		store.deleteThread.mockResolvedValue(false);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+		await nextTick();
+
+		expect(store.disposeRuntime).toHaveBeenCalledWith('thread-placeholder');
+		// The draft still comes back: cleanup must never cost the user their message.
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+	});
+
+	it('keeps the provisional thread when the send is accepted', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.deleteThread).not.toHaveBeenCalled();
+	});
+
 	it('attributes syncThread to ?source= from an unsaved-canvas hand-off', async () => {
 		routeQuery.source = 'canvas_action_button';
 		store.syncThread.mockResolvedValue(undefined);
@@ -931,6 +1043,7 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-workflow-builder-unavailable')).toBeVisible();
 		expect(getByText('Workflow builder unavailable')).toBeVisible();
 		expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('unavailable');
+		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'false');
 
 		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 		await flushPromises();
@@ -947,10 +1060,13 @@ describe('InstanceAiEmptyView', () => {
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('template-examples-catalog')).toBeInTheDocument();
+		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
 
 		await fireEvent.click(getByTestId('template-example-card'));
 		await flushPromises();
 
+		expect(getByTestId('instance-ai-input-stub')).toHaveClass('inputPulse');
+		expect(getByTestId('instance-ai-free-nudge-stub')).not.toHaveClass('inputPulse');
 		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
 			'Build me an invoice automation',
 		);

@@ -1,4 +1,4 @@
-import { WORKFLOW_REVIEW_COMMENT_MAX_LENGTH } from '@n8n/api-types';
+import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
@@ -29,7 +29,7 @@ describe('WorkflowReviewCommentComposer', () => {
 		store = mockedStore(useReviewActivityStore);
 		store.posting = false;
 		store.draft = '';
-		store.postComment.mockResolvedValue(undefined);
+		store.postComment.mockResolvedValue(true);
 	});
 
 	it('keeps a half-typed comment when the composer is unmounted and shown again', async () => {
@@ -70,12 +70,12 @@ describe('WorkflowReviewCommentComposer', () => {
 		const textarea = getByRole('textbox');
 
 		textarea.focus();
-		await userEvent.paste('x'.repeat(WORKFLOW_REVIEW_COMMENT_MAX_LENGTH));
+		await userEvent.paste('x'.repeat(WORKFLOW_REVIEW_TEXT_MAX_LENGTH));
 		await waitFor(() => expect(getByTestId('send-message-button')).not.toBeDisabled());
 		// Shift+Enter inserts the newline itself, so `maxlength` on the textarea does not stop it
 		await userEvent.keyboard('{Shift>}{Enter}{/Shift}');
 
-		expect(textarea).toHaveValue(`${'x'.repeat(WORKFLOW_REVIEW_COMMENT_MAX_LENGTH)}\n`);
+		expect(textarea).toHaveValue(`${'x'.repeat(WORKFLOW_REVIEW_TEXT_MAX_LENGTH)}\n`);
 		await waitFor(() => expect(getByTestId('send-message-button')).toBeDisabled());
 	});
 
@@ -94,8 +94,8 @@ describe('WorkflowReviewCommentComposer', () => {
 		let resolvePost!: () => void;
 		store.postComment.mockImplementation(
 			async () =>
-				await new Promise<void>((resolve) => {
-					resolvePost = resolve;
+				await new Promise<boolean>((resolve) => {
+					resolvePost = () => resolve(true);
 				}),
 		);
 		const { getByTestId, getByRole } = renderComponent({ props: { canComment: true } });
@@ -110,6 +110,27 @@ describe('WorkflowReviewCommentComposer', () => {
 		await new Promise(setImmediate);
 
 		expect(textarea).toHaveValue('Nice work and the next one');
+	});
+
+	it('keeps the draft when the post it was waiting on belonged to another review', async () => {
+		let resolvePost!: () => void;
+		store.postComment.mockImplementation(
+			async () =>
+				await new Promise<boolean>((resolve) => {
+					// Stale: the viewer moved to another review while this was in flight.
+					resolvePost = () => resolve(false);
+				}),
+		);
+		const { getByTestId, getByRole } = renderComponent({ props: { canComment: true } });
+		const textarea = getByRole('textbox');
+
+		await userEvent.type(textarea, 'Nice work');
+		await userEvent.click(getByTestId('send-message-button'));
+		resolvePost();
+		await new Promise(setImmediate);
+
+		// Identical text, so only the stale result can keep it from being cleared.
+		expect(textarea).toHaveValue('Nice work');
 	});
 
 	it('keeps the draft and surfaces an error when posting fails', async () => {

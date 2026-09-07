@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useToast } from '@n8n/composables/useToast';
+import { useEventListener } from '@vueuse/core';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import WorkflowDiffEmptyState from '@/features/workflows/workflowDiff/WorkflowDiffEmptyState.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
@@ -14,7 +15,7 @@ import { removeWorkflowExecutionData } from '@/app/utils/workflowUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import { NodeDiffStatus } from 'n8n-workflow';
-import { computed, useCssModule, onMounted } from 'vue';
+import { computed, ref, useCssModule, onMounted } from 'vue';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -36,6 +37,7 @@ const props = withDefaults(
 		targetLabel?: string;
 		tidyUp?: boolean;
 		showBackButton?: boolean;
+		showFullscreenButton?: boolean;
 		source?: 'version_history' | 'push_pull_modal' | 'unknown';
 	}>(),
 	{
@@ -44,6 +46,7 @@ const props = withDefaults(
 		sourceLabel: 'Before',
 		targetLabel: 'After',
 		showBackButton: false,
+		showFullscreenButton: false,
 		source: 'unknown',
 	},
 );
@@ -52,6 +55,19 @@ const emit = defineEmits<{
 }>();
 
 const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
+
+// Teleported, not just `position: fixed`: a `container-type` ancestor would trap it.
+const isFullscreen = ref(false);
+
+function toggleFullscreen() {
+	isFullscreen.value = !isFullscreen.value;
+}
+
+useEventListener(document, 'keydown', (event: KeyboardEvent) => {
+	if (event.key !== 'Escape' || !isFullscreen.value) return;
+	event.preventDefault();
+	isFullscreen.value = false;
+});
 
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
@@ -132,182 +148,207 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 </script>
 
 <template>
-	<div :class="$style.workflowDiffViewContainer">
-		<div :class="$style.header">
-			<div :class="$style.headerLeft">
-				<slot name="header-prefix" />
-				<N8nIconButton
-					v-if="showBackButton"
-					variant="subtle"
-					icon="arrow-left"
-					:class="[$style.backButton, 'mr-xs']"
-					icon-size="large"
-					@click="emit('back')"
-				/>
-				<N8nHeading tag="h4" size="medium">
-					{{ sourceWorkflow?.name || targetWorkflow?.name }}
-				</N8nHeading>
-			</div>
-
-			<div :class="$style.headerRight">
-				<N8nCheckbox
-					v-model="syncIsEnabled"
-					label-size="small"
-					label="Sync views"
-					class="mb-0 mr-s"
-				/>
-				<ElDropdown
-					trigger="click"
-					:popper-options="{
-						placement: 'bottom-end',
-						modifiers,
-					}"
-					:popper-class="$style.popper"
-					@visible-change="onChangesDropdownVisibleChange"
-				>
-					<N8nButton variant="subtle" style="--button--radius: 4px 0 0 4px">
-						<div v-if="changesCount" :class="$style.circleBadge">
-							{{ changesCount }}
-						</div>
-						{{ i18n.baseText('workflowDiff.changes') }}
-					</N8nButton>
-					<template #dropdown>
-						<ElDropdownMenu :hide-on-click="false">
-							<div :class="$style.dropdownContent">
-								<N8nSegmentControl
-									v-model="activeTab"
-									:options="tabs"
-									:class="$style.tabs"
-									class="mb-xs"
-								>
-									<template #option="{ label, data: optionData }">
-										{{ label }}
-										<span v-if="optionData?.count" class="ml-4xs"> ({{ optionData.count }}) </span>
-									</template>
-								</N8nSegmentControl>
-								<div>
-									<ul v-if="activeTab === 'nodes'">
-										<template v-if="nodeChanges.length > 0">
-											<WorkflowDiffNodeItem
-												v-for="change in nodeChanges"
-												:key="change.node.id"
-												:badge-type="change.status"
-												:node-type="change.type"
-												:node-name="change.node.name"
-												:is-active="selectedDetailId === change.node.id"
-												@select="onNodeChangeSelect(change)"
-											/>
-										</template>
-										<WorkflowDiffEmptyState
-											v-else
-											:text="i18n.baseText('workflowDiff.noChanges')"
-										/>
-									</ul>
-									<ul v-if="activeTab === 'connectors'" :class="$style.changes">
-										<template v-if="connectionsDiff.size > 0">
-											<li v-for="change in connectionsDiff" :key="change[0]">
-												<div>
-													<DiffBadge :type="change[1].status" />
-												</div>
-												<div>
-													<ul>
-														<WorkflowDiffNodeItem
-															:node-type="change[1].connection.sourceType"
-															:node-name="change[1].connection.source?.name"
-															:is-active="selectedDetailId === change[1].connection.source?.id"
-															is-compact
-															@select="setSelectedDetailId(change[1].connection.source?.id)"
-														/>
-														<div :class="$style.separator"></div>
-														<WorkflowDiffNodeItem
-															:node-type="change[1].connection.targetType"
-															:node-name="change[1].connection.target?.name"
-															:is-active="selectedDetailId === change[1].connection.target?.id"
-															is-compact
-															@select="setSelectedDetailId(change[1].connection.target?.id)"
-														/>
-													</ul>
-												</div>
-											</li>
-										</template>
-										<WorkflowDiffEmptyState
-											v-else
-											:text="i18n.baseText('workflowDiff.noChanges')"
-										/>
-									</ul>
-									<ul v-if="activeTab === 'settings'">
-										<template v-if="settingsDiff.length > 0">
-											<li v-for="setting in settingsDiff" :key="setting.name">
-												<N8nText color="text-dark" size="medium" tag="div" bold>{{
-													i18n.baseText(`workflowSettings.${setting.name}` as BaseTextKey)
-												}}</N8nText>
-												<NodeDiff
-													:old-string="setting.before"
-													:new-string="setting.after"
-													:class="$style.noNumberDiff"
-												/>
-											</li>
-										</template>
-										<WorkflowDiffEmptyState
-											v-else
-											:text="i18n.baseText('workflowDiff.noChanges')"
-										/>
-									</ul>
-								</div>
-							</div>
-						</ElDropdownMenu>
-					</template>
-				</ElDropdown>
-				<N8nIconButton
-					variant="subtle"
-					icon="chevron-left"
-					:class="$style.navigationButton"
-					style="--button--radius: 0; margin: 0 -1px"
-					@click="previousNodeChange"
-				/>
-				<N8nIconButton
-					variant="subtle"
-					icon="chevron-right"
-					:class="$style.navigationButton"
-					style="--button--radius: 0 4px 4px 0"
-					@click="nextNodeChange"
-				/>
-			</div>
-		</div>
-
-		<WorkflowDiffContent
-			:source-nodes="source.nodes"
-			:source-connections="source.connections"
-			:source-render-data="sourceRenderData"
-			:target-nodes="target.nodes"
-			:target-connections="target.connections"
-			:target-render-data="targetRenderData"
-			:source-label="sourceLabel"
-			:target-label="targetLabel"
-			:source-exists="!!sourceWorkflow"
-			:target-exists="!!targetWorkflow"
-			:selected-node="selectedNode"
-			:node-diffs="nodeDiffs"
-			:is-source-workflow-new="isSourceWorkflowNew"
-			:apply-layout="tidyUp"
-			:nodes-diff="nodesDiff"
-			:connections-diff="connectionsDiff"
-			@close-aside="selectedDetailId = undefined"
+	<Teleport to="body" :disabled="!isFullscreen">
+		<div
+			:class="[$style.workflowDiffViewContainer, { [$style.fullscreen]: isFullscreen }]"
+			data-test-id="workflow-diff-view"
 		>
-			<template v-if="$slots.sourceLabel" #sourceLabel>
-				<slot name="sourceLabel" />
-			</template>
-			<template v-if="$slots.sourceEmptyText" #sourceEmptyText>
-				<slot name="sourceEmptyText" />
-			</template>
-			<template v-if="$slots.targetLabel" #targetLabel>
-				<slot name="targetLabel" />
-			</template>
-			<template v-if="$slots.targetEmptyText" #targetEmptyText>
-				<slot name="targetEmptyText" />
-			</template>
-		</WorkflowDiffContent>
-	</div>
+			<div :class="$style.header">
+				<div :class="$style.headerLeft">
+					<slot name="header-prefix" />
+					<N8nIconButton
+						v-if="showBackButton"
+						variant="subtle"
+						icon="arrow-left"
+						:class="[$style.backButton, 'mr-xs']"
+						icon-size="large"
+						@click="emit('back')"
+					/>
+					<N8nHeading tag="h4" size="medium">
+						{{ sourceWorkflow?.name || targetWorkflow?.name }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.headerRight">
+					<N8nCheckbox
+						v-model="syncIsEnabled"
+						label-size="small"
+						label="Sync views"
+						class="mb-0 mr-s"
+					/>
+					<ElDropdown
+						trigger="click"
+						:popper-options="{
+							placement: 'bottom-end',
+							modifiers,
+						}"
+						:popper-class="$style.popper"
+						@visible-change="onChangesDropdownVisibleChange"
+					>
+						<N8nButton variant="subtle" style="--button--radius: 4px 0 0 4px">
+							<div v-if="changesCount" :class="$style.circleBadge">
+								{{ changesCount }}
+							</div>
+							{{ i18n.baseText('workflowDiff.changes') }}
+						</N8nButton>
+						<template #dropdown>
+							<ElDropdownMenu :hide-on-click="false">
+								<div :class="$style.dropdownContent">
+									<N8nSegmentControl
+										v-model="activeTab"
+										:options="tabs"
+										:class="$style.tabs"
+										class="mb-xs"
+									>
+										<template #option="{ label, data: optionData }">
+											{{ label }}
+											<span v-if="optionData?.count" class="ml-4xs">
+												({{ optionData.count }})
+											</span>
+										</template>
+									</N8nSegmentControl>
+									<div>
+										<ul v-if="activeTab === 'nodes'">
+											<template v-if="nodeChanges.length > 0">
+												<WorkflowDiffNodeItem
+													v-for="change in nodeChanges"
+													:key="change.node.id"
+													:badge-type="change.status"
+													:node-type="change.type"
+													:node-name="change.node.name"
+													:is-active="selectedDetailId === change.node.id"
+													@select="onNodeChangeSelect(change)"
+												/>
+											</template>
+											<WorkflowDiffEmptyState
+												v-else
+												:text="i18n.baseText('workflowDiff.noChanges')"
+											/>
+										</ul>
+										<ul v-if="activeTab === 'connectors'" :class="$style.changes">
+											<template v-if="connectionsDiff.size > 0">
+												<li v-for="change in connectionsDiff" :key="change[0]">
+													<div>
+														<DiffBadge :type="change[1].status" />
+													</div>
+													<div>
+														<ul>
+															<WorkflowDiffNodeItem
+																:node-type="change[1].connection.sourceType"
+																:node-name="change[1].connection.source?.name"
+																:is-active="selectedDetailId === change[1].connection.source?.id"
+																is-compact
+																@select="setSelectedDetailId(change[1].connection.source?.id)"
+															/>
+															<div :class="$style.separator"></div>
+															<WorkflowDiffNodeItem
+																:node-type="change[1].connection.targetType"
+																:node-name="change[1].connection.target?.name"
+																:is-active="selectedDetailId === change[1].connection.target?.id"
+																is-compact
+																@select="setSelectedDetailId(change[1].connection.target?.id)"
+															/>
+														</ul>
+													</div>
+												</li>
+											</template>
+											<WorkflowDiffEmptyState
+												v-else
+												:text="i18n.baseText('workflowDiff.noChanges')"
+											/>
+										</ul>
+										<ul v-if="activeTab === 'settings'">
+											<template v-if="settingsDiff.length > 0">
+												<li v-for="setting in settingsDiff" :key="setting.name">
+													<N8nText color="text-dark" size="medium" tag="div" bold>{{
+														i18n.baseText(`workflowSettings.${setting.name}` as BaseTextKey)
+													}}</N8nText>
+													<NodeDiff
+														:old-string="setting.before"
+														:new-string="setting.after"
+														:class="$style.noNumberDiff"
+													/>
+												</li>
+											</template>
+											<WorkflowDiffEmptyState
+												v-else
+												:text="i18n.baseText('workflowDiff.noChanges')"
+											/>
+										</ul>
+									</div>
+								</div>
+							</ElDropdownMenu>
+						</template>
+					</ElDropdown>
+					<N8nIconButton
+						variant="subtle"
+						icon="chevron-left"
+						:class="$style.navigationButton"
+						style="--button--radius: 0; margin: 0 -1px"
+						@click="previousNodeChange"
+					/>
+					<N8nIconButton
+						variant="subtle"
+						icon="chevron-right"
+						:class="$style.navigationButton"
+						style="--button--radius: 0 4px 4px 0"
+						@click="nextNodeChange"
+					/>
+					<N8nIconButton
+						v-if="showFullscreenButton"
+						variant="subtle"
+						:icon="isFullscreen ? 'minimize-2' : 'maximize-2'"
+						:title="
+							i18n.baseText(
+								isFullscreen ? 'workflowDiff.fullscreen.exit' : 'workflowDiff.fullscreen.enter',
+							)
+						"
+						:aria-label="
+							i18n.baseText(
+								isFullscreen ? 'workflowDiff.fullscreen.exit' : 'workflowDiff.fullscreen.enter',
+							)
+						"
+						:class="$style.fullscreenButton"
+						data-test-id="workflow-diff-fullscreen-toggle"
+						@click="toggleFullscreen"
+					/>
+				</div>
+			</div>
+
+			<WorkflowDiffContent
+				:source-nodes="source.nodes"
+				:source-connections="source.connections"
+				:source-render-data="sourceRenderData"
+				:target-nodes="target.nodes"
+				:target-connections="target.connections"
+				:target-render-data="targetRenderData"
+				:source-label="sourceLabel"
+				:target-label="targetLabel"
+				:source-exists="!!sourceWorkflow"
+				:target-exists="!!targetWorkflow"
+				:selected-node="selectedNode"
+				:node-diffs="nodeDiffs"
+				:is-source-workflow-new="isSourceWorkflowNew"
+				:apply-layout="tidyUp"
+				:nodes-diff="nodesDiff"
+				:connections-diff="connectionsDiff"
+				@close-aside="selectedDetailId = undefined"
+			>
+				<template v-if="$slots.sourceLabel" #sourceLabel>
+					<slot name="sourceLabel" />
+				</template>
+				<template v-if="$slots.sourceEmptyText" #sourceEmptyText>
+					<slot name="sourceEmptyText" />
+				</template>
+				<template v-if="$slots.targetLabel" #targetLabel>
+					<slot name="targetLabel" />
+				</template>
+				<template v-if="$slots.targetEmptyText" #targetEmptyText>
+					<slot name="targetEmptyText" />
+				</template>
+			</WorkflowDiffContent>
+		</div>
+	</Teleport>
 </template>
 
 <style module lang="scss">
@@ -315,6 +356,17 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+}
+
+.fullscreen {
+	position: fixed;
+	inset: 0;
+	z-index: var(--workflow-diff-fullscreen--z);
+	background: var(--color--background--light-3);
+}
+
+.fullscreenButton {
+	margin-left: var(--spacing--2xs);
 }
 
 .tabs {

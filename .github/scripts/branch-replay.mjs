@@ -1,15 +1,16 @@
 /**
- * Primitives shared by the branch-replay flows — syncing a long-lived branch that is
- * "base + its own commits" by REBASING those commits onto the base and force-pushing,
- * so a clean sync adds no commit of its own.
+ * Primitives shared by the flows that sync a long-lived branch which is "base + its own
+ * commits" with that base, whether by rebasing those commits onto it or by merging it in.
  *
  * Nothing here knows which branch pair it is working on. The safety property every caller
  * relies on lives in `mergeTree` + `assertTreeMatches`: the content pushed must be exactly
  * the tree a merge of the two sides would produce, and a mismatch fails the run instead of
- * pushing. That invariant is what makes rewriting a shared branch safe.
+ * pushing. That invariant is what makes rewriting a shared branch safe, and what proves a
+ * merge landed on the content it was supposed to.
  *
- * Callers: `sync-master-to-3x.mjs` (master → 3.x, with mechanical conflict resolution and a
- * conflict PR) and `rebase-bundle-branch.mjs` (base → bundle/*, fail-loud).
+ * Callers: `sync-master-to-3x.mjs` (master → 3.x, rebased, with mechanical conflict
+ * resolution and a conflict PR) and `sync-bundle-branch.mjs` (base → bundle/*, merged
+ * because those branches receive PRs, fail-loud).
  *
  * Requires git 2.38+ (`merge-tree --write-tree`).
  */

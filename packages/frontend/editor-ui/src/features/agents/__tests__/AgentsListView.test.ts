@@ -5,6 +5,7 @@ import type { AgentResource } from '../types';
 
 import AgentsListView from '../views/AgentsListView.vue';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { AGENT_BUILDER_VIEW, NEW_SESSION_PARAM } from '../constants';
 
 const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
@@ -44,7 +45,8 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	}),
 }));
 
-vi.mock('@/features/execution/insights/insights.store', () => ({
+vi.mock('@/features/execution/insights', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/execution/insights')>()),
 	useInsightsStore: () => ({
 		isSummaryEnabled: false,
 		weeklySummary: { isLoading: false, state: null },
@@ -106,6 +108,7 @@ vi.mock('../components/AgentCard.vue', async () => {
 		default: defineComponent({
 			name: 'AgentCard',
 			props: ['agent', 'projectId'],
+			emits: ['new-chat'],
 			template: '<div data-test-id="agent-card">{{ agent.name }}</div>',
 		}),
 	};
@@ -169,6 +172,22 @@ describe('AgentsListView — project page', () => {
 		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
 		expect(layout.props('type')).toBe('list-paginated');
 		expect(layout.props('dontPerformSortingAndFiltering')).toBe(true);
+	});
+
+	it('opens a new chat in the agent builder preview', async () => {
+		mocks.listAgentsPage.mockResolvedValueOnce({
+			count: 1,
+			data: [agent('agent-1', 'Support Agent')],
+		});
+		const wrapper = await mountView();
+
+		wrapper.findComponent({ name: 'AgentCard' }).vm.$emit('new-chat', 'agent-1', 'project-1');
+
+		expect(mocks.routerPush).toHaveBeenCalledWith({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+			query: { [NEW_SESSION_PARAM]: 'true' },
+		});
 	});
 
 	it('refetches with backend search, pagination, and sorting parameters', async () => {

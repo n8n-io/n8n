@@ -2,7 +2,7 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InstanceAiMcpConnectionResponse,
-	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpConnectionToolsResponse,
 	McpRegistryServerResponse,
 } from '@n8n/api-types';
 
@@ -33,12 +33,18 @@ export async function fetchMcpConnections(
 export async function fetchMcpConnectionTools(
 	context: IRestApiContext,
 	id: string,
-): Promise<InstanceAiMcpConnectionToolResponse[]> {
+): Promise<InstanceAiMcpConnectionToolsResponse> {
 	return await makeRestApiRequest(
 		context,
 		'GET',
 		`/instance-ai/mcp/connections/${encodeURIComponent(id)}/tools`,
 	);
+}
+
+export async function fetchAllMcpConnectionTools(
+	context: IRestApiContext,
+): Promise<InstanceAiMcpConnectionToolsResponse[]> {
+	return await makeRestApiRequest(context, 'GET', '/instance-ai/mcp/connections/tools');
 }
 
 export async function createMcpConnection(

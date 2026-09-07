@@ -1,5 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { paginatedRequest, buildStrapiUpdateQuery } from '../strapi-utils';
@@ -23,6 +25,8 @@ describe('Strapi utils', () => {
 	const request = vi.fn();
 	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
 	mockInstance(OutboundHttp, { requests });
+	const logger = mockInstance(Logger);
+	const errorReporter = mockInstance(ErrorReporter);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -94,12 +98,42 @@ describe('Strapi utils', () => {
 			).rejects.toThrow('Request failed');
 		});
 
+		it('should forward the abort signal to the request', async () => {
+			const { signal } = new AbortController();
+			request.mockResolvedValueOnce(page([], { page: 1, pageCount: 0 }));
+
+			await paginatedRequest(
+				baseUrl,
+				{ pagination: { page: 1, pageSize: 25 } },
+				{ abortSignal: signal },
+			);
+
+			expect(request).toHaveBeenCalledWith(expect.objectContaining({ abortSignal: signal }));
+		});
+
+		it('should not report or log a request that failed after the signal aborted', async () => {
+			const controller = new AbortController();
+			controller.abort();
+			request.mockRejectedValueOnce(new Error('canceled'));
+
+			await expect(
+				paginatedRequest(
+					baseUrl,
+					{ pagination: { page: 1, pageSize: 25 } },
+					{ throwOnError: true, abortSignal: controller.signal },
+				),
+			).rejects.toThrow('canceled');
+
+			expect(errorReporter.error).not.toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
 		it('should issue a GET with SSRF disabled, JSON, and the 6000ms timeout', async () => {
 			request.mockResolvedValueOnce(page([], { page: 1, pageCount: 0 }));
 
 			await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 
-			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: 6000 });
+			expect(requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe', timeout: 6000 });
 			expect(request).toHaveBeenCalledWith({
 				url: baseUrl,
 				method: 'GET',

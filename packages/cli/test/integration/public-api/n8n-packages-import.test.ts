@@ -242,10 +242,13 @@ describe('POST /n8n-packages/import', () => {
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					isArchived: false,
 					publishing: { state: 'unchanged' },
 					status: 'created',
 				},
 			],
+			removedWorkflows: [],
+			removedFolders: [],
 			folders: [],
 			projects: [],
 			bindings: {
@@ -255,6 +258,10 @@ describe('POST /n8n-packages/import', () => {
 			credentials: {
 				matched: [],
 				stubbed: [],
+			},
+			dataTables: {
+				matched: 0,
+				created: 0,
 			},
 			variables: {
 				matched: [],

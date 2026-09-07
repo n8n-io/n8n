@@ -7,16 +7,19 @@ import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
 import {
 	createScheduler,
 	pollLookaheadSeconds,
+	withOwnerKeys,
 	DEFAULT_MATERIALIZER_OPTIONS,
 } from '@n8n/scheduler';
 import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
-import { withOwnerKeys } from './owner-key';
+import { isDurablePollerChainEnabled } from './poll-trigger-node/durable-poller-chain';
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
+import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
+import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 
 /**
  * The database-backed {@link Scheduler} and its process lifecycle (the run side).
@@ -39,6 +42,7 @@ export class DurableScheduler implements Scheduler {
 		scheduleTriggerTaskHandler: ScheduleTriggerTaskHandler,
 		pollTriggerTaskHandler: PollTriggerTaskHandler,
 		metrics: PrometheusSchedulerMetricsService,
+		workflowOwner: WorkflowScheduledJobOwner,
 	) {
 		const config = globalConfig.scheduler;
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
@@ -70,15 +74,28 @@ export class DurableScheduler implements Scheduler {
 						retentionSeconds: config.retentionSeconds,
 						failedRetentionSeconds: config.failedRetentionSeconds,
 					},
+					reconciliation: config.ownerReconciliationEnabled
+						? {
+								jobStore: jobs,
+								owners: createScheduledJobOwnerRegistry(workflowOwner),
+								options: {
+									settleSeconds: config.ownerSettleSeconds,
+									quarantineGraceSeconds: config.ownerQuarantineGraceSeconds,
+									batchSize: config.ownerReconciliationBatchSize,
+								},
+							}
+						: undefined,
 					lifecycle: {
 						materializerIntervalSeconds: config.materializationIntervalSeconds,
 						executorIntervalSeconds: config.executorIntervalSeconds,
 						reaperIntervalSeconds: config.reaperIntervalSeconds,
 						retentionIntervalSeconds: config.retentionIntervalSeconds,
+						reconciliationIntervalSeconds: config.ownerReconciliationIntervalSeconds,
 						materializerTimeoutSeconds: config.materializationTimeoutSeconds,
 						executorTimeoutSeconds: config.executorTimeoutSeconds,
 						reaperTimeoutSeconds: config.reaperTimeoutSeconds,
 						retentionTimeoutSeconds: config.retentionTimeoutSeconds,
+						reconciliationTimeoutSeconds: config.ownerReconciliationTimeoutSeconds,
 						jitterRatio: config.jitterRatio,
 						concurrencyMode:
 							globalConfig.database.type === 'postgresdb' ? 'concurrent' : 'sequential',
@@ -92,9 +109,14 @@ export class DurableScheduler implements Scheduler {
 		if (enabled) {
 			warnOnMisfireGrace(logger, config);
 			warnOnDrainRate(logger, config);
+			warnOnPollTimeout(logger, globalConfig);
 		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
+	}
+
+	isActive(): boolean {
+		return this.scheduler !== undefined;
 	}
 
 	registerTaskHandler(taskType: string, handler: TaskHandler): void {
@@ -158,6 +180,25 @@ function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): voi
 		logger.warn(
 			'Scheduler materialization interval is long enough that a pass may never fully drain the busiest possible schedule; under the coalesce misfire policy such a schedule could stop producing catch-up runs entirely',
 			{ materializationIntervalSeconds, fastestIntervalSeconds },
+		);
+	}
+}
+
+/**
+ * Warn when a poll may still be in flight after the lease on its occurrence has
+ * expired: the reaper can then reclaim the occurrence and another instance can
+ * start the same poll while the first one is still running. Equality counts
+ * too, since the poll deadline only starts after the occurrence's setup reads.
+ */
+function warnOnPollTimeout(logger: Logger, globalConfig: GlobalConfig): void {
+	const { pollTimeoutSeconds, leaseDurationSeconds } = globalConfig.scheduler;
+	if (
+		isDurablePollerChainEnabled(globalConfig.scheduler, globalConfig.workflows) &&
+		pollTimeoutSeconds >= leaseDurationSeconds
+	) {
+		logger.warn(
+			'Scheduler poll timeout reaches the lease duration; a poll can still be running when its lease expires and another instance takes the run over',
+			{ pollTimeoutSeconds, leaseDurationSeconds },
 		);
 	}
 }

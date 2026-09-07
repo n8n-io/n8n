@@ -14,7 +14,7 @@ export const baseDescription: INodeTypeBaseDescription = {
 	icon: 'node:ai-agent',
 	group: ['transform'],
 	description: 'Send a message to a n8n agent',
-	defaultVersion: 3,
+	defaultVersion: 3.1,
 };
 
 export class MessageAnAgent extends VersionedNodeType {
@@ -22,11 +22,13 @@ export class MessageAnAgent extends VersionedNodeType {
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			// v1 keeps the original resourceLocator picker so existing workflows
 			// (typeVersion 1) are unaffected. v2 uses the agentSelector picker.
-			// v3 adds schema-from-example for structured output (same class as v2,
-			// gated via `@version`).
+			// v3 adds schema-from-example for structured output, and v3.1 the
+			// Session settings with a chat-trigger-aware default (same class as
+			// v2, gated via `@version`).
 			1: new MessageAnAgentV1(baseDescription),
 			2: new MessageAnAgentV2(baseDescription),
 			3: new MessageAnAgentV2(baseDescription),
+			3.1: new MessageAnAgentV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

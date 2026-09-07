@@ -14,6 +14,7 @@ import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-m
 import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
 import type { PrometheusInstanceAiMetricsService } from '../prometheus/instance-ai-metrics.service';
 import type { PrometheusInstanceRoleMetricsService } from '../prometheus/instance-role-metrics.service';
+import type { PrometheusPollTriggerMetricsService } from '../prometheus/poll-trigger-metrics.service';
 import { PrometheusMetricsService } from '../prometheus/prometheus.service';
 import type { PrometheusPssMetricsService } from '../prometheus/pss-metrics.service';
 import type { PrometheusQueueMetricsService } from '../prometheus/queue-metrics.service';
@@ -55,6 +56,7 @@ describe('PrometheusMetricsService', () => {
 	let dbPool: Mocked<PrometheusDbPoolMetricsService>;
 	let workflowPublication: Mocked<PrometheusWorkflowPublicationMetricsService>;
 	let scheduler: Mocked<PrometheusSchedulerMetricsService>;
+	let pollTrigger: Mocked<PrometheusPollTriggerMetricsService>;
 
 	let service: PrometheusMetricsService;
 
@@ -82,6 +84,7 @@ describe('PrometheusMetricsService', () => {
 			dbPool,
 			workflowPublication,
 			scheduler,
+			pollTrigger,
 		);
 
 	beforeEach(() => {
@@ -116,6 +119,7 @@ describe('PrometheusMetricsService', () => {
 		dbPool = mock<PrometheusDbPoolMetricsService>({ enabled: true });
 		workflowPublication = mock<PrometheusWorkflowPublicationMetricsService>({ enabled: true });
 		scheduler = mock<PrometheusSchedulerMetricsService>({ enabled: true });
+		pollTrigger = mock<PrometheusPollTriggerMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -149,6 +153,7 @@ describe('PrometheusMetricsService', () => {
 			expect(dbPool.init).toHaveBeenCalledWith(app);
 			expect(workflowPublication.init).toHaveBeenCalledWith(app);
 			expect(scheduler.init).toHaveBeenCalledWith(app);
+			expect(pollTrigger.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {

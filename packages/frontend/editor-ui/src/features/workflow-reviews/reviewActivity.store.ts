@@ -27,6 +27,10 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 	// Held here, not in the composer: switching to the Changes tab unmounts it, and a
 	// half-typed comment must survive that.
 	const draft = ref('');
+	// Held here, not in the popover: the popover is not keyed on the review, so a local ref
+	// would carry review A's note into review B. This copy goes with the feed when the
+	// selection changes.
+	const decisionNote = ref('');
 
 	let feedRequestSeq = 0;
 	let postSeq = 0;
@@ -48,6 +52,7 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			entries.value = [];
 			posting.value = false;
 			draft.value = '';
+			decisionNote.value = '';
 		}
 
 		try {
@@ -110,7 +115,11 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		}
 	}
 
-	async function postComment(body: string) {
+	/**
+	 * Resolves `false` when the viewer moved to another review while the post was in flight:
+	 * the comment was written, but nothing about it belongs on the review they are reading now.
+	 */
+	async function postComment(body: string): Promise<boolean> {
 		const reviewId = currentReviewId.value;
 		// Thrown, not swallowed: a silent return would read as success to the caller.
 		if (!reviewId) throw new Error('Cannot post a comment without a selected review');
@@ -119,15 +128,24 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		posting.value = true;
 		try {
 			const entry = await createWorkflowReviewComment(rootStore.restApiContext, reviewId, { body });
-			if (currentReviewId.value !== reviewId) return;
+			if (currentReviewId.value !== reviewId) return false;
 
 			// A feed refetch that raced this post may already carry the comment.
 			entries.value = [...entries.value.filter((existing) => existing.id !== entry.id), entry];
+			return true;
 		} finally {
 			// Only the newest post owns the flag: after A -> B -> A a stale post finishing would
 			// otherwise re-enable send while the post the user is waiting on is still in flight.
 			if (requestSeq === postSeq) posting.value = false;
 		}
+	}
+
+	/**
+	 * Clears the decision note, unless the viewer typed something else since the submit
+	 * `expected` came from — both callers await a request first.
+	 */
+	function clearDecisionNote(expected: string) {
+		if (decisionNote.value.trim() === expected) decisionNote.value = '';
 	}
 
 	function reset() {
@@ -141,6 +159,7 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		posting.value = false;
 		error.value = null;
 		draft.value = '';
+		decisionNote.value = '';
 	}
 
 	return {
@@ -153,9 +172,11 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		posting,
 		error,
 		draft,
+		decisionNote,
 		fetchFeed,
 		loadMore,
 		postComment,
+		clearDecisionNote,
 		reset,
 	};
 });

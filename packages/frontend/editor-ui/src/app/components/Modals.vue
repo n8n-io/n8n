@@ -127,6 +127,7 @@ import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/features/resolvers/components/CredentialResolverEditModal.vue';
 import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
 import AiGatewayTopUpModal from '@/features/ai/gateway/components/AiGatewayTopUpModal.vue';
+import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
 import { defineAsyncComponent } from 'vue';
 
 const TrialIntroModal = defineAsyncComponent(
@@ -492,7 +493,9 @@ const TrialIntroModal = defineAsyncComponent(
 		</ModalRoot>
 
 		<ModalRoot :name="AI_GATEWAY_TOP_UP_MODAL_KEY">
-			<AiGatewayTopUpModal />
+			<template #default="{ data }: { data: { variant: AiGatewayTopUpVariant } }">
+				<AiGatewayTopUpModal :variant="data.variant" />
+			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="TRIAL_INTRO_MODAL_KEY">

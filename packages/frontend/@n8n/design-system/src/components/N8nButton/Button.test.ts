@@ -359,6 +359,17 @@ describe('components', () => {
 				expect(button).toHaveFocus();
 			});
 
+			it('should preserve a custom tabindex', () => {
+				const wrapper = render(N8nButton, {
+					props: { variant: 'solid' },
+					attrs: { tabindex: -1 },
+					slots: { default: 'Button' },
+					global: { stubs },
+				});
+
+				expect(wrapper.getByRole('button')).toHaveAttribute('tabindex', '-1');
+			});
+
 			it('should warn about missing accessible label for icon-only buttons in dev mode', () => {
 				const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 

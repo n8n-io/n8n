@@ -6,8 +6,9 @@
  * state machine, and this logic is testable independently.
  */
 import {
-	GENERIC_AUTH_CREDENTIAL_TYPES,
+	AI_GATEWAY_MANAGED_TAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	shouldAutoResolveCredential,
 	type InstanceAiCredentialSetupHint,
 } from '@n8n/api-types';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
@@ -21,11 +22,13 @@ import {
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import { computeUnavailableLocatorIssues } from './chat-model-validation';
 import {
 	AI_GATEWAY_CREDENTIAL,
 	N8N_CONNECT_DISPLAY_NAME,
 	assignCredentialToNode,
 	extractServiceHost,
+	extractServiceOrigin,
 	isAiGatewayManagedCredential,
 	resolveCredentialForApply,
 	serviceHostsMatch,
@@ -312,49 +315,6 @@ function buildEditableParameters(
 }
 
 /**
- * Ask the host which of the node's list-backed locator parameters the connected
- * credential can't reach, and turn each into a parameter issue.
- *
- * Applies to any credential and any node: the free OpenAI credits credential narrows the
- * model list via its proxy allowlist, a user's own key can be just as restricted by their
- * org's model access, and a Sheets document or Slack channel the builder guessed at may not
- * exist on the account that ends up connected. See
- * `findUnavailableResourceLocatorValues` for what the host will and won't claim.
- *
- * Reports only the unusable value, not the usable ones: whoever repairs it can list those
- * through the nodes tool's resource exploration, against the credential that is now bound.
- */
-async function computeUnavailableLocatorIssues(
-	context: InstanceAiContext,
-	node: NodeJSON,
-	parameters: Record<string, unknown>,
-	typeVersion: number,
-	credentialType: string,
-	credential: { id: string; name: string },
-): Promise<Record<string, string[]>> {
-	if (!context.nodeService.findUnavailableLocatorValues) return {};
-
-	const unavailable = await context.nodeService
-		.findUnavailableLocatorValues({
-			nodeType: node.type,
-			version: typeVersion,
-			credentialType,
-			credentialId: credential.id,
-			parameters,
-		})
-		.catch(() => []);
-
-	const issues: Record<string, string[]> = {};
-	for (const entry of unavailable) {
-		issues[entry.name] = [
-			`"${entry.currentValue}" isn't available with the connected credential "${credential.name}". ` +
-				'Pick a value the credential offers instead.',
-		];
-	}
-	return issues;
-}
-
-/**
  * Resolve the credential types valid for a node: dynamic resolver first, then
  * the description's static credentials filtered by displayOptions, then the
  * dynamic types implied by `authentication: generic/predefinedCredentialType`.
@@ -482,6 +442,7 @@ async function resolveCredentialState(
 	credentialType: string,
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
+	prefersNewCredential = false,
 ): Promise<CredentialState> {
 	// Use cache to avoid duplicate fetches for the same credential type across nodes.
 	// Scope to the workflow so we list only credentials the save path will accept —
@@ -506,7 +467,9 @@ async function resolveCredentialState(
 		);
 	}
 
-	const existingOnNode = node.credentials?.[credentialType];
+	// A slot the user asked to refill fresh ignores its current binding — it renders
+	// unbound, so the bound credential is neither tested nor reported as effective.
+	const existingOnNode = prefersNewCredential ? undefined : node.credentials?.[credentialType];
 	const existingCredentialId =
 		typeof existingOnNode?.id === 'string' && existingOnNode.id ? existingOnNode.id : undefined;
 	const hasExistingOnNode =
@@ -520,6 +483,7 @@ async function resolveCredentialState(
 	// override a saved key with the managed gateway.
 	if (
 		!hasExistingOnNode &&
+		!prefersNewCredential &&
 		existingCredentials.length === 0 &&
 		context.credentialService.isAiGatewayCredentialType
 	) {
@@ -538,8 +502,14 @@ async function resolveCredentialState(
 	// Generic auth types never auto-apply: the type alone does not identify a
 	// service, so a sole bearer/header/etc. key must not be attached to an
 	// arbitrary URL without the user's click (a sole match arrives preselected).
-	if (!isAutoApplied && !GENERIC_AUTH_CREDENTIAL_TYPES.has(credentialType)) {
-		isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
+	// Neither does a type the user asked to create fresh — answering that with a
+	// stored credential is the contradiction this flag exists to prevent.
+	if (
+		!prefersNewCredential &&
+		!hasExistingOnNode &&
+		shouldAutoResolveCredential(credentialType, existingCredentials.length)
+	) {
+		isAutoApplied = true;
 	}
 
 	const credToTest =
@@ -629,11 +599,19 @@ async function resolveAppliedCredentialState(
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
 	nodeCredentials: Record<string, SetupNodeCredential> | undefined,
+	prefersNewCredential = false,
 ): Promise<CredentialState> {
 	if (!credentialType) {
 		return { existingCredentials: [], isAutoApplied: false };
 	}
-	const state = await resolveCredentialState(context, node, credentialType, cache, workflowId);
+	const state = await resolveCredentialState(
+		context,
+		node,
+		credentialType,
+		cache,
+		workflowId,
+		prefersNewCredential,
+	);
 	if (state.isAutoApplied && nodeCredentials) {
 		if (state.autoAppliedGateway) {
 			nodeCredentials[credentialType] = {
@@ -675,7 +653,11 @@ async function buildRequestForCredentialType(
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
 	nodeCtx: NodeSetupContext,
+	preferNewCredentialTypes?: ReadonlySet<string>,
+	appliedCredentialIds?: ReadonlySet<string>,
 ): Promise<SetupRequest | null> {
+	const prefersNewCredential =
+		credentialType !== undefined && (preferNewCredentialTypes?.has(credentialType) ?? false);
 	const nodeCredentials = node.credentials
 		? Object.fromEntries(
 				Object.entries(node.credentials)
@@ -685,6 +667,11 @@ async function buildRequestForCredentialType(
 					),
 			)
 		: undefined;
+	// A slot routed to fresh creation renders unbound: the credential being replaced
+	// must not show as selected — it only stays available in the picker's list.
+	if (prefersNewCredential && credentialType && nodeCredentials) {
+		delete nodeCredentials[credentialType];
+	}
 
 	const {
 		existingCredentials,
@@ -699,19 +686,29 @@ async function buildRequestForCredentialType(
 		cache,
 		workflowId,
 		nodeCredentials,
+		prefersNewCredential,
 	);
 
 	// The connected credential can rule out a parameter value chosen before it existed
 	// (see computeUnavailableLocatorIssues), so fold those in as parameter issues.
+	// Gateway-managed (n8n credits) slots use the managed tag so the host can
+	// validate against the gateway allowlist.
+	const locatorCredential =
+		effectiveCredential ??
+		(credentialType &&
+		!prefersNewCredential &&
+		(autoAppliedGateway || isAiGatewayManagedCredential(node.credentials?.[credentialType]))
+			? { id: AI_GATEWAY_MANAGED_TAG, name: N8N_CONNECT_DISPLAY_NAME }
+			: undefined);
 	const unavailableIssues =
-		credentialType && effectiveCredential
+		credentialType && locatorCredential
 			? await computeUnavailableLocatorIssues(
 					context,
 					node,
 					nodeCtx.parameters,
 					nodeCtx.typeVersion,
 					credentialType,
-					effectiveCredential,
+					locatorCredential,
 				)
 			: {};
 
@@ -732,22 +729,29 @@ async function buildRequestForCredentialType(
 	// rides along in credentialTestResult for display.
 	// A parameter request needs action if issues remain.
 	// A trigger-only request (no credential, no param issues) never blocks apply.
-	let needsAction = false;
+	let credentialNeedsAction = false;
 	if (credentialType) {
 		const existingOnNode = node.credentials?.[credentialType];
 		const boundId =
 			typeof existingOnNode?.id === 'string' && existingOnNode.id !== ''
 				? existingOnNode.id
 				: undefined;
+		// A preferNewCredentials request un-settles a node that already has a working
+		// credential, so setup shows the card to change it instead of reporting
+		// "No nodes require setup". Otherwise, an id the resume just applied resolves
+		// even when the list view lags it (scoped discovery, e.g. eval allowlist
+		// pins) — the apply already resolved it before binding.
 		const isSettled =
-			isAiGatewayManagedCredential(existingOnNode) ||
-			(boundId !== undefined &&
-				existingCredentials.some((credential) => credential.id === boundId));
-		needsAction = !isSettled;
+			!prefersNewCredential &&
+			(isAiGatewayManagedCredential(existingOnNode) ||
+				(boundId !== undefined &&
+					(existingCredentials.some((credential) => credential.id === boundId) ||
+						(appliedCredentialIds?.has(boundId) ?? false))));
+		credentialNeedsAction = !isSettled;
 	}
-	if (hasParamIssues) {
-		needsAction = true;
-	}
+	// Tracked apart from `needsAction` because the two answer different questions: a node with a
+	// working credential and an unfilled parameter needs action, but not *about the credential*.
+	const needsAction = credentialNeedsAction || hasParamIssues;
 
 	return {
 		node: {
@@ -770,6 +774,7 @@ async function buildRequestForCredentialType(
 		isTrigger,
 		...(isTestable ? { isTestable } : {}),
 		...(isAutoApplied ? { isAutoApplied } : {}),
+		...(prefersNewCredential ? { preferNewCredential: true } : {}),
 		...(credentialTestResult ? { credentialTestResult } : {}),
 		...(nodeCtx.triggerTestResult ? { triggerTestResult: nodeCtx.triggerTestResult } : {}),
 		...(hasParamIssues ? { parameterIssues } : {}),
@@ -777,6 +782,7 @@ async function buildRequestForCredentialType(
 			? { editableParameters: nodeCtx.editableParameters }
 			: {}),
 		needsAction,
+		...(credentialNeedsAction ? { credentialNeedsAction } : {}),
 	};
 }
 
@@ -786,6 +792,8 @@ export async function buildSetupRequests(
 	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string },
 	cache?: CredentialCache,
 	workflowId?: string,
+	preferNewCredentialTypes?: ReadonlySet<string>,
+	appliedCredentialIds?: ReadonlySet<string>,
 ): Promise<SetupRequest[]> {
 	if (!node.name) return [];
 	if (node.disabled) return [];
@@ -840,6 +848,8 @@ export async function buildSetupRequests(
 			cache,
 			workflowId,
 			nodeCtx,
+			preferNewCredentialTypes,
+			appliedCredentialIds,
 		);
 		if (request) requests.push(request);
 	}
@@ -869,13 +879,15 @@ export function applyCredentialHints(
 			hints.find((h) => h.nodeName === request.node.name) ?? hints.find((h) => !h.nodeName);
 		if (!hint) continue;
 		const { nodeName: _nodeName, ...setupHint } = hint;
-		// Service identity is derived from the node being set up (falling back
-		// to the recipe's own test endpoint), never model-supplied. It is
-		// stamped into the created credential so setup surfaces only offer it
-		// to same-service nodes later.
-		const serviceHost =
-			extractServiceHost(request.node.parameters?.url) ?? extractServiceHost(setupHint.testUrl);
-		request.setupHint = { ...setupHint, ...(serviceHost ? { serviceHost } : {}) };
+		// The workflow node is the authority for service identity. The recipe's
+		// own destinations cannot establish or replace it.
+		const serviceHost = extractServiceHost(request.node.parameters?.url);
+		const serviceOrigin = extractServiceOrigin(request.node.parameters?.url);
+		request.setupHint = {
+			...setupHint,
+			...(serviceHost ? { serviceHost } : {}),
+			...(serviceOrigin ? { serviceOrigin } : {}),
+		};
 	}
 }
 
@@ -1165,13 +1177,17 @@ async function trackCredentialAssignment(
 		// when it is the user's only one for a service-scoped type. Generic auth
 		// never auto-applies — the type alone does not identify a service.
 		const soleByokAutoApplied =
-			!isGateway && stored.length === 1 && !GENERIC_AUTH_CREDENTIAL_TYPES.has(opts.credType);
+			!isGateway && shouldAutoResolveCredential(opts.credType, stored.length);
 		if (isGateway ? stored.length === 0 : soleByokAutoApplied) source = 'instance-ai-auto';
 	}
 	context.trackTelemetry('Node credential assigned', {
 		credential_type: opts.credType,
 		node_type: opts.nodeType,
 		workflow_id: opts.workflowId,
+		// The join key back to `User created credentials`; n8n Connect slots have no
+		// stored credential of the user's own.
+		credential_id: isGateway ? null : opts.credential.id,
+		thread_id: context.threadId ?? null,
 		credential_kind: isGateway ? 'n8n_connect' : 'own',
 		source,
 	});
@@ -1442,9 +1458,24 @@ export async function analyzeWorkflow(
 		 *  whose test failed) — never for card rendering, where settled slots must
 		 *  stay hidden. */
 		includeSettled?: boolean;
+		/** Credential types the user asked to create fresh: nothing is auto-applied
+		 *  for them and their requests carry `preferNewCredential` so the card opens
+		 *  unselected. */
+		preferNewCredentialTypes?: readonly string[];
+		/** Credential ids a setup resume just applied. A bound slot carrying one of
+		 *  these is settled even when the credential list view lags it (scoped
+		 *  discovery, e.g. eval allowlist pins) — the apply already resolved the id. */
+		appliedCredentialIds?: readonly string[];
 	},
 ): Promise<SetupRequest[]> {
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+
+	const preferNewCredentialTypes = options?.preferNewCredentialTypes?.length
+		? new Set(options.preferNewCredentialTypes)
+		: undefined;
+	const appliedCredentialIds = options?.appliedCredentialIds?.length
+		? new Set(options.appliedCredentialIds)
+		: undefined;
 
 	const cache = createCredentialCache();
 	const allRequestArrays = await Promise.all(
@@ -1455,6 +1486,8 @@ export async function analyzeWorkflow(
 				triggerResults?.[node.name ?? ''],
 				cache,
 				workflowId,
+				preferNewCredentialTypes,
+				appliedCredentialIds,
 			);
 		}),
 	);

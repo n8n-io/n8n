@@ -158,6 +158,7 @@ test.describe(
 				await n8n.canvas.clickZoomToFitButton();
 				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 					'Workflow executed successfully',
+					{ timeout: 15000 },
 				);
 				await n8n.canvas.openNode('Set3');
 

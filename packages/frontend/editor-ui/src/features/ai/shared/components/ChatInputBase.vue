@@ -21,6 +21,7 @@ const props = withDefaults(
 		disabled?: boolean;
 		showVoice?: boolean;
 		showAttach?: boolean;
+		showAttachButton?: boolean;
 		acceptedMimeTypes?: string;
 		/**
 		 * Base64-encoded size of the files already staged in the composer. Needed
@@ -46,6 +47,7 @@ const props = withDefaults(
 		buttonLabel: undefined,
 		activeRequiresFocus: false,
 		maxLength: undefined,
+		showAttachButton: true,
 	},
 );
 
@@ -106,8 +108,8 @@ function handleAttach() {
 	fileInputRef.value?.click();
 }
 
-function focusInput() {
-	inputRef.value?.focusInput();
+function focusInput(options?: FocusOptions) {
+	inputRef.value?.focusInput(options);
 }
 
 /**
@@ -187,7 +189,10 @@ function handlePaste(e: ClipboardEvent) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-	if (e.key === 'Tab' && !e.shiftKey) {
+	// Only the textarea gets tab-to-autocomplete; other focusable children
+	// (attach/mic buttons, leading-slot chips) must keep normal Tab navigation.
+	const isTextareaFocused = (e.target as HTMLElement)?.tagName === 'TEXTAREA';
+	if (e.key === 'Tab' && !e.shiftKey && isTextareaFocused) {
 		e.preventDefault();
 		emit('tab');
 	}
@@ -204,6 +209,7 @@ function handleSubmit() {
 
 defineExpose({
 	focus: focusInput,
+	openFilePicker: handleAttach,
 });
 </script>
 
@@ -253,7 +259,7 @@ defineExpose({
 			</template>
 			<template #right-actions>
 				<N8nTooltip
-					v-if="showAttach"
+					v-if="showAttach && showAttachButton"
 					:content="i18n.baseText('chatInputBase.button.attach')"
 					placement="top"
 				>

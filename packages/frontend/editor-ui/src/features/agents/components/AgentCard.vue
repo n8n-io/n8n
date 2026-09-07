@@ -6,6 +6,7 @@ import {
 	N8nBadge,
 	N8nCard,
 	N8nIcon,
+	N8nIconButton,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -35,6 +36,7 @@ const emit = defineEmits<{
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	deleted: [agentId: string];
+	'new-chat': [agentId: string, projectId: string];
 }>();
 
 const locale = useI18n();
@@ -76,14 +78,23 @@ const actions = computed(() => {
 	const items: Array<{ value: string; label: string; divided?: boolean }> = [];
 
 	if (isPublished.value && canUnpublish.value) {
-		items.push({ value: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') });
+		items.push({
+			value: 'unpublish',
+			label: locale.baseText('agents.list.actions.unpublish'),
+			divided: true,
+		});
 	} else if (!isPublished.value && canPublish.value) {
-		items.push({ value: 'publish', label: locale.baseText('agents.list.actions.publish') });
+		items.push({
+			value: 'publish',
+			label: locale.baseText('agents.list.actions.publish'),
+			divided: true,
+		});
 	}
 
 	items.push({
 		value: 'toggleFavorite',
 		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
+		divided: !isPublished.value ? !canPublish.value : !canUnpublish.value,
 	});
 
 	if (isMcpEnabled.value && canUpdate.value) {
@@ -203,6 +214,16 @@ async function toggleMCPAccess(enabled: boolean) {
 						{{ locale.baseText('agents.list.published') }}
 					</N8nText>
 				</div>
+				<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
+					<N8nIconButton
+						icon="message-circle-plus"
+						variant="ghost"
+						size="medium"
+						:aria-label="locale.baseText('agents.list.actions.newChat')"
+						data-test-id="agent-card-new-chat"
+						@click="emit('new-chat', agent.id, projectId)"
+					/>
+				</N8nTooltip>
 				<N8nActionToggle
 					v-if="showActions"
 					:actions="actions"
@@ -256,7 +277,7 @@ async function toggleMCPAccess(enabled: boolean) {
 
 .cardActions {
 	display: flex;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;

@@ -241,7 +241,7 @@ describe('ProjectHeader', () => {
 		);
 	});
 
-	it('should render ProjectTabs without Settings if no project update or externalSecretsProvider:read permission', () => {
+	it('should render ProjectTabs without Settings if no project update, manageMembers or externalSecretsProvider:read permission', () => {
 		route.params.projectId = '123';
 		projectsStore.currentProject = createTestProject({
 			scopes: ['project:read'],
@@ -251,6 +251,21 @@ describe('ProjectHeader', () => {
 		expect(projectTabsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
 				'show-settings': false,
+			}),
+			null,
+		);
+	});
+
+	it('should render ProjectTabs Settings if project member has project:manageMembers scope', () => {
+		route.params.projectId = '123';
+		projectsStore.currentProject = createTestProject({
+			scopes: ['project:read', 'project:manageMembers'],
+		});
+		renderComponent();
+
+		expect(projectTabsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'show-settings': true,
 			}),
 			null,
 		);
@@ -501,7 +516,7 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(4);
+			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(5);
 		});
 
 		it('should pass empty array when no modules are active', () => {

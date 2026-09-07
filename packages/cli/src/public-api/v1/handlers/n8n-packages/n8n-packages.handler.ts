@@ -41,6 +41,8 @@ type ExportPackageRequest = AuthenticatedRequest<
 			| 'prefer-published'
 			| 'ignore-unpublished'
 			| 'latest';
+		credentialExportPolicy?: 'expression-values-only' | 'no-values';
+		includeArchivedWorkflows?: boolean;
 	}
 >;
 
@@ -156,6 +158,8 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					includeTags: payload.data.includeTags,
 					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
 					workflowVersionPolicy: payload.data.workflowVersionPolicy,
+					credentialExportPolicy: payload.data.credentialExportPolicy,
+					includeArchivedWorkflows: payload.data.includeArchivedWorkflows,
 				});
 
 				return await streamPackageExport(res, exportResult);
@@ -213,6 +217,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					missingNodeTypeMode: payload.data.missingNodeTypeMode,
 					projectConflictPolicy: payload.data.projectConflictPolicy,
 					folderConflictPolicy: payload.data.folderConflictPolicy,
+					overwriteDeletionPolicy: payload.data.overwriteDeletionPolicy,
 					dataTableMatchingMode: payload.data.dataTableMatchingMode,
 					dataTableMissingMode: payload.data.dataTableMissingMode,
 					dataTableSchemaConflictPolicy: payload.data.dataTableSchemaConflictPolicy,

@@ -93,6 +93,12 @@ export const workflowLoopStateSchema = z.object({
 	postSubmitRemediationSubmitsUsed: z.number().int().min(0).optional(),
 	lastRemediation: remediationMetadataSchema.optional(),
 	/**
+	 * Set when the only setup this build needs is for credentials the user already skipped in
+	 * this thread. Recomputed per build (never sticky) so a newly added credential still
+	 * routes setup normally.
+	 */
+	setupSkippedByUser: z.boolean().optional(),
+	/**
 	 * Set once the service has routed this work item to post-verification setup.
 	 * Guards the deterministic setup follow-up so it fires at most once per build.
 	 */
@@ -207,7 +213,13 @@ export const workflowVerificationReadinessSchema = z.discriminatedUnion('status'
 export type WorkflowVerificationReadiness = z.infer<typeof workflowVerificationReadinessSchema>;
 
 export const workflowSetupRequirementSchema = z.discriminatedUnion('status', [
-	z.object({ status: z.literal('not_required') }),
+	z.object({
+		status: z.literal('not_required'),
+		// Only set when setup *would* have been routed but the user already skipped the
+		// credentials involved — kept so traces show why the follow-up went quiet.
+		reason: z.literal('skipped-by-user').optional(),
+		guidance: z.string().optional(),
+	}),
 	z.object({
 		status: z.literal('required'),
 		reason: z.enum(['mocked-credentials', 'unresolved-placeholders', 'workflow-needs-setup']),
@@ -331,6 +343,14 @@ export const workflowBuildOutcomeSchema = z.object({
 	supportingWorkflowIds: z.array(z.string()).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
+	/**
+	 * Nodes this build added or modified relative to the previously saved
+	 * workflow. Setup routing and `workflows(action="setup")` requests are
+	 * scoped to these nodes so editing one node never routes pre-existing,
+	 * unrelated nodes into setup. Absent when the build created the workflow
+	 * or the prior state was unreadable — every node is then in scope.
+	 */
+	changedNodeNames: z.array(z.string()).optional(),
 	/**
 	 * How the user intends to use this workflow. `one-off`: a concrete effect
 	 * wanted once — verification becomes optional and completion is a live run
@@ -467,5 +487,6 @@ export type WorkflowLoopAction =
 			summary: string;
 			mockedCredentialTypes?: string[];
 			hasUnresolvedPlaceholders?: boolean;
+			setupSkippedByUser?: boolean;
 	  }
 	| { type: 'blocked'; reason: string };

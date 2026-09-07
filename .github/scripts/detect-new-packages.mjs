@@ -14,19 +14,10 @@
  *   1 – One or more public packages have never been published
  */
 
-import child_process from 'child_process';
-import { promisify } from 'util';
 import { writeGithubOutput } from './github-helpers.mjs';
+import { getMonorepoProjects } from './pnpm-utils.mjs';
 
-const exec = promisify(child_process.exec);
-
-const packages = JSON.parse(
-	(
-		await exec(
-			`pnpm ls -r --only-projects --json | jq -r '[.[] | { name:.name, private: .private}]'`,
-		)
-	).stdout,
-);
+const packages = await getMonorepoProjects();
 
 const newPackages = [];
 

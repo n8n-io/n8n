@@ -1,4 +1,5 @@
 import { isAbortError, Tool } from '@n8n/agents';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { InstanceAiContext } from '../types';
 import {
@@ -8,7 +9,6 @@ import {
 	type N8nDocsMatch,
 } from './n8n-docs/ranking';
 import {
-	getFetchErrorMessage,
 	getDocsUrlCandidates,
 	getN8nDocsRegistry,
 	normalizeDocsUrl,
@@ -134,7 +134,7 @@ async function handleLookup(
 				? result.reason
 				: new Error('This operation was aborted');
 		} else {
-			readErrors.push(`${match.title}: ${getFetchErrorMessage(result.reason)}`);
+			readErrors.push(`${match.title}: ${getErrorMessage(result.reason)}`);
 		}
 	}
 

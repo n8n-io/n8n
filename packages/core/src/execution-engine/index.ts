@@ -108,6 +108,7 @@ export { isEngineRequest } from './requests-response';
 export * from './routing-node';
 export * from './scheduled-task-manager';
 export { TriggersAndPollers } from './triggers-and-pollers';
+export type { PollErrorKind, PollTickEventMap } from './triggers-and-pollers';
 export * from './workflow-execute';
 // Exposed so eval-mode credential helpers (e.g. `EvalMockedCredentialsHelper`)
 // can reuse the same schema-driven cred synthesizer the wire-server URL

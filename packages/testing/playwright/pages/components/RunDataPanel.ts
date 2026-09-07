@@ -48,7 +48,7 @@ export class RunDataPanel {
 	}
 
 	getPaginationPages() {
-		return this.getPagination().locator('li');
+		return this.getPagination().getByTestId('pagination-item');
 	}
 
 	getHighlightMarks() {

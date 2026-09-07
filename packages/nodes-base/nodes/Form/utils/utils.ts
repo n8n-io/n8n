@@ -60,7 +60,21 @@ type FormUserAuthClaims = {
 	lastName: string;
 	nid: string;
 	wid: string;
+	/** Workflow the token was minted for. */
+	wfid?: string;
+	/** Execution the token was minted for, when one was already running. */
+	eid?: string;
 };
+
+/** Binding claims tying a form auth token to the run that minted it. */
+export type FormUserAuthTokenBinding = {
+	workflowId?: string;
+	executionId?: string;
+};
+
+function isOptionalString(value: unknown): boolean {
+	return value === undefined || typeof value === 'string';
+}
 
 function isFormUserAuthClaims(value: unknown): value is FormUserAuthClaims {
 	if (typeof value !== 'object' || value === null) return false;
@@ -71,12 +85,19 @@ function isFormUserAuthClaims(value: unknown): value is FormUserAuthClaims {
 		typeof c.firstName === 'string' &&
 		typeof c.lastName === 'string' &&
 		typeof c.nid === 'string' &&
-		typeof c.wid === 'string'
+		typeof c.wid === 'string' &&
+		isOptionalString(c.wfid) &&
+		isOptionalString(c.eid)
 	);
 }
 
-export function isFormOAuth2Enabled(): boolean {
-	return process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 === 'true';
+function userFromFormUserAuthClaims(claims: FormUserAuthClaims): IUser {
+	return {
+		id: claims.sub,
+		email: claims.email,
+		firstName: claims.firstName,
+		lastName: claims.lastName,
+	};
 }
 
 export function sanitizeHtml(text: string) {
@@ -225,6 +246,12 @@ function getFieldIdentifier(field: FormFieldsParameter[number], nodeVersion?: nu
 	return field.fieldLabel ?? field.fieldName ?? '';
 }
 
+/** Target of the "Form automated with n8n" attribution footer. */
+export function getN8nWebsiteLink(instanceId?: string) {
+	const utm_campaign = instanceId ? `&utm_campaign=${encodeURIComponent(instanceId)}` : '';
+	return `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
+}
+
 export function prepareFormData({
 	formTitle,
 	formDescription,
@@ -243,6 +270,7 @@ export function prepareFormData({
 	authToken,
 	shellInner,
 	hasAuthenticatedSubmitter,
+	hostNavigationPath,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -261,9 +289,9 @@ export function prepareFormData({
 	authToken?: string;
 	shellInner?: boolean;
 	hasAuthenticatedSubmitter?: boolean;
+	hostNavigationPath?: string;
 }) {
-	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
-	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
+	const n8nWebsiteLink = getN8nWebsiteLink(instanceId);
 
 	if (formSubmittedText === undefined) {
 		formSubmittedText = 'Your response has been recorded';
@@ -287,6 +315,7 @@ export function prepareFormData({
 		shellInner: shellInner || undefined,
 		// Only set for forms that can be gated, so the rest never ship the client handling.
 		hasAuthenticatedSubmitter: hasAuthenticatedSubmitter || undefined,
+		hostNavigationPath: hostNavigationPath || undefined,
 	};
 
 	if (redirectUrl) {
@@ -621,6 +650,11 @@ export function renderForm({
 
 	formFields = prepareFormFields(formFields);
 
+	// A follow-up page the shell navigated its frame to is the shell's inner render
+	// just like the flagged page-1 request — it must render the readiness listener
+	// and leave the submit button's enabled state to the shell's connect panel.
+	const inShell = isHostedInFormShell(context.getRequestObject(), shellInner);
+
 	const data = prepareFormData({
 		formTitle,
 		formDescription,
@@ -636,8 +670,9 @@ export function renderForm({
 		customCss,
 		nodeVersion: context.getNode().typeVersion,
 		authToken,
-		shellInner,
+		shellInner: inShell,
 		hasAuthenticatedSubmitter,
+		hostNavigationPath: getHostNavigationPath(context, inShell),
 	});
 
 	if (!isFormHtmlSandboxingDisabled()) {
@@ -670,12 +705,87 @@ function buildAbsoluteFormUrl(req: Request): string {
 	return `${protocol}://${host}${req.originalUrl}`;
 }
 
+/**
+ * True when this render is the hosting shell's frame — either the shell's own
+ * inner render (flagged in the URL) or a follow-up page the shell navigated its
+ * frame to. Only then may the form hand its page navigations to the host.
+ *
+ * A follow-up page is recognised by the `n8nShellHosted` flag the shell appends
+ * to every URL it moves its frame to. Being told outright, rather than inferred
+ * from `Sec-Fetch-*`, keeps delegation working where those headers never arrive
+ * (a proxy that strips them) and keeps a same-origin frame that is *not* the
+ * shell from being treated as one.
+ *
+ * Where those headers do arrive they still have to agree — a same-origin frame —
+ * so a top-level document, or a form embedded on someone else's site, keeps
+ * navigating itself even with the flag in its URL.
+ *
+ * Nothing rests on the flag being unguessable: a frame that sets it on itself
+ * gains only the ability to ask its own parent to move it, and the shell accepts
+ * that ask for this form's own pages alone.
+ */
+function isHostedInFormShell(req: Request, shellInner?: boolean): boolean {
+	if (shellInner) return true;
+	const secFetchDest = req.headers?.['sec-fetch-dest'];
+	const secFetchSite = req.headers?.['sec-fetch-site'];
+	return (
+		req.query?.n8nShellHosted === '1' &&
+		(secFetchDest === undefined || secFetchDest === 'iframe') &&
+		(secFetchSite === undefined || secFetchSite === 'same-origin')
+	);
+}
+
+/**
+ * The path prefix this render may ask the hosting shell to navigate to, or
+ * `undefined` when the render isn't in the shell's frame and so keeps navigating
+ * itself.
+ */
+export function getHostNavigationPath(
+	context: IWebhookFunctions,
+	shellInner?: boolean,
+): string | undefined {
+	if (!isHostedInFormShell(context.getRequestObject(), shellInner)) return undefined;
+	return getFormWaitingBasePath(context) ?? undefined;
+}
+
 export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
 	return nodes.some(
 		(n) =>
 			n.type === FORM_NODE_TYPE || (n.type === WAIT_NODE_TYPE && n.parameters?.resume === 'form'),
 	);
 };
+
+/**
+ * Submit-time credential readiness gate, shared by the trigger's POST and the
+ * Form node's POST. Answers 428 with the missing-credential list when the
+ * submitter's required accounts aren't all connected, 503 when the check itself
+ * fails. Returns true when a response was sent and the submission must not
+ * proceed. A no-op (`undefined` readiness) outside the dynamic-credentials flow.
+ */
+export async function respondIfCredentialsNotReady(
+	context: IWebhookFunctions,
+	res: Response,
+): Promise<boolean> {
+	let readiness: CredentialCheckResult | undefined;
+	try {
+		readiness = await context.checkTriggerCredentialStatus();
+	} catch (error) {
+		// Fail closed. Throwing here is swallowed by the webhook layer, which then
+		// enqueues the execution anyway — exactly the doomed run we're preventing.
+		context.logger.error('Form submit credential readiness check failed', { error });
+		res.status(503).json({ status: 'credential_readiness_check_failed' });
+		return true;
+	}
+
+	if (readiness && !readiness.readyToExecute) {
+		// 428, matching the webhook trigger's gate (webhook-helpers.ts) so all
+		// trigger paths answer an unconnected credential the same way.
+		res.status(428).json(buildCredentialConnectionsRequiredResponse(readiness));
+		return true;
+	}
+
+	return false;
+}
 
 /**
  * Generate a form auth token for n8nUserAuth. The token embeds the user info
@@ -685,10 +795,16 @@ export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
  * cookie is `SameSite=Lax`).
  *
  * The `nid` and `wid` claims bind the token to a specific node + webhook,
- * preventing replay across forms. Signed with HS256 using the instance's
- * hmac signature secret.
+ * preventing replay across forms. `wfid`/`eid` additionally bind it to the
+ * workflow and — for tokens minted while a run is in progress — that run, which
+ * is what lets the same token be accepted as the form page auth cookie. Signed
+ * with HS256 using the instance's hmac signature secret.
  */
-export function generateFormUserAuthToken(node: INode, user: IUser): string {
+export function generateFormUserAuthToken(
+	node: INode,
+	user: IUser,
+	binding: FormUserAuthTokenBinding,
+): string {
 	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
 	const payload: FormUserAuthClaims = {
 		sub: user.id,
@@ -697,6 +813,8 @@ export function generateFormUserAuthToken(node: INode, user: IUser): string {
 		lastName: user.lastName,
 		nid: node.id,
 		wid: node.webhookId ?? '',
+		...(binding.workflowId ? { wfid: binding.workflowId } : {}),
+		...(binding.executionId ? { eid: binding.executionId } : {}),
 	};
 	return jwt.sign(payload, secret, {
 		algorithm: 'HS256',
@@ -705,11 +823,28 @@ export function generateFormUserAuthToken(node: INode, user: IUser): string {
 }
 
 /**
- * Verify a form auth token issued by `generateFormUserAuthToken`. Returns the
- * encoded user on success or `null` on any failure (bad format, expired,
- * wrong signature, wrong node). The caller decides how to surface the failure.
+ * Verify a form auth token issued by `generateFormUserAuthToken` and presented
+ * in the `x-auth-token` header. Returns the encoded user on success or `null` on
+ * any failure (bad format, expired, wrong signature, wrong node, wrong
+ * execution). The caller decides how to surface the failure.
+ *
+ * A token carrying an `eid` is only accepted for that execution. Tokens minted
+ * before a run existed carry none and stay valid for the node they name.
  */
-export function verifyFormUserAuthToken(token: string, node: INode): IUser | null {
+export function verifyFormUserAuthToken(
+	token: string,
+	node: INode,
+	executionId?: string,
+): IUser | null {
+	const claims = decodeFormUserAuthClaims(token);
+	if (!claims) return null;
+	if (claims.nid !== node.id) return null;
+	if (claims.wid !== (node.webhookId ?? '')) return null;
+	if (claims.eid !== undefined && claims.eid !== executionId) return null;
+	return userFromFormUserAuthClaims(claims);
+}
+
+function decodeFormUserAuthClaims(token: string): FormUserAuthClaims | null {
 	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
 	let claims: unknown;
 	try {
@@ -717,15 +852,26 @@ export function verifyFormUserAuthToken(token: string, node: INode): IUser | nul
 	} catch {
 		return null;
 	}
-	if (!isFormUserAuthClaims(claims)) return null;
-	if (claims.nid !== node.id) return null;
-	if (claims.wid !== (node.webhookId ?? '')) return null;
-	return {
-		id: claims.sub,
-		email: claims.email,
-		firstName: claims.firstName,
-		lastName: claims.lastName,
-	};
+	return isFormUserAuthClaims(claims) ? claims : null;
+}
+
+/**
+ * Verify a form auth token presented as the form page auth cookie. Unlike the
+ * `x-auth-token` variant this is not bound to a single node: the cookie rides
+ * along a navigation to whichever node serves the next page of the same form,
+ * so it is bound to the workflow (`wfid`) and, once a run exists, to that run
+ * (`eid`). Tokens predating those claims are not accepted here.
+ */
+function verifyFormPageAuthCookie(
+	token: string,
+	workflowId: string | undefined,
+	executionId: string | undefined,
+): IUser | null {
+	const claims = decodeFormUserAuthClaims(token);
+	if (!claims) return null;
+	if (!claims.wfid || !workflowId || claims.wfid !== workflowId) return null;
+	if (claims.eid !== undefined && claims.eid !== executionId) return null;
+	return userFromFormUserAuthClaims(claims);
 }
 
 function trimTrailingSlash(url: string): string {
@@ -738,16 +884,22 @@ function trimTrailingSlash(url: string): string {
 // (the page sends it back as `x-auth-token` on POST), so this is not a new exposure.
 const FORM_OAUTH_COOKIE_NAME = 'n8n-form-oauth';
 
-function formOAuthCookieOptions(req: Request, resourceUrl: string) {
-	// Derive `secure` from the request scheme (honouring x-forwarded-proto, as
-	// buildAbsoluteFormUrl does) rather than config, so the cookie is actually sent
-	// back on the follow-up GET over http in dev while staying Secure over https.
+/**
+ * Derive `secure` from the request scheme (honouring x-forwarded-proto, as
+ * buildAbsoluteFormUrl does) rather than config, so form cookies are actually
+ * sent back over http in dev while staying Secure over https.
+ */
+function isSecureRequest(req: Request): boolean {
 	const forwardedProto = req.headers['x-forwarded-proto'];
 	const proto = (typeof forwardedProto === 'string' ? forwardedProto.trim() : '') || req.protocol;
+	return proto === 'https';
+}
+
+function formOAuthCookieOptions(req: Request, resourceUrl: string) {
 	return {
 		httpOnly: true,
 		sameSite: 'lax' as const, // must be Lax: sent on our own top-level 302 → GET
-		secure: proto === 'https',
+		secure: isSecureRequest(req),
 		path: new URL(resourceUrl).pathname, // scope the bearer token to this form
 	};
 }
@@ -759,13 +911,144 @@ function setFormOAuthToken(res: Response, req: Request, resourceUrl: string, tok
 	});
 }
 
+/**
+ * Decode a cookie value, or `null` when it isn't valid percent-encoding. A value
+ * we can't read is treated as no cookie at all — the caller's other checks still
+ * get their turn — rather than throwing out of the request.
+ */
+function decodeCookieValue(value: string): string | null {
+	try {
+		return decodeURIComponent(value.trim());
+	} catch {
+		return null;
+	}
+}
+
 function readFormOAuthToken(req: Request): string | null {
 	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-form-oauth=([^;]+)/);
-	return match ? decodeURIComponent(match[1].trim()) : null;
+	return match ? decodeCookieValue(match[1]) : null;
 }
 
 function clearFormOAuthToken(res: Response, req: Request, resourceUrl: string): void {
 	res.clearCookie(FORM_OAUTH_COOKIE_NAME, formOAuthCookieOptions(req, resourceUrl));
+}
+
+// Carries the submitter's identity to the follow-up pages of a multi-page form.
+// Those pages are reached by a navigation, which can present neither the
+// `x-auth-token` header nor — from a sandboxed, opaque-origin form document —
+// the `n8n-auth` session cookie.
+//
+// The name carries the token's binding, so forms open in other tabs don't
+// overwrite each other's cookie: pages of a run use the run's id, and the
+// trigger — rendered before any run exists — uses the workflow's. Duplicated in
+// `packages/cli/src/constants.ts` (prefix only); keep both sides in step.
+const FORM_AUTH_COOKIE_PREFIX = 'n8n-form-auth';
+
+function getFormAuthCookieName(binding: FormUserAuthTokenBinding): string {
+	return binding.executionId
+		? `${FORM_AUTH_COOKIE_PREFIX}-ex-${binding.executionId}`
+		: `${FORM_AUTH_COOKIE_PREFIX}-wf-${binding.workflowId ?? ''}`;
+}
+
+/**
+ * Value of the request's cookie with exactly this name, or `null`. Parses the
+ * raw header (the webhook path may bypass cookie-parser) by splitting rather
+ * than a regex, since the name embeds a workflow or execution id.
+ */
+function readCookieValue(req: Request, name: string): string | null {
+	for (const part of (req.headers.cookie ?? '').split(';')) {
+		const separator = part.indexOf('=');
+		if (separator === -1 || part.slice(0, separator).trim() !== name) continue;
+		return decodeCookieValue(part.slice(separator + 1));
+	}
+	return null;
+}
+
+/**
+ * Path the form-waiting endpoint is served under, or `null` when it can't be
+ * derived. It is configurable and the instance may sit behind a path prefix, so
+ * derive it rather than assume it: `$execution.resumeFormUrl` is
+ * `<formWaitingBaseUrl>/<executionId>`, and dropping the last segment leaves the
+ * base path.
+ */
+function getFormWaitingBasePath(context: IWebhookFunctions): string | null {
+	try {
+		const resumeFormUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
+		const { pathname } = new URL(resumeFormUrl);
+		return pathname.slice(0, pathname.lastIndexOf('/')) || null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Hand the follow-up pages of a multi-page form their own auth token, scoped to
+ * the form-waiting path. Re-set on every page render, so a long form's later
+ * pages get a token that is still within its TTL.
+ */
+export function setFormAuthCookie(
+	context: IWebhookFunctions,
+	token: string,
+	binding: FormUserAuthTokenBinding,
+): void {
+	const req = context.getRequestObject();
+	context.getResponseObject().cookie(getFormAuthCookieName(binding), token, {
+		httpOnly: true,
+		// Lax, and only ever sent on a navigation the shell (or the top-level page)
+		// initiates from the real origin.
+		sameSite: 'lax',
+		secure: isSecureRequest(req),
+		// Nothing narrower is derivable when the base path is unknown; the cookie is
+		// httpOnly and expires with the token either way.
+		path: getFormWaitingBasePath(context) ?? '/',
+		maxAge: FORM_USER_AUTH_TOKEN_TTL_SECONDS * 1000,
+	});
+}
+
+/**
+ * Resolve the submitter from the form page auth cookie, or `null` when it is
+ * absent or doesn't verify for the workflow/execution being served.
+ */
+function readFormAuthCookieUser(context: IWebhookFunctions): IUser | null {
+	const req = context.getRequestObject();
+	const workflowId = context.getWorkflow().id;
+	const executionId = context.getExecutionId();
+	if (!workflowId) return null;
+	// The run's own cookie first; the trigger's workflow-scoped one covers the
+	// first hop into the run, made before the run existed.
+	const candidateNames = [
+		getFormAuthCookieName({ workflowId, executionId }),
+		getFormAuthCookieName({ workflowId }),
+	];
+	for (const name of candidateNames) {
+		const token = readCookieValue(req, name);
+		if (!token) continue;
+		const user = verifyFormPageAuthCookie(token, workflowId, executionId);
+		if (user) return user;
+	}
+	return null;
+}
+
+/**
+ * True when the request also carries a session that belongs to someone other
+ * than the form cookie's user — a sign-out and sign-in as a different person in
+ * the same browser. The live session wins: the form cookie is dropped and the
+ * request re-authenticates through the normal path. An unusable session cookie
+ * names nobody, so it leaves the form cookie alone.
+ */
+async function isSessionForDifferentUser(
+	context: IWebhookFunctions,
+	formCookieUser: IUser,
+): Promise<boolean> {
+	const req = context.getRequestObject();
+	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-auth=([^;]+)/);
+	if (!match) return false;
+	try {
+		const sessionUser = await context.validateCookieAuth(match[1].trim());
+		return sessionUser.id !== formCookieUser.id;
+	} catch {
+		return false;
+	}
 }
 
 /**
@@ -780,11 +1063,11 @@ function clearFormOAuthToken(res: Response, req: Request, resourceUrl: string): 
  */
 async function authenticateFormUserOrRespond(
 	context: IWebhookFunctions,
-	oauth2Enabled: boolean = false,
+	runOAuth2Flow: boolean = false,
 ): Promise<{ user: IUser; token: string | null } | null> {
 	const req = context.getRequestObject();
 
-	if (oauth2Enabled) {
+	if (runOAuth2Flow) {
 		const res = context.getResponseObject();
 		const url = context.getWebhookResourceUrl('default');
 		if (!url) {
@@ -909,7 +1192,7 @@ async function authenticateFormUserOrRespond(
 
 	const formToken = req.headers['x-auth-token'];
 	if (typeof formToken === 'string' && formToken) {
-		const user = verifyFormUserAuthToken(formToken, context.getNode());
+		const user = verifyFormUserAuthToken(formToken, context.getNode(), context.getExecutionId());
 		if (user) return { user, token: null };
 	}
 
@@ -930,6 +1213,15 @@ async function authenticateFormUserOrRespond(
  * Multi-step Form/Wait nodes inherit `authentication` from the upstream
  * Form Trigger. This wrapper short-circuits when n8nUserAuth isn't in use.
  *
+ * A page is reached by navigating to it, which cannot carry an `x-auth-token`
+ * header, so a GET is authenticated from the form page auth cookie first. Every
+ * other request — and any GET whose cookie is missing, doesn't verify, or names
+ * someone other than the session on the same request — falls through to the
+ * session cookie / `x-auth-token` checks, unchanged.
+ *
+ * Form pages never take the OAuth2 branch: the OAuth2 token's audience is the
+ * trigger's URL, which a page's own resource URL is not.
+ *
  * Returns `{ authedUser }` on success, `{ responded: true }` after sending a
  * 302/401 on failure, or `{}` if the trigger doesn't require auth.
  */
@@ -938,6 +1230,14 @@ export async function validateFormPageAuth(
 	triggerAuthentication: string,
 ): Promise<{ authedUser?: IUser; responded?: boolean }> {
 	if (triggerAuthentication !== 'n8nUserAuth') return {};
+
+	if (context.getRequestObject().method === 'GET') {
+		const cookieUser = readFormAuthCookieUser(context);
+		if (cookieUser && !(await isSessionForDifferentUser(context, cookieUser))) {
+			return { authedUser: cookieUser };
+		}
+	}
+
 	const { user } = (await authenticateFormUserOrRespond(context, false)) ?? {};
 	return user ? { authedUser: user } : { responded: true };
 }
@@ -959,6 +1259,7 @@ function renderFormShell({
 	resourceUrl,
 	credentials,
 	submitterEmail,
+	formWaitingPath,
 }: {
 	res: Response;
 	req: Request;
@@ -966,20 +1267,85 @@ function renderFormShell({
 	resourceUrl: string;
 	credentials: CredentialCheckStatus[];
 	submitterEmail?: string;
+	formWaitingPath?: string;
 }) {
 	// The iframe loads the same form via a real URL (so the form's relative POST
 	// works exactly as it does top-level today) flagged as the inner render.
 	const inner = new URL(buildAbsoluteFormUrl(req));
 	inner.searchParams.set('n8nShellInner', '1');
 
+	res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+	res.render('form-shell', {
+		formTitle,
+		iframeSrc: `${inner.pathname}${inner.search}`,
+		resourceUrl,
+		// The only paths the shell will move its frame to on the form's request.
+		formWaitingPath,
+		...buildFormShellViewModel(credentials, submitterEmail),
+	});
+}
+
+export type FormShellCredentialRow = {
+	id: string;
+	name: string;
+	type: string;
+	status: CredentialCheckStatus['status'];
+	connected: boolean;
+	/** Letter tile, used whenever the provider icon doesn't resolve. */
+	initial: string;
+	iconUrl?: string;
+	authorizationUrl?: string;
+	revokeUrl?: string;
+	resolverId?: string;
+	account?: string;
+	usedBy?: string;
+};
+
+export type FormShellViewModel = {
+	credentials: FormShellCredentialRow[];
+	total: number;
+	connectedCount: number;
+	useDialog: boolean;
+	allConnected: boolean;
+	summaryText: string;
+	footerText: string;
+	submitterEmail?: string;
+};
+
+/** Submitter-facing copy talks about accounts, never credentials — and never `account(s)`. */
+const accountsLabel = (count: number) => (count === 1 ? 'account' : 'accounts');
+
+/**
+ * The one-line state of the connect panel for two or more accounts. Mirrored by
+ * the shell's client-side `summaryText()`, which re-renders it in place as rows
+ * connect (a reload would bounce the submitter back through consent).
+ */
+export function formShellSummaryText(total: number, connectedCount: number): string {
+	const remaining = total - connectedCount;
+	if (remaining <= 0) return `All ${total} accounts connected · ready to submit`;
+	if (connectedCount === 0) return `${total} accounts needed to submit this form`;
+	return `${remaining} more ${accountsLabel(remaining)} needed to submit this form`;
+}
+
+/**
+ * View model for `form-shell.handlebars`. Two shapes: a single required account
+ * gets its own row with a Connect button that opens the OAuth popup directly;
+ * two or more collapse behind a summary line plus the "Connect your accounts"
+ * dialog.
+ */
+export function buildFormShellViewModel(
+	credentials: CredentialCheckStatus[],
+	submitterEmail?: string,
+): FormShellViewModel {
 	const initialOf = (name: string) => (name.trim().charAt(0) || '?').toUpperCase();
-	const rows = credentials.map((c) => ({
+	const rows: FormShellCredentialRow[] = credentials.map((c) => ({
 		id: c.credentialId,
 		name: c.credentialName,
 		type: c.credentialType,
 		status: c.status,
 		connected: c.status === 'configured',
 		initial: initialOf(c.credentialName),
+		iconUrl: c.iconUrl,
 		authorizationUrl: c.authorizationUrl,
 		revokeUrl: c.revokeUrl,
 		resolverId: c.resolverId,
@@ -988,27 +1354,23 @@ function renderFormShell({
 		// provider account (when it differs) is a backend-enrichment follow-up.
 		account: c.status === 'configured' ? submitterEmail : undefined,
 		// `usedBy` (owning node) comes from the backend-enrichment follow-up.
-		usedBy: undefined as string | undefined,
+		usedBy: undefined,
 	}));
 
 	const total = rows.length;
 	const connectedCount = rows.filter((r) => r.connected).length;
-	// Design: 1–2 credentials render inline; 3+ collapse into a strip + dialog.
-	const useDialog = total >= 3;
 
-	res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
-	res.render('form-shell', {
-		formTitle,
-		iframeSrc: `${inner.pathname}${inner.search}`,
-		resourceUrl,
+	return {
 		credentials: rows,
 		total,
 		connectedCount,
-		useDialog,
+		// Design: one account connects directly from its row; two or more collapse.
+		useDialog: total >= 2,
+		allConnected: total > 0 && connectedCount === total,
+		summaryText: formShellSummaryText(total, connectedCount),
+		footerText: `${connectedCount} of ${total} ${accountsLabel(total)} connected`,
 		submitterEmail,
-		iconStack: rows.slice(0, 3).map((r) => r.initial),
-		moreCount: total > 3 ? total - 3 : 0,
-	});
+	};
 }
 
 export async function formWebhook(
@@ -1054,8 +1416,7 @@ export async function formWebhook(
 	let oAuth2Token: string | undefined;
 	if (node.typeVersion > 1) {
 		if (authentication === 'n8nUserAuth') {
-			const { user, token } =
-				(await authenticateFormUserOrRespond(context, isFormOAuth2Enabled())) ?? {};
+			const { user, token } = (await authenticateFormUserOrRespond(context, true)) ?? {};
 			if (!user) return { noWebhookResponse: true };
 			authedUser = user;
 			oAuth2Token = token ?? undefined;
@@ -1134,6 +1495,15 @@ export async function formWebhook(
 			responseMode = 'responseNode';
 		}
 
+		// A multi-page form hops to `/form-waiting/<execution>` by navigating, which
+		// carries neither the `x-auth-token` header nor — from the hosting shell's
+		// opaque-origin frame — the `n8n-auth` session cookie. Give the follow-up pages
+		// their own path-scoped token so they can authenticate the same submitter.
+		if (authentication === 'n8nUserAuth' && authedUser && hasNextPage) {
+			const binding = { workflowId: context.getWorkflow().id };
+			setFormAuthCookie(context, generateFormUserAuthToken(node, authedUser, binding), binding);
+		}
+
 		// The inner render is the form loaded inside the hosting-shell iframe. Honor the
 		// flag only for iframe navigations (per Sec-Fetch-Dest, absent on older browsers)
 		// so a hand-typed URL can't skip the connect UI; the POST gate enforces regardless.
@@ -1147,20 +1517,19 @@ export async function formWebhook(
 		// already rendering the inner iframe — wrap the form in the hosting shell
 		// (form + connect panel, submit disabled). No-op unless OAuth2 form auth and
 		// the dynamic-credentials module are both active.
-		if (
-			authentication === 'n8nUserAuth' &&
-			authedUser &&
-			isFormOAuth2Enabled() &&
-			oAuth2Token &&
-			!shellInner
-		) {
+		if (authentication === 'n8nUserAuth' && authedUser && oAuth2Token && !shellInner) {
 			// Must name the endpoint actually being served (test vs production) — the
 			// OAuth2 token is bound to that resource, same as in the auth path above.
 			const resourceUrl = trimTrailingSlash(context.getWebhookResourceUrl('default') ?? '');
 			if (resourceUrl) {
 				await context.establishTriggerIdentity(oAuth2Token, resourceUrl);
 				const credentialStatus = await context.checkTriggerCredentialStatus();
-				if (credentialStatus && !credentialStatus.readyToExecute) {
+				// Gate on "needs end-user accounts", NOT on readiness: a fully connected
+				// submitter must keep the panel — which accounts the form uses, which
+				// identity, and Disconnect — otherwise it would vanish on the reload right
+				// after connecting. Forms with no end-user accounts fall through to the
+				// plain render below, unchanged.
+				if (credentialStatus?.credentials.length) {
 					// Hand the OAuth2 token to the same-site iframe GET via the one-hop
 					// cookie the OAuth2 flow already uses, so the inner form authenticates
 					// without re-running the provider redirect inside the frame.
@@ -1174,6 +1543,7 @@ export async function formWebhook(
 						resourceUrl,
 						credentials: credentialStatus.credentials,
 						submitterEmail: authedUser?.email,
+						formWaitingPath: getFormWaitingBasePath(context) ?? undefined,
 					});
 					return { noWebhookResponse: true };
 				}
@@ -1183,14 +1553,9 @@ export async function formWebhook(
 		let authToken: string | undefined;
 		if (node.typeVersion > 1) {
 			if (authentication === 'n8nUserAuth' && authedUser) {
-				if (!isFormOAuth2Enabled()) {
-					// Cookies aren't sent on POST from the sandboxed form page
-					// (null origin + SameSite=Lax). Embed an HMAC token so the
-					// POST handler can re-authenticate the user.
-					authToken = generateFormUserAuthToken(node, authedUser);
-				} else {
-					authToken = oAuth2Token;
-				}
+				// Cookies aren't sent on POST from the sandboxed form page (null origin +
+				// SameSite=Lax), so the POST re-authenticates off this token.
+				authToken = oAuth2Token;
 			} else {
 				authToken = await generateFormPostBasicAuthToken(context, authProperty);
 			}
@@ -1224,25 +1589,11 @@ export async function formWebhook(
 	// iframe. It also works off the state at render time, so a required credential can
 	// be revoked — or the page simply left open — between render and submit. Re-check
 	// here, after identity establishment and before the execution is enqueued, so a
-	// stale page can't spawn a run that dies at credential resolution. Scoped to the
-	// trigger: the Wait node shares `formWebhook`, but its form resume continues an
-	// already-running execution.
+	// stale page can't spawn a run that dies at credential resolution. The Form node
+	// runs the same gate on its own POST (Form.node.ts); the Wait node shares
+	// `formWebhook`, so scope this call site to the trigger.
 	if (node.type === FORM_TRIGGER_NODE_TYPE) {
-		let readiness: CredentialCheckResult | undefined;
-		try {
-			readiness = await context.checkTriggerCredentialStatus();
-		} catch (error) {
-			// Fail closed. Throwing here is swallowed by the webhook layer, which then
-			// enqueues the execution anyway — exactly the doomed run we're preventing.
-			context.logger.error('Form submit credential readiness check failed', { error });
-			res.status(503).json({ status: 'credential_readiness_check_failed' });
-			return { noWebhookResponse: true };
-		}
-
-		if (readiness && !readiness.readyToExecute) {
-			// 428, matching the webhook trigger's gate (webhook-helpers.ts) so both
-			// trigger paths answer an unconnected credential the same way.
-			res.status(428).json(buildCredentialConnectionsRequiredResponse(readiness));
+		if (await respondIfCredentialsNotReady(context, res)) {
 			return { noWebhookResponse: true };
 		}
 	}

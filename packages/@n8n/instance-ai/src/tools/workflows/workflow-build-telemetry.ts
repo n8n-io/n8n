@@ -27,6 +27,7 @@ export function trackWorkflowSourceBuild(
 		remediation?: RemediationMetadata;
 		errorCount?: number;
 		warningCount?: number;
+		droppedGroupCount?: number;
 	},
 ): void {
 	const buildContext = context.workflowBuildContext;
@@ -44,6 +45,7 @@ export function trackWorkflowSourceBuild(
 		is_auxiliary_supporting_workflow: input.isAuxiliarySupportingWorkflow === true,
 		error_count: input.errorCount ?? 0,
 		warning_count: input.warningCount ?? 0,
+		dropped_group_count: input.droppedGroupCount ?? 0,
 		...(input.targetWorkflowId ? { target_workflow_id: input.targetWorkflowId } : {}),
 		...(input.savedWorkflowId ? { workflow_id: input.savedWorkflowId } : {}),
 		...(input.binding.sourceHash ? { source_hash: input.binding.sourceHash } : {}),

@@ -64,6 +64,18 @@
       "license": "LicenseRef-n8n-enterprise",
       "source": "n8n-io/ai-assistant-service — ships LICENSE_EE.md (n8n Enterprise License). EE-only runtime component; not under the Sustainable Use License. Version-agnostic: license is stable across SDK versions.",
       "skipDiskText": true
+    },
+    "qrcode-terminal": {
+      "license": "Apache-2.0",
+      "source": "https://github.com/gtanner/qrcode-terminal/blob/master/LICENSE — verbatim 'Apache License Version 2.0, January 2004'. package.json uses the legacy licenses[] array with the non-SPDX string 'Apache 2.0', so scanners leave it unresolved. Version-agnostic: the license is stable across releases and an image can resolve more than one version."
+    },
+    "dreamopt": {
+      "license": "MIT",
+      "source": "https://github.com/andreyvit/dreamopt.js/blob/master/LICENSE — 'The MIT License (MIT), Copyright (c) 2013-2014 Andrey Tarantsov'. No license field in package.json and .npmignore keeps LICENSE out of the published tarball, so neither the registry nor an on-disk scan can resolve it."
+    },
+    "@getzep/zep-cloud": {
+      "license": "Apache-2.0",
+      "source": "https://github.com/getzep/zep-js/blob/main/LICENSE — 'Apache License, Version 2.0, January 2004'. The published package carries no license field (the npm registry reports null) and ships no LICENSE file."
     }
   },
   "elections": {
@@ -71,9 +83,9 @@
       "elected": "MIT",
       "source": "Dual-licensed (MIT OR GPL-3.0-or-later) per https://github.com/Stuk/jszip/blob/main/LICENSE.markdown. n8n elects MIT; recorded so a copyleft policy gate reads MIT rather than the GPL alternative."
     },
-    "pkg:npm/%40zone-eu/mailsplit@5.4.8": {
+    "pkg:npm/%40zone-eu/mailsplit@5.4.15": {
       "elected": "MIT",
-      "source": "Dual-licensed (MIT OR EUPL-1.1+) per https://github.com/zone-eu/mailsplit#license. n8n elects MIT; recorded so a copyleft policy gate reads MIT rather than the EUPL alternative."
+      "source": "Dual-licensed (MIT OR EUPL-1.1+) per https://github.com/zone-eu/mailsplit#license; re-verified for 5.4.15 (package.json license field unchanged). n8n elects MIT; recorded so a copyleft policy gate reads MIT rather than the EUPL alternative."
     }
   }
 }

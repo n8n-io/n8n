@@ -130,10 +130,13 @@ const fallbackRuntime = createAgentChannelRuntime(getAgentChannelPlatform('unkno
 });
 const currentPlatform = computed(() => getAgentChannelPlatform(props.integrationType));
 const currentRuntime = computed(() => runtimes[props.integrationType] ?? fallbackRuntime);
-const channelActionInFlight = computed(
-	() => connectionInFlight.value || currentRuntime.value.loading.value,
-);
 const channelViewRef = ref<AgentChannelViewExpose>();
+const channelActionInFlight = computed(
+	() =>
+		connectionInFlight.value ||
+		currentRuntime.value.loading.value ||
+		channelViewRef.value?.loading === true,
+);
 const integrationLabel = computed(() => currentIntegration.value.label);
 
 const connectedDescription = computed(() => {
@@ -262,7 +265,9 @@ async function loadChannelState(forceReload = false) {
 
 watch(
 	() => [props.projectId, props.agentId, props.integrationType] as const,
-	() => void loadChannelState(),
+	() => {
+		void loadChannelState();
+	},
 	{ immediate: true },
 );
 </script>
@@ -357,11 +362,9 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding-top: var(--spacing--sm);
-	/* Waiting-for-input highlight (#33959) — ported from InstanceAiChannelSetup
-	   when the card body moved here, so both surfaces get it. */
-	border: 2px solid var(--color--primary);
 	border-radius: var(--radius--lg);
 	background-color: var(--background--surface);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .header {

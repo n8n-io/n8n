@@ -31,6 +31,7 @@ import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
+import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
@@ -100,10 +101,12 @@ export class E2EController {
 		[LICENSE_FEATURES.DYNAMIC_CREDENTIALS]: false,
 		[LICENSE_FEATURES.SHARING]: false,
 		[LICENSE_FEATURES.LDAP]: false,
+		[LICENSE_FEATURES.NODE_TYPE_POLICIES]: false,
 		[LICENSE_FEATURES.SAML]: false,
 		[LICENSE_FEATURES.LOG_STREAMING]: false,
 		[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
 		[LICENSE_FEATURES.SOURCE_CONTROL]: false,
+		[LICENSE_FEATURES.GIT_CONNECTIONS]: false,
 		[LICENSE_FEATURES.VARIABLES]: false,
 		[LICENSE_FEATURES.API_DISABLED]: false,
 		[LICENSE_FEATURES.EXTERNAL_SECRETS]: false,
@@ -141,6 +144,7 @@ export class E2EController {
 		[LICENSE_FEATURES.DATA_REDACTION]: false,
 		[LICENSE_FEATURES.WORKFLOW_REVIEWS]: false,
 		[LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES]: false,
+		[LICENSE_FEATURES.WORKER_POOLS]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
@@ -200,6 +204,7 @@ export class E2EController {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
 		private readonly scheduledJobRepository: ScheduledJobRepository,
+		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
 		private readonly pollerStateRepository: PollerStateRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 	) {
@@ -263,19 +268,25 @@ export class E2EController {
 	@Get('/scheduled-jobs/count', { skipAuth: true })
 	async countScheduledJobs(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.query;
-		const count = await this.scheduledJobRepository.countByWorkflowNode(workflowId, nodeId);
+		const count = await this.scheduledJobRepository.countByOwner(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+		);
 		return { count };
 	}
 
 	/**
-	 * A poll node's stored cursor, so a test can assert on it directly instead of
-	 * inferring it from execution behaviour.
+	 * A poll node's stored cursor and failure counters, so a test can assert on them
+	 * directly instead of inferring them from execution behaviour.
 	 */
 	@Get('/poller-state', { skipAuth: true })
 	async getPollerState(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.query;
-		const cursor = await this.pollerStateRepository.findCursor(workflowId, nodeId);
-		return { cursor };
+		const state = await this.pollerStateRepository.findState(workflowId, nodeId);
+		return {
+			cursor: state?.cursor ?? null,
+			consecutiveErrors: state?.consecutiveErrors ?? 0,
+			backoffUntil: state?.backoffUntil ?? null,
+		};
 	}
 
 	/**
@@ -293,7 +304,10 @@ export class E2EController {
 	@Post('/scheduled-jobs/fire-now', { skipAuth: true })
 	async fireScheduledJobsNow(req: Request<{}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.body;
-		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, 0);
+		await this.scheduledJobRepository.backdateNextRunAt(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+			0,
+		);
 		return { success: true };
 	}
 
@@ -306,7 +320,10 @@ export class E2EController {
 		req: Request<{}, {}, { workflowId: string; nodeId: string; secondsAgo: number }>,
 	) {
 		const { workflowId, nodeId, secondsAgo } = req.body;
-		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, secondsAgo);
+		await this.scheduledJobRepository.backdateNextRunAt(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+			secondsAgo,
+		);
 		return { success: true };
 	}
 
@@ -457,7 +474,7 @@ export class E2EController {
 	}
 
 	private static coverageKey(url: string, fn: Profiler.FunctionCoverage): string {
-		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0}`;
+		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0}`;
 	}
 
 	private static coverageCount(fn: Profiler.FunctionCoverage): number {
