@@ -30,10 +30,17 @@ Rules:
   variables (`bg-primary`, `text-muted-foreground`, `rounded-lg`). No hex
   colors, no inline styles, no `dark:` variants: dark mode comes from the
   `.dark` class `src/theme-mode.ts` sets, not a Tailwind variant.
-- Do not edit the `:root`/`.dark` blocks in `src/style.css`, or
-  `src/theme-overrides.css` / `src/theme-mode.ts` — the app's Theme tab
-  manages those. Ask the user to use the Theme tab for color/font/radius
-  changes instead of hardcoding a look.
+- You can edit any theme variable directly: write it into `src/theme-overrides.css`'s
+  `:root { }` block (create the file's content if it is empty) — a rebuild picks
+  it up like any other source change. Do not edit `src/style.css`'s `:root`/`.dark`
+  blocks (the shadcn-vue defaults); put overrides in `theme-overrides.css`
+  instead. A later Theme-tab save merges its own keys (`--primary`,
+  `--primary-foreground`, `--ring`, `--secondary`, `--secondary-foreground`,
+  `--accent`, `--accent-foreground`, `--radius`, `--font-sans`) onto whatever is
+  already in the file rather than replacing it, so it never erases a variable
+  you set here. `src/theme-mode.ts` is different: the Theme tab's mode control
+  always overwrites it on save, so edit it directly only when the user won't
+  also be using that tab for this app.
 
 ## Component catalog
 

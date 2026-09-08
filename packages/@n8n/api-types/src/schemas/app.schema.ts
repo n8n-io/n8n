@@ -28,14 +28,19 @@ export const pageRouteSchema = z
 	.regex(PAGE_ROUTE_REGEX, PAGE_ROUTE_ERROR_MESSAGE);
 
 // Flat CSS custom-property overrides applied on top of the shadcn-vue template's
-// default :root/.dark block. Keep this allowlist in sync with the Theme tab's fields.
-export const appThemeVarsSchema = z
-	.object({
-		'--primary': z.string().trim().min(1).max(120).optional(),
-		'--font-sans': z.string().trim().min(1).max(120).optional(),
-		'--radius': z.string().trim().min(1).max(120).optional(),
-	})
-	.strict();
+// default :root/.dark block. Open-ended by design: the Theme tab writes a handful
+// of derived keys (see AppThemeEditor.vue), but Instance AI can set any shadcn/
+// Tailwind variable directly by editing theme-overrides.css itself — the schema
+// only needs to keep the *shape* (a flat map of CSS custom properties) honest,
+// not gatekeep which properties exist.
+const CSS_CUSTOM_PROPERTY_NAME = /^--[a-zA-Z0-9-]+$/;
+
+export const appThemeVarsSchema = z.record(
+	z
+		.string()
+		.regex(CSS_CUSTOM_PROPERTY_NAME, 'Must be a CSS custom property name, e.g. "--primary"'),
+	z.string().trim().min(1).max(240),
+);
 
 export const appThemeSchema = z.object({
 	mode: z.enum(['light', 'dark', 'system']),

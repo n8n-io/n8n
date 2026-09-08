@@ -124,8 +124,8 @@ apps/<namespace>/
   vite.config.ts           base: process.env.APP_BASE ?? '/'
   src/main.ts              style.css + theme-overrides.css + theme mode + router
   src/style.css            Tailwind + the shadcn-vue :root/.dark CSS variables
-  src/theme-overrides.css  Theme tab's saved overrides; do not edit
-  src/theme-mode.ts        Theme tab's saved mode; do not edit
+  src/theme-overrides.css  any CSS variable override; edit freely, see design-system.md
+  src/theme-mode.ts        light/dark/system; a Theme-tab save always overwrites this one
   src/router.ts            createWebHistory(import.meta.env.BASE_URL)
   src/App.vue              RouterView shell
   src/pages/Home.vue       one component per route

@@ -27,11 +27,26 @@ type ThemeBuildResult =
 	| { versionId: string; url: string }
 	| { error: true; message: string; log?: string };
 
-function themeOverridesCss(theme: AppTheme): string {
-	const entries = Object.entries(theme.vars);
+function themeOverridesCss(vars: Record<string, string>): string {
+	const entries = Object.entries(vars);
 	if (entries.length === 0) return '';
 	const declarations = entries.map(([key, value]) => `\t${key}: ${value};`).join('\n');
 	return `:root {\n${declarations}\n}\n`;
+}
+
+/**
+ * Reads back whatever CSS custom properties are already in theme-overrides.css —
+ * Instance AI can edit that file directly with its own variables, and a Theme-tab
+ * save must not erase them. Simple regex, not a CSS parser: this file is only ever
+ * hand-edited (by the agent) or written by `themeOverridesCss` above, both of which
+ * stick to flat `--name: value;` declarations.
+ */
+function parseThemeOverridesCss(content: string): Record<string, string> {
+	const vars: Record<string, string> = {};
+	for (const match of content.matchAll(/(--[a-zA-Z0-9-]+)\s*:\s*([^;]+);/g)) {
+		vars[match[1]] = match[2].trim();
+	}
+	return vars;
 }
 
 function themeModeTs(theme: AppTheme): string {
@@ -136,10 +151,14 @@ export class AppThemeBuildService {
 			if ('error' in restored) return { error: true, message: restored.message };
 		}
 
-		await filesystem.writeFile(
-			`${appDirRelative}/src/theme-overrides.css`,
-			themeOverridesCss(theme),
+		const overridesPath = `${appDirRelative}/src/theme-overrides.css`;
+		const existing = await filesystem.readFile(overridesPath).catch(() => '');
+		const existingVars = parseThemeOverridesCss(
+			Buffer.isBuffer(existing) ? existing.toString('utf8') : (existing ?? ''),
 		);
+		const mergedVars = { ...existingVars, ...theme.vars };
+
+		await filesystem.writeFile(overridesPath, themeOverridesCss(mergedVars));
 		await filesystem.writeFile(`${appDirRelative}/src/theme-mode.ts`, themeModeTs(theme));
 
 		const built = await buildApp(sandboxContext, { action: 'build', appId });

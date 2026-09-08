@@ -41,32 +41,71 @@ describe('AppThemeEditor', () => {
 		showMessage.mockReset();
 	});
 
-	it('saves the template defaults when nothing has been touched', async () => {
+	it('saves the template defaults, deriving a coherent set from the accent alone', async () => {
 		const app = makeApp();
 		appsStore.applyAppTheme.mockResolvedValue(app);
 		const { getByTestId } = renderEditor({ props: { projectId: 'proj-1', app } });
 
 		await userEvent.click(getByTestId('app-theme-save'));
 
-		expect(appsStore.applyAppTheme).toHaveBeenCalledWith('proj-1', 'app-1', {
-			mode: 'system',
-			vars: { '--primary': '#18181b', '--radius': '10px' },
-		});
+		expect(appsStore.applyAppTheme).toHaveBeenCalledWith(
+			'proj-1',
+			'app-1',
+			expect.objectContaining({
+				mode: 'system',
+				vars: expect.objectContaining({
+					'--primary': '#ff6900',
+					'--primary-foreground': expect.any(String),
+					'--ring': '#ff6900',
+					'--secondary': expect.any(String),
+					'--accent': expect.any(String),
+					'--radius': '4px',
+				}),
+			}),
+		);
 	});
 
-	it('starts from the app’s saved theme', async () => {
+	it('starts from the app’s saved theme and recomputes the derived set from it', async () => {
 		const app = makeApp({
-			theme: {
-				mode: 'dark',
-				vars: { '--primary': '#4f46e5', '--radius': '4px', '--font-sans': 'Geist, sans-serif' },
-			},
+			theme: { mode: 'dark', vars: { '--primary': '#4f46e5', '--radius': '4px' } },
 		});
 		appsStore.applyAppTheme.mockResolvedValue(app);
 		const { getByTestId } = renderEditor({ props: { projectId: 'proj-1', app } });
 
 		await userEvent.click(getByTestId('app-theme-save'));
 
-		expect(appsStore.applyAppTheme).toHaveBeenCalledWith('proj-1', 'app-1', app.theme);
+		expect(appsStore.applyAppTheme).toHaveBeenCalledWith(
+			'proj-1',
+			'app-1',
+			expect.objectContaining({
+				mode: 'dark',
+				vars: expect.objectContaining({ '--primary': '#4f46e5', '--ring': '#4f46e5' }),
+			}),
+		);
+	});
+
+	it('only ever sends the keys it manages — the backend merges them onto the live theme', async () => {
+		const app = makeApp({
+			theme: { mode: 'system', vars: { '--primary': '#18181b', '--chart-1': '#ff00ff' } },
+		});
+		appsStore.applyAppTheme.mockResolvedValue(app);
+		const { getByTestId } = renderEditor({ props: { projectId: 'proj-1', app } });
+
+		await userEvent.click(getByTestId('app-theme-save'));
+
+		const [, , sentTheme] = appsStore.applyAppTheme.mock.calls[0];
+		expect(Object.keys(sentTheme.vars).sort()).toEqual(
+			[
+				'--accent',
+				'--accent-foreground',
+				'--primary',
+				'--primary-foreground',
+				'--radius',
+				'--ring',
+				'--secondary',
+				'--secondary-foreground',
+			].sort(),
+		);
 	});
 
 	it('sends the mode and radius the user picks', async () => {
