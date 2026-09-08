@@ -56,10 +56,10 @@ docker push
   └─ cosign attest     →  attested to image digest
 ```
 
-After a successful nightly Docker build, the validation resolves that build's immutable SHA
-tags to digests. It runs the same Syft scan, enrichment, and npm SPDX gate for all four
-images. It uses `attest-image-sbom.mjs --validate-only`, so it does not run Cosign or write
-to the registry.
+The daily validation requires a successful scheduled Docker build from the last six hours.
+It resolves that build's immutable SHA tags to digests. It runs the same Syft scan,
+enrichment, and npm SPDX gate for all four images. It uses
+`attest-image-sbom.mjs --validate-only`, so it does not run Cosign or write to the registry.
 
 The two pipelines use different scanners deliberately. The release SBOM scans a
 pnpm lockfile, which has no package files to read licenses from, so it queries

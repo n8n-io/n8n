@@ -49,7 +49,7 @@ skip:
       # Called with a scheduled Docker run SHA or a maintainer-selected dispatch
       # SHA. It never receives a PR event ref.
       - .github/workflows/sbom-validation-callable.yml
-      # Runs after a successful scheduled Docker build, or by maintainer dispatch.
+      # Resolves a successful scheduled Docker run, or runs by maintainer dispatch.
       # Both paths check out a trusted SHA and never receive a PR event ref.
       - .github/workflows/test-sbom-nightly.yml
       # Uses merge commit SHA from GitHub - the code has already been reviewed

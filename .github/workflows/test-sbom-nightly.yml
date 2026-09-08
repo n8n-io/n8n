@@ -1,9 +1,9 @@
 name: 'Test: Nightly SBOM Validation'
 
 on:
-  workflow_run:
-    workflows: ['Docker: Build and Push']
-    types: [completed]
+  schedule:
+    # Run after the 00:00 UTC nightly Docker build.
+    - cron: '0 4 * * *'
   workflow_dispatch:
 
 permissions:
@@ -14,26 +14,82 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  resolve-nightly-build:
+    name: Resolve nightly Docker build
+    if: github.repository == 'n8n-io/n8n'
+    runs-on: ubuntu-slim
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      image_tag: ${{ steps.image-tag.outputs.tag }}
+      source_sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - name: Resolve source SHA
+        id: source
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "$EVENT_NAME" = 'workflow_dispatch' ]; then
+            echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          RUN=$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow docker-build-push.yml \
+            --event schedule \
+            --limit 1 \
+            --json conclusion,createdAt,headSha,status)
+          STATUS=$(jq -r '.[0].status // empty' <<< "$RUN")
+          CONCLUSION=$(jq -r '.[0].conclusion // empty' <<< "$RUN")
+          CREATED_AT=$(jq -r '.[0].createdAt // empty' <<< "$RUN")
+          SHA=$(jq -r '.[0].headSha // empty' <<< "$RUN")
+
+          if [ "$STATUS" != 'completed' ] || [ "$CONCLUSION" != 'success' ] || [ -z "$SHA" ]; then
+            echo '::error::The latest scheduled Docker build did not complete successfully.'
+            exit 1
+          fi
+
+          AGE_SECONDS=$(($(date -u +%s) - $(date -d "$CREATED_AT" +%s)))
+          if [ "$AGE_SECONDS" -gt 21600 ]; then
+            echo "::error::The latest successful scheduled Docker build is more than six hours old ($CREATED_AT)."
+            exit 1
+          fi
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout nightly source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Select nightly image tag
+        id: image-tag
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = 'schedule' ]; then
+            echo "tag=nightly-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+          else
+            echo 'tag=nightly' >> "$GITHUB_OUTPUT"
+          fi
+
   validate-release-sbom:
     name: Validate release SBOM
-    if: |
-      github.repository == 'n8n-io/n8n' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event.workflow_run.event == 'schedule' &&
-        github.event.workflow_run.conclusion == 'success'))
+    needs: resolve-nightly-build
     permissions:
       contents: read
     uses: ./.github/workflows/sbom-validation-callable.yml
     with:
-      ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      ref: ${{ needs.resolve-nightly-build.outputs.source_sha }}
 
   validate-image-sboms:
     name: Validate nightly image SBOMs
-    if: |
-      github.repository == 'n8n-io/n8n' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event.workflow_run.event == 'schedule' &&
-        github.event.workflow_run.conclusion == 'success'))
+    needs: resolve-nightly-build
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 30
     permissions:
@@ -42,7 +98,7 @@ jobs:
       - name: Checkout
         uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ needs.resolve-nightly-build.outputs.source_sha }}
           fetch-depth: 1
           persist-credentials: false
 
@@ -61,24 +117,13 @@ jobs:
         with:
           syft-version: v1.38.2
 
-      - name: Select nightly image version
-        id: version
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          if [ "$EVENT_NAME" = 'workflow_run' ]; then
-            echo "tag=nightly-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
-          else
-            echo 'tag=nightly' >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Resolve nightly image digests
         id: digests
         env:
-          N8N_TAG: ghcr.io/n8n-io/n8n:${{ steps.version.outputs.tag }}
-          N8N_PC_TAG: ghcr.io/n8n-io/n8n:${{ steps.version.outputs.tag }}-pc
-          RUNNERS_TAG: ghcr.io/n8n-io/runners:${{ steps.version.outputs.tag }}
-          DISTROLESS_TAG: ghcr.io/n8n-io/runners:${{ steps.version.outputs.tag }}-distroless
+          N8N_TAG: ghcr.io/n8n-io/n8n:${{ needs.resolve-nightly-build.outputs.image_tag }}
+          N8N_PC_TAG: ghcr.io/n8n-io/n8n:${{ needs.resolve-nightly-build.outputs.image_tag }}-pc
+          RUNNERS_TAG: ghcr.io/n8n-io/runners:${{ needs.resolve-nightly-build.outputs.image_tag }}
+          DISTROLESS_TAG: ghcr.io/n8n-io/runners:${{ needs.resolve-nightly-build.outputs.image_tag }}-distroless
         run: node .github/scripts/docker/get-manifest-digests.mjs
 
       - name: Generate and validate image SBOMs
@@ -95,10 +140,10 @@ jobs:
 
   notify-on-failure:
     name: Notify on nightly SBOM validation failure
-    needs: [validate-release-sbom, validate-image-sboms]
+    needs: [resolve-nightly-build, validate-release-sbom, validate-image-sboms]
     if: |
       always() &&
-      github.event_name == 'workflow_run' &&
+      github.event_name == 'schedule' &&
       (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
     runs-on: ubuntu-slim
     permissions:
