@@ -16,9 +16,7 @@ describe('EngineV2ActiveTriggers', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		payloadGuard.assertNoFiles.mockResolvedValue(undefined);
-		payloadGuard.discardFiles.mockResolvedValue(undefined);
-		payloadGuard.hasFiles.mockReturnValue(false);
+		payloadGuard.assertNoFiles.mockReturnValue(undefined);
 		engineV2ActiveTriggers = new EngineV2ActiveTriggers(dispatcher, payloadGuard);
 	});
 
@@ -61,10 +59,10 @@ describe('EngineV2ActiveTriggers', () => {
 	});
 
 	describe('assertPayloadSupported', () => {
-		it('asks the guard to refuse files, naming the trigger surface', async () => {
+		it('asks the guard to refuse files, naming the trigger surface', () => {
 			const slots = [[{ json: {}, binary: { data: mock<IBinaryData>() } }]];
 
-			await engineV2ActiveTriggers.assertPayloadSupported(slots);
+			engineV2ActiveTriggers.assertPayloadSupported(slots);
 
 			expect(payloadGuard.assertNoFiles).toHaveBeenCalledWith(
 				slots,
@@ -72,38 +70,12 @@ describe('EngineV2ActiveTriggers', () => {
 			);
 		});
 
-		it('surfaces the refusal the guard raises', async () => {
-			payloadGuard.assertNoFiles.mockRejectedValue(new UserError('nope'));
+		it('surfaces the refusal the guard raises, synchronously', () => {
+			payloadGuard.assertNoFiles.mockImplementation(() => {
+				throw new UserError('nope');
+			});
 
-			await expect(engineV2ActiveTriggers.assertPayloadSupported([[]])).rejects.toThrow('nope');
-		});
-	});
-
-	describe('discardFiles', () => {
-		it('hands the payload to the guard', async () => {
-			const slots = [[{ json: {} }]];
-
-			await engineV2ActiveTriggers.discardFiles(slots);
-
-			expect(payloadGuard.discardFiles).toHaveBeenCalledWith(slots);
-		});
-	});
-
-	describe('assertPollPayloadSupported', () => {
-		it('allows a payload with no files', () => {
-			payloadGuard.hasFiles.mockReturnValue(false);
-
-			expect(() => engineV2ActiveTriggers.assertPollPayloadSupported([[]])).not.toThrow();
-		});
-
-		it('refuses a payload that carries files', () => {
-			const slots = [[{ json: {}, binary: { data: mock<IBinaryData>() } }]];
-			payloadGuard.hasFiles.mockReturnValue(true);
-
-			expect(() => engineV2ActiveTriggers.assertPollPayloadSupported(slots)).toThrow(
-				'Engine 2.0 cannot receive files from a trigger yet.',
-			);
-			expect(payloadGuard.hasFiles).toHaveBeenCalledWith(slots);
+			expect(() => engineV2ActiveTriggers.assertPayloadSupported([[]])).toThrow('nope');
 		});
 	});
 });

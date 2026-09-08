@@ -34,21 +34,21 @@ describe('EngineV2PayloadGuard', () => {
 			{ name: 'a null slot', slots: [null] },
 			{ name: 'items with no binary key', slots: [[{ json: {} }]] },
 			{ name: 'an empty binary map', slots: [[{ json: {}, binary: {} }]] },
-		])('allows a payload with $name', async ({ slots }) => {
-			await expect(guard.assertNoFiles(slots, REASON)).resolves.toBeUndefined();
+		])('allows a payload with $name', ({ slots }) => {
+			expect(() => guard.assertNoFiles(slots, REASON)).not.toThrow();
 			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 		});
 
-		it('refuses a stored file and deletes it, because no execution will own it', async () => {
+		it('refuses a stored file and deletes it, because no execution will own it', () => {
 			const slots = [[{ json: {}, binary: { attachment: stored('filesystem:abc') } }]];
 
-			await expect(guard.assertNoFiles(slots, REASON)).rejects.toThrow(REASON);
+			expect(() => guard.assertNoFiles(slots, REASON)).toThrow(REASON);
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
 				'filesystem:abc',
 			]);
 		});
 
-		it('deletes every stored file across slots and items', async () => {
+		it('deletes every stored file across slots and items', () => {
 			const slots: Array<INodeExecutionData[] | null> = [
 				[
 					{ json: {}, binary: { a: stored('filesystem:1') } },
@@ -58,7 +58,7 @@ describe('EngineV2PayloadGuard', () => {
 				[{ json: {}, binary: { d: stored('filesystem:3') } }],
 			];
 
-			await expect(guard.assertNoFiles(slots, REASON)).rejects.toThrow(UserError);
+			expect(() => guard.assertNoFiles(slots, REASON)).toThrow(UserError);
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
 				'filesystem:1',
 				'filesystem:2',
@@ -66,10 +66,10 @@ describe('EngineV2PayloadGuard', () => {
 			]);
 		});
 
-		it('refuses an in-memory file without a delete, as it has no id', async () => {
+		it('refuses an in-memory file without a delete, as it has no id', () => {
 			const slots = [[{ json: {}, binary: { attachment: inMemory() } }]];
 
-			await expect(guard.assertNoFiles(slots, REASON)).rejects.toThrow(REASON);
+			expect(() => guard.assertNoFiles(slots, REASON)).toThrow(REASON);
 			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 		});
 
@@ -77,54 +77,13 @@ describe('EngineV2PayloadGuard', () => {
 			binaryDataService.deleteManyByBinaryDataId.mockRejectedValue(new Error('store is down'));
 			const slots = [[{ json: {}, binary: { attachment: stored('s3:abc') } }]];
 
-			await expect(guard.assertNoFiles(slots, REASON)).rejects.toThrow(REASON);
-			expect(logger.error).toHaveBeenCalledWith(
-				'Failed to delete the files of a rejected engine 2.0 payload',
-				expect.objectContaining({ error: expect.any(Error) }),
+			expect(() => guard.assertNoFiles(slots, REASON)).toThrow(REASON);
+			await vi.waitFor(() =>
+				expect(logger.error).toHaveBeenCalledWith(
+					'Failed to delete the files of a rejected engine 2.0 payload',
+					expect.objectContaining({ error: expect.any(Error) }),
+				),
 			);
-		});
-	});
-
-	describe('hasFiles', () => {
-		it.each([
-			{ name: 'no slots', slots: [] },
-			{ name: 'an empty slot', slots: [[]] },
-			{ name: 'a null slot', slots: [null] },
-			{ name: 'items with no binary key', slots: [[{ json: {} }]] },
-			{ name: 'an empty binary map', slots: [[{ json: {}, binary: {} }]] },
-		])('answers false for a payload with $name', ({ slots }) => {
-			expect(guard.hasFiles(slots)).toBe(false);
-		});
-
-		it.each([
-			{ name: 'a stored file', file: stored('filesystem:abc') },
-			{ name: 'an in-memory file', file: inMemory() },
-		])('answers true for a payload with $name', ({ file }) => {
-			expect(guard.hasFiles([[{ json: {}, binary: { attachment: file } }]])).toBe(true);
-		});
-	});
-
-	describe('discardFiles', () => {
-		it('deletes the stored files without refusing', async () => {
-			const slots = [[{ json: {}, binary: { attachment: stored('filesystem:abc') } }]];
-
-			await expect(guard.discardFiles(slots)).resolves.toBeUndefined();
-			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
-				'filesystem:abc',
-			]);
-		});
-
-		it('does nothing for a payload with no files', async () => {
-			await expect(guard.discardFiles([[{ json: {} }]])).resolves.toBeUndefined();
-			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
-		});
-
-		it('never throws when the delete fails, so the caller keeps its own answer', async () => {
-			binaryDataService.deleteManyByBinaryDataId.mockRejectedValue(new Error('store is down'));
-			const slots = [[{ json: {}, binary: { attachment: stored('s3:abc') } }]];
-
-			await expect(guard.discardFiles(slots)).resolves.toBeUndefined();
-			expect(logger.error).toHaveBeenCalled();
 		});
 	});
 });
