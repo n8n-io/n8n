@@ -151,6 +151,7 @@ erDiagram
 }
 "public.app" {
   varchar_36_ activeVersionId FK
+  json bindings
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_128_ name

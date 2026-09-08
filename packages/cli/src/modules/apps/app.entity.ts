@@ -1,5 +1,5 @@
-import type { AppTheme } from '@n8n/api-types';
-import { Project, WithTimestampsAndStringId } from '@n8n/db';
+import type { AppBinding, AppTheme } from '@n8n/api-types';
+import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 @Entity()
@@ -17,6 +17,10 @@ export class App extends WithTimestampsAndStringId {
 
 	@Column({ type: 'json', nullable: true })
 	theme: AppTheme | null;
+
+	/** Resources the served app may call through `/apps/<namespace>/api/*`, keyed by `key`. */
+	@JsonColumn({ default: '[]' })
+	bindings: AppBinding[];
 
 	@ManyToOne(() => Project)
 	@JoinColumn({ name: 'projectId' })
