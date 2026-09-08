@@ -40,8 +40,12 @@ const FILE_NAMES = {
 	tags: 'tag.json',
 } as const satisfies Record<ManifestEntityCollection, string>;
 
-/** Readers accept [A-Za-z0-9._/-] in paths; an id must also stay one segment, so no `/` and no dots. */
-const SAFE_ID = /^[A-Za-z0-9_-]+$/;
+/**
+ * Readers accept [A-Za-z0-9._/-] in paths; an id must also stay one segment, so
+ * no `/` and no dots. No hyphens either, so the id parses back exactly out of a
+ * `<slug>-<id>` directory name as the tail after its last hyphen.
+ */
+const SAFE_ID = /^[A-Za-z0-9_]+$/;
 
 // Keep generated entity directory names within the common 255-character filesystem limit.
 const MAX_PATH_SEGMENT_LENGTH = 255;
@@ -98,7 +102,7 @@ export function createManifestEntry(
 		throw new PackageExportBlockedError(
 			`${collection} entry "${entity.name}" has an id that cannot be used as a path segment. Export aborted.`,
 			{
-				description: `Id "${entity.id}" may contain only letters, digits, hyphens, and underscores.`,
+				description: `Id "${entity.id}" may contain only letters, digits, and underscores.`,
 			},
 		);
 	}
