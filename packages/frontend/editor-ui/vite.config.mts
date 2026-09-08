@@ -93,6 +93,10 @@ const plugins: UserConfig['plugins'] = [
 		? [
 				legacy({
 					modernTargets: browsers,
+					// Every browser in `.browserslistrc` supports ESM and dynamic import, so the
+					// SystemJS/ES5 support is not needed. Enabling this would cause a >400% increase in build times
+				  // for this package.
+					renderLegacyChunks: false,
 				}),
 			]
 		: []),
@@ -183,11 +187,7 @@ export default defineConfig({
 	resolve: { alias, dedupe: singleInstanceDedupe },
 	base: publicPath,
 	envPrefix: ['VUE', 'N8N_ENV_FEAT'],
-	css: {
-		// No `additionalData` prelude: injecting the mixins graph into every style block cost
-		// ~6ms per unit across ~1000 units. Each file `@use`s what it needs instead.
-		preprocessorMaxWorkers: 2,
-	},
+	css: {},
 	build: {
 		minify: !!release,
 		// Coverage builds emit INLINE maps so browser V8 coverage carries the
