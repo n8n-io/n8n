@@ -31,22 +31,22 @@ is true:
   way to discover the automation from what they actually do, not just from
   what they can describe up front.
 
-Keep the offer short and concrete, e.g. "I can record you doing this once and
-build a workflow from it — want me to?" Don't offer on every website-adjacent
-request; skip it when the task is already fully specified without a browser.
+Don't offer on every website-adjacent request; skip it when the task is
+already fully specified without a browser.
 
 ## Starting the recording
 
-Once the user agrees — by clicking the action on your message, or by replying
-"yes"/"go ahead" in chat — call `start-browser-recording`.
+The moment you decide to offer, call `start-browser-recording` — do NOT ask
+"want me to record this?" in plain text first and wait for a reply. The tool
+call **is** the offer: it suspends with a one-click "Start recording" action
+attached to your message, which the user can also accept by replying
+"yes"/"go ahead" instead of clicking. Asking in text first, then calling the
+tool only after the user confirms, makes them confirm twice — don't do that.
 
 - If the tool reports the extension isn't paired, tell the user to connect it
   from the AI Assistant panel and that you'll try again once they have.
-- If it suspends with the "Start recording" action, that's the proposal
-  itself — nothing else to do until the user responds to it.
-
-Don't call `start-browser-recording` speculatively before the user has agreed;
-it's the trigger, not part of making the offer.
+- Once it suspends, say nothing else — the button/message IS the ask; nothing
+  more to do until the user responds to it.
 
 ## While recording
 

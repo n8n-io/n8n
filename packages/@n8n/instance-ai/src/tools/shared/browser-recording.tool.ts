@@ -42,6 +42,7 @@ export function createStartBrowserRecordingTool(context: InstanceAiContext) {
 				severity: z.literal('info'),
 				inputType: z.literal('continue'),
 				continueLabel: z.string(),
+				continueIcon: z.string(),
 			}),
 		)
 		.resume(startResumeSchema)
@@ -63,6 +64,7 @@ export function createStartBrowserRecordingTool(context: InstanceAiContext) {
 					severity: 'info' as const,
 					inputType: 'continue' as const,
 					continueLabel: 'Start recording',
+					continueIcon: 'circle-dot',
 				});
 			}
 

@@ -65,7 +65,11 @@ describe('createStartBrowserRecordingTool', () => {
 		await executeTool(tool, {}, ctx);
 
 		expect(ctx.suspend).toHaveBeenCalledWith(
-			expect.objectContaining({ inputType: 'continue', continueLabel: 'Start recording' }),
+			expect.objectContaining({
+				inputType: 'continue',
+				continueLabel: 'Start recording',
+				continueIcon: 'circle-dot',
+			}),
 		);
 	});
 

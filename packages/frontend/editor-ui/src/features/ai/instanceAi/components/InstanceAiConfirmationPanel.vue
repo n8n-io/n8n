@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -386,6 +387,10 @@ function handleTextSkip(conf: InstanceAiConfirmation) {
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: false });
 }
 
+function continueIcon(conf: InstanceAiConfirmation): IconName | undefined {
+	return conf.continueIcon as IconName | undefined;
+}
+
 function handleContinue(conf: InstanceAiConfirmation) {
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
 	trackInputCompleted(
@@ -593,6 +598,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 								data-test-id="instance-ai-panel-continue"
 								size="medium"
 								variant="solid"
+								:icon="continueIcon(chunk.item.toolCall.confirmation!)"
 								@click="handleContinue(chunk.item.toolCall.confirmation)"
 							>
 								{{

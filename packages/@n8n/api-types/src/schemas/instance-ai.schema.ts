@@ -756,6 +756,10 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'Button label for inputType=continue (defaults to "Continue" when omitted) — e.g. "Start recording"',
 		),
+	continueIcon: z
+		.string()
+		.optional()
+		.describe('Icon name shown on the inputType=continue button, e.g. "circle-dot"'),
 	tasks: taskListSchema
 		.optional()
 		.describe('Task checklist for plan review (inputType=plan-review)'),
