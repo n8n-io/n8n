@@ -17,16 +17,16 @@ const Cursor = z
 					.regex(/^[1-9]\d*$/)
 					.refine((id) => Number(id) <= 2147483647),
 			})
-			.strict()
-			.optional(),
+			.strict(),
 	})
 	.strict();
 
 export type ExecutionCursor = z.infer<typeof Cursor>;
-export type ExecutionPosition = NonNullable<ExecutionCursor['v1']>;
+export type ExecutionPosition = ExecutionCursor['v1'];
 
-export function parseExecutionCursor(value?: string): ExecutionCursor {
-	if (value === undefined) return { version: 1 };
+/** Parse a cursor, or return `undefined` when the caller asks for the first page. */
+export function parseExecutionCursor(value?: string): ExecutionCursor | undefined {
+	if (value === undefined) return undefined;
 	try {
 		if (!value.length || value.length > 2048 || !/^[A-Za-z0-9_-]+$/.test(value)) {
 			throw new BadRequestError('Invalid execution cursor');
@@ -42,8 +42,8 @@ export function encodeExecutionCursor(cursor: ExecutionCursor): string {
 }
 
 /** The row position to keep paging from. */
-export function positionOf(cursor: ExecutionCursor): ExecutionPosition | undefined {
-	return cursor.v1;
+export function positionOf(cursor?: ExecutionCursor): ExecutionPosition | undefined {
+	return cursor?.v1;
 }
 
 /**

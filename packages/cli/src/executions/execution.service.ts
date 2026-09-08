@@ -545,8 +545,12 @@ export class ExecutionService {
 		};
 		const { range: _, ...countQuery } = completedQuery;
 
+		const { before: _cursor, ...currentRange } = query.range;
+
 		const currentQuery: ExecutionSummaries.RangeQuery = {
 			...query,
+			// "current" is refetched in full on every page, so it ignores the cursor.
+			range: currentRange,
 			status: currentStatuses,
 			order: { top: 'running' }, // ensure limit cannot exclude running
 		};

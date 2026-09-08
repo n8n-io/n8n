@@ -1171,7 +1171,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 				);
 			}
 
-			if (query.order?.startedAt === 'DESC') {
+			// A cursor page must be ordered by the same key the cursor encodes,
+			// else the page can skip or repeat rows at the boundary.
+			if (before || query.order?.startedAt === 'DESC') {
 				qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' });
 			} else if (query.order?.top) {
 				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
@@ -1289,7 +1291,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		// postgres returned to the natural order again, listing executions in the
 		// order they were created.
 		if (query.kind === 'range') {
-			if (query.order?.startedAt === 'DESC') {
+			if (query.range.before || query.order?.startedAt === 'DESC') {
 				const table = qb.escape('e');
 				const startedAt = qb.escape('startedAt');
 				const createdAt = qb.escape('createdAt');

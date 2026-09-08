@@ -173,10 +173,15 @@ async function onRefreshData() {
 	}
 
 	try {
-		await executionsStore.fetchExecutions({
-			...executionsStore.executionsFilters,
-			workflowId: workflowId.value,
-		});
+		// Refresh the first page only, and keep the cursor of the pages already loaded.
+		await executionsStore.fetchExecutions(
+			{
+				...executionsStore.executionsFilters,
+				workflowId: workflowId.value,
+			},
+			undefined,
+			true,
+		);
 	} catch (error) {
 		if (error.errorCode === NO_NETWORK_ERROR_CODE) {
 			toast.showMessage(

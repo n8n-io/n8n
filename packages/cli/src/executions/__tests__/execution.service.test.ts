@@ -8,6 +8,7 @@ import type {
 	IExecutionDb,
 	IExecutionResponse,
 	ExecutionRepository,
+	ExecutionSummaries,
 	Project,
 	User,
 	WorkflowHistoryRepository,
@@ -1034,6 +1035,26 @@ describe('ExecutionService', () => {
 			);
 
 			expect(nextCursor).not.toBeNull();
+		});
+
+		it('findLatestCurrentAndCompleted applies the cursor to completed rows only', async () => {
+			executionRepository.findManyByRangeQuery.mockResolvedValue([]);
+			const before = { timestamp: '2024-01-01T00:00:00.000Z', id: '10' };
+
+			await executionService.findLatestCurrentAndCompleted(
+				mock<ExecutionSummaries.RangeQuery>({
+					kind: 'range',
+					status: undefined,
+					range: { limit: 20, before },
+				}),
+			);
+
+			const queries = executionRepository.findManyByRangeQuery.mock.calls.map(([query]) => query);
+			const current = queries.find((query) => query.status?.includes('running'));
+			const completed = queries.find((query) => !query.status?.includes('running'));
+
+			expect(current?.range.before).toBeUndefined();
+			expect(completed?.range.before).toEqual(before);
 		});
 	});
 
