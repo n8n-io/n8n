@@ -1,0 +1,22 @@
+packages/testing/playwright/services/hook-registry-server.ts
+  s_2a1c69d003515b::t_031f2428d7e921 101-114,118-121
+  s_2a1c69d003515b::t_788a449ba2778e 115-117
+packages/testing/playwright/tests/e2e/webhooks/declarative-webhook-trigger.spec.ts
+  s_2a1c69d003515b::t_a1e1e6243b01e4 78-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ad72060744d91880eb783f1092e7dab4cbc7fe5d",
+  "prompts": {},
+  "sessions": {
+    "s_2a1c69d003515b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d877d31-e0fb-4643-abbc-d84c31b962b3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
