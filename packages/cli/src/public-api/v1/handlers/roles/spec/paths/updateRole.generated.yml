@@ -11,7 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
-    name: slug
+    name: roleSlug
     in: path
 requestBody:
   required: true
