@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useId } from 'vue';
+
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
 interface AgentPanelProps {
@@ -12,12 +14,18 @@ const props = withDefaults(defineProps<AgentPanelProps>(), {
 	description: undefined,
 	showHeader: true,
 });
+
+const headerId = useId();
 </script>
 
 <template>
-	<section :class="$style.panelContainer">
+	<section
+		:class="$style.panelContainer"
+		:aria-labelledby="props.showHeader && props.header ? headerId : undefined"
+	>
 		<AgentPanelHeader
 			v-if="props.showHeader && props.header"
+			:header-id="headerId"
 			:title="props.header"
 			:description="props.description"
 		/>
