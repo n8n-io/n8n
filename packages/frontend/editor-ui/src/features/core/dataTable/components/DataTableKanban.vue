@@ -384,6 +384,8 @@ defineExpose({ fetchRows, addRow });
 }
 .cardTitle {
 	overflow-wrap: anywhere;
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--medium);
 }
 .preview {
 	display: flex;
@@ -398,17 +400,15 @@ defineExpose({ fetchRows, addRow });
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	dt {
-		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--medium);
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--bold);
 		line-height: var(--line-height--md);
-		color: var(--text-color--subtler);
 		overflow-wrap: anywhere;
 	}
 	dd {
 		margin: 0;
-		font-size: var(--font-size--sm);
+		font-size: var(--font-size--xs);
 		line-height: var(--line-height--lg);
-		font-weight: var(--font-weight--bold);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
