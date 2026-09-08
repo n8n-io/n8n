@@ -38,7 +38,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node .github/scripts/nightly-sbom-context.mjs resolve-source
 
-      # Resolve source only from GitHub's scheduled-run response or GITHUB_SHA.
+      # Poutine flags all runtime-selected checkouts. This SHA comes only from
+      # GitHub's scheduled-run response or GITHUB_SHA, and the step rejects
+      # non-SHA values before fetch. This workflow has no pull_request trigger.
       # poutine: untrusted_checkout_exec
       - name: Checkout nightly source
         env:

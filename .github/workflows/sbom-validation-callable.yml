@@ -22,7 +22,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # Validate the SHA before switching to the source that the local action executes.
+      # Poutine flags all runtime-selected checkouts. The only caller gets this
+      # value from GitHub's scheduled-run response or GITHUB_SHA, and this step
+      # independently rejects non-SHA values before fetch.
       # poutine: untrusted_checkout_exec
       - name: Checkout SBOM source
         env:
