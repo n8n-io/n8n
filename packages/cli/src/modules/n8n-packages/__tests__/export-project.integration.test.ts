@@ -805,23 +805,51 @@ describe('project package export — workflow selection', () => {
 		});
 	});
 
-	it('ignores an inaccessible sibling that is not selected but still rejects it when selected', async () => {
+	it('skips a selected unpublished workflow under ignore-unpublished instead of aborting', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('team-ligo', owner);
+		const { workflow: published } = await buildVersionedWorkflow({
+			name: 'triage',
+			project,
+			versions: [[noOpNode('published-v1')]],
+			publishedVersion: 0,
+		});
+		const { workflow: draft } = await buildVersionedWorkflow({
+			name: 'sync',
+			project,
+			versions: [[noOpNode('draft-v1')]],
+		});
+
+		const { stream } = await service.exportPackage({
+			user: owner,
+			projectIds: [project.id],
+			projectWorkflowIds: [published.id, draft.id],
+			workflowVersionPolicy: 'ignore-unpublished',
+			missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
+		});
+		const { manifest } = await readExport(stream);
+
+		// The policy drops the unpublished workflow; the selection guard must not treat it as missing.
+		expect(manifest.workflows!.map(({ id }) => id)).toEqual([published.id]);
+	});
+
+	it('reports an inaccessible selected workflow as missing, without revealing it exists', async () => {
 		const member = await createMember();
 		const memberProject = await createTeamProject('team-ligo', member);
 		const folder = await createFolder(memberProject, { name: 'in_progress' });
 
 		const owner = await createOwner();
 		const ownerProject = await createTeamProject('owner-project', owner);
-		// Same setup as the full-export abort test: the workflow sits in the member's
-		// folder but belongs to the owner's project, so the member cannot export it.
+		// The workflow sits in the member's folder but belongs to the owner's project.
 		const secret = await createWorkflow({ name: 'secret', parentFolder: folder }, ownerProject);
 		const normal = await createWorkflow({ name: 'normal', parentFolder: folder }, memberProject);
 
 		const { manifest } = await exportSelection(member, memberProject.id, [normal.id]);
 		expect(manifest.workflows!.map(({ id }) => id)).toEqual([normal.id]);
 
-		await expect(exportSelection(member, memberProject.id, [secret.id])).rejects.toThrow(
-			/workflow\(s\) not found or not accessible/,
-		);
+		await expect(exportSelection(member, memberProject.id, [secret.id])).rejects.toMatchObject({
+			constructor: PackageEntityNotFoundError,
+			description: `Missing workflow IDs: ${secret.id}`,
+		});
 	});
 });

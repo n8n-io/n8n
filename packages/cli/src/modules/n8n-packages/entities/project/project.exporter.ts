@@ -70,6 +70,11 @@ export class ProjectExporter {
 		);
 
 		const selectedWorkflowIds = request.workflowIds ? new Set(request.workflowIds) : undefined;
+
+		if (request.workflowIds) {
+			await this.assertSelectionInProjects(request.workflowIds, projects, request.user);
+		}
+
 		const projectsDir = packageDirectory('projects');
 		const results: ProjectExportResult[] = [];
 
@@ -77,14 +82,26 @@ export class ProjectExporter {
 			results.push(await this.exportProject(project, projectsDir, request, selectedWorkflowIds));
 		}
 
-		const merged = this.mergeProjectExportResults(results);
-		if (request.workflowIds) this.assertSelectionExported(request.workflowIds, merged);
-		return merged;
+		return this.mergeProjectExportResults(results);
 	}
 
-	private assertSelectionExported(workflowIds: string[], result: ProjectExportResult): void {
-		const exported = new Set(result.workflowEntries.map(({ id }) => id));
-		const missing = workflowIds.filter((id) => !exported.has(id));
+	private async assertSelectionInProjects(
+		workflowIds: string[],
+		projects: Project[],
+		user: User,
+	): Promise<void> {
+		const members = new Set<string>();
+		for (const project of projects) {
+			const ids = await this.workflowFinder.findAllWorkflowIdsForUser(
+				user,
+				['workflow:export'],
+				undefined,
+				project.id,
+			);
+			for (const id of ids) members.add(id);
+		}
+
+		const missing = workflowIds.filter((id) => !members.has(id));
 		if (missing.length === 0) return;
 
 		throw new PackageEntityNotFoundError(
