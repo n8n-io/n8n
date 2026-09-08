@@ -474,6 +474,22 @@ describe('analyzeHtmlSensitivity', () => {
 		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
 	});
 
+	// A console commonly presents the value as a `.env` line to paste. The name
+	// side clears the length floor, so it is masked with the value — but capturing
+	// it would store the name as the credential, exactly as in a labelled cell.
+	it('blocks capture of the name side of an assignment in a presented field', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly value="GOOGLE_CLIENT_SECRET=${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET=', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: OPAQUE },
+		]);
+	});
+
 	it('walks same-origin iframe and shadow-root bundle children', () => {
 		const result = analyzeHtmlSensitivity(
 			probe('<p>outer</p>', [

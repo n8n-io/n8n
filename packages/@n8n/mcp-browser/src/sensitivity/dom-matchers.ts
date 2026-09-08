@@ -286,6 +286,8 @@ export function opaqueTokenCandidates(el: Element): SecretHit[] {
  * the issued value ready to paste, so the field holds a prefix the page wrote
  * (`Bearer <token>`) as well as the token. Redacting the token is what keeps the
  * hit equal to the run a later occurrence of the same secret produces elsewhere.
+ * A `.env` line is the same shape, so the name side is masked with the value but
+ * blocked from capture, as it is in a labelled cell.
  *
  * Editable fields are excluded: the same dialog often takes a name for the
  * credential, and a name long enough to clear the opaque floor would otherwise
@@ -296,7 +298,14 @@ export function opaqueFieldValues(container: Element): SecretHit[] {
 	for (const field of Array.from(container.querySelectorAll('input, textarea'))) {
 		if (!field.hasAttribute('readonly') && !field.hasAttribute('disabled')) continue;
 		for (const value of sensitiveInputValues(field)) {
-			for (const token of opaqueTokens(value)) hits.push({ type: 'password', value: token });
+			const names = new Set(assignmentNames(value));
+			for (const token of opaqueTokens(value)) {
+				hits.push(
+					names.has(token)
+						? { type: 'password', value: token, captureBlocked: ASSIGNMENT_NAME }
+						: { type: 'password', value: token },
+				);
+			}
 		}
 	}
 	return hits;
