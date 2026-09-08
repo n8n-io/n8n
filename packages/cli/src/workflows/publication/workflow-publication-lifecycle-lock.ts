@@ -34,12 +34,7 @@ export class WorkflowPublicationLifecycleLock {
 		return this.stateByWorkflowId.has(workflowId);
 	}
 
-	/**
-	 * Runs `fn` under the workflow's lock. Without `signal` the wait to acquire is
-	 * unbounded; with one, an abort while still waiting rejects with the abort
-	 * reason and `fn` never runs. A holder that never releases (an abandoned
-	 * record's orphaned work) would otherwise pin every later caller forever.
-	 */
+	/** Runs `fn` under the workflow's lock. Waits indefinitely, or until the abort signal fires. */
 	async runExclusive<T>(
 		workflowId: string,
 		fn: () => Promise<T>,
