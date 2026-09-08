@@ -31,6 +31,7 @@ import {
 	isDraftIntegration,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
+	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
@@ -133,7 +134,7 @@ const readSkillInputSchema = z
 			.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
 			.optional()
 			.describe(
-				'Optional reference paths whose content is needed. Omit to receive paths and UTF-8 byte sizes only.',
+				'Optional reference paths whose content is needed. Omit to receive paths and character counts only.',
 			),
 	})
 	.strict();
@@ -1066,7 +1067,7 @@ export class AgentsBuilderToolsService {
 		const readSkillTool = new Tool(BUILDER_TOOLS.READ_SKILL)
 			.description(
 				'Read an existing target-agent skill by id. The response includes its instructions, but ' +
-					'references are returned as { path, sizeBytes } metadata by default to keep context small. ' +
+					'references are returned as { path, characterCount } metadata by default to keep context small. ' +
 					'Pass only the referencePaths whose content you need. Returns { ok: true, id, skill } or ' +
 					'{ ok: false, errors }.',
 			)
@@ -1098,7 +1099,7 @@ export class AgentsBuilderToolsService {
 								? {
 										references: references.map((reference) => ({
 											path: reference.path,
-											sizeBytes: new TextEncoder().encode(reference.content).byteLength,
+											characterCount: reference.content.length,
 											...(requestedPaths.has(reference.path) ? { content: reference.content } : {}),
 										})),
 									}
@@ -1323,7 +1324,9 @@ export class AgentsBuilderToolsService {
 		const listWorkflowsTool = new Tool(BUILDER_TOOLS.LIST_WORKFLOWS)
 			.description(
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
-					'Only returns workflows with supported trigger types. Pass `searchTerm` to narrow by workflow name; ' +
+					`Only returns workflows that start with a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger. ` +
+					'The published agent cannot call a workflow with `published: false` until the user publishes it. ' +
+					'Pass `searchTerm` to narrow by workflow name; ' +
 					'omitting it returns the 10 most recently updated attachable workflows.',
 			)
 			.input(
