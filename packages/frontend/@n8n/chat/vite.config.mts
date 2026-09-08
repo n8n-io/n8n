@@ -3,7 +3,7 @@ import { resolve } from 'path';
 import { renameSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import vue from '@vitejs/plugin-vue';
 import icons from 'unplugin-icons/vite';
-import dts from 'vite-plugin-dts';
+import dts from 'unplugin-dts/vite';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import pkg from './package.json';
 
@@ -36,6 +36,7 @@ export default mergeConfig(
 							// tests and stories from the published surface.
 							tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
 							entryRoot: srcPath,
+							processor: 'vue'
 						}),
 					]),
 			{

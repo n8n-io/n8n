@@ -6,7 +6,7 @@
 		"emitDeclarationOnly": true,
 		"outDir": "dist",
 		// `rootDir` is what puts the declarations at `dist/index.d.ts`, where the `types` of the
-		// manifest points. Without it vite-plugin-dts takes the common directory of the program,
+		// manifest points. Without it unplugin-dts takes the common directory of the program,
 		// which is the package root, and writes them to `dist/src/` instead.
 		"rootDir": "src",
 		"noUnusedLocals": false,

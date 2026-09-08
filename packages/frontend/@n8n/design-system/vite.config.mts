@@ -3,7 +3,7 @@ import { cpSync, readFileSync } from 'node:fs';
 import { resolve } from 'path';
 import { build, defineConfig, mergeConfig, type InlineConfig, type Plugin } from 'vite';
 import icons from 'unplugin-icons/vite';
-import dts from 'vite-plugin-dts';
+import dts from 'unplugin-dts/vite';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import svgLoader from 'vite-svg-loader';
 import { lucideIconsPlugin } from './src/icons/lucide/vite';
@@ -142,10 +142,8 @@ export default mergeConfig(
 							// `rootDir` into the program (TS6059) and points the declarations at
 							// another package's sources instead of its published types.
 							tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
-							// Per-file declarations, not a rollup: api-extractor cannot follow `.vue`
-							// module specifiers and leaves the imports dangling. Rejected in ADR-0002.
-							rollupTypes: false,
 							entryRoot: resolve(__dirname, 'src'),
+							processor: 'vue'
 						}),
 					]
 				: []),
