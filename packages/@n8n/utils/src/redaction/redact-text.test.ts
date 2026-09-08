@@ -52,12 +52,23 @@ describe('redactDeep', () => {
 	});
 
 	it('redacts values under shared sensitive key variants', () => {
+		const namespacedKey = 'auth:token';
 		expect(
 			redactDeep(
-				{ passwd: 'secret one', bot_token: 'secret two', token_type: 'Bearer' },
+				{
+					passwd: 'secret one',
+					bot_token: 'secret two',
+					[namespacedKey]: 'secret three',
+					token_type: 'Bearer',
+				},
 				{ redactSensitiveKeys: true },
 			).value,
-		).toEqual({ passwd: '[REDACTED]', bot_token: '[REDACTED]', token_type: 'Bearer' });
+		).toEqual({
+			passwd: '[REDACTED]',
+			bot_token: '[REDACTED]',
+			[namespacedKey]: '[REDACTED]',
+			token_type: 'Bearer',
+		});
 	});
 
 	it.each([true, false])(
