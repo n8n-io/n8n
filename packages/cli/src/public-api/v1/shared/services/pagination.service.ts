@@ -21,18 +21,15 @@ const isPageIndex = (value: unknown): value is number =>
  * Resolves the offset and limit to query with for a list endpoint either from defaults
  * or from a provided cursor.
  */
-export function resolveOffsetPagination(
-	{
-		cursor,
-		limit: queryLimit,
-		offset: queryOffset,
-	}: {
-		cursor?: string;
-		limit: number;
-		offset?: number;
-	},
-	{ maxLimit = MAX_ITEMS_PER_PAGE }: { maxLimit?: number } = {},
-): { offset: number; limit: number } {
+export function resolveOffsetPagination({
+	cursor,
+	limit: queryLimit,
+	offset: queryOffset,
+}: {
+	cursor?: string;
+	limit: number;
+	offset?: number;
+}): { offset: number; limit: number } {
 	let limit = queryLimit;
 	let offset = queryOffset ?? 0;
 
@@ -43,7 +40,7 @@ export function resolveOffsetPagination(
 				throw new BadRequestError('An invalid cursor was provided');
 			}
 			offset = decoded.offset;
-			limit = Math.min(decoded.limit, maxLimit);
+			limit = Math.min(decoded.limit, MAX_ITEMS_PER_PAGE);
 		} catch {
 			throw new BadRequestError('An invalid cursor was provided');
 		}

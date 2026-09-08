@@ -49,15 +49,6 @@ describe('resolveOffsetPagination', () => {
 		expect(resolveOffsetPagination({ limit: 50, cursor })).toEqual({ offset: 0, limit: 250 });
 	});
 
-	it('caps a cursor limit at the maximum the caller passes', () => {
-		const cursor = encodeCursor({ offset: 0, limit: 200 });
-
-		expect(resolveOffsetPagination({ limit: 50, cursor }, { maxLimit: 100 })).toEqual({
-			offset: 0,
-			limit: 100,
-		});
-	});
-
 	it.each([
 		{ offset: -1, limit: 10 },
 		{ offset: 0, limit: -1 },
