@@ -46,6 +46,7 @@ function createService() {
 		mcpConnectionsEnabled: false,
 		conversationHistoryEnabled: false,
 		nodeUsageEnabled: false,
+		folderExplorationEnabled: false,
 	});
 
 	const service = new InstanceAiTemporaryWorkflowService(

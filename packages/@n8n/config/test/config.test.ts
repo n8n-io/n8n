@@ -374,11 +374,13 @@ describe('GlobalConfig', () => {
 			canvasNodeContextEnabled: false,
 			instanceAiSetupPanelEnabled: false,
 			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
 			maxConcurrentRuns: -1,
 			maxConcurrentRunsPerUser: -1,
 			maxConcurrentSubAgents: -1,
+			instanceContextEnabled: false,
 		},
 		queue: {
 			health: {
@@ -575,6 +577,7 @@ describe('GlobalConfig', () => {
 			maxDisplaySize: 100 * 1024 * 1024,
 			webhookResponseRelaySizeMaxMiB: 64,
 			webhookResponseRelayOffloadEnabled: false,
+			preExecuteErrorCreatesExecution: false,
 		},
 		diagnostics: {
 			enabled: true,

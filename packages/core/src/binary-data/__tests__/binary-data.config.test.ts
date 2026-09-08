@@ -107,11 +107,11 @@ describe('BinaryDataConfig', () => {
 	describe('initialize()', () => {
 		const makeRepo = () =>
 			({
-				findActiveByType: vi.fn(),
-				insertOrIgnore: vi.fn().mockResolvedValue(undefined),
+				findActiveSigningSecret: vi.fn(),
+				seedSigningSecret: vi.fn().mockResolvedValue(undefined),
 			}) as {
-				findActiveByType: Mock;
-				insertOrIgnore: Mock;
+				findActiveSigningSecret: Mock;
+				seedSigningSecret: Mock;
 			};
 
 		afterEach(() => {
@@ -125,45 +125,43 @@ describe('BinaryDataConfig', () => {
 
 			await config.initialize(repo);
 
-			expect(repo.findActiveByType).not.toHaveBeenCalled();
-			expect(repo.insertOrIgnore).not.toHaveBeenCalled();
+			expect(repo.findActiveSigningSecret).not.toHaveBeenCalled();
+			expect(repo.seedSigningSecret).not.toHaveBeenCalled();
 		});
 
 		it('should use the value from the active DB row when one exists', async () => {
 			const repo = makeRepo();
-			repo.findActiveByType.mockResolvedValue({ value: 'db-stored-secret' });
+			repo.findActiveSigningSecret.mockResolvedValue('db-stored-secret');
 			const config = Container.get(BinaryDataConfig);
 
 			await config.initialize(repo);
 
 			expect(config.signingSecret).toEqual('db-stored-secret');
-			expect(repo.findActiveByType).toHaveBeenCalledWith('signing.binary_data');
-			expect(repo.insertOrIgnore).not.toHaveBeenCalled();
+			// Server processes may upgrade a row still in the pre-wrap form.
+			expect(repo.findActiveSigningSecret).toHaveBeenCalledWith('signing.binary_data', {
+				rewrapLegacy: true,
+			});
+			expect(repo.seedSigningSecret).not.toHaveBeenCalled();
 		});
 
 		it('should persist the derived signing secret when no active DB row exists', async () => {
 			const repo = makeRepo();
-			repo.findActiveByType.mockResolvedValue(null);
+			repo.findActiveSigningSecret.mockResolvedValue(null);
 			const config = Container.get(BinaryDataConfig);
 			const derivedSecret = config.signingSecret;
 
 			await config.initialize(repo);
 
-			expect(repo.insertOrIgnore).toHaveBeenCalledWith({
-				type: 'signing.binary_data',
-				value: derivedSecret,
-				status: 'active',
-				algorithm: null,
-			});
+			expect(repo.seedSigningSecret).toHaveBeenCalledWith('signing.binary_data', derivedSecret);
 			expect(config.signingSecret).toEqual(derivedSecret);
 		});
 
 		it('should use the winner row when a concurrent insert is ignored', async () => {
 			const repo = makeRepo();
-			repo.findActiveByType
+			repo.findActiveSigningSecret
 				.mockResolvedValueOnce(null)
-				.mockResolvedValueOnce({ value: 'winner-secret' });
-			repo.insertOrIgnore.mockResolvedValue(undefined);
+				.mockResolvedValueOnce('winner-secret');
+			repo.seedSigningSecret.mockResolvedValue(undefined);
 			const config = Container.get(BinaryDataConfig);
 
 			await config.initialize(repo);

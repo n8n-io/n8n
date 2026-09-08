@@ -27,6 +27,7 @@ jobs:
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
+      db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
@@ -37,7 +38,7 @@ jobs:
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           # Use merge_group SHA when in merge queue, otherwise PR merge ref
           ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
@@ -153,7 +154,8 @@ jobs:
               packages/@n8n/db/**
               packages/@n8n/backend-test-utils/**
               packages/@n8n/scheduler/src/**
-              packages/cli/**/__tests__/**
+              packages/cli/src/**/*.integration.test.ts
+              packages/cli/vitest.*
               packages/testing/containers/services/postgres.ts
               packages/testing/containers/postgres-versions.json
               packages/testing/containers/test-containers.ts
@@ -162,6 +164,23 @@ jobs:
               docs/generated/**
               .tbls.sqlite.yml
               .tbls.postgres.yml
+            # Sub-filter of db. Lists the paths that can change a migration
+            # test result. Gates the migration step inside each DB matrix leg.
+            db-migrations:
+              packages/@n8n/db/**
+              packages/@n8n/backend-test-utils/**
+              packages/cli/test/migration/**
+              packages/cli/test/shared/db/**
+              packages/cli/test/setup-testcontainers.js
+              packages/cli/test/teardown-testcontainers.js
+              packages/cli/vitest.config.base.ts
+              packages/cli/vitest.config.migration.ts
+              packages/cli/vitest.config.migration.testcontainers.ts
+              packages/testing/containers/services/postgres.ts
+              packages/testing/containers/postgres-versions.json
+              packages/testing/containers/test-containers.ts
+              .github/workflows/test-db-reusable.yml
+              .github/scripts/db-test-matrix.mjs
 
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
@@ -227,7 +246,7 @@ jobs:
       # concurrency x cap: 2 x 6 GB fits the runner's 15.2 GB.
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
@@ -252,7 +271,7 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: install-and-build
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
@@ -326,6 +345,7 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
+      run-migrations: ${{ needs.install-and-build.outputs.db_migrations == 'true' }}
 
   e2e-performance:
     name: E2E Performance
@@ -398,7 +418,7 @@ jobs:
     if: always()
     runs-on: ubuntu-slim
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           sparse-checkout: .github/actions/ci-filter
           sparse-checkout-cone-mode: false

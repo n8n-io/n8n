@@ -129,6 +129,82 @@ describe('FolderExporter', () => {
 		]);
 	});
 
+	it('writes only the folders on the path to a selected workflow, keeping sibling slugs', async () => {
+		const opsA = makeFolder({ id: 'ops-a', name: 'Ops', createdAt: new Date('2026-01-01') });
+		const opsB = makeFolder({ id: 'ops-b', name: 'Ops', createdAt: new Date('2026-02-01') });
+		const nested = makeFolder({ id: 'nested', name: 'Nested', parentFolderId: 'ops-b' });
+		const { exporter, workflowFinder, workflowExporter } = makeExporter([opsA, opsB, nested]);
+		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(
+			new Map([
+				['ops-a', ['w-a']],
+				['nested', ['w-n1', 'w-n2']],
+			]),
+		);
+		workflowExporter.export.mockResolvedValue({
+			entries: [{ id: 'w-n2', name: 'N2', target: 'folders/ops-ops-b/nested-nested/workflows/n2' }],
+			requirements: { credentials: [], dataTables: [], variables: [], tags: [], nodeTypes: [] },
+		});
+		const writer = new CapturingWriter();
+
+		const result = await exporter.export({
+			user,
+			folderIds: ['ops-a', 'ops-b'],
+			selectedWorkflowIds: new Set(['w-n2']),
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
+		});
+
+		expect(result.entries.map((e) => e.target)).toEqual([
+			'folders/ops-ops-b',
+			'folders/ops-ops-b/nested-nested',
+		]);
+		expect(writer.directories).toEqual(['folders/ops-ops-b', 'folders/ops-ops-b/nested-nested']);
+		// The unselected sibling never reaches the workflow exporter, so it is never fetched.
+		expect(workflowExporter.export).toHaveBeenCalledTimes(1);
+		expect(workflowExporter.export).toHaveBeenCalledWith(
+			expect.objectContaining({
+				workflowIds: ['w-n2'],
+				basePrefix: 'folders/ops-ops-b/nested-nested',
+			}),
+		);
+		expect(result.workflowEntries.map((e) => e.id)).toEqual(['w-n2']);
+	});
+
+	it('skips the workflow exporter for a folder on the path that holds none of the selection', async () => {
+		const parent = makeFolder({ id: 'parent', name: 'Parent' });
+		const nested = makeFolder({ id: 'nested', name: 'Nested', parentFolderId: 'parent' });
+		const { exporter, workflowFinder, workflowExporter } = makeExporter([parent, nested]);
+		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(
+			new Map([
+				['parent', ['w-unselected']],
+				['nested', ['w-selected']],
+			]),
+		);
+		workflowExporter.export.mockResolvedValue({
+			entries: [
+				{ id: 'w-selected', name: 'Selected', target: 'folders/parent-parent/nested-nested/x' },
+			],
+			requirements: { credentials: [], dataTables: [], variables: [], tags: [], nodeTypes: [] },
+		});
+
+		await exporter.export({
+			user,
+			folderIds: ['parent'],
+			selectedWorkflowIds: new Set(['w-selected']),
+			writer: new CapturingWriter(),
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
+		});
+
+		expect(workflowExporter.export).toHaveBeenCalledTimes(1);
+		expect(workflowExporter.export).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowIds: ['w-selected'] }),
+		);
+	});
+
 	it('propagates a WorkflowExporter abort so the whole folder export rejects', async () => {
 		const { exporter, workflowFinder, workflowExporter } = makeExporter([makeFolder()]);
 		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(new Map([['fld-1', ['w1']]]));
