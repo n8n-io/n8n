@@ -215,11 +215,8 @@ export namespace ExecutionSummaries {
 		id: string;
 		finished: boolean;
 		mode: WorkflowExecuteMode;
-		retryOf: string;
-		retrySuccessId: string;
 		status: ExecutionStatus[];
 		workflowId: string;
-		waitTill: boolean;
 		metadata: Array<{ key: string; value: string; exactMatch?: boolean }>;
 		startedAfter: string;
 		startedBefore: string;
@@ -237,8 +234,6 @@ export namespace ExecutionSummaries {
 	>; // parsed from query params
 
 	type AccessFields = {
-		/** Enables the editor's timestamp cursor and exact summary filters. */
-		restList?: boolean;
 		user?: User;
 		sharingOptions?: {
 			scopes?: Scope[];
@@ -250,7 +245,6 @@ export namespace ExecutionSummaries {
 	type RangeFields = {
 		range: {
 			limit: number;
-			firstId?: string;
 			lastId?: string;
 			before?: { timestamp: string; id: string };
 		};

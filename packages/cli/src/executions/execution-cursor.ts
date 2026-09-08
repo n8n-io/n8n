@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import { isExecutionIdV2 } from './execution-id';
+
 const timestamp = z.string().datetime({ offset: true });
 const Cursor = z
 	.object({
@@ -37,4 +39,24 @@ export function parseExecutionCursor(value?: string): ExecutionCursor {
 
 export function encodeExecutionCursor(cursor: ExecutionCursor): string {
 	return Buffer.from(JSON.stringify(cursor)).toString('base64url');
+}
+
+/** The row position to keep paging from, regardless of which execution version it names. */
+export function positionOf(cursor: ExecutionCursor): ExecutionPosition | undefined {
+	return cursor.v1 ?? cursor.v2;
+}
+
+/** Encode the cursor that continues a list from just after `row`. */
+export function encodeCursorForRow(row: {
+	id: string;
+	startedAt: Date | string | null;
+	createdAt: Date | string;
+}): string {
+	const position: ExecutionPosition = {
+		timestamp: new Date(row.startedAt ?? row.createdAt).toISOString(),
+		id: row.id,
+	};
+	return encodeExecutionCursor(
+		isExecutionIdV2(row.id) ? { version: 1, v2: position } : { version: 1, v1: position },
+	);
 }

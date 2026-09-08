@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 
+import type { SerializedCursor } from '@n8n/api-types';
 import type { ExecutionSummaryWithScopes, IExecutionsListResponse } from './executions.types';
 import { useExecutionsStore } from './executions.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -8,6 +9,9 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
 }));
+
+// Test-only cursors are plain strings; the brand is only meaningful in app code.
+const cursor = (value: string) => value as SerializedCursor;
 
 describe('executions.store', () => {
 	let executionsStore: ReturnType<typeof useExecutionsStore>;
@@ -80,7 +84,7 @@ describe('executions.store', () => {
 		// count is far larger than a page so the tests fail if loading more is ever
 		// driven by the total count again instead of page fullness.
 		const page = (n: number): IExecutionsListResponse => ({
-			nextCursor: n === 10 ? 'next-page' : null,
+			nextCursor: n === 10 ? cursor('next-page') : null,
 			count: 100_000,
 			estimated: true,
 			concurrentExecutionsCount: 0,
@@ -107,11 +111,11 @@ describe('executions.store', () => {
 
 		it('should stop allowing more once a paginated page comes back partial', async () => {
 			mockResponse(10);
-			await executionsStore.fetchExecutions({}, 'last-1');
+			await executionsStore.fetchExecutions({}, cursor('last-1'));
 			expect(executionsStore.hasMoreExecutions).toBe(true);
 
 			mockResponse(4);
-			await executionsStore.fetchExecutions({}, 'last-2');
+			await executionsStore.fetchExecutions({}, cursor('last-2'));
 			expect(executionsStore.hasMoreExecutions).toBe(false);
 		});
 
@@ -120,7 +124,7 @@ describe('executions.store', () => {
 			await executionsStore.fetchExecutions({});
 			// Exhausted the list via pagination.
 			mockResponse(2);
-			await executionsStore.fetchExecutions({}, 'last');
+			await executionsStore.fetchExecutions({}, cursor('last'));
 			expect(executionsStore.hasMoreExecutions).toBe(false);
 
 			// Auto-refresh re-fetches a full first page (no lastId) — must stay false.
@@ -145,9 +149,15 @@ describe('executions.store', () => {
 		});
 
 		it('preserves the oldest continuation during a poll', async () => {
-			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ ...page(1), nextCursor: 'second' });
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
+				...page(1),
+				nextCursor: cursor('second'),
+			});
 			await executionsStore.fetchExecutions({});
-			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ ...page(1), nextCursor: 'third' });
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
+				...page(1),
+				nextCursor: cursor('third'),
+			});
 			await executionsStore.fetchExecutions({}, executionsStore.nextCursor!);
 			expect(makeRestApiRequest).toHaveBeenLastCalledWith(
 				expect.anything(),
@@ -155,16 +165,22 @@ describe('executions.store', () => {
 				'/executions',
 				expect.objectContaining({ cursor: 'second' }),
 			);
-			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ ...page(1), nextCursor: 'new-first' });
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
+				...page(1),
+				nextCursor: cursor('new-first'),
+			});
 			await executionsStore.fetchExecutions({}, undefined, true);
 			expect(executionsStore.nextCursor).toBe('third');
 		});
 
 		it('resets the continuation and rows when the workflow filter changes', async () => {
-			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ ...page(2), nextCursor: 'older' });
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
+				...page(2),
+				nextCursor: cursor('older'),
+			});
 			await executionsStore.fetchExecutions({ workflowId: 'one' });
 			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(page(0));
-			await executionsStore.fetchExecutions({ workflowId: 'two' }, 'older');
+			await executionsStore.fetchExecutions({ workflowId: 'two' }, cursor('older'));
 			expect(executionsStore.nextCursor).toBeNull();
 			expect(executionsStore.executions).toEqual([]);
 			expect(makeRestApiRequest).toHaveBeenLastCalledWith(

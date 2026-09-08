@@ -758,5 +758,6 @@ export {
 export type {
 	ExecutionListPagination,
 	ExecutionListPaginationQuery,
+	SerializedCursor,
 } from './dto/executions/execution-list-pagination';
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';

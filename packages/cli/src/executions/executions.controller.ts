@@ -44,7 +44,7 @@ export class ExecutionsController {
 		}
 
 		const noStatus = !query.status || query.status.length === 0;
-		const noRange = !query.range.lastId || !query.range.firstId;
+		const noRange = !query.range.before;
 
 		if (noStatus && noRange) {
 			const [executions, concurrentExecutionsCount] = await Promise.all([
