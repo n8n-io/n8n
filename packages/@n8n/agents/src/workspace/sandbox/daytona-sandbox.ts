@@ -727,6 +727,7 @@ export class DaytonaSandbox extends BaseSandbox {
 
 	private async createSandbox(client: Daytona, deadline: number): Promise<Sandbox> {
 		const candidates = this.createSandboxParams();
+		const hasImageFallback = candidates.some(({ strategy }) => strategy === 'image');
 		let lastError: unknown;
 
 		for (const candidate of candidates) {
@@ -750,18 +751,19 @@ export class DaytonaSandbox extends BaseSandbox {
 					if (
 						candidate.strategy === 'snapshot' &&
 						!activatedSnapshot &&
-						isInactiveSnapshotError(error) &&
-						(await this.activateSnapshotAndWait(client, deadline))
+						isInactiveSnapshotError(error)
 					) {
-						activatedSnapshot = true;
-						continue;
+						const now = Date.now();
+						// Reserve half the remaining time for image creation when fallback is available.
+						const activationDeadline = hasImageFallback ? now + (deadline - now) / 2 : deadline;
+						if (await this.activateSnapshotAndWait(client, activationDeadline)) {
+							activatedSnapshot = true;
+							continue;
+						}
 					}
 					lastError = error;
 					this.reportCreateError(error, candidate.strategy);
-					if (
-						candidate.strategy === 'snapshot' &&
-						candidates.some(({ strategy }) => strategy === 'image')
-					) {
+					if (candidate.strategy === 'snapshot' && hasImageFallback && Date.now() < deadline) {
 						this.options.logger?.warn(
 							'Sandbox create from snapshot failed; falling back to image',
 							{
@@ -781,10 +783,8 @@ export class DaytonaSandbox extends BaseSandbox {
 	}
 
 	/**
-	 * Reactivate this sandbox's inactive snapshot and wait — bounded by the acquisition
-	 * deadline — for it to become active again. Best-effort: in proxy mode the snapshot
-	 * endpoints may not be allowed through, so any failure returns false and the original
-	 * create error propagates unchanged.
+	 * Reactivate the configured snapshot within the supplied budget.
+	 * Keep the original create error if activation fails or the proxy blocks the request.
 	 */
 	private async activateSnapshotAndWait(client: Daytona, deadline: number): Promise<boolean> {
 		const snapshotName = this.options.snapshot;
@@ -793,10 +793,21 @@ export class DaytonaSandbox extends BaseSandbox {
 			snapshotName,
 		});
 		try {
-			const snapshot = await client.snapshot.get(snapshotName);
-			if (snapshot.state === 'inactive') await client.snapshot.activate(snapshot);
+			const snapshot = await this.withSnapshotDeadline(
+				async () => await client.snapshot.get(snapshotName),
+				deadline,
+			);
+			if (snapshot.state === 'inactive') {
+				await this.withSnapshotDeadline(
+					async () => await client.snapshot.activate(snapshot),
+					deadline,
+				);
+			}
 			for (;;) {
-				const current = await client.snapshot.get(snapshotName);
+				const current = await this.withSnapshotDeadline(
+					async () => await client.snapshot.get(snapshotName),
+					deadline,
+				);
 				if (current.state === 'active') {
 					this.options.logger?.info('Daytona snapshot reactivated', { snapshotName });
 					return true;
@@ -826,6 +837,30 @@ export class DaytonaSandbox extends BaseSandbox {
 				},
 			);
 			return false;
+		}
+	}
+
+	/** Bound snapshot requests because the SDK transport timeout can outlast acquisition. */
+	private async withSnapshotDeadline<T>(op: () => Promise<T>, deadline: number): Promise<T> {
+		const { DaytonaTimeoutError } = loadDaytona();
+		const timeoutError = new DaytonaTimeoutError(
+			'Timed out waiting for Daytona snapshot activation',
+		);
+		const remainingMs = deadline - Date.now();
+		if (remainingMs <= 0) throw timeoutError;
+
+		let timer: NodeJS.Timeout | undefined;
+		try {
+			const result = await Promise.race([
+				op(),
+				new Promise<never>((_, reject) => {
+					timer = setTimeout(() => reject(timeoutError), remainingMs);
+				}),
+			]);
+			if (Date.now() >= deadline) throw timeoutError;
+			return result;
+		} finally {
+			clearTimeout(timer);
 		}
 	}
 

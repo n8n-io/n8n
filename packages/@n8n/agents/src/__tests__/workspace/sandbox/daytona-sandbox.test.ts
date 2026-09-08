@@ -996,6 +996,110 @@ describe('DaytonaSandbox (inactive snapshot recovery)', () => {
 		}
 	});
 
+	it.each(['lookup', 'activation', 'poll'])(
+		'ends acquisition and permits cleanup when the snapshot %s stalls',
+		async (stage) => {
+			queueNotFound();
+			queuedCreateResults.push(inactiveError());
+			const inactive = { name: SNAPSHOT, state: 'inactive' };
+			let resolveRequest!: (snapshot: typeof inactive) => void;
+			const request = new Promise<typeof inactive>((resolve) => {
+				resolveRequest = resolve;
+			});
+			snapshotGetMock.mockResolvedValue(inactive);
+			if (stage === 'lookup') {
+				snapshotGetMock.mockReturnValueOnce(request);
+			} else if (stage === 'activation') {
+				snapshotActivateMock.mockReturnValueOnce(request);
+			} else {
+				snapshotGetMock.mockResolvedValueOnce(inactive).mockReturnValueOnce(request);
+			}
+
+			const sandbox = new DaytonaSandbox({
+				id: 'sandbox-id',
+				apiKey: 'api-key',
+				snapshot: SNAPSHOT,
+				timeout: 30_000,
+			});
+
+			vi.useFakeTimers();
+			try {
+				const failed = vi.fn();
+				const starting = sandbox._start().catch(failed);
+				await vi.advanceTimersByTimeAsync(0);
+				const cleanedUp = vi.fn();
+				const destroying = sandbox._destroy().then(cleanedUp);
+
+				await vi.advanceTimersByTimeAsync(29_999);
+				expect(failed).not.toHaveBeenCalled();
+				expect(cleanedUp).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(1);
+				expect(failed).toHaveBeenCalledWith(
+					expect.objectContaining({ message: expect.stringContaining('is inactive') }),
+				);
+				await starting;
+				await destroying;
+				expect(cleanedUp).toHaveBeenCalledTimes(1);
+				expect(sandbox.status).toBe('destroyed');
+
+				resolveRequest({ name: SNAPSHOT, state: 'active' });
+				await vi.runAllTimersAsync();
+				expect(clientLog[0].create).toHaveBeenCalledTimes(1);
+				expect(snapshotGetMock).toHaveBeenCalledTimes(stage === 'poll' ? 2 : 1);
+				expect(snapshotActivateMock).toHaveBeenCalledTimes(stage === 'lookup' ? 0 : 1);
+				expect(vi.getTimerCount()).toBe(0);
+			} finally {
+				vi.useRealTimers();
+			}
+		},
+	);
+
+	it('leaves enough time to start an image when snapshot activation does not finish', async () => {
+		queueNotFound();
+		queuedCreateResults.push(inactiveError());
+		snapshotGetMock.mockResolvedValue({ name: SNAPSHOT, state: 'inactive' });
+		const remote = makeMockSandbox('remote-from-image');
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			apiKey: 'api-key',
+			snapshot: SNAPSHOT,
+			image: 'node:20',
+			timeout: 30_000,
+		});
+
+		vi.useFakeTimers();
+		try {
+			const failed = vi.fn();
+			const starting = sandbox.start().catch(failed);
+			await vi.advanceTimersByTimeAsync(0);
+			clientLog[0].create.mockImplementation(async (_params, options) => {
+				const { timeout } = options as { timeout: number };
+				return await new Promise<MockSandbox>((resolve, reject) => {
+					setTimeout(
+						() => {
+							if (timeout < 10) reject(new DaytonaTimeoutError('Image start timed out'));
+							else resolve(remote);
+						},
+						Math.min(10_000, timeout * 1000),
+					);
+				});
+			});
+
+			await vi.advanceTimersByTimeAsync(30_000);
+			await starting;
+			expect(failed).not.toHaveBeenCalled();
+			expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe(remote.id);
+			expect(clientLog[0].create).toHaveBeenCalledTimes(2);
+			expect(clientLog[0].create.mock.calls[1][0]).toEqual(
+				expect.objectContaining({ image: 'node:20' }),
+			);
+			expect(vi.getTimerCount()).toBe(0);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('does not attempt activation for unrelated create failures', async () => {
 		queueNotFound('not found');
 		queuedCreateResults.push(new DaytonaError('invalid image', 400));
