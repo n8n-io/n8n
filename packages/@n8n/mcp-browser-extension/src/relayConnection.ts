@@ -96,6 +96,8 @@ export class RelayConnection {
 	onclose?: () => void;
 	ontabcreated?: () => void;
 	onrecordingresult?: (recordingId: string, accepted: boolean, threadUrl?: string) => void;
+	onstartrecording?: () => void;
+	onstopandsubmitrecording?: () => void;
 
 	constructor(ws: WebSocket) {
 		this.ws = ws;
@@ -531,6 +533,12 @@ export class RelayConnection {
 				}
 				return {};
 			}
+			case 'startRecording':
+				this.onstartrecording?.();
+				return {};
+			case 'stopAndSubmitRecording':
+				this.onstopandsubmitrecording?.();
+				return {};
 			default:
 				log.debug(`unknown command: ${message.method}`);
 				return undefined;

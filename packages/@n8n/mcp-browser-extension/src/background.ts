@@ -353,6 +353,13 @@ function submitRecording(): { success: boolean; error?: string } {
 	return { success: true };
 }
 
+/** Stop and submit in one step, for a recording n8n itself asked to start — skips the
+ *  manual review screen, since Instance AI reviews the recording in chat instead. */
+async function stopAndSubmitRecordingNow(): Promise<void> {
+	await stopRecording();
+	submitRecording();
+}
+
 async function discardRecording(): Promise<void> {
 	if (recordingSubmitTimer) clearTimeout(recordingSubmitTimer);
 	recordingSubmitTimer = undefined;
@@ -980,6 +987,16 @@ async function connectToRelay(
 			if (activeConnection?.relay !== relay) return;
 			broadcastStatusChange();
 			updateBadge(relay.getControlledIds().length);
+		};
+
+		relay.onstartrecording = () => {
+			if (activeConnection?.relay !== relay) return;
+			void startRecording();
+		};
+
+		relay.onstopandsubmitrecording = () => {
+			if (activeConnection?.relay !== relay) return;
+			void stopAndSubmitRecordingNow();
 		};
 
 		relay.onrecordingresult = (recordingId, accepted, threadUrl) => {
