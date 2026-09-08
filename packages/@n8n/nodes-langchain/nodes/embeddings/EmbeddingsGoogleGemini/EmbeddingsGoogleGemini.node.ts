@@ -1,5 +1,7 @@
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
+	type INode,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -9,6 +11,28 @@ import {
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { GeminiEmbeddings } from './helpers';
+
+/**
+ * The `minValue` and `numberPrecision` constraints only apply to values typed into the editor, so
+ * an expression can still resolve to a fraction or to a value below 1. Such a value is rejected
+ * here, because the API answers it with a request error that does not name the parameter.
+ */
+function parseOutputDimensionality(node: INode, value: unknown): number | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+
+	const dimensionality = typeof value === 'string' ? Number(value) : value;
+	if (
+		typeof dimensionality !== 'number' ||
+		!Number.isInteger(dimensionality) ||
+		dimensionality < 1
+	) {
+		throw new NodeOperationError(node, `Invalid output dimensionality: ${JSON.stringify(value)}`, {
+			description: 'The output dimensionality must be a whole number of 1 or more.',
+		});
+	}
+
+	return dimensionality;
+}
 
 export class EmbeddingsGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
@@ -142,12 +166,12 @@ export class EmbeddingsGoogleGemini implements INodeType {
 			'models/gemini-embedding-001',
 		) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			outputDimensionality?: number;
+			outputDimensionality?: unknown;
 		};
-		const outputDimensionality =
-			options.outputDimensionality && options.outputDimensionality > 0
-				? options.outputDimensionality
-				: undefined;
+		const outputDimensionality = parseOutputDimensionality(
+			this.getNode(),
+			options.outputDimensionality,
+		);
 
 		const credentials = await this.getCredentials('googlePalmApi');
 		const embeddings = new GeminiEmbeddings({

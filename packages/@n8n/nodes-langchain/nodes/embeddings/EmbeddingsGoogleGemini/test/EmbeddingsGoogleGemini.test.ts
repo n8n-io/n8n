@@ -100,8 +100,8 @@ describe('EmbeddingsGoogleGemini', () => {
 			);
 		});
 
-		it('ignores a non-positive output dimensionality', async () => {
-			const ctx = setupMockContext({ outputDimensionality: 0 });
+		it('treats an empty output dimensionality as unset', async () => {
+			const ctx = setupMockContext({ outputDimensionality: '' });
 
 			await node.supplyData.call(ctx, 0);
 
@@ -109,5 +109,25 @@ describe('EmbeddingsGoogleGemini', () => {
 				expect.objectContaining({ outputDimensionality: undefined }),
 			);
 		});
+
+		it('accepts an output dimensionality that an expression returns as a string', async () => {
+			const ctx = setupMockContext({ outputDimensionality: '768' });
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedGeminiEmbeddings).toHaveBeenCalledWith(
+				expect.objectContaining({ outputDimensionality: 768 }),
+			);
+		});
+
+		it.each([768.5, 0, -1, 'many'])(
+			'rejects the output dimensionality %p before a request is made',
+			async (outputDimensionality) => {
+				const ctx = setupMockContext({ outputDimensionality });
+
+				await expect(node.supplyData.call(ctx, 0)).rejects.toThrow('Invalid output dimensionality');
+				expect(MockedGeminiEmbeddings).not.toHaveBeenCalled();
+			},
+		);
 	});
 });
