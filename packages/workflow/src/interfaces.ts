@@ -3415,7 +3415,8 @@ export interface ITaskMetadata {
 	 * A child only resumes a wait whose set names it. Absent on parks not caused by
 	 * a child (a plain Wait node), which a child resume must therefore never claim.
 	 * Parks written before this field existed have no key; the resume path falls
-	 * back to `subExecution` / `subExecutionsCount` for those.
+	 * back to the `subExecution` the Execute Workflow node stamps on task metadata
+	 * or on the waiting task's output items for those.
 	 */
 	waitingChildExecutionIds?: string[];
 	/**

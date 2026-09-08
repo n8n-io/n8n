@@ -486,8 +486,9 @@ export function shouldRestartParentExecution(
  * not own the parent's current wait and the caller must stop without claiming. A child owns a
  * wait when its execution id is in that wait's `waitingChildExecutionIds` tag. For parks
  * written before tagging existed (no tag key), the Execute Workflow node's own `subExecution`
- * / `subExecutionsCount` metadata identifies a child wait; a wait with neither (a plain Wait
- * node) is never a child's wait.
+ * — on task metadata (single-item mode) or on the waiting task's output items (per-item mode)
+ * — identifies the child; a wait that names the child nowhere (a plain Wait node, or a
+ * sibling's wait) is never this child's wait.
  */
 export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
@@ -521,12 +522,25 @@ export async function updateParentExecutionWithChildResults(
 	// only patch and claim a wait that names it — never an untagged one, or a sibling's
 	// output would land on the wrong node and resume a wait it never satisfied.
 	if (childExecution?.executionId) {
+		const { executionId: childId } = childExecution;
 		const metadata = nodeExecutionStack[0].metadata;
-		const ownsWait =
-			metadata?.waitingChildExecutionIds !== undefined
-				? metadata.waitingChildExecutionIds.includes(childExecution.executionId)
-				: metadata?.subExecution?.executionId === childExecution.executionId ||
-					metadata?.subExecutionsCount !== undefined;
+		let ownsWait: boolean;
+		if (metadata?.waitingChildExecutionIds !== undefined) {
+			ownsWait = metadata.waitingChildExecutionIds.includes(childId);
+		} else {
+			// Legacy park (before tagging). Single-item mode names its child on task metadata;
+			// per-item mode names each child on the waiting task's output items. Both are
+			// checked, not either/or: a failed sibling's patch writes `subExecution` onto the
+			// stack entry below, which must not lock out the remaining siblings.
+			const waitingTasks = parent.data.resultData?.runData?.[nodeExecutionStack[0].node.name];
+			const waitingTask = waitingTasks?.[waitingTasks.length - 1];
+			const namedOnOutput = Object.values(waitingTask?.data ?? {}).some((outputs) =>
+				outputs.some((items) =>
+					items?.some((item) => item.metadata?.subExecution?.executionId === childId),
+				),
+			);
+			ownsWait = metadata?.subExecution?.executionId === childId || namedOnOutput;
+		}
 		if (!ownsWait) return false;
 	}
 

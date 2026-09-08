@@ -7,6 +7,7 @@ import type {
 	DynamicCredentialsUsage,
 	ExecutionError,
 	INodeCredentialsDetails,
+	INodeExecutionData,
 	IRun,
 	ITaskData,
 	ITaskMetadata,
@@ -978,17 +979,28 @@ describe('getLastExecutedNodeRuns', () => {
 describe('updateParentExecutionWithChildResults', () => {
 	const PARENT_ID = 'parent-execution-id';
 
+	const NODE_NAME = 'Execute Sub-workflow';
+
 	// A child-caused park tags the ids of the children that caused it (see BaseExecuteContext).
-	// Legacy parks (before tagging) carry the Execute Workflow node's own `subExecution` /
-	// `subExecutionsCount` instead; a plain Wait node park carries neither.
-	const waitingParent = (metadata?: Partial<ITaskMetadata>): IExecutionResponse =>
+	// Legacy parks (before tagging) name their children through the Execute Workflow node's own
+	// `subExecution`: on task metadata in single-item mode, on the waiting task's output items in
+	// per-item mode. A plain Wait node park names no child anywhere.
+	const waitingParent = (
+		metadata?: Partial<ITaskMetadata>,
+		waitingTaskItems?: INodeExecutionData[],
+	): IExecutionResponse =>
 		({
 			status: 'waiting',
 			data: {
+				resultData: {
+					runData: waitingTaskItems
+						? { [NODE_NAME]: [{ data: { main: [waitingTaskItems] } }] }
+						: {},
+				},
 				executionData: {
 					nodeExecutionStack: [
 						{
-							node: { name: 'Execute Sub-workflow' },
+							node: { name: NODE_NAME },
 							data: { main: [[{ json: { in: 1 } }]] },
 							source: null,
 							...(metadata ? { metadata } : {}),
@@ -1002,6 +1014,12 @@ describe('updateParentExecutionWithChildResults', () => {
 		executionId: 'child-execution-id',
 		workflowId: 'child-workflow-id',
 	};
+	const OTHER_CHILD: RelatedExecution = { executionId: 'other-child', workflowId: 'w' };
+	/** A per-item mode output item, as the Execute Workflow node stamps it for one child. */
+	const itemFor = (subExecution: RelatedExecution): INodeExecutionData => ({
+		json: {},
+		metadata: { subExecution },
+	});
 
 	const childRun = (
 		status: string,
@@ -1067,31 +1085,43 @@ describe('updateParentExecutionWithChildResults', () => {
 	);
 
 	// Parents parked before `waitingChildExecutionIds` existed (upgrade in flight) have no
-	// tag; the Execute Workflow node's own metadata still identifies them as child waits.
-	it.each([
-		['subExecution names this child', { subExecution: CHILD, subExecutionsCount: 1 }],
-		['subExecutionsCount is set (per-item mode)', { subExecutionsCount: 3 }],
-	])(
-		'returns true and patches a legacy untagged wait when %s',
-		async (_, metadata: Partial<ITaskMetadata>) => {
-			const executionPersistence = mockInstance(ExecutionPersistence);
-			executionPersistence.findSingleExecution.mockResolvedValue(waitingParent(metadata));
-
-			const ownsWait = await updateParentExecutionWithChildResults(
-				PARENT_ID,
-				childRun('success', 'Done', { data: { main: [[{ json: { out: 2 } }]] } }),
-				CHILD,
-			);
-
-			expect(ownsWait).toBe(true);
-			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
-		},
-	);
-
-	it.each([
+	// tag; the Execute Workflow node's own `subExecution` still identifies the child.
+	it.each<[string, Partial<ITaskMetadata> | undefined, INodeExecutionData[] | undefined]>([
 		[
-			'legacy subExecution names another child',
-			{ subExecution: { executionId: 'other-child', workflowId: 'w' } },
+			'subExecution on task metadata names this child',
+			{ subExecution: CHILD, subExecutionsCount: 1 },
+			undefined,
+		],
+		[
+			'a waiting-task output item names this child (per-item mode)',
+			{ subExecutionsCount: 3 },
+			[itemFor(OTHER_CHILD), itemFor(CHILD)],
+		],
+		[
+			'a failed sibling already wrote its subExecution onto the entry but an output item names this child',
+			{ subExecution: OTHER_CHILD, subExecutionsCount: 2 },
+			[itemFor(OTHER_CHILD), itemFor(CHILD)],
+		],
+	])('returns true and patches a legacy untagged wait when %s', async (_, metadata, items) => {
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		executionPersistence.findSingleExecution.mockResolvedValue(waitingParent(metadata, items));
+
+		const ownsWait = await updateParentExecutionWithChildResults(
+			PARENT_ID,
+			childRun('success', 'Done', { data: { main: [[{ json: { out: 2 } }]] } }),
+			CHILD,
+		);
+
+		expect(ownsWait).toBe(true);
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+	});
+
+	it.each<[string, Partial<ITaskMetadata> | undefined, INodeExecutionData[] | undefined]>([
+		['legacy subExecution names another child', { subExecution: OTHER_CHILD }, undefined],
+		[
+			'a legacy per-item wait names only other children on its output (subExecutionsCount alone is not ownership)',
+			{ subExecutionsCount: 3 },
+			[itemFor(OTHER_CHILD), itemFor({ executionId: 'third-child', workflowId: 'w' })],
 		],
 		[
 			'the tag is present but excludes this child even though subExecution matches',
@@ -1100,14 +1130,16 @@ describe('updateParentExecutionWithChildResults', () => {
 				subExecution: CHILD,
 				subExecutionsCount: 1,
 			},
+			[itemFor(CHILD)],
 		],
 		[
 			'the tag is empty and subExecutionsCount is set',
 			{ waitingChildExecutionIds: [], subExecutionsCount: 1 },
+			[itemFor(CHILD)],
 		],
-	])('returns false and does not patch when %s', async (_, metadata: Partial<ITaskMetadata>) => {
+	])('returns false and does not patch when %s', async (_, metadata, items) => {
 		const executionPersistence = mockInstance(ExecutionPersistence);
-		executionPersistence.findSingleExecution.mockResolvedValue(waitingParent(metadata));
+		executionPersistence.findSingleExecution.mockResolvedValue(waitingParent(metadata, items));
 
 		const ownsWait = await updateParentExecutionWithChildResults(
 			PARENT_ID,
