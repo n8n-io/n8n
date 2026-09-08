@@ -163,6 +163,28 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		expect(result.messages).toHaveLength(1);
 		expect(result.messages[0].role).toBe('user');
 	});
+
+	it.each([true, false])(
+		'passes the storage more-history flag through to the caller (%s)',
+		async (hasMore) => {
+			mockListMessages.mockResolvedValue({
+				messages: [
+					{
+						id: 'msg-u',
+						role: 'user',
+						content: 'Hello',
+						createdAt: new Date('2026-01-01T00:00:00.000Z'),
+					},
+				],
+				hasMore,
+			});
+
+			const service = createService();
+			const result = await service.getRichMessages('user-1', 'thread-1');
+
+			expect(result.hasMore).toBe(hasMore);
+		},
+	);
 });
 
 describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read', () => {

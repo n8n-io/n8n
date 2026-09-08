@@ -512,6 +512,9 @@ describe('InstanceAiThreadView', () => {
 			resolvedConfirmationIds: new Map(),
 			debugEvents: [],
 			loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
+			loadEarlierMessages: vi.fn().mockResolvedValue(undefined),
+			hasMoreHistory: false,
+			isLoadingEarlierMessages: false,
 			loadThreadStatus: vi.fn().mockResolvedValue(undefined),
 			connectSSE: vi.fn(),
 			closeSSE: vi.fn(),
@@ -2324,5 +2327,31 @@ describe('InstanceAiThreadView', () => {
 			undefined,
 		);
 		expect(thread.confirmAction).not.toHaveBeenCalled();
+	});
+
+	describe('earlier history', () => {
+		it('offers no way to load earlier messages when the thread is already complete', async () => {
+			thread.hasMoreHistory = false;
+
+			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await flushPromises();
+
+			expect(queryByTestId('instance-ai-load-earlier')).toBeNull();
+		});
+
+		it('loads the previous page when the reader asks for earlier messages', async () => {
+			thread.hasMoreHistory = true;
+
+			const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await flushPromises();
+
+			const button = getByTestId('instance-ai-load-earlier');
+			expect(button).toBeVisible();
+
+			button.click();
+			await flushPromises();
+
+			expect(thread.loadEarlierMessages).toHaveBeenCalled();
+		});
 	});
 });

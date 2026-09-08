@@ -6,6 +6,7 @@ import {
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
+	INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	instanceAiEventSchema,
 	isSafeObjectKey,
@@ -163,6 +164,34 @@ function getAgentPreviewTargetFromThreadMetadata(
 	const target = raw as Record<string, unknown>;
 	if (typeof target.agentId !== 'string' || typeof target.threadId !== 'string') return undefined;
 	return { agentId: target.agentId, threadId: target.threadId };
+}
+
+/**
+ * Settles a tree that arrived on a page older than the newest one.
+ *
+ * A run that never wrote a finish fact still reads as `active`, and a
+ * confirmation nobody answered still reads as pending. On the newest page both
+ * may genuinely be live and the reducer resolves them from the event stream. On
+ * an older page they cannot be — nothing is left to finish them. Left alone, an
+ * old builder holds every artifact preview read-only (`useIsAgentWorking` scans
+ * all messages) and an old approval card blocks the composer.
+ *
+ * Confirmations are recorded as `deferred` rather than approved or denied: the
+ * reader never acted on them, and that is the value that keeps them out of the
+ * panel without claiming a decision.
+ */
+function settleHistoricalTree(
+	node: InstanceAiAgentNode,
+	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
+): void {
+	if (node.status === 'active') node.status = 'cancelled';
+	for (const tc of node.toolCalls) {
+		tc.isLoading = false;
+		if (tc.confirmation && !resolved.has(tc.confirmation.requestId)) {
+			resolved.set(tc.confirmation.requestId, 'deferred');
+		}
+	}
+	for (const child of node.children) settleHistoricalTree(child, resolved);
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
@@ -396,6 +425,10 @@ export function createThreadRuntime(
 	);
 	const pendingMessageCount = ref(0);
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
+	/** Whether rows older than what is rendered exist, i.e. whether to offer
+	 *  "load earlier". Resolved by every history read. */
+	const hasMoreHistory = ref(false);
+	const isLoadingEarlierMessages = ref(false);
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
 	// Event ids already applied on this thread — guards against replay overlap,
@@ -455,12 +488,19 @@ export function createThreadRuntime(
 	let sseGeneration = 0;
 	let hydrationGeneration = 0;
 	let hydrationPromise: Promise<HistoricalHydrationStatus> | null = null;
+	/** Oldest page walked back to so far. Page 0 is the newest. */
+	let oldestLoadedPage = 0;
 
 	// --- Computeds ---
 	const isStreaming = computed(() => activeRunId.value !== null);
 	const isSendingMessage = computed(() => pendingMessageCount.value > 0);
 	const hasMessages = computed(() => messages.value.length > 0);
-	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
+	// Covers a prepend as well as the first read: every consumer that scans for
+	// the *newest* match is gated on this, and an older page can otherwise make
+	// them fire — auto-opening an old workflow and reporting it as a new build.
+	const isHydratingThread = computed(
+		() => hydrationStatus.value === 'hydrating' || isLoadingEarlierMessages.value,
+	);
 
 	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
 		() => messages.value,
@@ -1053,6 +1093,9 @@ export function createThreadRuntime(
 		groupIdByRunId.clear();
 		lastEventId.value = undefined;
 		seenEventIds.clear();
+		hasMoreHistory.value = false;
+		isLoadingEarlierMessages.value = false;
+		oldestLoadedPage = 0;
 		disarmGenerationStallWatchdog();
 	}
 
@@ -1074,7 +1117,11 @@ export function createThreadRuntime(
 
 		const promise = (async (): Promise<HistoricalHydrationStatus> => {
 			try {
-				const result = await fetchThreadMessagesApi(rootStore.restApiContext, threadId, 100);
+				const result = await fetchThreadMessagesApi(
+					rootStore.restApiContext,
+					threadId,
+					INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE,
+				);
 				if (capturedHydrationGeneration !== hydrationGeneration) return 'stale';
 				// Only hydrate if SSE hasn't delivered messages while the request was in flight.
 				if (messages.value.length > 0) return 'skipped';
@@ -1099,6 +1146,8 @@ export function createThreadRuntime(
 					lastEventId.value = Math.max(lastEventId.value ?? 0, result.nextEventId - 1);
 				}
 				if (result.projectId) projectId.value = result.projectId;
+				oldestLoadedPage = 0;
+				hasMoreHistory.value = result.hasMore === true;
 				return 'applied';
 			} catch {
 				// Silently ignore — messages will appear if SSE delivers them.
@@ -1113,6 +1162,88 @@ export function createThreadRuntime(
 
 		hydrationPromise = promise;
 		return await promise;
+	}
+
+	/**
+	 * Walks one page further back and prepends it.
+	 *
+	 * The endpoint pages by offset, so rows appended since the newest page was
+	 * read shift every later page. That shows up as overlap, never as a gap, so
+	 * rows already on screen are dropped instead of paged around.
+	 *
+	 * Errors are swallowed like the first page's: the control stays available so
+	 * the reader can try again.
+	 */
+	async function loadEarlierMessages(): Promise<void> {
+		if (!hasMoreHistory.value || isLoadingEarlierMessages.value) return;
+		// A page read before the first one settles would page from a list that is
+		// about to be replaced wholesale.
+		if (hydrationPromise) await hydrationPromise;
+
+		const capturedHydrationGeneration = hydrationGeneration;
+		const page = oldestLoadedPage + 1;
+		isLoadingEarlierMessages.value = true;
+
+		try {
+			const result = await fetchThreadMessagesApi(
+				rootStore.restApiContext,
+				threadId,
+				INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE,
+				page,
+			);
+			// Reset or switched away while the page was in flight.
+			if (capturedHydrationGeneration !== hydrationGeneration) return;
+
+			const renderedIds = new Set(messages.value.map((m) => m.id));
+			const renderedGroupIds = new Set(
+				messages.value.flatMap((m) => (m.messageGroupId ? [m.messageGroupId] : [])),
+			);
+			// Matched on group id as well as row id: the parser keeps the newest row
+			// of a turn *within a page*, so a turn straddling the boundary arrives
+			// here under a different row id. The rendered copy wins — it comes from
+			// a newer page, so it holds the turn's later rows and the fuller tree,
+			// and a duplicate earlier in the array would also capture the live
+			// run-sync lookup, which takes the first matching message.
+			const older = result.messages.filter(
+				(m) =>
+					!renderedIds.has(m.id) &&
+					!(m.messageGroupId !== undefined && renderedGroupIds.has(m.messageGroupId)),
+			);
+
+			oldestLoadedPage = page;
+			// A page that returned no rows ends the walk: trusting the server flag
+			// alone would leave the control armed on a list that never grows.
+			hasMoreHistory.value = result.hasMore === true && result.messages.length > 0;
+			// `nextEventId` and `projectId` are whole-thread facts and already
+			// resolved by the first page, so an older page's copies are ignored.
+
+			if (older.length === 0) return;
+
+			// Settled before routing adopts the trees, so the run state is built
+			// from the settled shape rather than a perpetually active one.
+			for (const msg of older) {
+				if (msg.agentTree) settleHistoricalTree(msg.agentTree, resolvedConfirmationIds);
+			}
+
+			// Only groups the rendered messages do not already own: rebuilding a
+			// live group from an older page's tree would orphan the tree on screen
+			// that replayed and live events mutate.
+			const routing = buildRoutingFromMessages(older);
+			routing.runStateByGroupId.forEach((value, key) => {
+				if (!runStateByGroupId.has(key)) runStateByGroupId.set(key, value);
+			});
+			routing.groupIdByRunId.forEach((value, key) => {
+				if (!groupIdByRunId.has(key)) groupIdByRunId.set(key, value);
+			});
+			// `latestTasks` and `latestSetupItems` are deliberately left alone: both
+			// take the last value in the list they are given, so recomputing them
+			// over an older page would install stale state.
+			messages.value = [...older, ...messages.value];
+		} catch {
+			// Ignored — see the doc comment.
+		} finally {
+			isLoadingEarlierMessages.value = false;
+		}
 	}
 
 	async function loadThreadStatus(): Promise<void> {
@@ -1462,6 +1593,9 @@ export function createThreadRuntime(
 		connectSSE,
 		closeSSE,
 		loadHistoricalMessages,
+		loadEarlierMessages,
+		hasMoreHistory,
+		isLoadingEarlierMessages,
 		loadThreadStatus,
 		sendMessage,
 		cancelRun,

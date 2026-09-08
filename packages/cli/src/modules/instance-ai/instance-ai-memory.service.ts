@@ -425,7 +425,7 @@ export class InstanceAiMemoryService {
 		await this.flagExpiredConfirmations(messages);
 
 		const projectId = await this.agentMemory.getThreadProjectId(threadId);
-		return { threadId, projectId: projectId ?? undefined, messages };
+		return { threadId, projectId: projectId ?? undefined, messages, hasMore: result.hasMore };
 	}
 
 	/**

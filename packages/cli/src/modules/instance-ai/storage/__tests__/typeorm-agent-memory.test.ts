@@ -391,4 +391,90 @@ describe('TypeORMAgentMemory', () => {
 			expect(threadRepo.delete).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('listMessages', () => {
+		const agentRow = (id: string, createdAt: Date, text: string) =>
+			makeMessageRow({
+				id,
+				createdAt,
+				role: 'assistant',
+				content: JSON.stringify({
+					role: 'assistant',
+					content: [{ type: 'text', text }],
+				}),
+			});
+
+		it('returns the page oldest-first and reports no more history when the thread ends there', async () => {
+			const messageRepo = mock<InstanceAiMessageRepository>();
+			// Newest-first, exactly the page size: no probe row came back.
+			messageRepo.find.mockResolvedValueOnce([
+				agentRow('m-newest', new Date('2026-01-02T00:00:00Z'), 'newest'),
+				agentRow('m-older', new Date('2026-01-01T00:00:00Z'), 'older'),
+			]);
+			const { memory } = createMemory({ messageRepo });
+
+			const result = await memory.listMessages({ threadId: 'thread-1', limit: 2 });
+
+			expect(result.hasMore).toBe(false);
+			expect(result.messages).toHaveLength(2);
+			// One row past the page is requested so `hasMore` needs no second query.
+			expect(messageRepo.find).toHaveBeenCalledWith(expect.objectContaining({ take: 3, skip: 0 }));
+		});
+
+		it('reports more history when a row past the page comes back, and keeps it off the page', async () => {
+			const messageRepo = mock<InstanceAiMessageRepository>();
+			messageRepo.find.mockResolvedValueOnce([
+				agentRow('m-newest', new Date('2026-01-03T00:00:00Z'), 'newest'),
+				agentRow('m-mid', new Date('2026-01-02T00:00:00Z'), 'mid'),
+				agentRow('m-probe', new Date('2026-01-01T00:00:00Z'), 'probe'),
+			]);
+			const { memory } = createMemory({ messageRepo });
+
+			const result = await memory.listMessages({ threadId: 'thread-1', limit: 2 });
+
+			expect(result.hasMore).toBe(true);
+			expect(result.messages).toHaveLength(2);
+		});
+
+		it('reports more history from the row count, not the parsed count, so a dropped row does not end the walk', async () => {
+			const messageRepo = mock<InstanceAiMessageRepository>();
+			messageRepo.find.mockResolvedValueOnce([
+				agentRow('m-newest', new Date('2026-01-03T00:00:00Z'), 'newest'),
+				// Unparseable, so it never reaches the returned page.
+				makeMessageRow({ id: 'm-invalid', createdAt: new Date('2026-01-02T00:00:00Z') }),
+				agentRow('m-probe', new Date('2026-01-01T00:00:00Z'), 'probe'),
+			]);
+			const { memory } = createMemory({ messageRepo });
+
+			const result = await memory.listMessages({ threadId: 'thread-1', limit: 2 });
+
+			expect(result.messages).toHaveLength(1);
+			expect(result.hasMore).toBe(true);
+		});
+
+		it('resolves the newer boundary and more-history flag together on an older page', async () => {
+			const messageRepo = mock<InstanceAiMessageRepository>();
+			const boundaryAt = new Date('2026-01-05T00:00:00Z');
+			messageRepo.find.mockResolvedValueOnce([
+				agentRow('m-boundary', boundaryAt, 'boundary'),
+				agentRow('m-newest', new Date('2026-01-03T00:00:00Z'), 'newest'),
+				agentRow('m-mid', new Date('2026-01-02T00:00:00Z'), 'mid'),
+				agentRow('m-probe', new Date('2026-01-01T00:00:00Z'), 'probe'),
+			]);
+			const { memory } = createMemory({ messageRepo });
+
+			const result = await memory.listMessages({
+				threadId: 'thread-1',
+				limit: 2,
+				page: 1,
+				withNewerBoundary: true,
+			});
+
+			expect(result.newerBoundaryAt).toEqual(boundaryAt);
+			expect(result.hasMore).toBe(true);
+			expect(result.messages).toHaveLength(2);
+			// One row for the newer boundary, one for the older probe.
+			expect(messageRepo.find).toHaveBeenCalledWith(expect.objectContaining({ take: 4, skip: 1 }));
+		});
+	});
 });

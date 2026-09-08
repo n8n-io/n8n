@@ -13,7 +13,9 @@ import {
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import {
+	N8nButton,
 	N8nHeading,
+	N8nIcon,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nScrollArea,
@@ -586,6 +588,7 @@ watch(
 
 // --- Scroll management ---
 const scrollableRef = useTemplateRef<HTMLElement>('scrollable');
+const messageListRef = useTemplateRef<HTMLElement>('messageList');
 // The actual scroll container is the reka-ui viewport inside N8nScrollArea,
 // NOT the immediate parent (which is a non-scrolling content wrapper).
 const scrollContainerRef = computed(
@@ -616,6 +619,49 @@ function scrollToBottom(smooth = false) {
 	}
 }
 
+// Holds the reader's place across a prepend. Captured before the request, not
+// after: by the time the older page is in the DOM the offset has already moved.
+let prependAnchor: { element: Element; top: number } | null = null;
+
+async function onLoadEarlier() {
+	// First match in document order is the oldest rendered message.
+	const element =
+		messageListRef.value?.querySelector(
+			'[data-test-id="instance-ai-user-message"], [data-test-id="instance-ai-assistant-message"]',
+		) ?? null;
+	prependAnchor = element ? { element, top: element.getBoundingClientRect().top } : null;
+	try {
+		await thread.loadEarlierMessages();
+	} finally {
+		// The watcher below consumes the anchor when the list actually grew. This
+		// clears it for the cases where it did not — a page that was entirely
+		// duplicates, or a failed request — because a stale anchor would keep the
+		// auto-scroll guard suppressed for the rest of the session.
+		await nextTick();
+		prependAnchor = null;
+	}
+}
+
+watch(
+	// Keyed on the oldest message, not the count: that is what a prepend changes,
+	// so a new message arriving at the bottom cannot consume the anchor.
+	() => thread.messages[0]?.id,
+	() => {
+		// Good for this update only, and only while the anchor is still rendered:
+		// a failed page leaves an anchor behind, and a thread switch drops the
+		// element it points at.
+		const anchor = prependAnchor?.element.isConnected === true ? prependAnchor : null;
+		prependAnchor = null;
+		if (!anchor) return;
+		const container = scrollContainerRef.value;
+		if (!container) return;
+		// Growing the list upward moves the anchor down by exactly the inserted
+		// height; scrolling by that delta puts it back under the same pixel.
+		container.scrollTop += anchor.element.getBoundingClientRect().top - anchor.top;
+	},
+	{ flush: 'post' },
+);
+
 // Auto-scroll when content height changes (handles text deltas, tool calls,
 // sub-agent spawns, results, etc. — anything that grows the DOM).
 let contentResizeObserver: ResizeObserver | null = null;
@@ -626,6 +672,11 @@ watch(
 		contentResizeObserver?.disconnect();
 		if (el) {
 			contentResizeObserver = new ResizeObserver(() => {
+				// A prepend grows the list upward. `userScrolledUp` is false whenever
+				// the reader is within 100px of the bottom (including any thread that
+				// fits the viewport), so without this the observer would snap to the
+				// bottom and undo the anchor restore.
+				if (thread.isLoadingEarlierMessages || prependAnchor !== null) return;
 				if (!userScrolledUp.value) {
 					scrollToBottom();
 				}
@@ -1201,7 +1252,21 @@ async function dismissComposerContextChip() {
 				<div :class="$style.chatContent">
 					<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
 						<div ref="scrollable" :class="$style.scrollContent">
-							<div :class="$style.messageList">
+							<div ref="messageList" :class="$style.messageList">
+								<div v-if="thread.hasMoreHistory" :class="$style.loadEarlier">
+									<N8nButton
+										variant="subtle"
+										size="small"
+										:loading="thread.isLoadingEarlierMessages"
+										data-test-id="instance-ai-load-earlier"
+										@click="onLoadEarlier"
+									>
+										<template #icon>
+											<N8nIcon icon="arrow-up" />
+										</template>
+										{{ i18n.baseText('instanceAi.thread.loadEarlier') }}
+									</N8nButton>
+								</div>
 								<TransitionGroup name="message-slide">
 									<InstanceAiMessage
 										v-for="message in displayedMessages"
@@ -1579,6 +1644,12 @@ async function dismissComposerContextChip() {
 	min-height: 100%;
 	display: flex;
 	flex-direction: column;
+}
+
+.loadEarlier {
+	display: flex;
+	justify-content: center;
+	padding-bottom: var(--spacing-2xs);
 }
 
 .messageList {

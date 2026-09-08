@@ -6862,6 +6862,7 @@
 	"instanceAi.toolCall.error": "Error",
 	"instanceAi.toolResult.moreRows": "and {count} more rows...",
 	"instanceAi.toolResult.dataTruncated": "Data truncated for display.",
+	"instanceAi.thread.loadEarlier": "Load earlier messages",
 	"instanceAi.thread.new": "New chat",
 	"instanceAi.sidebar.back": "Back",
 	"instanceAi.sidebar.threads": "Threads",
