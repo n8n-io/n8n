@@ -603,7 +603,7 @@ export class ExecutionService {
 	 *  - the count of executions that satisfy the query
 	 *  - whether the count is an estimate or not
 	 */
-	private async getExecutionsCountForQuery(countQuery: ExecutionSummaries.CountQuery) {
+	async getExecutionsCountForQuery(countQuery: ExecutionSummaries.CountQuery) {
 		if (this.globalConfig.database.type === 'postgresdb') {
 			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
