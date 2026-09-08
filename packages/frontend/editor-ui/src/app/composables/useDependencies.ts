@@ -11,6 +11,18 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 const dependenciesMap = ref<Record<string, ResolvedDependenciesResult>>({});
 const countsMap = ref<Record<string, DependencyTypeCounts>>({});
 
+// The backend omits resources without dependency rows (and inaccessible ones)
+// from its responses, so a missing id means "empty", not "unknown".
+const emptyCounts = (): DependencyTypeCounts => ({
+	agentUsage: 0,
+	credentialId: 0,
+	dataTableId: 0,
+	errorWorkflow: 0,
+	errorWorkflowParent: 0,
+	workflowCall: 0,
+	workflowParent: 0,
+});
+
 // The backend rejects requests with more than 100 resource ids
 // (see GetResourceDependencyCountsDto), so batch larger id lists.
 const BATCH_SIZE = 100;
@@ -39,8 +51,10 @@ export function useDependencies() {
 						batch,
 						resourceType,
 					);
-					for (const [id, counts] of Object.entries(result)) {
-						countsMap.value[id] = counts;
+					// Write every requested id so a stale cache entry clears when the
+					// resource no longer appears in the response
+					for (const id of batch) {
+						countsMap.value[id] = result[id] ?? emptyCounts();
 					}
 				} catch {
 					// Counts are supplementary — silently ignore errors
@@ -62,8 +76,10 @@ export function useDependencies() {
 						batch,
 						resourceType,
 					);
-					for (const [id, entry] of Object.entries(result)) {
-						dependenciesMap.value[id] = entry;
+					// Write every requested id so a stale cache entry clears when the
+					// resource no longer appears in the response
+					for (const id of batch) {
+						dependenciesMap.value[id] = result[id] ?? { dependencies: [], inaccessibleCount: 0 };
 					}
 				} catch {
 					// Dependencies are supplementary — silently ignore errors

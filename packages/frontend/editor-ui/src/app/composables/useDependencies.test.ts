@@ -62,6 +62,19 @@ describe('useDependencies', () => {
 			expect(dependencies.hasDependencies('cred-249')).toBe(true);
 		});
 
+		it('clears a stale entry when the response omits the resource', async () => {
+			getResourceDependencyCountsMock.mockResolvedValueOnce(countsFor(['cred-1']));
+			const dependencies = useDependencies();
+			await dependencies.fetchDependencyCounts(['cred-1'], 'credential');
+			expect(dependencies.hasDependencies('cred-1')).toBe(true);
+
+			// The backend omits resources without dependency rows
+			getResourceDependencyCountsMock.mockResolvedValueOnce({});
+			await dependencies.fetchDependencyCounts(['cred-1'], 'credential');
+
+			expect(dependencies.hasDependencies('cred-1')).toBe(false);
+		});
+
 		it('keeps results from successful batches when another batch fails', async () => {
 			const ids = Array.from({ length: 150 }, (_, i) => `cred-${i}`);
 			getResourceDependencyCountsMock
@@ -97,6 +110,43 @@ describe('useDependencies', () => {
 				dependencies: [],
 				inaccessibleCount: 1,
 			});
+		});
+
+		it('clears a stale entry when the response omits the resource', async () => {
+			getResourceDependenciesMock.mockResolvedValueOnce({
+				'wf-1': {
+					dependencies: [{ type: 'workflowParent', id: 'wf-2', name: 'Parent' }],
+					inaccessibleCount: 0,
+				},
+			});
+			const dependencies = useDependencies();
+			await dependencies.fetchDependencies(['wf-1'], 'workflow');
+			expect(dependencies.getDependencies('wf-1')?.dependencies).toHaveLength(1);
+
+			// The backend omits resources without dependency rows
+			getResourceDependenciesMock.mockResolvedValueOnce({});
+			await dependencies.fetchDependencies(['wf-1'], 'workflow');
+
+			expect(dependencies.getDependencies('wf-1')).toEqual({
+				dependencies: [],
+				inaccessibleCount: 0,
+			});
+		});
+
+		it('keeps a cached entry when the request fails', async () => {
+			getResourceDependenciesMock.mockResolvedValueOnce({
+				'wf-1': {
+					dependencies: [{ type: 'workflowParent', id: 'wf-2', name: 'Parent' }],
+					inaccessibleCount: 0,
+				},
+			});
+			const dependencies = useDependencies();
+			await dependencies.fetchDependencies(['wf-1'], 'workflow');
+
+			getResourceDependenciesMock.mockRejectedValueOnce(new Error('request failed'));
+			await dependencies.fetchDependencies(['wf-1'], 'workflow');
+
+			expect(dependencies.getDependencies('wf-1')?.dependencies).toHaveLength(1);
 		});
 	});
 });
