@@ -100,13 +100,52 @@ describe('channel-rate-limit', () => {
 			expect(rateLimitMessageFromError(output)).toBe('Slack is limited');
 		});
 
-		it('returns the message from an Error whose text includes the rate-limit phrase', () => {
-			const error = new Error('Slack is temporarily limiting requests. Try later.');
-			expect(rateLimitMessageFromError(error)).toBe(error.message);
+		it('extracts the message from a batch results array containing a RATE_LIMIT_EXCEEDED entry', () => {
+			const output = {
+				ok: true,
+				results: [
+					{ action: 'respond', result: { ok: true } },
+					{
+						action: 'add_reaction',
+						result: {
+							ok: false,
+							error: {
+								code: INTEGRATION_ERROR_CODES.RATE_LIMIT_EXCEEDED,
+								message: 'Slack is limited',
+							},
+						},
+					},
+				],
+			};
+			expect(rateLimitMessageFromError(output)).toBe('Slack is limited');
+		});
+
+		it('returns undefined for a batch with no rate-limited entry', () => {
+			const output = {
+				ok: true,
+				results: [
+					{ action: 'respond', result: { ok: true } },
+					{
+						action: 'add_reaction',
+						result: {
+							ok: false,
+							error: { code: INTEGRATION_ERROR_CODES.ACTION_FAILED, message: 'x' },
+						},
+					},
+				],
+			};
+			expect(rateLimitMessageFromError(output)).toBeUndefined();
 		});
 
 		it('returns undefined for an unrelated error', () => {
 			expect(rateLimitMessageFromError(new Error('something else'))).toBeUndefined();
+		});
+
+		it('returns undefined for an Error whose message merely contains the rate-limit phrase', () => {
+			// Classification is status/code-based only — a message-only match must
+			// not be treated as a rate limit.
+			const error = new Error('Slack is temporarily limiting requests. Try later.');
+			expect(rateLimitMessageFromError(error)).toBeUndefined();
 		});
 	});
 

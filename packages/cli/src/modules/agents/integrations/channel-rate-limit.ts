@@ -21,17 +21,33 @@ function isRateLimitExceededResult(value: unknown): boolean {
 	);
 }
 
-export function rateLimitMessageFromError(error: unknown): string | undefined {
+function rateLimitMessageFromResult(value: unknown): string | undefined {
 	if (
-		isRateLimitedToolOutput(error) &&
-		isRecord(error) &&
-		isRecord(error.error) &&
-		typeof error.error.message === 'string'
+		isRecord(value) &&
+		value.ok === false &&
+		isRecord(value.error) &&
+		value.error.code === INTEGRATION_ERROR_CODES.RATE_LIMIT_EXCEEDED &&
+		typeof value.error.message === 'string'
 	) {
-		return error.error.message;
+		return value.error.message;
 	}
-	if (error instanceof Error && error.message.includes('temporarily limiting requests')) {
-		return error.message;
+	return undefined;
+}
+
+export function rateLimitMessageFromError(error: unknown): string | undefined {
+	if (!isRateLimitedToolOutput(error)) return undefined;
+	// Single result: { ok: false, error: { code, message } }
+	const single = rateLimitMessageFromResult(error);
+	if (single !== undefined) return single;
+	// Batched action calls nest per-operation results under `results`; the
+	// stream consumer stores the whole batch as the fallback, so extract the
+	// message from the first rate-limited entry before falling back.
+	if (isRecord(error) && Array.isArray(error.results)) {
+		for (const entry of error.results) {
+			if (!isRecord(entry)) continue;
+			const message = rateLimitMessageFromResult(entry.result);
+			if (message !== undefined) return message;
+		}
 	}
 	return undefined;
 }
