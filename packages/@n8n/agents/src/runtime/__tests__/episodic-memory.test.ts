@@ -83,7 +83,11 @@ function sourceList(text = 'Please remember that I prefer concise reports.'): Ag
 	return list;
 }
 
-async function enqueueCandidate(memory: InMemoryMemory, toolCallId = 'call-1'): Promise<void> {
+async function enqueueCandidate(
+	memory: InMemoryMemory,
+	toolCallId = 'call-1',
+	runId = 'run-1',
+): Promise<void> {
 	const tool = createFlagMemoryTool({
 		memory,
 		scope: { resourceId: 'user-1' },
@@ -97,7 +101,7 @@ async function enqueueCandidate(memory: InMemoryMemory, toolCallId = 'call-1'): 
 			evidence: 'I prefer concise reports',
 			kind: 'preference',
 		},
-		{ toolCallId },
+		{ runId, toolCallId },
 	);
 }
 
@@ -262,20 +266,34 @@ describe('agent-directed episodic capture', () => {
 		} as never);
 	});
 
-	it('enqueues exact source evidence idempotently and rejects unsupported evidence', async () => {
+	it('persists source evidence and deduplicates replayed tool calls within each run', async () => {
 		const memory = new InMemoryMemory();
 		await enqueueCandidate(memory);
 		await enqueueCandidate(memory);
+		await enqueueCandidate(memory, 'call-1', 'run-2');
 
-		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1' }),
-		).resolves.toEqual([
-			expect.objectContaining({
-				sourceMessageId: 'message-1',
-				toolCallId: 'call-1',
-				evidenceText: 'I prefer concise reports',
-				status: 'pending',
-			}),
+		const candidates = await memory.episodic.getPendingCaptureCandidates({
+			resourceId: 'user-1',
+		});
+		expect(candidates).toHaveLength(2);
+		expect(candidates).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					sourceMessageId: 'message-1',
+					runId: 'run-1',
+					toolCallId: 'call-1',
+					evidenceText: 'I prefer concise reports',
+					status: 'pending',
+				}),
+				expect.objectContaining({
+					sourceMessageId: 'message-1',
+					runId: 'run-2',
+					toolCallId: 'call-1',
+				}),
+			]),
+		);
+		await expect(memory.getMessages('thread-1', { resourceId: 'user-1' })).resolves.toEqual([
+			expect.objectContaining({ id: 'message-1' }),
 		]);
 
 		const list = sourceList();
@@ -301,7 +319,7 @@ describe('agent-directed episodic capture', () => {
 					evidence: 'I prefer detailed reports',
 					kind: 'preference',
 				},
-				{ toolCallId: 'call-2' },
+				{ runId: 'run-1', toolCallId: 'call-2' },
 			),
 		).rejects.toThrow('must exactly match');
 	});
@@ -367,7 +385,7 @@ describe('agent-directed episodic capture', () => {
 				evidence: `key ${secret}`,
 				kind: 'explicit_remember',
 			},
-			{ toolCallId: 'secret-call' },
+			{ runId: 'run-1', toolCallId: 'secret-call' },
 		);
 
 		const [candidate] = await memory.episodic.getPendingCaptureCandidates({
@@ -488,6 +506,7 @@ describe('agent-directed episodic capture', () => {
 			resourceId: 'user-1',
 			threadId: 'thread-1',
 			sourceMessageId: null,
+			runId: 'run-correction',
 			toolCallId: 'call-correction',
 			content: 'User switched memory storage from SQLite to Postgres.',
 			evidenceText: 'I switched from SQLite to Postgres',
@@ -598,6 +617,7 @@ describe('episodic memory source cleanup', () => {
 			resourceId: 'user-1',
 			threadId: 'thread-1',
 			sourceMessageId: null,
+			runId: 'run-orphaned',
 			toolCallId: 'candidate-orphaned',
 			content: 'User prefers concise reports.',
 			evidenceText: 'I prefer concise reports',

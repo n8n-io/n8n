@@ -29,7 +29,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) | 3 |  | BASE TABLE |
 | [public.agents](public.agents.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
-| [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) | 13 |  | BASE TABLE |
+| [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entry_cursors](public.agents_memory_entry_cursors.md) | 6 |  | BASE TABLE |
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
 | [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) | 10 |  | BASE TABLE |
@@ -645,6 +645,7 @@ erDiagram
   varchar_36_ id
   varchar_32_ kind
   varchar_255_ resourceId FK
+  varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
   varchar_255_ threadId FK

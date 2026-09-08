@@ -162,14 +162,15 @@ describe('CreateAgentMemoryEntryCandidates migration', () => {
 			]);
 
 			await context.runQuery(
-				`INSERT INTO ${context.escape.tableName('agents_memory_entry_candidates')} ("id", "agentId", "resourceId", "threadId", "sourceMessageId", "toolCallId", "content", "evidenceText", "kind", "status", "attemptCount", "createdAt", "updatedAt")
-				 VALUES (:id, :agentId, :resourceId, :threadId, :sourceMessageId, :toolCallId, :content, :evidenceText, :kind, :status, :attemptCount, :createdAt, :updatedAt)`,
+				`INSERT INTO ${context.escape.tableName('agents_memory_entry_candidates')} ("id", "agentId", "resourceId", "threadId", "sourceMessageId", "runId", "toolCallId", "content", "evidenceText", "kind", "status", "attemptCount", "createdAt", "updatedAt")
+				 VALUES (:id, :agentId, :resourceId, :threadId, :sourceMessageId, :runId, :toolCallId, :content, :evidenceText, :kind, :status, :attemptCount, :createdAt, :updatedAt)`,
 				{
 					id: ids.candidate,
 					agentId: ids.agent,
 					resourceId: ids.resource,
 					threadId: ids.thread,
 					sourceMessageId: null,
+					runId: 'run-1',
 					toolCallId: 'call-1',
 					content: 'User prefers concise reports.',
 					evidenceText: 'I prefer concise reports.',

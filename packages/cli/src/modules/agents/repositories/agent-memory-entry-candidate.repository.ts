@@ -9,6 +9,7 @@ interface EnqueueCandidateInput {
 	resourceId: string;
 	threadId: string;
 	sourceMessageId: string | null;
+	runId: string;
 	toolCallId: string;
 	content: string;
 	evidenceText: string;
@@ -24,6 +25,7 @@ export class AgentMemoryEntryCandidateRepository extends Repository<AgentMemoryE
 	async enqueueCandidate(input: EnqueueCandidateInput): Promise<AgentMemoryEntryCandidateEntity> {
 		const existing = await this.findOneBy({
 			agentId: input.agentId,
+			runId: input.runId,
 			toolCallId: input.toolCallId,
 		});
 		if (existing) return existing;
@@ -33,6 +35,7 @@ export class AgentMemoryEntryCandidateRepository extends Repository<AgentMemoryE
 		} catch (error) {
 			const concurrentlyInserted = await this.findOneBy({
 				agentId: input.agentId,
+				runId: input.runId,
 				toolCallId: input.toolCallId,
 			});
 			if (concurrentlyInserted) return concurrentlyInserted;

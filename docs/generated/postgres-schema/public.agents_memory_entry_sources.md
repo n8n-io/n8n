@@ -95,6 +95,7 @@ erDiagram
   varchar_36_ id
   varchar_32_ kind
   varchar_255_ resourceId FK
+  varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
   varchar_255_ threadId FK

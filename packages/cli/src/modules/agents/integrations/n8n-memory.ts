@@ -1087,6 +1087,7 @@ export class N8nMemoryImpl
 			resourceId: entity.resourceId,
 			threadId: entity.threadId,
 			sourceMessageId: entity.sourceMessageId,
+			runId: entity.runId,
 			toolCallId: entity.toolCallId,
 			content: entity.content,
 			evidenceText: entity.evidenceText,

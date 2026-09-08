@@ -12,6 +12,7 @@
 | id | varchar(36) |  | false | [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) |  |  |
 | kind | varchar(32) |  | false |  |  | Reason the agent flagged this candidate |
 | resourceId | varchar(255) |  | false |  | [public.agents_resources](public.agents_resources.md) | Resource scope for the eventual episodic memory entry |
+| runId | varchar(255) |  | false |  |  | Agent run that issued the memory capture tool call |
 | sourceMessageId | varchar(36) |  | true |  | [public.agents_messages](public.agents_messages.md) | Persisted message that contains the exact source evidence |
 | status | varchar(16) | 'pending'::character varying | false |  |  | Candidate processing state |
 | threadId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | Conversation thread where the agent flagged this candidate |
@@ -37,6 +38,7 @@
 | agents_memory_entry_candidates_id_not_null | n | NOT NULL id |
 | agents_memory_entry_candidates_kind_not_null | n | NOT NULL kind |
 | agents_memory_entry_candidates_resourceId_not_null | n | NOT NULL "resourceId" |
+| agents_memory_entry_candidates_runId_not_null | n | NOT NULL "runId" |
 | agents_memory_entry_candidates_status_not_null | n | NOT NULL status |
 | agents_memory_entry_candidates_threadId_not_null | n | NOT NULL "threadId" |
 | agents_memory_entry_candidates_toolCallId_not_null | n | NOT NULL "toolCallId" |
@@ -46,10 +48,10 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_26041282b197303ed83ec79ff0 | CREATE UNIQUE INDEX "IDX_26041282b197303ed83ec79ff0" ON public.agents_memory_entry_candidates USING btree ("agentId", "toolCallId") |
 | IDX_5123f71435736664d2676084a8 | CREATE INDEX "IDX_5123f71435736664d2676084a8" ON public.agents_memory_entry_candidates USING btree ("resourceId") |
 | IDX_6dc22e132cf1a34e5bca672b99 | CREATE INDEX "IDX_6dc22e132cf1a34e5bca672b99" ON public.agents_memory_entry_candidates USING btree ("agentId", "resourceId", status, "createdAt", id) |
 | IDX_ac7ada75df7cc8ced228921d5a | CREATE INDEX "IDX_ac7ada75df7cc8ced228921d5a" ON public.agents_memory_entry_candidates USING btree ("threadId") |
+| IDX_e3e49861a5452db63b036a2561 | CREATE UNIQUE INDEX "IDX_e3e49861a5452db63b036a2561" ON public.agents_memory_entry_candidates USING btree ("agentId", "runId", "toolCallId") |
 | IDX_f1857f6716aa258393dd6f3324 | CREATE INDEX "IDX_f1857f6716aa258393dd6f3324" ON public.agents_memory_entry_candidates USING btree ("sourceMessageId") |
 | PK_d5c36484cafd23222df4c564159 | CREATE UNIQUE INDEX "PK_d5c36484cafd23222df4c564159" ON public.agents_memory_entry_candidates USING btree (id) |
 
@@ -73,6 +75,7 @@ erDiagram
   varchar_36_ id
   varchar_32_ kind
   varchar_255_ resourceId FK
+  varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
   varchar_255_ threadId FK

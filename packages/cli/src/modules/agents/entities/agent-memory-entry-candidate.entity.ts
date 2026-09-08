@@ -3,7 +3,7 @@ import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
 @Entity({ name: 'agents_memory_entry_candidates' })
-@Index(['agentId', 'toolCallId'], { unique: true })
+@Index(['agentId', 'runId', 'toolCallId'], { unique: true })
 @Index(['agentId', 'resourceId', 'status', 'createdAt', 'id'])
 @Index(['resourceId'])
 @Index(['threadId'])
@@ -20,6 +20,9 @@ export class AgentMemoryEntryCandidateEntity extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	sourceMessageId: string | null;
+
+	@Column({ type: 'varchar', length: 255 })
+	runId: string;
 
 	@Column({ type: 'varchar', length: 255 })
 	toolCallId: string;

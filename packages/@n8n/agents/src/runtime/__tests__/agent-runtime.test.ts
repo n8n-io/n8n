@@ -6163,13 +6163,13 @@ describe('AgentRuntime — observation log jobs', () => {
 		expect(typeof lockOptions.ttlMs).toBe('number');
 	});
 
-	it('leaves pending capture work untouched when the episodic task lock is held', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+	it('waits for a contended episodic task lock before model execution', async () => {
 		const memory = new InMemoryMemory();
 		await memory.episodic.enqueueCaptureCandidate({
 			resourceId: 'resource-1',
 			threadId: 'thread-1',
 			sourceMessageId: null,
+			runId: 'run-pending',
 			toolCallId: 'tc-pending',
 			content: 'User chose Postgres for memory storage.',
 			evidenceText: 'User chose Postgres',
@@ -6187,7 +6187,16 @@ describe('AgentRuntime — observation log jobs', () => {
 				],
 			};
 		});
-		vi.spyOn(memory.episodic.taskLock!, 'acquire').mockResolvedValue(null);
+		const acquire = memory.episodic.taskLock!.acquire;
+		vi.spyOn(memory.episodic.taskLock!, 'acquire')
+			.mockResolvedValueOnce(null)
+			.mockImplementation(acquire);
+		generateText.mockImplementationOnce(async () => {
+			await expect(
+				memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
+			).resolves.toEqual([]);
+			return makeGenerateSuccess('Plain response');
+		});
 
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',
@@ -6204,11 +6213,6 @@ describe('AgentRuntime — observation log jobs', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 		await runtime.dispose();
-
-		expect(extract).not.toHaveBeenCalled();
-		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
-		).resolves.toEqual([expect.objectContaining({ toolCallId: 'tc-pending' })]);
 	});
 
 	it('processes every pending capture batch before the model runs', async () => {
@@ -6218,6 +6222,7 @@ describe('AgentRuntime — observation log jobs', () => {
 				resourceId: 'resource-1',
 				threadId: 'thread-1',
 				sourceMessageId: null,
+				runId: `run-${toolCallId}`,
 				toolCallId,
 				content: `Remember ${toolCallId}.`,
 				evidenceText: toolCallId,
@@ -6256,6 +6261,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			resourceId: 'resource-1',
 			threadId: 'thread-1',
 			sourceMessageId: null,
+			runId: 'run-cancelled',
 			toolCallId: 'tc-pending',
 			content: 'User chose Postgres for memory storage.',
 			evidenceText: 'User chose Postgres',

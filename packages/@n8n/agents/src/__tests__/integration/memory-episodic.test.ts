@@ -319,6 +319,7 @@ describe('episodic memory integration', () => {
 			resourceId,
 			threadId: sourceThreadId,
 			sourceMessageId,
+			runId: 'run-recovery-1',
 			toolCallId: 'recovered-call-1',
 			content: 'The recovery codeword is FIR-DELTA-28.',
 			evidenceText: 'recovery codeword FIR-DELTA-28',

@@ -50,6 +50,7 @@ import {
 import { sanitizeOffloadedToolResultsForMemory } from '../tools/tool-result-guard';
 
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
+const EPISODIC_MEMORY_LOCK_RETRY_DELAY_MS = 100;
 /** Fraction of observerThresholdTokens at which the mid-run observer starts in the background. */
 const MID_RUN_SOFT_THRESHOLD_RATIO = 0.7;
 /**
@@ -821,7 +822,7 @@ export class MemoryOrchestrator {
 					});
 				} while (result.status === 'ran');
 			},
-			abortSignal,
+			{ abortSignal, waitForLock: true },
 		);
 	}
 
@@ -829,20 +830,20 @@ export class MemoryOrchestrator {
 		memory: BuiltMemory,
 		resourceId: string,
 		task: () => Promise<void>,
-		abortSignal?: AbortSignal,
+		options: { abortSignal?: AbortSignal; waitForLock?: boolean } = {},
 	): Promise<void> {
 		const id = crypto.randomUUID();
 		const previous = this.episodicMemoryTasksByResource.get(resourceId) ?? Promise.resolve();
 		const queued = (async () => {
 			await previous.catch(() => undefined);
-			await this.runEpisodicMemoryTask(memory, resourceId, id, task, abortSignal);
+			await this.runEpisodicMemoryTask(memory, resourceId, id, task, options);
 		})().finally(() => {
 			if (this.episodicMemoryTasksByResource.get(resourceId) === queued) {
 				this.episodicMemoryTasksByResource.delete(resourceId);
 			}
 		});
 		this.episodicMemoryTasksByResource.set(resourceId, queued);
-		const done = raceWithAbort(queued, abortSignal);
+		const done = raceWithAbort(queued, options.abortSignal);
 		this.backgroundTasks.track(done);
 		return await done;
 	}
@@ -852,19 +853,27 @@ export class MemoryOrchestrator {
 		resourceId: string,
 		holderId: string,
 		task: () => Promise<void>,
-		abortSignal?: AbortSignal,
+		options: { abortSignal?: AbortSignal; waitForLock?: boolean } = {},
 	): Promise<void> {
+		const { abortSignal, waitForLock = false } = options;
 		const taskLock = memory.episodic?.taskLock;
 		let lock: EpisodicMemoryTaskLockHandle | null = null;
 		try {
 			throwIfAborted(abortSignal);
 			if (taskLock) {
-				lock = await taskLock.acquire(resourceId, {
-					holderId,
-					ttlMs: this.config.observationalMemory?.lockTtlMs ?? DEFAULT_MEMORY_TASK_LOCK_TTL_MS,
-				});
+				do {
+					lock = await taskLock.acquire(resourceId, {
+						holderId,
+						ttlMs: this.config.observationalMemory?.lockTtlMs ?? DEFAULT_MEMORY_TASK_LOCK_TTL_MS,
+					});
+					if (!lock && waitForLock) {
+						await new Promise((resolve) =>
+							setTimeout(resolve, EPISODIC_MEMORY_LOCK_RETRY_DELAY_MS),
+						);
+						throwIfAborted(abortSignal);
+					}
+				} while (!lock && waitForLock);
 				if (!lock) return;
-				throwIfAborted(abortSignal);
 			}
 			await task();
 		} catch (error) {

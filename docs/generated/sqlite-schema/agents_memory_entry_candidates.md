@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_memory_entry_candidates" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "resourceId" varchar(255) NOT NULL, "threadId" varchar(255) NOT NULL, "sourceMessageId" varchar(36), "toolCallId" varchar(255) NOT NULL, "content" text NOT NULL, "evidenceText" text NOT NULL, "kind" varchar(32) NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('pending'), "attemptCount" smallint NOT NULL DEFAULT (0), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_memory_entry_candidates_kind" CHECK ("kind" IN ('explicit_remember', 'preference', 'decision', 'fact', 'correction')), CONSTRAINT "CHK_agents_memory_entry_candidates_status" CHECK ("status" IN ('pending', 'completed', 'failed')), CONSTRAINT "FK_b3d0f5fe54565580bc1f5febb6e" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_5123f71435736664d2676084a85" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE, CONSTRAINT "FK_ac7ada75df7cc8ced228921d5a9" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, CONSTRAINT "FK_f1857f6716aa258393dd6f33243" FOREIGN KEY ("sourceMessageId") REFERENCES "agents_messages" ("id") ON DELETE SET NULL)
+CREATE TABLE "agents_memory_entry_candidates" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "resourceId" varchar(255) NOT NULL, "threadId" varchar(255) NOT NULL, "sourceMessageId" varchar(36), "runId" varchar(255) NOT NULL, "toolCallId" varchar(255) NOT NULL, "content" text NOT NULL, "evidenceText" text NOT NULL, "kind" varchar(32) NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('pending'), "attemptCount" smallint NOT NULL DEFAULT (0), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_memory_entry_candidates_kind" CHECK ("kind" IN ('explicit_remember', 'preference', 'decision', 'fact', 'correction')), CONSTRAINT "CHK_agents_memory_entry_candidates_status" CHECK ("status" IN ('pending', 'completed', 'failed')), CONSTRAINT "FK_b3d0f5fe54565580bc1f5febb6e" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_5123f71435736664d2676084a85" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE, CONSTRAINT "FK_ac7ada75df7cc8ced228921d5a9" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, CONSTRAINT "FK_f1857f6716aa258393dd6f33243" FOREIGN KEY ("sourceMessageId") REFERENCES "agents_messages" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -23,6 +23,7 @@ CREATE TABLE "agents_memory_entry_candidates" ("id" varchar(36) PRIMARY KEY NOT 
 | id | varchar(36) |  | false | [agents_memory_entry_sources](agents_memory_entry_sources.md) |  |  |
 | kind | varchar(32) |  | false |  |  |  |
 | resourceId | varchar(255) |  | false |  | [agents_resources](agents_resources.md) |  |
+| runId | varchar(255) |  | false |  |  |  |
 | sourceMessageId | varchar(36) |  | true |  | [agents_messages](agents_messages.md) |  |
 | status | varchar(16) | 'pending' | false |  |  |  |
 | threadId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
@@ -46,10 +47,10 @@ CREATE TABLE "agents_memory_entry_candidates" ("id" varchar(36) PRIMARY KEY NOT 
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_26041282b197303ed83ec79ff0 | CREATE UNIQUE INDEX "IDX_26041282b197303ed83ec79ff0" ON "agents_memory_entry_candidates" ("agentId", "toolCallId")  |
 | IDX_5123f71435736664d2676084a8 | CREATE INDEX "IDX_5123f71435736664d2676084a8" ON "agents_memory_entry_candidates" ("resourceId")  |
 | IDX_6dc22e132cf1a34e5bca672b99 | CREATE INDEX "IDX_6dc22e132cf1a34e5bca672b99" ON "agents_memory_entry_candidates" ("agentId", "resourceId", "status", "createdAt", "id")  |
 | IDX_ac7ada75df7cc8ced228921d5a | CREATE INDEX "IDX_ac7ada75df7cc8ced228921d5a" ON "agents_memory_entry_candidates" ("threadId")  |
+| IDX_e3e49861a5452db63b036a2561 | CREATE UNIQUE INDEX "IDX_e3e49861a5452db63b036a2561" ON "agents_memory_entry_candidates" ("agentId", "runId", "toolCallId")  |
 | IDX_f1857f6716aa258393dd6f3324 | CREATE INDEX "IDX_f1857f6716aa258393dd6f3324" ON "agents_memory_entry_candidates" ("sourceMessageId")  |
 | sqlite_autoindex_agents_memory_entry_candidates_1 | PRIMARY KEY (id) |
 
@@ -73,6 +74,7 @@ erDiagram
   varchar_36_ id PK
   varchar_32_ kind
   varchar_255_ resourceId FK
+  varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
   varchar_255_ threadId FK

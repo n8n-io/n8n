@@ -93,6 +93,7 @@ export interface EpisodicMemoryCaptureCandidate {
 	resourceId: string;
 	threadId: string;
 	sourceMessageId: string | null;
+	runId: string;
 	toolCallId: string;
 	content: string;
 	evidenceText: string;

@@ -480,7 +480,7 @@ export class InMemoryMemory
 		candidate: NewEpisodicMemoryCaptureCandidate,
 	): Promise<EpisodicMemoryCaptureCandidate> {
 		const existing = this.episodicMemoryCaptureCandidates.find(
-			(row) => row.toolCallId === candidate.toolCallId,
+			(row) => row.runId === candidate.runId && row.toolCallId === candidate.toolCallId,
 		);
 		if (existing) return cloneEpisodicMemoryCaptureCandidate(existing);
 

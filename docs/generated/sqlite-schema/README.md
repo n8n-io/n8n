@@ -29,7 +29,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_workflow_dependency](agent_workflow_dependency.md) | 3 |  | table |
 | [agents](agents.md) | 14 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
-| [agents_memory_entry_candidates](agents_memory_entry_candidates.md) | 13 |  | table |
+| [agents_memory_entry_candidates](agents_memory_entry_candidates.md) | 14 |  | table |
 | [agents_memory_entry_cursors](agents_memory_entry_cursors.md) | 6 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
 | [agents_memory_entry_sources](agents_memory_entry_sources.md) | 10 |  | table |
@@ -632,6 +632,7 @@ erDiagram
   varchar_36_ id PK
   varchar_32_ kind
   varchar_255_ resourceId FK
+  varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
   varchar_255_ threadId FK

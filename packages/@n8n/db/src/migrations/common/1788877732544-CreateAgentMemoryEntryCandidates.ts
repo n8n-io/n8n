@@ -34,6 +34,9 @@ export class CreateAgentMemoryEntryCandidates1788877732544 implements Reversible
 				column('sourceMessageId')
 					.varchar(36)
 					.comment('Persisted message that contains the exact source evidence'),
+				column('runId')
+					.varchar(255)
+					.notNull.comment('Agent run that issued the memory capture tool call'),
 				column('toolCallId')
 					.varchar(255)
 					.notNull.comment('Model tool-call ID used to make enqueue replay-safe'),
@@ -54,7 +57,7 @@ export class CreateAgentMemoryEntryCandidates1788877732544 implements Reversible
 					.smallint.notNull.default(0)
 					.comment('Number of failed processing attempts'),
 			)
-			.withTimestamps.withIndexOn(['agentId', 'toolCallId'], true)
+			.withTimestamps.withIndexOn(['agentId', 'runId', 'toolCallId'], true)
 			.withIndexOn(['agentId', 'resourceId', 'status', 'createdAt', 'id'])
 			.withIndexOn('resourceId')
 			.withIndexOn('threadId')

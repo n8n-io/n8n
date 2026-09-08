@@ -11,6 +11,7 @@ import {
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from './episodic-memory-defaults';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
+import { saveMessagesToThread } from './memory-store';
 import { throwIfAborted } from '../../sdk/abort';
 import { redactText } from '../../sdk/guardrails';
 import { Tool } from '../../sdk/tool';
@@ -65,6 +66,7 @@ export function createFlagMemoryTool(opts: {
 		.output(FlagMemoryOutputSchema)
 		.handler(async ({ content, evidence, kind }, ctx): Promise<FlagMemoryOutput> => {
 			if (!ctx.toolCallId) throw new Error('Memory capture requires a tool-call ID.');
+			if (!ctx.runId) throw new Error('Memory capture requires a run ID.');
 			const source = findEvidenceSource(opts.list, evidence);
 			if (!source) {
 				throw new Error('Memory evidence must exactly match text from this conversation.');
@@ -72,10 +74,17 @@ export function createFlagMemoryTool(opts: {
 			const normalizedContent = normalizeEntryContent(content);
 			if (!normalizedContent) throw new Error('Memory content cannot be empty.');
 
+			await saveMessagesToThread(
+				opts.memory,
+				opts.persistence.threadId,
+				opts.persistence.resourceId,
+				[source],
+			);
 			await opts.memory.episodic.enqueueCaptureCandidate({
 				...opts.scope,
 				threadId: opts.persistence.threadId,
 				sourceMessageId: source.id,
+				runId: ctx.runId,
 				toolCallId: ctx.toolCallId,
 				content: normalizedContent,
 				evidenceText: redactText(evidence.trim()).text,

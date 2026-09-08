@@ -57,13 +57,14 @@ describe('AgentMemoryEntryCandidateRepository', () => {
 
 	async function enqueue(
 		toolCallId: string,
-		overrides: Partial<{ resourceId: string; threadId: string }> = {},
+		overrides: Partial<{ resourceId: string; threadId: string; runId: string }> = {},
 	) {
 		return await candidateRepository.enqueueCandidate({
 			agentId,
 			resourceId: overrides.resourceId ?? resourceId,
 			threadId: overrides.threadId ?? threadId,
 			sourceMessageId: null,
+			runId: overrides.runId ?? 'run-1',
 			toolCallId,
 			content: `Durable memory for ${toolCallId}`,
 			evidenceText: `Evidence for ${toolCallId}`,
@@ -74,6 +75,7 @@ describe('AgentMemoryEntryCandidateRepository', () => {
 	it('enqueues replayed tool calls once and reads pending rows by resource in order', async () => {
 		const first = await enqueue('call-1');
 		const replay = await enqueue('call-1');
+		const nextRun = await enqueue('call-1', { runId: 'run-2' });
 		const second = await enqueue('call-2');
 
 		const otherResourceId = uuid();
@@ -89,6 +91,9 @@ describe('AgentMemoryEntryCandidateRepository', () => {
 		await candidateRepository.update(first.id, {
 			createdAt: new Date('2026-05-12T10:00:00.000Z'),
 		});
+		await candidateRepository.update(nextRun.id, {
+			createdAt: new Date('2026-05-12T10:30:00.000Z'),
+		});
 		await candidateRepository.update(second.id, {
 			createdAt: new Date('2026-05-12T11:00:00.000Z'),
 		});
@@ -98,6 +103,7 @@ describe('AgentMemoryEntryCandidateRepository', () => {
 			candidateRepository.findPendingForResource(agentId, resourceId, 10),
 		).resolves.toEqual([
 			expect.objectContaining({ id: first.id }),
+			expect.objectContaining({ id: nextRun.id }),
 			expect.objectContaining({ id: second.id }),
 		]);
 	});
