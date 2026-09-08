@@ -1,11 +1,22 @@
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import { ref } from 'vue';
 import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router';
+import { GLOBAL_MEMBER_SCOPES, GLOBAL_OWNER_SCOPES, type Scope } from '@n8n/permissions';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { mockedStore } from '@/__tests__/utils';
+import { VIEWS } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { InstanceAiModule } from '../module.descriptor';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from '../constants';
 
 vi.mock('../composables/useInstanceAiAvailability', () => ({
 	useInstanceAiAvailable: () => ref(true),
 	useInstanceAiReady: () => ref(true),
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
 const stub = { render: () => null };
@@ -27,6 +38,7 @@ function createTestRouter() {
 	return createRouter({
 		history: createMemoryHistory(),
 		routes: [
+			{ path: '/home', name: VIEWS.HOMEPAGE, component: stub },
 			...moduleRoutes.filter((route) => route.path.startsWith('/')),
 			{
 				path: '/settings',
@@ -36,6 +48,24 @@ function createTestRouter() {
 		],
 	});
 }
+
+function setGlobalScopes(scopes: Scope[]) {
+	useRBACStore().globalScopes = [...scopes];
+}
+
+let posthogStore: ReturnType<typeof mockedStore<typeof usePostHog>>;
+
+function setOpenWorkflowInAssistantTreatment(isTreatment: boolean) {
+	posthogStore.isVariantEnabled.mockReturnValue(isTreatment);
+}
+
+beforeEach(() => {
+	vi.clearAllMocks();
+	setActivePinia(createTestingPinia({ stubActions: false }));
+	posthogStore = mockedStore(usePostHog);
+	setOpenWorkflowInAssistantTreatment(false);
+	setGlobalScopes(GLOBAL_OWNER_SCOPES);
+});
 
 describe('InstanceAiModule legacy route redirects', () => {
 	it('redirects /instance-ai to the /assistant view', async () => {
@@ -64,5 +94,65 @@ describe('InstanceAiModule legacy route redirects', () => {
 
 		expect(router.currentRoute.value.name).toBe(INSTANCE_AI_SETTINGS_VIEW);
 		expect(router.currentRoute.value.path).toBe('/settings/assistant');
+	});
+});
+
+describe('InstanceAiModule settings page access', () => {
+	const isSettingsPageAvailable = () => InstanceAiModule.settingsPages?.[0]?.available;
+
+	describe('a viewer who can manage Instance AI', () => {
+		it('is offered the settings page', () => {
+			expect(isSettingsPageAvailable()).toBe(true);
+		});
+
+		it('reaches the settings page', async () => {
+			const router = createTestRouter();
+			await router.push('/settings/assistant');
+
+			expect(router.currentRoute.value.name).toBe(INSTANCE_AI_SETTINGS_VIEW);
+		});
+	});
+
+	describe('a member, for whom the page renders no sections', () => {
+		beforeEach(() => {
+			setGlobalScopes(GLOBAL_MEMBER_SCOPES);
+		});
+
+		it('is not offered the settings page', () => {
+			expect(isSettingsPageAvailable()).toBe(false);
+		});
+
+		it('is sent to the homepage instead of a page with only a header', async () => {
+			const router = createTestRouter();
+			await router.push('/settings/assistant');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+		});
+
+		it('is sent to the homepage from the legacy settings path too', async () => {
+			const router = createTestRouter();
+			await router.push('/settings/instance-ai');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+		});
+	});
+
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	describe('a member in the openWorkflowInAssistant treatment', () => {
+		beforeEach(() => {
+			setGlobalScopes(GLOBAL_MEMBER_SCOPES);
+			setOpenWorkflowInAssistantTreatment(true);
+		});
+
+		it('is offered the settings page, which holds their default editor row', () => {
+			expect(isSettingsPageAvailable()).toBe(true);
+		});
+
+		it('reaches the settings page', async () => {
+			const router = createTestRouter();
+			await router.push('/settings/assistant');
+
+			expect(router.currentRoute.value.name).toBe(INSTANCE_AI_SETTINGS_VIEW);
+		});
 	});
 });
