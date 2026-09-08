@@ -333,11 +333,12 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 		) {
 			seenIds.add(result.workflowId);
 			const name =
-				(typeof result.workflowName === 'string' ? result.workflowName : undefined) ??
-				(typeof (tc.args as Record<string, unknown>)?.name === 'string'
-					? ((tc.args as Record<string, unknown>).name as string)
-					: undefined) ??
-				'Untitled';
+				firstNonBlank(
+					typeof result.workflowName === 'string' ? result.workflowName : undefined,
+					typeof (tc.args as Record<string, unknown>)?.name === 'string'
+						? ((tc.args as Record<string, unknown>).name as string)
+						: undefined,
+				) ?? 'Untitled';
 			artifacts.push({
 				type: 'workflow',
 				resourceId: result.workflowId,
@@ -371,7 +372,7 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 			artifacts.push({
 				type: 'data-table',
 				resourceId: tableId,
-				name: tableName ?? 'Untitled',
+				name: firstNonBlank(tableName) ?? 'Untitled',
 				projectId: tableProjectId,
 				completedAt: tc.completedAt,
 			});
