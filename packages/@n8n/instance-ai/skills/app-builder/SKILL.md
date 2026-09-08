@@ -36,7 +36,9 @@ it into a published version.
    `workspace_str_replace_file`. The template's `AI_RULES.md` describes the
    layout. Do not run `npm run dev`; there is no dev server.
 3. `apps(action="build", appId)`. Success returns `url`, `versionId`,
-   `namespace`, `projectId`. Give the user the `url`.
+   `namespace`, `projectId`. Give the user the `url`. You cannot see the
+   page: after a styling change, grep the built CSS in `dist/assets/` for the
+   class you added to confirm it compiled, and do not claim visual results.
 4. On `{ error, stage, message, log }` read `log` (last 4 KB of the build
    output), fix the cause, build again. Do not retry the same build without a
    change.

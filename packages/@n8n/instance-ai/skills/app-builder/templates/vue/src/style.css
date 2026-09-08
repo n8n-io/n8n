@@ -7,12 +7,19 @@
  * with the n8n tokens: every utility compiles to var(--…) and switches theme
  * with the page. There is no Tailwind default color, spacing, font, radius or
  * shadow left; use the names below or add a token mapping here.
+ *
+ * theme.css goes into the base layer so its element rules (h1 { color }, a,
+ * code, …) lose to the utilities layer; unlayered rules would beat every
+ * utility. `reference` keeps Tailwind from emitting the mapped keys on :root,
+ * where --color-danger etc. collide with the legacy hooks theme.css reads
+ * (--color--danger: var(--color-danger, …)) and would form a var() cycle.
  */
-@import '@n8n/design-system/theme.css';
+@layer theme, base, utilities;
+@import '@n8n/design-system/theme.css' layer(base);
 @import 'tailwindcss/theme' layer(theme);
 @import 'tailwindcss/utilities' layer(utilities);
 
-@theme inline {
+@theme inline reference {
 	--color-*: initial;
 	--spacing: initial;
 	--spacing-*: initial;

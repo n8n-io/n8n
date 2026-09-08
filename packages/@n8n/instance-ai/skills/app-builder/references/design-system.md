@@ -5,11 +5,16 @@ utility resolves to an n8n design-system token (`var(--…)` from
 `@n8n/design-system/theme.css`). `src/style.css` holds the whole setup:
 
 ```css
-@import '@n8n/design-system/theme.css';          /* tokens, reset, fonts, dark mode */
+@layer theme, base, utilities;
+@import '@n8n/design-system/theme.css' layer(base); /* tokens, reset, fonts, dark mode */
 @import 'tailwindcss/theme' layer(theme);
 @import 'tailwindcss/utilities' layer(utilities);
-@theme inline { --color-*: initial; … --color-brand: var(--background--brand); … }
+@theme inline reference { --color-*: initial; … --color-brand: var(--background--brand); … }
 ```
+
+`theme.css` sits in the `base` layer so its element rules (`h1 { color }`, `a`,
+`code`) lose to any utility; `reference` keeps the mapped names out of `:root`,
+where they would collide with the legacy hooks `theme.css` reads.
 
 The `@theme` block removes Tailwind's own palette and scales (colors, spacing,
 fonts, sizes, radius, shadows) and puts the n8n tokens in their place. So
@@ -45,8 +50,8 @@ variants (`sm:`, `md:`, `lg:`) work as usual.
 | Utility name | n8n token | Use |
 |---|---|---|
 | `text` | `--text-color` | default text (`text-text`) |
-| `text-subtle`, `text-subtler`, `text-disabled`, `text-inverse` | `--text-color--subtle` … | secondary text |
-| `text-success`, `text-warning`, `text-danger`, `text-info` | `--text-color--success` … | status text |
+| `text-subtle`, `text-subtler`, `text-disabled`, `text-inverse` | `--text-color--subtle` … | secondary text (`text-text-subtle`) |
+| `text-success`, `text-warning`, `text-danger`, `text-info` | `--text-color--success` … | status text (`text-text-danger`; a bare `text-danger` is the palette red below) |
 | `surface` | `--background--surface` | cards, panels (white / dark grey) |
 | `subtle` | `--background--subtle` | page background, inset areas |
 | `hover`, `active`, `disabled`, `inverse` | `--background--hover` … | interaction states of neutral surfaces |
