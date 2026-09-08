@@ -19,13 +19,12 @@ import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
-import WorkflowCallersDropdown from '@/features/ndv/panel/components/WorkflowCallersDropdown.vue';
 import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
 import { N8nIcon, N8nSegmentControl, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
-import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 // Types
@@ -124,10 +123,6 @@ const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
 });
-
-const isSubWorkflowTrigger = computed(
-	() => node.value?.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-);
 
 const hasAiMetadata = computed(() => {
 	if (isNodeRunning.value || !workflowRunData.value) {
@@ -339,7 +334,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					:has-stale-data="staleData"
 					:has-pin-data="pinnedData.hasData.value"
 				/>
-				<WorkflowCallersDropdown v-if="isSubWorkflowTrigger" :workflow-id="workflowId" />
 			</div>
 		</template>
 
