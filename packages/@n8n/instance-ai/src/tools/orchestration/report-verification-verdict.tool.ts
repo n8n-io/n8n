@@ -140,24 +140,6 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 			// `verified` verdict on a partially covered run must not upgrade it.
 			const claim = (await context.workflowTaskService.getBuildOutcome(input.workItemId))
 				?.verification?.claim;
-			if (input.verdict === 'verified' && claim && claim.level !== 'verified') {
-				// Advisory: a throwing sink must not fail the verdict report.
-				try {
-					context.trackTelemetry?.('Builder verification claim downgraded', {
-						thread_id: context.threadId,
-						run_id: context.runId,
-						work_item_id: input.workItemId,
-						workflow_id: input.workflowId,
-						claim_level: claim.level,
-						nodes_not_reached: claim.nodesNotReached.length,
-						simulated_nodes: claim.simulatedNodes.length,
-						unproven_targets: claim.unprovenTargets.length,
-					});
-				} catch {
-					// intentional: claim telemetry is advisory
-				}
-			}
-
 			const remediation = input.remediation ?? defaultRemediationForVerdict(input);
 			const forcedTerminalVerdict =
 				remediation && !remediation.shouldEdit
