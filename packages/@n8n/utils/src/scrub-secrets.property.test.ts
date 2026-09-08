@@ -1,32 +1,25 @@
 import fc from 'fast-check';
 
-import { scrubSecretsInText } from './scrub-secrets';
+import { SECRET_KEYS, scrubSecretsInText } from './scrub-secrets';
 
 const ALNUM = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const alnum = (minLength: number, maxLength: number) =>
 	fc.stringOf(fc.constantFrom(...ALNUM), { minLength, maxLength });
 
-// The documented vocabulary, optionally as a snake/kebab/dotted compound in any case.
-const SECRET_WORDS = [
-	'password',
-	'passwd',
-	'secret',
-	'credentials',
-	'credential',
-	'api_key',
-	'api-key',
-	'apikey',
-	'authorization',
-	'access_token',
-	'refresh_token',
-	'id_token',
-	'session_token',
-	'auth_token',
-	'client_secret',
-	'private_key',
-	'session_cookie',
-	'token',
-];
+// Every concrete spelling of the SECRET_KEYS vocabulary, so a word added to the
+// scrubber is sampled here without a second list to maintain. An alternative
+// with a construct this expander does not know stays a raw pattern string, and
+// the property then fails on it instead of skipping it.
+const expandAlternative = (alternative: string): string[] => {
+	if (alternative.includes('[_-]?')) {
+		return ['', '_', '-'].map((joiner) => alternative.replace('[_-]?', joiner));
+	}
+	if (alternative.endsWith('s?')) {
+		return [alternative.slice(0, -2), alternative.slice(0, -1)];
+	}
+	return [alternative];
+};
+const SECRET_WORDS = SECRET_KEYS.split('|').flatMap(expandAlternative);
 const keyArb = fc
 	.tuple(
 		fc.option(fc.tuple(alnum(1, 12), fc.constantFrom('_', '-', '.')), { nil: undefined }),

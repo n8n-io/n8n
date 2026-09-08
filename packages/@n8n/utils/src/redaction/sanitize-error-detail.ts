@@ -4,7 +4,8 @@ import { scrubSecretsInText } from '../scrub-secrets';
 // An apostrophe inside a word also stays inside the query. A bare URL ends at
 // whitespace or an angle bracket. The optional query group matches URLs with and
 // without queries in one pass.
-const QUOTED_URL_QUERY = /(["'])(https?:\/\/(?:(?!\1)[^\s?<>])+)(?:\?(?:\\.|(?!\1(?!\w))[^\s<>\\])*)?/gi;
+const QUOTED_URL_QUERY =
+	/(["'])(https?:\/\/(?:(?!\1)[^\s?<>])+)(?:\?(?:\\.|(?!\1(?!\w))[^\s<>\\])*)?/gi;
 const BARE_URL_QUERY = /(https?:\/\/[^\s?<>]+)(?:\?[^\s<>]*)?/gi;
 
 export function sanitizeErrorDetail(message: string, maxLength: number): string {
