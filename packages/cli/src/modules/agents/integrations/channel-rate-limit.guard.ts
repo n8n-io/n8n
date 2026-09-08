@@ -10,7 +10,7 @@ export class ChannelRateLimitGuard {
 		if (!connectionId) return false;
 		const until = this.blockedUntilMs.get(connectionId);
 		if (until === undefined) return false;
-		if (nowMs > until) {
+		if (nowMs >= until) {
 			this.blockedUntilMs.delete(connectionId);
 			return false;
 		}
