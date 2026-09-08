@@ -19,9 +19,16 @@ export interface BackgroundJobToolsOptions {
 	availableSubAgents: Array<{ id: string; name: string; useWhen?: string }>;
 	projectId: string;
 	parentAgentId: string;
+	// The workspace handle is principal-scoped, not thread-scoped. The sandbox
+	// outlives the parent turn, so capture it when the tool is built.
 	runContext: Pick<
 		SubAgentRunContext,
-		'credentialProvider' | 'runType' | 'workflowToolExecutionMode' | 'user' | 'instrumentation'
+		| 'credentialProvider'
+		| 'runType'
+		| 'workflowToolExecutionMode'
+		| 'user'
+		| 'instrumentation'
+		| 'parentWorkspaceHandle'
 	>;
 }
 
@@ -111,6 +118,12 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 			}
 
 			const sandboxScope = decodeAgentSandboxHostMetadata(ctx.persistence?.hostMetadata);
+			if (!sandboxScope || sandboxScope.projectId !== options.projectId) {
+				return {
+					status: 'rejected',
+					note: 'Background jobs need a valid parent identity; none is active.',
+				};
+			}
 			const receipt = await options.backgroundRunner.spawn(
 				{
 					subAgentId: source.agentId,
@@ -124,9 +137,7 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 						: {}),
 					parentThreadId,
 					parentResourceId,
-					...(sandboxScope?.projectId === options.projectId
-						? { parentSandboxPrincipalHash: sandboxScope.principalHash }
-						: {}),
+					parentSandboxPrincipalHash: sandboxScope.principalHash,
 				},
 				{
 					projectId: options.projectId,
