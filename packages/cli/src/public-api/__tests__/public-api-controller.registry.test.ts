@@ -1,4 +1,5 @@
 import { Z } from '@n8n/api-types';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	ApiResponse,
 	Body,
@@ -29,6 +30,7 @@ describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
 	const lastActiveAtService = mock<LastActiveAtService>();
 	const eventService = mock<EventService>();
+	const authenticatedUser = mock<User>({ id: 'user-1' });
 
 	function activate(): express.Express {
 		const app = express();
@@ -51,7 +53,12 @@ describe('PublicApiControllerRegistry', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		authStrategyRegistry.authenticate.mockResolvedValue(true);
+		// mirrors the real strategies, which set `req.user` on success
+		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
+			req.user = authenticatedUser;
+			return true;
+		});
+		lastActiveAtService.updateLastActiveIfStale.mockResolvedValue(undefined);
 		Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
 	});
 
@@ -108,6 +115,29 @@ describe('PublicApiControllerRegistry', () => {
 		const response = await request(activate()).get('/widgets').expect(200);
 
 		expect(response.headers.deprecation).toBeUndefined();
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'public-api-invoked',
+			expect.objectContaining({ method: 'GET', path: '/widgets' }),
+		);
+	});
+
+	it('reports the mounted path for a route below the controller base path', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate()).get('/widgets/w-1').expect(200);
+
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'public-api-invoked',
+			expect.objectContaining({ method: 'GET', path: '/widgets/w-1' }),
+		);
 	});
 
 	describe('validation failures', () => {

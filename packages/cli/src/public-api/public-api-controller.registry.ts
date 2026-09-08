@@ -37,6 +37,16 @@ function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params
 	return output.data[key];
 }
 
+/**
+ * Express strips the controller mount prefix from `req.path`, so `POST /role-mapping-rules`
+ * arrives as `/`. Prepend the prefix to keep the full route in telemetry, and drop the
+ * trailing slash a base-path route would otherwise add.
+ */
+function fullRoutePath(req: Request): string {
+	const path = req.baseUrl + req.path;
+	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
 @Service()
 export class PublicApiControllerRegistry {
 	constructor(
@@ -170,7 +180,7 @@ export class PublicApiControllerRegistry {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
 				this.eventService.emit('public-api-invoked', {
 					userId,
-					path: req.path,
+					path: fullRoutePath(req),
 					method: req.method,
 					apiVersion,
 					userAgent: req.headers['user-agent'],
