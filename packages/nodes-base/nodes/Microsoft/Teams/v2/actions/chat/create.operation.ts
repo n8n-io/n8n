@@ -130,7 +130,20 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			description: 'An expression on this field returned a single value. Return a list instead.',
 		});
 	}
-	const rows = Array.isArray(raw) ? (raw as IDataObject[]) : [];
+	const rawRows = Array.isArray(raw) ? raw : [];
+	// Every row must be an object before the reads below. An expression can put `null` or a
+	// plain string in the list, and `rows[n].tenantId` would then throw a bare TypeError.
+	if (rawRows.some((row) => typeof row !== 'object' || row === null || Array.isArray(row))) {
+		throw new NodeOperationError(
+			node,
+			'Other Participants contains an entry that is not a participant',
+			{
+				itemIndex: i,
+				description: 'Each entry must be a participant. Check the expression on this field.',
+			},
+		);
+	}
+	const rows = rawRows as IDataObject[];
 
 	// Graph needs the initiator in `members`, and no author (or AI agent) knows that, so the
 	// node adds them. Uncached, one request per item, as `task:getAll` already does.

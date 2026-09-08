@@ -101,6 +101,21 @@ describe('Microsoft Teams V2, chat create participant rows', () => {
 		expect(postBodies()).toEqual([]);
 	});
 
+	// An expression can put a non-object into the list. Reading `.tenantId` off it would throw a
+	// bare TypeError instead of a node error naming the field.
+	it.each([
+		['a null entry', [null]],
+		['a plain string entry', ['jane@example.com']],
+		['a nested list entry', [[]]],
+	])('refuses a participant list holding %s', async (_name, members) => {
+		respond();
+
+		await expect(run({ chatType: 'group', 'members.member': members })).rejects.toThrow(
+			'Other Participants contains an entry that is not a participant',
+		);
+		expect(postBodies()).toEqual([]);
+	});
+
 	it('refuses a chat whose only participant is the signed-in user', async () => {
 		respond({ [`/v1.0/users/${encodeURIComponent(ME_UPN)}`]: { id: CALLER } });
 
