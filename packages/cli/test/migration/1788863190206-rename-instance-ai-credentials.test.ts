@@ -83,6 +83,16 @@ describe('RenameInstanceAiCredentials Migration', () => {
 		await context.queryRunner.release();
 	}
 
+	async function clearAssignment(credentialUseId: string): Promise<void> {
+		const context = createTestMigrationContext(dataSource);
+		const assignments = context.escape.tableName('instance_credential_assignment');
+		await context.runQuery(
+			`DELETE FROM ${assignments} WHERE "credentialUseId" = :credentialUseId`,
+			{ credentialUseId },
+		);
+		await context.queryRunner.release();
+	}
+
 	async function getName(id: string): Promise<string | undefined> {
 		const context = createTestMigrationContext(dataSource);
 		const credentials = context.escape.tableName('credentials_entity');
@@ -156,22 +166,32 @@ describe('RenameInstanceAiCredentials Migration', () => {
 		expect(await getName(assignedWithOwnName)).toBe('My provider key');
 	});
 
-	it('restores the old names on rollback', async () => {
-		const model = randomUUID();
+	it('restores the old names on rollback, even after the assignment was replaced', async () => {
+		const renamed = randomUUID();
+		const createdByNewVersion = randomUUID();
+		const projectCredential = randomUUID();
 		await seed([
 			{
-				id: model,
+				id: renamed,
 				name: 'AI Assistant model',
 				usageScope: 'instance',
 				assignedTo: 'instance-ai:model',
 			},
+			{ id: projectCredential, name: 'n8n Assistant model', usageScope: 'project' },
 		]);
 
 		await runSingleMigration(MIGRATION_NAME);
-		expect(await getName(model)).toBe('n8n Assistant model');
+		expect(await getName(renamed)).toBe('n8n Assistant model');
+
+		// An admin replaced the connection after the upgrade: the renamed row lost
+		// its assignment and the new version created its successor under the new name.
+		await clearAssignment('instance-ai:model');
+		await seed([{ id: createdByNewVersion, name: 'n8n Assistant model', usageScope: 'instance' }]);
 
 		await undoLastSingleMigration();
 
-		expect(await getName(model)).toBe('AI Assistant model');
+		expect(await getName(renamed)).toBe('AI Assistant model');
+		expect(await getName(createdByNewVersion)).toBe('AI Assistant model');
+		expect(await getName(projectCredential)).toBe('n8n Assistant model');
 	});
 });

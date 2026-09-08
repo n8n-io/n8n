@@ -2,6 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const CREDENTIALS_TABLE = 'credentials_entity';
 const ASSIGNMENTS_TABLE = 'instance_credential_assignment';
+const INSTANCE_USAGE_SCOPE = 'instance';
 
 // Pinned here, not read from the settings service: the service names and
 // credential-use ids can change again later, and this migration must keep
@@ -30,20 +31,26 @@ const RENAMES: ReadonlyArray<{ from: string; to: string; credentialUseIds: strin
  * name when it updates the connection, so without this only fresh installs would
  * carry the new name.
  *
- * Ownership is established through the Instance AI credential assignment, not
+ * `up` establishes ownership through the Instance AI credential assignment, not
  * the name alone: an admin can create instance credentials with any name through
  * the API, and those must keep theirs.
+ *
+ * `down` cannot rely on the assignments: an admin may have cleared or replaced a
+ * connection since `up` ran, which leaves the renamed row unassigned. It restores
+ * every instance credential that carries a new name instead. Only this version
+ * writes those names, so that set is the renamed rows plus any connection the
+ * new version created, and both need the old name once it is rolled back.
  */
 export class RenameInstanceAiCredentials1788863190206 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		for (const { from, to, credentialUseIds } of RENAMES) {
-			await this.rename(context, from, to, credentialUseIds);
+			await this.renameAssigned(context, from, to, credentialUseIds);
 		}
 	}
 
 	async down(context: MigrationContext) {
-		for (const { from, to, credentialUseIds } of RENAMES) {
-			await this.rename(context, to, from, credentialUseIds);
+		for (const { from, to } of RENAMES) {
+			await this.renameInstanceScoped(context, to, from);
 		}
 	}
 
@@ -51,7 +58,7 @@ export class RenameInstanceAiCredentials1788863190206 implements ReversibleMigra
 	 * All values are pinned literals, so they are inlined rather than bound: the
 	 * credential-use ids contain `:` and would otherwise look like named parameters.
 	 */
-	private async rename(
+	private async renameAssigned(
 		{ escape, runQuery }: MigrationContext,
 		from: string,
 		to: string,
@@ -68,6 +75,21 @@ export class RenameInstanceAiCredentials1788863190206 implements ReversibleMigra
 		await runQuery(
 			`UPDATE ${credentials} SET ${name} = '${to}' WHERE ${name} = '${from}' AND ${id} IN ` +
 				`(SELECT ${credentialId} FROM ${assignments} WHERE ${credentialUseId} IN (${useIdList}))`,
+		);
+	}
+
+	private async renameInstanceScoped(
+		{ escape, runQuery }: MigrationContext,
+		from: string,
+		to: string,
+	) {
+		const credentials = escape.tableName(CREDENTIALS_TABLE);
+		const name = escape.columnName('name');
+		const usageScope = escape.columnName('usageScope');
+
+		await runQuery(
+			`UPDATE ${credentials} SET ${name} = '${to}' WHERE ${name} = '${from}' ` +
+				`AND ${usageScope} = '${INSTANCE_USAGE_SCOPE}'`,
 		);
 	}
 }
