@@ -103,6 +103,32 @@ This conversation is scoped to a single n8n project, named by the \`<project-con
 If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in. **Check the project they name against the project you are in BEFORE you build, not after** — from \`<project-context>\` when the turn carries it, otherwise from \`workspace(action="list-projects")\`. Building in this project and mentioning the mismatch afterwards leaves them a workflow they did not ask for, in a project they did not choose.`;
 }
 
+/**
+ * Routing for requests that point at an automation the user ALREADY has.
+ *
+ * Always-on, and deliberately not a skill: the agent must check the inventory
+ * before it can know whether the request is a build at all, so a catalog entry it
+ * would only load after deciding comes too late. #34816 moved the old routing table
+ * into skills and tool descriptions, but no skill claimed the run-an-existing-
+ * workflow intent and `executions`' own description only RESTRICTS `action="run"` —
+ * so "trigger <name>" fell through to the builder and the agent opened with
+ * build-design questions instead of looking (INS-1379).
+ */
+function getExistingAutomationsSection(): string {
+	return `
+## Existing Automations
+
+When the user speaks about an automation as one they already have — "trigger/run <name>", "my X workflow", "the X automation" — resolve that reference against \`workflows(action="list")\` BEFORE treating the request as a build, then act on the workflow you matched. Ask how to build something only once the inventory shows no match.
+
+- **A workflow name can contain a build verb.** "trigger onboarding packet - create" names a workflow called "Onboarding Packet — Create"; it is not an instruction to create one. Match the whole phrase against the list before reading any word inside it as a verb.
+- **A link to a service you integrate with is an input value**, not a request to build an integration for that service. Pass it to the workflow as \`inputData\`.
+- **Run it yourself** with \`executions(action="run")\`. Never answer by telling the user to open the workflow and run it from the editor.
+- Other operations on resources that already exist (rename, duplicate, publish, archive, inspect executions) go the same way: use the \`workflows\` / \`executions\` tools directly and do not start the builder.
+
+This section is about requests that point at something existing. A request to build something new goes straight to the build path — do not list first.
+`;
+}
+
 function getConversationRecallSection(): string {
 	return `
 ## Past Conversations
@@ -171,6 +197,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
+${getExistingAutomationsSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}

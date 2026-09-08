@@ -345,6 +345,9 @@ export function createExecutionsTool(context: InstanceAiContext) {
 		.description(
 			'Manage workflow executions — list, inspect, run, debug, get node output, ' +
 				'get resolved node parameters for a past run, and stop. ' +
+				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
+				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+				'do not treat such a request as a request to build something. ' +
 				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
 				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval.',
 		)
