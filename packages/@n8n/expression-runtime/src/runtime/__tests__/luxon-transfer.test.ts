@@ -1,4 +1,4 @@
-import { DateTime, Duration, Interval } from 'luxon';
+import { DateTime, Duration, Interval, Settings } from 'luxon';
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -25,6 +25,21 @@ describe('luxon transfer', () => {
 
 			expect(result.isValid).toBe(true);
 			expect(result.zone.type).toBe('system');
+		});
+
+		it('should keep the system zone when the default zone is a named zone', () => {
+			const previous = Settings.defaultZone;
+			Settings.defaultZone = 'Asia/Tokyo';
+			try {
+				const result = unwrapLuxonSentinels(
+					dateTimeToSentinel(DateTime.now().setZone('system')),
+				) as DateTime;
+
+				expect(result.isValid).toBe(true);
+				expect(result.zone.type).toBe('system');
+			} finally {
+				Settings.defaultZone = previous;
+			}
 		});
 
 		it('should keep the units of a duration', () => {
@@ -195,6 +210,19 @@ describe('luxon transfer', () => {
 
 			expect(result.n).toBe(1);
 			expect(result.self).toBe(result);
+		});
+
+		it('should keep the holes of a sparse array', () => {
+			const value = new Array<unknown>(3);
+			value[0] = 1;
+			value[2] = 3;
+
+			const result = unwrapLuxonSentinels(value) as unknown[];
+
+			expect(result).toHaveLength(3);
+			expect(1 in result).toBe(false);
+			expect(result[0]).toBe(1);
+			expect(result[2]).toBe(3);
 		});
 	});
 });

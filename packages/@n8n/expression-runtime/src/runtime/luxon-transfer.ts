@@ -197,10 +197,12 @@ export function rebuildDateTime(sentinel: DateTimeSentinel): DateTime {
 	if (typeof isoString !== 'string') {
 		return DateTime.invalid(...invalidArguments(sentinel));
 	}
-	const zone = acceptedZoneName(sentinel.__zone);
+	// A marker without a zone name came from a value in the system zone. Name the
+	// system zone, because the default zone here is the timezone of the workflow.
+	const zone = acceptedZoneName(sentinel.__zone) ?? 'local';
 	// Do not pass `setZone`. With `setZone`, luxon takes the zone from the offset
 	// in the ISO string and drops the zone name the marker carries.
-	return zone === undefined ? DateTime.fromISO(isoString) : DateTime.fromISO(isoString, { zone });
+	return DateTime.fromISO(isoString, { zone });
 }
 
 export function rebuildDuration(sentinel: DurationSentinel): Duration {
@@ -253,9 +255,12 @@ function unwrapValue(value: unknown, seen: Map<object, unknown>): unknown {
 	if (typeof value !== 'object') return value;
 	if (seen.has(value)) return seen.get(value);
 	if (Array.isArray(value)) {
-		const result: unknown[] = [];
+		const result: unknown[] = new Array<unknown>(value.length);
 		seen.set(value, result);
-		for (const item of value) result.push(unwrapValue(item, seen));
+		// `forEach` steps over the holes of a sparse array, which keeps it sparse.
+		value.forEach((item, index) => {
+			result[index] = unwrapValue(item, seen);
+		});
 		return result;
 	}
 	if (!isPlainObject(value)) return value;
