@@ -21,7 +21,7 @@ import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
 import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
-import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 // Width comes from the shared constant so canvas placement and tidy-up layout

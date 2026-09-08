@@ -16,7 +16,8 @@ import {
 } from '../canvas.types';
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '@/app/constants';
-import { AGENT_NODE_SIZE, DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 
 vi.mock('@vue-flow/core');
 
@@ -260,6 +261,28 @@ describe('useCanvasLayout', () => {
 			height: AGENT_NODE_SIZE[1],
 		});
 		expect(node.y + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.y + AGENT_NODE_SIZE[1] / 2);
+	});
+
+	test('should keep a measured agent card on the grid with its handle on the row axis', () => {
+		const nodes = [
+			createCanvasGraphNode({ id: 'node' }),
+			createCanvasGraphNode({
+				id: 'agent',
+				data: { render: { type: CanvasNodeRenderType.Agent, options: {} } },
+				dimensions: { width: AGENT_NODE_SIZE[0], height: 356 },
+			}),
+		];
+
+		const { layout } = createTestSetup(nodes, [['node', 'agent']]);
+		const result = layout('all');
+		const node = result.nodes.find(({ id }) => id === 'node');
+		const agent = result.nodes.find(({ id }) => id === 'agent');
+
+		assert(node);
+		assert(agent);
+		// The card's handle sits on the grid line nearest its center: 176px, not 178px.
+		expect(agent.y % GRID_SIZE).toBe(0);
+		expect(agent.y + 176).toBe(node.y + DEFAULT_NODE_SIZE[1] / 2);
 	});
 
 	test('should calculate dimensions for configurable nodes with missing dimensions', () => {

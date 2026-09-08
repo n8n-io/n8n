@@ -273,15 +273,12 @@ const {
 	onNodeMouseLeave,
 } = vueFlow;
 
-const agentNodeGeometry = useCanvasAgentNodeGeometry({
+useCanvasAgentNodeGeometry({
 	canvasId: props.id,
 	getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 	setNodePosition: (id, position) =>
 		workflowDocumentStore.value.setNodePositionById(id, [position.x, position.y]),
 	onNodesChange,
-	getSourcePosition: (id) => props.nodes.find((node) => node.id === id)?.position,
-	getRenderedNode: (id) => findNode(id),
-	setRenderedPosition: (id, position) => vueFlow.updateNode(id, { position }),
 });
 const {
 	getIncomingNodes,
@@ -793,11 +790,7 @@ function onNodeDrag(event: NodeDragEvent) {
 }
 
 function onNodeDragStop(event: NodeDragEvent) {
-	const moves = agentNodeGeometry.snapDraggedNodeMoves(
-		event.node,
-		groupDrag.processNodeDragStop(event),
-		event.nodes,
-	);
+	const moves = groupDrag.processNodeDragStop(event);
 	if (moves.length > 0) commitManualNodePositions(moves);
 }
 

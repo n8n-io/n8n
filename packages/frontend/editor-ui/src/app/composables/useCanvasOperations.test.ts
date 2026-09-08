@@ -123,12 +123,8 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
-import {
-	AGENT_NODE_SIZE,
-	DEFAULT_NODE_SIZE,
-	GRID_SIZE,
-	HORIZONTAL_NODE_STEP,
-} from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE, HORIZONTAL_NODE_STEP } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('n8n-workflow')>();
@@ -706,7 +702,7 @@ describe('useCanvasOperations', () => {
 			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE, version: 1 });
 			const agent = createTestNode({
 				id: 'agent',
-				position: [112, 57],
+				position: [112, 64],
 				type: MESSAGE_AN_AGENT_NODE_TYPE,
 				typeVersion: 2,
 			});
@@ -720,7 +716,8 @@ describe('useCanvasOperations', () => {
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position[1] + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.position[1] + 206 / 2);
+			// The 206px card's handle sits on the grid line at 96px, not at 103px.
+			expect(position[1] + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.position[1] + 96);
 		});
 
 		it('should place the node below the last interacted with node if it has non-main outputs', () => {
