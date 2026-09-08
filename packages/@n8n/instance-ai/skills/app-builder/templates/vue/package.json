@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "vue-tsc --noEmit && vite build",
     "typecheck": "vue-tsc -b"
   },
   "dependencies": {
+    "@n8n/app-sdk": "file:vendor/n8n-app-sdk.tgz",
     "@ark-ui/vue": "^5.39.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

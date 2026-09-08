@@ -21,11 +21,13 @@ recommended_tools:
 
 You build small static web apps that n8n serves at `/apps/<namespace>/`. The
 source lives in the sandbox workspace under `apps/<namespace>/`; `apps` has
-four actions: `create` registers an app, `build` turns the source into a
+these actions: `create` registers an app, `build` turns the source into a
 published version, `restore` brings the stored source back into a workspace
 that does not have it, `add-component` copies a component from this skill's
 own catalog (built on `@ark-ui/vue`) into an app — `create` uses it for the
-two the starter page needs, and every other component goes through it too.
+two the starter page needs, and every other component goes through it too —
+and `bind`/`unbind`/`bindings` manage the n8n workflows the app may call (see
+"Calling n8n workflows").
 
 ## The loop
 
@@ -48,10 +50,13 @@ two the starter page needs, and every other component goes through it too.
    change.
    - `install`: `npm install` failed. Check `package.json` dependency names
      and versions; the sandbox has npm and network access to the registry.
-   - `build`: the build command exited non-zero. Missing imports and
-     syntax errors show up here. Exit code 134 or 137 means the build ran
-     out of memory (the sandbox has 512 MiB): drop the heavy dependency, do
-     not retry with a bigger heap.
+   - `build`: the build command exited non-zero. Type errors (`vue-tsc`
+     runs first), missing imports and syntax errors show up here. A type
+     error on `n8n.workflows.run` means the key or a field is not in
+     `src/n8n-bindings.d.ts`: read the `bind` result or call
+     `apps(action="bindings", appId)`, then fix the call or re-bind. Exit
+     code 134 or 137 means the build ran out of memory (the sandbox has
+     512 MiB): drop the heavy dependency, do not retry with a bigger heap.
    - `check`: the output is not a servable static site: `<outDir>/index.html`
      is missing, a `server/` directory exists, or a tarball is over 20 MB.
    - `store`: n8n rejected the upload; `message` says why.
@@ -80,9 +85,9 @@ nothing to restore (no version yet) or the directory already has files; read
 - Default to the Vue template. Use another stack only when the user asks for
   it; then follow `references/frameworks.md` for the static-export and
   base-path settings and pass matching `command`/`outDir` to `build`.
-- The build runs in 512 MiB of memory. Keep type checking out of the build
-  script (`npm run typecheck` is separate; run it before `build` when you
-  changed TypeScript).
+- The build runs in 512 MiB of memory. The Vue template's build is
+  `vue-tsc --noEmit && vite build` and fits (about 300 MiB); do not add
+  other checkers to the build script.
 - Look: build UI from this skill's own catalog components (`Button`, `Input`,
   `Card`, `Dialog`, `Select`, `Tabs`, `Badge`, `Switch`, `Checkbox`, `Tooltip`,
   `DropdownMenu` — see `references/design-system.md` for the full catalog and
@@ -100,6 +105,61 @@ nothing to restore (no version yet) or the directory already has files; read
 - Keep dependencies few. Adding one means a cold `npm install` on the next
   build, and every dependency costs build memory.
 - Never paste file contents into the chat; point at the file path.
+
+## Calling n8n workflows
+
+An app calls an n8n workflow only through `@n8n/app-sdk` and only by a key you
+bound first. Bind before you write the code that calls it.
+
+1. Find the workflow. It must be published and start with the trigger "When
+   Executed by Another Workflow" (`n8n-nodes-base.executeWorkflowTrigger`) in
+   the app's project. `workflows(action="list", projectId)` shows candidates.
+   If the user has no such workflow, build one with the `workflows` tool and
+   the `build-workflow` skill, publish it, then continue here.
+2. `apps(action="bind", appId, bindings=[{ key: "submit", kind: "workflow",
+   workflowId }])`. Choose the key: a short lowercase slug the app uses in
+   code (`^[a-z][a-z0-9-]{0,63}$`). The result lists every binding with its
+   `input` fields (`[{ name, type }]` or `"passthrough"`) and `published`,
+   plus `warnings` (for example an unpublished workflow: binding works, calls
+   fail with `workflow_not_published` until it is published). It also
+   rewrites `src/n8n-bindings.d.ts`, so `n8n.workflows.run` is typed for that
+   key. `{ denied, reason }` means the workflow is in another project, lacks
+   the trigger, or the key is invalid: read `reason`.
+3. Call it from the app:
+
+   ```ts
+   import { n8n, N8nAppError } from '@n8n/app-sdk';
+
+   try {
+     const result = await n8n.workflows.run('submit', { message, count });
+     // result.status: 'success' | 'error' | 'waiting' | 'canceled' | 'running'
+     // result.output: the workflow's last node items (json[]), or the body of
+     //   its "Respond to Webhook" node when it has one
+     // result.error: message when status is 'error'
+   } catch (error) {
+     if (error instanceof N8nAppError) {
+       // error.code, e.g. 'workflow_not_published', 'invalid_input'
+       // error.message is safe to show
+     }
+   }
+   ```
+
+   Show `status` and `output` (or `error`) to the user. `status: 'running'`
+   means the workflow ran longer than 60 s and continues in n8n; tell the user
+   it is still running. See `references/app-sdk.md` for the full API and the
+   error codes.
+4. `apps(action="unbind", appId, key)` removes a binding;
+   `apps(action="bindings", appId)` lists them. Both keep
+   `src/n8n-bindings.d.ts` current.
+
+Rules:
+
+- Only bound keys. Never `fetch` `/rest`, `/webhook`, `/api`, or
+  `/apps/<namespace>/api` by hand; never put a workflow id in the app.
+- `src/n8n-bindings.d.ts` and `vendor/n8n-app-sdk.tgz` are generated by
+  `apps`. Do not edit them; re-run `bind` to change the types.
+- The app runs anonymously as its project. Bound workflows are public to
+  anyone with the app URL: do not bind a workflow the user would not expose.
 
 ## Template
 
@@ -120,8 +180,9 @@ Layout after create:
 apps/<namespace>/
   AI_RULES.md              stack and conventions for this app
   index.html
-  package.json             scripts: build = vite build, typecheck = vue-tsc -b
+  package.json             scripts: build = vue-tsc --noEmit && vite build, typecheck = vue-tsc -b
   vite.config.ts           base: process.env.APP_BASE ?? '/'
+  vendor/n8n-app-sdk.tgz   @n8n/app-sdk, written by create (do not edit)
   src/main.ts              style.css + theme-overrides.css + theme mode + router
   src/style.css            Tailwind + the theme's :root/.dark CSS variables
   src/theme-overrides.css  any CSS variable override; edit freely, see design-system.md
@@ -129,6 +190,7 @@ apps/<namespace>/
   src/router.ts            createWebHistory(import.meta.env.BASE_URL)
   src/App.vue              RouterView shell
   src/pages/Home.vue       one component per route
+  src/n8n-bindings.d.ts    types for n8n.workflows.run, written by bind (do not edit)
   src/components/ui/       catalog components (button, switch from create; more via add-component)
   src/lib/utils.ts         cn() helper every component imports
 ```
