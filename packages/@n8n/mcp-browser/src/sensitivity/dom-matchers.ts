@@ -276,18 +276,16 @@ export function opaqueTokenCandidates(el: Element): SecretHit[] {
 	];
 }
 
-/** True when the whole value is one opaque run, judged on the floor
- *  `opaqueTokenCandidates` applies to a token it found in prose. */
-function isOpaqueValue(value: string): boolean {
-	const [token, ...rest] = opaqueTokens(value);
-	return rest.length === 0 && token === value;
-}
-
 /**
- * Opaque values of the fields a container PRESENTS, for a container its own
- * signals already confirmed. A value is not text content, so the passes that
- * read `elementText` never reach one, and an unnamed field is not sensitive on
- * its own either.
+ * Opaque tokens in the values of the fields a container PRESENTS, for a
+ * container its own signals already confirmed. A value is not text content, so
+ * the passes that read `elementText` never reach one, and an unnamed field is
+ * not sensitive on its own either.
+ *
+ * A field is read token by token rather than whole: a console commonly presents
+ * the issued value ready to paste, so the field holds a prefix the page wrote
+ * (`Bearer <token>`) as well as the token. Redacting the token is what keeps the
+ * hit equal to the run a later occurrence of the same secret produces elsewhere.
  *
  * Editable fields are excluded: the same dialog often takes a name for the
  * credential, and a name long enough to clear the opaque floor would otherwise
@@ -298,7 +296,7 @@ export function opaqueFieldValues(container: Element): SecretHit[] {
 	for (const field of Array.from(container.querySelectorAll('input, textarea'))) {
 		if (!field.hasAttribute('readonly') && !field.hasAttribute('disabled')) continue;
 		for (const value of sensitiveInputValues(field)) {
-			if (isOpaqueValue(value)) hits.push({ type: 'password', value });
+			for (const token of opaqueTokens(value)) hits.push({ type: 'password', value: token });
 		}
 	}
 	return hits;

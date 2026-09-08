@@ -461,6 +461,19 @@ describe('analyzeHtmlSensitivity', () => {
 		expect(result.ok && result.hits.some((hit) => hit.value === typed)).toBe(false);
 	});
 
+	// A console often presents the issued value ready to paste into a header, so
+	// the field holds a prefix as well as the token. The prefix is a word the page
+	// wrote, not part of the secret, so the token inside the value is the target.
+	it('finds a prefixed input value in a reveal dialog', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p><input type="text" readonly value="Bearer ${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
 	it('walks same-origin iframe and shadow-root bundle children', () => {
 		const result = analyzeHtmlSensitivity(
 			probe('<p>outer</p>', [
