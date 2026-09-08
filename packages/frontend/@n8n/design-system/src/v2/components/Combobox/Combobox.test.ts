@@ -285,16 +285,10 @@ describe('v2/components/Combobox', () => {
 
 		it('should render each group label with a unique id and its own group', async () => {
 			const items: ComboboxItem[] = [
-				{
-					type: 'group',
-					label: 'Fruits',
-					items: [{ value: 'apple', label: 'Apple' }],
-				},
-				{
-					type: 'group',
-					label: 'More Fruits',
-					items: [{ value: 'mango', label: 'Mango' }],
-				},
+				{ header: true, label: 'Fruits' },
+				{ value: 'apple', label: 'Apple' },
+				{ header: true, label: 'More Fruits' },
+				{ value: 'mango', label: 'Mango' },
 			];
 			render(Combobox, {
 				props: {
@@ -319,18 +313,31 @@ describe('v2/components/Combobox', () => {
 			expect(groupElements[1]).toHaveAttribute('aria-labelledby', moreFruits.id);
 		});
 
+		it('should skip headers during keyboard navigation', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: [
+						{ header: true, label: 'Fruits' },
+						{ value: 'apple', label: 'Apple' },
+					],
+					defaultOpen: true,
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			await userEvent.click(input);
+			await userEvent.keyboard('{ArrowDown}{Enter}');
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['apple']);
+			});
+		});
+
 		it('should render unlabeled groups without a heading', async () => {
 			const items: ComboboxItem[] = [
-				{
-					type: 'group',
-					items: [{ value: 'apple', label: 'Apple' }],
-				},
-				{ type: 'separator' },
-				{
-					type: 'group',
-					label: 'Vegetables',
-					items: [{ value: 'carrot', label: 'Carrot' }],
-				},
+				{ value: 'apple', label: 'Apple' },
+				{ header: true, label: 'Vegetables', divided: true },
+				{ value: 'carrot', label: 'Carrot' },
 			];
 			render(Combobox, {
 				props: {
@@ -352,8 +359,7 @@ describe('v2/components/Combobox', () => {
 		it('should split unlabeled options into sibling groups without a separator node', async () => {
 			const items: ComboboxItem[] = [
 				{ value: '1', label: 'Option 1' },
-				{ type: 'separator' },
-				{ value: '2', label: 'Option 2' },
+				{ value: '2', label: 'Option 2', divided: true },
 			];
 			render(Combobox, {
 				props: {
@@ -507,17 +513,10 @@ describe('v2/components/Combobox', () => {
 
 		it('should hide groups with no matches without leaving a separator', async () => {
 			const items: ComboboxItem[] = [
-				{
-					type: 'group',
-					label: 'Fruits',
-					items: [{ value: 'apple', label: 'Apple' }],
-				},
-				{ type: 'separator' },
-				{
-					type: 'group',
-					label: 'Vegetables',
-					items: [{ value: 'carrot', label: 'Carrot' }],
-				},
+				{ header: true, label: 'Fruits' },
+				{ value: 'apple', label: 'Apple' },
+				{ header: true, label: 'Vegetables', divided: true },
+				{ value: 'carrot', label: 'Carrot' },
 			];
 
 			const wrapper = render(Combobox, {
@@ -1070,23 +1069,23 @@ describe('v2/components/Combobox', () => {
 			render(Combobox, {
 				props: {
 					items: [
-						{
-							type: 'group',
-							label: 'Group 1',
-							items: [{ value: '1', label: 'Option 1' }],
-						},
+						{ header: true, label: 'Group 1' },
+						{ value: '1', label: 'Option 1' },
 					],
 					defaultOpen: true,
 				},
 				slots: {
-					label: '<span data-test-id="custom-label-heading">any</span>',
+					label:
+						'<template #label="{ item }"><span data-test-id="custom-label-heading">Custom {{ item.label }}</span></template>',
 				},
 			});
 
 			const { popover } = await getPopoverContainer();
 
 			await waitFor(() => {
-				expect(within(popover).getByTestId('custom-label-heading')).toBeVisible();
+				expect(within(popover).getByTestId('custom-label-heading')).toHaveTextContent(
+					'Custom Group 1',
+				);
 			});
 		});
 	});
