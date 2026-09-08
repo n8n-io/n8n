@@ -19,6 +19,7 @@
     "format": "biome format --write . && prettier --write . --ignore-path ../../../.prettierignore",
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../.prettierignore",
     "serve": "vite dev",
+    "modal-baseline": "node scripts/modal-key-baseline.mjs",
     "test": "vitest run",
     "test:changed": "janitor test-scoped",
     "test:dev": "vitest --silent=false"
