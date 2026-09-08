@@ -409,9 +409,14 @@ export class ActiveWorkflowManager {
 		this.isActivationInProgress = true;
 		try {
 			await this.runActivationPass(activationMode);
-			await this.runQueuedLeadershipActivations();
 		} finally {
-			this.isActivationInProgress = false;
+			// Also when the pass above failed: this instance is the leader either way,
+			// and nothing else registers the triggers it is missing.
+			try {
+				await this.runQueuedLeadershipActivations();
+			} finally {
+				this.isActivationInProgress = false;
+			}
 		}
 	}
 

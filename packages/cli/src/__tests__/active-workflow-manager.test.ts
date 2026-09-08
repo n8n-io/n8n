@@ -324,6 +324,44 @@ describe('ActiveWorkflowManager', () => {
 				expect(reAdds).toHaveLength(4);
 			});
 
+			test('still runs the re-run when the pass it interrupted fails', async () => {
+				Object.assign(instanceSettings, { isLeader: false, isFollower: true });
+				const manager = makeManager();
+
+				workflowRepository.getAllActiveIds.mockResolvedValue(['wf-1', 'wf-2']);
+				workflowRepository.findById.mockImplementation(async (workflowId) => {
+					if (workflowId === 'wf-2') throw new Error('workflow lookup failed');
+					return mock<WorkflowEntity>({ id: workflowId });
+				});
+				activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows.mockImplementation(async () => {
+					events.push({ event: 'teardown' });
+				});
+
+				vi.spyOn(manager, 'add').mockImplementation(async (workflowId, activationMode) => {
+					events.push({
+						event: `add:${activationMode}`,
+						workflowId,
+						isLeader: instanceSettings.isLeader,
+					});
+
+					if (activationMode === 'init') {
+						Object.assign(instanceSettings, { isLeader: true, isFollower: false });
+						await manager.addAllNonWebhookTriggerWorkflows();
+					}
+
+					return { webhooks: false, triggersAndPollers: false };
+				});
+
+				await expect(manager.addActiveWorkflows('init')).rejects.toThrow('workflow lookup failed');
+
+				expect(events).toContainEqual({ event: 'teardown' });
+				expect(events).toContainEqual({
+					event: 'add:leadershipChange',
+					workflowId: 'wf-1',
+					isLeader: true,
+				});
+			});
+
 			test('keeps the re-run queued for the next pass when it fails', async () => {
 				activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows.mockRejectedValueOnce(
 					new Error('teardown failed'),
