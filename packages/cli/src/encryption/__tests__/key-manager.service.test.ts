@@ -3,7 +3,14 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { DeploymentKey } from '@n8n/db';
 import { DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Cipher, InstanceSettings } from 'n8n-core';
+import {
+	Cipher,
+	CipherAes256CBC,
+	CipherAes256GCM,
+	type EncryptionKeyProxy,
+	InstanceSettings,
+} from 'n8n-core';
+import { randomBytes } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -670,6 +677,76 @@ describe('KeyManagerService', () => {
 			const active = await service.getActiveKey();
 			expect(active.id).toBe('old-active');
 			expect(repo.find).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('repairLegacyDataEncryptionKeys()', () => {
+		// A real Cipher, so every legacy value is produced by real encryption and the
+		// re-wrap round-trips for real. Only the repository is mocked.
+		const realCipher = (encryptionKey: string) =>
+			new Cipher(
+				mock<InstanceSettings>({ encryptionKey }),
+				new CipherAes256GCM(),
+				new CipherAes256CBC(),
+				mock<EncryptionKeyProxy>(),
+			);
+
+		const makeRepairService = (encryptionKey = randomBytes(24).toString('base64')) => {
+			const repo = mock<DeploymentKeyRepository>();
+			const cipher = realCipher(encryptionKey);
+			const service = new KeyManagerService(
+				repo,
+				cipher,
+				mock<InstanceSettings>({ encryptionKey }),
+				mock<Logger>(),
+			);
+			return { service, repo, cipher };
+		};
+
+		// A real, freshly generated DEK — never a hand-built constant.
+		const rawKey = randomBytes(32).toString('hex');
+
+		it.each<[string, (cipher: Cipher) => string]>([
+			['raw 2.18.x', () => rawKey],
+			['CBC 2.19.x', (cipher) => cipher.encryptWithInstanceKey(rawKey)],
+		])('recovers a %s key and re-wraps it as GCM', async (_name, build) => {
+			const { service, repo, cipher } = makeRepairService();
+			repo.findDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'k', value: build(cipher) })]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			const [id, , wrapped] = repo.rewrapLegacyDataEncryptionValue.mock.calls[0];
+			expect(id).toBe('k');
+			// The re-wrapped value unwraps back to the exact same key: lossless.
+			expect(cipher.decryptDEKWithInstanceKey(wrapped)).toBe(rawKey);
+		});
+
+		it.each<[string, (cipher: Cipher, other: Cipher) => string]>([
+			['already GCM-wrapped', (cipher) => cipher.encryptDEKWithInstanceKey(rawKey)],
+			[
+				'CBC under a different instance key',
+				(_cipher, other) => other.encryptWithInstanceKey(rawKey),
+			],
+			['CBC that unwraps to a non-key', (cipher) => cipher.encryptWithInstanceKey('not-a-hex-key')],
+		])('leaves a %s value untouched', async (_name, build) => {
+			const { service, repo, cipher } = makeRepairService();
+			const other = realCipher(randomBytes(24).toString('base64'));
+			repo.findDataEncryptionKeys.mockResolvedValue([
+				makeKey({ id: 'k', value: build(cipher, other) }),
+			]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op when there are no data-encryption keys', async () => {
+			const { service, repo } = makeRepairService();
+			repo.findDataEncryptionKeys.mockResolvedValue([]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
 		});
 	});
 });
