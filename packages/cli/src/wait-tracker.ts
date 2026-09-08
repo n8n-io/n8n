@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionRepository, type IExecutionBase, type IExecutionResponse } from '@n8n/db';
 import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -39,9 +39,6 @@ const MAX_PARENT_RESUME_ATTEMPTS = 3;
  */
 const PARENT_RESUME_TIMEOUT_MS = 60 * Time.minutes.toMilliseconds;
 
-/** How often `resumeParentExecution` re-checks the parent's status while waiting for it to park. */
-const PARENT_RESUME_POLL_INTERVAL_MS = 1000;
-
 /**
  * How long we wait for the child's in-memory `postExecutePromise` before giving up.
  * In queue mode that promise only settles after `job.finished()` to
@@ -49,8 +46,8 @@ const PARENT_RESUME_POLL_INTERVAL_MS = 1000;
  */
 const CHILD_RUN_SETTLE_TIMEOUT_MS = 60 * Time.minutes.toMilliseconds;
 
-/** How often we re-check the child row while waiting for `postExecutePromise`. */
-const CHILD_RUN_SETTLE_POLL_INTERVAL_MS = 1000;
+/** How often the resume loops re-check the parent / child row in the DB. */
+const RESUME_POLL_INTERVAL_MS = 1000;
 
 /**
  * Whether a resume parent failure is worth retrying. Only `UserError` and
@@ -62,16 +59,7 @@ function isRetryableResumeError(error: unknown): boolean {
 }
 
 /** Project a persisted execution onto the `IRun` shape `resumeParentExecution` consumes. */
-function executionResponseToRun(execution: {
-	data: IRun['data'];
-	mode: IRun['mode'];
-	startedAt: Date;
-	stoppedAt?: Date;
-	status: IRun['status'];
-	finished?: boolean;
-	waitTill?: Date | null;
-	storedAt: IRun['storedAt'];
-}): IRun {
+function executionResponseToRun(execution: IExecutionResponse): IRun {
 	return {
 		data: execution.data,
 		mode: execution.mode,
@@ -95,13 +83,6 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
-	/**
-	 * Abort controller for the current leader-tracking session. Leader-started
-	 * `resumeParentExecution` calls observe this signal; webhook-started resumes
-	 * do not, so a dedicated webhook process is unaffected by multi-main leadership.
-	 */
-	private trackingAbort: AbortController | undefined;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -124,10 +105,6 @@ export class WaitTracker {
 
 	@OnLeaderTakeover()
 	private startTracking() {
-		// End any prior session's in-flight leader resumes (idempotent takeover).
-		this.trackingAbort?.abort();
-		this.trackingAbort = new AbortController();
-
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
@@ -161,7 +138,7 @@ export class WaitTracker {
 				this.waitingExecutions[executionId] = {
 					executionId,
 					timer: setTimeout(() => {
-						void this.startExecution(executionId, this.trackingAbort?.signal).catch((error) => {
+						void this.startExecution(executionId).catch((error) => {
 							// Another process already resumed this execution (e.g. multi-main
 							// duplicate timer) — expected, nothing to do.
 							if (error instanceof ExecutionAlreadyResumingError) {
@@ -189,14 +166,7 @@ export class WaitTracker {
 		delete this.waitingExecutions[executionId];
 	}
 
-	/**
-	 * @param abortSignal Leader-tracking timer passes `this.trackingAbort?.signal`;
-	 * `resumeParentExecution` forwards its own (undefined for webhook-started
-	 * resumes). Never fall back to `this.trackingAbort?.signal` here: that would
-	 * re-apply the leader signal to a nested webhook cascade and let a stepdown
-	 * abort it.
-	 */
-	async startExecution(executionId: string, abortSignal?: AbortSignal) {
+	async startExecution(executionId: string) {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
@@ -239,13 +209,7 @@ export class WaitTracker {
 		if (shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
 			const { promise, runId } = this.activeExecutions.getPostExecutePromiseWithRunId(executionId);
-			void this.resumeParentExecution(
-				parentExecution,
-				promise,
-				{ executionId, workflowId },
-				runId,
-				abortSignal,
-			);
+			void this.resumeParentExecution(parentExecution, promise, { executionId, workflowId }, runId);
 		}
 	}
 
@@ -271,10 +235,15 @@ export class WaitTracker {
 	 * for each item" mode), when the parent parked at a LATER wait than the one
 	 * this child belongs to (`updateParentExecutionWithChildResults` reports the
 	 * child isn't in the wait's tagged set — a sibling already resumed its wait),
-	 * when leader tracking aborts (`abortSignal`), or when the timeout elapses.
+	 * or when the timeout elapses.
 	 * Each step is retried up to `MAX_PARENT_RESUME_ATTEMPTS` for transient
 	 * failures so a flaky DB write recovers. This never rejects, so callers can
 	 * invoke it fire and forget.
+	 *
+	 * This runs to completion regardless of multi-main leadership: only the
+	 * process holding the child's `postExecutePromise` can finish the resume, and
+	 * the `expectedStatus: 'waiting'` claim in `startExecution` already prevents
+	 * two processes from resuming the same parent.
 	 */
 	async resumeParentExecution(
 		parentExecution: RelatedExecution,
@@ -286,11 +255,6 @@ export class WaitTracker {
 		 * fallback finalize so a later replacement's runId is not used by mistake.
 		 */
 		childRunId?: string,
-		/**
-		 * When set (leader-tracking `startExecution` path), both poll loops stop on
-		 * `@OnLeaderStepdown`. Webhook-started resumes omit this.
-		 */
-		abortSignal?: AbortSignal,
 	): Promise<void> {
 		try {
 			const subworkflowResults = await this.awaitChildRunOrLoadFromDb(
@@ -298,37 +262,16 @@ export class WaitTracker {
 				executePromise,
 				parentExecution.executionId,
 				childRunId,
-				abortSignal,
 			);
-			if (!subworkflowResults) {
-				// Prefer stopping over two leaders claiming; the new leader does not inherit
-				// this process's postExecutePromise, so a mid-poll abort can strand the parent.
-				if (abortSignal?.aborted) {
-					this.logger.info('Stopped resuming parent after leader stepdown', {
-						parentExecutionId: parentExecution.executionId,
-						childExecutionId: childExecution?.executionId,
-					});
-				}
-				return;
-			}
+			if (!subworkflowResults) return;
 			if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 
 			const deadline = Date.now() + PARENT_RESUME_TIMEOUT_MS;
 			for (;;) {
-				// Prefer stopping over two leaders claiming; the new leader does not inherit
-				// this process's postExecutePromise, so a mid-poll abort can strand the parent.
-				if (abortSignal?.aborted) {
-					this.logger.info('Stopped resuming parent after leader stepdown', {
-						parentExecutionId: parentExecution.executionId,
-						childExecutionId: childExecution?.executionId,
-					});
-					return;
-				}
-
 				// A failed poll read is treated like "parent not parked yet" and retried on
 				// the next tick (bounded by the deadline) — a transient DB error here must
 				// not abandon the resume, only a successful read may decide to bail.
-				let parent;
+				let parent: IExecutionBase | undefined;
 				try {
 					parent = await this.executionPersistence.findSingleExecution(
 						parentExecution.executionId,
@@ -363,7 +306,7 @@ export class WaitTracker {
 
 					try {
 						await this.withRetry(
-							async () => await this.startExecution(parentExecution.executionId, abortSignal),
+							async () => await this.startExecution(parentExecution.executionId),
 							MAX_PARENT_RESUME_ATTEMPTS,
 							(error) =>
 								!(error instanceof ExecutionAlreadyResumingError) && isRetryableResumeError(error),
@@ -392,16 +335,9 @@ export class WaitTracker {
 					});
 					return;
 				}
-				await sleep(PARENT_RESUME_POLL_INTERVAL_MS, abortSignal);
+				await sleep(RESUME_POLL_INTERVAL_MS);
 			}
 		} catch (error) {
-			if (abortSignal?.aborted) {
-				this.logger.info('Stopped resuming parent after leader stepdown', {
-					parentExecutionId: parentExecution.executionId,
-					childExecutionId: childExecution?.executionId,
-				});
-				return;
-			}
 			this.logger.error('Failed to resume parent execution after sub-workflow completed', {
 				parentExecutionId: parentExecution.executionId,
 				error: ensureError(error).message,
@@ -415,15 +351,13 @@ export class WaitTracker {
 	 * On the DB fallback, identity-checks `finalizeExecution` with `childRunId`
 	 * (captured with the promise) so the child's capacity is released without
 	 * resolving a replacement run that may already own this execution id.
-	 * Returns `undefined` when the deadline elapses with no terminal child, or
-	 * when `abortSignal` fires (leader stepdown).
+	 * Returns `undefined` when the deadline elapses with no terminal child.
 	 */
 	private async awaitChildRunOrLoadFromDb(
 		childExecutionId: string | undefined,
 		executePromise: Promise<IRun | undefined>,
 		parentExecutionId: string,
 		childRunId?: string,
-		abortSignal?: AbortSignal,
 	): Promise<IRun | undefined> {
 		if (!childExecutionId) {
 			return await executePromise;
@@ -441,10 +375,6 @@ export class WaitTracker {
 		);
 
 		for (;;) {
-			if (abortSignal?.aborted) {
-				return undefined;
-			}
-
 			const remaining = deadline - Date.now();
 			if (remaining <= 0) {
 				this.logger.error(
@@ -458,25 +388,12 @@ export class WaitTracker {
 				return undefined;
 			}
 
-			let winner:
-				| { kind: 'promise'; run: IRun | undefined }
-				| { kind: 'rejected'; error: unknown }
-				| {
-						kind: 'tick';
-				  };
-			try {
-				winner = await Promise.race([
-					settled,
-					sleep(Math.min(CHILD_RUN_SETTLE_POLL_INTERVAL_MS, remaining), abortSignal).then(
-						() => ({ kind: 'tick' as const }) as const,
-					),
-				]);
-			} catch (error) {
-				if (abortSignal?.aborted) {
-					return undefined;
-				}
-				throw error;
-			}
+			const winner = await Promise.race([
+				settled,
+				sleep(Math.min(RESUME_POLL_INTERVAL_MS, remaining)).then(
+					() => ({ kind: 'tick' as const }) as const,
+				),
+			]);
 
 			if (winner.kind === 'rejected') throw winner.error;
 			if (winner.kind === 'promise') return winner.run;
@@ -547,10 +464,6 @@ export class WaitTracker {
 
 	@OnLeaderStepdown()
 	stopTracking() {
-		// Abort leader-started resume loops even if timers were never armed.
-		this.trackingAbort?.abort();
-		this.trackingAbort = undefined;
-
 		if (!this.mainTimer) return;
 
 		clearInterval(this.mainTimer);

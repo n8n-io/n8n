@@ -484,8 +484,10 @@ export function shouldRestartParentExecution(
  * @param subworkflowResults - The final execution results from the child workflow
  * @returns `true` if the caller may proceed to claim the parent, `false` if this child does
  * not own the parent's current wait and the caller must stop without claiming. A child owns a
- * wait only when its execution id is in that wait's `waitingChildExecutionIds` tag; a wait
- * with no tag (a plain Wait node, or a park from before tagging) is never a child's wait.
+ * wait when its execution id is in that wait's `waitingChildExecutionIds` tag. For parks
+ * written before tagging existed (no tag key), the Execute Workflow node's own `subExecution`
+ * / `subExecutionsCount` metadata identifies a child wait; a wait with neither (a plain Wait
+ * node) is never a child's wait.
  */
 export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
@@ -519,10 +521,13 @@ export async function updateParentExecutionWithChildResults(
 	// only patch and claim a wait that names it — never an untagged one, or a sibling's
 	// output would land on the wrong node and resume a wait it never satisfied.
 	if (childExecution?.executionId) {
-		const waitingChildExecutionIds = nodeExecutionStack[0].metadata?.waitingChildExecutionIds;
-		if (!waitingChildExecutionIds?.includes(childExecution.executionId)) {
-			return false;
-		}
+		const metadata = nodeExecutionStack[0].metadata;
+		const ownsWait =
+			metadata?.waitingChildExecutionIds !== undefined
+				? metadata.waitingChildExecutionIds.includes(childExecution.executionId)
+				: metadata?.subExecution?.executionId === childExecution.executionId ||
+					metadata?.subExecutionsCount !== undefined;
+		if (!ownsWait) return false;
 	}
 
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
