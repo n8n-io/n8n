@@ -553,7 +553,7 @@ function normaliseExecutionStatus(status: string | undefined): string {
 	return 'success';
 }
 
-function formatResult(
+export function formatResult(
 	executionId: string,
 	status: string | undefined,
 	data: IRun['data'] | undefined,
