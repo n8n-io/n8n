@@ -167,6 +167,16 @@ describe('scrubSecretsInText', () => {
 		expect(performance.now() - start).toBeLessThan(500);
 	});
 
+	it('redacts a quoted field whose compound key has a long prefix', () => {
+		const key = 'a'.repeat(200) + '_password';
+		expect(scrubSecretsInText(`{"${key}": "hunter2"}`)).toBe('{[REDACTED]}');
+		// Quote-anchored, so scanning a long non-secret key stays linear.
+		const input = ('"' + 'ab-'.repeat(2_000) + '": "x", ').repeat(50);
+		const start = performance.now();
+		expect(scrubSecretsInText(input)).toBe(input);
+		expect(performance.now() - start).toBeLessThan(500);
+	});
+
 	it('leaves typed redaction markers untouched instead of nesting them', () => {
 		expect(scrubSecretsInText('[REDACTED:secret:1]')).toBe('[REDACTED:secret:1]');
 		expect(scrubSecretsInText('[REDACTED:password:2]')).toBe('[REDACTED:password:2]');

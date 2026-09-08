@@ -17,10 +17,14 @@ export const SECRET_KEYS =
 
 // `\b` never fires inside a compound key (`webhook_secret`, `bot_token`)
 // because `_` is a word character, so key patterns also accept an optional
-// snake/kebab prefix before the secret word. The prefix is length-bounded:
-// an unbounded `[\w-]*` backtracks through every separator of a long
-// hyphenated non-secret token at every start position, which is quadratic.
-const COMPOUND_KEY_PREFIX = '(?:[\\w-]{0,128}[_-])?';
+// snake/kebab prefix before the secret word. The quoted-field matcher can only
+// start at a quote, so scanning the whole key stays linear. The unanchored
+// assignment matcher can start at every `\b` of a long hyphenated non-secret
+// token, where an unbounded prefix backtracks through every separator at every
+// start position (quadratic) — so that one is length-bounded, and a `_`-joined
+// unquoted key with a longer prefix is the accepted gap.
+const QUOTED_KEY_PREFIX = '(?:[\\w-]*[_-])?';
+const BOUNDED_KEY_PREFIX = '(?:[\\w-]{0,128}[_-])?';
 
 export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// PEM private-key blocks (RSA/EC/DSA/OpenSSH/PGP). Whole block, multiline.
@@ -77,7 +81,7 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// chained behind upstream object-walking redaction (langsmith trace
 	// payloads, mcp-browser markers).
 	new RegExp(
-		`(["'])${COMPOUND_KEY_PREFIX}(?:${SECRET_KEYS})\\1\\s*:\\s*(["'])(?!\\[(?:redacted|REDACTED)(?::[^\\]]*)?\\]\\2)(?:(?!\\2)[^\\\\\\r\\n]|\\\\.)*\\2`,
+		`(["'])${QUOTED_KEY_PREFIX}(?:${SECRET_KEYS})\\1\\s*:\\s*(["'])(?!\\[(?:redacted|REDACTED)(?::[^\\]]*)?\\]\\2)(?:(?!\\2)[^\\\\\\r\\n]|\\\\.)*\\2`,
 		'gi',
 	),
 	// Generic `password=...` / `api_key=...` / `secret=...` style assignments.
@@ -91,7 +95,7 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// redaction placeholder (bracketed, typed, or URL-safe bare form) — the same
 	// idempotency convention as the quoted forms.
 	new RegExp(
-		`(?<!\\[(?:redacted|REDACTED):)\\b${COMPOUND_KEY_PREFIX}(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`,
+		`(?<!\\[(?:redacted|REDACTED):)\\b${BOUNDED_KEY_PREFIX}(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`,
 		'gi',
 	),
 ];

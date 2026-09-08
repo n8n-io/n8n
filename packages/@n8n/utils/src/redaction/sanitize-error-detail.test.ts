@@ -11,4 +11,22 @@ describe('sanitizeErrorDetail', () => {
 		).toBe('{"url":"https://api.example.com/v1","code":401}');
 		expect(sanitizeErrorDetail('x'.repeat(20), 10)).toBe('x'.repeat(10));
 	});
+
+	it('strips the whole query when it contains quotes or apostrophes', () => {
+		expect(
+			sanitizeErrorDetail(
+				'{"url":"https://api.example.com/v1?q=don\'t&sig=secret","code":401}',
+				512,
+			),
+		).toBe('{"url":"https://api.example.com/v1","code":401}');
+		expect(
+			sanitizeErrorDetail('see https://api.example.com/v1?q=don\'t&sig="secret" now', 512),
+		).toBe('see https://api.example.com/v1 now');
+	});
+
+	it('handles many adjacent URL prefixes in linear time', () => {
+		const start = performance.now();
+		sanitizeErrorDetail('https://'.repeat(20_000), 512);
+		expect(performance.now() - start).toBeLessThan(200);
+	});
 });

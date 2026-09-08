@@ -5,21 +5,54 @@ export function extractFencedJson(text: string): string | undefined {
 	return FENCED_BLOCK.exec(text)?.[1].trim();
 }
 
-/** Outermost `{...}` or `[...]` span. An array wins only when it encloses the
- *  object (`[{...}]`), so a stray `[link]` in prose before the payload does not
- *  shadow it. */
-function extractJsonContainer(text: string): string | undefined {
-	const objectStart = text.indexOf('{');
-	const objectEnd = text.lastIndexOf('}');
-	const arrayStart = text.indexOf('[');
-	const arrayEnd = text.lastIndexOf(']');
-	const hasObject = objectStart !== -1 && objectEnd > objectStart;
-	const hasArray = arrayStart !== -1 && arrayEnd > arrayStart;
-
-	if (hasArray && (!hasObject || (arrayStart < objectStart && arrayEnd > objectEnd))) {
-		return text.slice(arrayStart, arrayEnd + 1);
+/** Index of the bracket closing the one at `start`, or -1 when the text ends
+ *  first. String literals are skipped so brackets inside values don't count. */
+function findBalancedEnd(text: string, start: number): number {
+	let depth = 0;
+	let inString = false;
+	for (let i = start; i < text.length; i++) {
+		const ch = text[i];
+		if (inString) {
+			if (ch === '\\') i++;
+			else if (ch === '"') inString = false;
+		} else if (ch === '"') {
+			inString = true;
+		} else if (ch === '{' || ch === '[') {
+			depth++;
+		} else if (ch === '}' || ch === ']') {
+			depth--;
+			if (depth === 0) return i;
+		}
 	}
-	return hasObject ? text.slice(objectStart, objectEnd + 1) : undefined;
+	return -1;
+}
+
+function parsesAsJson(text: string): boolean {
+	try {
+		JSON.parse(text);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** Longest balanced `{...}` or `[...]` span that parses as JSON. Bracketed
+ *  prose (`[docs]`, `[link](url)`) and example snippets before the payload are
+ *  skipped instead of being glued onto it or shadowing it. */
+function extractJsonContainer(text: string): string | undefined {
+	let best: string | undefined;
+	for (let start = 0; start < text.length; start++) {
+		if (best !== undefined && text.length - start <= best.length) break;
+		if (text[start] !== '{' && text[start] !== '[') continue;
+		const end = findBalancedEnd(text, start);
+		if (end === -1) continue;
+		const candidate = text.slice(start, end + 1);
+		if ((best === undefined || candidate.length > best.length) && parsesAsJson(candidate)) {
+			best = candidate;
+			start = end;
+		}
+	}
+	return best;
 }
 
 export function extractJsonCandidate(text: string): string {

@@ -18,9 +18,16 @@ describe('extractJsonCandidate', () => {
 		['Rows:\n[{"a":1},{"a":2}]', '[{"a":1},{"a":2}]'],
 		['```json\n[1,2]\n```', '[1,2]'],
 		['See [the docs] then {"ok":true}', '{"ok":true}'],
+		['See [the docs] first: [1, 2, 3]', '[1, 2, 3]'],
+		['[link](https://x.test) then [{"a":1}] done', '[{"a":1}]'],
+		[
+			'Example {"x":1} applies. Answer: {"answer":true,"reasoning":"ok"}',
+			'{"answer":true,"reasoning":"ok"}',
+		],
 		['{"items":[1,2]}', '{"items":[1,2]}'],
+		['{"a":"]"} tail', '{"a":"]"}'],
 	])(
-		'keeps array payloads intact without letting prose brackets shadow an object',
+		'keeps array payloads intact without letting prose brackets shadow or join them',
 		(input, expected) => {
 			expect(extractJsonCandidate(input)).toBe(expected);
 		},
