@@ -36,8 +36,12 @@ function getNumberProperty(value: unknown, keys: string[]): number | undefined {
 function sanitizeUrlForLog(value: string): string {
 	try {
 		const url = new URL(value);
-		if (url.username) url.username = 'REDACTED';
-		if (url.password) url.password = 'REDACTED';
+		// A single userinfo placeholder: the `user:password@` shape would be
+		// re-redacted by the shared scrubber into a different form.
+		if (url.username || url.password) {
+			url.username = 'REDACTED';
+			url.password = '';
+		}
 		url.search = '';
 		url.hash = '';
 		return url.toString();

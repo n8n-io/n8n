@@ -19,6 +19,10 @@ describe('scrubSecretsInText', () => {
 		expect(scrubSecretsInText('header is Basic dXNlcjpwYXNzd29yZA==')).toBe('header is [REDACTED]');
 		expect(scrubSecretsInText('header is Token abcdef1234567890')).toBe('header is [REDACTED]');
 		expect(scrubSecretsInText('Authorization: Bearer short')).toBe('Authorization: [REDACTED]');
+		// Opaque bearer values (`id|secret`, `user:key`) are redacted whole.
+		expect(scrubSecretsInText('Authorization: Bearer 12345|abc:def, next')).toBe(
+			'Authorization: [REDACTED], next',
+		);
 	});
 
 	it('redacts OpenAI and Anthropic API keys', () => {
@@ -109,10 +113,13 @@ describe('scrubSecretsInText', () => {
 		expect(out).toContain('[REDACTED]');
 	});
 
-	it('redacts single-quoted JS object credential fields', () => {
+	it('redacts single-quoted and mixed-quote JS object credential fields', () => {
 		const out = scrubSecretsInText("config = {'apiKey': 'abc123XYZ'}");
 		expect(out).not.toContain('abc123XYZ');
 		expect(out).toContain('[REDACTED]');
+		expect(scrubSecretsInText('{"password": \'hunter2\', "user": "it\'s me"}')).toBe(
+			'{[REDACTED], "user": "it\'s me"}',
+		);
 	});
 
 	it('redacts JSON-shaped values containing escaped quotes without leaking the suffix', () => {
@@ -149,6 +156,15 @@ describe('scrubSecretsInText', () => {
 		// No closing quote, so the JSON-shaped pattern can't match; the value is
 		// left as-is and matching returns promptly.
 		expect(out).toContain('password');
+	});
+
+	it('scrubs a long hyphenated non-secret token in linear time', () => {
+		// The compound-key prefix must not backtrack through every separator at
+		// every start position; unbounded, this input took seconds.
+		const input = 'ab-'.repeat(32_000);
+		const start = performance.now();
+		expect(scrubSecretsInText(input)).toBe(input);
+		expect(performance.now() - start).toBeLessThan(500);
 	});
 
 	it('leaves typed redaction markers untouched instead of nesting them', () => {

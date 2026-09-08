@@ -6,6 +6,9 @@ describe('sanitizeErrorDetail', () => {
 		expect(
 			sanitizeErrorDetail('request to HTTPS://api.example.com/v1?key=secret failed', 512),
 		).toBe('request to HTTPS://api.example.com/v1 failed');
+		expect(
+			sanitizeErrorDetail('{"url":"https://api.example.com/v1?key=secret","code":401}', 512),
+		).toBe('{"url":"https://api.example.com/v1","code":401}');
 		expect(sanitizeErrorDetail('x'.repeat(20), 10)).toBe('x'.repeat(10));
 	});
 });

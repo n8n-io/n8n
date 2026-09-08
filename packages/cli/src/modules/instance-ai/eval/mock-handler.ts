@@ -8,7 +8,7 @@
  * CLI test suite.
  */
 
-import { Tool } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';

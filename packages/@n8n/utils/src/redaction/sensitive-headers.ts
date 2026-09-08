@@ -1,6 +1,7 @@
 export const ALWAYS_SENSITIVE_HEADERS: readonly string[] = [
 	'authorization',
 	'proxy-authorization',
+	'x-authorization',
 	'cookie',
 	'set-cookie',
 	'x-api-key',

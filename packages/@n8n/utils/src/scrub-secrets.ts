@@ -17,8 +17,10 @@ export const SECRET_KEYS =
 
 // `\b` never fires inside a compound key (`webhook_secret`, `bot_token`)
 // because `_` is a word character, so key patterns also accept an optional
-// snake/kebab prefix before the secret word.
-const COMPOUND_KEY_PREFIX = '(?:[\\w-]*[_-])?';
+// snake/kebab prefix before the secret word. The prefix is length-bounded:
+// an unbounded `[\w-]*` backtracks through every separator of a long
+// hyphenated non-secret token at every start position, which is quadratic.
+const COMPOUND_KEY_PREFIX = '(?:[\\w-]{0,128}[_-])?';
 
 export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// PEM private-key blocks (RSA/EC/DSA/OpenSSH/PGP). Whole block, multiline.
@@ -28,8 +30,10 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	/\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
 	// Authorization-header substrings: any `Bearer <value>`; `Basic` and `Token`
 	// require 12+ chars because they are common prose words ("basic usage",
-	// "token exchange").
-	/\b(?:Bearer\s+[A-Za-z0-9._~+/=-]+|(?:Basic|Token)\s+[A-Za-z0-9._~+/=-]{12,})/gi,
+	// "token exchange"). Bearer values are opaque in practice (`id|secret`,
+	// `user:key`), so the value runs to the next delimiter rather than a
+	// token68 character class.
+	/\b(?:Bearer\s+[^\s"',;]+|(?:Basic|Token)\s+[A-Za-z0-9._~+/=-]{12,})/gi,
 	// OpenAI / Anthropic API keys
 	/\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}/g,
 	// Stripe secret/restricted/publishable keys (`sk_live_…`, `rk_test_…`, …)
@@ -55,11 +59,13 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	/\blin_(?:api|oauth)_[A-Za-z0-9]{20,}/g,
 	// Credentials embedded in a URL: `scheme://user:password@` — redact the userinfo.
 	/(?<=:\/\/)[^\s:/@]+:[^\s:/@]+(?=@)/g,
-	// JSON-shaped `"key": "value"` — matches the quoted field as a whole.
+	// Quoted `"key": "value"` (JSON) and `'key': 'value'` (JS object) fields,
+	// matched as a whole. The key's quote and the value's quote are captured
+	// separately so a mixed form like `"password": 'secret'` is covered too.
 	// Run before the loose pattern so nested objects like
 	// `{"credentials": {"apiKey": "..."}}` don't have the outer key consume
 	// the inner key on its way to a non-quoted (object) value. The value
-	// body uses the unrolled JSON-string idiom `(?:[^"\\\r\n]|\\.)*`: the
+	// body uses the unrolled JSON-string idiom `(?:(?!\2)[^\\\r\n]|\\.)*`: the
 	// negated class excludes the backslash so a backslash can only be consumed
 	// by the `\\.` escape branch. Keep the two alternatives disjoint (don't
 	// fold `\\` back into the negated class) — that keeps every run of
@@ -71,12 +77,7 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// chained behind upstream object-walking redaction (langsmith trace
 	// payloads, mcp-browser markers).
 	new RegExp(
-		`"${COMPOUND_KEY_PREFIX}(?:${SECRET_KEYS})"\\s*:\\s*"(?!\\[(?:redacted|REDACTED)(?::[^"\\]]*)?\\]")(?:[^"\\\\\\r\\n]|\\\\.)*"`,
-		'gi',
-	),
-	// JS-object-shaped `'key': 'value'`
-	new RegExp(
-		`'${COMPOUND_KEY_PREFIX}(?:${SECRET_KEYS})'\\s*:\\s*'(?!\\[(?:redacted|REDACTED)(?::[^'\\]]*)?\\]')(?:[^'\\\\\\r\\n]|\\\\.)*'`,
+		`(["'])${COMPOUND_KEY_PREFIX}(?:${SECRET_KEYS})\\1\\s*:\\s*(["'])(?!\\[(?:redacted|REDACTED)(?::[^\\]]*)?\\]\\2)(?:(?!\\2)[^\\\\\\r\\n]|\\\\.)*\\2`,
 		'gi',
 	),
 	// Generic `password=...` / `api_key=...` / `secret=...` style assignments.

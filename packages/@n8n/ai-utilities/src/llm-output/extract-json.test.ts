@@ -14,10 +14,31 @@ describe('extractJsonCandidate', () => {
 	});
 
 	it.each([
+		['[{"a":1},{"a":2}]', '[{"a":1},{"a":2}]'],
+		['Rows:\n[{"a":1},{"a":2}]', '[{"a":1},{"a":2}]'],
+		['```json\n[1,2]\n```', '[1,2]'],
+		['See [the docs] then {"ok":true}', '{"ok":true}'],
+		['{"items":[1,2]}', '{"items":[1,2]}'],
+	])(
+		'keeps array payloads intact without letting prose brackets shadow an object',
+		(input, expected) => {
+			expect(extractJsonCandidate(input)).toBe(expected);
+		},
+	);
+
+	it.each([
 		['Ran ```pnpm test``` then {"ok":true}', '{"ok":true}'],
 		['{"note": "run ```pnpm test``` twice"}', '{"note": "run ```pnpm test``` twice"}'],
-	])('ignores fenced blocks that are not JSON-shaped', (input, expected) => {
+		[
+			'{"pass":true,"reasoning":"see ```json\\n{\\"x\\":1}\\n``` ok"}',
+			'{"pass":true,"reasoning":"see ```json\\n{\\"x\\":1}\\n``` ok"}',
+		],
+	])('ignores fenced blocks that are not the payload', (input, expected) => {
 		expect(extractJsonCandidate(input)).toBe(expected);
+	});
+
+	it('returns the fenced value when it is a JSON scalar', () => {
+		expect(extractJsonCandidate('```json\n42\n```')).toBe('42');
 	});
 
 	it('returns trimmed text when no JSON candidate exists', () => {

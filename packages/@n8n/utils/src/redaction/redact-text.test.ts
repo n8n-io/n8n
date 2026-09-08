@@ -54,10 +54,10 @@ describe('redactDeep', () => {
 	it('redacts values under shared sensitive key variants', () => {
 		expect(
 			redactDeep(
-				{ passwd: 'secret one', token_v2: 'secret two', note: 'safe' },
+				{ passwd: 'secret one', bot_token: 'secret two', token_type: 'Bearer' },
 				{ redactSensitiveKeys: true },
 			).value,
-		).toEqual({ passwd: '[REDACTED]', token_v2: '[REDACTED]', note: 'safe' });
+		).toEqual({ passwd: '[REDACTED]', bot_token: '[REDACTED]', token_type: 'Bearer' });
 	});
 
 	it.each([true, false])(

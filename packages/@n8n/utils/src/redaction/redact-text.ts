@@ -46,16 +46,14 @@ export function redactText(input: string, opts: RedactionOptions = {}): Redactio
 		},
 		opts.piiPatterns,
 	);
-	// In preserve mode the url pass runs FIRST: it rewrites URLs with a URL-safe
-	// placeholder before other patterns can plant one containing `]` mid-URL —
-	// `]` stops the url regex, which would hide the URL's tail (and any secrets
-	// in it) from this pass entirely.
-	const ordered = opts.preserveUrlStructure
-		? [
-				...patterns.filter((pattern) => pattern.category === 'url'),
-				...patterns.filter((pattern) => pattern.category !== 'url'),
-			]
-		: patterns;
+	// The url pass runs FIRST: it rewrites URLs (whole, or with a URL-safe
+	// placeholder in preserve mode) before other patterns can plant one
+	// containing `]` mid-URL — `]` stops the url regex, which would hide the
+	// URL's tail (and any secrets in it) from this pass entirely.
+	const ordered = [
+		...patterns.filter((pattern) => pattern.category === 'url'),
+		...patterns.filter((pattern) => pattern.category !== 'url'),
+	];
 
 	const matches: Array<{ category: RedactionCategory }> = [];
 	let text = input;

@@ -20,7 +20,8 @@ describe('formatErrorForLog', () => {
 			url: 'https://user:secret@example.test/import?api_key=abc',
 		});
 
-		expect(formatted).toContain('https://REDACTED:REDACTED@example.test/import');
+		expect(formatted).toContain('https://REDACTED@example.test/import');
+		expect(formatted).not.toContain('[REDACTED]@');
 		expect(formatted).not.toContain('user:secret');
 		expect(formatted).not.toContain('api_key=abc');
 	});
