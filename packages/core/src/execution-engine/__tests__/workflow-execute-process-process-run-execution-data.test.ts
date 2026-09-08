@@ -787,10 +787,8 @@ describe('processRunExecutionData', () => {
 			expect(executionIndexes).toEqual([...executionIndexes].sort((a, b) => a - b));
 		});
 
-		test('skips waiting tools processing when parent node cannot be found', async () => {
+		test('runs the requested tools and resumes the requesting node when it has no source data', async () => {
 			// ARRANGE
-			// This test simulates the scenario where executionData.source.main[0].previousNode
-			// is null/undefined (line 2037-2044 in workflow-execute.ts)
 			let response: EngineResponse | undefined;
 
 			const tool1Node = createNodeData({ name: 'tool1', type: types.passThrough });
@@ -836,7 +834,6 @@ describe('processRunExecutionData', () => {
 						{
 							data: taskDataConnection,
 							node: nodeWithRequests,
-							// Setting source to null triggers the "Cannot find parent node" condition
 							source: null,
 						},
 					],
@@ -851,13 +848,16 @@ describe('processRunExecutionData', () => {
 			// ASSERT
 			const runData = result.data.resultData.runData;
 
-			// When parent node cannot be found (line 2038-2044), the execution loop continues
-			// which means the waiting tools processing is skipped entirely:
+			expect(runData[nodeWithRequests.name]).toHaveLength(1);
+			expect(runData[nodeWithRequests.name][0].executionStatus).toBe('success');
+			expect(runData[nodeWithRequests.name][0].data?.main?.[0]?.[0]?.json).toMatchObject({
+				finalResult: 'Agent completed with tool results',
+			});
+			expect(runData[nodeWithRequests.name][0].source).toEqual([
+				expect.objectContaining({ previousNode: nodeWithRequests.name }),
+			]);
+			expect(runData[nodeWithRequests.name][0].metadata?.subNodeExecutionData).toBeDefined();
 
-			// 1. The agent node never gets re-executed with the Response callback
-			expect(runData[nodeWithRequests.name]).toBeUndefined();
-
-			// 2. Tool nodes get added to runData with inputOverride but are never actually executed
 			expect(runData[tool1Node.name]).toHaveLength(1);
 			expect(runData[tool1Node.name][0].inputOverride).toEqual({
 				ai_tool: [
@@ -877,12 +877,17 @@ describe('processRunExecutionData', () => {
 					],
 				],
 			});
-			// The tool node should not have execution data since it was never run
-			expect(runData[tool1Node.name][0].data).toBeUndefined();
-			expect(runData[tool1Node.name][0].executionStatus).toBeUndefined();
+			expect(runData[tool1Node.name][0].data).toBeDefined();
+			expect(runData[tool1Node.name][0].executionStatus).toBe('success');
 
-			// 3. The response callback is never called since the agent's second execution is skipped
-			expect(response).toBeUndefined();
+			expect(response).toBeDefined();
+			expect(response?.metadata).toEqual({ requestId: 'test_request' });
+			expect(response?.actionResponses).toHaveLength(1);
+			expect(response?.actionResponses[0].action.id).toBe('action_1');
+			expect(response?.actionResponses[0].data.data?.ai_tool?.[0]?.[0]?.json).toMatchObject({
+				query: 'test input',
+				toolCallId: 'action_1',
+			});
 		});
 
 		test('resets responses between different node executions', async () => {

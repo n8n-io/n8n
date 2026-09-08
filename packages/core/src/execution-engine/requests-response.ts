@@ -189,7 +189,7 @@ function prepareRequestingNodeForResuming(
 	request: EngineRequest,
 	executionData: IExecuteData,
 ) {
-	const parentNode = executionData.source?.main?.[0]?.previousNode;
+	const parentNode = executionData.source?.main?.[0]?.previousNode ?? executionData.node.name;
 	if (!parentNode) {
 		Container.get(ErrorReporter).error(
 			new UnexpectedError(
