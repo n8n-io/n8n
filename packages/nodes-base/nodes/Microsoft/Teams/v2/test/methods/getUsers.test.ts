@@ -185,16 +185,23 @@ describe('Microsoft Teams v2, getUsers', () => {
 });
 
 describe('Microsoft Teams v2, mention picker wiring', () => {
-	const mentionUserRlc = (resource: string, operation = 'create') => {
-		const mentions = versionDescription.properties.find(
+	const mentionsField = (resource: string, operation: string) =>
+		versionDescription.properties.find(
 			(property) =>
 				property.name === 'mentions' &&
 				property.displayOptions?.show?.resource?.includes(resource) &&
 				property.displayOptions?.show?.operation?.includes(operation),
 		);
-		const row = (mentions?.options ?? [])[0] as { values: INodeProperties[] };
-		return row?.values?.find((value) => value.name === 'userId');
-	};
+
+	const mentionRow = (resource: string, operation = 'create') =>
+		((mentionsField(resource, operation)?.options ?? [])[0] as { values: INodeProperties[] })
+			?.values ?? [];
+
+	const mentionUserRlc = (resource: string, operation = 'create') =>
+		mentionRow(resource, operation).find((value) => value.name === 'userId');
+
+	const mentionTagRlc = (resource: string, operation = 'create') =>
+		mentionRow(resource, operation).find((value) => value.name === 'tagId');
 
 	it.each([
 		['channelMessage', 'create'],
@@ -225,4 +232,89 @@ describe('Microsoft Teams v2, mention picker wiring', () => {
 
 		expect(new RegExp(regex).test('714c1202-cbac-10ff-c160-53ab5c4df9b8')).toBe(true);
 	});
+
+	it.each([
+		['channelMessage', 'create'],
+		['channelMessage', 'reply'],
+	])('%s %s offers a team tag picker backed by getTags', (resource, operation) => {
+		const listMode = mentionTagRlc(resource, operation)?.modes?.find(
+			(mode) => mode.name === 'list',
+		);
+
+		// The only guard on the method name: `generate-metadata` collects `loadOptionsMethod`
+		// references only, and this node registers no `loadOptions` at all.
+		expect(listMode?.typeOptions?.searchListMethod).toBe('getTags');
+		expect(new MicrosoftTeamsV2(versionDescription).methods.listSearch).toHaveProperty('getTags');
+	});
+
+	it.each([
+		['channelMessage', 'create', ['mentionType', 'userId', 'tagId']],
+		['channelMessage', 'reply', ['mentionType', 'userId', 'tagId']],
+		// A chat is not team-scoped, so there is no team to scope tags to.
+		['chatMessage', 'create', ['userId']],
+	])('%s %s builds a mention row from %j', (resource, operation, names) => {
+		expect(mentionRow(resource, operation).map((value) => value.name)).toEqual(names);
+	});
+
+	it('leaves the chat user picker ungated', () => {
+		// A mutate-instead-of-spread on `userRLC` would hide it behind a mention type that a
+		// chat row does not have.
+		expect(mentionUserRlc('chatMessage')?.displayOptions).toBeUndefined();
+	});
+
+	it('offers no expression for the mention type', () => {
+		// An expression-valued discriminator makes both dependent pickers count as displayed, so
+		// both report a missing required parameter at once. It is an editor-side guard only: a
+		// lone `$fromAI()` expression survives, which is what the runtime check is for.
+		expect(
+			mentionRow('channelMessage').find((value) => value.name === 'mentionType')?.noDataExpression,
+		).toBe(true);
+	});
+
+	it('shows each channel picker only for its own mention type', () => {
+		expect(mentionUserRlc('channelMessage')?.displayOptions?.show?.mentionType).toEqual(['user']);
+		expect(mentionTagRlc('channelMessage')?.displayOptions?.show?.mentionType).toEqual(['tag']);
+	});
+
+	it('reloads the tag list when the team changes', () => {
+		expect(mentionTagRlc('channelMessage')?.typeOptions?.loadOptionsDependsOn).toEqual([
+			'teamId.value',
+		]);
+	});
+
+	// Against the literals, not against each other: comparing the two fields passes if both are
+	// renamed, and `mentions` plus `mention` are the two strings the resolver reads rows by.
+	it.each([
+		['channelMessage', 'create'],
+		['channelMessage', 'reply'],
+		['chatMessage', 'create'],
+	])('%s %s stores its rows under mentions.mention', (resource, operation) => {
+		const field = mentionsField(resource, operation);
+
+		expect(field?.type).toBe('fixedCollection');
+		expect(field?.default).toEqual({});
+		expect(field?.placeholder).toBe('Add Mention');
+		expect((field?.options ?? [])[0]?.name).toBe('mention');
+		// Rows are reorderable because `prepareMessage` numbers the tokens by array order.
+		expect(field?.typeOptions?.sortable).toBe(true);
+	});
+
+	it.each([
+		['a value with a path separator', 'AbC0123/xyz'],
+		// The execute half of this divergence lives in utils.test.ts: `validateMicrosoftGraphId`
+		// percent-decodes before validating, so the same value is accepted at run time.
+		['a percent-encoded value', 'abc%3D'],
+	])('rejects %s in the tag By ID mode', (_label, value) => {
+		const byId = mentionTagRlc('channelMessage')?.modes?.find((mode) => mode.name === 'id');
+		const { regex } = (byId?.validation?.[0] as unknown as { properties: { regex: string } })
+			.properties;
+
+		expect(new RegExp(regex).test(value)).toBe(false);
+	});
+
+	// Blocked on the D7 live spike. The only documented sample id is malformed (117 characters
+	// ending in `==`, which is not valid padded base64), and synthesizing one would make the
+	// test and the regex agree on a fiction. Assert a captured id, and the same id with a
+	// trailing space, which is the only thing that kills a `[ \t]*$` deletion.
+	it.todo('accepts a real tag ID in the By ID mode');
 });

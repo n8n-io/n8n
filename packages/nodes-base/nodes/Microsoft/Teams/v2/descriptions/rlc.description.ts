@@ -373,3 +373,54 @@ export const userRLC: INodeProperties = {
 		},
 	],
 };
+
+/**
+ * Team tag picker, scoped to the node's `teamId` and backed by `getTags`. Like `userRLC`, no mode
+ * declares an `extractValue`: the row read that consumes it cannot pass `{ extractValue: true }`,
+ * because a row-level `displayOptions` makes that read throw.
+ */
+export const teamworkTagRLC: INodeProperties = {
+	displayName: 'Team Tag',
+	name: 'tagId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description: 'Select a tag from the team, or enter its ID',
+	typeOptions: {
+		loadOptionsDependsOn: ['teamId.value'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'e.g. Engineering',
+			typeOptions: {
+				searchListMethod: 'getTags',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						// A tag ID is base64 of `{groupId}##{tagGuid}##{token}`. base64 emits `+` or
+						// `/` only for a plaintext byte of `>`, `~`, `?`, DEL or non-ASCII, and that
+						// plaintext is hex, `-`, `#` and alphanumerics, so only `[A-Za-z0-9]` and `=`
+						// padding can occur. No length check: the only sample available is provably
+						// malformed (117 characters ending in `==`), so no length invariant has been
+						// observed on a real ID at all. If Microsoft ever widens the token alphabet,
+						// a From List pick bypasses this regex and dies at `buildTeamsPath` with
+						// "remove any slashes" for a tag the user chose from a dropdown.
+						regex: '^[A-Za-z0-9=]+[ \t]*$',
+						errorMessage: 'Not a valid Microsoft Teams tag ID',
+					},
+				},
+			],
+		},
+	],
+};

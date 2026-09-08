@@ -5,14 +5,14 @@ import type {
 	INode,
 	INodeListSearchItems,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { isResourceLocatorValue, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
 	stampItemIndexOnError,
 	validateUserTargetId,
 	type UserTargetMessages,
 } from '../../../GenericFunctions';
-import { microsoftApiRequest } from '../transport';
+import { buildTeamsPath, microsoftApiRequest } from '../transport';
 
 /** Where the `<at>` tokens go relative to the message text. The workflow-link footer, when on,
  * always comes last, so `end` means "after the text, before the footer". */
@@ -20,7 +20,9 @@ export type MentionPlacement = 'start' | 'end';
 
 export type Mention = {
 	mentionText: string;
-	mentioned: { user: { id: string; displayName: string; userIdentityType: 'aadUser' } };
+	mentioned:
+		| { user: { id: string; displayName: string; userIdentityType: 'aadUser' } }
+		| { tag: { id: string; displayName: string } };
 };
 
 /**
@@ -109,19 +111,99 @@ async function findUserByMail(
 }
 
 /**
- * One Graph lookup per distinct user for the whole run, not one per item. The router calls
+ * Reads a row field that may hold a resource-locator object. Keyed on key presence, not on
+ * truthiness: the everyday "row added, nobody picked yet" state is the RLC default
+ * `{ __rl: true, mode: 'list', value: '' }`, and unwrapping it on truthiness would pass the whole
+ * object down and tell the user to remove slashes from an ID they never typed. One deliberate
+ * delta from `extractValue`: `isResourceLocatorValue` also requires `__rl`, so an object carrying
+ * a `value` but no `__rl`/`mode` keeps today's rejection instead of becoming newly accepted.
+ */
+const rlcValue = (value: unknown): string =>
+	String((isResourceLocatorValue(value) ? value.value : value) ?? '').trim();
+
+/**
+ * Looks a team tag up under the team that owns it. A foreign tag ID 404s under
+ * `/teams/{other}/tags/{id}`, which is how team ownership is proven.
+ */
+async function resolveTagMention(
+	this: IExecuteFunctions,
+	tagId: string,
+	teamId: string,
+	rowNumber: number,
+	itemIndex: number,
+): Promise<Mention> {
+	const node = this.getNode();
+	let tag: IDataObject;
+
+	try {
+		// `buildTeamsPath`, not `encodeURIComponent`: a tag ID is base64 over `[A-Za-z0-9=]` only
+		// (see `teamworkTagRLC`), which needs no encoding, and Graph's own docs interpolate it
+		// raw. The user branch encodes only because a B2B guest UPN carries `#EXT#`, which
+		// `buildTeamsPath` rejects, so the asymmetry is deliberate and not a pattern to copy.
+		// It is built inside this try so the catch below attributes a malformed ID to its item.
+		const response = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/tags/', { id: tagId }]),
+		)) as IDataObject;
+		// The v1.0 get-by-id docs example wraps the entity in `value` while the list endpoint
+		// returns an array under the same key. Drop the fallback once the live spike settles it.
+		tag = (response.value ?? response) as IDataObject;
+	} catch (error) {
+		// Only a tag row rewrites its 403. A user row in the same loop keeps Graph's own message,
+		// by ENT-324's choice; changing that is out of scope here.
+		const denied = tagPermissionError(error, node, 'Could not read the team tag', itemIndex);
+		if (denied) throw denied;
+		if (error instanceof NodeApiError && error.httpCode === '404') {
+			throw new NodeOperationError(node, `Could not find the team tag for mention ${rowNumber}`, {
+				itemIndex,
+				description:
+					'Pick the tag from the list, or check that the tag ID is correct and that the tag belongs to the selected team.',
+			});
+		}
+		throw stampItemIndexOnError(error, itemIndex);
+	}
+
+	// No fallback for either field, unlike the user branch below. A tag ID is an opaque base64
+	// blob, so falling back to it ships a garbage chip that Graph still accepts; and if the
+	// response is the list shape, both fields are missing, `mentioned.tag.id` drops out of the
+	// body and the run is green with a mention that notifies nobody.
+	if (
+		typeof tag.id !== 'string' ||
+		!tag.id ||
+		typeof tag.displayName !== 'string' ||
+		!tag.displayName
+	) {
+		throw new NodeOperationError(node, `Could not read the team tag for mention ${rowNumber}`, {
+			itemIndex,
+			description: 'Microsoft Graph returned a tag without an ID or a display name.',
+		});
+	}
+
+	// The ID comes from the response, never from the input: `validateMicrosoftGraphId` trims and
+	// percent-decodes, so the path can legitimately differ from what the user typed, and the body
+	// is what decides who gets notified.
+	return {
+		mentionText: tag.displayName,
+		mentioned: { tag: { id: tag.id, displayName: tag.displayName } },
+	};
+}
+
+ * One Graph lookup per distinct mention target for the whole run, not one per item. The router calls
  * `resolveMentions` once per input item with the same execute context, so a static mention on a
- * 500-item fan-out would otherwise repeat the same `GET /users/{id}` 500 times, sequentially.
+ * 500-item fan-out would otherwise repeat the same lookup 500 times, sequentially.
  * Keyed on the context object, so the cache is collected with the execution and never crosses
- * runs or tenants. Only successes are stored, so a throttled row is retried on the next item.
+ * runs or tenants. Only successes are stored, so a throttled row is retried on the next item. Keys are
+ * namespaced by mention type, and a tag key carries its team, because the same ID string
+ * means different things in the two arms and a tag is only valid under the team that owns it.
  */
 const resolvedPerRun = new WeakMap<IExecuteFunctions, Map<string, Mention>>();
 
 /**
- * Resolves every mention row to a Graph user. Graph stores `mentions[].mentioned.user` verbatim
- * and resolves nothing: a UPN or a well-formed but nonexistent GUID is accepted with a 200 and a
- * mention that notifies nobody. So each row goes through `GET /users/{idOrUpn}` first, which also
- * yields the authoritative display name.
+ * Resolves every mention row to a Graph user or team tag. Graph stores `mentions[].mentioned`
+ * verbatim and resolves nothing: a UPN, a well-formed but nonexistent GUID or a bogus tag ID is
+ * accepted with a 200 and a mention that notifies nobody. So each row is looked up first, which
+ * also yields the authoritative display name.
  *
  * Rows are walked in order, one request each: a realistic list is 1-3 entries, and sequential
  * keeps a failing row unambiguous and the resolved array in row order.
@@ -129,9 +211,12 @@ const resolvedPerRun = new WeakMap<IExecuteFunctions, Map<string, Mention>>();
 export async function resolveMentions(
 	this: IExecuteFunctions,
 	itemIndex: number,
+	teamId?: string,
 ): Promise<Mention[]> {
-	const rows = this.getNodeParameter('mentions.mention', itemIndex, []);
-	const rowCount = Array.isArray(rows) ? rows.length : 0;
+	// Read the rows wholesale. An indexed read with `{ extractValue: true }` throws once a row
+	// field carries a `displayOptions`, which the mention type discriminator gives both pickers.
+	const raw = this.getNodeParameter('mentions.mention', itemIndex, []);
+	const rows: IDataObject[] = Array.isArray(raw) ? (raw as IDataObject[]) : [];
 	const node = this.getNode();
 	const mentions: Mention[] = [];
 
@@ -141,15 +226,63 @@ export async function resolveMentions(
 		resolvedPerRun.set(this, cache);
 	}
 
-	for (let index = 0; index < rowCount; index++) {
-		const raw = this.getNodeParameter(`mentions.mention[${index}].userId`, itemIndex, '', {
-			extractValue: true,
-		});
+	for (let index = 0; index < rows.length; index++) {
+		// A null or non-object row used to fall through lodash `get` to the read's fallback.
+		const row = (rows[index] ?? {}) as IDataObject;
+		const { mentionType } = row;
+
+		if (mentionType === 'tag') {
+			const tagId = rlcValue(row.tagId);
+			if (!tagId) {
+				throw new NodeOperationError(node, `No team tag selected for mention ${index + 1}`, {
+					itemIndex,
+					description: 'Pick the tag from the list, or enter a tag ID.',
+				});
+			}
+			if (!teamId) {
+				throw new NodeOperationError(
+					node,
+					`No team selected for the team tag in mention ${index + 1}`,
+					{ itemIndex, description: 'Select the team that owns the tag and try again.' },
+				);
+			}
+
+			const tagKey = `tag:${teamId}\u0000${tagId}`;
+			const cachedTag = cache.get(tagKey);
+			if (cachedTag) {
+				// Safe to share by reference: `prepareMessage` spreads rather than mutates.
+				mentions.push(cachedTag);
+				continue;
+			}
+
+			const tagMention = await resolveTagMention.call(
+				this,
+				tagId,
+				teamId,
+				index + 1,
+				itemIndex,
+			);
+			cache.set(tagKey, tagMention);
+			mentions.push(tagMention);
+			continue;
+		}
+
+		// `undefined` is the on-disk shape of a row saved before the discriminator existed. An
+		// unknown value is an error rather than a silent user mention, because it reaches here
+		// from imported JSON, the public API and a surviving `$fromAI()` expression.
+		if (mentionType !== undefined && mentionType !== 'user') {
+			throw new NodeOperationError(node, `The mention type for mention ${index + 1} is not valid`, {
+				itemIndex,
+				description: 'Set the mention type to either User or Team Tag.',
+			});
+		}
+
 		// Validate the shape before encoding (`encodeURIComponent` leaves `..` intact) and encode
 		// the same trimmed string, since the validator is anchored and callers trim.
-		const value = String(raw ?? '').trim();
+		const value = rlcValue(row.userId);
 
-		const cached = cache.get(value);
+		const userKey = `user:${value}`;
+		const cached = cache.get(userKey);
 		if (cached) {
 			// Safe to share by reference: `prepareMessage` spreads rather than mutates.
 			mentions.push(cached);
@@ -197,7 +330,7 @@ export async function resolveMentions(
 				user: { id: user.id as string, displayName: label, userIdentityType: 'aadUser' },
 			},
 		};
-		cache.set(value, mention);
+		cache.set(userKey, mention);
 		mentions.push(mention);
 	}
 

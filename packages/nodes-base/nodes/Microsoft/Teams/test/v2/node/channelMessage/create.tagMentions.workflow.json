@@ -1,5 +1,5 @@
 {
-	"name": "Teams channelMessage reply with mentions",
+	"name": "Teams channelMessage create with tag mentions",
 	"nodes": [
 		{
 			"parameters": {},
@@ -12,7 +12,6 @@
 		{
 			"parameters": {
 				"resource": "channelMessage",
-				"operation": "reply",
 				"teamId": {
 					"__rl": true,
 					"value": "1111-2222-3333",
@@ -25,20 +24,10 @@
 					"mode": "list",
 					"cachedResultName": "Sales West"
 				},
-				"messageId": "1698324478896",
 				"contentType": "text",
-				"message": "on it",
+				"message": "new sale",
 				"mentions": {
 					"mention": [
-						{
-							"mentionType": "user",
-							"userId": {
-								"__rl": true,
-								"value": "11111111-1111-1111-1111-111111111111",
-								"mode": "list",
-								"cachedResultName": "Jane (stale)"
-							}
-						},
 						{
 							"mentionType": "tag",
 							"tagId": {
@@ -46,6 +35,15 @@
 								"value": "RW5naW5lZXJpbmc=",
 								"mode": "list",
 								"cachedResultName": "Engineering (stale)"
+							}
+						},
+						{
+							"mentionType": "user",
+							"userId": {
+								"__rl": true,
+								"value": "11111111-1111-1111-1111-111111111111",
+								"mode": "list",
+								"cachedResultName": "Jane (stale)"
 							}
 						}
 					]
@@ -80,15 +78,14 @@
 		"No Operation, do nothing": [
 			{
 				"json": {
-					"id": "1698324500123",
-					"replyToId": "1698324478896",
+					"id": "1698324478896",
 					"messageType": "message",
-					"createdDateTime": "2023-10-26T12:48:20.123Z",
+					"createdDateTime": "2023-10-26T12:47:58.896Z",
 					"importance": "normal",
 					"locale": "en-us",
 					"body": {
 						"contentType": "html",
-						"content": "on it <at id=\"0\">Jane Smith</at> <at id=\"1\">Engineering</at>"
+						"content": "new sale <at id=\"0\">Engineering</at> <at id=\"1\">Jane Smith</at>"
 					},
 					"channelIdentity": {
 						"teamId": "1111-2222-3333",
@@ -98,6 +95,16 @@
 					"mentions": [
 						{
 							"id": 0,
+							"mentionText": "Engineering",
+							"mentioned": {
+								"tag": {
+									"id": "RW5naW5lZXJpbmc=",
+									"displayName": "Engineering"
+								}
+							}
+						},
+						{
+							"id": 1,
 							"mentionText": "Jane Smith",
 							"mentioned": {
 								"user": {
@@ -105,16 +112,6 @@
 									"displayName": "Jane Smith",
 									"userIdentityType": "aadUser",
 									"tenantId": "23786ca6-7ff2-4672-87d0-5c649ee0a337"
-								}
-							}
-						},
-						{
-							"id": 1,
-							"mentionText": "Engineering",
-							"mentioned": {
-								"tag": {
-									"id": "RW5naW5lZXJpbmc=",
-									"displayName": "Engineering"
 								}
 							}
 						}
@@ -152,7 +149,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "30cec397-a737-41b8-8da2-dff4d293ce71",
+	"versionId": "6f0b0f4a-7c66-4a0c-9a2a-7c3d1f7bb0f2",
 	"id": "i3NYGF0LXV4qDFV9",
 	"meta": {
 		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"

@@ -23,6 +23,11 @@ const USERS: Record<string, IDataObject> = {
 	'/v1.0/users/bob%40example.com': { id: 'guid-2', displayName: 'Bob Jones' },
 };
 
+const TAGS: Record<string, IDataObject> = {
+	'/v1.0/teams/team-a/tags/tag-a': { id: 'tag-a', displayName: 'Engineering' },
+	'/v1.0/teams/team-b/tags/tag-b': { id: 'tag-b', displayName: 'Support' },
+};
+
 describe('Microsoft Teams V2, create per item', () => {
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
@@ -74,12 +79,11 @@ describe('Microsoft Teams V2, create per item', () => {
 			contentType: 'text',
 			message: 'hi',
 			options,
-			'mentions.mention': [{}],
 		};
 		ctx.getNodeParameter.mockImplementation(
 			(name: string, itemIndex?: number, fallback?: unknown): NodeParameterValueType => {
-				if (name === 'mentions.mention[0].userId') {
-					return mentionedPerItem[itemIndex as number];
+				if (name === 'mentions.mention') {
+					return [{ userId: mentionedPerItem[itemIndex as number] }] as NodeParameterValueType;
 				}
 				return (name in params ? params[name] : fallback) as NodeParameterValueType;
 			},
@@ -166,4 +170,41 @@ describe('Microsoft Teams V2, create per item', () => {
 			expect(janeLookups()).toHaveLength(2);
 		},
 	);
+
+	// Its own `it`: the table above keys its mock on the parameter name only, and its chatMessage
+	// arm has no team at all. The tag resolve reads both the team and the row per item.
+	it('channelMessage create resolves each item tag against the team of that item', async () => {
+		const teams = ['team-a', 'team-b'];
+		const tags = ['tag-a', 'tag-b'];
+		const params: Record<string, unknown> = {
+			authentication: 'microsoftTeamsOAuth2Api',
+			resource: 'channelMessage',
+			operation: 'create',
+			channelId: 'channelID',
+			contentType: 'text',
+			message: 'hi',
+			options: { includeLinkToWorkflow: false },
+		};
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, itemIndex?: number, fallback?: unknown): NodeParameterValueType => {
+				if (name === 'teamId') return teams[itemIndex as number];
+				if (name === 'mentions.mention') {
+					return [
+						{ mentionType: 'tag', tagId: tags[itemIndex as number] },
+					] as NodeParameterValueType;
+				}
+				return (name in params ? params[name] : fallback) as NodeParameterValueType;
+			},
+		);
+		apiRequest.mockImplementation(async (_method: string, resourcePath: string) =>
+			resourcePath in TAGS ? TAGS[resourcePath] : { id: 'sent' },
+		);
+
+		await node.execute.call(ctx);
+
+		const resolved = apiRequest.mock.calls
+			.filter((call) => call[0] === 'GET')
+			.map((call) => call[1] as string);
+		expect(resolved).toEqual(['/v1.0/teams/team-a/tags/tag-a', '/v1.0/teams/team-b/tags/tag-b']);
+	});
 });

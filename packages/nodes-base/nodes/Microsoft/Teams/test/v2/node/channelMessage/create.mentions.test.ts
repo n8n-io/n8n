@@ -1,5 +1,8 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { readFileSync } from 'fs';
+import { jsonParse, type IDataObject, type INode } from 'n8n-workflow';
 import nock from 'nock';
+import { join } from 'path';
 
 import { credentials } from '../../../credentials';
 
@@ -106,5 +109,24 @@ describe('Test MicrosoftTeamsV2, channelMessage => create with mentions', () => 
 		credentials,
 		workflowFiles: ['create.mentions.workflow.json'],
 		customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
+	});
+
+	// This fixture is the on-disk shape of a workflow saved before the mention type existed, so
+	// it stays byte-identical. What it kills is a wrong default on `mentionType`: the options are
+	// listed alphabetically for the lint rule, so `Team Tag` comes first, and a default of `tag`
+	// would materialise into every row here, drop `userId` as not displayed, and fail at "No team
+	// tag selected".
+	it('sends the two user mentions of a workflow saved without a mention type', () => {
+		const workflow = jsonParse<{ nodes: INode[] }>(
+			readFileSync(join(__dirname, 'create.mentions.workflow.json'), 'utf8'),
+		);
+		const teams = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.microsoftTeams');
+		const rows = ((teams?.parameters.mentions as IDataObject)?.mention ?? []) as IDataObject[];
+
+		expect(rows).toHaveLength(2);
+		for (const row of rows) {
+			expect(row).toHaveProperty('userId');
+			expect(row).not.toHaveProperty('mentionType');
+		}
 	});
 });
