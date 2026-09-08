@@ -26,7 +26,6 @@ import type { ReviewInboxSectionKey } from '../reviewInbox.store';
 export type ReviewInboxSidebarSection = {
 	key: ReviewInboxSectionKey;
 	items: WorkflowReviewInboxItem[];
-	loading: boolean;
 	loadingMore: boolean;
 	hasMore: boolean;
 	error: Error | null;
@@ -34,9 +33,11 @@ export type ReviewInboxSidebarSection = {
 
 const props = defineProps<{
 	sections: ReviewInboxSidebarSection[];
+	loading: boolean;
+	initialLoadFailed: boolean;
 	activeTab: WorkflowReviewRequestState;
-	openCount: number;
-	closedCount: number;
+	openCount: number | null;
+	closedCount: number | null;
 	selectedId: string | null;
 }>();
 
@@ -46,6 +47,7 @@ const emit = defineEmits<{
 	'update:activeTab': [tab: WorkflowReviewRequestState];
 	loadMore: [section: ReviewInboxSectionKey];
 	retry: [section: ReviewInboxSectionKey];
+	retryActiveTab: [];
 }>();
 
 const i18n = useI18n();
@@ -64,24 +66,23 @@ function sectionTitle(key: CollapsibleReviewInboxSection): string {
 		: i18n.baseText(`workflowReviews.sidebar.section.${key}.title`);
 }
 
-function sectionEmptyText(key: CollapsibleReviewInboxSection): string {
-	return key === 'waiting' && usesImpersonalWaitingLabels.value
-		? i18n.baseText('workflowReviews.sidebar.section.waiting.emptyAdmin')
-		: i18n.baseText(`workflowReviews.sidebar.section.${key}.empty`);
-}
 const listRef = ref<HTMLElement | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
+
+function countTag(count: number | null): string | undefined {
+	return count === null ? undefined : String(count);
+}
 
 const tabOptions = computed(() => [
 	{
 		label: i18n.baseText('workflowReviews.sidebar.tabs.open'),
 		value: 'open' as const,
-		tag: String(props.openCount),
+		tag: countTag(props.openCount),
 	},
 	{
 		label: i18n.baseText('workflowReviews.sidebar.tabs.closed'),
 		value: 'closed' as const,
-		tag: String(props.closedCount),
+		tag: countTag(props.closedCount),
 	},
 ]);
 
@@ -89,23 +90,27 @@ function isCollapsibleSection(key: ReviewInboxSectionKey): key is CollapsibleRev
 	return key !== 'closed';
 }
 
+const hasUsableRows = computed(() => props.sections.some((section) => section.items.length > 0));
+const showInitialLoadError = computed(() => props.initialLoadFailed && !hasUsableRows.value);
+
 const groups = computed(() =>
-	props.sections.map((section) => {
-		const collapsibleKey = isCollapsibleSection(section.key) ? section.key : null;
-		return {
-			key: section.key,
-			section,
-			collapsible: collapsibleKey !== null,
-			title: collapsibleKey ? sectionTitle(collapsibleKey) : null,
-			emptyText: collapsibleKey
-				? sectionEmptyText(collapsibleKey)
-				: i18n.baseText('workflowReviews.sidebar.empty.closed'),
-			collapsed: collapsibleKey !== null && isCollapsed(collapsibleKey),
-			headerId: `workflow-review-section-header-${section.key}`,
-			groupId: `workflow-review-section-group-${section.key}`,
-			isEmpty: !section.loading && section.error === null && section.items.length === 0,
-		};
-	}),
+	props.sections
+		.map((section) => {
+			const collapsibleKey = isCollapsibleSection(section.key) ? section.key : null;
+			return {
+				key: section.key,
+				section,
+				collapsible: collapsibleKey !== null,
+				title: collapsibleKey ? sectionTitle(collapsibleKey) : null,
+				collapsed: collapsibleKey !== null && isCollapsed(collapsibleKey),
+				headerId: `workflow-review-section-header-${section.key}`,
+				groupId: `workflow-review-section-group-${section.key}`,
+				// A settled, empty section is dropped entirely. When another section
+				// has rows, an error stays visible with its section-specific retry.
+				visible: section.error !== null || section.items.length > 0 || section.hasMore,
+			};
+		})
+		.filter((group) => group.visible && !props.loading && !showInitialLoadError.value),
 );
 
 /** The closed tab keeps infinite scroll; the open tab loads more explicitly. */
@@ -168,6 +173,29 @@ function onListBackgroundClick() {
 		</div>
 
 		<div ref="listRef" :class="$style.list" @click.self="onListBackgroundClick">
+			<N8nLoading
+				v-if="loading"
+				:loading="true"
+				:rows="3"
+				data-test-id="workflow-review-list-skeleton"
+			/>
+			<div
+				v-else-if="showInitialLoadError"
+				:class="$style.sectionError"
+				data-test-id="workflow-review-list-error"
+			>
+				<N8nText color="danger" size="small">
+					{{ i18n.baseText('workflowReviews.sidebar.error') }}
+				</N8nText>
+				<N8nButton
+					variant="subtle"
+					size="mini"
+					:label="i18n.baseText('generic.retry')"
+					data-test-id="workflow-review-list-retry"
+					@click="emit('retryActiveTab')"
+				/>
+			</div>
+
 			<div v-for="group in groups" :key="group.key" :class="$style.section">
 				<button
 					v-if="group.title"
@@ -247,22 +275,6 @@ function onListBackgroundClick() {
 				</div>
 
 				<template v-if="!group.collapsed">
-					<N8nLoading
-						v-if="group.section.loading"
-						:loading="true"
-						:rows="3"
-						:data-section="group.key"
-						data-test-id="workflow-review-section-skeleton"
-					/>
-					<N8nText
-						v-else-if="group.isEmpty"
-						color="text-light"
-						size="small"
-						:data-section="group.key"
-						data-test-id="workflow-review-section-empty"
-					>
-						{{ group.emptyText }}
-					</N8nText>
 					<div v-if="group.section.loadingMore" :class="$style.loadingMore">
 						<N8nLoading :loading="true" :rows="1" />
 					</div>
@@ -278,7 +290,7 @@ function onListBackgroundClick() {
 						<N8nButton
 							variant="subtle"
 							size="mini"
-							:label="i18n.baseText('workflowReviews.sidebar.retry')"
+							:label="i18n.baseText('generic.retry')"
 							:data-section="group.key"
 							data-test-id="workflow-review-section-retry"
 							@click="emit('retry', group.key)"
@@ -299,20 +311,21 @@ function onListBackgroundClick() {
 			</div>
 
 			<!-- Outside the v-for: a ref inside one would resolve to an array. -->
-			<div v-if="closedSentinelActive" ref="loadMoreSentinel" :class="$style.sentinel" />
+			<div
+				v-if="closedSentinelActive && !loading && !showInitialLoadError"
+				ref="loadMoreSentinel"
+				:class="$style.sentinel"
+			/>
 		</div>
 	</aside>
 </template>
 
 <style lang="scss" module>
 .sidebar {
-	--review-sidebar--width: 22rem;
-
 	display: flex;
 	flex-direction: column;
-	flex: 0 0 var(--review-sidebar--width);
+	width: 100%;
 	min-width: 0;
-	max-width: var(--review-sidebar--width);
 	height: 100%;
 	border-right: var(--border-width) solid var(--border-color);
 }

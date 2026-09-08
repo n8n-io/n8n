@@ -2,8 +2,9 @@ import type { WorkflowReviewActivityEntry } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
 
+import { ReviewLinkedWorkflowsKey, type ReviewLinkedWorkflowContext } from '../constants';
 import { useReviewActivityStore } from '../reviewActivity.store';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 
@@ -100,7 +101,7 @@ describe('WorkflowReviewActivityFeed', () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(getByTestId('workflow-review-activity-error')).toHaveTextContent(
-			'Could not load activity',
+			"Couldn't load activity",
 		);
 		expect(queryByTestId('workflow-review-activity-empty')).not.toBeInTheDocument();
 	});
@@ -333,27 +334,63 @@ describe('WorkflowReviewActivityFeed', () => {
 					},
 				],
 				[
-					'a review closed by archiving its workflow',
-					{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-archived' } },
+					'a workflow archived by a user',
 					{
-						testId: 'workflow-review-activity-closed',
-						text: 'Review closed because the workflow was archived',
+						...systemEntry,
+						type: 'workflow.archived',
+						data: { workflowId: 'wf-1', actorKind: 'user' },
+					},
+					{
+						testId: 'workflow-review-activity-workflow-archived',
+						text: 'Archived the workflow',
 					},
 				],
 				[
-					'a review closed by moving its workflow',
-					{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-moved' } },
+					'a workflow archived by the system',
 					{
-						testId: 'workflow-review-activity-closed',
-						text: 'Review closed because the workflow moved to another project',
+						...systemEntry,
+						type: 'workflow.archived',
+						data: { workflowId: 'wf-1', actorKind: 'system' },
+					},
+					{
+						testId: 'workflow-review-activity-workflow-archived',
+						text: 'The workflow was archived by the system',
 					},
 				],
 				[
-					'a review closed by deleting its workflow',
-					{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-deleted' } },
+					'a workflow deleted by a user',
 					{
-						testId: 'workflow-review-activity-closed',
-						text: 'Review closed because the workflow was deleted',
+						...systemEntry,
+						type: 'workflow.deleted',
+						data: { workflowId: 'wf-1', actorKind: 'user' },
+					},
+					{
+						testId: 'workflow-review-activity-workflow-deleted',
+						text: 'Deleted the workflow',
+					},
+				],
+				[
+					'a workflow deleted by the system',
+					{
+						...systemEntry,
+						type: 'workflow.deleted',
+						data: { workflowId: 'wf-1', actorKind: 'system' },
+					},
+					{
+						testId: 'workflow-review-activity-workflow-deleted',
+						text: 'The workflow was deleted by the system',
+					},
+				],
+				[
+					'a workflow moved by a user',
+					{
+						...systemEntry,
+						type: 'workflow.moved',
+						data: { workflowId: 'wf-1', actorKind: 'user' },
+					},
+					{
+						testId: 'workflow-review-activity-workflow-moved',
+						text: 'Moved the workflow to another project',
 					},
 				],
 			],
@@ -399,14 +436,299 @@ describe('WorkflowReviewActivityFeed', () => {
 			expect(queryByTestId('workflow-review-activity-unknown')).not.toBeInTheDocument();
 		});
 
-		// No component is registered for this type yet, which is why the registry stays partial.
-		it('shows a placeholder for an entry type no renderer covers yet', async () => {
-			store.entries = [{ ...systemEntry, type: 'workflow.published', data: null }];
+		// Only a downgrade can produce a stored type outside the union; the feed must still
+		// hold its place rather than crash or drop it.
+		it('shows a placeholder for an entry type no renderer covers', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'review.something_newer',
+					data: null,
+				} as unknown as WorkflowReviewActivityEntry,
+			];
 
 			const { getByTestId } = renderComponent();
 			await nextTick();
 
 			expect(getByTestId('workflow-review-activity-unknown')).toBeInTheDocument();
+		});
+
+		// The payload names the actor kind, and without it the entry must not guess: it
+		// degrades to the actorless sentence rather than crediting the wrong kind of actor.
+		it('renders a cause entry whose payload cannot be read as a system sentence', async () => {
+			store.entries = [{ ...systemEntry, type: 'workflow.archived', data: null }];
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-workflow-archived')).toHaveTextContent(
+				'The workflow was archived by the system',
+			);
+			expect(queryByTestId('workflow-review-activity-actor')).not.toBeInTheDocument();
+		});
+
+		it('names the workflow in cause entries when the detail surface provides its name', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					id: '1',
+					type: 'workflow.archived',
+					data: { workflowId: 'wf-1', actorKind: 'user' },
+				},
+				{
+					...systemEntry,
+					id: '2',
+					type: 'workflow.moved',
+					data: { workflowId: 'wf-1', actorKind: 'system' },
+				},
+				{
+					...systemEntry,
+					id: '3',
+					type: 'review.version_updated',
+					data: {
+						workflowId: 'wf-1',
+						fromWorkflowVersionId: 'version-1',
+						toWorkflowVersionId: 'version-2',
+					},
+				},
+			];
+
+			const { getByTestId } = renderWithLinkedWorkflows({});
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-workflow-archived')).toHaveTextContent(
+				'Archived Payment handler',
+			);
+			expect(getByTestId('workflow-review-activity-workflow-moved')).toHaveTextContent(
+				'Payment handler was moved to another project by the system',
+			);
+			expect(getByTestId('workflow-review-activity-version-updated')).toHaveTextContent(
+				'New version submitted for Payment handler',
+			);
+		});
+
+		it('links every mentioned workflow to its canvas', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					id: '1',
+					type: 'workflow.archived',
+					data: { workflowId: 'wf-1', actorKind: 'user' },
+				},
+				{
+					...systemEntry,
+					id: '2',
+					type: 'workflow.published',
+					data: { workflowId: 'wf-1', workflowVersionId: '234df342-5f2b-4e5a-9be6-79ee7bb1c02f' },
+				},
+			];
+
+			const { getAllByTestId } = renderComponent({
+				global: {
+					provide: {
+						[ReviewLinkedWorkflowsKey as symbol]: computed(
+							() =>
+								new Map([
+									[
+										'wf-1',
+										{
+											workflowName: 'Payment handler',
+											pinnedVersionId: null,
+											pinnedVersionName: null,
+										},
+									],
+								]),
+						),
+					},
+				},
+			});
+			await nextTick();
+
+			const links = getAllByTestId('workflow-review-activity-workflow-link');
+			expect(links).toHaveLength(2);
+			expect(links[0]).toHaveTextContent('Payment handler');
+		});
+
+		it('names the user who archived the workflow, but no one for a system archive', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					id: '1',
+					type: 'workflow.archived',
+					data: { workflowId: 'wf-1', actorKind: 'user' },
+					createdBy: {
+						id: 'user-1',
+						email: 'ada@example.com',
+						firstName: 'Ada',
+						lastName: 'Lovelace',
+					},
+				},
+				{
+					...systemEntry,
+					id: '2',
+					type: 'workflow.archived',
+					data: { workflowId: 'wf-1', actorKind: 'system' },
+				},
+			];
+
+			const { getAllByTestId } = renderComponent();
+			await nextTick();
+
+			const actors = getAllByTestId('workflow-review-activity-actor');
+			expect(actors).toHaveLength(1);
+			expect(actors[0]).toHaveTextContent('Ada Lovelace');
+			// The system entry fills the avatar column with an icon instead.
+			expect(getAllByTestId('workflow-review-activity-system-icon')).toHaveLength(1);
+		});
+
+		// `actorKind: 'user'` with a null author is a deleted user, still a person: named as
+		// one, and with a person silhouette where their avatar would be — not an empty circle.
+		it('names a deleted user as the actor of their archive', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'workflow.archived',
+					data: { workflowId: 'wf-1', actorKind: 'user' },
+					createdBy: null,
+				},
+			];
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-actor')).toHaveTextContent('Deleted user');
+			expect(getByTestId('workflow-review-activity-deleted-actor')).toBeInTheDocument();
+		});
+
+		const renderWithLinkedWorkflows = (linked: Partial<ReviewLinkedWorkflowContext>) =>
+			renderComponent({
+				global: {
+					provide: {
+						[ReviewLinkedWorkflowsKey as symbol]: computed(
+							() =>
+								new Map([
+									[
+										'wf-1',
+										{
+											workflowName: 'Payment handler',
+											pinnedVersionId: null,
+											pinnedVersionName: null,
+											...linked,
+										},
+									],
+								]),
+						),
+					},
+				},
+			});
+
+		it('names the publisher on a published entry', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'workflow.published',
+					data: { workflowId: 'wf-1', workflowVersionId: 'version-1' },
+					createdBy: {
+						id: 'user-1',
+						email: 'ada@example.com',
+						firstName: 'Ada',
+						lastName: 'Lovelace',
+					},
+				},
+			];
+
+			const { getByTestId } = renderWithLinkedWorkflows({});
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-actor')).toHaveTextContent('Ada Lovelace');
+		});
+
+		it('names the published workflow when the detail surface provides its name', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'workflow.published',
+					data: { workflowId: 'wf-1', workflowVersionId: '234df342-5f2b-4e5a-9be6-79ee7bb1c02f' },
+				},
+			];
+
+			const { getByTestId } = renderWithLinkedWorkflows({});
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-workflow-published')).toHaveTextContent(
+				'Published Payment handler Version 234df342',
+			);
+		});
+
+		// the user-given version name wins over the label generated from the id.
+		it('shows the published version by its user-given name when it has one', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'workflow.published',
+					data: { workflowId: 'wf-1', workflowVersionId: '234df342-5f2b-4e5a-9be6-79ee7bb1c02f' },
+				},
+			];
+
+			const { getByTestId } = renderWithLinkedWorkflows({
+				pinnedVersionId: '234df342-5f2b-4e5a-9be6-79ee7bb1c02f',
+				pinnedVersionName: 'Release candidate',
+			});
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-workflow-published')).toHaveTextContent(
+				'Published Payment handler Release candidate',
+			);
+		});
+
+		it('does not use the pinned version name for a different published version', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'workflow.published',
+					data: { workflowId: 'wf-1', workflowVersionId: '234df342-5f2b-4e5a-9be6-79ee7bb1c02f' },
+				},
+			];
+
+			const { getByTestId } = renderWithLinkedWorkflows({
+				pinnedVersionId: 'a-different-version-id',
+				pinnedVersionName: 'Release candidate',
+			});
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-workflow-published')).toHaveTextContent(
+				'Published Payment handler Version 234df342',
+			);
+		});
+
+		it('shows a placeholder for a published entry whose payload cannot be read', async () => {
+			store.entries = [{ ...systemEntry, type: 'workflow.published', data: null }];
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-unknown')).toBeInTheDocument();
+			expect(queryByTestId('workflow-review-activity-workflow-published')).not.toBeInTheDocument();
+		});
+
+		// The workflow can be deleted after publishing, so the feed must still say what was
+		// published even though there is nothing left to link to.
+		it('names a published version as an unknown workflow when its workflow has since been deleted', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'workflow.published',
+					data: { workflowId: 'wf-1', workflowVersionId: '234df342-5f2b-4e5a-9be6-79ee7bb1c02f' },
+				},
+			];
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-workflow-published')).toHaveTextContent(
+				'Published unknown workflow Version 234df342',
+			);
+			expect(queryByTestId('workflow-review-activity-workflow-link')).not.toBeInTheDocument();
 		});
 
 		it('names the reviewer who acted', async () => {
@@ -453,15 +775,36 @@ describe('WorkflowReviewActivityFeed', () => {
 			expect(getByTestId('workflow-review-activity-actor')).toHaveTextContent('Deleted user');
 		});
 
-		it('shows no actor at all for a review the system closed', async () => {
+		// A lifecycle close concludes the feed, so it renders as a callout, with the
+		// entry's (relative, live) timestamp slotted into the middle of the sentence.
+		it('renders a lifecycle close as a titled callout without an actor', async () => {
 			store.entries = [
-				{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-moved' } },
+				{ ...systemEntry, type: 'review.closed', data: { reason: 'no-reviewable-workflows' } },
 			];
 
-			const { queryByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent();
 			await nextTick();
 
+			const callout = getByTestId('workflow-review-activity-closed');
+			expect(callout).toHaveTextContent('Submission closed');
+			expect(callout).toHaveTextContent(
+				/The review was closed automatically .+ because there is nothing left to review\./,
+			);
 			expect(queryByTestId('workflow-review-activity-actor')).not.toBeInTheDocument();
+		});
+
+		it('renders footer content as one more timeline item after the entries', async () => {
+			store.entries = [makeComment({ id: '1' })];
+
+			const { getByTestId } = renderComponent({
+				slots: { footer: '<div data-test-id="feed-footer-content" />' },
+			});
+			await nextTick();
+
+			const footer = getByTestId('feed-footer-content');
+			const lastEntry = getByTestId('workflow-review-activity-entry');
+			expect(footer.closest('[role="listitem"]')).not.toBeNull();
+			expect(lastEntry.compareDocumentPosition(footer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 		});
 	});
 });

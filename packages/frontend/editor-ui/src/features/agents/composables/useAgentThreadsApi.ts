@@ -1,4 +1,8 @@
-import type { AgentSessionLangSmithExportResponse } from '@n8n/api-types';
+import type {
+	AgentSessionLangSmithExportResponse,
+	AgentSessionOrigin,
+	AgentSessionStatus,
+} from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -24,12 +28,24 @@ export interface AgentExecutionThread {
 	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
 	source?: string | null;
 	failureSummary?: ThreadFailureSummary | null;
-	status?: AgentExecutionStatus | null;
+	status?: AgentSessionStatus | null;
 }
 
 export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 export type AgentExecutionFailureKind = 'execution' | 'tool' | 'node' | 'workflow';
+export type { AgentSessionOrigin, AgentSessionStatus };
+
+export interface AgentSessionFilters {
+	status: AgentSessionStatus | 'all';
+	origin: AgentSessionOrigin | 'all';
+	startDate: string | Date;
+	endDate: string | Date;
+}
+
+export function defaultAgentSessionFilters(): AgentSessionFilters {
+	return { status: 'all', origin: 'all', startDate: '', endDate: '' };
+}
 
 export interface AgentExecutionFailure {
 	kind: AgentExecutionFailureKind;
@@ -96,19 +112,31 @@ export interface ThreadsPage {
 	nextCursor: string | null;
 }
 
+/** `/projects/:projectId/agents/v2/:agentId`, with both segments percent-encoded. */
+const agentBasePath = (projectId: string, agentId: string): string =>
+	`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}`;
+
 export const listThreads = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	limit: number,
-	cursor?: string,
+	options: { limit: number; cursor?: string; filters?: AgentSessionFilters },
 ): Promise<ThreadsPage> => {
-	const params = new URLSearchParams({ limit: String(limit) });
-	if (cursor) params.set('cursor', cursor);
+	const params = new URLSearchParams({ limit: String(options.limit) });
+	if (options.cursor) params.set('cursor', options.cursor);
+	const { filters } = options;
+	if (filters?.status && filters.status !== 'all') params.set('status', filters.status);
+	if (filters?.origin && filters.origin !== 'all') params.set('origin', filters.origin);
+	if (filters?.startDate) {
+		params.set('updatedAfter', new Date(filters.startDate).toISOString());
+	}
+	if (filters?.endDate) {
+		params.set('updatedBefore', new Date(filters.endDate).toISOString());
+	}
 	return await makeRestApiRequest<ThreadsPage>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/threads?${params.toString()}`,
+		`${agentBasePath(projectId, agentId)}/threads?${params.toString()}`,
 	);
 };
 
@@ -121,7 +149,7 @@ export const getThreadDetail = async (
 	return await makeRestApiRequest<ThreadDetail>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}`,
+		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}`,
 	);
 };
 
@@ -134,7 +162,7 @@ export const deleteThread = async (
 	return await makeRestApiRequest<{ success: boolean }>(
 		context,
 		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}`,
+		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}`,
 	);
 };
 
@@ -147,6 +175,6 @@ export const exportThreadToLangSmith = async (
 	return await makeRestApiRequest<AgentSessionLangSmithExportResponse>(
 		context,
 		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}/langsmith-export`,
+		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}/langsmith-export`,
 	);
 };

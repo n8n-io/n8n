@@ -51,17 +51,11 @@ describe('OAuth2TokenIntrospectionIdentifier (integration)', () => {
 			new DnsResolver(new InMemoryDnsCache(config)),
 			mockLogger(),
 		);
-		const outboundHttp = new OutboundHttp(ssrfService, mockLogger());
+		const outboundHttp = new OutboundHttp(ssrfService, config, mockLogger());
 		const cache = mock<CacheService>();
 		cache.get.mockResolvedValue(undefined);
 		cache.set.mockResolvedValue();
-		const httpClient = new OAuth2MetadataHttpClient(
-			mockLogger(),
-			cache,
-			outboundHttp,
-			ssrfService,
-			config,
-		);
+		const httpClient = new OAuth2MetadataHttpClient(mockLogger(), cache, outboundHttp);
 		return new OAuth2TokenIntrospectionIdentifier(mockLogger(), cache, httpClient);
 	};
 
@@ -79,7 +73,9 @@ describe('OAuth2TokenIntrospectionIdentifier (integration)', () => {
 				});
 				res.writeHead(200, { 'content-type': 'application/json' });
 				if (req.url === '/introspect') {
-					res.end(JSON.stringify({ active: true, sub: 'user-123' }));
+					// `client_id` names the party the token was issued to, which the
+					// resolver matches against its own configured client id.
+					res.end(JSON.stringify({ active: true, sub: 'user-123', client_id: 'test-client' }));
 				} else {
 					// Discovery: the server itself dictates the second-hop endpoint.
 					res.end(

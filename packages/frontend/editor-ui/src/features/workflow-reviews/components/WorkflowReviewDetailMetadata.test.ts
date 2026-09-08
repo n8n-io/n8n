@@ -33,6 +33,7 @@ function makeWorkflowDetail(
 		workflowName: 'Payment Handler',
 		workflowVersionId: 'version-1',
 		pinnedVersion: null,
+		publishedVersionId: null,
 		baselineVersion: null,
 		...overrides,
 	};
@@ -59,8 +60,6 @@ function makeDetail(
 		id: 'req-1',
 		projectId: 'proj-1',
 		title: 'Update Payment Handler',
-		workflowName: 'Payment Handler',
-		workflowVersionId: 'version-1',
 		requester,
 		// The backend always carries the requester in `authors` too.
 		authors: [{ ...requester }, laterAuthor],
@@ -96,7 +95,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Open • Waiting for review',
+			'Open | Waiting for review',
 		);
 		expect(getByText('Riley Reviewer')).toBeInTheDocument();
 		expect(queryByText('reviewer@example.com')).not.toBeInTheDocument();
@@ -148,7 +147,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Closed • Approved',
+			'Closed | Approved',
 		);
 	});
 
@@ -159,7 +158,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Closed • No decision',
+			'Closed | No decision',
 		);
 	});
 
@@ -169,7 +168,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Closed • Changes requested',
+			'Closed | Changes requested',
 		);
 	});
 
@@ -179,7 +178,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Open • Changes requested',
+			'Open | Changes requested',
 		);
 	});
 

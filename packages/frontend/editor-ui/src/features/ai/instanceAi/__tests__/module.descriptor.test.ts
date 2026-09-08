@@ -5,6 +5,7 @@ import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } 
 
 vi.mock('../composables/useInstanceAiAvailability', () => ({
 	useInstanceAiAvailable: () => ref(true),
+	useInstanceAiReady: () => ref(true),
 }));
 
 const stub = { render: () => null };

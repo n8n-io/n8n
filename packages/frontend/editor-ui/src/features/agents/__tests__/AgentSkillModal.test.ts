@@ -51,8 +51,7 @@ const SkillViewerStub = defineComponent({
 				props.skill?.name?.trim() &&
 					props.skill?.description?.trim() &&
 					props.skill?.instructions?.trim() &&
-					new TextEncoder().encode(props.skill.instructions).byteLength <=
-						AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+					props.skill.instructions.length <= AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 			);
 		}
 		onMounted(() => emit('update:valid', computeValid()));

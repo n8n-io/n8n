@@ -40,7 +40,8 @@ export type WorkflowExecuteBeforeContext = {
 	type: 'workflowExecuteBefore';
 	workflow: IWorkflowBase;
 	mode: WorkflowExecuteMode;
-	workflowInstance: Workflow;
+	/** Only the engine's own call carries one — queue-mode main and the failure recorder don't. */
+	workflowInstance: Workflow | undefined;
 	executionData?: IRunExecutionData;
 	executionId: string;
 };

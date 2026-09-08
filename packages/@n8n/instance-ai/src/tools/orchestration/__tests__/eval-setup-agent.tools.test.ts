@@ -20,6 +20,9 @@ function makeContext(
 	domainContext.workflowService.get = vi
 		.fn()
 		.mockResolvedValue({ id: 'w1', name: 'Test', nodes: [], connections: {}, active: false });
+	domainContext.workflowService.getAsWorkflowJSON = vi
+		.fn()
+		.mockResolvedValue({ name: 'Eval setup', nodes: [], connections: {} });
 	domainContext.workflowService.updateFromWorkflowJSON = vi
 		.fn()
 		.mockResolvedValue({ id: 'w1', name: 'Test', versionId: 'v1', nodes: [], connections: {} });
@@ -79,6 +82,7 @@ describe('buildEvalSetupTools', () => {
 
 		expect(schema.safeParse({ action: 'get-json', workflowId: 'w1' }).success).toBe(true);
 		expect(schema.safeParse({ action: 'get', workflowId: 'w1' }).success).toBe(false);
+		expect(schema.safeParse({ action: 'get-as-code', workflowId: 'w1' }).success).toBe(false);
 		expect(
 			schema.safeParse({
 				action: 'update',
@@ -94,6 +98,19 @@ describe('buildEvalSetupTools', () => {
 				name: 'Eval setup',
 			}).success,
 		).toBe(false);
+	});
+
+	it('reads raw workflow JSON through the eval setup workflow tool', async () => {
+		const ctx = makeContext('require_approval');
+		const workflows = buildEvalSetupTools(ctx).get('workflows');
+
+		const result = await workflows?.handler!({ action: 'get-json', workflowId: 'w1' }, {} as never);
+
+		expect(ctx.domainContext!.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith(
+			'w1',
+			undefined,
+		);
+		expect(result).toEqual({ name: 'Eval setup', nodes: [], connections: {} });
 	});
 
 	it('leaves the original workflows tool in place when admin has blocked updates', () => {

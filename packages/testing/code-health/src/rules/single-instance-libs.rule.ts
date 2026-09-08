@@ -2,12 +2,7 @@ import { BaseRule } from '@n8n/rules-engine';
 import type { Violation } from '@n8n/rules-engine';
 
 import type { CodeHealthContext } from '../context.js';
-import {
-	CURATED_LIBS,
-	FRONTEND_PATH_PREFIXES,
-	HOST_PACKAGES,
-	PEER_LIBS,
-} from '../single-instance/libs.js';
+import { CURATED_LIBS, isPeerRuleExempt, PEER_LIBS } from '../single-instance/libs.js';
 import { REQUIRED_CURATED_PEERS } from '../single-instance/required-peers.js';
 import {
 	findPackageJsonFiles,
@@ -52,7 +47,7 @@ export class SingleInstanceLibsRule extends BaseRule<CodeHealthContext> {
 				),
 			});
 
-			if (this.isExempt(pkg.packageName, relativeDir(rootDir, file))) continue;
+			if (isPeerRuleExempt(pkg.packageName, relativeDir(rootDir, file))) continue;
 
 			for (const dep of pkg.deps) {
 				if (PEER_LIBS.includes(dep.name) && RUNTIME_SECTIONS.has(dep.section)) {
@@ -105,12 +100,5 @@ export class SingleInstanceLibsRule extends BaseRule<CodeHealthContext> {
 		}
 
 		return violations;
-	}
-
-	private isExempt(packageName: string, relDir: string): boolean {
-		return (
-			HOST_PACKAGES.includes(packageName) ||
-			FRONTEND_PATH_PREFIXES.some((prefix) => relDir.startsWith(prefix))
-		);
 	}
 }

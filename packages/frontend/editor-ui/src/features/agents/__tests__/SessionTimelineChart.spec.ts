@@ -110,7 +110,7 @@ describe('SessionTimelineChart', () => {
 		const block = w.get('[data-test-id="timeline-block"]');
 
 		expect(block.attributes('data-error')).toBe('true');
-		expect(block.attributes('style')).toContain('var(--color--red-400)');
+		expect(block.attributes('style')).toContain('var(--color--red-600)');
 	});
 
 	it('renders idle blobs interleaved with events in chronological order', () => {

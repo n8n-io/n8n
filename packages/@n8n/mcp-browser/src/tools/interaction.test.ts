@@ -137,6 +137,18 @@ describe('createInteractionTools', () => {
 				expect(() => getTool().inputSchema.parse({ text: 'hello' })).toThrow();
 			});
 
+			it('accepts a paste mode for values that must land in one operation', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, text: '{}', mode: 'paste' }),
+				).not.toThrow();
+			});
+
+			it('rejects an unknown mode', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, text: '{}', mode: 'slowly' }),
+				).toThrow();
+			});
+
 			it('accepts optional clear, submit, delay', () => {
 				expect(() =>
 					getTool().inputSchema.parse({
@@ -166,6 +178,20 @@ describe('createInteractionTools', () => {
 				expect(data.typed).toBe(true);
 				expect(data.text).toBe('hello');
 				expect(data.ref).toBe('e1');
+			});
+
+			it('passes the paste mode down to the adapter', async () => {
+				await getTool().execute(
+					{ element: { ref: 'e1' }, text: '{"a": 1}', mode: 'paste' },
+					TOOL_CONTEXT,
+				);
+
+				expect(mockConnection.adapter.type).toHaveBeenCalledWith(
+					'page1',
+					{ ref: 'e1' },
+					'{"a": 1}',
+					expect.objectContaining({ mode: 'paste' }),
+				);
 			});
 
 			it('routes a failure through the connection so it can be explained', async () => {

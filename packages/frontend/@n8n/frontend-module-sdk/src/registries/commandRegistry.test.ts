@@ -30,16 +30,29 @@ describe('commandRegistry', () => {
 		expect(commandRegistry.getAll()).toEqual([commandA, commandB]);
 	});
 
-	it('should warn and skip when an id is registered twice', () => {
+	it('should warn and skip when a different command claims the id', () => {
+		const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		commandRegistry.register(commandA);
+		commandRegistry.register({ ...commandA, title: 'Impostor' });
+
+		expect(consoleSpy).toHaveBeenCalledWith(
+			'Command with id "cmd-a" is already registered. Skipping.',
+		);
+		expect(commandRegistry.getAll()).toEqual([commandA]);
+
+		consoleSpy.mockRestore();
+	});
+
+	// A re-login replays the manifest, so the same definitions arrive twice.
+	it('should re-register the same command silently', () => {
 		const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		commandRegistry.register(commandA);
 		commandRegistry.register(commandA);
 
-		expect(consoleSpy).toHaveBeenCalledWith(
-			'Command with id "cmd-a" is already registered. Skipping.',
-		);
-		expect(commandRegistry.getAll()).toHaveLength(1);
+		expect(consoleSpy).not.toHaveBeenCalled();
+		expect(commandRegistry.getAll()).toEqual([commandA]);
 
 		consoleSpy.mockRestore();
 	});
@@ -53,6 +66,25 @@ describe('commandRegistry', () => {
 
 		commandRegistry.unregister('cmd-a');
 		expect(listener).toHaveBeenLastCalledWith([]);
+	});
+
+	it('should give each subscriber its own array', () => {
+		const received: CommandBarEntry[][] = [];
+		commandRegistry.subscribe((commands) => {
+			commands.reverse();
+			received.push(commands);
+		});
+		commandRegistry.subscribe((commands) => {
+			received.push(commands);
+		});
+
+		commandRegistry.register(commandA);
+		commandRegistry.register(commandB);
+
+		const [firstMutated, secondUnaffected] = received.slice(-2);
+		expect(firstMutated).toEqual([commandB, commandA]);
+		expect(secondUnaffected).toEqual([commandA, commandB]);
+		expect(commandRegistry.getAll()).toEqual([commandA, commandB]);
 	});
 
 	it('should return an unsubscribe function that stops notifications', () => {

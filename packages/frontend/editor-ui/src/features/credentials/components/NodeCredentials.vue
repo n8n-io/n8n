@@ -4,6 +4,7 @@ import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type {
 	ICredentialType,
 	INodeCredentialDescription,
+	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeParameters,
 	NodeParameterValueType,
@@ -16,6 +17,7 @@ import {
 	hasProxyAuth,
 	getAppNameFromCredType,
 	getAuthTypeForNodeCredential,
+	getInactiveCredentials,
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 } from '@/app/utils/nodeTypesUtils';
@@ -31,7 +33,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { useCredentialsStore } from '../credentials.store';
+import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 import QuickConnectButton from '../quickConnect/components/QuickConnectButton.vue';
@@ -56,7 +58,6 @@ import {
 } from '@n8n/api-types';
 import CredentialIcon from './CredentialIcon.vue';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
-import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 
@@ -72,6 +73,21 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
+// Nodes that let the user pick their own predefined credential type via a
+// parameter ("Authentication" → "Predefined Credential Type") rather than
+// declaring a fixed credential in their node type. Gateway credits mints a
+// managed credential for a specific, known provider — it can't stand in for
+// an arbitrary user-chosen one, so these nodes never offer it. Includes the
+// AI-Agent-tool variants ("Tool" suffix) generated from the same node types.
+const AI_GATEWAY_UNSUPPORTED_NODE_TYPES: readonly string[] = [
+	'n8n-nodes-base.httpRequest',
+	'n8n-nodes-base.httpRequestTool',
+	'@n8n/n8n-nodes-langchain.toolHttpRequest',
+	'n8n-nodes-base.graphql',
+	'n8n-nodes-base.graphqlTool',
+];
+
 type Props = {
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;
@@ -79,6 +95,15 @@ type Props = {
 	showAll?: boolean;
 	hideIssues?: boolean;
 	skipAutoSelect?: boolean;
+	/** The user asked for a fresh credential (Instance AI setup surfaces). Nothing
+	 *  is preselected, and the empty picker invites creation ("Connect to X")
+	 *  instead of reading as a list to choose from. Existing credentials stay
+	 *  selectable — the user may change their mind once they see them. */
+	preferNewCredential?: boolean;
+	/** Workflow this credential slot belongs to, for telemetry attribution. Standalone
+	 *  hosts (Instance AI setup card) must pass it — they render without a provided
+	 *  workflow document; other hosts fall back to the injected document. */
+	workflowId?: string;
 	/** When true, skip all global store writes (workflowsStore, nodeHelpers).
 	 *  Used by Instance AI to render credential selection without polluting the active workflow. */
 	standalone?: boolean;
@@ -114,6 +139,7 @@ const props = withDefaults(defineProps<Props>(), {
 	showAll: false,
 	hideIssues: false,
 	skipAutoSelect: false,
+	preferNewCredential: false,
 	standalone: false,
 	skipCredentialsFetch: false,
 });
@@ -150,6 +176,9 @@ const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
+const telemetryWorkflowId = computed(
+	() => props.workflowId ?? (props.standalone ? '' : workflowDocumentStore?.value.workflowId),
+);
 const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 
 // Quick connect
@@ -164,7 +193,6 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 
 const aiGateway = useAiGateway();
 const { openTopUp } = useAiGatewayTopUp();
-const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 const balancePill = computed(() => {
 	const balance = aiGateway.balance.value;
@@ -179,16 +207,6 @@ const balancePill = computed(() => {
 		type: depleted ? ('danger' as const) : ('default' as const),
 	};
 });
-
-// Refresh the balance after each run so the pill reflects consumed credits.
-watch(
-	() => workflowExecutionStateStore.value.activeExecution,
-	(executionData) => {
-		if (executionData?.finished || executionData?.stoppedAt !== undefined) {
-			void aiGateway.fetchWallet();
-		}
-	},
-);
 
 function entryPlaceholder(credentialType: string): string {
 	return i18n.baseText('nodeCredentials.quickConnect.connectTo', {
@@ -366,6 +384,15 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+// Started here rather than in `onMounted`: the request drops the slice held for a
+// different workflow or project synchronously, and that has to happen before the
+// watchers below and the first render read it — otherwise the picker's opening
+// frame lists the previously opened scope's credentials.
+const initialFetchScope = props.skipCredentialsFetch ? undefined : getCredentialFetchScope();
+if (initialFetchScope) {
+	void credentialsStore.fetchUsableCredentials(initialFetchScope);
+}
+
 let hasEvaluatedCredentials = false;
 
 // Select most recent credential by default
@@ -374,13 +401,18 @@ watch(
 	(types) => {
 		if (props.skipAutoSelect) return;
 		if (types.length === 0) return;
+		// Before the scoped fetch lands there are no options to pick from, which would
+		// read as "no credentials exist" and auto-enable the AI Gateway below. The
+		// watcher re-fires once the fetch populates the slice.
+		if (!credentialsStore.hasFetchedUsableCredentials) return;
 
 		const isInitialEvaluation = !hasEvaluatedCredentials;
 		hasEvaluatedCredentials = true;
 
 		if (
 			aiGateway.isEnabled.value &&
-			!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+			(AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type) ||
+				!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion))
 		) {
 			for (const { type } of types) {
 				if (selected.value[type.name]?.__aiGatewayManaged) {
@@ -413,6 +445,7 @@ watch(
 					resolveGatewayActivation(type.name) !== undefined;
 				if (
 					gatewaySupported &&
+					!AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type) &&
 					aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
 					isCurrentActionSupported.value
 				) {
@@ -424,7 +457,7 @@ watch(
 	{ immediate: true },
 );
 
-function getCredentialFetchScope(): { workflowId: string } | { projectId: string } | undefined {
+function getCredentialFetchScope(): CredentialFetchScope | undefined {
 	const workflowId = workflowDocumentStore?.value.workflowId;
 	if (workflowId && !workflowsStore.isNewWorkflow) {
 		return { workflowId };
@@ -456,6 +489,18 @@ onMounted(() => {
 
 				if (options?.skipStoreUpdate) {
 					return;
+				}
+			}
+
+			// Let the server decide whether the mutated credential is usable here rather
+			// than optimistically inserting it — a credential edited from the command bar
+			// may well belong to another project.
+			const refetchScope = getCredentialFetchScope();
+			if (refetchScope) {
+				try {
+					await credentialsStore.fetchUsableCredentials(refetchScope);
+				} catch {
+					// Fall through with whatever the store already holds.
 				}
 			}
 
@@ -505,11 +550,6 @@ onMounted(() => {
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
 
-	const scope = props.skipCredentialsFetch ? undefined : getCredentialFetchScope();
-	if (scope) {
-		void credentialsStore.fetchAllCredentialsForWorkflow(scope);
-	}
-
 	void aiGateway.fetchConfig();
 	void aiGateway.fetchWallet();
 
@@ -552,11 +592,15 @@ function getSelectedName(type: string) {
 }
 
 function getSelectPlaceholder(type: string, issues: string[]) {
-	return issues.length && getSelectedName(type)
-		? i18n.baseText('nodeCredentials.selectedCredentialUnavailable', {
-				interpolate: { name: getSelectedName(type) },
-			})
-		: i18n.baseText('nodeCredentials.selectCredential');
+	if (issues.length && getSelectedName(type)) {
+		return i18n.baseText('nodeCredentials.selectedCredentialUnavailable', {
+			interpolate: { name: getSelectedName(type) },
+		});
+	}
+	// Asked-for-fresh slots read as the create affordance they are, matching the
+	// no-credentials-yet empty state instead of "Select Credential".
+	if (props.preferNewCredential) return entryPlaceholder(type);
+	return i18n.baseText('nodeCredentials.selectCredential');
 }
 
 function clearSelectedCredential(credentialType: string) {
@@ -605,13 +649,14 @@ function createNewCredential(
 			...(isToolContext ? { appendToBody: true } : {}),
 			instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
 			credentialSetupHint: props.credentialSetupHint,
+			workflowId: telemetryWorkflowId.value || undefined,
 		},
 	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
 		new_credential: true,
-		workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
+		workflow_id: telemetryWorkflowId.value,
 	});
 }
 
@@ -640,7 +685,7 @@ function onCredentialSelected(
 		credential_type: credentialType,
 		node_type: props.node.type,
 		...(hasProxyAuth(props.node) ? { is_service_specific: true } : {}),
-		workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
+		workflow_id: telemetryWorkflowId.value,
 		credential_id: credentialId,
 	});
 
@@ -653,6 +698,7 @@ function onCredentialSelected(
 			credential_type: credentialType,
 			node_type: props.node.type,
 			workflow_id: workflowDocumentStore?.value.workflowId,
+			credential_id: credentialId,
 			credential_kind: 'own',
 			source: 'user',
 		});
@@ -740,10 +786,21 @@ function onCredentialSelected(
 
 	const node = props.node;
 
-	const credentials = {
+	const credentials: INodeCredentials = {
 		...(node.credentials ?? {}),
 		[selectedCredentialsType]: newSelectedCredentials,
 	};
+
+	// Drop credential types the node no longer uses (e.g. after switching auth type),
+	// so stale entries don't accumulate in the saved workflow. The type the user just
+	// picked is always kept.
+	const inactiveCredentials = getInactiveCredentials(
+		{ ...node, credentials },
+		nodeType.value,
+	).filter((type) => type !== selectedCredentialsType);
+	for (const credentialType of inactiveCredentials) {
+		delete credentials[credentialType];
+	}
 
 	const updateInformation: INodeUpdatePropertiesInformation = {
 		name: props.node.name,
@@ -785,6 +842,7 @@ function resolveGatewayActivation(credentialType: string) {
 
 function showAiGatewaySelector(credentialType: string): boolean {
 	if (!aiGateway.isEnabled.value) return false;
+	if (AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type)) return false;
 	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
 	// Shown type supported → toggle directly; otherwise fall back to a sibling.
@@ -823,6 +881,8 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 	// Track the credential kind actually assigned, or null when the slot is cleared
 	// (toggle-off with no credential to restore) so no false assignment is recorded.
 	let assignedKind: 'n8n_connect' | 'own' | null = null;
+	// The stored credential restored on toggle-off; n8n Connect slots have none.
+	let assignedCredentialId: string | null = null;
 
 	if (enable) {
 		// Moving the managed slot to a sibling: drop a stale managed sentinel from the
@@ -846,6 +906,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 			const restoredCredential = credentialsStore.getCredentialById(mostRecent.id);
 			credentials[credentialType] = { id: restoredCredential.id, name: restoredCredential.name };
 			assignedKind = 'own';
+			assignedCredentialId = restoredCredential.id;
 		} else {
 			delete credentials[credentialType];
 		}
@@ -856,7 +917,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 			credential_type: effectiveType,
 			node_type: props.node.type,
 			mode: enable ? 'n8n_connect' : 'own',
-			workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
+			workflow_id: telemetryWorkflowId.value,
 		});
 		// Only the manual canvas is attributed to the user here; standalone
 		// (Instance AI) assignments are counted by the backend as `instance-ai-*`.
@@ -865,6 +926,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 				credential_type: effectiveType,
 				node_type: props.node.type,
 				workflow_id: workflowDocumentStore?.value.workflowId,
+				credential_id: assignedCredentialId,
 				credential_kind: assignedKind,
 				source: 'user',
 			});
@@ -907,13 +969,14 @@ function editCredential(credentialType: string): void {
 		hideAskAssistant: hideAskAssistant.value,
 		...(isToolContext ? { appendToBody: true } : {}),
 		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
+		workflowId: telemetryWorkflowId.value || undefined,
 	});
 
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
 		new_credential: false,
-		workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
+		workflow_id: telemetryWorkflowId.value,
 	});
 	subscribedToCredentialType.value = credentialType;
 }

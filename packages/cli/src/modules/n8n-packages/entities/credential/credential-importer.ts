@@ -81,6 +81,8 @@ export class CredentialImporter {
 
 			const stubCredential = await this.credentialsService.createStubCredential(
 				{
+					// Preserve source identity only when matching by id.
+					id: request.matchingMode === 'id-only' ? sourceId : undefined,
 					name: name ?? sourceId,
 					type,
 					projectId: context.projectId,

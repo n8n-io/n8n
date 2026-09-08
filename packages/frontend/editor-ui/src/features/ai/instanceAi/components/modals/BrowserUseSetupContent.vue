@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 import { useEventListener } from '@vueuse/core';
-import { N8nButton, N8nCallout, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { isBrowserUseSupportedForBrowser } from '@/experiments/instanceAiBrowserUse';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
@@ -54,7 +54,6 @@ async function refreshExtensionState(): Promise<void> {
 }
 
 onMounted(async () => {
-	telemetry.trackModalOpened(isBrowserSupported);
 	if (!isBrowserSupported) return;
 	await Promise.all([refreshExtensionState(), store.fetchBrowserStatus()]);
 	statusChecked.value = true;
@@ -63,7 +62,9 @@ onMounted(async () => {
 // Re-probe when the user returns from installing the extension. Coming back by tab switch
 // only fires `visibilitychange` — the window's focus can land in DevTools or another pane —
 // while coming back from a separate window only fires `focus`, so we listen for both.
-const reprobeExtension = () => void refreshExtensionState();
+const reprobeExtension = () => {
+	void refreshExtensionState();
+};
 onDocumentVisible(reprobeExtension);
 useEventListener(window, 'focus', reprobeExtension);
 </script>
@@ -139,11 +140,6 @@ useEventListener(window, 'focus', reprobeExtension);
 			<div v-else-if="statusChecked" :class="$style.step">
 				<BrowserUseConnectStep :auto-connect="props.autoConnect" />
 			</div>
-
-			<div v-if="!isExtensionMissing" :class="$style.waitingRow">
-				<N8nIcon icon="spinner" color="primary" spin size="small" />
-				<span>{{ i18n.baseText('instanceAi.browserUse.step.extension.waiting') }}</span>
-			</div>
 		</template>
 	</div>
 </template>
@@ -207,17 +203,5 @@ useEventListener(window, 'focus', reprobeExtension);
 
 .statusDotConnected {
 	background: var(--color--success);
-}
-
-.waitingRow {
-	display: flex;
-	font-size: var(--font-size--2xs);
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	background: var(--color--background--light-2);
-	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--bold);
-	border-radius: var(--radius);
 }
 </style>

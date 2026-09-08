@@ -142,3 +142,7 @@ describe('Webhook', () => {
 		});
 	});
 });
+
+test('webhook needs the expression engine', () => {
+	expect(new Webhook().needsExpressionEngine).toBe(true);
+});

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -97,6 +98,7 @@ describe('TriggerExecutionContextFactory', () => {
 			ownershipService,
 			nodeTypes,
 			pollCursorService,
+			mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds: 45, leaseDurationSeconds: 60 } }),
 		);
 	});
 
@@ -775,13 +777,19 @@ describe('TriggerExecutionContextFactory', () => {
 			return workflow;
 		};
 
-		const buildContext = (workflow: Workflow, node: INode): RunnablePollFunctions => {
+		const buildContext = (
+			workflow: Workflow,
+			node: INode,
+			prefetchedCursor?: Record<string, unknown>,
+		): RunnablePollFunctions => {
 			const getPollFunctions = factory.getExecutePollFunctions(
 				mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
 				additionalData,
 				mode,
 				activation,
 				async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+				undefined,
+				prefetchedCursor,
 			);
 			return getPollFunctions(
 				workflow,
@@ -817,9 +825,12 @@ describe('TriggerExecutionContextFactory', () => {
 				expect(context.getWorkflowStaticData('node')).toEqual({ lastItemId: 'from-db' });
 			});
 
-			expect(pollCursorService.resolveCursor).toHaveBeenCalledWith('wf-1', 'node-1', {
-				lastItemId: 'from-static-data',
-			});
+			expect(pollCursorService.resolveCursor).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'from-static-data' },
+				undefined,
+			);
 		});
 
 		test('falls back to the real static data when the node has never migrated and the flag is off', async () => {
@@ -862,9 +873,27 @@ describe('TriggerExecutionContextFactory', () => {
 				});
 			});
 
-			expect(pollCursorService.resolveCursor).toHaveBeenLastCalledWith('wf-1', 'node-1', {
-				lastItemId: 'mutated-before-migration',
-			});
+			expect(pollCursorService.resolveCursor).toHaveBeenLastCalledWith(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'mutated-before-migration' },
+				undefined,
+			);
+		});
+
+		test('threads a prefetched cursor into resolveCursor so it can skip its own read', async () => {
+			workflow.getStaticData.mockReturnValue({ lastItemId: 'from-static-data' });
+			const prefetched = { lastItemId: 'prefetched' };
+			const prefetchedContext = buildContext(workflow, node, prefetched);
+
+			await prefetchedContext.__runPoll(async () => {});
+
+			expect(pollCursorService.resolveCursor).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'from-static-data' },
+				prefetched,
+			);
 		});
 
 		test('routes to runWorkflow, not runPolledWorkflow, when the node leaves its static data unchanged', async () => {
@@ -970,6 +999,69 @@ describe('TriggerExecutionContextFactory', () => {
 			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(2);
 			const cursors = workflowExecutionService.runPolledWorkflow.mock.calls.map((call) => call[5]);
 			expect(cursors).toEqual([{ lastItemId: 'fast' }, { lastItemId: 'slow' }]);
+		});
+
+		describe('getPollBudgetMs', () => {
+			const buildBudgetContext = (
+				pollTimeoutSeconds: number,
+				leaseDurationSeconds: number,
+				fence?: { taskId: string; leaseEpoch: number },
+			) => {
+				const globalConfig = mock<GlobalConfig>({
+					scheduler: { pollTimeoutSeconds, leaseDurationSeconds },
+				});
+				const budgetFactory = new TriggerExecutionContextFactory(
+					mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) }),
+					errorReporter,
+					activeExecutions,
+					eventService,
+					executionService,
+					workflowStaticDataService,
+					workflowExecutionService,
+					storageConfig,
+					workflowPublishedDataService,
+					scheduleTriggerJobRegistrar,
+					ownershipService,
+					nodeTypes,
+					pollCursorService,
+					globalConfig,
+				);
+				const getPollFunctions = budgetFactory.getExecutePollFunctions(
+					mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+					additionalData,
+					mode,
+					activation,
+					async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+					fence,
+				);
+				return getPollFunctions(workflow, node, additionalData, mode, activation);
+			};
+
+			const fence = { taskId: 'task-1', leaseEpoch: 1 };
+
+			// Budget = min(poll timeout, lease duration) minus a margin of
+			// max(20%, 5s), so a node that exhausts it still finishes its
+			// in-flight batch before the engine abandons the tick.
+			test.each([
+				{ pollTimeoutSeconds: 45, leaseDurationSeconds: 60, expected: 36_000 },
+				{ pollTimeoutSeconds: 100, leaseDurationSeconds: 60, expected: 48_000 },
+				// The margin never eats more than half the ceiling, so a tiny (but
+				// schema-valid) timeout still yields a positive budget.
+				{ pollTimeoutSeconds: 4, leaseDurationSeconds: 60, expected: 2_000 },
+			])(
+				'derives $expected ms from a $pollTimeoutSeconds s timeout under a $leaseDurationSeconds s lease',
+				({ pollTimeoutSeconds, leaseDurationSeconds, expected }) => {
+					const budgetContext = buildBudgetContext(pollTimeoutSeconds, leaseDurationSeconds, fence);
+					expect(budgetContext.getPollBudgetMs()).toBe(expected);
+				},
+			);
+
+			test('keeps the generous PollContext default for a poll that runs without a lease', () => {
+				// The legacy in-memory path has no poll timeout and no lease, so the
+				// scheduler-derived budget must not apply there.
+				const budgetContext = buildBudgetContext(45, 60);
+				expect(budgetContext.getPollBudgetMs()).toBe(300_000);
+			});
 		});
 
 		test('throws when the node reads its static data outside of a poll', () => {
@@ -1314,14 +1406,15 @@ describe('TriggerExecutionContextFactory', () => {
 			});
 
 			// Built with the activation path's execution/activation modes ('trigger'/'update').
-			// No per-occurrence deduplication key is threaded; the trailing argument is the
-			// lease fence, which this path has none of.
+			// No per-occurrence deduplication key is threaded; the trailing arguments are the
+			// lease fence and the prefetched cursor, which this path has neither of.
 			expect(getExecutePollFunctionsSpy).toHaveBeenCalledWith(
 				workflowData,
 				additionalData,
 				'trigger',
 				'update',
 				expect.any(Function),
+				undefined,
 				undefined,
 			);
 
@@ -1355,6 +1448,33 @@ describe('TriggerExecutionContextFactory', () => {
 				'update',
 				expect.any(Function),
 				fence,
+				undefined,
+			);
+		});
+
+		test('threads a prefetched cursor through to getExecutePollFunctions', async () => {
+			const workflowData = buildWorkflowData();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+			const pollFunctions = mock<IPollFunctions>();
+			const getPollFunctions = vi.fn().mockReturnValue(pollFunctions);
+			const getExecutePollFunctionsSpy = vi
+				.spyOn(factory, 'getExecutePollFunctions')
+				.mockReturnValue(getPollFunctions as unknown as IGetExecutePollFunctions);
+			const fence = { taskId: 'task-1', leaseEpoch: 3 };
+			const prefetched = { lastItemId: 'prefetched' };
+
+			await factory.createPollExecutionContext(workflowData, pollNode, fence, prefetched);
+
+			expect(getExecutePollFunctionsSpy).toHaveBeenCalledWith(
+				workflowData,
+				additionalData,
+				'trigger',
+				'update',
+				expect.any(Function),
+				fence,
+				prefetched,
 			);
 		});
 
@@ -1511,5 +1631,40 @@ describe('TriggerExecutionContextFactory', () => {
 				expect(workflowPublishedDataService[skippedMethod]).not.toHaveBeenCalled();
 			},
 		);
+	});
+
+	describe('findPublishedWorkflowData', () => {
+		it.each([
+			{
+				description: 'default (cached) path',
+				options: undefined,
+				calledMethod: 'getCachedPublishedWorkflowDataForExecution' as const,
+				skippedMethod: 'getPublishedWorkflowDataForExecution' as const,
+			},
+			{
+				description: 'bypassCache path',
+				options: { bypassCache: true },
+				calledMethod: 'getPublishedWorkflowDataForExecution' as const,
+				skippedMethod: 'getCachedPublishedWorkflowDataForExecution' as const,
+			},
+		])(
+			'returns null instead of throwing when the service returns null ($description)',
+			async ({ options, calledMethod, skippedMethod }) => {
+				workflowPublishedDataService[calledMethod].mockResolvedValue(null);
+
+				await expect(factory.findPublishedWorkflowData('wf-1', options)).resolves.toBeNull();
+				expect(workflowPublishedDataService[calledMethod]).toHaveBeenCalledWith('wf-1');
+				expect(workflowPublishedDataService[skippedMethod]).not.toHaveBeenCalled();
+			},
+		);
+
+		test('returns the published workflow data when it exists', async () => {
+			const workflowData = buildPublishedWorkflowData();
+			workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution.mockResolvedValue(
+				workflowData,
+			);
+
+			await expect(factory.findPublishedWorkflowData('wf-1')).resolves.toBe(workflowData);
+		});
 	});
 });

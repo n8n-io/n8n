@@ -223,6 +223,12 @@ export type {
 	CredentialListItem,
 } from './types';
 export { McpClient } from './sdk/mcp-client';
+export {
+	hasMcpMediaContent,
+	mcpContentToMessageParts,
+	mcpContentToModelParts,
+} from './runtime/mcp/mcp-content';
+export type { McpModelContentPart } from './runtime/mcp/mcp-content';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
@@ -365,6 +371,7 @@ export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
+	wrapUntrustedObserverData,
 } from './runtime/memory/observation-log-observer';
 export {
 	normalizeObservationLogReflection,

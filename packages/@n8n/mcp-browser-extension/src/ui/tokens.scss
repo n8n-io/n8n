@@ -6,6 +6,9 @@
 	color-scheme: light dark;
 	@include primitives.primitives;
 	@include tokens.theme;
+
+	// Shared icon column, so info rows and tab rows keep one text edge and one icon centre
+	--row-marker-size: 40px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -33,4 +36,20 @@ body {
 	-webkit-font-smoothing: antialiased;
 	background-color: var(--color--background);
 	color: var(--color--text--shade-1);
+}
+
+// Grouping box shared by the views and the allowed-instances list.
+.panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+	background: var(--background--surface);
+	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--lg);
+	min-height: 0;
+}
+
+.panel + .panel {
+	margin-top: var(--spacing--md);
 }

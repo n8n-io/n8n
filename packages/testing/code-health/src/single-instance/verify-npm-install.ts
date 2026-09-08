@@ -1,10 +1,19 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 
 import { analyze, collectCopies } from './collect-copies.js';
+import {
+	describeFailureCount,
+	explainDuplicates,
+	formatCopyLines,
+	formatCuratedReport,
+	formatRemediation,
+	formatStepSummary,
+} from './explain-duplicates.js';
+import { isPeerRuleExempt, PUBLISHED_SECTIONS } from './libs.js';
 import type { PackageJsonInfo } from '../utils/package-json-scanner.js';
 import {
 	findPackageJsonFiles,
@@ -16,8 +25,7 @@ import {
 // root manifest, or the single-instance tooling itself) — a scoped diff would otherwise miss them.
 const ROOT_TRIGGERS = ['pnpm-workspace.yaml', 'package.json', 'packages/testing/code-health/'];
 
-// Sections that follow the publish graph — devDependencies don't ship, so they're not packed.
-const CLOSURE_SECTIONS = new Set(['dependencies', 'peerDependencies', 'optionalDependencies']);
+const CLOSURE_SECTIONS = new Set<string>(PUBLISHED_SECTIONS);
 
 /** True when a changed file can shift dependency resolution repo-wide, forcing a full check. */
 export function filesTriggerFullRun(files: string[]): boolean {
@@ -25,11 +33,41 @@ export function filesTriggerFullRun(files: string[]): boolean {
 }
 
 /**
- * Surface a finding in the Actions UI. Report-only runs exit 0, and nobody opens the log of a
- * green check — without an annotation the finding is indistinguishable from silence.
+ * Surface a finding in the Actions UI: `error` when the run blocks, `warning` when it is advisory.
+ * An advisory run exits 0, and nobody opens the log of a green check — without the annotation the
+ * finding is indistinguishable from silence.
  */
-function annotate(message: string): void {
-	if (process.env.GITHUB_ACTIONS) console.log(`::warning::${message}`);
+function annotate(message: string, level: 'warning' | 'error'): void {
+	if (process.env.GITHUB_ACTIONS) console.log(`::${level}::${message}`);
+}
+
+/**
+ * Fold a noisy section away — collapsed in Actions, a plain header locally. The npm-install log and
+ * the non-curated duplicate list are ~600 lines between them, and burying the verdict in them is
+ * what makes a finding read as "there was an error".
+ */
+function groupStart(title: string): void {
+	console.log(process.env.GITHUB_ACTIONS ? `::group::${title}` : `\n--- ${title}`);
+}
+
+function groupEnd(): void {
+	if (process.env.GITHUB_ACTIONS) console.log('::endgroup::');
+}
+
+/** Put the findings where they are seen without opening the log at all. */
+function writeStepSummary(markdown: string): void {
+	const file = process.env.GITHUB_STEP_SUMMARY;
+	if (!file) return;
+	try {
+		appendFileSync(file, markdown);
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : String(error);
+		console.log(`Could not write the job summary: ${reason}`);
+	}
+}
+
+function seconds(startedAt: number): string {
+	return `${Math.round((Date.now() - startedAt) / 1000)}s`;
 }
 
 /**
@@ -53,8 +91,19 @@ async function installWithRetry(scratch: string, attempts = 3): Promise<void> {
 	}
 }
 
+/** Workspace packages the peer model exempts — the repo paths `isPeerRuleExempt` needs live here. */
+function exemptPackages(byName: Map<string, WorkspacePkg>): Set<string> {
+	const names = [...byName].filter(([name, { relDir }]) => isPeerRuleExempt(name, relDir));
+	return new Set(names.map(([name]) => name));
+}
+
+/** One entry of `pnpm pack --json`. */
+interface Packed {
+	name: string;
+	filename: string;
+}
+
 interface WorkspacePkg {
-	dir: string;
 	relDir: string;
 	info: PackageJsonInfo;
 }
@@ -65,7 +114,7 @@ async function loadWorkspace(rootDir: string): Promise<Map<string, WorkspacePkg>
 	for (const file of await findPackageJsonFiles(rootDir)) {
 		const info = parsePackageJson(file);
 		if (info.private) continue;
-		byName.set(info.packageName, { dir: dirname(file), relDir: relativeDir(rootDir, file), info });
+		byName.set(info.packageName, { relDir: relativeDir(rootDir, file), info });
 	}
 	return byName;
 }
@@ -109,7 +158,10 @@ function changedPackages(
 	}
 	let out: string;
 	try {
-		out = execFileSync('git', ['diff', '--name-only', baseRef, 'HEAD'], {
+		// `--no-renames`: a moved file has to count against both the old and the new package, and
+		// rename detection would also read blob contents — which the CI checkout deliberately
+		// leaves on the server.
+		out = execFileSync('git', ['diff', '--name-only', '--no-renames', baseRef, 'HEAD'], {
 			cwd: rootDir,
 			encoding: 'utf8',
 		});
@@ -158,10 +210,72 @@ export function resolveTargets(
 			console.log('No changed publishable packages; nothing to verify.');
 			return null;
 		}
-		console.log(`Changed publishable packages: ${targets.join(', ')}`);
+		console.log(`Changed publishable packages (${targets.length}): ${targets.join(', ')}`);
 		return targets;
 	}
 	return args.filter((a) => !a.startsWith('--'));
+}
+
+/**
+ * Pack the named packages in one recursive pnpm run, and return name -> tarball path.
+ *
+ * One invocation rather than one per package: packing these tarballs is quick, so ~50 pnpm startups
+ * dominate the step. `--json` reports the tarball each project produced, which also removes the
+ * need to diff the destination directory — that mis-attributes a tarball whose name is already
+ * present, and reads as "pack produced nothing".
+ *
+ * Scripts are off. The only `prepack` hook among publishable packages rebuilds `dist`, and this
+ * check reads package.json out of the installed graph, so nothing here needs compiling.
+ */
+function packWorkspacePackages(
+	names: string[],
+	destination: string,
+	rootDir: string,
+): Record<string, string> {
+	let stdout: string;
+	try {
+		stdout = execFileSync(
+			'pnpm',
+			[
+				'pack',
+				'--recursive',
+				...names.flatMap((name) => ['--filter', name]),
+				'--config.ignore-scripts=true',
+				'--pack-destination',
+				destination,
+				'--json',
+			],
+			{
+				cwd: rootDir,
+				encoding: 'utf8',
+				// The report lists every packed file, so it runs to several MB. The default 1MB cap
+				// would kill pnpm mid-pack.
+				maxBuffer: 256 * 1024 * 1024,
+				stdio: ['ignore', 'pipe', 'inherit'],
+			},
+		);
+	} catch (error) {
+		// `--json` puts the failure on stdout, which is captured rather than inherited — print it or
+		// the throw reads as a bare "Command failed" with the cause nowhere in the log.
+		const captured = (error as { stdout?: string }).stdout;
+		if (captured) console.error(captured);
+		throw error;
+	}
+	// pnpm reports a bare object for a single project and an array for several.
+	let packed: Packed | Packed[];
+	try {
+		packed = JSON.parse(stdout) as Packed | Packed[];
+	} catch {
+		throw new Error(`Could not read the pnpm pack report: ${stdout.slice(0, 500)}`);
+	}
+	const tarballByName = Object.fromEntries(
+		[packed].flat().map(({ name, filename }) => [name, filename]),
+	);
+	const missing = names.filter((name) => !tarballByName[name]);
+	if (missing.length > 0) {
+		throw new Error(`pnpm pack produced no tarball for: ${missing.join(', ')}`);
+	}
+	return tarballByName;
 }
 
 /**
@@ -202,20 +316,9 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 	// inspecting — either way, keeping it just leaks a full node_modules into tmpdir per run.
 	let keepScratch = false;
 	try {
+		const packStartedAt = Date.now();
 		console.log(`Packing ${toPack.length} workspace package(s) (targets: ${targets.length})...`);
-		const tarballByName: Record<string, string> = {};
-		for (const name of toPack) {
-			const entry = byName.get(name);
-			if (!entry) continue;
-			const before = new Set(readdirSync(tarballs));
-			execFileSync('pnpm', ['pack', '--pack-destination', tarballs], {
-				cwd: entry.dir,
-				stdio: ['ignore', 'ignore', 'inherit'],
-			});
-			const produced = readdirSync(tarballs).find((f) => !before.has(f) && f.endsWith('.tgz'));
-			if (!produced) throw new Error(`pnpm pack produced no tarball for ${name}`);
-			tarballByName[name] = join(tarballs, produced);
-		}
+		const tarballByName = packWorkspacePackages(toPack, tarballs, rootDir);
 
 		// Scratch project: install targets as file: deps, force ALL packed workspace deps to their
 		// local tarballs. Third-party deps resolve from the real npm registry.
@@ -231,36 +334,80 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 			),
 		);
 
-		console.log('Installing into scratch dir with npm...');
-		await installWithRetry(scratch);
+		console.log(`Packed in ${seconds(packStartedAt)}. Installing into scratch dir with npm...`);
+		const installStartedAt = Date.now();
+		// npm prints hundreds of ERESOLVE warnings here; they matter only when the install itself
+		// fails, so they are folded away rather than dropped. Actions cannot un-collapse a group
+		// after the fact, so a failure points back at it instead.
+		groupStart('npm install output');
+		try {
+			await installWithRetry(scratch);
+		} catch (error) {
+			groupEnd();
+			console.log('npm install failed — its output is in the "npm install output" group above.');
+			throw error;
+		}
+		groupEnd();
+		console.log(`Installed in ${seconds(installStartedAt)}.`);
 
-		const { duplicates, failures } = analyze(collectCopies(scratch));
+		const found = collectCopies(scratch);
+		const { duplicates, failures } = analyze(found);
+		const workspaceNames = new Set(byName.keys());
+		const curatedDuplicates = duplicates.filter((d) => d.isCurated);
+		const attributed = explainDuplicates(scratch, curatedDuplicates, workspaceNames);
+		const explained = attributed.filter((dup) => failures.some((f) => f.name === dup.name));
 
-		console.log(`\nnpm-install closure — scratch: ${scratch}\n`);
-		const curatedTag = reportOnly ? 'CURATED DUP (report)' : 'FAIL';
-		for (const d of duplicates) {
-			const tag = d.isCurated ? (d.allowed ? 'ALLOWED DUP' : curatedTag) : 'dup (report)';
-			console.log(
-				`  ${d.name}: ${tag} — ${d.copies.length} copies (${d.copies.map((c) => `v${c.version}`).join(', ')})`,
-			);
+		const nonCurated = duplicates.filter((d) => !d.isCurated);
+		if (nonCurated.length > 0) {
+			groupStart(`Other duplicated packages (report-only, NOT enforced — ${nonCurated.length})`);
+			for (const d of nonCurated) {
+				console.log(
+					`  ${d.name}: ${d.copies.length} copies (${d.copies.map((c) => `v${c.version}`).join(', ')})`,
+				);
+			}
+			groupEnd();
+		}
+
+		const attributedCopies = new Map(attributed.map((dup) => [dup.name, dup.copies]));
+		console.log(
+			`\nCurated single-instance libraries — npm-install closure of ${targets.length} target(s):\n`,
+		);
+		// Unattributed copies fall back to raw paths rather than rendering a "N copies" header with
+		// nothing under it.
+		for (const line of formatCuratedReport(found, duplicates, (dup) => {
+			const copies = attributedCopies.get(dup.name);
+			return copies
+				? formatCopyLines(copies)
+				: dup.copies.map((c) => `      v${c.version}  ${c.realPath}`);
+		})) {
+			console.log(line);
 		}
 
 		if (failures.length > 0) {
 			keepScratch = !reportOnly;
+			const scratchHint = keepScratch ? scratch : undefined;
+			const remediationOptions = { exemptPackages: exemptPackages(byName), scratch: scratchHint };
+			console.log('\nHow to fix\n');
+			for (const line of formatRemediation(explained, remediationOptions)) console.log(line);
+			writeStepSummary(formatStepSummary(explained, { reportOnly, ...remediationOptions }));
 			for (const f of failures) {
 				annotate(
 					`${f.name}: ${f.copies.length} copies in the npm-install graph (${f.copies.map((c) => `v${c.version}`).join(', ')})`,
+					reportOnly ? 'warning' : 'error',
 				);
 			}
-			console.error(
-				`\n${reportOnly ? 'REPORT' : 'FAIL'}: ${failures.length} curated library duplicate(s) in the npm-install graph.`,
+			// stdout, not stderr: the two streams interleave in the Actions log, which is how the
+			// verdict ended up printed in the middle of the duplicate list.
+			console.log(
+				`\n${reportOnly ? 'REPORT' : 'FAIL'}: ${describeFailureCount(failures.length)}: ${failures.map((f) => f.name).join(', ')}${reportOnly ? ' (advisory — this job does not block yet)' : ''}`,
 			);
 			return reportOnly ? 0 : 1;
 		}
 		console.log('\nOK: no curated duplicates in the npm-install graph.');
 		return 0;
 	} finally {
-		if (keepScratch) console.log(`\nScratch install kept for inspection: ${scratch}`);
-		else rmSync(work, { recursive: true, force: true });
+		// The kept tree is already pointed at from the remediation block, which is the only path
+		// that keeps one.
+		if (!keepScratch) rmSync(work, { recursive: true, force: true });
 	}
 }

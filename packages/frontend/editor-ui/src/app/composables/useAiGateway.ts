@@ -18,9 +18,9 @@ export function useAiGateway() {
 
 	const isEnabled = computed(() => settingsStore.isAiGatewayEnabled);
 
-	async function fetchWallet(): Promise<void> {
+	async function fetchWallet(options?: { force?: boolean }): Promise<void> {
 		if (!isEnabled.value) return;
-		await aiGatewayStore.fetchWallet();
+		await aiGatewayStore.fetchWallet(options);
 	}
 
 	const isCredentialTypeSupported = (credentialType: string): boolean =>

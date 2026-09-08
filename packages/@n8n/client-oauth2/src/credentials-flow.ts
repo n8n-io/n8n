@@ -31,7 +31,9 @@ export class CredentialsFlow {
 		const options = { ...this.client.options };
 		expects(options, 'clientId', 'accessTokenUri');
 
-		const headers: Headers = { ...DEFAULT_HEADERS };
+		// Caller-supplied headers (e.g. a partner User-Agent) first, so `Authorization`
+		// below always wins if a caller ever also set that.
+		const headers: Headers = { ...DEFAULT_HEADERS, ...options.headers };
 		const body: CredentialsFlowBody = {
 			grant_type: 'client_credentials',
 			...(options.additionalBodyProperties ?? {}),

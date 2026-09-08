@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { WorkflowReviewActivityEntry, WorkflowReviewActivityMessage } from '@n8n/api-types';
-import { N8nAvatar, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
 import { formatActorName } from '../../workflowReviews.utils';
+import WorkflowReviewActivityActorAvatar from './WorkflowReviewActivityActorAvatar.vue';
 
 defineProps<{
 	entry: Extract<WorkflowReviewActivityEntry, { type: 'comment.created' }>;
@@ -24,12 +25,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 <template>
 	<div :class="$style.entry">
 		<div v-for="message in entry.messages" :key="message.id" :class="$style.message">
-			<N8nAvatar
-				size="xxsmall"
-				:class="$style.avatar"
-				:first-name="message.createdBy?.firstName"
-				:last-name="message.createdBy?.lastName"
-			/>
+			<WorkflowReviewActivityActorAvatar :actor="message.createdBy" />
 			<div :class="$style.content">
 				<div :class="$style.header">
 					<N8nText
@@ -40,7 +36,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 					>
 						{{ authorName(message) }}
 					</N8nText>
-					<N8nText size="small" color="text-light">
+					<N8nText size="medium" color="text-light">
 						<time
 							:datetime="message.createdAt"
 							data-test-id="workflow-review-activity-comment-time"
@@ -62,7 +58,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 				<N8nText
 					v-else
 					size="medium"
-					color="text-light"
+					color="text-dark"
 					:class="[$style.body, $style.line]"
 					data-test-id="workflow-review-activity-comment-body"
 				>
@@ -89,10 +85,6 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 	@include activity-row;
 }
 
-.avatar {
-	@include activity-avatar;
-}
-
 .content {
 	display: flex;
 	flex-direction: column;
@@ -109,7 +101,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 }
 
 .timeStamp {
-	padding-left: var(--spacing--3xs);
+	padding-left: var(--spacing--4xs);
 }
 
 .body {

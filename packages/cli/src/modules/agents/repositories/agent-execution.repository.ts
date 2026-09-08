@@ -115,8 +115,9 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
 			.andWhere('e."source" IS NOT NULL')
 			.andWhere(
-				`e."createdAt" = (SELECT MIN(e2."createdAt") FROM ${tableName} e2 ` +
-					'WHERE e2."threadId" = e."threadId" AND e2."source" IS NOT NULL)',
+				`e.id = (SELECT e2.id FROM ${tableName} e2 ` +
+					'WHERE e2."threadId" = e."threadId" AND e2."source" IS NOT NULL ' +
+					'ORDER BY e2."createdAt" ASC, e2.id ASC LIMIT 1)',
 			)
 			.getRawMany<{ threadId: string; source: string }>();
 
@@ -194,6 +195,20 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			where: { threadId, hitlStatus: 'suspended' },
 			order: { createdAt: 'DESC' },
 		});
+	}
+
+	/**
+	 * Whether the thread ever parked a run. Counts rows on the
+	 * `(threadId, createdAt)` index without loading any execution data, so it is
+	 * cheap enough to ask on every inbound message.
+	 *
+	 * A row keeps `hitlStatus: 'suspended'` after its resume (the resumed turn is
+	 * a separate row), so this can only rule a thread out, never confirm that
+	 * something is parked right now — the checkpoint is the authority for that.
+	 */
+	async hasSuspendedRun(threadId: string): Promise<boolean> {
+		const count = await this.count({ where: { threadId, hitlStatus: 'suspended' } });
+		return count > 0;
 	}
 
 	/** Backfill model on a set of executions in a single statement. */

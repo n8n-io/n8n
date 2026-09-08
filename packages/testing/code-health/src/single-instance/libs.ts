@@ -7,6 +7,16 @@
  * `verify-npm-install` CLI subcommands.
  */
 
+/**
+ * Manifest sections that follow the publish graph: what a consumer installs, and therefore what can
+ * nest a second physical copy. devDependencies don't ship, so they can't.
+ */
+export const PUBLISHED_SECTIONS = [
+	'dependencies',
+	'peerDependencies',
+	'optionalDependencies',
+] as const;
+
 /** Libraries a single process must resolve to exactly one physical copy of. */
 export const CURATED_LIBS = ['zod', 'form-data', '@langchain/core', 'reflect-metadata'];
 
@@ -31,3 +41,15 @@ export const FRONTEND_PATH_PREFIXES = ['packages/frontend/'];
 
 /** Curated libs subject to the peer rule (pin-only libs are exempt). */
 export const PEER_LIBS = CURATED_LIBS.filter((lib) => !PIN_ONLY_LIBS.includes(lib));
+
+/**
+ * Whether the peer rule exempts a package: it provides its own runtime instance, or it bundles.
+ * The `single-instance-libs` rule skips these, and the duplicate report must not tell their owner
+ * to make a change that rule then rejects — so both read the exemption from here.
+ */
+export function isPeerRuleExempt(packageName: string, relDir: string): boolean {
+	return (
+		HOST_PACKAGES.includes(packageName) ||
+		FRONTEND_PATH_PREFIXES.some((prefix) => relDir.startsWith(prefix))
+	);
+}

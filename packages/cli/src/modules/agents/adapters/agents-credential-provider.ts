@@ -45,7 +45,7 @@ export class AgentsCredentialProvider
 		const aiGatewayService = Container.get(AiGatewayService);
 		const credentialType = await aiGatewayService.getCredentialTypeForProvider(provider);
 		if (!credentialType) {
-			throw new UserError(`n8n credits does not support the "${provider}" model provider.`);
+			throw new UserError(`Gateway credits do not support the "${provider}" model provider.`);
 		}
 		return await aiGatewayService.getSyntheticCredential({
 			credentialType,

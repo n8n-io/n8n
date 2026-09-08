@@ -1,7 +1,6 @@
 import type { SupabaseLibArgs } from '@langchain/community/vectorstores/supabase';
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
 import type { Embeddings } from '@langchain/core/embeddings';
-import { createClient } from '@supabase/supabase-js';
 import {
 	type INodeType,
 	type INodeTypeDescription,
@@ -14,6 +13,7 @@ import { logWrapper, getMetadataFiltersValues, metadataFilterField } from '@n8n/
 
 import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
+import { createSupabaseClient } from '../shared/supabase';
 
 // This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseLoad implements INodeType {
@@ -95,7 +95,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 			0,
 		)) as Embeddings;
 
-		const client = createClient(credentials.host as string, credentials.serviceRole as string);
+		const client = createSupabaseClient(credentials);
 		const config: SupabaseLibArgs = {
 			client,
 			tableName,

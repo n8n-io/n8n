@@ -1,3 +1,8 @@
+import type {
+	AgentSessionOrigin,
+	AgentSessionQueryFilters,
+	AgentSessionStatus,
+} from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
@@ -241,6 +246,148 @@ describe('AgentExecutionRepository', () => {
 					executionId: latest.id,
 				},
 			});
+		});
+	});
+
+	describe('session filters', () => {
+		it('filters all composite statuses using the latest execution and recovered failures', async () => {
+			const running = await createThread({ sessionNumber: 1 });
+			const succeeded = await createThread({ sessionNumber: 2 });
+			const recovered = await createThread({ sessionNumber: 3 });
+			const errored = await createThread({ sessionNumber: 4 });
+			const olderFailure = {
+				count: 1,
+				latest: { kind: 'tool' as const, name: 'Lookup', message: 'failed', occurredAt: 10 },
+			};
+
+			await createExecution({
+				threadId: running.id,
+				status: 'error',
+				failureSummary: olderFailure,
+				createdAt: new Date('2026-01-01T00:00:00Z'),
+			});
+			await createExecution({
+				threadId: running.id,
+				status: 'running',
+				failureSummary: null,
+				createdAt: new Date('2026-01-02T00:00:00Z'),
+			});
+			await createExecution({ threadId: succeeded.id, status: 'success', failureSummary: null });
+			await createExecution({
+				threadId: recovered.id,
+				status: 'success',
+				failureSummary: olderFailure,
+			});
+			await createExecution({ threadId: errored.id, status: 'error', failureSummary: null });
+
+			const idsFor = async (status: AgentSessionStatus) =>
+				(
+					await threadRepo.findByProjectIdPaginated(projectId, agentId, 20, undefined, {
+						status,
+					})
+				).threads.map(({ id }) => id);
+
+			expect(await idsFor('running')).toEqual([running.id]);
+			expect(await idsFor('succeeded')).toEqual([succeeded.id]);
+			expect(new Set(await idsFor('error'))).toEqual(new Set([recovered.id, errored.id]));
+
+			const latestStatuses = await repository.findLatestStatusesByThreadIds([running.id]);
+			expect(latestStatuses.get(running.id)).toBe('running');
+		});
+
+		it('mirrors the displayed origin precedence', async () => {
+			const origins: Array<{
+				sessionNumber: number;
+				source: string | null;
+				laterSource?: string;
+				parentThreadId?: string;
+				taskId?: string;
+				expected: AgentSessionOrigin;
+			}> = [
+				{
+					sessionNumber: 1,
+					source: 'slack',
+					parentThreadId: 'parent-1',
+					taskId: 'task-1',
+					expected: 'sub-agent',
+				},
+				{ sessionNumber: 2, source: 'subagent', expected: 'sub-agent' },
+				{ sessionNumber: 3, source: 'slack', taskId: 'task-2', expected: 'schedule' },
+				{ sessionNumber: 4, source: 'task', expected: 'schedule' },
+				{ sessionNumber: 5, source: null, expected: 'preview' },
+				{ sessionNumber: 6, source: 'chat', expected: 'preview' },
+				{ sessionNumber: 7, source: 'slack', laterSource: 'workflow', expected: 'slack' },
+			];
+			const expectedIds = new Map<AgentSessionOrigin, string[]>();
+
+			for (const origin of origins) {
+				const thread = await createThread({
+					sessionNumber: origin.sessionNumber,
+					parentThreadId: origin.parentThreadId,
+					taskId: origin.taskId,
+				});
+				await createExecution({
+					threadId: thread.id,
+					source: origin.source,
+					createdAt: new Date('2026-01-01T00:00:00Z'),
+				});
+				if (origin.laterSource) {
+					await createExecution({
+						threadId: thread.id,
+						source: origin.laterSource,
+						createdAt: new Date('2026-01-02T00:00:00Z'),
+					});
+				}
+				expectedIds.set(origin.expected, [...(expectedIds.get(origin.expected) ?? []), thread.id]);
+			}
+
+			for (const [origin, ids] of expectedIds) {
+				const result = await threadRepo.findByProjectIdPaginated(
+					projectId,
+					agentId,
+					20,
+					undefined,
+					{ origin },
+				);
+				expect(new Set(result.threads.map(({ id }) => id))).toEqual(new Set(ids));
+			}
+		});
+
+		it('applies inclusive date and status filters before cursor pagination', async () => {
+			const start = new Date('2026-01-01T00:00:00Z');
+			const middle = new Date('2026-01-02T00:00:00Z');
+			const end = new Date('2026-01-03T00:00:00Z');
+			const oldest = await createThread({ sessionNumber: 1, updatedAt: start });
+			const middleError = await createThread({ sessionNumber: 2, updatedAt: middle });
+			const newest = await createThread({ sessionNumber: 3, updatedAt: end });
+			await createExecution({ threadId: oldest.id, status: 'success', source: 'workflow' });
+			await createExecution({ threadId: middleError.id, status: 'error', source: 'workflow' });
+			await createExecution({ threadId: newest.id, status: 'success', source: 'workflow' });
+			const filters: AgentSessionQueryFilters = {
+				status: 'succeeded',
+				origin: 'workflow',
+				updatedAfter: start,
+				updatedBefore: end,
+			};
+
+			const firstPage = await threadRepo.findByProjectIdPaginated(
+				projectId,
+				agentId,
+				1,
+				undefined,
+				filters,
+			);
+			const secondPage = await threadRepo.findByProjectIdPaginated(
+				projectId,
+				agentId,
+				1,
+				firstPage.nextCursor ?? undefined,
+				filters,
+			);
+
+			expect(firstPage.threads.map(({ id }) => id)).toEqual([newest.id]);
+			expect(secondPage.threads.map(({ id }) => id)).toEqual([oldest.id]);
+			expect(secondPage.nextCursor).toBeNull();
 		});
 	});
 });

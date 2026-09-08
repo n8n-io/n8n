@@ -9,6 +9,7 @@ import {
 	IDLE_THRESHOLD_MS,
 	flattenExecutionsToTimelineItems,
 	itemStatusFilterKey,
+	hitlRequestLabelKey,
 	matchesSearch,
 	isErroredToolCallTimelineItem,
 	matchesTimelineFilters,
@@ -432,6 +433,69 @@ describe('flattenExecutionsToTimelineItems', () => {
 			});
 		},
 	);
+
+	// A workflow tool parked on a Wait node is not asking for anything: nobody has
+	// to respond, so it must not read as an approval or a user-input request.
+	it('classifies a Wait-node suspension as a wait', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					toolCallEvent({ kind: 'workflow', toolCallId: 'tc-wait' }),
+					suspensionEvent({
+						toolCallId: 'tc-wait',
+						suspendPayload: {
+							type: 'workflow_wait',
+							title: 'Waiting on "Approval workflow"',
+							components: [{ type: 'section', text: 'The workflow is paused.' }],
+						},
+					}),
+				],
+				{ id: 'e-suspended', hitlStatus: 'suspended' },
+			),
+		]);
+
+		const suspension = items.find((item) => item.kind === 'suspension');
+		expect(suspension).toMatchObject({ hitlRequestType: 'wait' });
+	});
+
+	// A workflow tool parking with any other payload is not asking for approval;
+	// the tool kind must not override a payload that says otherwise.
+	it('treats a non-approval payload on a workflow tool as an interaction', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					toolCallEvent({ kind: 'workflow', toolCallId: 'tc-wait' }),
+					suspensionEvent({
+						toolCallId: 'tc-wait',
+						suspendPayload: {
+							title: 'Waiting on "Approval workflow"',
+							components: [{ type: 'section', text: 'The workflow is paused.' }],
+						},
+					}),
+				],
+				{ id: 'e-suspended', hitlStatus: 'suspended' },
+			),
+		]);
+
+		const suspension = items.find((item) => item.kind === 'suspension');
+		expect(suspension).toMatchObject({ hitlRequestType: 'interaction' });
+	});
+
+	// Older records persisted no payload, where tool kind is the only signal left.
+	it('still infers approval from tool kind when no payload was persisted', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					toolCallEvent({ kind: 'workflow', toolCallId: 'tc-legacy' }),
+					suspensionEvent({ toolCallId: 'tc-legacy' }),
+				],
+				{ id: 'e-suspended', hitlStatus: 'suspended' },
+			),
+		]);
+
+		const suspension = items.find((item) => item.kind === 'suspension');
+		expect(suspension).toMatchObject({ hitlRequestType: 'approval' });
+	});
 
 	it('uses the persisted approval request and maps its result to an approved response', () => {
 		const items = flattenExecutionsToTimelineItems([
@@ -882,5 +946,19 @@ describe('timelineItemErrorMessage', () => {
 		expect(
 			timelineItemErrorMessage(item({ kind: 'tool', toolSuccess: true, toolOutput: { ok: true } })),
 		).toBe('');
+	});
+});
+
+describe('hitlRequestLabelKey', () => {
+	// A wait resumes on its own, so borrowing the interaction wording ("User
+	// input requested") would tell the user to do something that isn't needed.
+	it('gives a wait its own label rather than the interaction wording', () => {
+		expect(hitlRequestLabelKey('wait')).toBe('agentSessions.timeline.waitRequested');
+		expect(hitlRequestLabelKey('approval')).toBe('agentSessions.timeline.approvalRequested');
+		expect(hitlRequestLabelKey('interaction')).toBe('agentSessions.timeline.hitlRequested');
+	});
+
+	it('falls back to the interaction label for records with no request type', () => {
+		expect(hitlRequestLabelKey(undefined)).toBe('agentSessions.timeline.hitlRequested');
 	});
 });

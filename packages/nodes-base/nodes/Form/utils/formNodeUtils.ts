@@ -16,6 +16,7 @@ import {
 	renderForm,
 	resolveRawData,
 	sanitizeHtml,
+	setFormAuthCookie,
 } from './utils';
 
 export const renderFormNode = async (
@@ -56,9 +57,17 @@ export const renderFormNode = async (
 
 	// Embed the form auth token so subsequent POSTs can re-authenticate the
 	// user — cookies aren't sent on fetch from a sandboxed form page.
-	const authToken = authedUser
-		? generateFormUserAuthToken(context.getNode(), authedUser)
-		: undefined;
+	let authToken: string | undefined;
+	if (authedUser) {
+		const binding = {
+			workflowId: context.getWorkflow().id,
+			executionId: context.getExecutionId(),
+		};
+		authToken = generateFormUserAuthToken(context.getNode(), authedUser, binding);
+		// The same token doubles as the page auth cookie the next page's navigation
+		// presents, refreshed here so a long multi-page form doesn't outlive it.
+		setFormAuthCookie(context, authToken, binding);
+	}
 
 	renderForm({
 		context,
@@ -73,6 +82,9 @@ export const renderFormNode = async (
 		buttonLabel,
 		customCss: options.customCss,
 		authToken,
+		// The submit-time credential gate (Form.node.ts POST) can refuse this page
+		// too, so ship the client-side 428 handling whenever there's a submitter.
+		hasAuthenticatedSubmitter: !!authedUser,
 	});
 
 	return {

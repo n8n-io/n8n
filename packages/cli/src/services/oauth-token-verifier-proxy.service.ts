@@ -16,6 +16,24 @@ export type AuthFailureReason =
 
 export type Mcpauth_type = 'oauth' | 'api_key' | 'unknown';
 
+/**
+ * How a caller that got through authenticated. `unknown` is reachable only on
+ * the failure paths, where auth was rejected before the method could be
+ * determined, so it cannot describe an admitted caller.
+ */
+export type McpResolvedAuthType = Exclude<Mcpauth_type, 'unknown'>;
+
+/**
+ * How an admitted caller authenticated, together with the registered OAuth
+ * client it authenticated as. The two travel as one value because they are not
+ * independent: an OAuth token is always issued to a client, and an API key
+ * never is, so no code path can report `oauth` without naming a client or
+ * attach a client to an API key.
+ */
+export type McpCallerAuth =
+	| { authType: 'oauth'; clientId: string }
+	| { authType: 'api_key'; clientId?: never };
+
 export type TelemetryAuthContext = {
 	reason: AuthFailureReason;
 	auth_type: Mcpauth_type;
@@ -26,7 +44,13 @@ export type UserWithContext = {
 	user: User | null;
 	actor?: User;
 	context?: TelemetryAuthContext;
-	authType?: Mcpauth_type;
+	/**
+	 * How the caller authenticated and, for OAuth, the client the token was
+	 * issued to (`client_id`), so activity can be attributed to a client and not
+	 * just to the user who authorized it. Absent on the failure paths, which
+	 * reject before a caller is admitted.
+	 */
+	caller?: McpCallerAuth;
 	/** OAuth scopes granted to the token. `undefined` = not scope-bearing (e.g. API key) → full access. */
 	scopes?: string[];
 	/**
@@ -56,6 +80,14 @@ export interface OAuthTokenVerifier {
 		expectedAudience?: string,
 		grant?: OAuthResourceGrant,
 	): Promise<UserWithContext>;
+
+	/**
+	 * Re-take a sealed grant's `workflow:execute` decision for `userId`, without the token.
+	 * Used by the sealed-identity credential path to keep the check live: a caller whose
+	 * execute access was revoked after the identity was sealed must stop resolving. Returns
+	 * `false` when the user is gone/disabled or lacks the access the grant requires.
+	 */
+	authorizeSealedGrant(userId: string, grant: OAuthResourceGrant): Promise<boolean>;
 }
 
 /**
@@ -91,5 +123,13 @@ export class OAuthTokenVerifierProxy implements OAuthTokenVerifier {
 			};
 		}
 		return await this.provider.verifyOAuthAccessToken(token, expectedAudience, grant);
+	}
+
+	async authorizeSealedGrant(userId: string, grant: OAuthResourceGrant): Promise<boolean> {
+		// Fail closed: with no verifier registered there is nothing to re-authorize against.
+		if (!this.provider) {
+			return false;
+		}
+		return await this.provider.authorizeSealedGrant(userId, grant);
 	}
 }

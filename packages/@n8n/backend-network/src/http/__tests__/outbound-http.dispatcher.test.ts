@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import { Agent, EnvHttpProxyAgent, ProxyAgent } from 'undici';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,18 +12,25 @@ import { OutboundHttp } from '../outbound-http';
 // the `instanceof` checks would not see the proxy class.
 
 function makeTransport(options?: Parameters<OutboundHttp['transport']>[0]) {
-	return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).transport(options);
+	return new OutboundHttp(
+		mock<SsrfProtectionService>(),
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<Logger>(),
+	).transport(options);
 }
 
 describe('transport getDispatcher proxy routing', () => {
 	it('defaults to env-based proxy (EnvHttpProxyAgent dispatcher)', () => {
-		const dispatcher = makeTransport({ ssrf: 'disabled' }).getDispatcher();
+		const dispatcher = makeTransport({ useDefaultSsrfPolicy: 'unsafe' }).getDispatcher();
 
 		expect(dispatcher).toBeInstanceOf(EnvHttpProxyAgent);
 	});
 
 	it('proxy: false → plain undici Agent', () => {
-		const dispatcher = makeTransport({ proxy: false, ssrf: 'disabled' }).getDispatcher();
+		const dispatcher = makeTransport({
+			proxy: false,
+			useDefaultSsrfPolicy: 'unsafe',
+		}).getDispatcher();
 
 		expect(dispatcher).toBeInstanceOf(Agent);
 		expect(dispatcher).not.toBeInstanceOf(EnvHttpProxyAgent);
@@ -30,7 +38,10 @@ describe('transport getDispatcher proxy routing', () => {
 	});
 
 	it('proxy: env → EnvHttpProxyAgent', () => {
-		const dispatcher = makeTransport({ proxy: 'env', ssrf: 'disabled' }).getDispatcher();
+		const dispatcher = makeTransport({
+			proxy: 'env',
+			useDefaultSsrfPolicy: 'unsafe',
+		}).getDispatcher();
 
 		expect(dispatcher).toBeInstanceOf(EnvHttpProxyAgent);
 	});
@@ -38,7 +49,7 @@ describe('transport getDispatcher proxy routing', () => {
 	it('proxy: explicit URL → ProxyAgent', () => {
 		const dispatcher = makeTransport({
 			proxy: 'http://proxy.internal:3128',
-			ssrf: 'disabled',
+			useDefaultSsrfPolicy: 'unsafe',
 		}).getDispatcher();
 
 		expect(dispatcher).toBeInstanceOf(ProxyAgent);

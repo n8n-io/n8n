@@ -12,6 +12,8 @@ export interface DuplicateGroup {
 	name: string;
 	isCurated: boolean;
 	allowed: boolean;
+	/** Why the duplicate is tolerated, when it is allowlisted. */
+	reason?: string;
 	copies: Copy[];
 }
 
@@ -155,6 +157,7 @@ export function analyze(
 			name,
 			isCurated: CURATED_LIBS.includes(name),
 			allowed: Object.hasOwn(allowlist, name),
+			reason: allowlist[name],
 			copies: distinct,
 		});
 	}

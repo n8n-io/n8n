@@ -454,9 +454,7 @@ function updateAgentParameters(parameters: INodeProperties[], nodeName: string) 
 				return {
 					...option,
 					disabled: true,
-					description:
-						option.description ??
-						i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
+					description: i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
 				};
 			}),
 		};

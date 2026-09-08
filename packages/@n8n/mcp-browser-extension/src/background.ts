@@ -5,14 +5,14 @@
  * and tracks tab lifecycle for agent-created tabs only.
  */
 
+import { isHostApproved } from './approvedHosts';
 import { createLogger } from './logger';
-import { isAllowedPageOrigin, isAllowedRelayUrl } from './relayAllowlist';
+import { getRelayHostKey, isAllowedPageOrigin, isAllowedRelayUrl } from './relayAllowlist';
 import { RelayConnection, isEligibleTab } from './relayConnection';
 import type {
 	ExtensionMessage,
 	ExternalConnectResponse,
 	ExternalConnectResultResponse,
-	TabManagementSettings,
 } from './types';
 import { isExternalMessage } from './types';
 
@@ -24,21 +24,15 @@ interface ConnectionState {
 }
 
 let activeConnection: ConnectionState | null = null;
+// Bumped per connect request. A handshake is slow enough that a newer one can finish while
+// an older is still opening, so the older must not commit itself over the live session.
+let connectGeneration = 0;
 
-// ---------------------------------------------------------------------------
-// Settings
-// ---------------------------------------------------------------------------
-
-const SETTINGS_KEY = 'tabManagementSettings';
-
-const DEFAULT_SETTINGS: TabManagementSettings = {
-	allowTabCreation: true,
-	allowTabClosing: false,
-};
-
-async function loadSettings(): Promise<TabManagementSettings> {
-	const result = await chrome.storage.local.get(SETTINGS_KEY);
-	return (result[SETTINGS_KEY] as TabManagementSettings) ?? DEFAULT_SETTINGS;
+/** A query param rather than a header because `WebSocket` cannot set request headers. */
+export function buildRelayWsUrl(relayUrl: string, version: string): string {
+	const url = new URL(relayUrl);
+	url.searchParams.set('extensionVersion', version);
+	return url.toString();
 }
 
 // ---------------------------------------------------------------------------
@@ -47,6 +41,41 @@ async function loadSettings(): Promise<TabManagementSettings> {
 
 const CONNECT_PAGE = 'connect.html';
 const RELAY_URL_KEY = 'pendingRelayUrl';
+
+// ---------------------------------------------------------------------------
+// Action drawer — clicking the extension icon opens drawer.html. While a
+// connect confirmation page is open, the drawer is disabled so the icon click
+// falls through to onClicked, which focuses the pending page instead of
+// showing the same connect view twice.
+// ---------------------------------------------------------------------------
+
+const DRAWER_PAGE = 'drawer.html';
+
+function setDrawerEnabled(enabled: boolean): void {
+	void chrome.action.setPopup({ popup: enabled ? DRAWER_PAGE : '' });
+}
+
+// The disabled state persists across service-worker restarts while the pending
+// flow does not — reset on startup so the drawer can't get stuck disabled.
+setDrawerEnabled(true);
+
+chrome.action.onClicked.addListener(() => {
+	void focusPendingConnectPage();
+});
+
+async function focusPendingConnectPage(): Promise<void> {
+	const tabId = pendingConnectFlow?.tabId;
+	if (tabId === null || tabId === undefined) return;
+	try {
+		const tab = await chrome.tabs.get(tabId);
+		await chrome.tabs.update(tabId, { active: true });
+		if (tab.windowId !== undefined) {
+			await chrome.windows.update(tab.windowId, { focused: true });
+		}
+	} catch {
+		// Pending page already gone — the next settle re-enables the drawer
+	}
+}
 
 // ---------------------------------------------------------------------------
 // Message handling from connect.html UI
@@ -83,18 +112,8 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 			return {
 				connected: activeConnection !== null,
 				tabIds: activeConnection?.relay.getControlledIds() ?? [],
+				relayUrl: activeConnection?.relayUrl,
 			};
-
-		case 'updateSettings': {
-			await chrome.storage.local.set({ [SETTINGS_KEY]: message.settings });
-			if (activeConnection) {
-				activeConnection.relay.setSettings(message.settings);
-			}
-			return { success: true };
-		}
-
-		case 'getSettings':
-			return await loadSettings();
 
 		case 'getRelayUrl': {
 			const stored = await chrome.storage.session.get(RELAY_URL_KEY);
@@ -191,8 +210,8 @@ async function deliverRelayUrl(
 // ---------------------------------------------------------------------------
 
 const EXTERNAL_CONNECT_THROTTLE_MS = 1000;
-const CONNECT_POPUP_WIDTH = 620;
-const CONNECT_POPUP_HEIGHT = 640;
+const CONNECT_POPUP_WIDTH = 540;
+const CONNECT_POPUP_HEIGHT = 700;
 
 let lastExternalConnectAt = 0;
 
@@ -211,6 +230,7 @@ function settleConnectFlow(connected: boolean): void {
 		pendingConnectFlow.notify?.({ connected });
 	} finally {
 		pendingConnectFlow = null;
+		setDrawerEnabled(true);
 	}
 }
 
@@ -228,10 +248,13 @@ chrome.runtime.onMessageExternal.addListener(
 		log.debug('external message received:', message.type, 'from', sender.origin);
 
 		if (message.type === 'connect') {
-			void handleExternalConnect(message.relayUrl).then(sendResponse, (error: unknown) => {
-				log.warn('external connect failed:', error);
-				sendResponse({ accepted: false });
-			});
+			void handleExternalConnect(message.relayUrl, sender.origin).then(
+				sendResponse,
+				(error: unknown) => {
+					log.warn('external connect failed:', error);
+					sendResponse({ accepted: false });
+				},
+			);
 			return true;
 		}
 
@@ -248,7 +271,10 @@ chrome.runtime.onMessageExternal.addListener(
 	},
 );
 
-async function handleExternalConnect(relayUrl: string): Promise<ExternalConnectResponse> {
+async function handleExternalConnect(
+	relayUrl: string,
+	senderOrigin: string | undefined,
+): Promise<ExternalConnectResponse> {
 	if (!isAllowedRelayUrl(relayUrl)) {
 		log.warn('refusing external connect to disallowed relay:', relayUrl);
 		return { accepted: false };
@@ -263,10 +289,26 @@ async function handleExternalConnect(relayUrl: string): Promise<ExternalConnectR
 
 	settleConnectFlow(false);
 
+	// Approved host asked for by its own instance — connect straight through. Pending is set
+	// before the handshake so a `connectResult` arriving mid-flight can attach its callback,
+	// and the drawer stays enabled because there is no confirmation page to focus.
+	const askedByRelayHost = getRelayHostKey(senderOrigin) === getRelayHostKey(relayUrl);
+	if (askedByRelayHost && (await isHostApproved(relayUrl))) {
+		log.debug('relay host previously approved, connecting without confirmation:', relayUrl);
+		const flow: PendingConnectFlow = { relayUrl, tabId: null, notify: null };
+		pendingConnectFlow = flow;
+		void connectToRelay(relayUrl, []).then((result) => {
+			// A newer request may already own the pending flow; only settle our own.
+			if (!result.success && pendingConnectFlow === flow) settleConnectFlow(false);
+		});
+		return { accepted: true, confirmationRequired: false };
+	}
+
 	const existing = await deliverRelayUrl(relayUrl);
 	const tabId = existing?.id ?? (await openConnectPopup(relayUrl));
 	pendingConnectFlow = { relayUrl, tabId, notify: null };
-	return { accepted: true };
+	setDrawerEnabled(false);
+	return { accepted: true, confirmationRequired: true };
 }
 
 async function openConnectPopup(relayUrl: string): Promise<number | null> {
@@ -331,7 +373,6 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 
 	const relay = activeConnection.relay;
 	const sourceIsControlled = relay.isControlledTab(details.sourceTabId);
-	const tabCreationAllowed = relay.isTabCreationAllowed();
 
 	log.debug(
 		'[onCreatedNavigationTarget] tabId:',
@@ -342,11 +383,9 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 		details.url,
 		'sourceIsControlled:',
 		sourceIsControlled,
-		'tabCreationAllowed:',
-		tabCreationAllowed,
 	);
 
-	if (!sourceIsControlled || !tabCreationAllowed) return;
+	if (!sourceIsControlled) return;
 
 	// Mark as agent-created so onUpdated listener also tracks URL changes
 	relay.markAsAgentCreated(details.tabId);
@@ -413,11 +452,13 @@ async function connectToRelay(
 		return { success: false, error: 'Refusing to connect: not a recognized n8n instance.' };
 	}
 
-	// Clean up existing connection
+	// Clean up existing connection, then claim a generation — `disconnect` advances it, so
+	// taking ours first would make this attempt invalidate itself.
 	disconnect();
+	const generation = ++connectGeneration;
 
 	try {
-		const ws = new WebSocket(relayUrl);
+		const ws = new WebSocket(buildRelayWsUrl(relayUrl, chrome.runtime.getManifest().version));
 
 		await new Promise<void>((resolve, reject) => {
 			const timeout = setTimeout(() => {
@@ -442,25 +483,30 @@ async function connectToRelay(
 		try {
 			// Eagerly attach debugger to selected tabs and resolve CDP targetIds
 			await relay.registerSelectedTabs(selectedTabIds);
-
-			// Load and apply settings
-			const settings = await loadSettings();
-			relay.setSettings(settings);
 		} catch (error) {
 			relay.close('network_error');
 			throw error;
+		}
+
+		if (generation !== connectGeneration) {
+			log.debug('discarding superseded relay connection:', relayUrl);
+			relay.close('superseded');
+			return { success: false, error: 'Superseded by a newer connection request.' };
 		}
 
 		activeConnection = { relay, relayUrl };
 
 		relay.onclose = () => {
 			log.debug('relay connection closed');
+			// A superseded relay closing must not clear the session that replaced it.
+			if (activeConnection?.relay !== relay) return;
 			activeConnection = null;
 			updateBadge(0);
 			broadcastStatusChange();
 		};
 
 		relay.ontabcreated = () => {
+			if (activeConnection?.relay !== relay) return;
 			broadcastStatusChange();
 			updateBadge(relay.getControlledIds().length);
 		};
@@ -469,7 +515,9 @@ async function connectToRelay(
 		log.debug('connected, controlling', tabCount, 'tabs');
 		updateBadge(tabCount);
 		broadcastStatusChange();
-		settleConnectFlow(pendingConnectFlow?.relayUrl === relayUrl);
+		// Only our own flow: a newer request may already own the pending one, and settling it
+		// here would fail a page whose confirmation is still on screen.
+		if (pendingConnectFlow?.relayUrl === relayUrl) settleConnectFlow(true);
 		return { success: true };
 	} catch (error) {
 		log.error('connectToRelay failed:', error);
@@ -481,6 +529,9 @@ async function connectToRelay(
 }
 
 function disconnect(): void {
+	// Outside the guard below: a handshake that has not committed yet leaves
+	// `activeConnection` null, and it must still be invalidated by a teardown.
+	connectGeneration++;
 	if (activeConnection) {
 		log.debug('disconnecting');
 		activeConnection.relay.close('extension_disconnected');
@@ -493,7 +544,8 @@ function disconnect(): void {
 function broadcastStatusChange(): void {
 	const connected = activeConnection !== null;
 	const tabIds = activeConnection?.relay.getControlledIds() ?? [];
-	chrome.runtime.sendMessage({ type: 'statusChanged', connected, tabIds }).catch(() => {
+	const relayUrl = activeConnection?.relayUrl;
+	chrome.runtime.sendMessage({ type: 'statusChanged', connected, tabIds, relayUrl }).catch(() => {
 		// No receivers — this is fine if the popup/tab is not open
 	});
 }
@@ -503,29 +555,8 @@ function broadcastStatusChange(): void {
 // ---------------------------------------------------------------------------
 
 function updateBadge(tabCount: number): void {
-	const text = tabCount > 0 ? String(tabCount) : '';
+	// A prompt-free connect shows no UI at all, so mark the icon even before any tab attaches.
+	const text = tabCount > 0 ? String(tabCount) : activeConnection ? '•' : '';
 	void chrome.action.setBadgeText({ text });
 	void chrome.action.setBadgeBackgroundColor({ color: tabCount > 0 ? '#4CAF50' : '#999' });
-}
-
-// ---------------------------------------------------------------------------
-// Extension icon click — open or focus the connect tab
-// ---------------------------------------------------------------------------
-
-chrome.action.onClicked.addListener(() => {
-	void openOrFocusConnectTab();
-});
-
-async function openOrFocusConnectTab(): Promise<void> {
-	const connectUrl = chrome.runtime.getURL(CONNECT_PAGE);
-	const existing = await chrome.tabs.query({ url: `${connectUrl}*` });
-
-	if (existing.length > 0 && existing[0].id !== undefined) {
-		await chrome.tabs.update(existing[0].id, { active: true });
-		if (existing[0].windowId !== undefined) {
-			await chrome.windows.update(existing[0].windowId, { focused: true });
-		}
-	} else {
-		await chrome.tabs.create({ url: connectUrl });
-	}
 }

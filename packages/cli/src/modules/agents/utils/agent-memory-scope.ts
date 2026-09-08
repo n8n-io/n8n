@@ -20,3 +20,7 @@ export function isIntegrationMemoryResourceId(
 export function taskRunMemoryResourceId(taskId: string): string {
 	return `task:${taskId}`;
 }
+
+export function isTaskRunMemoryResourceId(resourceId: string | undefined): resourceId is string {
+	return resourceId?.startsWith('task:') === true;
+}

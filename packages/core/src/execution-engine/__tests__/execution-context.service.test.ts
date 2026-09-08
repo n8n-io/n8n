@@ -373,18 +373,26 @@ describe('ExecutionContextService', () => {
 	});
 
 	describe('buildTriggerIdentityCredentials()', () => {
-		it('should encrypt the credential context with the token as identity and resource in metadata', async () => {
+		it('keeps the token as identity and seals the subject + establishedAt in metadata', async () => {
 			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
 
 			const result = await service.buildTriggerIdentityCredentials(
 				'oauth-token-jwt',
 				'https://api.example.com/resource',
+				undefined,
+				'user-123',
 			);
 
 			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
 				version: 1,
 				identity: 'oauth-token-jwt',
-				metadata: { source: 'n8n-oauth', resource: 'https://api.example.com/resource' },
+				metadata: {
+					source: 'n8n-oauth',
+					subject: 'user-123',
+					resource: 'https://api.example.com/resource',
+					establishedAt: expect.any(Number),
+					executionPath: [],
+				},
 			});
 			expect(result).toBe('encrypted-credential-blob');
 		});
@@ -409,7 +417,26 @@ describe('ExecutionContextService', () => {
 				metadata: {
 					source: 'n8n-oauth',
 					resource: 'https://api.example.com/resource',
+					establishedAt: expect.any(Number),
+					executionPath: [],
 					grant,
+				},
+			});
+		});
+
+		it('omits the subject and grant when neither is provided (legacy token-only carrier)', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			await service.buildTriggerIdentityCredentials('oauth-token-jwt', 'https://api/r');
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'oauth-token-jwt',
+				metadata: {
+					source: 'n8n-oauth',
+					resource: 'https://api/r',
+					establishedAt: expect.any(Number),
+					executionPath: [],
 				},
 			});
 		});
@@ -417,9 +444,132 @@ describe('ExecutionContextService', () => {
 		it('should propagate errors raised by the cipher', async () => {
 			mockCipher.encryptV2.mockRejectedValue(new Error('encryption key missing'));
 
-			await expect(service.buildTriggerIdentityCredentials('token', 'resource')).rejects.toThrow(
-				'encryption key missing',
+			await expect(
+				service.buildTriggerIdentityCredentials('token', 'resource', undefined, 'user-123'),
+			).rejects.toThrow('encryption key missing');
+		});
+	});
+
+	describe('maybeBindExecutionId()', () => {
+		beforeEach(() => {
+			// Symmetric fakes: decrypt is identity, encrypt is JSON.stringify, so we can
+			// read the re-encrypted credentials back with JSON.parse.
+			mockCipher.decryptV2.mockImplementation(async (data: string) => data);
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+			toCredentialContext.mockImplementation((data: string) => JSON.parse(data));
+		});
+
+		const contextWith = (metadata: Record<string, unknown>): IExecutionContext => ({
+			version: 1,
+			establishedAt: 1,
+			source: 'webhook',
+			credentials: JSON.stringify({ version: 1, identity: 'oauth-token', metadata }),
+		});
+
+		const pathOf = (context: IExecutionContext) =>
+			JSON.parse(context.credentials as string).metadata.executionPath;
+
+		it('stamps the current execution id onto a freshly sealed carrier', async () => {
+			const bound = await service.maybeBindExecutionId(
+				contextWith({ source: 'n8n-oauth', resource: 'r', subject: 'user-123' }),
+				'exec-root',
 			);
+
+			expect(pathOf(bound)).toEqual(['exec-root']);
+		});
+
+		it('appends a child execution id, preserving the inherited path', async () => {
+			const bound = await service.maybeBindExecutionId(
+				contextWith({
+					source: 'n8n-oauth',
+					resource: 'r',
+					subject: 'user-123',
+					executionPath: ['exec-root'],
+				}),
+				'exec-child',
+				{ allowInherit: true },
+			);
+
+			expect(pathOf(bound)).toEqual(['exec-root', 'exec-child']);
+		});
+
+		it('leaves a populated path untouched for an unrelated execution', async () => {
+			const context = contextWith({
+				source: 'n8n-oauth',
+				resource: 'r',
+				subject: 'user-123',
+				executionPath: ['exec-other'],
+			});
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-current');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is idempotent when the execution id is already in the path (retry/resume)', async () => {
+			const context = contextWith({
+				source: 'n8n-oauth',
+				resource: 'r',
+				subject: 'user-123',
+				executionPath: ['exec-root'],
+			});
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op for a non-sealed carrier (no subject)', async () => {
+			const context = contextWith({ source: 'n8n-oauth', resource: 'r' });
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op when no execution id is provided', async () => {
+			const context = contextWith({ source: 'n8n-oauth', resource: 'r', subject: 'user-123' });
+
+			const bound = await service.maybeBindExecutionId(context, undefined);
+
+			expect(bound).toBe(context);
+			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op for a non-n8n-oauth carrier (schema mismatch)', async () => {
+			const context = contextWith({ source: 'manual-execution' });
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op for a carrier without metadata', async () => {
+			const context: IExecutionContext = {
+				version: 1,
+				establishedAt: 1,
+				source: 'webhook',
+				credentials: JSON.stringify({ version: 1, identity: 'oauth-token' }),
+			};
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op for a context without credentials', async () => {
+			const context: IExecutionContext = { version: 1, establishedAt: 1, source: 'webhook' };
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
 		});
 	});
 

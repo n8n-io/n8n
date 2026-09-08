@@ -28,6 +28,35 @@ describe('createStubWorkspace', () => {
 		await expect(filesystem().readFile('missing.ts')).rejects.toThrow('No such file');
 	});
 
+	// The runtime offloads oversized tool results to `tool-results/runs/<hash>/`
+	// and clears that directory at the end of every run, calling the filesystem
+	// directly rather than through the exposed tools.
+	describe('tool-result cleanup', () => {
+		const runDirectory = 'tool-results/runs/run-hash';
+
+		it('reports a directory as existing once a file sits under it', async () => {
+			const fs = filesystem();
+			await fs.writeFile(`${runDirectory}/call.result.json`, '{}');
+
+			await expect(fs.exists(runDirectory)).resolves.toBe(true);
+		});
+
+		it('reports a directory that was never written as missing', async () => {
+			await expect(filesystem().exists(runDirectory)).resolves.toBe(false);
+		});
+
+		it('removes every file under the directory it is given, and nothing else', async () => {
+			const fs = filesystem();
+			await fs.writeFile(`${runDirectory}/call.result.json`, '{}');
+			await fs.writeFile('tool-results/runs/other-hash/call.result.json', '{}');
+
+			await fs.rmdir(runDirectory);
+
+			await expect(fs.exists(runDirectory)).resolves.toBe(false);
+			await expect(fs.exists('tool-results/runs/other-hash')).resolves.toBe(true);
+		});
+	});
+
 	it('offers only the tools production exposes', () => {
 		expect(
 			createStubWorkspace()

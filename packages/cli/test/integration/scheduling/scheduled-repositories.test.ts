@@ -15,6 +15,8 @@ import {
 import { Container } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 
+import { selfOwned, workflowOwned } from './shared/job-factory';
+
 // SKIP LOCKED and truly parallel writes only apply on Postgres; the local sqlite driver
 // serializes every writer through a single lock. Tests that need real parallelism are
 // gated to Postgres (CI/container runs set DB_TYPE=postgresdb).
@@ -62,15 +64,15 @@ describe('scheduled repositories', () => {
 	// to now rather than a fixed instant we can't inject.
 	const secondsFromNow = (seconds: number) => new Date(Date.now() + seconds * 1000);
 
-	/** Insert a system interval job (null workflowId), return the saved entity. */
+	/** Insert a self-owned interval job, return the saved entity. */
 	async function createJob(
 		overrides: Partial<ScheduledJobEntity> = {},
 	): Promise<ScheduledJobEntity> {
+		const jobName = `job-${Math.random().toString(36).slice(2)}`;
 		return await jobRepository.save(
 			jobRepository.create({
-				name: `job-${Math.random().toString(36).slice(2)}`,
-				workflowId: null,
-				nodeId: null,
+				name: jobName,
+				...selfOwned(jobName),
 				taskType: 'scheduleTrigger',
 				payload: {},
 				kind: 'interval',
@@ -88,8 +90,7 @@ describe('scheduled repositories', () => {
 		name,
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 		misfireGraceSeconds: 60,
-		workflowId: null,
-		nodeId: null,
+		...selfOwned(name),
 		taskType: 'scheduleTrigger',
 		payload: {},
 		kind: 'interval',
@@ -612,6 +613,53 @@ describe('scheduled repositories', () => {
 
 			const after = await jobRepository.findOneByOrFail({ id: job.id });
 			expect(after.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Coalesce);
+		});
+	});
+
+	describe('ScheduledJobRepository.findQuarantinedByOwnerIds', () => {
+		it('returns at most `limit` jobs', async () => {
+			const owner = workflowOwned('wf-quarantined', 'node');
+			for (let i = 0; i < 3; i++) {
+				await createJob({ ...owner, ownerMemberId: `node-${i}`, orphanedAt: new Date() });
+			}
+
+			const found = await jobRepository.findQuarantinedByOwnerIds(
+				owner.ownerType,
+				[owner.ownerId],
+				2,
+			);
+
+			expect(found).toHaveLength(2);
+		});
+	});
+
+	describe('ScheduledJobRepository.liftQuarantineByOwner', () => {
+		it('rejects a call made outside a transaction', async () => {
+			const owner = workflowOwned('wf-lift', 'node');
+			const job = await createJob({ ...owner, enabled: false, orphanedAt: new Date() });
+
+			await expect(jobRepository.liftQuarantineByOwner(dataSource.manager, owner)).rejects.toThrow(
+				'liftQuarantineByOwner must run within a transaction',
+			);
+
+			expect(await jobRepository.findOneByOrFail({ id: job.id })).toMatchObject({
+				enabled: false,
+			});
+		});
+
+		it('clears the stamp and leaves enabled as it was', async () => {
+			const owner = workflowOwned('wf-lift-disabled', 'node');
+			const job = await createJob({ ...owner, enabled: false, orphanedAt: new Date() });
+
+			const lifted = await dataSource.transaction(
+				async (trx) => await jobRepository.liftQuarantineByOwner(trx, owner),
+			);
+
+			expect(lifted).toBe(1);
+			expect(await jobRepository.findOneByOrFail({ id: job.id })).toMatchObject({
+				enabled: false,
+				orphanedAt: null,
+			});
 		});
 	});
 

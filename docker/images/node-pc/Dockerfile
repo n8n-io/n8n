@@ -10,7 +10,7 @@
 #   dev               - plain Alpine with apk usable, for the n8n builder
 #                       stage, which must compile native addons against this
 #                       Node's headers
-ARG NODE_VERSION=26.5.1
+ARG NODE_VERSION=26.7.0
 # Compiling V8 needs 1.5-2 GB of memory per parallel job. Lower this on
 # builders whose memory-to-core ratio cannot cover all cores.
 ARG MAKE_JOBS=
@@ -90,7 +90,7 @@ ENV npm_config_nodedir=/usr/local
 # npx, corepack) are swapped for the pointer-compressed build's files.
 # Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the tag and digest together when updating.
-FROM n8nio/base:26.5.1@sha256:1b0bca5c94bbd04ad2120b9e9892a8bc717a1d88efa76fefe452c59bdc611d25 AS runtime
+FROM n8nio/base:26.7.0@sha256:33687300c4e94dc00f42ec79ae15082ae07330ecd82ae1167125905b65908ff8 AS runtime
 
 RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/bin/corepack /usr/local/bin/node
 COPY --from=builder /node-install/usr/local /usr/local

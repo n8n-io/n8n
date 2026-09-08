@@ -2,6 +2,8 @@ import type { BrowserConnection } from '../connection';
 import type {
 	CallToolResult,
 	ConnectionState,
+	HtmlProbeNode,
+	HtmlProbeResult,
 	PageInfo,
 	ToolContext,
 	ToolDefinition,
@@ -30,6 +32,14 @@ export function findTool(tools: ToolDefinition[], name: string): ToolDefinition 
 
 /** Default ToolContext for tests. */
 export const TOOL_CONTEXT: ToolContext = { dir: '/test' };
+
+/** An HTML probe result, as `probePageHtml` would return for one document. */
+export function htmlProbe(html: string, children: HtmlProbeNode[] = []): HtmlProbeResult {
+	return {
+		ok: true,
+		root: { kind: 'document', html, url: 'http://test.com', children, errors: [] },
+	};
+}
 
 /** Create a mock PlaywrightAdapter with all methods stubbed. */
 export function createMockAdapter() {

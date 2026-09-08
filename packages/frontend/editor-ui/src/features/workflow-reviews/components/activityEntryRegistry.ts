@@ -5,9 +5,9 @@ import WorkflowReviewActivityComment from './activity-entries/WorkflowReviewActi
 import WorkflowReviewActivityFallback from './activity-entries/WorkflowReviewActivityFallback.vue';
 import WorkflowReviewActivityEventEntry from './activity-entries/WorkflowReviewActivityEventEntry.vue';
 
-// Stays partial: `workflow.published` has no writer yet, and falling back for it is the
-// designed behaviour — a total map would force a component for an entry that cannot appear.
-type ActivityEntryRegistry = Partial<Record<WorkflowReviewActivityType, Record<number, Component>>>;
+// Total over the union so a new type cannot ship without a renderer; the runtime lookup still
+// falls back for a stored type outside the union (e.g. after a version downgrade).
+type ActivityEntryRegistry = Record<WorkflowReviewActivityType, Record<number, Component>>;
 
 const registry: ActivityEntryRegistry = {
 	'comment.created': { 1: WorkflowReviewActivityComment },
@@ -16,6 +16,10 @@ const registry: ActivityEntryRegistry = {
 	'review.approved': { 1: WorkflowReviewActivityEventEntry },
 	'review.version_updated': { 1: WorkflowReviewActivityEventEntry },
 	'review.closed': { 1: WorkflowReviewActivityEventEntry },
+	'workflow.archived': { 1: WorkflowReviewActivityEventEntry },
+	'workflow.deleted': { 1: WorkflowReviewActivityEventEntry },
+	'workflow.moved': { 1: WorkflowReviewActivityEventEntry },
+	'workflow.published': { 1: WorkflowReviewActivityEventEntry },
 };
 
 export function resolveActivityComponent(entry: WorkflowReviewActivityEntry): Component {

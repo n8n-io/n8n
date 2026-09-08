@@ -7,8 +7,8 @@ import { toActivityEntry } from '../workflow-review.mapper';
 describe('toActivityEntry', () => {
 	const logger = mock<Logger>();
 
-	// The stored `type` is CHECK-constrained, so only a downgrade to a version that knows fewer
-	// types can produce this row — which is why it cannot be reached through the endpoints.
+	// The database no longer constrains `type`, so a newer version's rows survive a downgrade —
+	// this version must serve them as unknown entries rather than crash the feed.
 	it('serves an entry of a type this version does not know rather than dropping it', () => {
 		const row = mock<WorkflowReviewActivity>({
 			id: 7,
@@ -40,6 +40,49 @@ describe('toActivityEntry', () => {
 				workflowVersions: [{ workflowId: 'wf-1', workflowVersionId: 'ver-1' }],
 				note: 'Ship it',
 			},
+			createdById: null,
+			createdAt: new Date('2026-07-20T10:00:00.000Z'),
+		});
+
+		expect(toActivityEntry(row, [], new Map(), logger).data).toBeNull();
+	});
+
+	it.each([
+		['workflow.archived', { workflowId: 'wf-1', actorKind: 'user' }],
+		['workflow.deleted', { workflowId: 'wf-1', actorKind: 'system' }],
+		['workflow.moved', { workflowId: 'wf-1', actorKind: 'user' }],
+		['workflow.published', { workflowId: 'wf-1', workflowVersionId: 'ver-1' }],
+	] as const)('maps a %s entry with its payload intact', (type, data) => {
+		const row = mock<WorkflowReviewActivity>({
+			id: 9,
+			typeVersion: 1,
+			type,
+			data,
+			createdById: null,
+			createdAt: new Date('2026-07-20T10:00:00.000Z'),
+		});
+
+		expect(toActivityEntry(row, [], new Map(), logger)).toEqual({
+			id: '9',
+			typeVersion: 1,
+			type,
+			data,
+			createdBy: null,
+			createdAt: '2026-07-20T10:00:00.000Z',
+		});
+	});
+
+	it.each([
+		// An actor kind outside the enum could only come from a newer writer; reading it as
+		// either known kind would misattribute the action, so the payload degrades instead.
+		['workflow.archived', { workflowId: 'wf-1', actorKind: 'robot' }],
+		['workflow.published', { workflowId: 'wf-1' }],
+	] as const)('degrades a %s entry whose payload does not parse', (type, data) => {
+		const row = mock<WorkflowReviewActivity>({
+			id: 10,
+			typeVersion: 1,
+			type,
+			data,
 			createdById: null,
 			createdAt: new Date('2026-07-20T10:00:00.000Z'),
 		});
