@@ -24,7 +24,7 @@ export const createAppApi = async (
 };
 
 export const deleteAppApi = async (context: IRestApiContext, projectId: string, appId: string) => {
-	return await makeRestApiRequest<void>(context, 'DELETE', `/projects/${projectId}/apps/${appId}`);
+	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/apps/${appId}`);
 };
 
 export const fetchPagesApi = async (context: IRestApiContext, projectId: string, appId: string) => {
@@ -79,7 +79,7 @@ export const deletePageApi = async (
 	appId: string,
 	pageId: string,
 ) => {
-	return await makeRestApiRequest<void>(
+	await makeRestApiRequest(
 		context,
 		'DELETE',
 		`/projects/${projectId}/apps/${appId}/pages/${pageId}`,
