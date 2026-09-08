@@ -1,0 +1,27 @@
+packages/cli/src/modules/mcp-registry/mcp-registry-node-loader.ts
+  s_42a92980282405::t_64e3b50bcc69a3 31-32
+  s_42a92980282405::t_ab9a5dd8ba3dbc 155-167
+  s_42a92980282405::t_044167246f60d2 247-254
+packages/cli/src/modules/mcp-registry/mcp-registry-connection.ts
+  s_42a92980282405::t_743aff4ac1b7e8 22-27
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-node-loader.test.ts
+  s_42a92980282405::t_3169f9420263b6 386-455
+  s_42a92980282405::t_ecf0daf9d66683 18
+  s_42a92980282405::t_319e1685460af7 456
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "05bd1590ea48eaf4828f0fef5a46aa7063be3cfe",
+  "prompts": {},
+  "sessions": {
+    "s_42a92980282405": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca75ca22-49cb-445e-88b6-58d6d024f6ce",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

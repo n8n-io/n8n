@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/vite.config.mts
+  s_ac226fab52e12b::t_cdc89b11eaa5a2 96-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eca7ac20105016dcee3a85c85c7279e6d0bf7dc9",
+  "prompts": {},
+  "sessions": {
+    "s_ac226fab52e12b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e371849-57f6-4499-ba37-f86d75684b04",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
