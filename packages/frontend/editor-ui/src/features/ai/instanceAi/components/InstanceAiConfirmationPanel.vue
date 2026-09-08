@@ -595,7 +595,10 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 								variant="solid"
 								@click="handleContinue(chunk.item.toolCall.confirmation)"
 							>
-								{{ i18n.baseText('instanceAi.confirmation.continue') }}
+								{{
+									chunk.item.toolCall.confirmation!.continueLabel ??
+									i18n.baseText('instanceAi.confirmation.continue')
+								}}
 							</N8nButton>
 						</div>
 					</N8nCard>

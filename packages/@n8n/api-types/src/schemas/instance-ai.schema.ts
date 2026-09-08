@@ -750,6 +750,12 @@ export const confirmationRequestPayloadSchema = z.object({
 		.optional()
 		.describe('Structured questions for the Q&A wizard (inputType=questions)'),
 	introMessage: z.string().optional().describe('Intro text shown above questions or plan review'),
+	continueLabel: z
+		.string()
+		.optional()
+		.describe(
+			'Button label for inputType=continue (defaults to "Continue" when omitted) — e.g. "Start recording"',
+		),
 	tasks: taskListSchema
 		.optional()
 		.describe('Task checklist for plan review (inputType=plan-review)'),
