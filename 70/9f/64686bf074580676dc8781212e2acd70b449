@@ -1,0 +1,21 @@
+packages/nodes-base/credentials/test/MicrosoftTeamsOAuth2Api.credentials.test.ts
+  s_aa4dc5d9a1db02::t_8eb0199fd61cb0 16,75-84
+packages/nodes-base/credentials/MicrosoftTeamsOAuth2Api.credentials.ts
+  s_aa4dc5d9a1db02::t_7b234a5e5a3b0b 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "709f64686bf074580676dc8781212e2acd70b449",
+  "prompts": {},
+  "sessions": {
+    "s_aa4dc5d9a1db02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3be6a95-6503-4192-954e-1d5f96c876b3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
