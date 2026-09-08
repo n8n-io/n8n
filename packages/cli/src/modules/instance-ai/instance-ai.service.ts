@@ -2449,6 +2449,7 @@ export class InstanceAiService {
 			mcpConnectionsEnabled,
 			conversationHistoryEnabled,
 			nodeUsageEnabled,
+			folderExplorationEnabled,
 		} = await this.adapterService.resolveExperimentGates(user);
 		// One scoped reader backs both the tool and the first-turn hint.
 		const conversationHistory = conversationHistoryEnabled
@@ -2468,6 +2469,7 @@ export class InstanceAiService {
 			mcpConnectionsEnabled,
 			nodeUsageEnabled,
 			conversationHistory,
+			folderExplorationEnabled,
 			modelId,
 			buildMode,
 		});
