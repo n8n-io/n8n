@@ -7,10 +7,12 @@ const item = (
 ) => ({ id, startedAt, createdAt });
 
 describe('compareExecutionListItems', () => {
+	// Every case in this block gives the newer item the lower id, so the id
+	// tie-break would reverse the expected order. Only the time key can pass them.
 	describe('time key', () => {
 		it('puts the newer startedAt first', () => {
-			const older = item('1', '2024-05-01T10:00:00.000Z');
-			const newer = item('2', '2024-05-01T11:00:00.000Z');
+			const older = item('2', '2024-05-01T10:00:00.000Z');
+			const newer = item('1', '2024-05-01T11:00:00.000Z');
 
 			expect(compareExecutionListItems(newer, older)).toBeLessThan(0);
 			expect(compareExecutionListItems(older, newer)).toBeGreaterThan(0);
@@ -24,17 +26,23 @@ describe('compareExecutionListItems', () => {
 		});
 
 		it('accepts Date objects', () => {
-			const older = item('1', new Date('2024-05-01T10:00:00.000Z'));
-			const newer = item('2', new Date('2024-05-01T11:00:00.000Z'));
+			const older = item('2', new Date('2024-05-01T10:00:00.000Z'));
+			const newer = item('1', new Date('2024-05-01T11:00:00.000Z'));
 
 			expect(compareExecutionListItems(newer, older)).toBeLessThan(0);
+			expect(compareExecutionListItems(older, newer)).toBeGreaterThan(0);
 		});
 
-		it('treats an ISO string and an equal Date as a tie', () => {
-			const a = item('2', '2024-05-01T10:00:00.000Z');
-			const b = item('1', new Date('2024-05-01T10:00:00.000Z'));
+		it('reads an ISO string and a Date on the same time scale', () => {
+			const iso = item('2', '2024-05-01T10:00:00.000Z');
+			const sameInstant = item('1', new Date('2024-05-01T10:00:00.000Z'));
+			const oneMsLater = item('1', new Date('2024-05-01T10:00:00.001Z'));
 
-			expect(compareExecutionListItems(a, b)).toBeLessThan(0);
+			// Equal instants tie on time, so the id tie-break decides.
+			expect(compareExecutionListItems(iso, sameInstant)).toBeLessThan(0);
+
+			// One ms later wins the time key, even though its id loses the tie-break.
+			expect(compareExecutionListItems(iso, oneMsLater)).toBeGreaterThan(0);
 		});
 	});
 
