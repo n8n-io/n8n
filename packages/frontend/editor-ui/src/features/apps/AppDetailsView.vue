@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import type { AppPreviewStatus, InstanceAiAppPreviewDiagnostic } from '@n8n/api-types';
 import {
+	N8nBadge,
 	N8nButton,
+	N8nCallout,
 	N8nIconButton,
 	N8nSegmentControl,
 	N8nTabs,
@@ -48,11 +51,24 @@ const props = withDefaults(
 		artifactVersionId?: string;
 		/** Page to open the preview to while embedded, e.g. when the thread was opened from that page's inspector. */
 		artifactPagePath?: string;
+		/** Dev-server URL of the thread's sandbox; shown instead of the build while present. */
+		liveUrl?: string;
+		/** Last answer of the live-preview ensure call; drives the banner and the Live badge. */
+		liveStatus?: AppPreviewStatus;
 	}>(),
-	{ artifactMode: false, artifactVersionId: undefined, artifactPagePath: undefined },
+	{
+		artifactMode: false,
+		artifactVersionId: undefined,
+		artifactPagePath: undefined,
+		liveUrl: undefined,
+		liveStatus: undefined,
+	},
 );
 
-const emit = defineEmits<{ 'assistant-handoff': [prompt: string] }>();
+const emit = defineEmits<{
+	'assistant-handoff': [prompt: string];
+	diagnostic: [InstanceAiAppPreviewDiagnostic];
+}>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -89,6 +105,23 @@ const versionId = computed(
 	() => props.artifactVersionId ?? app.value?.activeVersionId ?? undefined,
 );
 
+const hasPreviewSource = computed(() => Boolean(props.liveUrl ?? versionId.value));
+
+const LIVE_BANNER_KEYS = {
+	starting: 'apps.builder.live.starting',
+	'no-source': 'apps.builder.live.noSource',
+	unsupported: 'apps.builder.live.unsupported',
+	unavailable: 'apps.builder.live.unavailable',
+} as const;
+
+// Without a build there is nothing to fall back to, so the empty state speaks instead.
+const liveBanner = computed(() => {
+	const status = props.liveStatus?.status;
+	if (!status || status === 'ready' || !versionId.value) return undefined;
+	const theme = status === 'starting' || status === 'no-source' ? 'info' : 'warning';
+	return { key: LIVE_BANNER_KEYS[status], theme } as const;
+});
+
 const modeOptions = computed(() => [
 	{ label: i18n.baseText('apps.builder.build'), value: 'build' as const },
 	{ label: i18n.baseText('apps.builder.preview'), value: 'preview' as const },
@@ -119,7 +152,7 @@ const initialize = async () => {
 			appsStore.fetchPages(props.projectId, props.appId),
 		]);
 		app.value = result;
-		mode.value = versionId.value ? 'preview' : 'build';
+		mode.value = hasPreviewSource.value ? 'preview' : 'build';
 		if (!props.artifactMode) {
 			documentTitle.set(`${i18n.baseText('apps.apps')} > ${result.name}`);
 		}
@@ -229,8 +262,8 @@ onMounted(initialize);
 // onMounted only fires once, so re-run on an appId change.
 watch(() => props.appId, initialize);
 
-// The first build is what the user was waiting for while on Build.
-watch(versionId, (next, previous) => {
+// The first build (or the live preview coming up) is what the user was waiting for while on Build.
+watch(hasPreviewSource, (next, previous) => {
 	if (next && !previous) mode.value = 'preview';
 });
 </script>
@@ -330,12 +363,15 @@ watch(versionId, (next, previous) => {
 						</template>
 					</N8nToggleGroup>
 					<div :class="$style.previewBarEnd">
+						<N8nBadge v-if="props.liveUrl" theme="success" data-test-id="app-preview-live-badge">
+							{{ i18n.baseText('apps.builder.live.badge') }}
+						</N8nBadge>
 						<N8nTooltip :content="i18n.baseText('apps.builder.inspect')">
 							<N8nIconButton
 								icon="mouse-pointer"
 								:variant="inspecting ? 'subtle' : 'ghost'"
 								size="small"
-								:disabled="!versionId"
+								:disabled="!hasPreviewSource"
 								:aria-label="i18n.baseText('apps.builder.inspect')"
 								data-test-id="app-preview-inspect"
 								@click="onToggleInspect"
@@ -346,7 +382,7 @@ watch(versionId, (next, previous) => {
 								icon="refresh-cw"
 								variant="ghost"
 								size="small"
-								:disabled="!versionId"
+								:disabled="!hasPreviewSource"
 								:aria-label="i18n.baseText('apps.builder.refresh')"
 								data-test-id="app-preview-refresh"
 								@click="previewFrame?.refresh()"
@@ -354,13 +390,24 @@ watch(versionId, (next, previous) => {
 						</N8nTooltip>
 					</div>
 				</div>
+				<N8nCallout
+					v-if="liveBanner"
+					:theme="liveBanner.theme"
+					slim
+					:round-corners="false"
+					data-test-id="app-preview-live-banner"
+				>
+					{{ i18n.baseText(liveBanner.key) }}
+				</N8nCallout>
 				<AppPreviewFrame
-					v-if="app && versionId"
+					v-if="app && hasPreviewSource"
 					ref="previewFrame"
 					:namespace="app.namespace"
 					:version-id="versionId"
 					:path="props.artifactPagePath"
+					:live-url="props.liveUrl"
 					:width="PREVIEW_WIDTHS[device]"
+					@diagnostic="emit('diagnostic', $event)"
 					@element-selected="onElementSelected"
 				/>
 				<div v-else-if="!loading" :class="$style.emptyState" data-test-id="app-preview-empty">

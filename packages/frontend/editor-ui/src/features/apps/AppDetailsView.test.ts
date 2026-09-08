@@ -312,4 +312,143 @@ describe('AppDetailsView', () => {
 			'/apps/greeter/?v=v-1',
 		);
 	});
+
+	describe('live preview', () => {
+		const liveProps = {
+			projectId: 'proj-1',
+			appId: 'app-1',
+			artifactMode: true,
+			liveUrl: '/apps-preview/tok/',
+			liveStatus: { status: 'ready', url: '/apps-preview/tok/', expiresAt: '2026-09-09T00:00:00Z' },
+		};
+
+		function postFromFrame(iframe: HTMLIFrameElement, data: unknown, source?: MessageEventSource) {
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data,
+					origin: 'null',
+					source: source ?? iframe.contentWindow,
+				}),
+			);
+		}
+
+		it('shows the live URL over the build, marks it Live, and keeps the frame across builds', async () => {
+			const { getByTestId, queryByTestId, rerender } = await renderApp(
+				makeApp({ activeVersionId: 'v-7' }),
+				liveProps,
+			);
+
+			const iframe = getByTestId('instance-ai-app-preview-iframe');
+			expect(iframe).toHaveAttribute('src', '/apps-preview/tok/');
+			expect(getByTestId('app-preview-live-badge')).toHaveTextContent('Live');
+			expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
+
+			await rerender({ ...liveProps, artifactVersionId: 'v-8' });
+
+			expect(getByTestId('instance-ai-app-preview-iframe')).toBe(iframe);
+			expect(iframe).toHaveAttribute('src', '/apps-preview/tok/');
+		});
+
+		it('reloads the live document on refresh', async () => {
+			const { getByTestId } = await renderApp(makeApp(), liveProps);
+
+			await userEvent.click(getByTestId('app-preview-refresh'));
+
+			expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+				'src',
+				'/apps-preview/tok/?r=1',
+			);
+		});
+
+		it('opens Preview on the live URL even before the first build', async () => {
+			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
+				artifactMode: true,
+			});
+			expect(getByTestId('app-builder-build')).toBeInTheDocument();
+
+			await rerender(liveProps);
+
+			expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+			expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+				'src',
+				'/apps-preview/tok/',
+			);
+		});
+
+		it.each([
+			[{ status: 'starting' }, 'Starting live preview…'],
+			[
+				{ status: 'no-source' },
+				"Live preview isn't available in this chat yet. This is the last build.",
+			],
+			[
+				{ status: 'unsupported', reason: 'provider' },
+				"Live preview isn't supported on this instance. This is the last build.",
+			],
+			[
+				{ status: 'unavailable', reason: 'sandbox' },
+				'Live preview stopped. This is the last build.',
+			],
+		])('shows the %o banner above the last build', async (liveStatus, text) => {
+			const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }), {
+				artifactMode: true,
+				liveStatus,
+			});
+
+			expect(getByTestId('app-preview-live-banner')).toHaveTextContent(text);
+			expect(queryByTestId('app-preview-live-badge')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+				'src',
+				'/apps/greeter/?v=v-7',
+			);
+		});
+
+		it('keeps the empty state instead of a banner when there is no build to fall back to', async () => {
+			const { getByTestId, queryByTestId } = await renderApp(makeApp(), {
+				artifactMode: true,
+				liveStatus: { status: 'starting' },
+			});
+
+			await userEvent.click(getByTestId('radio-button-preview'));
+
+			expect(getByTestId('app-preview-empty')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
+		});
+
+		it('emits a diagnostic only for a valid message from its own frame', async () => {
+			const { getByTestId, emitted } = await renderApp(makeApp(), liveProps);
+			const iframe = getByTestId<HTMLIFrameElement>('instance-ai-app-preview-iframe');
+			const payload = {
+				source: 'n8n-app-preview',
+				v: 1,
+				at: '2026-09-08T10:00:00.000Z',
+				kind: 'uncaught',
+				message: 'boom',
+				file: '/src/pages/Home.vue',
+				line: 12,
+			};
+
+			postFromFrame(iframe, payload, window);
+			postFromFrame(iframe, { ...payload, source: 'someone-else' });
+			postFromFrame(iframe, { ...payload, v: 2 });
+			postFromFrame(iframe, { ...payload, kind: 'console' });
+			postFromFrame(iframe, 'not an object');
+			expect(emitted('diagnostic')).toBeUndefined();
+
+			postFromFrame(iframe, payload);
+
+			expect(emitted('diagnostic')).toEqual([
+				[
+					{
+						at: '2026-09-08T10:00:00.000Z',
+						kind: 'uncaught',
+						message: 'boom',
+						file: '/src/pages/Home.vue',
+						line: 12,
+					},
+				],
+			]);
+		});
+	});
 });

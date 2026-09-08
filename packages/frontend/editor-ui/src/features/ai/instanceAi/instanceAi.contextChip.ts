@@ -26,7 +26,13 @@ export type AgentPreviewSessionContextChip = ContextChipBase & {
 	executionId?: string;
 };
 
+export type AppPreviewDiagnosticsContextChip = ContextChipBase & {
+	type: 'app-preview-diagnostics';
+	count: number;
+};
+
 export type ContextChip =
 	| AgentArtifactContextChip
 	| AppArtifactContextChip
-	| AgentPreviewSessionContextChip;
+	| AgentPreviewSessionContextChip
+	| AppPreviewDiagnosticsContextChip;
