@@ -664,6 +664,10 @@ function collapseNodeGroups(
 ): CollapsedGroup[] {
 	const collapsed: CollapsedGroup[] = [];
 	const claimed = new Set<string>();
+	// Node keys come from node names, so a node could already be called
+	// `__nodeGroup__:0`. Snapshot them before any folding and step around a clash,
+	// otherwise the synthetic node would overwrite the real one.
+	const takenKeys = new Set(parentGraph.nodes());
 
 	nodeGroups.forEach((group, index) => {
 		const memberKeys: string[] = [];
@@ -682,7 +686,9 @@ function collapseNodeGroups(
 		if (memberKeys.length === 0) return;
 
 		const memberKeySet = new Set(memberKeys);
-		const graphId = `${GROUP_GRAPH_ID_PREFIX}${index}`;
+		let graphId = `${GROUP_GRAPH_ID_PREFIX}${index}`;
+		while (takenKeys.has(graphId)) graphId += ':';
+		takenKeys.add(graphId);
 
 		// Capture the edges crossing the group boundary before the members go away.
 		const crossingEdges = parentGraph

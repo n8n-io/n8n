@@ -9,14 +9,23 @@
  */
 import type { WorkflowJSON } from '../types/base';
 import { workflow } from '../workflow-builder';
-import { DEFAULT_NODE_SIZE, GRID_SIZE } from './constants';
+import {
+	DEFAULT_NODE_SIZE,
+	GRID_SIZE,
+	GROUP_HEADER_HEIGHT as SDK_GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED as SDK_GROUP_HEADER_WIDTH_COLLAPSED,
+	GROUP_PADDING_X as SDK_GROUP_PADDING_X,
+	GROUP_PADDING_Y_TOP as SDK_GROUP_PADDING_Y_TOP,
+} from './constants';
 import { node, trigger } from './node-builders/node-builder';
 import { languageModel } from './node-builders/subnode-builders';
 
-// packages/frontend/editor-ui/src/features/workflows/canvas/stores/canvasNodeGroups.constants.ts
+// Written out rather than imported on purpose: these are the canvas's numbers, from
+// packages/frontend/editor-ui/src/features/workflows/canvas/stores/canvasNodeGroups.constants.ts.
+// Reading the SDK's own copy here would let both sides drift from the canvas together.
 const GROUP_PADDING_X = 56;
 const GROUP_PADDING_Y_TOP = 40;
-const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1];
+const GROUP_HEADER_HEIGHT = 96;
 const GROUP_HEADER_WIDTH_COLLAPSED = 400;
 
 const [NODE_W, NODE_H] = DEFAULT_NODE_SIZE;
@@ -240,5 +249,43 @@ describe('collapsed node group layout after tidyUp', () => {
 		const [secondX, secondY] = positionOf(json, 'Second');
 		expect(secondX).toBeGreaterThan(firstX);
 		expect(secondY).toBe(firstY);
+	});
+	it('keeps the SDK constants in step with the canvas', () => {
+		// If this fails, the SDK and the canvas disagree and every geometry
+		// assertion below is measuring the wrong frame.
+		expect(SDK_GROUP_PADDING_X).toBe(GROUP_PADDING_X);
+		expect(SDK_GROUP_PADDING_Y_TOP).toBe(GROUP_PADDING_Y_TOP);
+		expect(SDK_GROUP_HEADER_HEIGHT).toBe(GROUP_HEADER_HEIGHT);
+		expect(SDK_GROUP_HEADER_WIDTH_COLLAPSED).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
+	});
+
+	it('does not drop a node whose name collides with the synthetic group id', () => {
+		const start = trigger({
+			type: 'n8n-nodes-base.scheduleTrigger',
+			version: 1.2,
+			config: { name: 'Nightly' },
+		});
+		// The layout folds each group into a node keyed `__nodeGroup__:<index>`.
+		const decoy = node({
+			type: 'n8n-nodes-base.noOp',
+			version: 1,
+			config: { name: '__nodeGroup__:0' },
+		});
+		const first = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'First' } });
+		const second = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Second' } });
+
+		const json = workflow('wf', 'Name collision')
+			.add(start.to(decoy).to(first).to(second))
+			.group('Steps', [first, second])
+			.toJSON({ tidyUp: true });
+
+		// Overwriting the real node drops it from the layout, and it falls back to
+		// the default START_X/DEFAULT_Y corner instead of staying in the chain.
+		const [decoyX, decoyY] = positionOf(json, '__nodeGroup__:0');
+		const [triggerX, triggerY] = positionOf(json, 'Nightly');
+		expect(decoyY).toBe(triggerY);
+		expect(decoyX).toBeGreaterThan(triggerX);
+		expect(decoyX).toBeLessThan(positionOf(json, 'First')[0]);
+		expect(json.nodes).toHaveLength(4);
 	});
 });
