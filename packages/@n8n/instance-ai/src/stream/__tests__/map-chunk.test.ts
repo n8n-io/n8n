@@ -556,6 +556,38 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps a continue confirmation with a custom label and icon', () => {
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'start-browser-recording',
+				suspendPayload: {
+					requestId: 'request-1',
+					inputType: 'continue',
+					message: "I'll watch what you do in the browser and build a workflow from it.",
+					continueLabel: 'Start recording',
+					continueIcon: 'circle-dot',
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'start-browser-recording',
+				args: {},
+				severity: 'warning',
+				message: "I'll watch what you do in the browser and build a workflow from it.",
+				inputType: 'continue',
+				continueLabel: 'Start recording',
+				continueIcon: 'circle-dot',
+			},
+		});
+	});
+
 	it('maps confirmations with a channelConfig payload', () => {
 		expect(
 			map({

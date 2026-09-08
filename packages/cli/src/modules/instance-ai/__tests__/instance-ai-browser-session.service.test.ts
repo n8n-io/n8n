@@ -22,9 +22,14 @@ vi.mock('@n8n/mcp-browser', () => {
 	class MockRelay {
 		onExtensionConnect?: () => void;
 		onExtensionDisconnect?: () => void;
+		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
+		onRecordingActionAppended?: (recordingId: string, action: unknown) => void;
 		attachExtension = vi.fn();
 		attachController = vi.fn();
 		stop = vi.fn();
+		startRecording = vi.fn(async () => ({ success: true }));
+		stopAndSubmitRecording = vi.fn(async () => ({ success: true }));
+		discardRecording = vi.fn(async () => undefined);
 		constructor() {
 			createdRelays.push(this);
 		}
@@ -38,6 +43,9 @@ vi.mock('@n8n/mcp-browser', () => {
 		})),
 		buildExtensionConnectUrl: (endpoint: string) =>
 			`chrome-extension://ext-id/connect.html?mcpRelayUrl=${encodeURIComponent(endpoint)}`,
+		// A visible marker (rather than the identity function) so tests can tell a field
+		// actually went through redaction, not just that it was passed along unchanged.
+		redactString: (value: string) => `redacted(${value})`,
 	};
 });
 
@@ -45,18 +53,28 @@ const mcpBrowserMock: {
 	__createdRelays: Array<{
 		onExtensionConnect?: () => void;
 		onExtensionDisconnect?: () => void;
+		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
+		onRecordingActionAppended?: (recordingId: string, action: unknown) => void;
 		attachExtension: Mock;
 		attachController: Mock;
 		stop: Mock;
+		startRecording: Mock;
+		stopAndSubmitRecording: Mock;
+		discardRecording: Mock;
 	}>;
 	createBrowserTools: Mock;
 } = mcpBrowser as unknown as {
 	__createdRelays: Array<{
 		onExtensionConnect?: () => void;
 		onExtensionDisconnect?: () => void;
+		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
+		onRecordingActionAppended?: (recordingId: string, action: unknown) => void;
 		attachExtension: Mock;
 		attachController: Mock;
 		stop: Mock;
+		startRecording: Mock;
+		stopAndSubmitRecording: Mock;
+		discardRecording: Mock;
 	}>;
 	createBrowserTools: Mock;
 };
@@ -103,6 +121,18 @@ async function createSession(service: InstanceAiBrowserSessionService) {
 	];
 	const relay = mcpBrowserMock.__createdRelays.at(-1)!;
 	return { sessionId, extToken, cdpToken, relay, relayEndpoint, connectUrl };
+}
+
+/** `createSession` plus the extension-connect and personal-project lookup every
+ *  recording-completion/caption test needs before it can call `startRecording`. */
+async function createConnectedSession(
+	service: InstanceAiBrowserSessionService,
+	projectRepository: ReturnType<typeof mock<ProjectRepository>>,
+) {
+	const session = await createSession(service);
+	session.relay.onExtensionConnect?.();
+	projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({ id: 'project-1' } as never);
+	return session;
 }
 
 describe('InstanceAiBrowserSessionService', () => {
@@ -371,6 +401,420 @@ describe('InstanceAiBrowserSessionService', () => {
 			expect(service.getExtensionTraceContext(USER_ID)).toEqual({
 				connectionState: 'disconnected',
 			});
+		});
+	});
+
+	describe('startRecording / stopAndSubmitRecording', () => {
+		it('returns false and sends nothing when the extension is not connected', async () => {
+			const { relay } = await createSession(service);
+
+			expect(await service.startRecording(USER_ID, 'thread-1')).toEqual({
+				started: false,
+				reason: expect.any(String),
+			});
+			expect(await service.stopAndSubmitRecording(USER_ID)).toEqual({
+				stopped: false,
+				reason: expect.any(String),
+			});
+			expect(relay.startRecording).not.toHaveBeenCalled();
+			expect(relay.stopAndSubmitRecording).not.toHaveBeenCalled();
+		});
+
+		it('asks the connected extension to start recording, attributed to the given thread', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+
+			expect(await service.startRecording(USER_ID, 'thread-1')).toEqual({ started: true });
+			expect(relay.startRecording).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports the extension-provided reason when it declines to start', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			relay.startRecording.mockResolvedValueOnce({
+				success: false,
+				error: 'Open a web page before recording.',
+			});
+
+			expect(await service.startRecording(USER_ID, 'thread-1')).toEqual({
+				started: false,
+				reason: 'Open a web page before recording.',
+			});
+		});
+
+		it('asks the connected extension to stop and submit', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+
+			expect(await service.stopAndSubmitRecording(USER_ID)).toEqual({ stopped: true });
+			expect(relay.stopAndSubmitRecording).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports the extension-provided reason when it declines to stop', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			relay.stopAndSubmitRecording.mockResolvedValueOnce({
+				success: false,
+				error: 'Record at least one action before sending.',
+			});
+
+			expect(await service.stopAndSubmitRecording(USER_ID)).toEqual({
+				stopped: false,
+				reason: 'Record at least one action before sending.',
+			});
+		});
+
+		it('pushes a live recording-started state, scoped to the requesting thread', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+
+			await service.startRecording(USER_ID, 'thread-1');
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiRecordingStateChanged',
+					data: { threadId: 'thread-1', status: 'recording', actionCount: 0 },
+				},
+				[USER_ID],
+			);
+		});
+	});
+
+	describe('streamed actions', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('redacts and counts each streamed action, pushing the debounced update', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			await service.startRecording(USER_ID, 'thread-1');
+			push.sendToUsers.mockClear();
+
+			relay.onRecordingActionAppended?.('rec-1', {
+				id: 'a1',
+				type: 'input',
+				timestamp: 0,
+				url: 'https://example.com?token=sk-live-abcdef1234567890',
+				value: 'my api key is sk-live-abcdef1234567890',
+			});
+			await vi.advanceTimersByTimeAsync(300);
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiRecordingStateChanged',
+					data: { threadId: 'thread-1', status: 'recording', actionCount: 1 },
+				},
+				[USER_ID],
+			);
+		});
+
+		it('coalesces a burst of actions into a single debounced push', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			await service.startRecording(USER_ID, 'thread-1');
+			push.sendToUsers.mockClear();
+
+			for (let i = 0; i < 3; i++) {
+				relay.onRecordingActionAppended?.('rec-1', {
+					id: `a${i}`,
+					type: 'click',
+					timestamp: 0,
+					url: 'https://example.com',
+				});
+			}
+			await vi.advanceTimersByTimeAsync(300);
+
+			expect(push.sendToUsers).toHaveBeenCalledTimes(1);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({ data: expect.objectContaining({ actionCount: 3 }) }),
+				[USER_ID],
+			);
+		});
+
+		it('ignores a streamed action while no recording was started from a thread', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			push.sendToUsers.mockClear();
+
+			relay.onRecordingActionAppended?.('rec-1', {
+				id: 'a1',
+				type: 'click',
+				timestamp: 0,
+				url: 'https://example.com',
+			});
+			await vi.advanceTimersByTimeAsync(300);
+
+			expect(push.sendToUsers).not.toHaveBeenCalled();
+		});
+
+		it('cleans up an in-progress recording if the extension disconnects mid-recording', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			await service.startRecording(USER_ID, 'thread-1');
+			push.sendToUsers.mockClear();
+
+			relay.onExtensionDisconnect?.();
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({ threadId: 'thread-1', status: 'discarded' }),
+				}),
+				[USER_ID],
+			);
+
+			// The caption timer must not keep firing for a session with no recording left.
+			relay.onExtensionConnect?.();
+			const captionHandler = vi.fn(async () => 'summary');
+			service.setActionCaptionHandler(captionHandler);
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(captionHandler).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('discardRecording', () => {
+		it('returns false when there is no in-progress recording to discard', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+
+			expect(service.discardRecording(USER_ID)).toBe(false);
+			expect(relay.discardRecording).not.toHaveBeenCalled();
+		});
+
+		it('discards, clears state, and pushes a terminal status with no thread message', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			await service.startRecording(USER_ID, 'thread-1');
+			push.sendToUsers.mockClear();
+
+			expect(service.discardRecording(USER_ID)).toBe(true);
+
+			expect(relay.discardRecording).toHaveBeenCalledTimes(1);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiRecordingStateChanged',
+					data: { threadId: 'thread-1', status: 'discarded', actionCount: 0 },
+				},
+				[USER_ID],
+			);
+
+			// A second discard has nothing left to act on.
+			push.sendToUsers.mockClear();
+			expect(service.discardRecording(USER_ID)).toBe(false);
+			expect(push.sendToUsers).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('action caption', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('summarizes accumulated actions on each tick, skipping ticks with nothing new', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			const captionHandler = vi.fn(async () => 'Opened Gmail and composed a message');
+			service.setActionCaptionHandler(captionHandler);
+			await service.startRecording(USER_ID, 'thread-1');
+
+			relay.onRecordingActionAppended?.('rec-1', {
+				id: 'a1',
+				type: 'click',
+				timestamp: 0,
+				url: 'https://mail.google.com',
+			});
+
+			await vi.advanceTimersByTimeAsync(20_000);
+			expect(captionHandler).toHaveBeenCalledTimes(1);
+
+			// Nothing new accumulated since the last tick — skip the call entirely.
+			await vi.advanceTimersByTimeAsync(20_000);
+			expect(captionHandler).toHaveBeenCalledTimes(1);
+		});
+
+		it('redacts every free-text field of a streamed action before it reaches the caption handler', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			const captionHandler = vi.fn(async () => 'summary');
+			service.setActionCaptionHandler(captionHandler);
+			await service.startRecording(USER_ID, 'thread-1');
+
+			relay.onRecordingActionAppended?.('rec-1', {
+				id: 'a1',
+				type: 'input',
+				timestamp: 0,
+				url: 'https://example.com?token=secret',
+				value: 'my api key',
+				target: {
+					tag: 'input',
+					role: 'textbox',
+					label: 'API key',
+					name: 'apiKey',
+					inputType: 'password',
+				},
+			});
+			await vi.advanceTimersByTimeAsync(20_000);
+
+			expect(captionHandler).toHaveBeenCalledWith({
+				userId: USER_ID,
+				actions: [
+					expect.objectContaining({
+						url: 'redacted(https://example.com?token=secret)',
+						value: 'redacted(my api key)',
+						target: expect.objectContaining({
+							role: 'redacted(textbox)',
+							label: 'redacted(API key)',
+							name: 'redacted(apiKey)',
+							inputType: 'redacted(password)',
+						}),
+					}),
+				],
+			});
+		});
+
+		it('pushes the new caption live once a tick produces one', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			service.setActionCaptionHandler(vi.fn(async () => 'Opened Gmail and composed a message'));
+			await service.startRecording(USER_ID, 'thread-1');
+			relay.onRecordingActionAppended?.('rec-1', {
+				id: 'a1',
+				type: 'click',
+				timestamp: 0,
+				url: 'https://mail.google.com',
+			});
+			push.sendToUsers.mockClear();
+
+			await vi.advanceTimersByTimeAsync(12_000);
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiRecordingStateChanged',
+					data: {
+						threadId: 'thread-1',
+						status: 'recording',
+						actionCount: 1,
+						caption: 'Opened Gmail and composed a message',
+					},
+				},
+				[USER_ID],
+			);
+		});
+
+		it('never throws the run when the caption handler fails', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			service.setActionCaptionHandler(vi.fn(async () => await Promise.reject(new Error('boom'))));
+			await service.startRecording(USER_ID, 'thread-1');
+			relay.onRecordingActionAppended?.('rec-1', {
+				id: 'a1',
+				type: 'click',
+				timestamp: 0,
+				url: 'https://example.com',
+			});
+
+			// Would reject/throw here if the failure escaped the tick's own try/catch.
+			await vi.advanceTimersByTimeAsync(20_000);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to summarize in-progress recording',
+				expect.objectContaining({ userId: USER_ID }),
+			);
+		});
+
+		it('passes the latest caption into the completion handler, then clears it', async () => {
+			const { relay } = await createConnectedSession(service, projectRepository);
+			service.setActionCaptionHandler(vi.fn(async () => 'Opened Gmail'));
+			const completionHandler = vi.fn(async () => ({ threadId: 'thread-1' }));
+			service.setRecordingCompletionHandler(completionHandler);
+
+			await service.startRecording(USER_ID, 'thread-1');
+			relay.onRecordingActionAppended?.('rec-1', {
+				id: 'a1',
+				type: 'click',
+				timestamp: 0,
+				url: 'https://mail.google.com',
+			});
+			await vi.advanceTimersByTimeAsync(20_000);
+
+			await relay.onRecordingCompleted?.({ id: 'rec-1' } as never);
+
+			expect(completionHandler).toHaveBeenCalledWith(
+				expect.objectContaining({ caption: 'Opened Gmail' }),
+			);
+		});
+	});
+
+	describe('recording completion', () => {
+		const recording = { id: 'rec-1' } as never;
+
+		it('passes the origin thread from startRecording through to the completion handler, then clears it', async () => {
+			const { relay } = await createConnectedSession(service, projectRepository);
+			const handler = vi.fn(async () => ({ threadId: 'thread-1' }));
+			service.setRecordingCompletionHandler(handler);
+
+			await service.startRecording(USER_ID, 'thread-1');
+			await relay.onRecordingCompleted?.(recording);
+
+			expect(handler).toHaveBeenCalledWith({
+				userId: USER_ID,
+				projectId: 'project-1',
+				recording,
+				originThreadId: 'thread-1',
+			});
+
+			// A second, unrelated recording completing must not inherit the earlier thread.
+			await relay.onRecordingCompleted?.({ id: 'rec-2' } as never);
+			expect(handler).toHaveBeenLastCalledWith({
+				userId: USER_ID,
+				projectId: 'project-1',
+				recording: { id: 'rec-2' },
+				originThreadId: undefined,
+			});
+		});
+
+		it('passes no origin thread for a recording started manually (from the extension popup)', async () => {
+			const { relay } = await createConnectedSession(service, projectRepository);
+			const handler = vi.fn(async () => ({ threadId: 'thread-1' }));
+			service.setRecordingCompletionHandler(handler);
+
+			await relay.onRecordingCompleted?.(recording);
+
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining({ originThreadId: undefined }));
+		});
+
+		it('pushes a terminal "stopped" state for an AI-triggered recording completing', async () => {
+			const { relay } = await createConnectedSession(service, projectRepository);
+			service.setRecordingCompletionHandler(vi.fn(async () => ({ threadId: 'thread-1' })));
+			await service.startRecording(USER_ID, 'thread-1');
+			push.sendToUsers.mockClear();
+
+			await relay.onRecordingCompleted?.(recording);
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiRecordingStateChanged',
+					data: { threadId: 'thread-1', status: 'stopped', actionCount: 0 },
+				},
+				[USER_ID],
+			);
+		});
+
+		it('pushes nothing for a manually completed recording (no origin thread to notify)', async () => {
+			const { relay } = await createConnectedSession(service, projectRepository);
+			service.setRecordingCompletionHandler(vi.fn(async () => ({ threadId: 'thread-1' })));
+			push.sendToUsers.mockClear();
+
+			await relay.onRecordingCompleted?.(recording);
+
+			expect(push.sendToUsers).not.toHaveBeenCalled();
 		});
 	});
 });

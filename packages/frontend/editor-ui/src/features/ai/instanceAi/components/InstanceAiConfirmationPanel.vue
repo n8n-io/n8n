@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nInput, N8nText, isSupportedIconName } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -386,6 +387,13 @@ function handleTextSkip(conf: InstanceAiConfirmation) {
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: false });
 }
 
+function continueIcon(conf: InstanceAiConfirmation): IconName | undefined {
+	// Validated against the real icon set, not a blind cast of an arbitrary tool-supplied
+	// string — isSupportedIconName also accepts node icons, which this button prop doesn't,
+	// hence the narrowing cast once validity is confirmed.
+	return isSupportedIconName(conf.continueIcon) ? (conf.continueIcon as IconName) : undefined;
+}
+
 function handleContinue(conf: InstanceAiConfirmation) {
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
 	trackInputCompleted(
@@ -593,9 +601,13 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 								data-test-id="instance-ai-panel-continue"
 								size="medium"
 								variant="solid"
+								:icon="continueIcon(chunk.item.toolCall.confirmation!)"
 								@click="handleContinue(chunk.item.toolCall.confirmation)"
 							>
-								{{ i18n.baseText('instanceAi.confirmation.continue') }}
+								{{
+									chunk.item.toolCall.confirmation!.continueLabel ??
+									i18n.baseText('instanceAi.confirmation.continue')
+								}}
 							</N8nButton>
 						</div>
 					</N8nCard>

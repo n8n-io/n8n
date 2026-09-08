@@ -17,6 +17,8 @@ export const DOMAIN_TOOL_IDS = {
 	AGENTS: 'agents',
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
+	START_BROWSER_RECORDING: 'start-browser-recording',
+	STOP_BROWSER_RECORDING: 'stop-browser-recording',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the

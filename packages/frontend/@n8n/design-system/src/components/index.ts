@@ -58,6 +58,7 @@ export {
 	type IconName,
 	type NodeIconName,
 	isNodeIcon,
+	isSupportedIconName,
 	updatedIconSet,
 } from './N8nIcon';
 export { default as N8nIconButton } from './N8nIconButton';

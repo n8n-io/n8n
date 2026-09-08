@@ -5,6 +5,8 @@
  * and tracks tab lifecycle for agent-created tabs only.
  */
 
+import type { BrowserRecordingAction } from '@n8n/api-types';
+
 import { isHostApproved } from './approvedHosts';
 import { createLogger } from './logger';
 import { getRelayHostKey, isAllowedPageOrigin, isAllowedRelayUrl } from './relayAllowlist';
@@ -353,11 +355,27 @@ function submitRecording(): { success: boolean; error?: string } {
 	return { success: true };
 }
 
-async function discardRecording(): Promise<void> {
+/** Stop and submit in one step, for a recording n8n itself asked to start — skips the
+ *  manual review screen, since Instance AI reviews the recording in chat instead. */
+async function stopAndSubmitRecordingNow(): Promise<{ success: boolean; error?: string }> {
+	await stopRecording();
+	return submitRecording();
+}
+
+async function discardRecording(): Promise<{ success: boolean }> {
 	if (recordingSubmitTimer) clearTimeout(recordingSubmitTimer);
 	recordingSubmitTimer = undefined;
 	await stopRecording();
 	recording = null;
+	broadcastRecordingChange();
+	return { success: true };
+}
+
+/** Append one action to the active recording, and forward it live to the relay. */
+function pushRecordingAction(action: BrowserRecordingAction): void {
+	if (!recording) return;
+	recording.actions.push(action);
+	activeConnection?.relay.sendRecordingAction(recording.id, action);
 	broadcastRecordingChange();
 }
 
@@ -397,7 +415,7 @@ function appendRecordingAction(
 		: action.type === 'context_menu'
 			? {}
 			: sanitizeValue(action.value, target);
-	recording.actions.push({
+	pushRecordingAction({
 		id: crypto.randomUUID(),
 		type: action.type,
 		timestamp: Math.max(0, action.timestamp - Date.parse(recording.startedAt)),
@@ -405,7 +423,6 @@ function appendRecordingAction(
 		target,
 		...value,
 	});
-	broadcastRecordingChange();
 }
 
 function appendNavigation(url: string): void {
@@ -419,13 +436,12 @@ function appendNavigation(url: string): void {
 	if (!sanitizedUrl) return;
 	const previous = recording.actions.at(-1);
 	if (previous?.type === 'navigation' && previous.url === sanitizedUrl) return;
-	recording.actions.push({
+	pushRecordingAction({
 		id: crypto.randomUUID(),
 		type: 'navigation',
 		timestamp: Date.now() - Date.parse(recording.startedAt),
 		url: sanitizedUrl,
 	});
-	broadcastRecordingChange();
 }
 
 function appendTabSwitch(url: string, title: string): void {
@@ -439,7 +455,7 @@ function appendTabSwitch(url: string, title: string): void {
 	if (!sanitizedUrl) return;
 	const previous = recording.actions.at(-1);
 	if (previous?.type === 'tab_switch' && previous.url === sanitizedUrl) return;
-	recording.actions.push({
+	pushRecordingAction({
 		id: crypto.randomUUID(),
 		type: 'tab_switch',
 		timestamp: Date.now() - Date.parse(recording.startedAt),
@@ -449,7 +465,6 @@ function appendTabSwitch(url: string, title: string): void {
 			label: sanitizeContextText(title, 160),
 		},
 	});
-	broadcastRecordingChange();
 }
 
 async function activatePendingRecordingTab(
@@ -980,6 +995,24 @@ async function connectToRelay(
 			if (activeConnection?.relay !== relay) return;
 			broadcastStatusChange();
 			updateBadge(relay.getControlledIds().length);
+		};
+
+		relay.onstartrecording = async () => {
+			if (activeConnection?.relay !== relay)
+				return { success: false, error: 'Connection was replaced.' };
+			return await startRecording();
+		};
+
+		relay.onstopandsubmitrecording = async () => {
+			if (activeConnection?.relay !== relay)
+				return { success: false, error: 'Connection was replaced.' };
+			return await stopAndSubmitRecordingNow();
+		};
+
+		relay.ondiscardrecording = async () => {
+			if (activeConnection?.relay !== relay)
+				return { success: false, error: 'Connection was replaced.' };
+			return await discardRecording();
 		};
 
 		relay.onrecordingresult = (recordingId, accepted, threadUrl) => {

@@ -159,12 +159,18 @@ describe('Instance AI runtime skills', () => {
 
 	it('gates the config-evals skill by its folder id', () => {
 		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
-		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: false })).toContain(
-			CONFIG_EVALS_SKILL_ID,
-		);
-		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: true })).not.toContain(
-			CONFIG_EVALS_SKILL_ID,
-		);
+		expect(
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: false,
+				browserRecordingProposalEnabled: true,
+			}),
+		).toContain(CONFIG_EVALS_SKILL_ID);
+		expect(
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: true,
+				browserRecordingProposalEnabled: true,
+			}),
+		).not.toContain(CONFIG_EVALS_SKILL_ID);
 
 		const source = loadInstanceAiRuntimeSkillSource();
 		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');

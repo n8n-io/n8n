@@ -333,6 +333,8 @@ function mapSuspendedChunk(
 	const requireUserSelection = suspendPayload.requireUserSelection === true;
 	const projectId = presentString(suspendPayload.projectId);
 	const inputType = parseInputType(suspendPayload.inputType);
+	const continueLabel = presentString(suspendPayload.continueLabel);
+	const continueIcon = presentString(suspendPayload.continueIcon);
 	const questions = parseSchemaArray(suspendPayload.questions, questionItemSchema);
 	const introMessage = presentString(suspendPayload.introMessage);
 	const tasks = parseSchemaRecord(suspendPayload.tasks, taskListSchema);
@@ -386,6 +388,8 @@ function mapSuspendedChunk(
 			...(requireUserSelection ? { requireUserSelection } : {}),
 			...(projectId ? { projectId } : {}),
 			...(inputType ? { inputType } : {}),
+			...(continueLabel ? { continueLabel } : {}),
+			...(continueIcon ? { continueIcon } : {}),
 			...(domainAccess ? { domainAccess } : {}),
 			...(webSearch ? { webSearch } : {}),
 			...(credentialFlow ? { credentialFlow } : {}),

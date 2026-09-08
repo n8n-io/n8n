@@ -4,10 +4,29 @@ import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
+	PushMessage,
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import type { ResourceEntry } from '../useResourceRegistry';
+
+let recordingPushHandler: ((message: PushMessage) => void) | undefined;
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		addEventListener: (handler: (message: PushMessage) => void) => {
+			recordingPushHandler = handler;
+			return vi.fn();
+		},
+	}),
+}));
+
+function emitRecordingState(data: {
+	threadId: string;
+	status: 'recording' | 'stopped' | 'discarded';
+	actionCount: number;
+}) {
+	recordingPushHandler?.({ type: 'instanceAiRecordingStateChanged', data } as PushMessage);
+}
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -153,6 +172,7 @@ function setup(options?: { threadOverrides?: Partial<MockThread> }) {
 describe('useCanvasPreview', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		recordingPushHandler = undefined;
 	});
 
 	describe('allArtifactTabs', () => {
@@ -255,6 +275,37 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.allArtifactTabs.value).toHaveLength(1);
 			expect(ctx.allArtifactTabs.value[0].type).toBe('workflow');
+		});
+
+		test('adds a synthetic, auto-opened recording tab while a live recording is in progress', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 2 });
+
+			const recordingTab = ctx.allArtifactTabs.value.find((t) => t.type === 'recording');
+			expect(recordingTab).toMatchObject({ type: 'recording', building: true });
+			expect(ctx.activeTabId.value).toBe(recordingTab?.id);
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(ctx.activeRecordingId.value).toBe(recordingTab?.id);
+		});
+
+		test('ignores a live-recording push for a different thread', () => {
+			const ctx = setup();
+
+			emitRecordingState({ threadId: 'thread-2', status: 'recording', actionCount: 2 });
+
+			expect(ctx.allArtifactTabs.value.some((t) => t.type === 'recording')).toBe(false);
+		});
+
+		test('removes the recording tab once the recording reaches a terminal status', () => {
+			const ctx = setup();
+			emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 1 });
+			expect(ctx.allArtifactTabs.value.some((t) => t.type === 'recording')).toBe(true);
+
+			emitRecordingState({ threadId: 'thread-1', status: 'stopped', actionCount: 0 });
+
+			expect(ctx.allArtifactTabs.value.some((t) => t.type === 'recording')).toBe(false);
 		});
 	});
 

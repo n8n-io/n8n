@@ -101,6 +101,7 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiRecordingPreview from './components/InstanceAiRecordingPreview.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -457,11 +458,17 @@ watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 });
 
 const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value * 0.7));
+// The recording status card is small and fixed-size — it doesn't need (and
+// looks lost in) the same half-thread-width default other artifacts get.
+const RECORDING_PREVIEW_WIDTH = 400;
 // Preserve the default or manually selected width while temporarily
 // constraining it to the available space.
-const previewPanelWidth = computed(() =>
-	Math.min(preferredPreviewPanelWidth.value, previewMaxWidth.value),
-);
+const previewPanelWidth = computed(() => {
+	if (preview.activeRecordingId.value) {
+		return Math.min(RECORDING_PREVIEW_WIDTH, previewMaxWidth.value);
+	}
+	return Math.min(preferredPreviewPanelWidth.value, previewMaxWidth.value);
+});
 const AGENT_PREVIEW_CHAT_MIN_WIDTH = 320;
 const AGENT_PREVIEW_CHAT_PREFERRED_WIDTH = 480;
 const AGENT_PREVIEW_CHAT_MAX_RATIO = 0.5;
@@ -1429,6 +1436,13 @@ async function dismissComposerContextChip() {
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
+							/>
+							<InstanceAiRecordingPreview
+								v-if="preview.isPreviewVisible.value && preview.activeRecordingId.value"
+								:class="$style.previewSlot"
+								:action-count="preview.liveRecording.actionCount.value"
+								:elapsed-ms="preview.liveRecording.elapsedMs.value"
+								:caption="preview.liveRecording.caption.value"
 							/>
 						</div>
 					</TabsRoot>

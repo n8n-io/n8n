@@ -399,4 +399,72 @@ describe('CDPRelayServer', () => {
 
 		ext2.close();
 	});
+
+	describe('recording', () => {
+		const VALID_ACTION = {
+			id: '11111111-1111-1111-1111-111111111111',
+			type: 'click',
+			timestamp: 0,
+			url: 'https://example.com',
+		};
+
+		it('should send discardRecording to the extension', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			const { handlers } = createFakeExtension(ext);
+			handlers.discardRecording = vi.fn(() => ({}));
+			await relay.waitForExtension();
+
+			await relay.discardRecording();
+
+			expect(handlers.discardRecording).toHaveBeenCalled();
+			ext.close();
+		});
+
+		it('should reject discardRecording when the extension is not connected', async () => {
+			await expect(relay.discardRecording()).rejects.toThrow('connection lost');
+		});
+
+		it('should invoke onRecordingActionAppended for a valid streamed action', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			createFakeExtension(ext);
+			await relay.waitForExtension();
+
+			const received = await new Promise<[string, unknown]>((resolve) => {
+				relay.onRecordingActionAppended = (recordingId, action) => resolve([recordingId, action]);
+				ext.send(
+					JSON.stringify({
+						method: 'recordingActionAppended',
+						params: { recordingId: 'rec-1', action: VALID_ACTION },
+					}),
+				);
+			});
+
+			expect(received[0]).toBe('rec-1');
+			expect(received[1]).toMatchObject({ id: VALID_ACTION.id, type: 'click' });
+			ext.close();
+		});
+
+		it('should ignore a malformed streamed action', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			createFakeExtension(ext);
+			await relay.waitForExtension();
+
+			const onActionAppended = vi.fn();
+			relay.onRecordingActionAppended = onActionAppended;
+			ext.send(
+				JSON.stringify({
+					method: 'recordingActionAppended',
+					params: { recordingId: 'rec-1', action: { not: 'an action' } },
+				}),
+			);
+
+			// Give the async message handler a turn, then confirm nothing fired.
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			expect(onActionAppended).not.toHaveBeenCalled();
+			ext.close();
+		});
+	});
 });

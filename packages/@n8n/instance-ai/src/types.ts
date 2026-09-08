@@ -1000,6 +1000,21 @@ export interface FolderSummary {
 	parentFolderId: string | null;
 }
 
+// ── Browser recording service ───────────────────────────────────────────────
+
+/** Adapter over the host's per-user browser extension session, used by the
+ *  start/stop-browser-recording tools. */
+export interface InstanceAiBrowserRecordingService {
+	/** Whether this user's browser extension is currently paired and connected. */
+	isConnected(userId: string): boolean;
+	/** Ask the paired extension to start recording, attributed to `threadId` so
+	 *  completion resumes this conversation. Resolves once the extension has confirmed. */
+	startRecording(userId: string, threadId: string): Promise<{ started: boolean; reason?: string }>;
+	/** Ask the paired extension to stop the active recording and submit it
+	 *  immediately. Resolves once the extension has confirmed. */
+	stopAndSubmitRecording(userId: string): Promise<{ stopped: boolean; reason?: string }>;
+}
+
 // ── Workspace service ───────────────────────────────────────────────────────
 
 export interface InstanceAiWorkspaceService {
@@ -1303,6 +1318,10 @@ export interface InstanceAiContext {
 		markCreated: (credentialType: string) => void;
 		markCreateFailed: (credentialType: string, errorCode: string) => void;
 	};
+	/** Wired whenever Browser Use is enabled instance-wide, regardless of whether this
+	 *  user's extension is currently paired — presence gates the `start-browser-recording`
+	 *  / `stop-browser-recording` tools, which check pairing themselves at call time. */
+	browserRecordingService?: InstanceAiBrowserRecordingService;
 	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
 	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**

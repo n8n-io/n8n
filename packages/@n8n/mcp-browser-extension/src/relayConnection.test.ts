@@ -1117,6 +1117,43 @@ describe('RelayConnection', () => {
 			expect(preparedTabs()).toContain(32);
 		});
 	});
+
+	describe('recording', () => {
+		it('invokes ondiscardrecording and acknowledges the command', async () => {
+			const ondiscardrecording = vi.fn();
+			relay.ondiscardrecording = ondiscardrecording;
+
+			ws.onmessage?.({ data: JSON.stringify({ id: 7, method: 'discardRecording' }) });
+			await tick();
+
+			expect(ondiscardrecording).toHaveBeenCalledTimes(1);
+			expect(parseSent(ws)).toEqual({ id: 7, result: {} });
+		});
+
+		it('sends a recordingActionAppended frame for one captured action', () => {
+			const action = { id: 'a1', type: 'click' as const, timestamp: 0, url: 'https://example.com' };
+
+			relay.sendRecordingAction('rec-1', action);
+
+			expect(findSent(ws, 'recordingActionAppended')).toEqual({
+				method: 'recordingActionAppended',
+				params: { recordingId: 'rec-1', action },
+			});
+		});
+
+		it('does not send a recordingActionAppended frame while the socket is closed', () => {
+			ws.readyState = MockWebSocket.CLOSED;
+
+			relay.sendRecordingAction('rec-1', {
+				id: 'a1',
+				type: 'click',
+				timestamp: 0,
+				url: 'https://example.com',
+			});
+
+			expect(findSent(ws, 'recordingActionAppended')).toBeUndefined();
+		});
+	});
 });
 
 describe('RelayConnection keepalive', () => {

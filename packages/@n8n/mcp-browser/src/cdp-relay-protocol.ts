@@ -1,4 +1,4 @@
-import type { BrowserRecording } from '@n8n/api-types';
+import type { BrowserRecording, BrowserRecordingAction } from '@n8n/api-types';
 
 /**
  * Protocol types for communication between the CDP relay server and the Chrome extension.
@@ -9,7 +9,7 @@ import type { BrowserRecording } from '@n8n/api-types';
  */
 
 /** Version of the extension protocol. Bump when commands/events change. */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 4;
 
 // ---------------------------------------------------------------------------
 // Commands: relay → extension
@@ -59,6 +59,18 @@ export interface ExtensionCommands {
 			threadUrl?: string;
 		};
 	};
+	/** Start a semantic recording, as if the user had clicked Start Recording. */
+	startRecording: {
+		params: Record<string, never>;
+	};
+	/** Stop the active recording and submit it immediately, skipping the review step. */
+	stopAndSubmitRecording: {
+		params: Record<string, never>;
+	};
+	/** Discard the active recording without submitting it. */
+	discardRecording: {
+		params: Record<string, never>;
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +108,13 @@ export interface ExtensionEvents {
 	recordingCompleted: {
 		params: {
 			recording: BrowserRecording;
+		};
+	};
+	/** One action captured during an in-progress recording, sent live as it happens. */
+	recordingActionAppended: {
+		params: {
+			recordingId: string;
+			action: BrowserRecordingAction;
 		};
 	};
 }

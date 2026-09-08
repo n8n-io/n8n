@@ -1862,6 +1862,71 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('browser recording actions', () => {
+		beforeEach(() => {
+			settingsService.isBrowserUseEnabled.mockReturnValue(true);
+		});
+
+		describe('browserStopRecording', () => {
+			it('should require instanceAi:gateway scope', () => {
+				expect(scopeOf('browserStopRecording')).toEqual({
+					scope: 'instanceAi:gateway',
+					globalOnly: true,
+				});
+			});
+
+			it('stops and submits the recording for the requesting user', async () => {
+				browserSessionService.stopAndSubmitRecording.mockResolvedValue({ stopped: true });
+
+				const result = await controller.browserStopRecording(req);
+
+				expect(browserSessionService.stopAndSubmitRecording).toHaveBeenCalledWith(USER_ID);
+				expect(result).toEqual({ ok: true });
+			});
+
+			it('throws when there was nothing to stop', async () => {
+				browserSessionService.stopAndSubmitRecording.mockResolvedValue({
+					stopped: false,
+					reason: 'Record at least one action before sending.',
+				});
+
+				await expect(controller.browserStopRecording(req)).rejects.toThrow(BadRequestError);
+			});
+
+			it('throws when Browser Use is disabled', async () => {
+				settingsService.isBrowserUseEnabled.mockReturnValue(false);
+
+				await expect(controller.browserStopRecording(req)).rejects.toThrow(ForbiddenError);
+				expect(browserSessionService.stopAndSubmitRecording).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('browserDiscardRecording', () => {
+			it('should require instanceAi:gateway scope', () => {
+				expect(scopeOf('browserDiscardRecording')).toEqual({
+					scope: 'instanceAi:gateway',
+					globalOnly: true,
+				});
+			});
+
+			it('discards the recording for the requesting user', () => {
+				browserSessionService.discardRecording.mockReturnValue(true);
+
+				const result = controller.browserDiscardRecording(req);
+
+				expect(browserSessionService.discardRecording).toHaveBeenCalledWith(USER_ID);
+				expect(result).toEqual({ ok: true });
+			});
+
+			it('throws when Browser Use is disabled', () => {
+				settingsService.isBrowserUseEnabled.mockReturnValue(false);
+
+				expect(() => controller.browserDiscardRecording(req)).toThrow(ForbiddenError);
+				expect(browserSessionService.discardRecording).not.toHaveBeenCalled();
+			});
+		});
+	});
+
 	describe('gatewayCreateCredential', () => {
 		const makeGatewayReq = (key: string) =>
 			({ headers: { 'x-gateway-key': key } }) as unknown as Request;

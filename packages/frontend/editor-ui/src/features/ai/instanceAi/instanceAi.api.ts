@@ -193,6 +193,22 @@ export async function disconnectBrowserSession(context: IRestApiContext): Promis
 }
 
 /**
+ * POST /instance-ai/browser/recording/stop -> { ok }
+ * Stop and submit the in-progress recording directly, bypassing chat/the LLM.
+ */
+export async function stopBrowserRecording(context: IRestApiContext): Promise<{ ok: boolean }> {
+	return await makeRestApiRequest(context, 'POST', '/instance-ai/browser/recording/stop');
+}
+
+/**
+ * POST /instance-ai/browser/recording/discard -> { ok }
+ * Cancel the in-progress recording directly, bypassing chat/the LLM.
+ */
+export async function discardBrowserRecording(context: IRestApiContext): Promise<{ ok: boolean }> {
+	return await makeRestApiRequest(context, 'POST', '/instance-ai/browser/recording/discard');
+}
+
+/**
  * GET /instance-ai/gateway/status -> { connected, connectedAt, directory, hostIdentifier, toolCategories }
  * Check whether the gateway daemon is currently connected.
  */

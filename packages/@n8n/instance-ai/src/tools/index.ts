@@ -81,6 +81,10 @@ const loadResearchTool = lazyMod(
 const loadAskUserTool = lazyMod(
 	() => require('./shared/ask-user.tool') as typeof import('./shared/ask-user.tool'),
 );
+const loadBrowserRecordingTool = lazyMod(
+	() =>
+		require('./shared/browser-recording.tool') as typeof import('./shared/browser-recording.tool'),
+);
 const loadTaskControlTool = lazyMod(
 	() => require('./task-control.tool') as typeof import('./task-control.tool'),
 );
@@ -176,6 +180,21 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
 		tools.push([DOMAIN_TOOL_IDS.PARSE_FILE, loadParseFileTool().createParseFileTool(context)]);
+	}
+
+	// Orchestrator-only: proposing/starting a recording is a main-chat capability, not
+	// something a sub-agent decides on. The adapter only wires browserRecordingService
+	// when Browser Use is enabled instance-wide; the tools check per-user pairing
+	// themselves at call time.
+	if (context.browserRecordingService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.START_BROWSER_RECORDING,
+			loadBrowserRecordingTool().createStartBrowserRecordingTool(context),
+		]);
+		tools.push([
+			DOMAIN_TOOL_IDS.STOP_BROWSER_RECORDING,
+			loadBrowserRecordingTool().createStopBrowserRecordingTool(context),
+		]);
 	}
 
 	return createToolRegistry(tools);

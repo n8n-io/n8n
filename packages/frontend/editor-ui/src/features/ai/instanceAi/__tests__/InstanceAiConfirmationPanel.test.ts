@@ -743,6 +743,37 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				}),
 			);
 		});
+
+		it('renders a custom continueLabel when provided', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-continue-custom',
+				severity: 'info',
+				message: "I'll watch what you do in the browser and build a workflow from it.",
+				inputType: 'continue',
+				continueLabel: 'Start recording',
+			});
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+
+			expect(getByTestId('instance-ai-panel-continue')).toHaveTextContent('Start recording');
+		});
+
+		it('renders a custom continueIcon when provided', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-continue-icon',
+				severity: 'info',
+				message: "I'll watch what you do in the browser and build a workflow from it.",
+				inputType: 'continue',
+				continueLabel: 'Start recording',
+				continueIcon: 'circle-dot',
+			});
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+
+			expect(
+				getByTestId('instance-ai-panel-continue').querySelector('[data-icon="circle-dot"]'),
+			).toBeInTheDocument();
+		});
 	});
 
 	describe('questions confirmation', () => {

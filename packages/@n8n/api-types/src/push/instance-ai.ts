@@ -35,4 +35,19 @@ export type InstanceAiPushMessage =
 			data: {
 				connectionId: string;
 			};
+	  }
+	| {
+			type: 'instanceAiRecordingStateChanged';
+			data: {
+				/** The thread that asked for this recording — the frontend only reacts when
+				 *  this matches the thread it's currently viewing. */
+				threadId: string;
+				/** 'recording' is the only live state; 'stopped' and 'discarded' are terminal —
+				 *  the frontend removes the live artifact on either. */
+				status: 'recording' | 'stopped' | 'discarded';
+				actionCount: number;
+				/** Latest running summary of what's been seen so far, once one has been
+				 *  generated. Absent until the first caption tick completes. */
+				caption?: string;
+			};
 	  };

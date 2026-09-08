@@ -1385,6 +1385,31 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	/** Direct action from the live recording artifact — stops and submits immediately,
+	 *  bypassing chat/the LLM entirely. Leads into the same recap-and-build flow as any
+	 *  other stop. */
+	@Post('/browser/recording/stop')
+	@GlobalScope('instanceAi:gateway')
+	async browserStopRecording(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		this.assertBrowserChannelEnabled();
+		const { stopped, reason } = await this.browserSessionService.stopAndSubmitRecording(
+			req.user.id,
+		);
+		if (!stopped) throw new BadRequestError(reason ?? 'Failed to stop the recording.');
+		return { ok: true };
+	}
+
+	/** Direct action from the live recording artifact — cancels the in-progress recording,
+	 *  bypassing chat/the LLM entirely. No thread message, no analysis. */
+	@Post('/browser/recording/discard')
+	@GlobalScope('instanceAi:gateway')
+	browserDiscardRecording(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		this.assertBrowserChannelEnabled();
+		return { ok: this.browserSessionService.discardRecording(req.user.id) };
+	}
+
 	// ── Helpers ──────────────────────────────────────────────────────────────
 
 	private assertBrowserChannelEnabled(): void {

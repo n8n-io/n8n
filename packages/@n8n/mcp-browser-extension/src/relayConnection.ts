@@ -7,7 +7,7 @@
  * All communication with the relay uses these CDP target IDs.
  */
 
-import type { BrowserRecording } from '@n8n/api-types';
+import type { BrowserRecording, BrowserRecordingAction } from '@n8n/api-types';
 
 import { DocumentPreparation } from './documentPreparation';
 import { ForeignFrames } from './foreignFrames';
@@ -24,6 +24,13 @@ interface ProtocolResponse {
 	method?: string;
 	params?: Record<string, unknown>;
 	result?: unknown;
+	error?: string;
+}
+
+/** Outcome of a recording start/stop/discard, so the relay (and the user asking for it
+ *  from Instance AI) learns whether it actually happened, not just that the message arrived. */
+export interface RecordingCommandResult {
+	success: boolean;
 	error?: string;
 }
 
@@ -96,6 +103,9 @@ export class RelayConnection {
 	onclose?: () => void;
 	ontabcreated?: () => void;
 	onrecordingresult?: (recordingId: string, accepted: boolean, threadUrl?: string) => void;
+	onstartrecording?: () => Promise<RecordingCommandResult>;
+	onstopandsubmitrecording?: () => Promise<RecordingCommandResult>;
+	ondiscardrecording?: () => Promise<RecordingCommandResult>;
 
 	constructor(ws: WebSocket) {
 		this.ws = ws;
@@ -206,6 +216,14 @@ export class RelayConnection {
 		if (this.ws.readyState !== WebSocket.OPEN) return false;
 		this.sendMessage({ method: 'recordingCompleted', params: { recording } });
 		return true;
+	}
+
+	/** Forward one captured action live, while the recording is still in progress.
+	 *  Best-effort: a dropped send doesn't need a resend, since the final `sendRecording`
+	 *  call still carries the complete array. */
+	sendRecordingAction(recordingId: string, action: BrowserRecordingAction): void {
+		if (this.ws.readyState !== WebSocket.OPEN) return;
+		this.sendMessage({ method: 'recordingActionAppended', params: { recordingId, action } });
 	}
 
 	markAsAgentCreated(chromeTabId: number): void {
@@ -531,6 +549,12 @@ export class RelayConnection {
 				}
 				return {};
 			}
+			case 'startRecording':
+				return (await this.onstartrecording?.()) ?? {};
+			case 'stopAndSubmitRecording':
+				return (await this.onstopandsubmitrecording?.()) ?? {};
+			case 'discardRecording':
+				return (await this.ondiscardrecording?.()) ?? {};
 			default:
 				log.debug(`unknown command: ${message.method}`);
 				return undefined;
