@@ -42,6 +42,7 @@ const PUBLIC_GOOGLE_OAUTH_URL =
 const PUBLIC_MICROSOFT_CREDENTIALS_URL =
 	'https://docs.n8n.io/integrations/builtin/credentials/microsoft/';
 const PUBLIC_FIGMA_CREDENTIALS_URL = 'https://docs.n8n.io/integrations/builtin/credentials/figma/';
+const PUBLIC_SLACK_CREDENTIALS_URL = 'https://docs.n8n.io/integrations/builtin/credentials/slack/';
 const PUBLIC_CREATE_EDIT_URL =
 	'https://docs.n8n.io/build/understand-workflows/create-and-edit-credentials/';
 
@@ -225,27 +226,53 @@ describe('n8n-docs tool', () => {
 			} as unknown as InstanceAiContext['credentialService'],
 		});
 
-		it('reads the credential type own docs page when no URL was passed', async () => {
+		// `slackOAuth2Api` tokenizes to slack/oauth2/api, and on this fixture `oauth2`
+		// ranks "Google: OAuth2 single service" top — so the resolved URL, worth +500,
+		// is the only thing that promotes the Slack page. The paired negative control
+		// below keeps that discriminating: assert the ranking REASON, because a content
+		// assertion alone also passes when the wrongly-ranked page merely fails to fetch.
+		const scopeLookup = {
+			action: 'lookup',
+			query: 'which scopes for message search',
+			intent: 'credential-setup',
+			credentialType: 'slackOAuth2Api',
+		};
+
+		const stubAllCandidatePages = () =>
 			stubFetchWithMap({
 				[N8N_DOCS_REGISTRY_URL]: REGISTRY,
 				[SLACK_CREDENTIALS_URL]:
 					'# Slack credentials\n\nsearch:read.public, search:read.private, search:read.im, search:read.mpim. search:read is deprecated by Slack.',
+				[GOOGLE_OAUTH_URL]: '# Google: OAuth2 single service\n\nGoogle OAuth setup.',
 				[CREATE_EDIT_URL]: '# Create and edit credentials\n\nCredential setup guidance.',
 			});
+
+		it('reads the credential type own docs page when no URL was passed', async () => {
+			stubAllCandidatePages();
 			const getDocumentationUrl = vi
 				.fn()
 				.mockResolvedValue('https://docs.n8n.io/integrations/builtin/credentials/slack/');
 			const tool = createN8nDocsTool(contextWithDocsUrl(getDocumentationUrl));
 
-			const result = await executeTool<N8nDocsToolResult>(tool, {
-				action: 'lookup',
-				query: 'which scopes for message search',
-				intent: 'credential-setup',
-				credentialType: 'slackOAuth2Api',
-			});
+			const result = await executeTool<N8nDocsToolResult>(tool, scopeLookup);
 
 			expect(getDocumentationUrl).toHaveBeenCalledWith('slackOAuth2Api');
+			expect(result.matches?.[0].reason).toContain('documentation URL match');
+			expect(result.matches?.[0].url).toBe(PUBLIC_SLACK_CREDENTIALS_URL);
 			expect(result.documents?.[0].content).toContain('search:read.public');
+		});
+
+		// Negative control for the test above: same input, nothing to resolve. Without
+		// the resolution the Slack page is not even the top match, which is what makes
+		// the assertions above evidence that resolution did the work.
+		it('ranks a different page top when there is no URL to resolve', async () => {
+			stubAllCandidatePages();
+			const tool = createN8nDocsTool(contextWithDocsUrl(vi.fn().mockResolvedValue(null)));
+
+			const result = await executeTool<N8nDocsToolResult>(tool, scopeLookup);
+
+			expect(result.matches?.[0].reason).not.toContain('documentation URL match');
+			expect(result.matches?.[0].url).not.toBe(PUBLIC_SLACK_CREDENTIALS_URL);
 		});
 
 		it('leaves an explicitly passed URL alone', async () => {
