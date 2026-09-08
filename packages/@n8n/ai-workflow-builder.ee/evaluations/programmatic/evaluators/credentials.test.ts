@@ -115,23 +115,26 @@ describe('validateCredentials', () => {
 			expect(violations[0].description).toContain('Authorization');
 		});
 
-		it('should flag hardcoded X-API-Key header', () => {
-			const workflow = createWorkflow([
-				createHttpRequestNode({
-					headers: [{ name: 'X-API-Key', value: 'my-secret-api-key-12345' }],
-				}),
-			]);
+		it.each(['X-API-Key', 'Proxy-Authorization'])(
+			'should flag hardcoded %s header',
+			(headerName) => {
+				const workflow = createWorkflow([
+					createHttpRequestNode({
+						headers: [{ name: headerName, value: 'my-secret-api-key-12345' }],
+					}),
+				]);
 
-			const violations = validateCredentials(workflow);
+				const violations = validateCredentials(workflow);
 
-			expect(violations).toContainEqual(
-				expect.objectContaining({
-					name: 'http-request-hardcoded-credentials',
-					type: 'minor',
-				}),
-			);
-			expect(violations[0].description).toContain('X-API-Key');
-		});
+				expect(violations).toContainEqual(
+					expect.objectContaining({
+						name: 'http-request-hardcoded-credentials',
+						type: 'minor',
+					}),
+				);
+				expect(violations[0].description).toContain(headerName);
+			},
+		);
 
 		it('should allow Authorization header with expression', () => {
 			const workflow = createWorkflow([

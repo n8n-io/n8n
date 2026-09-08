@@ -13,7 +13,19 @@
  * unreadable.
  */
 export const SECRET_KEYS =
-	'password|passwd|secret|credentials?|api[_-]?key|authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token';
+	'password|passwd|secret|credentials?|api[_-]?key|authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|client[_-]?secret|private[_-]?key|session[_-]?cookie|token';
+
+// `\b` never fires inside a compound key (`webhook_secret`, `bot_token`)
+// because `_` is a word character, so key patterns also accept an optional
+// snake/kebab/dotted prefix (`slack.token`) before the secret word. The
+// quoted-field matchers can only start at a quote, so scanning the whole key
+// stays linear. The unanchored assignment matcher can start at every `\b` of a
+// long hyphenated or dotted non-secret token, where an unbounded prefix
+// backtracks through every separator at every start position (quadratic) — so
+// that one is length-bounded, and a `_`-joined unquoted key with a longer
+// prefix is the accepted gap.
+const QUOTED_KEY_PREFIX = '(?:[\\w.-]*[._-])?';
+const BOUNDED_KEY_PREFIX = '(?:[\\w.-]{0,128}[._-])?';
 
 export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// PEM private-key blocks (RSA/EC/DSA/OpenSSH/PGP). Whole block, multiline.
@@ -21,14 +33,21 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// JWTs: `eyJ<header>.eyJ<payload>.<signature>` (both leading segments are
 	// base64url of a `{"` object, which makes this highly distinctive).
 	/\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
-	// Authorization-header substrings: `Bearer <token>`, `Basic <token>`, `Token <token>`
-	/\b(?:Bearer|Basic|Token)\s+[A-Za-z0-9._~+/=-]{12,}/gi,
+	// Authorization-header substrings. Right after an `Authorization:` label
+	// (quoted or not) any value is the credential; elsewhere a 12+ char minimum
+	// keeps prose such as "a Bearer token" or "basic usage" readable. Bearer
+	// values are opaque in practice (`id|secret`, `user:key`), so they run to
+	// the next delimiter rather than a token68 character class.
+	/(?<=\bauthorization\s*[:=]\s*["']?)Bearer\s+[^\s"',;]+/gi,
+	/\b(?:Bearer\s+[^\s"',;]{12,}|(?:Basic|Token)\s+[A-Za-z0-9._~+/=-]{12,})/gi,
 	// OpenAI / Anthropic API keys
 	/\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}/g,
 	// Stripe secret/restricted/publishable keys (`sk_live_…`, `rk_test_…`, …)
 	/\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{16,}/g,
 	// Google API keys
 	/\bAIza[0-9A-Za-z_-]{35}\b/g,
+	// Google OAuth access tokens
+	/\bya29\.[0-9A-Za-z_-]{20,}\b/g,
 	// Slack tokens (xoxb, xoxp, xoxa, xoxr, xoxs, xoxo)
 	/\bxox[abprso]-[A-Za-z0-9-]{10,}/g,
 	// GitHub tokens (ghp, ghs, gho, ghr, ghu)
@@ -46,11 +65,13 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	/\blin_(?:api|oauth)_[A-Za-z0-9]{20,}/g,
 	// Credentials embedded in a URL: `scheme://user:password@` — redact the userinfo.
 	/(?<=:\/\/)[^\s:/@]+:[^\s:/@]+(?=@)/g,
-	// JSON-shaped `"key": "value"` — matches the quoted field as a whole.
+	// Quoted `"key": "value"` (JSON) and `'key': 'value'` (JS object) fields,
+	// matched as a whole. The key's quote and the value's quote are captured
+	// separately so a mixed form like `"password": 'secret'` is covered too.
 	// Run before the loose pattern so nested objects like
 	// `{"credentials": {"apiKey": "..."}}` don't have the outer key consume
 	// the inner key on its way to a non-quoted (object) value. The value
-	// body uses the unrolled JSON-string idiom `(?:[^"\\\r\n]|\\.)*`: the
+	// body uses the unrolled JSON-string idiom `(?:(?!\2)[^\\\r\n]|\\.)*`: the
 	// negated class excludes the backslash so a backslash can only be consumed
 	// by the `\\.` escape branch. Keep the two alternatives disjoint (don't
 	// fold `\\` back into the negated class) — that keeps every run of
@@ -62,12 +83,19 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// chained behind upstream object-walking redaction (langsmith trace
 	// payloads, mcp-browser markers).
 	new RegExp(
-		`"(?:${SECRET_KEYS})"\\s*:\\s*"(?!\\[(?:redacted|REDACTED)(?::[^"\\]]*)?\\]")(?:[^"\\\\\\r\\n]|\\\\.)*"`,
+		`(["'])${QUOTED_KEY_PREFIX}(?:${SECRET_KEYS})\\1\\s*:\\s*(["'])(?!\\[(?:redacted|REDACTED)(?::[^\\]]*)?\\]\\2)(?:(?!\\2)[^\\\\\\r\\n]|\\\\.)*\\2`,
 		'gi',
 	),
-	// JS-object-shaped `'key': 'value'`
+	// The same field inside a JSON-encoded string (an upstream response body
+	// serialized into an error `message`) has every quote escaped:
+	// `\"api_key\": \"…\"`. The pattern above can't see it because the key is
+	// followed by `\`, not by its quote. Here the value body has three units that
+	// are disjoint by their first two characters — a plain character, a `\x`
+	// escape other than the closing `\"`, or `\\` together with the token it
+	// escapes — so an inner escaped quote (`\\\"`) is consumed as one unit rather
+	// than ending the match early, and every input still has a single parse.
 	new RegExp(
-		`'(?:${SECRET_KEYS})'\\s*:\\s*'(?!\\[(?:redacted|REDACTED)(?::[^'\\]]*)?\\]')(?:[^'\\\\\\r\\n]|\\\\.)*'`,
+		`\\\\(["'])${QUOTED_KEY_PREFIX}(?:${SECRET_KEYS})\\\\\\1\\s*:\\s*\\\\(["'])(?!\\[(?:redacted|REDACTED)(?::[^\\]]*)?\\]\\\\\\2)(?:(?!\\2)[^\\\\\\r\\n]|\\\\(?!\\2)[^\\\\\\r\\n]|\\\\\\\\(?:\\\\.|[^\\\\\\r\\n]))*\\\\\\2`,
 		'gi',
 	),
 	// Generic `password=...` / `api_key=...` / `secret=...` style assignments.
@@ -81,7 +109,7 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// redaction placeholder (bracketed, typed, or URL-safe bare form) — the same
 	// idempotency convention as the quoted forms.
 	new RegExp(
-		`(?<!\\[(?:redacted|REDACTED):)\\b(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`,
+		`(?<!\\[(?:redacted|REDACTED):)\\b${BOUNDED_KEY_PREFIX}(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`,
 		'gi',
 	),
 ];

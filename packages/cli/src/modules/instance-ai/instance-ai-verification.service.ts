@@ -14,7 +14,7 @@ import { Service } from '@n8n/di';
 import type { ModelConfig, SandboxConfig } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 
 import { Telemetry } from '@/telemetry';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
@@ -38,9 +38,7 @@ const VERIFICATION_MAX_OUTPUT_TOKENS = 16;
  * (e.g. ?key=...), and cap the length.
  */
 function sanitizeVerificationError(error: unknown): string {
-	return scrubSecretsInText(ensureError(error).message)
-		.replace(/(https?:\/\/[^\s?]+)\?\S*/g, '$1')
-		.slice(0, MAX_ERROR_MESSAGE_LENGTH);
+	return sanitizeErrorDetail(ensureError(error).message, MAX_ERROR_MESSAGE_LENGTH);
 }
 
 function modelProviderOf(config: ModelConfig): string | null {

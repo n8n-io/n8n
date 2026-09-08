@@ -49,6 +49,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
+    "fast-check": "catalog:",
     "tsdown": "catalog:typescript",
     "typescript": "catalog:typescript",
     "vite": "catalog:",
