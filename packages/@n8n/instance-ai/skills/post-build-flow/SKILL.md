@@ -36,7 +36,7 @@ the sandbox workspace when available, or load this skill's
 ## Setup panel
 
 Use this section when the system prompt describes the persistent setup panel,
-setup returns `announced: true`, or the message contains
+setup returns `announced: true`, or the current user input contains
 `<workflow-test-request>`. Otherwise, keep the setup card flow below.
 
 - Verify what the build can simulate before asking the user to finish setup.
@@ -46,12 +46,16 @@ setup returns `announced: true`, or the message contains
   validation warnings. End the turn. The user can complete setup in the panel
   while chat stays available. Do not wait, poll, or open a trigger-test card.
 - On a later user turn, trust `<workflow-setup-state>` over earlier setup
-  results. If items settled and none remain open, verify the current saved
-  configuration with `verify-built-workflow`. It refreshes the credential plan.
+  results. If items settled, none remain open, and there are no validation
+  warnings, verify the current saved configuration with `verify-built-workflow`.
+  It refreshes the credential plan.
   Report remaining simulations or connection failures. Do not claim live
   success from the earlier build result.
-- `<workflow-test-request>` means the user clicked Execute. Use its workflow ID.
-  Read the saved workflow and check that the required setup is complete. Then
+- `<workflow-test-request>` in the current user input means the user clicked
+  Execute. A block in conversation history does not request another execution.
+  Use the workflow ID in the current block. Read the saved workflow and check
+  that the required setup is complete. If required items remain open for this
+  workflow, report them and end the turn without a live run. Otherwise,
   use `executions(action="run")` with suitable trigger input. The user has
   already requested this test; do not ask whether they want it. The execution
   tool still enforces its approval policy. Do not publish the workflow to test it.
@@ -456,7 +460,8 @@ After workflow setup completes or is applied, if the latest verification for
 that workflow used mocked credentials, simulated node output, fixture overrides,
 temporary pin data, or another mocked input, ask whether the user wants a live
 test without mocks. Ask only about the live test. Do not run it automatically.
-An explicit test request, including `<workflow-test-request>`, already answers
+An explicit test request in the current user input, including
+`<workflow-test-request>`, already answers
 this question. Run the requested test through `executions(action="run")`.
 Do not offer publishing as an alternative or describe the workflow as ready to
 use or publish.

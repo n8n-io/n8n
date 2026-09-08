@@ -1,4 +1,5 @@
 import {
+	buildWorkflowTestRequestBlock,
 	cleanStoredUserMessage,
 	extractAgentPreviewHandoffContext,
 	extractEditorContextResourceAttachments,
@@ -66,6 +67,12 @@ function agentPreviewContextMarker(
 }
 
 describe('cleanStoredUserMessage', () => {
+	it('hides the Execute block while preserving the user message', () => {
+		const block = buildWorkflowTestRequestBlock('wf-1');
+		expect(block).toContain(JSON.stringify({ workflowId: 'wf-1' }));
+		expect(cleanStoredUserMessage(`${block}\n\nRun a test.`)).toBe('Run a test.');
+	});
+
 	it('returns plain text unchanged', () => {
 		expect(cleanStoredUserMessage('Hello world')).toBe('Hello world');
 	});

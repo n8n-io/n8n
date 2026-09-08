@@ -313,8 +313,10 @@ action so process expectations can check the response.
 Start each panel eval instance with `N8N_INSTANCE_AI_SETUP_PANEL_ENABLED=true`.
 Set this variable on the n8n server process or in the lane's environment file.
 Setting it only on the eval client does not enable the server feature.
-Run the normal PR tier with the flag on and off. Run the `setup-panel-v2` tier
-with the flag on.
+Run the normal PR tier with the flag on and off. For panel cases, load the
+external suite with `--source langtracer --suite <suite-id>`, or stage a local
+case and select it with `--filter <case-slug>`. Run those cases with the flag on.
+The repository does not include a `setup-panel-v2` tier.
 
 ## Environment variables
 

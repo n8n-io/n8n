@@ -1,5 +1,7 @@
 import type { WorkflowTaskService } from '../types';
+import { terminalRemediationFromState } from './remediation';
 import { WorkflowLoopRuntime } from './runtime';
+import { canVerifyPendingSetup, isNeedsSetupRemediation } from './setup-verification-policy';
 import type {
 	VerificationResult,
 	WorkflowBuildOutcome,
@@ -67,5 +69,35 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 			...item.lastBuildOutcome,
 			...update,
 		});
+	}
+
+	/** Clear the superseded setup blocker so verification can enter the repair loop. */
+	async resumeSetupBlockedVerification(workItemId: string, runId: string): Promise<boolean> {
+		const item = await this.storage.getWorkItem(this.threadId, workItemId);
+		if (
+			!item?.lastBuildOutcome ||
+			item.state.runId !== runId ||
+			!canVerifyPendingSetup(item.lastBuildOutcome) ||
+			!isNeedsSetupRemediation(item.state.lastRemediation)
+		) {
+			return false;
+		}
+
+		const state: WorkflowLoopState = {
+			...item.state,
+			phase: 'verifying',
+			status: 'active',
+			lastRemediation: undefined,
+		};
+		if (terminalRemediationFromState(state, runId)) return false;
+
+		await this.storage.saveWorkItem(this.threadId, state, item.attempts, {
+			...item.lastBuildOutcome,
+			verificationReadiness: { status: 'ready' },
+			remediation: isNeedsSetupRemediation(item.lastBuildOutcome.remediation)
+				? undefined
+				: item.lastBuildOutcome.remediation,
+		});
+		return true;
 	}
 }

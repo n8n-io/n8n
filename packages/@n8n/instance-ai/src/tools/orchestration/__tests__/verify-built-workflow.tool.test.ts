@@ -52,6 +52,7 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 		reportVerificationVerdict: vi.fn(),
 		getBuildOutcome: vi.fn().mockResolvedValue(defaultBuildOutcome),
 		getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue(defaultBuildOutcome),
+		resumeSetupBlockedVerification: vi.fn(),
 		getWorkflowLoopState: vi.fn(),
 		updateBuildOutcome: vi.fn(),
 	};
@@ -574,6 +575,7 @@ function makeContext(
 				await Promise.resolve();
 				return outcome;
 			}),
+			resumeSetupBlockedVerification: vi.fn(),
 			getWorkflowLoopState: vi.fn(),
 			updateBuildOutcome,
 		} as unknown as WorkflowTaskService,

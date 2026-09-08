@@ -77,7 +77,7 @@ export async function resolveVerificationTarget(
 	}
 
 	const resolvedInput: ResolvedVerifyInput = { ...input, workItemId: buildOutcome.workItemId };
-	const stateBefore = await context.workflowTaskService.getWorkflowLoopState(
+	let stateBefore = await context.workflowTaskService.getWorkflowLoopState(
 		resolvedInput.workItemId,
 	);
 	const terminalRemediation =
@@ -88,18 +88,6 @@ export async function resolveVerificationTarget(
 		context.setupPanelEnabled === true &&
 		canVerifyPendingSetup(buildOutcome) &&
 		isNeedsSetupRemediation(terminalRemediation);
-	if (terminalRemediation && !canVerifyBeforePanelSetup) {
-		return {
-			kind: 'blocked',
-			result: {
-				success: false,
-				resolvedWorkItemId: resolvedInput.workItemId,
-				error: terminalRemediation.guidance,
-				remediation: terminalRemediation,
-				guidance: terminalRemediation.guidance,
-			},
-		};
-	}
 
 	if (!buildOutcome.workflowId) {
 		return {
@@ -146,6 +134,32 @@ export async function resolveVerificationTarget(
 				guidance: remediation.guidance,
 			},
 		};
+	}
+
+	if (
+		terminalRemediation &&
+		!(
+			canVerifyBeforePanelSetup &&
+			(await context.workflowTaskService.resumeSetupBlockedVerification(
+				resolvedInput.workItemId,
+				context.runId,
+			))
+		)
+	) {
+		return {
+			kind: 'blocked',
+			result: {
+				success: false,
+				resolvedWorkItemId: resolvedInput.workItemId,
+				error: terminalRemediation.guidance,
+				remediation: terminalRemediation,
+				guidance: terminalRemediation.guidance,
+			},
+		};
+	}
+
+	if (canVerifyBeforePanelSetup) {
+		stateBefore = await context.workflowTaskService.getWorkflowLoopState(resolvedInput.workItemId);
 	}
 
 	return {

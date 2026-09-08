@@ -2174,6 +2174,14 @@ export class InstanceAiService {
 				await workflowTasks.updateBuildOutcome(workItemId, update);
 				await sync();
 			},
+			resumeSetupBlockedVerification: async (workItemId, verificationRunId) => {
+				const resumed = await workflowTasks.resumeSetupBlockedVerification(
+					workItemId,
+					verificationRunId,
+				);
+				if (resumed) await sync();
+				return resumed;
+			},
 			getBuildOutcome: async (workItemId) => await workflowTasks.getBuildOutcome(workItemId),
 			getLatestBuildOutcomeForWorkflow: async (workflowId) =>
 				await workflowTasks.getLatestBuildOutcomeForWorkflow(workflowId),

@@ -15,9 +15,11 @@ export function canVerifyPendingSetup(outcome: WorkflowBuildOutcome): boolean {
 	return (
 		outcome.submitted &&
 		!!outcome.workflowId &&
+		outcome.triggerType === 'manual_or_testable' &&
 		outcome.executionIntent !== 'one-off' &&
 		outcome.verificationReadiness?.status === 'needs_setup' &&
 		outcome.nodeSimulationPlan !== undefined &&
+		(outcome.verifyAttempts ?? 0) === 0 &&
 		outcome.verification?.attempted !== true
 	);
 }

@@ -8,6 +8,7 @@
 
 import type {
 	InstanceAiHandoffContext,
+	InstanceAiSendMessageRequest,
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalAgentExecutionResult,
@@ -312,8 +313,8 @@ export class N8nClient {
 			body: {
 				message,
 				...(attachments?.length ? { attachments } : {}),
-				...(handoffContext ? { handoffContext } : {}),
-			},
+				...(handoffContext ? { context: handoffContext } : {}),
+			} satisfies InstanceAiSendMessageRequest,
 		});
 		return this.unwrapRestData<{ runId: string }>(result);
 	}
