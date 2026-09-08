@@ -53,7 +53,7 @@ function escapeMentionText(text: string): string {
 // `label` is a node-generated row label (e.g. `mention 2`, `participant 1`), never a
 // user-supplied value. Callers must never pass an id or any parameter value: these messages
 // are surfaced verbatim and must not echo input back.
-const userTargetMessages = (label: string): UserTargetMessages => ({
+export const userTargetMessages = (label: string): UserTargetMessages => ({
 	required: {
 		message: `No user selected for ${label}`,
 		description: 'Pick the user from the list, or enter a user ID or email address.',

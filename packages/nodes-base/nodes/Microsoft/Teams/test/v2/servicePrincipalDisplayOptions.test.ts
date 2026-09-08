@@ -45,6 +45,25 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		expect(mentions).toBeDefined();
 	});
 
+	// Same reason, plus one more: the loop below filters on `displayOptions.show.resource`, so a
+	// field that lost that key is silently skipped rather than failing. Topic is also the only
+	// place the `updateDisplayOptions` deep-merge is checked - its own `chatType` condition has
+	// to survive alongside the injected resource/operation keys.
+	it('chat:create shows Topic only for a group chat', () => {
+		const topic = actionProps.find(
+			(p) =>
+				p.name === 'topic' &&
+				p.displayOptions?.show?.resource?.includes('chat') &&
+				p.displayOptions?.show?.operation?.includes('create'),
+		);
+
+		expect(topic?.displayOptions?.show).toEqual({
+			resource: ['chat'],
+			operation: ['create'],
+			chatType: ['group'],
+		});
+	});
+
 	describe.each(['chat', 'chatMessage', 'chatMember', 'onlineMeeting'])(
 		'%s - hidden under SP via the slash-prefixed field-level key',
 		(resource) => {
