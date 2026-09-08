@@ -4,6 +4,7 @@ import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../actions/versionDescription';
+import { MicrosoftTeamsV2 } from '../../MicrosoftTeamsV2.node';
 import { getUsers } from '../../methods/listSearch';
 import * as transport from '../../transport';
 import type * as _importType0 from '../../transport';
@@ -78,22 +79,44 @@ describe('Microsoft Teams v2, getUsers additions for mentions', () => {
 });
 
 describe('Microsoft Teams v2, mention picker wiring', () => {
-	const props = versionDescription.properties;
+	const mentionUserRlc = (resource: string, operation = 'create') => {
+		const mentions = versionDescription.properties.find(
+			(property) =>
+				property.name === 'mentions' &&
+				property.displayOptions?.show?.resource?.includes(resource) &&
+				property.displayOptions?.show?.operation?.includes(operation),
+		);
+		const row = (mentions?.options ?? [])[0] as { values: INodeProperties[] };
+		return row?.values?.find((value) => value.name === 'userId');
+	};
 
-	it.each(['channelMessage', 'chatMessage'])(
-		'%s:create exposes a mentions field backed by the user picker',
-		(resource) => {
-			const mentions = props.find(
-				(p: INodeProperties) =>
-					p.name === 'mentions' &&
-					p.displayOptions?.show?.resource?.includes(resource) &&
-					p.displayOptions?.show?.operation?.includes('create'),
-			);
+	it.each([
+		['channelMessage', 'create'],
+		['channelMessage', 'reply'],
+		['chatMessage', 'create'],
+	])('%s %s offers a user picker backed by getUsers', (resource, operation) => {
+		const listMode = mentionUserRlc(resource, operation)?.modes?.find(
+			(mode) => mode.name === 'list',
+		);
 
-			expect(mentions).toBeDefined();
-			const userRlc = mentions?.options?.[0] as { values?: INodeProperties[] } | undefined;
-			const listMode = userRlc?.values?.[0]?.modes?.find((m) => m.name === 'list');
-			expect(listMode?.typeOptions?.searchListMethod).toBe('getUsers');
-		},
-	);
+		expect(listMode?.typeOptions?.searchListMethod).toBe('getUsers');
+		expect(new MicrosoftTeamsV2(versionDescription).methods.listSearch).toHaveProperty('getUsers');
+	});
+
+	it('leaves the By ID mode without an extractValue', () => {
+		const byId = mentionUserRlc('channelMessage')?.modes?.find((mode) => mode.name === 'id');
+
+		expect(byId).toBeDefined();
+		// An extract regex runs before node code and rejects the email address an AI agent emits
+		// when it cannot know which mode is selected.
+		expect(byId?.extractValue).toBeUndefined();
+	});
+
+	it('accepts a non-v4 Entra user ID in the By ID mode', () => {
+		const byId = mentionUserRlc('channelMessage')?.modes?.find((mode) => mode.name === 'id');
+		const { regex } = (byId?.validation?.[0] as unknown as { properties: { regex: string } })
+			.properties;
+
+		expect(new RegExp(regex).test('714c1202-cbac-10ff-c160-53ab5c4df9b8')).toBe(true);
+	});
 });
