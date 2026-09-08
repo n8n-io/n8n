@@ -6,8 +6,8 @@ CURRENT=$(cd ~ && pnpm --version 2>/dev/null | cut -d. -f1)
 [ -z "$WANTED" ] || [ "$WANTED" = "$CURRENT" ] && exit 0
 echo ""
 echo "⚠ This repo now pins pnpm $WANTED (you have ${CURRENT:-none})."
-echo "  pnpm should auto-download it on the next command."
-echo "  If that fails (pnpm 10 can't install v12), reinstall:"
+echo "  pnpm should auto-download it on the next install command."
+echo "  If that fails (some pnpm 10 versions can't install v12), reinstall:"
 echo "    curl -fsSL https://get.pnpm.io/install.sh | sh -"
 echo ""
 exit 0
