@@ -11,7 +11,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { SelectItemProps, SelectValue } from '@n8n/design-system';
+import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionFloor } from '@n8n/api-types';
@@ -72,7 +72,7 @@ const dropdownFloor = computed<EnforcedFloor>(() =>
 	floor.value === 'off' ? 'production' : floor.value,
 );
 
-const floorOptions = computed<Array<SelectItemProps & { value: EnforcedFloor }>>(() =>
+const floorOptions = computed<Array<SelectOptionBase<EnforcedFloor>>>(() =>
 	(['production', 'all'] as EnforcedFloor[]).map((value) => ({
 		value,
 		label: i18n.baseText(
