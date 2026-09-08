@@ -2,6 +2,7 @@ import type {
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
+	ExecutionListQuery,
 } from './execution-view-store';
 
 /**
@@ -11,6 +12,24 @@ import type {
  */
 export class ExecutionQueryService {
 	constructor(private readonly viewStore: ExecutionViewStore) {}
+
+	/**
+	 * Lists executions matching `query`, one page at a time. Fetches one extra
+	 * row over the requested limit to learn `hasMore` without a second count
+	 * query.
+	 */
+	async searchExecutions(query: ExecutionListQuery) {
+		const { limit } = query;
+		const [rows, total] = await Promise.all([
+			this.viewStore.listExecutionViews({ ...query, limit: limit + 1 }),
+			query.includeTotal ? this.viewStore.countExecutionViews(query) : undefined,
+		]);
+		return {
+			items: rows.slice(0, limit),
+			hasMore: rows.length > limit,
+			...(total !== undefined ? { total } : {}),
+		};
+	}
 
 	/** @throws {ExecutionNotFoundError} if absent. */
 	async getExecution(id: string): Promise<ExecutionView> {
