@@ -1155,11 +1155,10 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}
 
 		if (query.kind === 'range') {
-			const { limit, lastId, before } = query.range;
+			const { limit, before } = query.range;
 
 			qb.limit(limit);
 
-			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
 			if (before) {
 				const { timestamp, id } = before;
 				qb.andWhere(
