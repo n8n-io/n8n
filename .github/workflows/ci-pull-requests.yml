@@ -119,6 +119,7 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
+              .github/actions/load-n8n-docker/**
               .devcontainer/codespaces/agent-worker*.mjs
               OWNERS
               scripts/*.test.mjs
