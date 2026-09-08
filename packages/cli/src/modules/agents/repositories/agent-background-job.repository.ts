@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, LessThan, Not, Repository } from '@n8n/typeorm';
 import { OperationalError } from 'n8n-workflow';
 
 import {
@@ -89,24 +89,26 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 
 	/** Settled rows the parent thread has not consumed yet, oldest first. */
 	async findWakeableUnconsumedSettled(parentThreadId: string): Promise<AgentBackgroundJob[]> {
-		return await this.find({
-			where: { parentThreadId, settledAt: Not(IsNull()), notifiedAt: IsNull() },
-			order: { settledAt: 'ASC', createdAt: 'ASC' },
-		});
+		// Use IS NOT NULL directly so SQLite can use the partial index.
+		return await this.createQueryBuilder('job')
+			.where('job.parentThreadId = :parentThreadId', { parentThreadId })
+			.andWhere('job.settledAt IS NOT NULL')
+			.andWhere('job.notifiedAt IS NULL')
+			.orderBy('job.settledAt', 'ASC')
+			.addOrderBy('job.createdAt', 'ASC')
+			.getMany();
 	}
 
 	async markMailConsumed(parentThreadId: string, ids: string[]): Promise<number> {
 		if (ids.length === 0) return 0;
 
-		const result = await this.update(
-			{
-				parentThreadId,
-				id: In(ids),
-				settledAt: Not(IsNull()),
-				notifiedAt: IsNull(),
-			},
-			{ notifiedAt: new Date() },
-		);
+		const result = await this.createQueryBuilder()
+			.update()
+			.set({ notifiedAt: new Date() })
+			.where({ parentThreadId, id: In(ids) })
+			.andWhere('settledAt IS NOT NULL')
+			.andWhere('notifiedAt IS NULL')
+			.execute();
 		return result.affected ?? 0;
 	}
 
