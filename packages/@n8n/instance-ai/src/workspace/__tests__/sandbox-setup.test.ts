@@ -386,7 +386,7 @@ describe('setupSandboxWorkspace', () => {
 		expect(initialized).toBe(false);
 		expect(runInSandbox).not.toHaveBeenCalledWith(
 			expect.anything(),
-			'npm install --ignore-scripts --no-audit --no-fund --prefer-offline',
+			'npm install --ignore-scripts --no-audit --no-fund --prefer-online',
 			'/sandbox',
 		);
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
