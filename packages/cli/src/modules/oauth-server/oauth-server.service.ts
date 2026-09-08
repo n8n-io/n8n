@@ -14,7 +14,11 @@ import type {
 	OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth.js';
 import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-types';
-import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
+import {
+	getMcpClientBrand,
+	getMcpClientType,
+	MCP_CLIENT_TYPE_FILTER_BUCKETS,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
@@ -420,6 +424,14 @@ export class OAuthServerService implements OAuthServerProvider {
 					clientId: client.client_id,
 					resource: targetResource.getResourceUrl(),
 				});
+				if (targetResource.id === INSTANCE_MCP_RESOURCE_ID) {
+					const clientName = client.client_name ?? '';
+					this.eventService.emit('mcp-oauth-authorization-rejected', {
+						clientBrand: getMcpClientBrand(clientName),
+						clientType: getMcpClientType(clientName),
+						resourceProvided: params.resource !== undefined,
+					});
+				}
 				res.status(400).json({
 					error: 'invalid_target',
 					error_description: 'Resource is not available for authorization',

@@ -30,6 +30,18 @@ export const MCP_TELEMETRY = defineTelemetryEvents({
 			state: z.boolean().describe('Resulting state of MCP access, not the prior one'),
 		}),
 	},
+	MCP_CLIENT_ATTEMPTED_AUTHORIZATION_WHILE_ACCESS_DISABLED: {
+		name: 'MCP client attempted authorization while access disabled',
+		description:
+			'An MCP client started OAuth authorization while instance-level MCP access was disabled.',
+		properties: z.object({
+			client_brand: clientBrand,
+			client_type: clientType,
+			resource_provided: z
+				.boolean()
+				.describe('Whether the authorization request included an RFC 8707 resource indicator'),
+		}),
+	},
 	USER_CLICKED_CONNECT_CLIENT: {
 		name: 'User clicked connect MCP client',
 		description:

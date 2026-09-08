@@ -221,6 +221,7 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionCreated(event),
 			'instance-ai-mcp-registry-connection-deleted': (event) =>
 				this.instanceAiMcpRegistryConnectionDeleted(event),
+			'mcp-oauth-authorization-rejected': (event) => this.mcpOauthAuthorizationRejected(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
 		});
@@ -262,6 +263,25 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: userId,
 			server_slug: serverSlug,
 		});
+	}
+
+	// #endregion
+
+	// #region MCP
+
+	private mcpOauthAuthorizationRejected({
+		clientBrand,
+		clientType,
+		resourceProvided,
+	}: RelayEventMap['mcp-oauth-authorization-rejected']) {
+		this.telemetry.track(
+			TELEMETRY_EVENT.MCP.MCP_CLIENT_ATTEMPTED_AUTHORIZATION_WHILE_ACCESS_DISABLED,
+			{
+				client_brand: clientBrand,
+				client_type: clientType,
+				resource_provided: resourceProvided,
+			},
+		);
 	}
 
 	// #endregion

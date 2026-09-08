@@ -248,6 +248,25 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('MCP events', () => {
+		it('should track a disabled MCP OAuth authorization attempt', () => {
+			eventService.emit('mcp-oauth-authorization-rejected', {
+				clientBrand: 'claude',
+				clientType: 'cli',
+				resourceProvided: true,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.MCP.MCP_CLIENT_ATTEMPTED_AUTHORIZATION_WHILE_ACCESS_DISABLED,
+				{
+					client_brand: 'claude',
+					client_type: 'cli',
+					resource_provided: true,
+				},
+			);
+		});
+	});
+
 	describe('project events', () => {
 		it('should track on `team-project-updated` event', () => {
 			const event: RelayEventMap['team-project-updated'] = {

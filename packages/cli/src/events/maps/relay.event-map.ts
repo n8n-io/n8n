@@ -1,4 +1,10 @@
-import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
+import type {
+	AuthenticationMethod,
+	McpClientBrandName,
+	McpClientType,
+	ProjectRelation,
+	RedactionFloor,
+} from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
@@ -1235,6 +1241,12 @@ export type RelayEventMap = {
 		userId: string;
 		clientId: string;
 		clientName?: string;
+	};
+
+	'mcp-oauth-authorization-rejected': {
+		clientBrand: McpClientBrandName | null;
+		clientType: McpClientType | null;
+		resourceProvided: boolean;
 	};
 
 	/**
