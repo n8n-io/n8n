@@ -371,14 +371,15 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		expect(apiRequest.mock.calls[1][3].$filter).toBe("mail eq 'o''brien@contoso.com'");
 	});
 
-	it('treats an ambiguous mail match as not found rather than guessing', async () => {
+	it('reports an ambiguous mail match distinctly', async () => {
 		setRows('shared@contoso.com');
 		apiRequest.mockRejectedValueOnce(notFound());
 		apiRequest.mockResolvedValueOnce({ value: [{ id: 'a' }, { id: 'b' }] });
 
-		await expect(resolveMentions.call(ctx, 0)).rejects.toThrow(
-			'Could not find the user for mention 1',
-		);
+		const error = (await resolveMentions.call(ctx, 3).catch((e) => e)) as NodeOperationError;
+
+		expect(error.message).toBe('More than one user has that email address for mention 1');
+		expect(error.context.itemIndex).toBe(3);
 	});
 
 	it('does not attempt a mail lookup for a GUID', async () => {
@@ -401,6 +402,19 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		apiRequest.mockRejectedValueOnce(forbidden);
 
 		// Graph's own message, stamped rather than replaced.
+		await expect(resolveMentions.call(ctx, 3)).rejects.toBe(forbidden);
+		expect(forbidden.context.itemIndex).toBe(3);
+	});
+
+	it('stamps the item index when the mail lookup is refused', async () => {
+		setRows('jane@example.com');
+		const forbidden = new NodeApiError(node, {
+			code: 'Authorization_RequestDenied',
+			message: 'Insufficient privileges to complete the operation.',
+			statusCode: 403,
+		});
+		apiRequest.mockRejectedValueOnce(notFound()).mockRejectedValueOnce(forbidden);
+
 		await expect(resolveMentions.call(ctx, 3)).rejects.toBe(forbidden);
 		expect(forbidden.context.itemIndex).toBe(3);
 	});
