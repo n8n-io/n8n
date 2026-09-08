@@ -2565,6 +2565,66 @@ describe('workflows tool', () => {
 			expect(message).not.toContain('NOT');
 		});
 
+		it('refuses a publish when verification ran but produced no verdict', async () => {
+			// `handleMissingSimulationPlan` writes an attempted record with no
+			// claim. Reading that as an absent record let a failed verification
+			// publish as freely as a workflow nobody ever verified.
+			const context = createMockContext({
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue({
+							runId: 'run-1',
+							verification: {
+								attempted: true,
+								success: false,
+								failureSignature: 'missing_simulation_plan',
+							},
+						}),
+					},
+				} as never,
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend: vi.fn(),
+				resumeData: undefined,
+			} as never);
+
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: false, denied: true, reason: 'not_verified' });
+			const { verificationDisclosure } = result as { verificationDisclosure: string };
+			expect(verificationDisclosure).toContain('produced no verdict');
+			expect(verificationDisclosure).toContain('missing_simulation_plan');
+		});
+
+		it('does not gate a workflow that was never verified', async () => {
+			// An absent record is unknown, not unverified. Gating it would stop
+			// publishing every workflow built before the claim existed.
+			const context = createMockContext({
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue({ runId: 'run-1' }),
+					},
+				} as never,
+			});
+			(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
+			} as never);
+
+			expect(result).toMatchObject({ success: true });
+		});
+
 		it('should fail open when the build outcome cannot be read', async () => {
 			const context = createMockContext({
 				workflowBuildContext: {

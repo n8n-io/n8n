@@ -62,7 +62,7 @@ describe('report-verification-verdict tool', () => {
 		expect((result as { guidance: string }).guidance).toContain('Error');
 	});
 
-	it('returns done guidance when verdict is verified', async () => {
+	it('forwards a verified verdict and reports the workflow', async () => {
 		const doneAction: WorkflowLoopAction = {
 			type: 'done',
 			workflowId: 'wf-123',
@@ -85,8 +85,57 @@ describe('report-verification-verdict tool', () => {
 					'Inspected persisted workflow wf-123; the saved graph matches the requested outcome.',
 			}),
 		);
-		expect((result as { guidance: string }).guidance).toContain('verified successfully');
 		expect((result as { guidance: string }).guidance).toContain('wf-123');
+	});
+
+	it('does not claim verification for a verified verdict with no persisted claim', async () => {
+		// `getBuildOutcome` returns nothing here, so no run recorded a claim. The
+		// guidance used to answer "verified successfully" anyway, which is a
+		// verified claim with no run evidence behind it.
+		const context = createMockContext({
+			workflowTaskService: createWorkflowTaskService(
+				vi.fn().mockResolvedValue({ type: 'done', workflowId: 'wf-123', summary: 'All good' }),
+			),
+		});
+		const tool = createReportVerificationVerdictTool(context);
+
+		const result = await executeTool(tool, baseInput, {} as never);
+
+		const { guidance } = result as { guidance: string };
+		expect(guidance).not.toContain('verified successfully');
+		expect(guidance).toContain('No automatic verification evidence is recorded');
+	});
+
+	it('keeps the verified wording when a run recorded a verified claim', async () => {
+		const claim = {
+			level: 'verified' as const,
+			plannedNodeCount: 2,
+			reachedNodeCount: 2,
+			nodesNotReached: [],
+			simulatedNodes: [],
+			pinnedNodes: [],
+			unprovenTargets: [],
+			publishReady: true,
+			liveTestRecommended: false,
+		};
+		const workflowTaskService = createWorkflowTaskService(
+			vi.fn().mockResolvedValue({
+				type: 'done',
+				workflowId: 'wf-123',
+				summary: 'All good',
+				claim,
+			}),
+		);
+		workflowTaskService.getBuildOutcome.mockResolvedValue({ verification: { claim } });
+		const context = createMockContext({ workflowTaskService });
+		const tool = createReportVerificationVerdictTool(context);
+
+		const result = await executeTool(tool, baseInput, {} as never);
+
+		expect(workflowTaskService.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({ claim }),
+		);
+		expect((result as { guidance: string }).guidance).toContain('verified successfully');
 	});
 
 	it('returns verify guidance when action is verify', async () => {

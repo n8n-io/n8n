@@ -1473,9 +1473,25 @@ async function resolveUnverifiedPublishDisclosure(
 	if (!workflowTaskService) return undefined;
 	try {
 		const outcome = await workflowTaskService.getLatestBuildOutcomeForWorkflow(workflowId);
-		const claim = outcome?.verification?.claim;
-		if (!claim || claim.publishReady) return undefined;
-		return formatClaimDisclosure(claim);
+		const verification = outcome?.verification;
+		const claim = verification?.claim;
+		if (claim) return claim.publishReady ? undefined : formatClaimDisclosure(claim);
+
+		// A record with no claim means verification ran and could not produce one
+		// — it was refused for want of a simulation plan, or it failed before it
+		// reached a verdict. That is a failed verification, not an unverified
+		// workflow, and it must not pass as an absent record.
+		if (verification?.attempted) {
+			const cause = verification.failureSignature ?? verification.evidence?.errorMessage;
+			return (
+				'Verification ran but produced no verdict, so nothing about this workflow is proven.' +
+				(cause ? ` It reported: ${cause}` : '')
+			);
+		}
+
+		// No record at all: the workflow is unknown, not unverified. Blocking here
+		// would stop publishing every workflow built before this record existed.
+		return undefined;
 	} catch (error) {
 		// Fail open: a storage hiccup must not block a publish the user asked for.
 		context.logger.warn('Failed to resolve the verification claim before publishing', {
