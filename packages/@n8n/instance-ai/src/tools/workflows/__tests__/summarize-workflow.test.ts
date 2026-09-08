@@ -1,5 +1,9 @@
 import type { WorkflowNode } from '../../../types';
-import { summarizeWorkflowStructure } from '../summarize-workflow';
+import {
+	summarizeWorkflowStructure,
+	exceedsFullPayloadLimit,
+	FULL_PAYLOAD_LIMIT_BYTES,
+} from '../summarize-workflow';
 
 const nodes: WorkflowNode[] = [
 	{ name: 'A', type: 'n8n-nodes-base.noOp', typeVersion: 1, position: [0, 0], parameters: {} },
@@ -73,5 +77,14 @@ describe('summarizeWorkflowStructure', () => {
 			expect(summary).toContain('B');
 			expect(summary).not.toContain('__proto__');
 		});
+	});
+});
+
+describe('exceedsFullPayloadLimit', () => {
+	it('measures UTF-8 bytes, not characters', () => {
+		// Each character is 3 bytes, so 40k characters exceed the 100 KB limit.
+		const detail = { text: '\u4e2d'.repeat(40_000) };
+		expect(JSON.stringify(detail).length).toBeLessThan(FULL_PAYLOAD_LIMIT_BYTES);
+		expect(exceedsFullPayloadLimit(detail)).toBe(true);
 	});
 });

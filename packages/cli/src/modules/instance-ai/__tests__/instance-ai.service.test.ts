@@ -242,6 +242,7 @@ import {
 	type InstanceAiTerminalOutcomeServiceOptions,
 } from '../instance-ai-terminal-outcome.service';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness.service';
+import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiSandboxService } from '../sandbox';
 
@@ -435,7 +436,12 @@ type StartRunServiceInternals = {
 			}
 		>;
 		setTimeZone: MockedFunction<(threadId: string, timeZone: string) => void>;
+		activeRunCount: MockedFunction<() => number>;
+		activeRunCountForUser: MockedFunction<(userId: string) => number>;
 	};
+	instanceAiConfig: { maxConcurrentRuns: number; maxConcurrentRunsPerUser: number };
+	logger: { warn: Mock };
+	eventService: { emit: Mock };
 	threadPushRef: Map<string, string>;
 	executeRun: Mock;
 	trackInFlightExecution: Mock;
@@ -453,7 +459,15 @@ function createStartRunService(): StartRunServiceInternals {
 			messageGroupId: 'group-1',
 		})),
 		setTimeZone: vi.fn(),
+		activeRunCount: vi.fn(() => 0),
+		activeRunCountForUser: vi.fn(() => 0),
 	};
+	// The caps are opt-in (production defaults to -1/unlimited), so enable them explicitly
+	// here and default the counts to idle -- tests that aren't about admission stay
+	// unaffected, and the admission tests below drive the counts.
+	service.instanceAiConfig = { maxConcurrentRuns: 5, maxConcurrentRunsPerUser: 3 };
+	service.logger = { warn: vi.fn() };
+	service.eventService = { emit: vi.fn() };
 	service.threadPushRef = new Map();
 	service.executeRun = vi.fn();
 	service.trackInFlightExecution = vi.fn();
@@ -859,14 +873,14 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getSandboxStatus: Mock;
 				isLocalGatewayDisabledForUser: Mock;
 				getPermissions: Mock;
+				isInstanceAiSetupPanelEnabled: Mock;
 			};
 			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
 			aiService: { isProxyEnabled: Mock };
 			adapterService: {
 				createContext: Mock;
 				getNodeDefinitionDirs: Mock;
-				isConfigEvalsEnabled: Mock;
-				isMcpConnectionsEnabled: Mock;
+				resolveExperimentGates: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
@@ -906,14 +920,20 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			})),
 			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
+			isInstanceAiSetupPanelEnabled: vi.fn(() => false),
 		};
 		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };
 		service.adapterService = {
 			createContext: vi.fn(() => ({})),
 			getNodeDefinitionDirs: vi.fn(() => []),
-			isConfigEvalsEnabled: vi.fn().mockResolvedValue(true),
-			isMcpConnectionsEnabled: vi.fn().mockResolvedValue(false),
+			resolveExperimentGates: vi.fn().mockResolvedValue({
+				configEvalsEnabled: true,
+				mcpConnectionsEnabled: false,
+				conversationHistoryEnabled: false,
+				nodeUsageEnabled: false,
+				folderExplorationEnabled: false,
+			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
 		service.modelService = {
@@ -1103,6 +1123,169 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createSandbox).not.toHaveBeenCalled();
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
+
+	it('resolves the folder-exploration gate once and passes it into the context', async () => {
+		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			createExecutionEnvironment: (
+				user: User,
+				threadId: string,
+				runId: string,
+				abortSignal: AbortSignal,
+			) => Promise<{
+				orchestrationContext: {
+					outputRedaction?: unknown;
+					workspace?: unknown;
+					runtimeSkills?: {
+						registry: { skillsHash: string; skills: Array<{ id: string }> };
+						loadSkill: (skillId: string) => Promise<unknown>;
+					};
+					claimSubAgentUsage?: (
+						dedupeId: string,
+						usage: BuilderUsageItem[],
+						status: TraceStatus,
+					) => Promise<void>;
+				};
+			}>;
+			settingsService: {
+				getAdminSettings: Mock;
+				getSandboxStatus: Mock;
+				isLocalGatewayDisabledForUser: Mock;
+				getPermissions: Mock;
+				isInstanceAiSetupPanelEnabled: Mock;
+			};
+			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
+			aiService: { isProxyEnabled: Mock };
+			adapterService: {
+				createContext: Mock;
+				getNodeDefinitionDirs: Mock;
+				resolveExperimentGates: Mock;
+			};
+			instanceWriteAccess: { isReadOnly: Mock };
+			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
+			ensureThreadExists: Mock;
+			agentMemory: unknown;
+			dbIterationLogStorage: unknown;
+			dbSnapshotStorage: unknown;
+			checkpointStore: unknown;
+			instanceAiConfig: Record<string, never>;
+			defaultTimeZone: string;
+			eventBus: unknown;
+			logger: { warn: Mock };
+			telemetry: { track: Mock };
+			oauth2CallbackUrl: string;
+			webhookBaseUrl: string;
+			formBaseUrl: string;
+			runState: { touchActiveRun: Mock; registerPendingConfirmation: Mock };
+			spawnBackgroundTask: Mock;
+			cancelBackgroundTask: Mock;
+			backgroundTasks: { touchTask: Mock };
+			schedulePlannedTasks: Mock;
+			sendCorrectionToTask: Mock;
+			sandboxService: InstanceAiSandboxService;
+			browserSessionService: { findMcpServer: Mock };
+			domainAccessTrackersByThread: Map<string, unknown>;
+			threadGrantRepo: { findKeys: Mock };
+			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
+			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
+			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+		};
+		service.settingsService = {
+			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			getSandboxStatus: vi.fn(() => ({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				workflowBuilderAvailable: true,
+				unavailableReason: null,
+			})),
+			isLocalGatewayDisabledForUser: vi.fn(async () => false),
+			getPermissions: vi.fn(() => ({})),
+			isInstanceAiSetupPanelEnabled: vi.fn(() => false),
+		};
+		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
+		service.aiService = { isProxyEnabled: vi.fn(() => false) };
+		service.adapterService = {
+			createContext: vi.fn(() => ({})),
+			getNodeDefinitionDirs: vi.fn(() => []),
+			resolveExperimentGates: vi.fn().mockResolvedValue({
+				configEvalsEnabled: true,
+				mcpConnectionsEnabled: false,
+				conversationHistoryEnabled: false,
+				nodeUsageEnabled: false,
+				folderExplorationEnabled: true,
+			}),
+		};
+		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
+		service.modelService = {
+			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
+			resolveProxyModel: vi.fn(async () => 'model-1'),
+		};
+		service.ensureThreadExists = vi.fn(async () => {});
+		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.dbIterationLogStorage = {};
+		service.dbSnapshotStorage = {};
+		service.checkpointStore = {};
+		service.instanceAiConfig = {};
+		service.defaultTimeZone = 'UTC';
+		service.eventBus = {};
+		service.logger = { warn: vi.fn() };
+		service.telemetry = { track: vi.fn() };
+		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
+		service.webhookBaseUrl = 'http://localhost/webhook';
+		service.formBaseUrl = 'http://localhost/form';
+		service.runState = {
+			touchActiveRun: vi.fn(),
+			registerPendingConfirmation: vi.fn(),
+		};
+		service.spawnBackgroundTask = vi.fn();
+		service.cancelBackgroundTask = vi.fn();
+		service.backgroundTasks = { touchTask: vi.fn() };
+		service.schedulePlannedTasks = vi.fn();
+		service.sendCorrectionToTask = vi.fn();
+		service.domainAccessTrackersByThread = new Map();
+		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
+		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
+		service.sandboxService = new InstanceAiSandboxService({
+			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
+			logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+			errorReporter: { error: vi.fn() } as unknown as ErrorReporter,
+			runState: {
+				getActiveRunId: vi.fn(() => undefined),
+				hasSuspendedRun: vi.fn(() => false),
+			},
+			backgroundTasks: { getRunningTasks: vi.fn(() => []) },
+			settingsService: {
+				resolveDaytonaConfig: vi.fn(async () => ({ apiKey: 'test-daytona-key' })),
+				resolveN8nSandboxConfig: vi.fn(async () => ({})),
+			},
+			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+		});
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		service.creditService = {
+			claimRunUsage: vi.fn(),
+			ensureQuotaLockApplied: vi.fn(async () => {}),
+		};
+		(createAllTools as Mock).mockReturnValue(new Map());
+		(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+		(createWorkspace as Mock).mockReturnValue({
+			init: vi.fn(async () => {}),
+			destroy: vi.fn(async () => {}),
+		});
+		(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+		await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			new AbortController().signal,
+		);
+
+		expect(service.adapterService.resolveExperimentGates).toHaveBeenCalledTimes(1);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ folderExplorationEnabled: true }),
+		);
+	});
 });
 
 describe('InstanceAiService — shutdown', () => {
@@ -1288,6 +1471,124 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 
 		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
 		expect(service.terminalOutcome.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
+	});
+
+	describe('concurrency admission', () => {
+		it('refuses a new turn when the user is at their limit', () => {
+			const service = createStartRunService();
+			service.runState.activeRunCountForUser.mockReturnValue(3);
+
+			expect(() => service.startRun(fakeUser, 'thread-a', 'hello')).toThrow(
+				InstanceAiRunLimitError,
+			);
+			// Nothing may be started or mutated on the refused path.
+			expect(service.executeRun).not.toHaveBeenCalled();
+			expect(service.runState.startRun).not.toHaveBeenCalled();
+			expect(service.liveness.clearThreadState).not.toHaveBeenCalled();
+		});
+
+		it('refuses a new turn when the instance is at its limit', () => {
+			const service = createStartRunService();
+			service.runState.activeRunCount.mockReturnValue(5);
+
+			expect(() => service.startRun(fakeUser, 'thread-a', 'hello')).toThrow(
+				InstanceAiRunLimitError,
+			);
+			expect(service.executeRun).not.toHaveBeenCalled();
+		});
+
+		// The two reasons drive different editor copy and opposite retry advice, so the
+		// distinction has to survive to the client.
+		it('reports the per-user reason in preference to the instance one', () => {
+			const service = createStartRunService();
+			service.runState.activeRunCountForUser.mockReturnValue(3);
+			service.runState.activeRunCount.mockReturnValue(5);
+
+			try {
+				service.startRun(fakeUser, 'thread-a', 'hello');
+				throw new Error('expected a refusal');
+			} catch (error) {
+				expect(error).toBeInstanceOf(InstanceAiRunLimitError);
+				expect((error as InstanceAiRunLimitError).meta).toEqual({
+					reason: 'user_run_limit',
+					limit: 3,
+				});
+				expect((error as InstanceAiRunLimitError).httpStatusCode).toBe(429);
+			}
+		});
+
+		it('reports the instance reason and limit when only that cap is full', () => {
+			const service = createStartRunService();
+			service.runState.activeRunCount.mockReturnValue(5);
+
+			try {
+				service.startRun(fakeUser, 'thread-a', 'hello');
+				throw new Error('expected a refusal');
+			} catch (error) {
+				expect((error as InstanceAiRunLimitError).meta).toEqual({
+					reason: 'instance_run_limit',
+					limit: 5,
+				});
+			}
+		});
+
+		it('admits a turn while both caps have headroom', () => {
+			const service = createStartRunService();
+			service.runState.activeRunCountForUser.mockReturnValue(2);
+			service.runState.activeRunCount.mockReturnValue(4);
+
+			expect(() => service.startRun(fakeUser, 'thread-a', 'hello')).not.toThrow();
+			expect(service.executeRun).toHaveBeenCalled();
+		});
+
+		// The reason split is the signal for whether queuing is worth building later, so it
+		// has to reach metrics as well as the client.
+		it('emits a refusal event carrying the reason', () => {
+			const service = createStartRunService();
+			service.runState.activeRunCount.mockReturnValue(5);
+
+			expect(() => service.startRun(fakeUser, 'thread-a', 'hello')).toThrow();
+
+			expect(service.eventService.emit).toHaveBeenCalledWith('instance-ai-run-refused', {
+				reason: 'instance_run_limit',
+			});
+		});
+
+		it('does not emit a refusal event when the turn is admitted', () => {
+			const service = createStartRunService();
+
+			service.startRun(fakeUser, 'thread-a', 'hello');
+
+			expect(service.eventService.emit).not.toHaveBeenCalledWith(
+				'instance-ai-run-refused',
+				expect.anything(),
+			);
+		});
+
+		it('treats -1 as unlimited', () => {
+			const service = createStartRunService();
+			service.instanceAiConfig = { maxConcurrentRuns: -1, maxConcurrentRunsPerUser: -1 };
+			service.runState.activeRunCountForUser.mockReturnValue(99);
+			service.runState.activeRunCount.mockReturnValue(99);
+
+			expect(() => service.startRun(fakeUser, 'thread-a', 'hello')).not.toThrow();
+			expect(service.executeRun).toHaveBeenCalled();
+		});
+
+		it('can disable one cap while the other stays enforced', () => {
+			const service = createStartRunService();
+			service.instanceAiConfig = { maxConcurrentRuns: 5, maxConcurrentRunsPerUser: -1 };
+			service.runState.activeRunCountForUser.mockReturnValue(99);
+			service.runState.activeRunCount.mockReturnValue(5);
+
+			try {
+				service.startRun(fakeUser, 'thread-a', 'hello');
+				throw new Error('expected a refusal');
+			} catch (error) {
+				// The per-user cap is off, so the instance cap must be the one that fires.
+				expect((error as InstanceAiRunLimitError).meta.reason).toBe('instance_run_limit');
+			}
+		});
 	});
 
 	it('clears the active-timeout guard when the user starts a new run', () => {

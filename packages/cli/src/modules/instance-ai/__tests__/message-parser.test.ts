@@ -308,6 +308,49 @@ describe('parseStoredMessages', () => {
 			expect(assistant?.agentTree?.tasks?.tasks).toHaveLength(1);
 		});
 
+		it('should keep a setup-items-only snapshot instead of discarding it as empty', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'Build something', createdAt: makeDate() },
+				// The turn's only durable trace is the setup-items event: no text, no
+				// tool calls. The tree must still count as renderable or the panel's
+				// event feed loses the items on reload.
+				{ id: 'msg-a', role: 'assistant', content: [], createdAt: makeDate(1) },
+			];
+			const setupOnlyTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+				setupItemsByWorkflowId: {
+					['wf-1']: [
+						{
+							id: 'wf-1:credential:slackApi',
+							kind: 'credential',
+							credentialType: 'slackApi',
+						},
+					],
+				},
+			};
+			const snapshots = [
+				{
+					tree: setupOnlyTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			expect(assistant?.agentTree?.setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
+		});
+
 		it('should collapse an empty leading-orphan snapshot into the turn instead of rendering an empty card', () => {
 			// Real-world (thread 36a79497 / fal.ai build): a completed run whose snapshot was
 			// rebuilt from an already-evicted event bus, persisting an empty `agent-001` tree

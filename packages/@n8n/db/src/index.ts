@@ -13,6 +13,7 @@ export {
 export { generateNanoId } from '@n8n/utils/generate-nano-id';
 export { chunkIds } from './utils/chunk-ids';
 export { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from './utils/dialect-time';
+export { escapeLike, LIKE_ESCAPE_CLAUSE } from './utils/escape-like';
 export { generateHostInstanceId } from './utils/generators';
 export { isStringArray } from './utils/is-string-array';
 export { isUniqueConstraintError } from './utils/is-unique-constraint-error';

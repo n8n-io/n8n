@@ -10,7 +10,7 @@ import { AgentValidationService } from './agent-validation.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import {
-	configuredCapabilityKinds,
+	capabilityCountTelemetryProperties,
 	countAgentCapabilities,
 	totalAgentCapabilities,
 	type AgentCapabilityCounts,
@@ -107,15 +107,7 @@ export class AgentSetupCompletionService {
 					agent_id: agent.id,
 					project_id: projectId,
 					...(user ? { user_id: user.id } : {}),
-					capability_kinds: configuredCapabilityKinds(counts),
-					capability_count: totalAgentCapabilities(counts),
-					tool_count: counts.tool,
-					skill_count: counts.skill,
-					sub_agent_count: counts.subAgent,
-					mcp_server_count: counts.mcpServer,
-					vector_store_count: counts.vectorStore,
-					task_count: counts.task,
-					trigger_count: counts.channel,
+					...capabilityCountTelemetryProperties(counts),
 					status:
 						agent.activeVersionId && agent.versionId === agent.activeVersionId
 							? 'production'

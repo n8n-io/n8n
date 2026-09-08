@@ -387,6 +387,33 @@ describe('createBuildOrchestrator', () => {
 		expect(verdicts?.[0].reason).toContain('no agent output');
 	});
 
+	// The row is short-circuited in `case-pipeline`, but expectations are counted
+	// separately and only a verdict's OWN `incomplete` excludes it — the row's flag never
+	// reaches them. A priorRuns case is usually expectation-only, so without this bail-out
+	// the single graded unit still lands in the builder's baseline as a red.
+	it('does not judge expectations when prior-run staging never landed', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const building = vi
+			.fn()
+			.mockResolvedValue(okBuild({ priorRunFailed: 'sEeDeDwF1234567a: fetch failed' }));
+		const deps = makeDeps([makeLane(1, building)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ processExpectations: ['reads the failed execution'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts).toHaveLength(1);
+		expect(verdicts?.[0].expectation).toBe('reads the failed execution');
+		// `incomplete` is the ONLY thing that keeps a verdict out of the pass rate.
+		expect(verdicts?.[0].incomplete).toBe(true);
+		expect(verdicts?.[0].reason).toContain('premise is missing');
+	});
+
 	it('serves prebuilt workflows by fetching them, never invoking the builder', async () => {
 		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
 		const lane = makeLane(1, tracedBuild);
