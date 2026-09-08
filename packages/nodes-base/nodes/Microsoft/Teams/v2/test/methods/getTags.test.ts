@@ -85,6 +85,20 @@ describe('Microsoft Teams v2, getTags', () => {
 		expect(results).toEqual([{ name: expected, value: 'tag-1', description: 'Product engineers' }]);
 	});
 
+	// Without the fallback `name` is `undefined` and the sort comparator throws a bare TypeError
+	// instead of listing the tags. Same guard as `getUsers`.
+	it('falls back to the tag ID when Graph sends no display name', async () => {
+		selectTeam('team-1');
+		apiRequestAllItems.mockResolvedValue([
+			{ id: 'tag-1', memberCount: 4 },
+			{ id: 'tag-2', memberCount: 2 },
+		]);
+
+		const { results } = await getTags.call(ctx);
+
+		expect(results.map((tag) => tag.name)).toEqual(['tag-1 (4 members)', 'tag-2 (2 members)']);
+	});
+
 	it('asks for a team before it requests anything', async () => {
 		selectTeam('');
 
@@ -92,16 +106,36 @@ describe('Microsoft Teams v2, getTags', () => {
 		expect(apiRequestAllItems).not.toHaveBeenCalled();
 	});
 
-	// A filter of "member" would match every tag through its own "(N members)" suffix, so the
-	// fixtures filter on a substring only one display name carries.
-	it('filters the tags client-side', async () => {
+	// Both directions of the filter contract over one fixture. `gineer` rather than `engineering`
+	// because the match is a substring, not a prefix. The `member` and `4` rows are the
+	// regression guard: the count is appended after the filter runs, and decorating first made
+	// every tag match any substring of "(N members)", which reads as a broken search box. The
+	// IDs carry no digits, so a count filter cannot match one through `item.value` instead.
+	it.each([
+		['gineer', ['Engineering (4 members)']],
+		['member', []],
+		['4', []],
+	])('filters the tags client-side on %s', async (filter, expected) => {
 		selectTeam('team-1');
 		apiRequestAllItems.mockResolvedValue([
-			{ id: 'tag-1', displayName: 'Engineering', memberCount: 4 },
-			{ id: 'tag-2', displayName: 'Support', memberCount: 9 },
+			{ id: 'tag-eng', displayName: 'Engineering', memberCount: 4 },
+			{ id: 'tag-sup', displayName: 'Support', memberCount: 9 },
 		]);
 
-		const { results } = await getTags.call(ctx, 'gineer');
+		const { results } = await getTags.call(ctx, filter);
+
+		expect(results.map((tag) => tag.name)).toEqual(expected);
+	});
+
+	// The other branch of the same filter, so the guard above cannot quietly rest on a dead one.
+	it('also filters the tags on their ID', async () => {
+		selectTeam('team-1');
+		apiRequestAllItems.mockResolvedValue([
+			{ id: 'tag-eng', displayName: 'Engineering', memberCount: 4 },
+			{ id: 'tag-sup', displayName: 'Support', memberCount: 9 },
+		]);
+
+		const { results } = await getTags.call(ctx, 'tag-eng');
 
 		expect(results.map((tag) => tag.name)).toEqual(['Engineering (4 members)']);
 	});
