@@ -169,7 +169,9 @@ const executeAction = z.object({
 				)
 				.optional()
 				.describe(
-					'Resolved credential references by credential type, e.g. { slackApi: { id, name } }',
+					'Resolved credential references by credential type, e.g. { slackApi: { id, name } }. ' +
+						'Ask the user which credentials to use if there are multiple credentials available - ' +
+						'do not pick a credential on your own',
 				),
 		})
 		.describe('Node config — same shape as a workflow-sdk node config'),
