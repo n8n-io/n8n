@@ -373,6 +373,12 @@ export interface SerializerContext extends PluginContext {
 	 * across edits). Groups without a match fall back to the deterministic ID.
 	 */
 	readonly existingGroupIdsByName?: ReadonlyMap<string, string>;
+
+	/**
+	 * When true, emit groups in the first-class "group node" (D) shape instead of a
+	 * `nodeGroups` array. See `ToJSONOptions.groupsAsNodes`.
+	 */
+	readonly groupsAsNodes?: boolean;
 }
 
 /**

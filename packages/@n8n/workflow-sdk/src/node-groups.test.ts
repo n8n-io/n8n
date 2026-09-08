@@ -1,4 +1,8 @@
-import { GROUP_DESCRIPTION_MAX_LENGTH, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	GROUP_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+} from 'n8n-workflow';
 
 import { generateWorkflowCode } from './codegen';
 import { parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
@@ -356,6 +360,83 @@ describe('SDK node groups', () => {
 				.toJSON({ existingGroupIdsByName: new Map([['G', 'other-id']]) });
 
 			expect(json.nodeGroups![0].id).toBe('source-id');
+		});
+	});
+
+	describe('groupsAsNodes (D shape)', () => {
+		it('emits a group node with the members carrying parentId and no nodeGroups', () => {
+			const json = buildGroupedWorkflow({ description: 'Pulls the CRM contacts' }).toJSON({
+				groupsAsNodes: true,
+			});
+
+			expect(json.nodeGroups).toBeUndefined();
+
+			const groupNode = json.nodes.find((n) => n.type === GROUP_NODE_TYPE);
+			expect(groupNode).toBeDefined();
+			expect(groupNode!.name).toBe('Ingestion');
+			expect(groupNode!.id).toBe(generateDeterministicGroupId(WF_ID, 'Ingestion'));
+			expect(groupNode!.parameters?.objective).toBe('Pulls the CRM contacts');
+
+			const members = json.nodes.filter((n) => n.parentId === groupNode!.id);
+			expect(members.map((n) => n.name).sort()).toEqual(['Fetch data', 'Transform']);
+		});
+
+		it('re-points the boundary edge onto the group node and keeps the interior edge', () => {
+			const json = buildGroupedWorkflow().toJSON({ groupsAsNodes: true });
+
+			// Start feeds the group (its entry member "Fetch data"), not the member.
+			expect(json.connections.Start.main[0]).toEqual([
+				{ node: 'Ingestion', type: 'main', index: 0 },
+			]);
+			// The interior edge Fetch data -> Transform is untouched.
+			expect(json.connections['Fetch data'].main[0]).toEqual([
+				{ node: 'Transform', type: 'main', index: 0 },
+			]);
+			// The group node emits nothing further (no downstream node here).
+			expect(json.connections.Ingestion).toBeUndefined();
+		});
+
+		it('leaves nodeGroups behaviour unchanged when the option is off', () => {
+			const json = buildGroupedWorkflow().toJSON();
+
+			expect(json.nodeGroups).toHaveLength(1);
+			expect(json.nodes.some((n) => n.type === GROUP_NODE_TYPE)).toBe(false);
+		});
+
+		it('round-trips D-shaped JSON back to an equivalent legacy graph', () => {
+			const dShape = buildGroupedWorkflow({ description: 'Pulls the CRM contacts' }).toJSON({
+				groupsAsNodes: true,
+			});
+
+			// Import the D shape and re-serialize in the legacy shape.
+			const legacy = workflow.fromJSON(dShape).toJSON();
+
+			expect(legacy.nodes.some((n) => n.type === GROUP_NODE_TYPE)).toBe(false);
+			expect(legacy.nodeGroups).toHaveLength(1);
+			expect(legacy.nodeGroups![0].name).toBe('Ingestion');
+			expect(legacy.nodeGroups![0].description).toBe('Pulls the CRM contacts');
+
+			const idByName = new Map(legacy.nodes.map((n) => [n.name, n.id]));
+			expect(legacy.nodeGroups![0].nodeIds.sort()).toEqual(
+				[idByName.get('Fetch data'), idByName.get('Transform')].sort(),
+			);
+
+			// The boundary edge lands on the interior entry node again.
+			expect(legacy.connections.Start.main[0]).toEqual([
+				{ node: 'Fetch data', type: 'main', index: 0 },
+			]);
+		});
+
+		it('round-trips D shape -> D shape identically (idempotent boundary)', () => {
+			const first = buildGroupedWorkflow().toJSON({ groupsAsNodes: true });
+			const second = workflow.fromJSON(first).toJSON({ groupsAsNodes: true });
+
+			const groupOf = (j: typeof first) => j.nodes.find((n) => n.type === GROUP_NODE_TYPE)!;
+			expect(groupOf(second).id).toBe(groupOf(first).id);
+			expect(groupOf(second).name).toBe(groupOf(first).name);
+			expect(second.connections.Start.main[0]).toEqual([
+				{ node: 'Ingestion', type: 'main', index: 0 },
+			]);
 		});
 	});
 

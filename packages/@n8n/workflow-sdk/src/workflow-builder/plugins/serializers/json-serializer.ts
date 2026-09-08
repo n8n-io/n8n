@@ -7,6 +7,7 @@
 import { deepCopy, normalizeGroupDescription, normalizeNodeShape } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { toGroupNodeShape } from './group-node-shape';
 import { foldLegacyErrorConnections } from '../../../types/base';
 import type {
 	WorkflowJSON,
@@ -291,27 +292,45 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 			json.meta = ctx.meta;
 		}
 
-		// Members already carry the emitted nodes' IDs; filter out any that aren't present
-		// in the output (defensive — should never happen). Group ID precedence: own ID
-		// (carried through fromJSON for a lossless round-trip), then a name match (preserves
-		// UI-assigned IDs across edits), else a deterministic ID from the name.
 		if (ctx.nodeGroups && ctx.nodeGroups.length > 0) {
 			const emittedIds = new Set(nodes.map((node) => node.id));
+			// Only members that made it into the output can be grouped (defensive).
+			const groups = ctx.nodeGroups.map((group) => ({
+				...group,
+				memberIds: group.memberIds.filter((memberId) => emittedIds.has(memberId)),
+			}));
 
-			json.nodeGroups = ctx.nodeGroups.map((group) => {
-				const description = normalizeGroupDescription(group.description);
-				const id =
-					group.id ??
-					ctx.existingGroupIdsByName?.get(group.name) ??
-					generateDeterministicGroupId(ctx.workflowId, group.name);
+			if (ctx.groupsAsNodes) {
+				// D shape: group nodes in `nodes`, `parentId` on members, boundary
+				// connections re-pointed onto the group's ports. No `nodeGroups`.
+				const shaped = toGroupNodeShape(
+					json.nodes,
+					json.connections,
+					groups,
+					ctx.workflowId,
+					ctx.existingGroupIdsByName,
+				);
+				json.nodes = shaped.nodes;
+				json.connections = shaped.connections;
+			} else {
+				// Legacy shape. Group ID precedence: own ID (carried through fromJSON for a
+				// lossless round-trip), then a name match (preserves UI-assigned IDs across
+				// edits), else a deterministic ID from the name.
+				json.nodeGroups = groups.map((group) => {
+					const description = normalizeGroupDescription(group.description);
+					const id =
+						group.id ??
+						ctx.existingGroupIdsByName?.get(group.name) ??
+						generateDeterministicGroupId(ctx.workflowId, group.name);
 
-				return {
-					id,
-					name: group.name,
-					nodeIds: group.memberIds.filter((memberId) => emittedIds.has(memberId)),
-					...(description ? { description } : {}),
-				};
-			});
+					return {
+						id,
+						name: group.name,
+						nodeIds: group.memberIds,
+						...(description ? { description } : {}),
+					};
+				});
+			}
 		}
 
 		return json;

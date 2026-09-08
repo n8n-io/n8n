@@ -19,6 +19,7 @@ import {
 	type CredentialReference,
 	type NewCredentialValue,
 } from '../types/base';
+import { fromGroupNodeShape, hasGroupNodes } from './plugins/serializers/group-node-shape';
 
 /**
  * Result of parsing a workflow JSON
@@ -40,6 +41,15 @@ export interface ParsedWorkflow {
  * This is a pure function that doesn't depend on WorkflowBuilderImpl.
  */
 export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
+	// D shape (first-class group nodes) is folded back to the legacy `nodeGroups`
+	// shape first, so the rest of the import rebuilds the same builder graph a
+	// `.group()` call produces. See `.agents/specs/group-as-first-class-node.md`.
+	if (hasGroupNodes(json.nodes)) {
+		const folded = fromGroupNodeShape(json.nodes, json.connections);
+		json = { ...json, nodes: folded.nodes, connections: folded.connections };
+		if (folded.nodeGroups.length > 0) json.nodeGroups = folded.nodeGroups;
+	}
+
 	const nodes = new Map<string, GraphNode>();
 	// Map from connection name (how nodes reference each other) to map key
 	const nameToKey = new Map<string, string>();

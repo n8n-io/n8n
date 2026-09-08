@@ -310,6 +310,12 @@ export interface NodeJSON {
 	type: string;
 	typeVersion: number;
 	position: [number, number];
+	/**
+	 * Id of the group node that holds this node in its interior (D shape). Absent
+	 * when the node sits on the canvas itself. Only present when the workflow is
+	 * serialized with `groupsAsNodes`. See `.agents/specs/group-as-first-class-node.md`.
+	 */
+	parentId?: string;
 	parameters?: IDataObject;
 	credentials?: Record<string, NodeJSONCredential>;
 	webhookId?: string;
@@ -1047,6 +1053,14 @@ export interface ToJSONOptions {
 	 * isn't skewed; groups without a match fall back to a deterministic ID.
 	 */
 	existingGroupIdsByName?: Map<string, string>;
+	/**
+	 * Emit groups in the first-class "group node" (D) shape instead of `nodeGroups`:
+	 * each group becomes a `n8n-nodes-base.group` node, its members carry `parentId`,
+	 * and every boundary-crossing connection re-points onto the group's own ports.
+	 * Defaults to false, so the legacy `nodeGroups` path stays the default until the
+	 * feature flag is on. See `.agents/specs/group-as-first-class-node.md`.
+	 */
+	groupsAsNodes?: boolean;
 }
 
 /**
