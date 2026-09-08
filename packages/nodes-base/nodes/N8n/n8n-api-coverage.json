@@ -7,19 +7,19 @@
 		"POST /git-connections": {
 			"status": "gap"
 		},
-		"GET /git-connections/{id}": {
+		"GET /git-connections/{gitConnectionId}": {
 			"status": "gap"
 		},
-		"PUT /git-connections/{id}": {
+		"PUT /git-connections/{gitConnectionId}": {
 			"status": "gap"
 		},
-		"DELETE /git-connections/{id}": {
+		"DELETE /git-connections/{gitConnectionId}": {
 			"status": "gap"
 		},
-		"POST /git-connections/{id}/clone": {
+		"POST /git-connections/{gitConnectionId}/clone": {
 			"status": "gap"
 		},
-		"POST /git-connections/{id}/disconnect": {
+		"POST /git-connections/{gitConnectionId}/disconnect": {
 			"status": "gap"
 		},
 		"POST /audit": {
@@ -250,10 +250,10 @@
 		"POST /source-control/push": {
 			"status": "gap"
 		},
-		"POST /git-connections/{id}/push": {
+		"POST /git-connections/{gitConnectionId}/push": {
 			"status": "gap"
 		},
-		"POST /git-connections/{id}/pull": {
+		"POST /git-connections/{gitConnectionId}/pull": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

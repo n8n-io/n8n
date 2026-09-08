@@ -114,7 +114,7 @@ export class GitConnectionsPublicController {
 		};
 	}
 
-	@Get('/:id')
+	@Get('/:gitConnectionId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
@@ -125,12 +125,12 @@ export class GitConnectionsPublicController {
 	async getGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('gitConnectionId') gitConnectionId: string,
 	): Promise<GitConnectionPublicDto> {
-		return await (await this.gitConnectionsService()).findOne(id);
+		return await (await this.gitConnectionsService()).findOne(gitConnectionId);
 	}
 
-	@Put('/:id')
+	@Put('/:gitConnectionId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:update')
 	@GlobalScope('gitConnection:update')
@@ -142,13 +142,13 @@ export class GitConnectionsPublicController {
 	async updateGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('gitConnectionId') gitConnectionId: string,
 		@Body input: UpdateGitConnectionDto,
 	): Promise<GitConnectionPublicDto> {
-		return await (await this.gitConnectionsService()).update(id, input);
+		return await (await this.gitConnectionsService()).update(gitConnectionId, input);
 	}
 
-	@Post('/:id/clone')
+	@Post('/:gitConnectionId/clone')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:clone')
 	@GlobalScope('gitConnection:clone')
@@ -160,13 +160,13 @@ export class GitConnectionsPublicController {
 	async cloneGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('gitConnectionId') gitConnectionId: string,
 		@Body input: CloneGitConnectionDto,
 	): Promise<GitConnectionPublicDto> {
-		return await (await this.gitConnectionsService()).clone(id, input.branchName);
+		return await (await this.gitConnectionsService()).clone(gitConnectionId, input.branchName);
 	}
 
-	@Post('/:id/disconnect')
+	@Post('/:gitConnectionId/disconnect')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:clone')
 	@GlobalScope('gitConnection:clone')
@@ -180,12 +180,12 @@ export class GitConnectionsPublicController {
 	async disconnectGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('gitConnectionId') gitConnectionId: string,
 	): Promise<GitConnectionPublicDto> {
-		return await (await this.gitConnectionsService()).disconnect(id);
+		return await (await this.gitConnectionsService()).disconnect(gitConnectionId);
 	}
 
-	@Delete('/:id')
+	@Delete('/:gitConnectionId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:delete')
 	@GlobalScope('gitConnection:delete')
@@ -197,12 +197,12 @@ export class GitConnectionsPublicController {
 	async deleteGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('gitConnectionId') gitConnectionId: string,
 	): Promise<void> {
-		await (await this.gitConnectionsService()).delete(id);
+		await (await this.gitConnectionsService()).delete(gitConnectionId);
 	}
 
-	@Post('/:id/push')
+	@Post('/:gitConnectionId/push')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:push')
 	@GlobalScope('gitConnection:push')
@@ -218,13 +218,13 @@ export class GitConnectionsPublicController {
 	async pushGitConnectionProjects(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('gitConnectionId') gitConnectionId: string,
 		@Body input: PushGitConnectionDto,
 	): Promise<GitConnectionPushResultDto> {
-		return await (await this.gitConnectionsService()).push(id, req.user, input);
+		return await (await this.gitConnectionsService()).push(gitConnectionId, req.user, input);
 	}
 
-	@Get('/:id/projects')
+	@Get('/:gitConnectionId/projects')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
@@ -235,12 +235,12 @@ export class GitConnectionsPublicController {
 	async getGitConnectionProjects(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('gitConnectionId') gitConnectionId: string,
 	): Promise<GitConnectionProjectListPublicDto> {
-		return await (await this.gitConnectionsService()).listProjects(id);
+		return await (await this.gitConnectionsService()).listProjects(gitConnectionId);
 	}
 
-	@Post('/:id/projects/:projectId')
+	@Post('/:gitConnectionId/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:manageProjects')
 	@GlobalScope('gitConnection:manageProjects')
@@ -257,17 +257,17 @@ export class GitConnectionsPublicController {
 	async addProjectToGitConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('gitConnectionId') gitConnectionId: string,
 		@Param('projectId') projectId: string,
 	): Promise<GitConnectionProjectPublicDto> {
 		return await (await this.gitConnectionsService()).addProject({
 			user: req.user,
-			connectionId: id,
+			connectionId: gitConnectionId,
 			projectId,
 		});
 	}
 
-	@Delete('/:id/projects/:projectId')
+	@Delete('/:gitConnectionId/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:manageProjects')
 	@GlobalScope('gitConnection:manageProjects')
@@ -280,17 +280,17 @@ export class GitConnectionsPublicController {
 	async removeProjectFromGitConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('gitConnectionId') gitConnectionId: string,
 		@Param('projectId') projectId: string,
 	): Promise<void> {
 		await (await this.gitConnectionsService()).removeProject({
 			user: req.user,
-			connectionId: id,
+			connectionId: gitConnectionId,
 			projectId,
 		});
 	}
 
-	@Post('/:id/pull')
+	@Post('/:gitConnectionId/pull')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:pull')
 	@GlobalScope('gitConnection:pull')
@@ -308,8 +308,8 @@ export class GitConnectionsPublicController {
 	async pullGitConnectionProjects(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('gitConnectionId') gitConnectionId: string,
 	): Promise<GitConnectionPullResultDto> {
-		return await (await this.gitConnectionsService()).pull(id, req.user);
+		return await (await this.gitConnectionsService()).pull(gitConnectionId, req.user);
 	}
 }

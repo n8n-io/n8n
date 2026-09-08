@@ -10,7 +10,7 @@ parameters:
   - schema:
       type: string
     required: true
-    name: id
+    name: gitConnectionId
     in: path
   - schema:
       type: string
