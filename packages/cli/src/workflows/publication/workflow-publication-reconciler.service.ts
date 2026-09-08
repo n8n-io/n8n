@@ -229,6 +229,17 @@ export class WorkflowPublicationReconciler {
 	private async removeGhostTriggers(workflowIds: WorkflowId[]): Promise<number> {
 		let surplusRepairs = 0;
 		for (const workflowId of workflowIds) {
+			// Never queue on a held lock: a holder that does not release (an
+			// abandoned record's orphaned work) would wedge this pass and every
+			// later tick behind it. Like the stepdown teardown, skip and let the
+			// next tick retry once the lock is free.
+			if (this.lifecycleLock.isLocked(workflowId)) {
+				this.logger.debug('Skipped ghost trigger teardown: workflow publication lock is held', {
+					workflowId,
+				});
+				continue;
+			}
+
 			try {
 				await this.lifecycleLock.runExclusive(workflowId, async () => {
 					const workflow = await this.workflowRepository.findOneBy({ id: workflowId });

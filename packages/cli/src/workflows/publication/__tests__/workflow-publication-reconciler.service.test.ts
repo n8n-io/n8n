@@ -73,6 +73,7 @@ beforeEach(() => {
 	workflowRepository.getActiveIds.mockResolvedValue([]);
 	workflowRepository.findOneBy.mockResolvedValue(null);
 	lifecycleLock.runExclusive.mockImplementation(async (_workflowId, fn) => await fn());
+	lifecycleLock.isLocked.mockReturnValue(false);
 	triggerDeactivator.sweepGhostTriggers.mockResolvedValue(0);
 	service = new WorkflowPublicationReconciler(
 		logger,
@@ -390,6 +391,24 @@ describe('WorkflowPublicationReconciler', () => {
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-reconciliation',
 				expect.objectContaining({ surplusCount: 0 }),
+			);
+		});
+
+		it('skips a ghost whose workflow lock is held rather than queueing on it', async () => {
+			// A record (or an abandoned one) holds the lock: queueing would wedge this
+			// pass, and every later tick, behind it. The next tick retries.
+			setGhost('wf-ghost');
+			lifecycleLock.isLocked.mockReturnValue(true);
+
+			await service.reconcile('reconcile');
+
+			expect(lifecycleLock.runExclusive).not.toHaveBeenCalled();
+			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
+			// The pass carried on into the later detections.
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'success', surplusCount: 0 }),
 			);
 		});
 
