@@ -143,6 +143,26 @@ describe('N8nClient packages', () => {
 			]);
 		});
 
+		it('stops at the requested number of results and asks only for what is missing', async () => {
+			fetchMock
+				.mockResolvedValueOnce(
+					jsonResponse(200, { data: [{ id: 'p1' }, { id: 'p2' }], nextCursor: 'page-2' }),
+				)
+				.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: 'p3' }, { id: 'p4' }] }));
+
+			// A server may answer with more rows than asked for, so the extra is dropped.
+			await expect(client.listPromotionProviders(3)).resolves.toEqual([
+				{ id: 'p1' },
+				{ id: 'p2' },
+				{ id: 'p3' },
+			]);
+
+			expect(requestLines(fetchMock)).toEqual([
+				'GET https://n8n.example.com/api/v1/promotions/providers?limit=3',
+				'GET https://n8n.example.com/api/v1/promotions/providers?cursor=page-2&limit=1',
+			]);
+		});
+
 		it('narrows the connection list by scope and provider', async () => {
 			fetchMock.mockResolvedValue(jsonResponse(200, { data: [], nextCursor: null }));
 
