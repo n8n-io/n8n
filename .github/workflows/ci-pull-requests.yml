@@ -24,6 +24,7 @@ jobs:
       unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
       e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
       dev_server_smoke: ${{ fromJSON(steps.ci-filter.outputs.results)['dev-server-smoke'] == true }}
+      frontend_declarations: ${{ fromJSON(steps.ci-filter.outputs.results)['frontend-declarations'] == true }}
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
@@ -116,6 +117,12 @@ jobs:
               packages/testing/playwright/playwright-projects.ts
               packages/testing/playwright/package.json
               .github/workflows/test-dev-server-smoke-reusable.yml
+            frontend-declarations:
+              packages/frontend/@n8n/design-system/**
+              packages/frontend/@n8n/chat/**
+              packages/frontend/@n8n/frontend-vite-config/**
+              turbo.json
+              .github/workflows/ci-pull-requests.yml
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
@@ -337,6 +344,38 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
+  # `@n8n/design-system` and `@n8n/chat` emit their declarations only when `RELEASE` is set,
+  # because no consumer in this repo reads them and the emit costs ~15s of build time. No other
+  # CI job builds them that way, so a break in the declaration emit would first show up in a
+  # release. This job builds both in release mode and asserts the `.d.ts` files are there.
+  frontend-declarations:
+    name: Frontend declarations
+    needs: install-and-build
+    if: needs.install-and-build.outputs.frontend_declarations == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    env:
+      # Both vite configs read this as a flag. It is also part of the turbo cache key for these
+      # two build tasks, so this misses the declaration-less `dist` that `install-and-build` cached.
+      RELEASE: declaration-check
+    steps:
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+      - name: Setup and build in release mode
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/design-system --filter=@n8n/chat
+
+      - name: Verify the published frontend packages carry declarations
+        run: |
+          for pkg in packages/frontend/@n8n/design-system packages/frontend/@n8n/chat; do
+            if [ -z "$(find "$pkg/dist" -name '*.d.ts' -print -quit 2>/dev/null)" ]; then
+              echo "::error::$pkg/dist has no .d.ts — the RELEASE-gated declaration emit did not run"
+              exit 1
+            fi
+          done
+
   db-tests:
     name: DB Tests
     needs: install-and-build
@@ -411,6 +450,7 @@ jobs:
         check-packaging,
         e2e,
         dev-server-smoke,
+        frontend-declarations,
         db-tests,
         security-checks,
         workflow-scripts,
