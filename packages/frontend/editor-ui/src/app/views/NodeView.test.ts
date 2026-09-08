@@ -27,8 +27,6 @@ const routeMock = vi.hoisted(() => ({
 	name: undefined as string | undefined,
 	params: {},
 	query: {} as Record<string, string>,
-	// The NDV (opened by the evaluation-trigger route action) reads `route.meta`.
-	meta: {} as Record<string, unknown>,
 }));
 
 vi.mock('vue-router', () => ({
@@ -38,6 +36,15 @@ vi.mock('vue-router', () => ({
 		template: '<a><slot /></a>',
 	},
 	onBeforeRouteLeave: vi.fn(),
+}));
+
+// The evaluation-trigger route action opens the NDV. NodeView lazy-loads it, so
+// whether it mounts before the test's cleanup depends on module cache warmth;
+// when it does, it fails on jsdom (no <dialog>.show(), no route.meta).
+vi.mock('@/features/ndv/shared/views/NodeDetailsView.vue', () => ({
+	// `__esModule` makes defineAsyncComponent unwrap `default` instead of using the mock proxy.
+	__esModule: true,
+	default: { name: 'NodeDetailsView', render: () => null },
 }));
 
 describe('NodeView', () => {
@@ -55,7 +62,6 @@ describe('NodeView', () => {
 		routeMock.name = undefined;
 		routeMock.params = {};
 		routeMock.query = {};
-		routeMock.meta = {};
 		ensureNodesAreVisible = vi.fn();
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('w0');
