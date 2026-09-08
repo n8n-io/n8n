@@ -2,18 +2,18 @@
 import { Toggle as TogglePrimitive, ToggleGroupItem, type AcceptableValue } from 'reka-ui';
 import { computed, ref, useAttrs, useCssModule } from 'vue';
 
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 import type { IconSize } from '../../types';
 import type { ButtonProps } from '../../types/button';
 import { cn } from '../../utils/cn';
 import N8nIcon from '../N8nIcon';
+import type { IconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 
 export interface ToggleProps extends Pick<ButtonProps, 'variant' | 'size' | 'disabled' | 'class'> {
 	modelValue?: boolean | null;
 	value?: AcceptableValue;
 	label: string;
+	showTooltip?: boolean;
 	icon?: IconName;
 	name?: string;
 	required?: boolean;
@@ -23,6 +23,7 @@ const props = withDefaults(defineProps<ToggleProps>(), {
 	variant: 'solid',
 	size: 'medium',
 	disabled: false,
+	showTooltip: true,
 });
 
 const emit = defineEmits<{
@@ -73,7 +74,7 @@ const pressed = computed({
 </script>
 
 <template>
-	<N8nTooltip :content="label" :disabled="disabled">
+	<N8nTooltip v-if="showTooltip" :content="label" :disabled="disabled">
 		<ToggleGroupItem
 			v-if="value !== undefined"
 			v-bind="attrs"
@@ -106,6 +107,38 @@ const pressed = computed({
 			</span>
 		</TogglePrimitive>
 	</N8nTooltip>
+
+	<ToggleGroupItem
+		v-else-if="value !== undefined"
+		v-bind="attrs"
+		:value="value"
+		:disabled="disabled"
+		:class="classes"
+		:aria-label="label"
+		data-icon-only="true"
+	>
+		<span :class="$style['toggle-inner']">
+			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
+			<slot />
+		</span>
+	</ToggleGroupItem>
+
+	<TogglePrimitive
+		v-else
+		v-bind="attrs"
+		v-model="pressed"
+		:disabled="disabled"
+		:name="name"
+		:required="required"
+		:class="classes"
+		:aria-label="label"
+		data-icon-only="true"
+	>
+		<span :class="$style['toggle-inner']">
+			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
+			<slot />
+		</span>
+	</TogglePrimitive>
 </template>
 
 <style lang="scss" module>
@@ -162,7 +195,7 @@ const pressed = computed({
 	}
 
 	&:active,
-	&[data-state='on'] {
+	&[aria-pressed='true'] {
 		background-color: var(--button--color--background-active);
 		box-shadow:
 			inset var(--button--border--shadow--active),

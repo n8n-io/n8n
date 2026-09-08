@@ -6,7 +6,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import SettingsMCPAgentsView from '@/features/ai/mcpAccess/SettingsMCPAgentsView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import {
@@ -95,6 +95,7 @@ describe('SettingsMCPAgentsView', () => {
 			mcp: {
 				mcpAccessEnabled: true,
 				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
 			},
 		};
 		settingsStore.isModuleActive.mockReturnValue(true);
@@ -111,6 +112,7 @@ describe('SettingsMCPAgentsView', () => {
 			mcp: {
 				mcpAccessEnabled: false,
 				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
 			},
 		};
 

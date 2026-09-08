@@ -1,6 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { PlanValidationError } from '../../../planned-tasks/planned-task-service';
-import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, PlannedTaskService, TaskStorage } from '../../../types';
 import { createPlanTool } from '../plan.tool';
 
@@ -25,13 +24,8 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		eventBus: {
 			publish: vi.fn(),
 			subscribe: vi.fn(),
-			getEventsAfter: vi.fn(),
-			getNextEventId: vi.fn(),
-			getEventsForRun: vi.fn().mockReturnValue([]),
-			getEventsForRuns: vi.fn().mockReturnValue([]),
 		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
 			get: vi.fn(),

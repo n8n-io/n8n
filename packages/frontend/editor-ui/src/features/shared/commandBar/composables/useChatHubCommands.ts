@@ -14,7 +14,7 @@ import {
 	CHAT_VIEW,
 	providerDisplayNames,
 } from '@/features/ai/chatHub/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {

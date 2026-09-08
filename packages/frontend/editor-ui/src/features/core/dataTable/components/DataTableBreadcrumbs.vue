@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { useI18n } from '@n8n/i18n';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useRouter } from 'vue-router';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';

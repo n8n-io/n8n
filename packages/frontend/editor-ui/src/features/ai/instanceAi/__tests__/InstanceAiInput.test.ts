@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { setActivePinia, createPinia } from 'pinia';
 import { defineComponent, h, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
+import type { ContextChip } from '../instanceAi.contextChip';
 import {
 	INSTANCE_AI_EMPTY_STATE_SUGGESTIONS as suggestions,
 	isPromptSuggestion,
@@ -29,7 +31,7 @@ type InputTestProps = {
 	suggestionCatalogVersion?: string;
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
-	contextChip?: { label: string; testId?: string } | null;
+	contextChip?: ContextChip | null;
 };
 
 const defaultProps = (): InputTestProps => ({
@@ -49,6 +51,10 @@ function inputProps(overrides: Partial<InputTestProps> = {}): InputTestProps {
 		...defaultProps(),
 		...overrides,
 	};
+}
+
+function emittedArgument(args: unknown, index: number): unknown {
+	return Array.isArray(args) ? args[index] : undefined;
 }
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -194,12 +200,34 @@ const CustomRawPromptSuggestionsComponent = defineComponent({
 	},
 });
 
+const InputMenuStub = defineComponent({
+	emits: ['attach-files'],
+	setup(_props, { emit }) {
+		return () =>
+			h(
+				'button',
+				{
+					type: 'button',
+					'data-test-id': 'instance-ai-input-menu-attach',
+					onClick: () => emit('attach-files'),
+				},
+				'Attach file',
+			);
+	},
+});
+
 const renderComponent = createComponentRenderer(InstanceAiInput, {
 	props: defaultProps(),
+	global: {
+		stubs: {
+			InstanceAiInputMenu: true,
+		},
+	},
 });
 
 describe('InstanceAiInput', () => {
 	beforeEach(() => {
+		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		telemetryTrack.mockReset();
 	});
@@ -244,8 +272,43 @@ describe('InstanceAiInput', () => {
 
 		expect(getByRole('textbox')).toHaveAttribute(
 			'placeholder',
-			'Tell me what to build or ask me a question',
+			'Tell me what to build or ask a question – add context with +',
 		);
+	});
+
+	it('uses the new agent placeholder for a pending agent artifact', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				contextChip: {
+					type: 'agent-artifact',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					isNewAgent: true,
+					label: 'New Agent',
+				},
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute(
+			'placeholder',
+			'Describe the agent you want to build',
+		);
+	});
+
+	it('uses the default placeholder for a saved agent artifact', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				contextChip: {
+					type: 'agent-artifact',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					isNewAgent: false,
+					label: 'Support Agent',
+				},
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute('placeholder', 'Ask anything...');
 	});
 
 	it('disables the composer when the workflow builder is unavailable', () => {
@@ -535,7 +598,7 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('submits typed text and attachments from the send button', async () => {
-		const { container, emitted, getByRole, getByTestId } = renderComponent({
+		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
@@ -566,9 +629,59 @@ describe('InstanceAiInput', () => {
 						fileName: 'note.txt',
 					}),
 				],
+				expect.any(Function),
 			],
 		]);
 		expect(textbox).toHaveValue('');
+		expect(queryByTestId('chat-file')).not.toBeInTheDocument();
+
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		expect(restoreDraft).toBeTypeOf('function');
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		expect(restoreDraft()).toBe(true);
+		await waitFor(() => {
+			expect(textbox).toHaveValue('Please send this with context');
+			expect(getByTestId('chat-file')).toBeInTheDocument();
+		});
+	});
+
+	it('opens the hidden file picker from the input menu', async () => {
+		const fileInputClick = vi.spyOn(HTMLInputElement.prototype, 'click');
+		const { getByTestId, queryByTestId } = renderComponent({
+			global: { stubs: { InstanceAiInputMenu: InputMenuStub } },
+		});
+
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('instance-ai-input-menu-attach'));
+
+		expect(fileInputClick).toHaveBeenCalledOnce();
+		fileInputClick.mockRestore();
+	});
+
+	it('does not restore a submitted draft over newer composer content', async () => {
+		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: { isStreaming: false },
+		});
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Original message');
+		const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+		Object.defineProperty(fileInput, 'files', {
+			value: [new File(['old context'], 'old-context.txt', { type: 'text/plain' })],
+			configurable: true,
+		});
+		await fireEvent.change(fileInput);
+		await waitFor(() => expect(getByTestId('chat-file')).toBeInTheDocument());
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		expect(restoreDraft).toBeTypeOf('function');
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		await userEvent.type(textbox, 'New message');
+
+		expect(restoreDraft()).toBe(false);
+		expect(textbox).toHaveValue('New message');
+		expect(queryByTestId('chat-file')).not.toBeInTheDocument();
 	});
 
 	it('opens quick examples and inserts an example without submitting', async () => {
@@ -718,6 +831,9 @@ describe('InstanceAiInput', () => {
 		const { emitted, getByRole, getByTestId } = renderComponent({
 			props: {
 				contextChip: {
+					type: 'agent-preview-session',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
 					label: 'SEO Auditor session',
 				},
 			},
@@ -741,6 +857,9 @@ describe('InstanceAiInput', () => {
 			props: {
 				isPlanEditMode: true,
 				contextChip: {
+					type: 'agent-preview-session',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
 					label: 'SEO Auditor session',
 				},
 			},

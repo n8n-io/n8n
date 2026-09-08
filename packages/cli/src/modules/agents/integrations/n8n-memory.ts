@@ -1,6 +1,7 @@
 import {
 	activeLifecycleState,
 	droppedLifecycleState,
+	estimateObservationTokens,
 	normalizeObservationLogReflection,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,
@@ -67,8 +68,6 @@ import { AgentObservationLockRepository } from '../repositories/agent-observatio
 import { AgentObservationRepository } from '../repositories/agent-observation.repository';
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
-
-const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
 
 @Service()
 export class N8nMemory {
@@ -325,17 +324,19 @@ export class N8nMemoryImpl
 	): Promise<ObservationLogEntry[]> {
 		if (rows.length === 0) return [];
 
-		const entities: AgentObservationEntity[] = rows.map((row) =>
-			this.observationRepository.create({
-				agentId: this.agentId,
-				observationScopeId: row.observationScopeId,
-				marker: row.marker,
-				text: row.text,
-				parentId: row.parentId ?? null,
-				tokenCount: row.tokenCount ?? estimateObservationTokens(row.text),
-				...activeLifecycleState(),
-				createdAt: row.createdAt,
-			}),
+		const entities: AgentObservationEntity[] = await Promise.all(
+			rows.map(async (row) =>
+				this.observationRepository.create({
+					agentId: this.agentId,
+					observationScopeId: row.observationScopeId,
+					marker: row.marker,
+					text: row.text,
+					parentId: row.parentId ?? null,
+					tokenCount: row.tokenCount ?? (await estimateObservationTokens(row.text)),
+					...activeLifecycleState(),
+					createdAt: row.createdAt,
+				}),
+			),
 		);
 
 		const saved = await this.observationRepository.save(entities);
@@ -425,17 +426,19 @@ export class N8nMemoryImpl
 			);
 			const inserted = normalized.merge.length
 				? await repo.save(
-						normalized.merge.map((entry) =>
-							repo.create({
-								agentId: this.agentId,
-								observationScopeId: scope.observationScopeId,
-								marker: entry.marker,
-								text: entry.text,
-								parentId: entry.parentId ?? null,
-								tokenCount: entry.tokenCount ?? estimateObservationTokens(entry.text),
-								...activeLifecycleState(),
-								createdAt: entry.createdAt,
-							}),
+						await Promise.all(
+							normalized.merge.map(async (entry) =>
+								repo.create({
+									agentId: this.agentId,
+									observationScopeId: scope.observationScopeId,
+									marker: entry.marker,
+									text: entry.text,
+									parentId: entry.parentId ?? null,
+									tokenCount: entry.tokenCount ?? (await estimateObservationTokens(entry.text)),
+									...activeLifecycleState(),
+									createdAt: entry.createdAt,
+								}),
+							),
 						),
 					)
 				: [];

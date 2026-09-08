@@ -9,7 +9,10 @@ const NO_AGENT_OUTPUT_REASON =
 	'not judged — the build produced no agent output, so there was nothing to grade';
 
 export interface SelectAuthorExpectationsArgs {
-	testCase: Pick<WorkflowTestCase, 'processExpectations' | 'outcomeExpectations' | 'conversation'>;
+	testCase: Pick<
+		WorkflowTestCase,
+		'processExpectations' | 'outcomeExpectations' | 'conversation' | 'seed'
+	>;
 	/** Captured build transcript, if any. Empty/absent for prebuilt/MCP builds. */
 	transcript: TranscriptTurn[] | undefined;
 	buildSucceeded: boolean;
@@ -64,7 +67,12 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 
 	const transcript: TranscriptTurn[] = hasAgentOutput
 		? args.transcript!
-		: [{ userMessage: conversationUserTurnsAsText(testCase.conversation), steps: [] }];
+		: [
+				{
+					userMessage: conversationUserTurnsAsText(testCase.conversation, testCase.seed),
+					steps: [],
+				},
+			];
 
 	// A failed build that produced nothing at all: record every expectation as
 	// ungraded rather than handing the judge an empty conversation to describe.

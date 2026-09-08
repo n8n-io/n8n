@@ -30,6 +30,8 @@ import { getDynamicCredentialMiddlewares } from './utils';
 
 const dynamicCredentialsConfig = Container.get(DynamicCredentialsConfig);
 
+const NO_CONNECTION_TO_DISCONNECT = 'No connection to disconnect';
+
 @RestController('/credentials')
 export class DynamicCredentialsController {
 	constructor(
@@ -310,10 +312,10 @@ export class DynamicCredentialsController {
 		res: Response,
 		@Param('credentialId') credentialId: string,
 	): Promise<void> {
-		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
+		const credential = await this.credentialsFinderService.findById(credentialId);
 
 		if (!credential) {
-			throw new NotFoundError('Credential not found');
+			throw new NotFoundError(NO_CONNECTION_TO_DISCONNECT);
 		}
 
 		const affected = await this.credentialConnectionStatusService.deleteMyConnection(
@@ -322,7 +324,7 @@ export class DynamicCredentialsController {
 		);
 
 		if (affected === 0) {
-			throw new NotFoundError('No connection to disconnect');
+			throw new NotFoundError(NO_CONNECTION_TO_DISCONNECT);
 		}
 
 		this.eventService.emit('credentials-user-disconnected', {

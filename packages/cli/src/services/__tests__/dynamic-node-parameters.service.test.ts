@@ -1,11 +1,17 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { SharedWorkflowRepository } from '@n8n/db';
+import { CredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
+import type { CredentialsEntity } from '@n8n/db';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { RoutingNode } from 'n8n-core';
 import {
+	type ILoadOptionsFunctions,
 	type INodeParameters,
 	type INodeType,
+	type IExecutionContext,
 	type IWorkflowExecuteAdditionalData,
 	type ResourceMapperFields,
 	Expression,
@@ -35,12 +41,14 @@ describe('DynamicNodeParametersService', () => {
 	const workflowLoaderService = mockInstance(WorkflowLoaderService);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const credentialsFinderService = mockInstance(CredentialsFinderService);
+	const credentialsRepository = mockInstance(CredentialsRepository);
 	const service = new DynamicNodeParametersService(
 		logger,
 		nodeTypes,
 		workflowLoaderService,
 		sharedWorkflowRepository,
 		credentialsFinderService,
+		credentialsRepository,
 	);
 
 	beforeEach(() => {
@@ -215,6 +223,110 @@ describe('DynamicNodeParametersService', () => {
 		});
 	});
 
+	// The method-name branch runs a node's own loadOptions/listSearch/etc. method,
+	// which may issue outbound requests to a credential-supplied host. Those
+	// requests must carry the execution's egress policy so that, when SSRF
+	// protection is enabled, they honour the same restrictions as node execution.
+	// Many such methods use the legacy `this.helpers.request` helper (e.g. nodes
+	// that build the request and set auth by hand), which routes through
+	// `OutboundHttp.requests()` — asserting the no-argument call proves they get
+	// the default safe client, so the instance's egress policy applies.
+	describe('egress policy for method-name requests', () => {
+		const requestLegacy = vi.fn();
+		const requests = vi.fn();
+		const outboundHttp = mock<OutboundHttp>({ requests });
+
+		beforeEach(() => {
+			requestLegacy.mockResolvedValue([]);
+			requests.mockReturnValue(mock<HttpRequestClient>({ requestLegacy }));
+			Container.set(OutboundHttp, outboundHttp);
+		});
+
+		/** A node method that issues one legacy `this.helpers.request` to an internal host. */
+		const requestingMethod = () =>
+			vi.fn(async function (this: ILoadOptionsFunctions) {
+				await this.helpers.request({
+					uri: 'http://internal-service.local/api',
+					json: true,
+				});
+				return [];
+			});
+
+		type Scenario = {
+			name: string;
+			register: (method: ReturnType<typeof requestingMethod>) => void;
+			invoke: (additionalData: IWorkflowExecuteAdditionalData) => Promise<unknown>;
+		};
+
+		const nodeTypeAndVersion = { name: 'TestNode', version: 1 };
+
+		const registerMethod = (
+			type: 'loadOptions' | 'listSearch' | 'resourceMapping' | 'actionHandler',
+			method: ReturnType<typeof requestingMethod>,
+		) => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { [type]: { run: method } },
+				}),
+			);
+		};
+
+		const scenarios: Scenario[] = [
+			{
+				name: 'loadOptions (getOptionsViaMethodName)',
+				register: (method) => registerMethod('loadOptions', method),
+				invoke: async (additionalData) =>
+					await service.getOptionsViaMethodName('run', '', additionalData, nodeTypeAndVersion, {}),
+			},
+			{
+				name: 'listSearch (getResourceLocatorResults)',
+				register: (method) => registerMethod('listSearch', method),
+				invoke: async (additionalData) =>
+					await service.getResourceLocatorResults(
+						'run',
+						'',
+						additionalData,
+						nodeTypeAndVersion,
+						{},
+					),
+			},
+			{
+				name: 'resourceMapping (getResourceMappingFields)',
+				register: (method) => registerMethod('resourceMapping', method),
+				invoke: async (additionalData) =>
+					await service.getResourceMappingFields('run', '', additionalData, nodeTypeAndVersion, {}),
+			},
+			{
+				name: 'actionHandler (getActionResult)',
+				register: (method) => registerMethod('actionHandler', method),
+				invoke: async (additionalData) =>
+					await service.getActionResult(
+						'run',
+						'',
+						additionalData,
+						nodeTypeAndVersion,
+						{},
+						undefined,
+					),
+			},
+		];
+
+		it.each(scenarios)(
+			'routes requests made from the $name method through the default safe client',
+			async ({ register, invoke }) => {
+				const method = requestingMethod();
+				register(method);
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
+				await invoke(additionalData);
+
+				expect(method).toHaveBeenCalled();
+				expect(requests).toHaveBeenCalledWith();
+			},
+		);
+	});
+
 	describe('getOptionsViaLoadOptions', () => {
 		it('should throw BadRequestError when the node type has no requestDefaults.baseURL', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
@@ -307,6 +419,55 @@ describe('DynamicNodeParametersService', () => {
 		});
 	});
 
+	describe('declarative loadOptions routing', () => {
+		it("should hand the entry point's execution context to the routing node", async () => {
+			// `ExecuteContext` reads the execution context off `runExecutionData`, not off
+			// `additionalData`, so end-user credentials on declarative nodes only resolve if
+			// the design-time context is threaded through there.
+			const runNode = vi.fn().mockResolvedValue([[{ json: { name: 'opt', value: 'v' } }]]);
+			(RoutingNode as unknown as Mock).mockImplementation(function () {
+				return { runNode };
+			});
+			vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'TestNode',
+					displayName: 'TestNode',
+					group: [],
+					version: 1,
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: [],
+					requestDefaults: { baseURL: 'https://api.example.com' },
+				},
+			} as unknown as INodeType);
+
+			const executionContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1,
+				source: 'internal',
+				credentials: 'sealed-credential-context',
+			};
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			additionalData.executionContext = executionContext;
+
+			await service.getOptionsViaLoadOptions(
+				{ routing: { request: { url: '/v1/models' } } },
+				additionalData,
+				{ name: 'TestNode', version: 1 },
+				{} as INodeParameters,
+			);
+
+			const [executeFunctions] = (RoutingNode as unknown as Mock).mock.calls[0] as [
+				ILoadOptionsFunctions,
+			];
+			expect(executeFunctions.getExecutionContext()).toBe(executionContext);
+		});
+	});
+
 	describe('getMethod', () => {
 		it('should throw BadRequestError when the requested method does not exist', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue({
@@ -389,6 +550,8 @@ describe('DynamicNodeParametersService', () => {
 		beforeEach(() => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
+			// No end-user credentials unless a test says otherwise.
+			credentialsRepository.getManyByIds.mockResolvedValue([]);
 		});
 
 		afterEach(() => {
@@ -430,6 +593,59 @@ describe('DynamicNodeParametersService', () => {
 			await expect(
 				service.refineResourceIds(user, {
 					credentials: { openAi: { id: 'cred-1', name: 'Foreign OpenAI' } },
+				}),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should not ask for connect scope when no credential is end-user', async () => {
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
+				new Set(['cred-1']),
+			);
+			credentialsRepository.getManyByIds.mockResolvedValue([
+				mock<CredentialsEntity>({ id: 'cred-1', isResolvable: false }),
+			]);
+
+			await service.refineResourceIds(user, {
+				credentials: { openAi: { id: 'cred-1', name: 'My OpenAI' } },
+			});
+
+			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).toHaveBeenCalledTimes(1);
+		});
+
+		it('should allow an end-user credential the user may connect', async () => {
+			// Loading the list resolves the credential against this user's own connection.
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
+				new Set(['cred-1']),
+			);
+			credentialsRepository.getManyByIds.mockResolvedValue([
+				mock<CredentialsEntity>({ id: 'cred-1', isResolvable: true }),
+			]);
+
+			await expect(
+				service.refineResourceIds(user, {
+					credentials: { openAi: { id: 'cred-1', name: 'My OpenAI' } },
+				}),
+			).resolves.not.toThrow();
+
+			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).toHaveBeenLastCalledWith(
+				['cred-1'],
+				user,
+				['credential:connect'],
+			);
+		});
+
+		it('should throw for an end-user credential the user may read but not connect', async () => {
+			// A project viewer holds `credential:read` without `credential:connect`.
+			credentialsFinderService.findCredentialIdsWithScopeForUser
+				.mockResolvedValueOnce(new Set(['cred-1']))
+				.mockResolvedValueOnce(new Set());
+			credentialsRepository.getManyByIds.mockResolvedValue([
+				mock<CredentialsEntity>({ id: 'cred-1', isResolvable: true }),
+			]);
+
+			await expect(
+				service.refineResourceIds(user, {
+					credentials: { openAi: { id: 'cred-1', name: 'Shared end-user credential' } },
 				}),
 			).rejects.toThrow(ForbiddenError);
 		});

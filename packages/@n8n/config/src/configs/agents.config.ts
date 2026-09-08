@@ -71,13 +71,17 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
 
-	/** Enable Daytona sandbox for agent knowledge base operations. */
+	/**
+	 * Enable durable background jobs for agents: spawning sub-agents that outlive
+	 * the parent's turn, and detached tracking of waiting workflow tools. Must be
+	 * set to the same value on mains and workers — workers settle workflow jobs.
+	 */
+	@Env('N8N_AGENTS_BACKGROUND_TASKS_ENABLED')
+	backgroundTasksEnabled: boolean = false;
+
+	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
-
-	/** Sandbox provider for agent knowledge base. Only `daytona` is supported. */
-	@Env('N8N_AGENTS_AI_SANDBOX_PROVIDER')
-	sandboxProvider: string = '';
 
 	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
 	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
@@ -98,11 +102,12 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
 
-	/** Daytona API URL (e.g. "https://app.daytona.io/api"). */
-	@Env('DAYTONA_API_URL')
-	daytonaApiUrl: string = '';
-
-	/** Daytona API key for authentication. */
-	@Env('DAYTONA_API_KEY')
-	daytonaApiKey: string = '';
+	/**
+	 * How often (seconds) each main checks that the channels of its published
+	 * agents are actually running, and retries the ones that are not. Set to 0 to
+	 * stop checking, which leaves a channel that failed to start down until the
+	 * agent is republished or the instance restarts.
+	 */
+	@Env('N8N_AGENTS_CHANNEL_RECONCILE_INTERVAL')
+	channelReconcileIntervalSeconds: number = 60;
 }

@@ -8,6 +8,7 @@ import {
 	type ScopedMemoryTaskEvent,
 	type ToolContext,
 } from '@n8n/agents';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	ROOT_CONTEXT,
@@ -685,6 +686,11 @@ function getOrCreateProxyClient(proxyConfig: ServiceProxyConfig): Client {
 	return client;
 }
 
+export interface BrowserExtensionTraceContext {
+	connectionState: 'connected' | 'disconnected';
+	version?: string;
+}
+
 interface CreateInstanceAiTraceContextOptions {
 	projectName?: string;
 	threadId: string;
@@ -698,23 +704,9 @@ interface CreateInstanceAiTraceContextOptions {
 	metadata?: Record<string, unknown>;
 	n8nVersion?: string;
 	workflowSdkVersion?: string;
+	browserExtension?: BrowserExtensionTraceContext;
 	/** When set, traces are routed through the AI service proxy instead of directly to LangSmith. */
 	proxyConfig?: ServiceProxyConfig;
-}
-
-interface CreateDetachedSubAgentTraceContextOptions extends CreateInstanceAiTraceContextOptions {
-	agentId: string;
-	role: string;
-	kind: string;
-	taskId?: string;
-	plannedTaskId?: string;
-	workItemId?: string;
-	spawnedByTraceId?: string;
-	spawnedBySpanId?: string;
-	spawnedByRunId?: string;
-	spawnedByAgentId?: string;
-	spawnedByAgentRole?: string;
-	spawnedByToolCallId?: string;
 }
 
 interface CreateInternalOperationTraceContextOptions
@@ -778,10 +770,6 @@ function isInternalOperationTracingEnabled(): boolean {
 		process.env.N8N_INSTANCE_AI_TRACE_INTERNAL === 'true' ||
 		process.env.N8N_INSTANCE_AI_TRACE_INCLUDE_INTERNAL === 'true'
 	);
-}
-
-function normalizeErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
 }
 
 function normalizeTags(...tagGroups: Array<string[] | undefined>): string[] | undefined {
@@ -862,38 +850,6 @@ export async function submitLangsmithUserFeedback(
 
 	await withProxyHeaders(options.proxyConfig, call);
 	return true;
-}
-
-export function getCurrentOtelSpanContext(): { traceId: string; spanId: string } | undefined {
-	const activeSpanContext = otelTrace.getSpan(otelContext.active())?.spanContext();
-	if (activeSpanContext) {
-		return {
-			traceId: activeSpanContext.traceId,
-			spanId: activeSpanContext.spanId,
-		};
-	}
-
-	const currentRun = getCurrentProductTrace()?.currentRun;
-	if (currentRun?.otelTraceId && currentRun.otelSpanId) {
-		return {
-			traceId: currentRun.otelTraceId,
-			spanId: currentRun.otelSpanId,
-		};
-	}
-
-	return undefined;
-}
-
-export function getCurrentTraceToolCallId(): string | undefined {
-	const metadata = getCurrentProductTrace()?.currentRun.metadata;
-	return typeof metadata?.tool_call_id === 'string' ? metadata.tool_call_id : undefined;
-}
-
-export function mergeCurrentTraceMetadata(metadata: Record<string, unknown>): void {
-	const currentProductTrace = getCurrentProductTrace();
-	if (currentProductTrace) {
-		updateProductRunMetadata(currentProductTrace.runtime, currentProductTrace.currentRun, metadata);
-	}
 }
 
 export function appendRootRunMetadata(
@@ -981,7 +937,7 @@ export async function withCurrentTraceSpan<T>(
 		return result;
 	} catch (error) {
 		await finishProductSpanBestEffort(currentProductTrace.runtime, spanRun, {
-			error: normalizeErrorMessage(error),
+			error: getErrorMessage(error),
 			metadata: { final_status: 'error' },
 		});
 		throw error;
@@ -1272,7 +1228,7 @@ function createTraceContext(
 			proxyConfig,
 			async () =>
 				await finishProductSpanBestEffort(otelRuntime, run, {
-					error: normalizeErrorMessage(error),
+					error: getErrorMessage(error),
 					metadata,
 					forceFlush: isRootRun,
 				}),
@@ -1637,45 +1593,18 @@ async function buildBaseMetadata(
 		...(options.workflowSdkVersion !== undefined
 			? { workflow_sdk_version: options.workflowSdkVersion }
 			: {}),
+		...(options.browserExtension
+			? {
+					browser_connection_state: options.browserExtension.connectionState,
+					...(options.browserExtension.version !== undefined
+						? { browser_extension_version: options.browserExtension.version }
+						: {}),
+				}
+			: {}),
 		...(options.modelId !== undefined
 			? { model_id: serializeModelIdForTrace(options.modelId) }
 			: {}),
 		...options.metadata,
-	};
-}
-
-function buildDetachedSubAgentMetadata(
-	options: CreateDetachedSubAgentTraceContextOptions,
-	includeSpawnMetadata: boolean,
-): Record<string, unknown> {
-	return {
-		agent_role: options.role,
-		agent_id: options.agentId,
-		execution_mode: 'background_subagent',
-		trace_kind: 'background_subagent',
-		task_kind: options.kind,
-		...(options.taskId ? { task_id: options.taskId } : {}),
-		...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
-		...(options.workItemId ? { work_item_id: options.workItemId } : {}),
-		...(includeSpawnMetadata && options.spawnedByTraceId
-			? { spawned_by_trace_id: options.spawnedByTraceId }
-			: {}),
-		...(includeSpawnMetadata && options.spawnedBySpanId
-			? { spawned_by_span_id: options.spawnedBySpanId }
-			: {}),
-		...(includeSpawnMetadata && options.spawnedByRunId
-			? { spawned_by_run_id: options.spawnedByRunId }
-			: {}),
-		...(includeSpawnMetadata && options.spawnedByAgentId
-			? { spawned_by_agent_id: options.spawnedByAgentId }
-			: {}),
-		...(includeSpawnMetadata && options.spawnedByAgentRole
-			? { spawned_by_agent_role: options.spawnedByAgentRole }
-			: {}),
-		...(includeSpawnMetadata && options.spawnedByToolCallId
-			? { spawned_by_tool_call_id: options.spawnedByToolCallId }
-			: {}),
-		subagent_role: options.role,
 	};
 }
 
@@ -1933,65 +1862,6 @@ export async function continueInstanceAiTraceContext(
 
 	try {
 		return await withProxyHeaders(proxyConfig, createContinuation);
-	} catch {
-		return undefined;
-	}
-}
-
-export async function createDetachedSubAgentTraceContext(
-	options: CreateDetachedSubAgentTraceContextOptions,
-): Promise<InstanceAiTraceContext | undefined> {
-	if (!isLangSmithTracingEnabled(!!options.proxyConfig)) {
-		return undefined;
-	}
-
-	const projectName = options.projectName ?? resolveDefaultProjectName();
-	const baseMetadata = await buildBaseMetadata(options);
-
-	const createDetachedRuns = async () => {
-		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
-		const rootMetadata = buildDetachedSubAgentMetadata(options, true);
-		const actorMetadata = buildDetachedSubAgentMetadata(options, false);
-		const rootRun = startProductSpan(otelRuntime, {
-			projectName,
-			name: `background task: ${formatAgentRoleLabel(options.role)}`,
-			canonicalName: 'instance-ai.background_subagent',
-			runType: 'chain',
-			tags: normalizeTags(
-				['sub-agent', 'background'],
-				options.plannedTaskId ? ['planned'] : undefined,
-			),
-			metadata: mergeMetadata(baseMetadata, rootMetadata),
-			inputs: options.input,
-			root: true,
-		});
-		const actorRun = startProductSpan(otelRuntime, {
-			projectName,
-			name: `agent: ${formatAgentRoleLabel(options.role)}`,
-			canonicalName: `instance-ai.agent.${options.role}`,
-			runType: 'chain',
-			tags: normalizeTags(
-				['sub-agent', 'background'],
-				options.plannedTaskId ? ['planned'] : undefined,
-			),
-			metadata: mergeMetadata(baseMetadata, actorMetadata),
-			inputs: options.input,
-			parentRun: rootRun,
-		});
-
-		return createProductTraceContext({
-			projectName,
-			traceKind: 'background_subagent',
-			rootRun,
-			actorRun,
-			otelRuntime,
-			baseMetadata: mergeMetadata(baseMetadata, rootMetadata) ?? baseMetadata,
-			...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
-		});
-	};
-
-	try {
-		return await withProxyHeaders(options.proxyConfig, createDetachedRuns);
 	} catch {
 		return undefined;
 	}

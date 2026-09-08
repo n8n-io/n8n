@@ -2,6 +2,7 @@ import type { InterruptibleToolContext, ToolContext } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
 import type { z } from 'zod';
 
+import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { messageSchema, type IntegrationCardComponent } from './integration-tool-definitions';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import type {
@@ -215,6 +216,20 @@ export async function executeActionToolOperation(params: {
 			persistence.resourceId,
 			messageContext,
 		);
+		// Task-run sends bind the outbound thread so inbound replies continue
+		// that task session. Chat mentions stay on their own thread.
+		// respond/edit/reaction operate on existing threads and do not bind.
+		if (
+			(operation.action === 'send_dm' || operation.action === 'send_channel_message') &&
+			descriptor.agentId &&
+			messageContext.target.threadId &&
+			isTaskRunMemoryResourceId(persistence.resourceId)
+		) {
+			await messageContextStore.bindSession(
+				`${descriptor.agentId}:${messageContext.target.threadId}`,
+				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+			);
+		}
 		actionResult = { ...result, messageContext };
 	}
 
@@ -267,22 +282,25 @@ function withPreviousSubject(
 ): IntegrationMessageContext {
 	if (!previousContext) return context;
 	if (context.integrationConnectionId !== previousContext.integrationConnectionId) return context;
+	const replyExpectation = context.replyExpectation ?? previousContext.replyExpectation;
+	const replyTarget =
+		context.replyTarget ??
+		previousContext.replyTarget ??
+		(replyExpectation ? previousContext.target : undefined);
+	const replyMessageId =
+		context.replyMessageId ??
+		previousContext.replyMessageId ??
+		(replyExpectation ? previousContext.messageId : undefined);
+
 	return {
 		...context,
 		...(!context.subject && previousContext.subject ? { subject: previousContext.subject } : {}),
 		...(!context.agentUserId && previousContext.agentUserId
 			? { agentUserId: previousContext.agentUserId }
 			: {}),
-		// The turn's reply policy comes from the inbound message, not from what
-		// the agent sent — keep it through same-thread context rebuilds so
-		// `do_not_respond` stays available after e.g. a card respond. A rebuild
-		// targeting a different thread (send_dm/send_channel_message) drops it:
-		// the streamed reply does not go there, so its delivery rules don't apply.
-		...(!context.replyExpectation &&
-		previousContext.replyExpectation &&
-		context.target.threadId === previousContext.target.threadId
-			? { replyExpectation: previousContext.replyExpectation }
-			: {}),
+		...(replyExpectation ? { replyExpectation } : {}),
+		...(replyTarget ? { replyTarget } : {}),
+		...(replyMessageId ? { replyMessageId } : {}),
 	};
 }
 

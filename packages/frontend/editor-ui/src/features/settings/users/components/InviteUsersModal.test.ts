@@ -8,7 +8,7 @@ import { INVITE_USER_MODAL_KEY } from '../users.constants';
 import type { IInviteResponse } from '@n8n/stores/invitation.api';
 import InviteUsersModal from './InviteUsersModal.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 
 const ModalStub = {

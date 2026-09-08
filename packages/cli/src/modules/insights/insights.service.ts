@@ -1,26 +1,24 @@
 import { type InsightsSummary } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
+import type { InsightsAccessFilter } from './database/repositories/insights-by-period.repository';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
-import { InsightsCompactionService } from './insights-compaction.service';
-import { InsightsPruningService } from './insights-pruning.service';
 
 @Service()
 export class InsightsService {
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
-		private readonly compactionService: InsightsCompactionService,
-		private readonly pruningService: InsightsPruningService,
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
@@ -49,40 +47,62 @@ export class InsightsService {
 
 	async init() {
 		await this.toggleCollectionService(true);
-
-		if (this.instanceSettings.isLeader) this.startCompactionAndPruningTimers();
-	}
-
-	@OnLeaderTakeover()
-	startCompactionAndPruningTimers() {
-		this.compactionService.startCompactionTimer();
-		this.pruningService.startPruningTimer();
-	}
-
-	@OnLeaderStepdown()
-	async stopCompactionAndPruningTimers() {
-		this.pruningService.stopPruningTimer();
-		await this.compactionService.stopCompactionTimer();
 	}
 
 	async shutdown() {
 		await this.toggleCollectionService(false);
-		await this.stopCompactionAndPruningTimers();
+	}
+
+	/**
+	 * Resolves what insights the caller may read. A requested project must be
+	 * readable by them. When no specific project is requested, results are limited to the
+	 * workflows they can read.
+	 *
+	 * Returns the filter to apply, or `undefined` when the caller's global role
+	 * already grants access to every workflow.
+	 */
+	private async resolveAccessFilter(
+		user: User,
+		projectId?: string,
+	): Promise<InsightsAccessFilter | undefined> {
+		if (projectId) {
+			const userHasRequiredProjectScopes = await userHasScopes(user, ['workflow:read'], false, {
+				projectId,
+			});
+			if (!userHasRequiredProjectScopes) {
+				throw new ForbiddenError('You do not have access to insights for this project.');
+			}
+		}
+
+		const workflowReadRoles = await this.workflowSharingService.rolesGrantingScope(
+			user,
+			'workflow:read',
+		);
+
+		return workflowReadRoles && { user, ...workflowReadRoles };
 	}
 
 	async getInsightsSummary({
+		user,
 		startDate,
 		endDate,
 		projectId,
+		timeZone,
 	}: {
+		user: User;
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}): Promise<InsightsSummary> {
+		const accessFilter = await this.resolveAccessFilter(user, projectId);
+
 		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
 			startDate,
 			endDate,
 			projectId,
+			timeZone,
+			accessFilter,
 		});
 
 		// Initialize data structures for both periods
@@ -172,6 +192,7 @@ export class InsightsService {
 		projectId,
 		startDate,
 		endDate,
+		timeZone,
 	}: {
 		user: User;
 		skip?: number;
@@ -180,7 +201,10 @@ export class InsightsService {
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}) {
+		const accessFilter = await this.resolveAccessFilter(user, projectId);
+
 		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
 			startDate,
 			endDate,
@@ -188,18 +212,14 @@ export class InsightsService {
 			take,
 			sortBy,
 			projectId,
+			timeZone,
+			accessFilter,
 		});
 
-		const accessibleWorkflowIds = new Set(
-			await this.workflowSharingService.getSharedWorkflowIds(user, {
-				scopes: ['workflow:read'],
-				projectId,
-			}),
-		);
-
+		// A non-null means the caller can read it; null means the workflow has since been deleted.
 		const data = rows.map((row) => ({
 			...row,
-			hasReadAccess: row.workflowId !== null && accessibleWorkflowIds.has(row.workflowId),
+			hasReadAccess: row.workflowId !== null,
 		}));
 
 		return {
@@ -209,17 +229,22 @@ export class InsightsService {
 	}
 
 	async getInsightsByTime({
+		user,
 		// Default to all insight types
 		insightTypes = Object.keys(TypeToNumber) as TypeUnit[],
 		projectId,
 		startDate,
 		endDate,
+		timeZone,
 	}: {
+		user: User;
 		insightTypes?: TypeUnit[];
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}) {
+		const accessFilter = await this.resolveAccessFilter(user, projectId);
 		const periodUnit = this.getDateFiltersGranularity({ startDate, endDate });
 		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
 			periodUnit,
@@ -227,6 +252,8 @@ export class InsightsService {
 			projectId,
 			startDate,
 			endDate,
+			timeZone,
+			accessFilter,
 		});
 
 		return rows.map((r) => {

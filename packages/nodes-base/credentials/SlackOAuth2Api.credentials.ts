@@ -27,6 +27,15 @@ export const userScopes = [
 	'users:read',
 	// Needed so /users.info returns the responder's email for the HITL capture-responder option.
 	'users:read.email',
+	// Real-time Search API (assistant.search.context) scopes, used by message:search
+	// from node version 2.7. Message search only, so no files/users scopes.
+	'search:read.public',
+	'search:read.private',
+	'search:read.im',
+	'search:read.mpim',
+	// NOTE: Kept so a credential that is re-authorized after 2.7 lands
+	// can still run message:search on node versions <= 2.6
+	// which call the deprecated search.messages.
 	'search:read',
 ];
 

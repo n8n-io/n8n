@@ -242,10 +242,13 @@ describe('POST /n8n-packages/import', () => {
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					isArchived: false,
 					publishing: { state: 'unchanged' },
 					status: 'created',
 				},
 			],
+			removedWorkflows: [],
+			removedFolders: [],
 			folders: [],
 			projects: [],
 			bindings: {
@@ -256,11 +259,16 @@ describe('POST /n8n-packages/import', () => {
 				matched: [],
 				stubbed: [],
 			},
+			dataTables: {
+				matched: 0,
+				created: 0,
+			},
 			variables: {
 				matched: [],
 				missing: [],
 				created: [],
 				stubbed: [],
+				updated: [],
 			},
 			tags: {
 				matched: [],
@@ -291,6 +299,7 @@ describe('POST /n8n-packages/import', () => {
 			missing: [],
 			created: ['API_URL'],
 			stubbed: [],
+			updated: [],
 		});
 		const created = await getVariableByKey('API_URL');
 		expect(created).toMatchObject({ value: 'https://packaged.example.com' });
@@ -313,6 +322,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('dataTableMissingMode', 'must-preexist')
 			.field('dataTableSchemaConflictPolicy', 'fail')
 			.field('variableMissingMode', 'create-with-value')
+			.field('variableConflictPolicy', 'overwrite')
 			.field('variableParentPolicy', 'project')
 			.field('tagMissingMode', 'do-nothing')
 			.field('tagConflictPolicy', 'fail')

@@ -13,7 +13,12 @@ import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import Bowser from 'bowser';
-import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	type IDataObject,
+	type WorkflowSettings,
+} from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
@@ -103,6 +108,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isPreviewMode = computed(() => settings.value.previewMode);
 
+	const isE2ETestMode = computed(() => settings.value.inE2ETests);
+
 	const isCanvasOnly = computed(() => settings.value.canvasOnly);
 
 	const isCrdtCollaborationEnabled = computed(
@@ -165,6 +172,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
 
+	const isAiGatewayCloudUbbEnabled = computed(
+		() => settings.value.aiGateway?.cloudUbbEnabled ?? false,
+	);
+
 	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
@@ -202,9 +213,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
 	});
 
-	// Opt-in flag: enabled when the backend's Daytona sandbox env vars
-	// (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` + `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`)
-	// are set, OR the AI Assistant proxy is available.
+	const isWorkerPoolsEnabled = computed(() => settings.value.workerPools?.enabled ?? false);
+
+	// Opt-in flag controlled by the backend's N8N_AGENTS_AI_SANDBOX_ENABLED setting.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
 		() => isModuleActive('agents') && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
 	);
@@ -252,6 +263,20 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const workflowCallerPolicyDefaultOption = computed(
 		() => settings.value.workflowCallerPolicyDefaultOption,
+	);
+
+	const isNodeTypeExcluded = (nodeType: string) => {
+		const excludeNodes = settings.value.excludeNodes;
+		return Array.isArray(excludeNodes) && excludeNodes.includes(nodeType);
+	};
+
+	const isExecuteWorkflowNodeExcluded = computed(() =>
+		isNodeTypeExcluded(EXECUTE_WORKFLOW_NODE_TYPE),
+	);
+
+	const isSubworkflowConversionDisabled = computed(
+		() =>
+			isExecuteWorkflowNodeExcluded.value || isNodeTypeExcluded(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE),
 	);
 
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
@@ -363,6 +388,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
+		rootStore.setPublicApiPath(
+			`${fetchedSettings.publicApi.path}/v${fetchedSettings.publicApi.latestVersion}`,
+		);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata ?? {});
@@ -452,6 +480,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
+		isE2ETestMode,
 		isCanvasOnly,
 		isCrdtCollaborationEnabled,
 		publicApiLatestVersion,
@@ -482,6 +511,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMultiMain,
 		isWorkerViewAvailable,
 		workflowCallerPolicyDefaultOption,
+		isExecuteWorkflowNodeExcluded,
+		isSubworkflowConversionDisabled,
 		permanentlyDismissedBanners,
 		saveDataErrorExecution,
 		saveDataSuccessExecution,
@@ -495,6 +526,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		aiCreditsQuota,
 		isAiDataSharingEnabled,
 		isAiGatewayEnabled,
+		isAiGatewayCloudUbbEnabled,
 		aiGatewayBudget,
 		reset,
 		getTimezones,
@@ -516,6 +548,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
 		isOtelCustomSpanAttributesEnabled,
+		isWorkerPoolsEnabled,
 		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,
 		isWorkflowPublicationServiceEnabled,

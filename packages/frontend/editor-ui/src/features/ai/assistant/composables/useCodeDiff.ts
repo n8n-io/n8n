@@ -1,6 +1,6 @@
 import { computed, ref, h } from 'vue';
 import type { Ref } from 'vue';
-import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { ChatUI } from '@n8n/design-system';
 import type { INodeParameters } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { assert } from '@n8n/utils/assert';

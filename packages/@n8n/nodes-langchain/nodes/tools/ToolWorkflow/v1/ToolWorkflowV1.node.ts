@@ -22,9 +22,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 
+import { logAiEvent } from '@n8n/ai-utilities';
+
 import { versionDescription } from './versionDescription';
 import type { DynamicZodObject } from '../../../../types/zod.types';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '../../../../utils/schemaParsing';
+import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from '../constants';
 
 export class ToolWorkflowV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -122,6 +125,7 @@ export class ToolWorkflowV1 implements INodeType {
 					parentExecution: {
 						executionId: workflowProxy.$execution.id,
 						workflowId: workflowProxy.$workflow.id,
+						shouldResume: true,
 					},
 					returnLastRunOnly: true, // The tool's answer is the sub-workflow's final-run output, not its internal multi-run computation.
 				});
@@ -130,6 +134,12 @@ export class ToolWorkflowV1 implements INodeType {
 				// Make sure a valid error gets returned that can by json-serialized else it will
 				// not show up in the frontend
 				throw new NodeOperationError(this.getNode(), error as Error);
+			}
+			if (receivedData.waitTill) {
+				// A parked child has no final output yet; its `data` is the HITL node's passthrough
+				// input. The parent is already parked via BaseExecuteContext.executeWorkflow and
+				// gets the real output on resume.
+				return JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER);
 			}
 
 			const response: string | undefined = get(receivedData, 'data[0][0].json') as
@@ -197,6 +207,7 @@ export class ToolWorkflowV1 implements INodeType {
 				const json = jsonParse<IDataObject>(response, { fallbackValue: { response } });
 				void this.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json }]], metadata);
 			}
+			logAiEvent(this, 'ai-tool-called', { query, response });
 			return response;
 		};
 

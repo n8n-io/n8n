@@ -1,7 +1,6 @@
 import { OutboundHttp } from '@n8n/backend-network';
-import type { HttpRequestClient, SsrfBridge } from '@n8n/backend-network';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialTestContext } from '../credentials-test-context';
@@ -14,10 +13,10 @@ vi.mock('../utils/ssh-tunnel-helper-functions', () => ({
 
 /**
  * `CredentialTestContext` is the execution context for function-based credential
- * tests. Its `helpers.request` must forward the execution's SSRF bridge so that
- * test requests honour the same egress policy as regular node execution. These
- * tests assert that wiring; the actual SSRF enforcement lives in
- * `@n8n/backend-network`.
+ * tests. Its `helpers.request` must go through the default (safe) request
+ * client so that test requests honour the same egress policy as regular node
+ * execution. These tests assert that wiring; the actual SSRF enforcement lives
+ * in `@n8n/backend-network`.
  */
 describe('CredentialTestContext', () => {
 	const requestLegacy = vi.fn();
@@ -31,29 +30,12 @@ describe('CredentialTestContext', () => {
 		Container.set(OutboundHttp, outboundHttp);
 	});
 
-	it('forwards the SSRF bridge from additionalData to the request', async () => {
-		const ssrfBridge = mock<SsrfBridge>();
-		const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge });
-
-		const context = new CredentialTestContext(additionalData);
-		await context.helpers.request('https://example.test');
-
-		expect(requests).toHaveBeenCalledWith({ ssrf: ssrfBridge });
-	});
-
-	it('disables SSRF when additionalData carries no bridge', async () => {
-		const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge: undefined });
-
-		const context = new CredentialTestContext(additionalData);
-		await context.helpers.request('https://example.test');
-
-		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
-	});
-
-	it('disables SSRF when no additionalData is provided', async () => {
+	it('routes requests through the default safe client', async () => {
 		const context = new CredentialTestContext();
-		await context.helpers.request('https://example.test');
+		const body = await context.helpers.request('https://example.test');
 
-		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(body).toBe('response-body');
+		expect(requests).toHaveBeenCalledWith();
+		expect(requestLegacy).toHaveBeenCalledTimes(1);
 	});
 });

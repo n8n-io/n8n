@@ -26,6 +26,7 @@ describe('UpdateOidcConfigurationDto', () => {
 			prompt: 'consent',
 			authenticationContextClassReference: ['mfa'],
 			additionalScopes: 'groups',
+			emailVerifiedRequired: true,
 			rpInitiatedLogoutEnabled: true,
 		});
 		expect(result.success).toBe(true);

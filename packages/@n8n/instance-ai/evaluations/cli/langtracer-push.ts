@@ -11,10 +11,10 @@ import { execFileSync } from 'node:child_process';
 import { basename } from 'node:path';
 
 import { loadAgentEvalTestCasesWithFiles } from '../data/agents';
-import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
+import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '../data/workflows';
 import { LangTracerClient } from '../langtracer/client';
 import { resolveLangTracerConfig } from '../langtracer/config';
-import { planPush, toUpdatePatch } from '../langtracer/push';
+import { comparableDiff, planPush, toUpdatePatch } from '../langtracer/push';
 import { diskCaseToLangTracerCreate } from '../langtracer/to-exported';
 
 interface CliArgs {
@@ -252,8 +252,49 @@ async function main() {
 		console.log(`  ~ updated ${item.fileSlug} (#${String(id)}, rev ${String(res.revision)})`);
 	}
 
+	await verifyWrites(client, suite.id, [...plan.toCreate, ...plan.toUpdate.map((u) => u.item)]);
+
 	console.log(
 		`\nDone: ${String(plan.toCreate.length)} created, ${String(plan.toUpdate.length)} updated, ${String(plan.unchanged.length)} unchanged, ${String(plan.skipped.length)} skipped.`,
+	);
+}
+
+/**
+ * Re-read the suite and confirm the server stored what we sent.
+ *
+ * A lang-tracer deployment predating a field's support ignores that key and still
+ * answers 200 — `seed` before #113, `attach` before #119. Without this the push
+ * reports success while the suite holds a quietly different case: a seeded case
+ * that will run unseeded, or a hand-off that became a find-it test. Both are
+ * deploy-ordering hazards no local check can catch, so ask the server.
+ */
+async function verifyWrites(
+	client: LangTracerClient,
+	suiteId: number,
+	written: WorkflowTestCaseWithFile[],
+): Promise<void> {
+	if (written.length === 0) return;
+
+	const after = await client.exportSuite(suiteId);
+	const dropped = written
+		.map((item) => ({
+			fileSlug: item.fileSlug,
+			keys: comparableDiff(after.files[`${item.fileSlug}.json`], item.testCase),
+		}))
+		.filter((result) => result.keys.length > 0);
+
+	if (dropped.length === 0) {
+		console.log(`  verified ${String(written.length)} case(s) round-trip intact`);
+		return;
+	}
+
+	for (const result of dropped) {
+		console.error(`  ! ${result.fileSlug}: server did not store ${result.keys.join(', ')}`);
+	}
+	throw new Error(
+		`${String(dropped.length)} case(s) did not round-trip: the fields above were sent but are absent from the suite export. ` +
+			'A lang-tracer deployment can silently ignore a key it predates (`seed` needs #113, `attach` needs #119) — ' +
+			'upgrade it, then re-push. The cases in the suite are NOT what you authored until you do.',
 	);
 }
 

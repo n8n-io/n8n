@@ -2,7 +2,7 @@
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nSelect, N8nOption, N8nText } from '@n8n/design-system';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, useCssModule } from 'vue';
 import type { Agent } from '@/features/agents/agent.types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -35,6 +35,19 @@ let loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 const showEmptyState = computed(() => {
 	return !isLoading.value && hasFetched.value && agentOptions.value.length === 0;
 });
+
+const $style = useCssModule();
+
+// `popper-class` is a string prop, so the classes are joined here rather than
+// passed as an object binding.
+const popperClass = computed(() =>
+	[
+		isLoading.value ? $style['mcp-agents-select-loading'] : '',
+		showEmptyState.value ? $style['mcp-agents-select-empty'] : '',
+	]
+		.filter(Boolean)
+		.join(' '),
+);
 
 const projectName = (agent: Agent) =>
 	agent.project?.type === 'personal'
@@ -103,10 +116,7 @@ defineExpose({
 			:remote="true"
 			:remote-method="searchAgents"
 			size="medium"
-			:popper-class="{
-				[$style['mcp-agents-select-loading']]: isLoading,
-				[$style['mcp-agents-select-empty']]: showEmptyState,
-			}"
+			:popper-class="popperClass"
 			@visible-change="onVisibleChange"
 		>
 			<N8nOption v-if="showEmptyState" value="" disabled :class="$style['empty-option']">

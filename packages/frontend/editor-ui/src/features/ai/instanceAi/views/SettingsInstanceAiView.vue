@@ -27,13 +27,17 @@ import { useRouter } from 'vue-router';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
+import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
 import { SANDBOX_PROVIDER_LABELS, type InstanceAiConnectionKind } from '../constants';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 
@@ -45,13 +49,21 @@ const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const store = useInstanceAiSettingsStore();
 const { isTestingCredential, testSavedCredential } = useInstanceCredentialTest();
+const {
+	modelCredential,
+	modelConfigured: isModelConfigured,
+	sandboxCredentialId,
+	sandboxConfigured: isSandboxConfigured,
+	searchCredential,
+	searchState,
+} = useInstanceAiConfiguration();
 
 const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
 	useInstanceAiMcpConnectionsExperiment();
 const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
-const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant-preview';
+const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
 
 const isAdmin = computed(() => store.canManage);
 const isEnabled = computed(
@@ -62,19 +74,27 @@ const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? tr
 const isSelfManaged = computed(() => !store.isProxyEnabled && !store.isCloudManaged);
 const showCredentialsRows = computed(() => isAdmin.value && isSelfManaged.value);
 const showSandboxRow = computed(() => isAdmin.value && !store.isCloudManaged);
+const isModelConnectionEnvManaged = computed(
+	() =>
+		isSelfManaged.value &&
+		(store.settings?.envManaged?.model.provider ?? store.settings?.modelEnvConfigured ?? false),
+);
+const isModelNameEnvManaged = computed(
+	() => isSelfManaged.value && (store.settings?.envManaged?.model.model ?? false),
+);
+const isModelReadOnly = computed(
+	() => isModelConnectionEnvManaged.value && isModelNameEnvManaged.value,
+);
+const isSandboxEnvManaged = computed(
+	() => isSelfManaged.value && (store.settings?.sandboxEnvConfigured ?? false),
+);
+const isSearchEnvManaged = computed(
+	() => isSelfManaged.value && (store.settings?.searchEnvConfigured ?? false),
+);
 
-const modelCredential = computed(() =>
-	store.instanceModelCredentials.find(
-		(credential) => credential.id === store.settings?.modelCredentialId,
-	),
-);
-const isModelConfigured = computed(() =>
-	Boolean(
-		store.settings?.modelEnvConfigured ||
-			(store.settings?.modelCredentialId && store.settings.modelName),
-	),
-);
 const modelValue = computed(() => {
+	if (isModelConnectionEnvManaged.value)
+		return i18n.baseText('instanceAi.onboarding.foundOnServer');
 	if (store.settings?.modelCredentialId) {
 		const typeLabel = modelCredential.value ? credentialTypeLabel(modelCredential.value.type) : '';
 		const modelName = store.settings.modelName ?? '';
@@ -83,21 +103,14 @@ const modelValue = computed(() => {
 	return i18n.baseText('settings.n8nAgent.modelCredential.env.value');
 });
 const modelDescription = computed<{ key: BaseTextKey; warning: boolean } | null>(() => {
-	if (store.settings?.modelCredentialId && store.settings.modelName) return null;
-	if (store.settings?.modelEnvConfigured)
+	if (isModelConnectionEnvManaged.value)
 		return { key: 'settings.n8nAgent.modelCredential.env.description', warning: false };
+	if (store.settings?.modelCredentialId && store.settings.modelName) return null;
 	return { key: 'settings.n8nAgent.modelCredential.missing.description', warning: !isOff.value };
 });
 
-const sandboxCredentialId = computed(() =>
-	store.settings?.sandboxProvider === 'daytona'
-		? store.settings?.daytonaCredentialId
-		: store.settings?.n8nSandboxCredentialId,
-);
-const isSandboxConfigured = computed(() =>
-	Boolean(sandboxCredentialId.value ?? store.settings?.sandboxEnvConfigured),
-);
 const sandboxValue = computed(() => {
+	if (isSandboxEnvManaged.value) return i18n.baseText('instanceAi.onboarding.foundOnServer');
 	if (sandboxCredentialId.value) {
 		return store.settings?.sandboxProvider === 'daytona'
 			? SANDBOX_PROVIDER_LABELS.daytona
@@ -106,25 +119,16 @@ const sandboxValue = computed(() => {
 	return i18n.baseText('settings.n8nAgent.sandbox.env.value');
 });
 const sandboxDescription = computed<{ key: BaseTextKey; warning: boolean }>(() => {
+	if (isSandboxEnvManaged.value)
+		return { key: 'settings.n8nAgent.sandbox.env.description', warning: false };
 	if (sandboxCredentialId.value)
 		return { key: 'settings.n8nAgent.sandbox.set.description', warning: false };
-	if (store.settings?.sandboxEnvConfigured)
-		return { key: 'settings.n8nAgent.sandbox.env.description', warning: false };
 	return { key: 'settings.n8nAgent.sandbox.missing.description', warning: !isOff.value };
 });
 
-const searchCredential = computed(() =>
-	store.serviceCredentials.find(
-		(credential) => credential.id === store.settings?.searchCredentialId,
-	),
-);
-const searchState = computed<'set' | 'env' | 'notset'>(() => {
-	if (store.settings?.searchCredentialId) return 'set';
-	if (store.settings?.searchEnvConfigured) return 'env';
-	return 'notset';
-});
 const searchValue = computed(() => {
-	if (searchState.value === 'env') return i18n.baseText('settings.n8nAgent.search.env.value');
+	if (isSearchEnvManaged.value) return i18n.baseText('instanceAi.onboarding.foundOnServer');
+	if (searchState.value === 'disabled') return i18n.baseText('instanceAi.onboarding.disabled');
 	return searchCredential.value ? credentialTypeLabel(searchCredential.value.type) : '';
 });
 
@@ -132,7 +136,8 @@ const isSetupRequired = computed(
 	() =>
 		isEnabled.value &&
 		((showCredentialsRows.value && !isModelConfigured.value) ||
-			(showSandboxRow.value && !isSandboxConfigured.value)),
+			(showSandboxRow.value && !isSandboxConfigured.value) ||
+			(showCredentialsRows.value && searchState.value === 'notset')),
 );
 const neverConfigured = computed(() => {
 	if (isEnabled.value) return false;
@@ -205,7 +210,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'credentials',
 		labelKey: 'settings.n8nAgent.permissions.group.credentials',
-		keys: ['deleteCredential'],
+		keys: ['createCredential', 'deleteCredential'],
 	},
 	{
 		id: 'system',
@@ -271,50 +276,85 @@ function setDialogOpen(kind: InstanceAiConnectionKind, isOpen: boolean) {
 }
 
 function openModelDialog() {
+	if (isModelReadOnly.value) return;
 	setupChain.value = false;
 	activeDialog.value = 'model';
 }
 
 function openModelSetup() {
-	setupChain.value = !isSandboxConfigured.value;
+	setupChain.value =
+		(!isSandboxConfigured.value && !isSandboxEnvManaged.value) || searchState.value === 'notset';
 	activeDialog.value = 'model';
 }
 
 function openSandboxDialog() {
+	if (isSandboxEnvManaged.value) return;
 	setupChain.value = false;
 	activeDialog.value = 'sandbox';
+}
+
+function openSearchDialog() {
+	if (isSearchEnvManaged.value) return;
+	setupChain.value = false;
+	activeDialog.value = 'search';
+}
+
+function openSearchSetup(): void {
+	activeDialog.value = 'search';
 }
 
 /** Returns whether the chain may continue (false only when enabling failed). */
 async function finishSetup(): Promise<boolean> {
 	setupChain.value = false;
-	if (!enableAfterSetup.value) return true;
+	if (!enableAfterSetup.value) {
+		activeDialog.value = null;
+		return true;
+	}
 
 	enableAfterSetup.value = false;
-	return await store.persistEnabled(true);
+	const enabled = await store.persistEnabled(true);
+	if (enabled) activeDialog.value = null;
+	return enabled;
 }
 
 async function handleModelSaved() {
+	if ((setupChain.value || enableAfterSetup.value) && !(await enableEnvironmentSandboxIfNeeded()))
+		return;
 	if (setupChain.value) {
-		activeDialog.value = 'sandbox';
+		if (isSandboxConfigured.value || isSandboxEnvManaged.value) {
+			openSearchSetup();
+		} else {
+			activeDialog.value = 'sandbox';
+		}
 		return;
 	}
 	await finishSetup();
 }
 
 async function handleSandboxSaved() {
-	// The optional search step never gates enablement; enable first, then offer it.
 	const chainSearch = setupChain.value && searchState.value === 'notset';
-	if (!(await finishSetup())) return;
 	if (chainSearch) {
-		setupChain.value = true;
-		activeDialog.value = 'search';
+		openSearchSetup();
+		return;
 	}
+	await finishSetup();
+}
+
+async function handleSearchSaved() {
+	await finishSetup();
 }
 
 function credentialTypeLabel(type: string) {
 	return credentialsStore.getCredentialTypeByName(type)?.displayName ?? type;
 }
+
+async function enableEnvironmentSandboxIfNeeded(): Promise<boolean> {
+	if (!isSandboxEnvManaged.value || isSandboxConfigured.value) return true;
+	store.setField('sandboxEnabled', true);
+	return await store.save();
+}
+
+useSetupPageViewTelemetry('settings');
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));
@@ -350,7 +390,9 @@ async function handleEnable() {
 		return;
 	}
 
-	if (showSandboxRow.value && !isSandboxConfigured.value) {
+	if (!(await enableEnvironmentSandboxIfNeeded())) return;
+
+	if (showSandboxRow.value && !isSandboxConfigured.value && !isSandboxEnvManaged.value) {
 		openSandboxDialog();
 		return;
 	}
@@ -367,6 +409,12 @@ async function handleEnable() {
 			openSandboxDialog();
 			return;
 		}
+	}
+
+	if (showCredentialsRows.value && searchState.value === 'notset') {
+		setupChain.value = true;
+		openSearchSetup();
+		return;
 	}
 
 	await finishSetup();
@@ -509,7 +557,7 @@ function openAiUsageSettings() {
 					<N8nSettingsRow
 						v-if="showCredentialsRows"
 						:class="{ [$style.dim]: isOff }"
-						:clickable="!isOff && isModelConfigured"
+						:clickable="!isOff && isModelConfigured && !isModelReadOnly"
 						data-test-id="n8n-agent-model-row"
 						@click="openModelDialog"
 					>
@@ -535,6 +583,14 @@ function openAiUsageSettings() {
 								data-test-id="n8n-agent-model-add"
 								@click="openModelSetup"
 							/>
+							<N8nText
+								v-else-if="isModelReadOnly"
+								size="small"
+								color="text-light"
+								data-test-id="n8n-agent-model-env-value"
+							>
+								{{ modelValue }}
+							</N8nText>
 							<N8nSettingsRowConfigure v-else :value="modelValue" />
 						</template>
 					</N8nSettingsRow>
@@ -542,7 +598,7 @@ function openAiUsageSettings() {
 					<N8nSettingsRow
 						v-if="showSandboxRow"
 						:class="{ [$style.dim]: isOff }"
-						:clickable="!isOff && isSandboxConfigured"
+						:clickable="!isOff && isSandboxConfigured && !isSandboxEnvManaged"
 						data-test-id="n8n-agent-sandbox-row"
 						@click="openSandboxDialog"
 					>
@@ -556,7 +612,24 @@ function openAiUsageSettings() {
 						</template>
 						<template v-if="!isOff" #action>
 							<N8nButton
-								v-if="!isSandboxConfigured"
+								v-if="isSandboxEnvManaged && !isSandboxConfigured"
+								variant="solid"
+								size="medium"
+								:label="i18n.baseText('settings.n8nAgent.sandbox.enable')"
+								:disabled="store.isSaving"
+								data-test-id="n8n-agent-sandbox-enable"
+								@click="enableEnvironmentSandboxIfNeeded"
+							/>
+							<N8nText
+								v-else-if="isSandboxEnvManaged"
+								size="small"
+								color="text-light"
+								data-test-id="n8n-agent-sandbox-env-value"
+							>
+								{{ sandboxValue }}
+							</N8nText>
+							<N8nButton
+								v-else-if="!isSandboxConfigured"
 								variant="solid"
 								size="medium"
 								:label="i18n.baseText('settings.n8nAgent.sandbox.add')"
@@ -570,6 +643,9 @@ function openAiUsageSettings() {
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
+			<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+			<DefaultEditorSetting />
+
 			<N8nSettingsSection
 				v-if="showCredentialsRows || isComputerUseExperimentEnabled || isBrowserUseEnabled"
 				:title="i18n.baseText('settings.n8nAgent.capabilities.title')"
@@ -579,9 +655,9 @@ function openAiUsageSettings() {
 					<N8nSettingsRow
 						v-if="showCredentialsRows"
 						:class="{ [$style.dim]: isOff }"
-						:clickable="!isOff && searchState !== 'notset'"
+						:clickable="!isOff && searchState !== 'notset' && !isSearchEnvManaged"
 						data-test-id="n8n-agent-search-row"
-						@click="activeDialog = 'search'"
+						@click="openSearchDialog"
 					>
 						<template #info>
 							<span :class="$style.titleWithTag">
@@ -608,8 +684,16 @@ function openAiUsageSettings() {
 								:label="i18n.baseText('settings.n8nAgent.search.setup')"
 								:disabled="store.isSaving"
 								data-test-id="n8n-agent-search-setup"
-								@click="activeDialog = 'search'"
+								@click="openSearchDialog"
 							/>
+							<N8nText
+								v-else-if="isSearchEnvManaged"
+								size="small"
+								color="text-light"
+								data-test-id="n8n-agent-search-env-value"
+							>
+								{{ searchValue }}
+							</N8nText>
 							<N8nSettingsRowConfigure v-else :value="searchValue" />
 						</template>
 					</N8nSettingsRow>
@@ -744,8 +828,12 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 		</template>
 
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. Members see
+		none of the admin sections above, so they get the row on its own. -->
+		<DefaultEditorSetting v-if="!isAdmin && !store.isLoading && !neverConfigured" />
+
 		<ConnectionDialog
-			v-if="showCredentialsRows"
+			v-if="showCredentialsRows && !isModelReadOnly"
 			kind="model"
 			:open="activeDialog === 'model'"
 			:setup="setupChain"
@@ -753,21 +841,20 @@ function openAiUsageSettings() {
 			@saved="handleModelSaved"
 		/>
 		<ConnectionDialog
-			v-if="showSandboxRow"
+			v-if="showSandboxRow && !isSandboxEnvManaged"
 			kind="sandbox"
 			:open="activeDialog === 'sandbox'"
 			:setup="showCredentialsRows && setupChain"
 			@update:open="setDialogOpen('sandbox', $event)"
 			@saved="handleSandboxSaved"
-			@back="activeDialog = 'model'"
 		/>
 		<ConnectionDialog
-			v-if="showCredentialsRows"
+			v-if="showCredentialsRows && !isSearchEnvManaged"
 			kind="search"
 			:open="activeDialog === 'search'"
 			:setup="setupChain"
 			@update:open="setDialogOpen('search', $event)"
-			@back="activeDialog = 'sandbox'"
+			@saved="handleSearchSaved"
 		/>
 	</N8nSettingsLayout>
 </template>

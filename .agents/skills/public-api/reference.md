@@ -13,18 +13,29 @@ Copy the working flow from `v1/controllers/tags.public.controller.ts` (and
 `workflows.public.controller.ts` for a `@Param` list) rather than pasting a
 snippet here — a copy would drift. The moving parts:
 
-- Input DTO composes `publicApiPaginationSchema` from `@n8n/api-types` (a `limit`
-  plus an opaque `cursor`).
+- Input DTO takes `limit: publicApiPaginationSchema.limit` plus an opaque
+  `cursor: z.string().optional()` — cherry-pick `limit` but never spread the whole
+  `publicApiPaginationSchema`. That schema also exports `offset`, used by
+  internal-API-style page params elsewhere; a Public API list DTO must never
+  expose it as a query param. See `ListTagsQueryDto` for the shape to copy.
 - `decodeCursor` / `encodeNextCursor` live in
   `v1/shared/services/pagination.service.ts`. Decode the incoming cursor to
   `{ offset, limit }`, guard the decoded shape, and pass `offset`/`limit` to the
-  service.
+  service — never `{ skip, take }`. `offset` is an internal implementation
+  detail of the cursor here, never a client-facing query param. TypeORM's
+  `skip`/`take` stay inside the repository, at the `find` call.
 - Treat the cursor as opaque; never hand-encode a token.
 - Return an envelope `{ data, nextCursor }` — never a bare array.
 - `encodeNextCursor(...)` returns `null` when there is no further page; surface
   that as `nextCursor: null`.
 - An invalid/undecodable cursor is a `400` via the existing bad-request error.
-- For an existing list endpoint, keep its current pagination semantics unchanged.
+- For an existing list endpoint, keep its current *cursor* semantics unchanged.
+  A leaked `offset` query param (DTO spreading `publicApiPaginationSchema`
+  instead of picking `limit`) is a defect to remove, not a contract to
+  preserve — decorator-routed DTOs validate via a plain `z.object()`, which
+  silently strips unknown query keys rather than rejecting them, so removing
+  `offset` from the DTO makes it inert rather than erroring for existing
+  callers.
 
 The output DTO wraps the list as `{ data, nextCursor }` and is declared with
 `@ApiResponse(...)` so the registry strips undeclared fields.
@@ -89,7 +100,8 @@ scope, RBAC denial. Add whichever apply, matching the nearest existing tests:
   `PUT` with the exact sentinel keeps the secret; any other value replaces it;
   the sentinel is never persisted as a real secret.
 - Migration: path, method, status codes, scope, and response contract are
-  unchanged.
+  unchanged. Tests alone cannot show this — see
+  [Verifying a migration](#verifying-a-migration).
 
 ## Migrating legacy EOV endpoints
 
@@ -122,12 +134,50 @@ not templates.
   separate from the path's own `$ref` in `openapi.yml` and are easy to miss;
   left dangling, the next bundle fails on a broken `$ref`.
 - If the legacy handler gated on a license (`isLicensed('feat:x')` middleware),
-  `@Licensed` does not replicate that for a controller route (see the decorator
-  table in [SKILL.md](SKILL.md#declaring-a-controller)) — replicate the check
-  manually in the controller, don't drop it.
+  `@Licensed('feat:x')` now replicates that for a controller route (see the
+  decorator table in [SKILL.md](SKILL.md#declaring-a-controller)) — but only for
+  a single feature. If the legacy check was an any-of/all-of over several flags
+  (e.g. `LicenseState.isProvisioningLicensed()`), `@Licensed` can't express
+  that; replicate it manually in the controller instead, don't drop it - this
+  is exactly what the internal `provisioning.controller.ee.ts` and
+  `role-mapping-rule.controller.ee.ts` already do, since neither uses
+  `@Licensed` for that reason.
 - As a legacy file drops repository access / the `export =` tuple, remove its
   entry from the `off` allowlists for `no-repository-in-public-api-handler` and
   `require-public-api-controller` in `packages/cli/eslint.config.mjs` (shrink-only
   — never extend them).
 - For complex legacy-only, multipart, or non-standard endpoints, study the
   nearest existing handler first.
+- Keep each field in its original position when you extract a request shape shared
+  by two routes, and destructure out the ones a route doesn't take. The generator
+  emits properties in shape order, so a moved field rewrites the `*.generated.yml`
+  of a route the PR wasn't changing.
+
+## Verifying a migration
+
+Tests are written against the new code, so they can't show that the old behavior
+survived. These checks can:
+
+- Diff live responses against master. Run the route on an instance per branch and
+  compare status, body, and error message for the same requests. Reading the old
+  YAML beside the new Zod schema doesn't find the differences.
+- Check whether a field is absent or `null`. `activeVersion` omitted is not the
+  same response as `activeVersion: null`; use a conditional spread to omit it.
+- Check query-param coercion at the edges (`""`, `"0"`, `"false"`, absent). A Zod
+  DTO and the old validator don't coerce identically.
+- Request a route the PR didn't migrate. A shared DTO change can stop the spec
+  bundle compiling at startup, which turns every legacy route into a `500` without
+  failing a test.
+
+## CI and merging
+
+Two failures that a migration hits outside the code itself:
+
+- Merge master in before merging. A generator change on master leaves every
+  branch's committed `*.generated.yml` stale, and `generated-spec-drift.test.ts`
+  then fails only on the merge commit, so the PR itself stays green and
+  `MERGEABLE`. `gh pr checks` hides `merge_group` runs; look for the run on
+  `gh-readonly-queue/master/pr-<number>-<sha>`.
+- Ask a maintainer for a `/size-limit-override` early. Generated YAML counts
+  toward the 1,000-line PR size limit, so a single-route migration can exceed it
+  on generator output alone.

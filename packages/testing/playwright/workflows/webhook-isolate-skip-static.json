@@ -1,0 +1,45 @@
+{
+	"name": "Webhook Isolate Skip - Static Parameters",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "isolate-skip-static",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "b1e1c9b0-0000-4000-8000-000000000001",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"webhookId": "b1e1c9b0-0000-4000-8000-000000000001"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "result",
+							"name": "result",
+							"value": "static-ok",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "b1e1c9b0-0000-4000-8000-000000000002",
+			"name": "Set Result",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [220, 0]
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Set Result", "type": "main", "index": 0 }]] }
+	},
+	"settings": {},
+	"pinData": {}
+}

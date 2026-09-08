@@ -1,5 +1,6 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
+import type { CrashedExecution } from '@n8n/db';
 import {
 	SettingsRepository,
 	StatisticsNames,
@@ -21,6 +22,7 @@ import {
 import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
 
+import { INSTANCE_ACTIVATED_SETTINGS_KEY } from './instance-activation.service';
 import { OwnershipService } from './ownership.service';
 
 const isStatusRootExecution = {
@@ -59,8 +61,13 @@ const isModeRootExecution = {
 	agent: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
+type CompletedRunOutcome = {
+	mode: WorkflowExecuteMode;
+	status: ExecutionStatus;
+};
+
 function getStatisticsNameForCompletedRun(
-	runData: IRun,
+	runData: CompletedRunOutcome,
 	source?: WorkflowExecutionSource,
 ): StatisticsNames | null {
 	const isChatExecution = runData.mode === 'chat';
@@ -83,7 +90,7 @@ function getStatisticsNameForCompletedRun(
 		: StatisticsNames.productionError;
 }
 
-function isRootExecutionForRun(runData: IRun): boolean {
+function isRootExecutionForRun(runData: CompletedRunOutcome): boolean {
 	return isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 }
 
@@ -94,6 +101,7 @@ type WorkflowStatisticsEvents = {
 		fullRunData: IRun;
 		source?: WorkflowExecutionSource;
 	};
+	executionsCrashed: { executions: CrashedExecution[] };
 };
 
 @Service()
@@ -120,6 +128,12 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			async ({ workflowData, fullRunData, source }) =>
 				await this.workflowExecutionCompleted(workflowData, fullRunData, source),
 		);
+		this.on('executionsCrashed', async ({ executions }) => {
+			// Record one at a time, to keep a large sweep within the database connection pool.
+			for (const { workflowId, workflowName, mode } of executions) {
+				await this.recordExecutionOutcome({ workflowId, workflowName, mode, status: 'crashed' });
+			}
+		});
 	}
 
 	async workflowExecutionCompleted(
@@ -137,6 +151,57 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const workflowId = workflowData.id;
 		if (!workflowId) return;
 
+		await this.recordCompletedRun({
+			statisticsName,
+			workflowId,
+			workflowName: workflowData.name,
+			isRoot,
+			firstEventMs: runData.startedAt.getTime(),
+		});
+	}
+
+	private async recordExecutionOutcome({
+		workflowId,
+		workflowName,
+		mode,
+		status,
+	}: { workflowId: string; workflowName?: string } & CompletedRunOutcome): Promise<void> {
+		// Contain every failure: this runs from an emitter listener that captures
+		// rejections and has no `error` handler, so a rejection would end the process.
+		try {
+			const outcome = { mode, status };
+			const statisticsName = getStatisticsNameForCompletedRun(outcome);
+
+			if (!statisticsName) return;
+
+			await this.recordCompletedRun({
+				statisticsName,
+				workflowId,
+				workflowName,
+				isRoot: isRootExecutionForRun(outcome),
+				firstEventMs: Date.now(),
+			});
+		} catch (error) {
+			this.logger.error('Failed to record the outcome of an execution', {
+				workflowId,
+				error: ensureError(error),
+			});
+		}
+	}
+
+	private async recordCompletedRun({
+		statisticsName,
+		workflowId,
+		workflowName,
+		isRoot,
+		firstEventMs,
+	}: {
+		statisticsName: StatisticsNames;
+		workflowId: string;
+		workflowName?: string;
+		isRoot: boolean;
+		firstEventMs: number;
+	}): Promise<void> {
 		let upsertResult: Awaited<ReturnType<WorkflowStatisticsRepository['upsertWorkflowStatistics']>>;
 
 		try {
@@ -145,12 +210,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			 * whereas in SQLite we upsert directly.
 			 */
 			if (this.databaseConfig.type === 'postgresdb') {
-				await this.repository.appendIncrement(
-					statisticsName,
-					workflowId,
-					isRoot,
-					workflowData.name,
-				);
+				await this.repository.appendIncrement(statisticsName, workflowId, isRoot, workflowName);
 				return;
 			}
 
@@ -158,7 +218,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				statisticsName,
 				workflowId,
 				isRoot,
-				workflowData.name,
+				workflowName,
 			);
 		} catch (error) {
 			this.logger.error('Failed to record workflow statistic', { error: ensureError(error) });
@@ -171,8 +231,8 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			await this.emitFirstOccurrenceEvent(
 				statisticsName,
 				workflowId,
-				workflowData.name ?? null,
-				runData.startedAt.getTime(),
+				workflowName ?? null,
+				firstEventMs,
 			);
 		} catch (error) {
 			this.logger.debug('Failed to emit workflow statistics milestone', {
@@ -226,6 +286,35 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			projectId: project.id,
 			workflowId,
 			userId,
+		});
+
+		await this.recordInstanceActivation(project.id, workflowId, userId, userActivatedAtMs);
+	}
+
+	/**
+	 * Record the instance's activation moment, exactly once, whatever the project type.
+	 *
+	 * The per-user `userActivated` flag above only covers personal projects, so an instance whose
+	 * first success happens in a team project would otherwise never look activated. Guarded by a
+	 * settings row, mirroring `instance.firstProductionFailure`. The row is the whole contract —
+	 * {@link InstanceActivationService} reads it — so there is no accompanying event.
+	 */
+	private async recordInstanceActivation(
+		projectId: string,
+		workflowId: string,
+		userId: string | null,
+		activatedAt: number,
+	): Promise<void> {
+		const alreadyActivated = await this.settingsRepository.findByKey(
+			INSTANCE_ACTIVATED_SETTINGS_KEY,
+		);
+
+		if (alreadyActivated) return;
+
+		await this.settingsRepository.save({
+			key: INSTANCE_ACTIVATED_SETTINGS_KEY,
+			value: JSON.stringify({ workflowId, projectId, userId, timestamp: activatedAt }),
+			loadOnStartup: false,
 		});
 	}
 

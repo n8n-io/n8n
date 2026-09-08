@@ -115,6 +115,82 @@ describe('buildWorkflow scenario-seed data table lifecycle', () => {
 		expect(build.createdDataTableIds).toContain('scenario-dt-1');
 	});
 
+	// A staged prior run that produced no execution record must reach the caller even
+	// when the BUILD SUCCEEDED — that is the only path where the case still gets graded,
+	// and `buildFailedOnInfra` cannot catch it because it returns false for a success.
+	it('carries priorRunFailed on a SUCCESSFUL build when a prior run never ran', async () => {
+		const client = makeClient({
+			restoreThread: vi.fn().mockResolvedValue({
+				restored: 0,
+				workflowIds: ['seeded-wf-1'],
+				dataTableIds: ['scenario-dt-1'],
+				agentIds: [],
+			}),
+			// Rejected before the runner: an error result with an id no execution exists under.
+			executeWithLlmMock: vi.fn().mockResolvedValue({
+				executionId: 'fabricated-uuid',
+				success: false,
+				nodeResults: {},
+				errors: ['No trigger or start node found in the workflow'],
+				hints: {},
+				mockedCredentials: [],
+			}),
+			getExecution: vi.fn().mockRejectedValue(new Error('404 not found')),
+			// Seeding evicts same-named leftovers before restoring.
+			listWorkflows: vi.fn().mockResolvedValue([]),
+		});
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			seed: {
+				mode: 'inline' as const,
+				messages: [],
+				workflows: [{ id: 'sEeDeDwF1234567a', name: 'Daily Sync', nodes: [], connections: {} }],
+				dataTables: [],
+				agents: [],
+				projects: [],
+				priorRuns: [{ workflow: 'sEeDeDwF1234567a' }],
+			},
+		});
+
+		expect(build.success).toBe(true);
+		expect(build.priorRunFailed).toContain('sEeDeDwF1234567a');
+	});
+
+	// A throw from staging is an authoring/harness fault. Without `seedingFailed` the
+	// outer catch returns a plain failed build and the case is scored `build_failure` /
+	// `builder_issue` — a builder red for something the builder had no part in.
+	it('flags seedingFailed when a prior run names an id the seed never created', async () => {
+		const client = makeClient({
+			restoreThread: vi.fn().mockResolvedValue({
+				restored: 0,
+				workflowIds: [],
+				dataTableIds: ['scenario-dt-1'],
+				agentIds: [],
+			}),
+			listWorkflows: vi.fn().mockResolvedValue([]),
+		});
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			seed: {
+				mode: 'inline' as const,
+				messages: [],
+				workflows: [{ id: 'sEeDeDwF1234567a', name: 'Daily Sync', nodes: [], connections: {} }],
+				dataTables: [],
+				agents: [],
+				projects: [],
+				// Not the declared id — `executePriorRuns` throws.
+				priorRuns: [{ workflow: 'nOtDeClArEd1234a' }],
+			},
+		});
+
+		expect(build.success).toBe(false);
+		expect(build.seedingFailed).toBe(true);
+	});
+
 	it('returns the built workflow, both tables, and the name→id map on success', async () => {
 		const client = makeClient();
 
@@ -127,5 +203,76 @@ describe('buildWorkflow scenario-seed data table lifecycle', () => {
 		);
 		// The name→real-id map lets each scenario reseed rows into the bound table.
 		expect(build.seededScenarioTableIdsByName).toEqual({ 'Job Applications': 'scenario-dt-1' });
+	});
+});
+
+describe('buildWorkflow declared credentials', () => {
+	it('registers the seeded credentials as passing their connection test', async () => {
+		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+		const client = makeClient({
+			setThreadCredentialAllowlist,
+			createCredential: vi.fn().mockResolvedValue({ id: 'cred-seeded' }),
+		});
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			credentials: [{ type: 'slackApi' }],
+		});
+
+		expect(build.success).toBe(true);
+		// A declared credential stands for one the user already connected, so its
+		// placeholder token must not make the build see a failing connection test.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			expect.any(String),
+			['cred-seeded'],
+			['cred-seeded'],
+		);
+	});
+
+	it('creates a blank credential with no field values and keeps it off the bypass list', async () => {
+		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+		const createCredential = vi.fn().mockResolvedValue({ id: 'cred-blank' });
+		const client = makeClient({ setThreadCredentialAllowlist, createCredential });
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			credentials: [{ type: 'httpHeaderAuth', blank: true }],
+		});
+
+		expect(build.success).toBe(true);
+		// A blank credential models one the user saved without filling anything in,
+		// so it is seeded with no data and must never resolve a test as passing.
+		expect(createCredential).toHaveBeenCalledWith(expect.any(String), 'httpHeaderAuth', {});
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			expect.any(String),
+			['cred-blank'],
+			[],
+		);
+	});
+
+	it('filters an already-broken credential out of the connection-test bypass list', async () => {
+		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+		const createCredential = vi
+			.fn()
+			.mockResolvedValueOnce({ id: 'cred-working' })
+			.mockResolvedValueOnce({ id: 'cred-broken' });
+		const client = makeClient({ setThreadCredentialAllowlist, createCredential });
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			credentials: [{ type: 'slackApi' }, { type: 'notionApi', valid: false }],
+		});
+
+		expect(build.success).toBe(true);
+		// Both credentials are created for real and visible to the build (2nd arg) —
+		// only the one NOT marked already-broken bypasses its connection test (3rd arg).
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			expect.any(String),
+			['cred-working', 'cred-broken'],
+			['cred-working'],
+		);
 	});
 });

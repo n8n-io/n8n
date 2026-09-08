@@ -5,6 +5,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
+import { useI18n } from '@n8n/i18n';
 import * as vueRouter from 'vue-router';
 import type { MockInstance } from 'vitest';
 
@@ -156,6 +158,26 @@ describe('DependencyPill', () => {
 		expect(items[7].id).toBe('workflowParent:wf-2');
 	});
 
+	it('should group agent usages under the agents i18n label', () => {
+		const baseTextSpy = vi.spyOn(useI18n(), 'baseText');
+		mockDepsResult = {
+			dependencies: [
+				{ type: 'agentUsage', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+			],
+			inaccessibleCount: 0,
+		};
+		renderComponent({ props: defaultProps });
+
+		const items = capturedItems as Array<{ id: string; label: string; disabled?: boolean }>;
+
+		expect(items).toHaveLength(2);
+		expect(items[0]).toMatchObject({ id: 'header-agentUsage', disabled: true });
+		expect(baseTextSpy).toHaveBeenCalledWith('workflows.dependencies.type.agents');
+		expect(items[1].id).toBe('agentUsage:agent-1');
+
+		baseTextSpy.mockRestore();
+	});
+
 	it('should open credential on select', () => {
 		mockDepsResult = {
 			dependencies: [{ type: 'credentialId', id: 'cred-1', name: 'My Key' }],
@@ -227,6 +249,24 @@ describe('DependencyPill', () => {
 		capturedSelectHandler?.('dataTableId:dt-1');
 
 		expect(windowOpenSpy).not.toHaveBeenCalled();
+	});
+
+	it('should open an agent using the credential in a new tab on select', () => {
+		mockDepsResult = {
+			dependencies: [
+				{ type: 'agentUsage', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+			],
+			inaccessibleCount: 0,
+		};
+		renderComponent({ props: defaultProps });
+
+		capturedSelectHandler?.('agentUsage:agent-1');
+
+		expect(router.resolve).toHaveBeenCalledWith({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: 'proj-1', agentId: 'agent-1' },
+		});
+		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
 	});
 
 	it('should ignore select with invalid value', () => {

@@ -1,12 +1,15 @@
-import type { IResult } from 'mssql';
-import mssql from 'mssql';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-
 import { routeBinaryProperties } from '@utils/binary';
 import { chunk, flatten } from '@utils/utilities';
+import type { IResult } from 'mssql';
+import mssql from 'mssql';
+import { deepCopy, safeRegex } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { ITables, OperationInputData } from './interfaces';
+
+function toOptionalNumber(value: unknown) {
+	return value === undefined || value === null || value === '' ? undefined : Number(value);
+}
 
 /**
  * Returns a copy of the item which only contains the json data and
@@ -57,7 +60,7 @@ export function createTableStruct(
 		if (keyName) {
 			itemCopy[keyName] = keyParam;
 		}
-		(tables[table][columnString] as IDataObject[]).push(itemCopy);
+		tables[table][columnString].push(itemCopy);
 		return tables;
 	}, Object.create(null) as ITables);
 }
@@ -98,13 +101,13 @@ export function formatColumns(columns: string) {
 export function configurePool(credentials: IDataObject) {
 	const config = {
 		server: credentials.server as string,
-		port: credentials.port as number,
+		port: toOptionalNumber(credentials.port),
 		database: credentials.database as string,
 		user: credentials.user as string,
 		password: credentials.password as string,
 		domain: credentials.domain ? (credentials.domain as string) : undefined,
-		connectionTimeout: credentials.connectTimeout as number,
-		requestTimeout: credentials.requestTimeout as number,
+		connectionTimeout: toOptionalNumber(credentials.connectTimeout),
+		requestTimeout: toOptionalNumber(credentials.requestTimeout),
 		options: {
 			encrypt: credentials.tls as boolean,
 			enableArithAbort: false,
@@ -288,7 +291,7 @@ export async function executeSqlQueryAndPrepareResults(
 		// Process in reverse order so $10 is replaced before $1
 		for (let i = queryValues.length; i >= 1; i--) {
 			const paramName = `p${i}`;
-			processedQuery = processedQuery.replace(new RegExp(`\\$${i}(?!\\d)`, 'g'), `@${paramName}`);
+			processedQuery = safeRegex.replace(`\\$${i}(?!\\d)`, processedQuery, 'g', `@${paramName}`);
 			request.input(paramName, queryValues[i - 1]);
 		}
 	}

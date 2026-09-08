@@ -183,7 +183,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 						@resizeend="onChatPanelResizeEnd"
 					>
 						<ChatMessagesPanel
-							:key="`canvas-chat-${currentSessionId}${isPoppedOut ? '-pop-out' : ''}`"
+							:key="`canvas-chat-${currentSessionId}-${isReadOnly ? (execution?.id ?? 'none') : 'live'}${isPoppedOut ? '-pop-out' : ''}`"
 							data-test-id="canvas-chat"
 							:is-open="isOpen"
 							:is-read-only="isReadOnly"
@@ -281,6 +281,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 }
 
 .container {
+	--logs-panel--header-height: var(--height--lg);
+
 	height: 100%;
 	display: flex;
 	flex-grow: 1;

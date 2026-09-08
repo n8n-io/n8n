@@ -11,7 +11,6 @@ import {
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
-import { randomUUID } from 'crypto';
 import type { Response } from 'express';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
 import { pipeline } from 'node:stream/promises';
@@ -26,11 +25,10 @@ import {
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
-import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { messagesToDto } from './agent-message-mapper';
 import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
-import { AgentValidationService } from './agent-validation.service';
+import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -41,11 +39,10 @@ import { withOpenSuspensions } from './utils/messages-envelope';
 export class AgentChatController {
 	constructor(
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
+		private readonly agentTestRunService: AgentTestRunService,
 		private readonly agentTestChatService: AgentTestChatService,
-		private readonly agentValidationService: AgentValidationService,
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly credentialsService: CredentialsService,
-		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentsService: AgentsService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 	) {}
@@ -125,36 +122,28 @@ export class AgentChatController {
 		let executionId: string | undefined;
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
-			// If the client supplied a sessionId and a thread already exists under that id,
-			// the thread must belong to this (project, agent). Otherwise a caller could
-			// append messages to another user's thread. A non-existent id is fine -
-			// executeForChat will create the thread on first persisted message.
-			if (sessionId) {
-				const existing = await this.agentExecutionService.findThreadById(sessionId);
-				if (abortController.signal.aborted) return;
-				if (existing && !threadBelongsTo(existing, projectId, agentId)) {
-					send({ type: 'error', message: 'Session not found' });
-					return;
-				}
-			}
-
-			const threadId = sessionId ?? randomUUID();
-			const { missing } = await this.agentValidationService.validateAgentIsRunnable(
+			const prepared = await this.agentTestRunService.prepareDraftRun({
 				agentId,
 				projectId,
+				sessionId,
 				credentialProvider,
-			);
+			});
 			if (abortController.signal.aborted) return;
-			if (missing.length > 0) {
+			if (prepared.status === 'session_not_found') {
+				send({ type: 'error', message: 'Session not found' });
+				return;
+			}
+			if (prepared.status === 'agent_misconfigured') {
 				send({
 					type: 'error',
 					message: 'This agent is not ready to run yet.',
 					errorCode: 'agent_misconfigured',
-					missing,
+					missing: prepared.missing,
 				});
 				return;
 			}
 
+			const threadId = prepared.sessionId;
 			storedAttachments = await this.storeChatAttachments({
 				attachments,
 				agentId,
@@ -164,16 +153,13 @@ export class AgentChatController {
 			});
 
 			const suspended = await pumpChunks(
-				this.agentExecutionOrchestratorService.executeForChat({
+				this.agentTestRunService.streamDraftRun({
 					agentId,
 					projectId,
 					message,
 					attachments: storedAttachments,
 					user: req.user,
-					memory: {
-						threadId,
-						resourceId: draftChatMemoryResourceId(req.user.id),
-					},
+					sessionId: threadId,
 					onExecutionRecorded: (id) => {
 						executionId = id;
 					},

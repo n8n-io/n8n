@@ -4,7 +4,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
-import { formatBytes } from '@/app/utils/typesUtils';
+import { formatBytes } from '@n8n/utils/number/bytes';
 
 const props = defineProps<{
 	attachments: ChatMessageAttachment[];

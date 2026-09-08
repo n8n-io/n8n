@@ -27,6 +27,15 @@ export async function snapshotWorkflowIds(client: N8nClient): Promise<Set<string
 	}
 }
 
+/** Same, for data tables — the scenario seed-table eviction's allowlist. */
+export async function snapshotDataTableIds(client: N8nClient): Promise<Set<string>> {
+	try {
+		return new Set(await client.listDataTableIds(await client.getPersonalProjectId()));
+	} catch {
+		return new Set();
+	}
+}
+
 // ---------------------------------------------------------------------------
 // buildAgentOutcome
 // ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import {
 	ApiTags,
 	Body,
 	ControllerRegistryMetadata,
+	Deprecated,
 	Get,
 	Param,
 	Post,
@@ -19,12 +20,15 @@ import { z } from 'zod';
 
 import {
 	markPublicApiController,
+	OptionalWidgetBodyDto,
+	WidgetArrayResponseDto,
 	WidgetBodyDto,
 	WidgetPaginationQueryDto,
 	WidgetQueryDto,
+	WidgetResponseDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
 
-import { getDecoratorGeneratedOperations } from '../decorator-routes';
+import { getDecoratorGeneratedOperations, getSharedResponseSchemas } from '../decorator-routes';
 
 describe('getDecoratorGeneratedOperations', () => {
 	beforeEach(() => {
@@ -87,6 +91,20 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config['x-required-scope']).toBe('workflow:read');
 	});
 
+	it('marks the operation deprecated when @Deprecated is present', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@Deprecated({ since: new Date('2026-07-23T00:00:00Z') })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.deprecated).toBe(true);
+	});
+
 	it('includes shared pagination parameters when the query DTO declares them', () => {
 		class WidgetsPublicController {
 			@Get('/')
@@ -116,6 +134,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(params?.shape).toHaveProperty('id');
 		expect(operation.config.request?.query).toBeDefined();
 		expect(operation.config.request?.body).toEqual({
+			required: true,
 			content: { 'application/json': { schema: WidgetBodyDto.schema } },
 		});
 	});
@@ -136,6 +155,8 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config['x-required-scope']).toBeUndefined();
 		expect(operation.config.parameters).toBeUndefined();
 		expect(operation.config.request).toBeUndefined();
+		expect(operation.config.deprecated).toBeUndefined();
+		expect(operation.config.responses[415]).toBeUndefined();
 		expect(operation.config.responses[200]).toEqual({ description: 'Operation successful.' });
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',
@@ -145,6 +166,24 @@ describe('getDecoratorGeneratedOperations', () => {
 			'v1/handlers/decorator-routed.handler',
 		);
 		expect(operation.config['x-decorator-routed']).toBe(true);
+	});
+
+	it('documents a bare-array response DTO as an array schema, not an object envelope', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200, WidgetArrayResponseDto)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		const response = operation.config.responses[200] as {
+			content: { 'application/json': { schema: z.ZodTypeAny } };
+		};
+		const schema = response.content['application/json'].schema;
+		expect(schema).toBeInstanceOf(z.ZodArray);
+		expect(schema).toBe(WidgetArrayResponseDto.schema);
 	});
 
 	it('throws for an @ApiErrorResponse status with no shared response file mapped', () => {
@@ -158,5 +197,115 @@ describe('getDecoratorGeneratedOperations', () => {
 
 		expect(() => getDecoratorGeneratedOperations()).toThrow(UnexpectedError);
 		expect(() => getDecoratorGeneratedOperations()).toThrow(/ApiErrorResponse\(418\)/);
+	});
+
+	it('leaves the request body optional when every field is optional', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(_req: unknown, _res: unknown, @Body _body: OptionalWidgetBodyDto) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.request?.body?.required).toBeUndefined();
+	});
+
+	it('documents a 415 for a route that takes a request body', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(_req: unknown, _res: unknown, @Body _body: WidgetBodyDto) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[415]).toEqual({
+			$ref: '../../../../shared/spec/responses/unsupportedMediaType.yml',
+		});
+	});
+
+	it('refs the shared response file for an error status declared without a body DTO', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@ApiErrorResponse(409)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[409]).toEqual({
+			$ref: '../../../../shared/spec/responses/conflict.yml',
+		});
+	});
+
+	it('inlines the body schema for an error status declared with a body DTO', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@ApiErrorResponse(409, { dto: WidgetResponseDto })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[409]).toEqual({
+			description: 'Conflict',
+			content: { 'application/json': { schema: WidgetResponseDto.schema } },
+		});
+	});
+
+	it('uses the description given to @ApiErrorResponse over the shared default', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@ApiErrorResponse(409, {
+				dto: WidgetResponseDto,
+				description: 'Conflict, e.g. an open review blocks publication.',
+			})
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		const response = operation.config.responses[409] as { description: string };
+		expect(response.description).toBe('Conflict, e.g. an open review blocks publication.');
+	});
+
+	it('emits the given description with no $ref when no body DTO is given', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@ApiErrorResponse(404, { description: 'No widget with that ID.' })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[404]).toEqual({ description: 'No widget with that ID.' });
+	});
+
+	it('keeps an error body schema inline even when two routes share the DTO', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@ApiErrorResponse(409, { dto: WidgetResponseDto })
+			list() {}
+
+			@Post('/')
+			@ApiResponse(201)
+			@ApiErrorResponse(409, { dto: WidgetResponseDto })
+			create() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		expect(getSharedResponseSchemas().has(WidgetResponseDto)).toBe(false);
 	});
 });

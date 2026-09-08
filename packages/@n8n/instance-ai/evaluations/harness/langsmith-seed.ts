@@ -32,7 +32,6 @@ const WORKSPACE_TOOL = {
 	WRITE: 'workspace_write_file',
 	APPEND: 'workspace_append_file',
 	STR_REPLACE: 'workspace_str_replace_file',
-	BATCH_STR_REPLACE: 'workspace_batch_str_replace_file',
 	MOVE: 'workspace_move_file',
 	COPY: 'workspace_copy_file',
 	DELETE: 'workspace_delete_file',
@@ -42,8 +41,7 @@ const WORKSPACE_TOOL = {
 export const REPLAYED_WORKSPACE_TOOL_ARGS: Record<string, readonly string[]> = {
 	[WORKSPACE_TOOL.WRITE]: ['path', 'content'],
 	[WORKSPACE_TOOL.APPEND]: ['path', 'content'],
-	[WORKSPACE_TOOL.STR_REPLACE]: ['path', 'old_str', 'new_str'],
-	[WORKSPACE_TOOL.BATCH_STR_REPLACE]: ['path', 'replacements'],
+	[WORKSPACE_TOOL.STR_REPLACE]: ['path', 'replacements'],
 	[WORKSPACE_TOOL.MOVE]: ['src', 'dest'],
 	[WORKSPACE_TOOL.COPY]: ['src', 'dest'],
 	[WORKSPACE_TOOL.DELETE]: ['path'],
@@ -53,6 +51,7 @@ export const REPLAYED_WORKSPACE_TOOL_ARGS: Record<string, readonly string[]> = {
  *  the contract test can prove every live filesystem tool is classified. */
 export const IGNORED_WORKSPACE_TOOLS: readonly string[] = [
 	'workspace_read_file',
+	'workspace_read_tool_result',
 	'workspace_list_files',
 	'workspace_file_stat',
 	'workspace_mkdir',
@@ -412,6 +411,11 @@ async function reconstructWithClient(
 			messages,
 			workflows,
 			dataTables,
+			// A trace carries no agent artifacts yet; only authored seeds can seed one.
+			agents: [],
+			// Likewise no projects: a replayed thread ran in whatever project it ran in,
+			// and a seeded project is a fixture an author declares, not something a trace records.
+			projects: [],
 		},
 		liveTurn,
 		runCount: runs.length,
@@ -509,20 +513,8 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 		return true;
 	}
 	if (tool.name === WORKSPACE_TOOL.STR_REPLACE) {
-		// The tool requires one exact, unique match; mirror it (first occurrence).
-		const path = asString(input.path);
-		const current = path !== undefined ? files.get(path) : undefined;
-		const oldStr = asString(input.old_str);
-		const newStr = asString(input.new_str);
-		if (path === undefined || current === undefined || !oldStr || newStr === undefined) return true;
-		if (!current.includes(oldStr)) return false;
-		files.set(path, current.replace(oldStr, newStr));
-		return true;
-	}
-	if (tool.name === WORKSPACE_TOOL.BATCH_STR_REPLACE) {
 		// The real tool is atomic — it validates every anchor up front and applies
-		// all or nothing (@n8n/ai-utilities TextEditorDocument.executeBatch). Mirror
-		// that, like single str-replace: any missing anchor → file untouched, diverged.
+		// all or nothing (@n8n/ai-utilities TextEditorDocument.executeBatch).
 		const path = asString(input.path);
 		const current = path !== undefined ? files.get(path) : undefined;
 		if (path === undefined || current === undefined) return true;

@@ -35,7 +35,7 @@ afterAll(async () => {
 
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
-	const workflowSharingService = mockInstance(WorkflowSharingService);
+	mockInstance(WorkflowSharingService);
 	let controller: InsightsController;
 	const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 	const today = DateTime.now().toJSDate();
@@ -209,6 +209,25 @@ describe('InsightsController', () => {
 				expect(response).toEqual(expectedResponse);
 			});
 
+			it('should forward the timeZone query filter down to the repository', async () => {
+				const startDate = DateTime.now().minus({ days: 12, hours: 12 }).toJSDate();
+				const endDate = DateTime.now().minus({ days: 4, hours: 5 }).toJSDate();
+
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+					mockRepositoryResponse,
+				);
+
+				await controller.getInsightsSummary(mock<AuthenticatedRequest>(), mock<Response>(), {
+					startDate,
+					endDate,
+					timeZone: 'Europe/Berlin',
+				});
+
+				expect(
+					insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+				).toHaveBeenCalledWith(expect.objectContaining({ timeZone: 'Europe/Berlin' }));
+			});
+
 			it('should default the endDate to today when not provided', async () => {
 				const startDate = DateTime.now().startOf('day').minus({ days: 12, minutes: 43 }).toJSDate();
 
@@ -345,13 +364,6 @@ describe('InsightsController', () => {
 				timeSaved: 0,
 			},
 		];
-
-		beforeEach(() => {
-			// getSharedWorkflowIds returns all workflow IDs for the owner-like user
-			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(
-				mockRows.map((row) => row.workflowId),
-			);
-		});
 
 		it('should return empty insights by workflow if no data', async () => {
 			// ARRANGE

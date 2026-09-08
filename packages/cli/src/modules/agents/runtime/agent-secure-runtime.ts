@@ -1,4 +1,4 @@
-import type { ToolDescriptor } from '@n8n/agents';
+import type { AgentMessage, ToolDescriptor } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { readFileSync } from 'fs';
@@ -161,6 +161,30 @@ export class AgentSecureRuntime {
 		return code;
 	}
 
+	private loadToolInContext(
+		context: ivm.Context,
+		slot: AgentIsolateSlot,
+		compiledToolCode: string,
+	): void {
+		const script = slot.isolate.compileScriptSync(`
+			var __me = {};
+			var __mod = { exports: __me };
+			(function(exports, require, module) {
+				${compiledToolCode}
+			})(__me, require, __mod);
+
+			globalThis.__exportedTool = __mod.exports.default || __mod.exports;
+			if (!globalThis.__exportedTool || typeof globalThis.__exportedTool !== 'object') {
+				throw new Error('No Tool found');
+			}
+		`);
+		try {
+			script.runSync(context, { timeout: 5000 });
+		} finally {
+			script.release();
+		}
+	}
+
 	/**
 	 * Safely parse a JSON string that originated from the sandbox.
 	 *
@@ -267,26 +291,11 @@ export class AgentSecureRuntime {
 		return await this.withIsolate(async (slot) => {
 			const context = slot.createContext();
 			try {
-				const setupCode = `
-					var __me = {};
-					var __mod = { exports: __me };
-					(function(exports, require, module) {
-						${jsCode}
-					})(__me, require, __mod);
+				this.loadToolInContext(context, slot, jsCode);
 
-					globalThis.__exportedTool = __mod.exports.default || __mod.exports;
-					if (!globalThis.__exportedTool || typeof globalThis.__exportedTool !== 'object') {
-						throw new Error('No Tool found');
-					}
-				`;
-				const setupScript = slot.isolate.compileScriptSync(setupCode);
-				setupScript.runSync(context, { timeout: 5000 });
-				setupScript.release();
-
-				const serializedArgs = JSON.stringify({ input, ctx });
-
+				const serializedContext = JSON.stringify(ctx);
 				const invokeCode = `
-					(async function() {
+					return (async function() {
 						var tool = globalThis.__exportedTool;
 						var handlerFn = tool.handlerFn || (tool.build ? tool.build().handler : null);
 						if (!handlerFn) {
@@ -295,9 +304,8 @@ export class AgentSecureRuntime {
 						}
 						if (!handlerFn) throw new Error('Tool has no handler');
 
-						var args = ${serializedArgs};
 						var suspendPayload = { called: false, data: null };
-						var ctx = Object.assign({}, args.ctx || {}, {
+						var ctx = Object.assign({}, ${serializedContext ?? 'undefined'} || {}, {
 							suspend: function(payload) {
 								suspendPayload.called = true;
 								suspendPayload.data = payload;
@@ -305,34 +313,68 @@ export class AgentSecureRuntime {
 							},
 						});
 
-						var result = await handlerFn(args.input, ctx);
+						var result = await handlerFn($0, ctx);
 
 						if (suspendPayload.called) {
-							return JSON.stringify({ __suspend: true, payload: suspendPayload.data });
+							return { __suspend: true, payload: suspendPayload.data };
 						}
-						return JSON.stringify(result);
+						return result;
 					})()
 				`;
 
-				const resultJson = (await context.eval(invokeCode, {
+				const result: unknown = await context.evalClosure(invokeCode, [input], {
 					timeout: 5000,
-					promise: true,
-					copy: true,
-				})) as string;
+					arguments: { copy: true },
+					result: { promise: true, copy: true },
+				});
 
-				const parsed = this.parseSandboxJson<Record<string, unknown>>(
-					resultJson,
-					'executeToolInIsolate',
-				);
-
-				if (parsed?.__suspend) {
+				if (
+					typeof result === 'object' &&
+					result !== null &&
+					'__suspend' in result &&
+					result.__suspend
+				) {
 					return {
 						[Symbol.for('n8n.agent.suspend')]: true,
-						payload: parsed.payload,
+						payload: 'payload' in result ? result.payload : undefined,
 					};
 				}
 
-				return parsed;
+				return result;
+			} finally {
+				context.release();
+			}
+		});
+	}
+
+	private async executeToMessageInIsolate(
+		toolCode: string,
+		output: unknown,
+	): Promise<AgentMessage | undefined> {
+		const jsCode = await this.compileTs(toolCode);
+
+		return await this.withIsolate(async (slot) => {
+			const context = slot.createContext();
+			try {
+				this.loadToolInContext(context, slot, jsCode);
+
+				const invokeCode = `
+					return (async function() {
+						var tool = globalThis.__exportedTool;
+						var built = tool.build ? tool.build() : tool;
+						var toMessageFn = built.toMessage;
+						if (!toMessageFn) return null;
+
+						return (await toMessageFn($0)) ?? null;
+					})()
+				`;
+
+				const message = (await context.evalClosure(invokeCode, [output], {
+					timeout: 5000,
+					arguments: { copy: true },
+					result: { promise: true, copy: true },
+				})) as AgentMessage | null;
+				return message ?? undefined;
 			} finally {
 				context.release();
 			}
@@ -351,6 +393,13 @@ export class AgentSecureRuntime {
 					throw new Error(`Tool "${toolName}" not found in tools map`);
 				}
 				return await this.executeToolInIsolate(toolCode, input, ctx);
+			},
+			executeToMessage: async (toolName: string, output: unknown) => {
+				const toolCode = toolsByName[toolName];
+				if (!toolCode) {
+					throw new Error(`Tool "${toolName}" not found in tools map`);
+				}
+				return await this.executeToMessageInIsolate(toolCode, output);
 			},
 		};
 	}

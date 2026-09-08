@@ -8,7 +8,7 @@ import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
@@ -70,7 +70,7 @@ const {
 	toggleCollapse,
 } = useSidebarLayout();
 
-const { settingsItems } = useSettingsItems();
+const { settingsItems, handleSettingsItemSelect } = useSettingsItems();
 const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
 
 // Component data
@@ -188,6 +188,16 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				},
 			},
 			{
+				id: 'contact-support',
+				icon: 'life-buoy',
+				label: i18n.baseText('mainSidebar.helpMenuItems.contactSupport'),
+				available: settingsStore.isCloudDeployment,
+				link: {
+					href: EXTERNAL_LINKS.SUPPORT,
+					target: '_blank',
+				},
+			},
+			{
 				id: 'report-bug',
 				icon: 'bug',
 				label: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
@@ -214,7 +224,12 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 ]);
 
 const visibleMenuItems = computed<IMenuItem[]>(() =>
-	mainMenuItems.value.filter((item) => item.available !== false),
+	mainMenuItems.value
+		.filter((item) => item.available !== false)
+		.map((item) => ({
+			...item,
+			children: item.children?.filter((child) => child.available !== false),
+		})),
 );
 
 const checkOverflow = () => {
@@ -297,6 +312,11 @@ const handleSelect = (key: string) => {
 			void pageRedirectionHelper.goToDashboard();
 			break;
 		}
+		case 'settings-n8n-connect': {
+			void handleSettingsItemSelect(key);
+			break;
+		}
+		case 'contact-support':
 		case 'quickstart':
 		case 'docs':
 		case 'forum':

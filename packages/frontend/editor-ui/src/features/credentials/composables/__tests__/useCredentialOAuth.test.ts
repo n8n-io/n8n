@@ -392,7 +392,11 @@ describe('useCredentialOAuth', () => {
 			isManaged: false,
 		};
 
-		let mockPopup: { closed: boolean; close: ReturnType<typeof vi.fn> };
+		let mockPopup: {
+			closed: boolean;
+			close: ReturnType<typeof vi.fn>;
+			location: { href: string };
+		};
 		class MockBroadcastChannel {
 			static failOauth = false;
 
@@ -432,7 +436,7 @@ describe('useCredentialOAuth', () => {
 		}
 
 		beforeEach(() => {
-			mockPopup = { closed: false, close: vi.fn() };
+			mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
 
 			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
@@ -456,6 +460,29 @@ describe('useCredentialOAuth', () => {
 			expect(result).toBe(true);
 		});
 
+		it('should open the popup before any request and navigate it to the fetched URL', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			const openSpy = vi.fn().mockReturnValue(mockPopup);
+			vi.stubGlobal('open', openSpy);
+			// The popup must already exist by the time the authorization URL is
+			// requested — opening it later falls outside the click's transient
+			// user activation and gets blocked.
+			credentialsStore.oAuth2Authorize.mockImplementation(async () => {
+				expect(openSpy).toHaveBeenCalledWith(
+					'about:blank',
+					'OAuth Authorization',
+					expect.any(String),
+				);
+				return await Promise.resolve('https://oauth.example.com/auth');
+			});
+
+			const { authorize } = useCredentialOAuth();
+			const result = await authorize(mockCredential);
+
+			expect(result).toBe(true);
+			expect(mockPopup.location.href).toBe('https://oauth.example.com/auth');
+		});
+
 		it('should call oAuth1Authorize for OAuth1 types', async () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			const oauth1Credential: ICredentialsResponse = {
@@ -471,7 +498,7 @@ describe('useCredentialOAuth', () => {
 			expect(result).toBe(true);
 		});
 
-		it('should return false when API call fails', async () => {
+		it('should return false and close the popup when API call fails', async () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockRejectedValue(new Error('API error'));
 
@@ -480,9 +507,10 @@ describe('useCredentialOAuth', () => {
 
 			expect(result).toBe(false);
 			expect(mockShowError).toHaveBeenCalled();
+			expect(mockPopup.close).toHaveBeenCalled();
 		});
 
-		it('should return false for invalid URL protocol', async () => {
+		it('should return false and close the popup for invalid URL protocol', async () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('ftp://bad-protocol.com');
 
@@ -490,10 +518,11 @@ describe('useCredentialOAuth', () => {
 			const result = await authorize(mockCredential);
 
 			expect(result).toBe(false);
-			expect(mockShowError).toHaveBeenCalled();
+			expect(mockShowError).toHaveBeenCalledWith(expect.any(Error), 'Invalid OAuth URL');
+			expect(mockPopup.close).toHaveBeenCalled();
 		});
 
-		it('should return false when popup is blocked', async () => {
+		it('should show the popup-blocked error and skip the URL request when the popup is blocked', async () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 			vi.stubGlobal('open', vi.fn().mockReturnValue(null));
@@ -502,6 +531,8 @@ describe('useCredentialOAuth', () => {
 			const result = await authorize(mockCredential);
 
 			expect(result).toBe(false);
+			expect(credentialsStore.oAuth2Authorize).not.toHaveBeenCalled();
+			expect(mockShowError).toHaveBeenCalledWith(expect.any(Error), 'Sign-in window was blocked');
 		});
 
 		it('should return false on non-success BroadcastChannel message', async () => {
@@ -779,7 +810,11 @@ describe('useCredentialOAuth', () => {
 			isManaged: false,
 		};
 
-		let mockPopup: { closed: boolean; close: ReturnType<typeof vi.fn> };
+		let mockPopup: {
+			closed: boolean;
+			close: ReturnType<typeof vi.fn>;
+			location: { href: string };
+		};
 
 		class MockBroadcastChannel {
 			static failOauth = false;
@@ -811,8 +846,10 @@ describe('useCredentialOAuth', () => {
 
 		beforeEach(() => {
 			mockTrack.mockClear();
-			mockPopup = { closed: false, close: vi.fn() };
+			mockShowError.mockClear();
+			mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
 			MockBroadcastChannel.silent = false;
+			mockedStore(useCredentialsStore).deleteCredential.mockResolvedValue();
 			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
 		});
@@ -841,6 +878,28 @@ describe('useCredentialOAuth', () => {
 
 			return credentialsStore;
 		}
+
+		it('should delete a newly created credential when authorization fails', async () => {
+			const credentialsStore = setupFailedOAuthFlow();
+			const { authorizeNewCredential } = useCredentialOAuth();
+
+			await expect(authorizeNewCredential(createdCredential)).resolves.toBe(false);
+
+			expect(credentialsStore.deleteCredential).toHaveBeenCalledWith({
+				id: createdCredential.id,
+			});
+			expect(credentialsStore.upsertCredential).not.toHaveBeenCalled();
+		});
+
+		it('should keep a newly created credential when authorization succeeds', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			const { authorizeNewCredential } = useCredentialOAuth();
+
+			await expect(authorizeNewCredential(createdCredential)).resolves.toBe(true);
+
+			expect(credentialsStore.upsertCredential).toHaveBeenCalledWith(createdCredential);
+			expect(credentialsStore.deleteCredential).not.toHaveBeenCalled();
+		});
 
 		it('should not set allowedHttpRequestDomains for hidden property', async () => {
 			const credentialsStore = setupSuccessfulOAuthFlow();
@@ -948,6 +1007,29 @@ describe('useCredentialOAuth', () => {
 
 			const savedCall = mockTrack.mock.calls.find((call) => call[0] === 'User saved credentials');
 			expect(savedCall?.[1]).not.toHaveProperty('node_type');
+		});
+
+		it('should not create a credential when the popup is blocked', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			vi.stubGlobal('open', vi.fn().mockReturnValue(null));
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			const credential = await createAndAuthorize('slackOAuth2Api');
+
+			expect(credential).toBeNull();
+			expect(credentialsStore.createNewCredential).not.toHaveBeenCalled();
+			expect(mockShowError).toHaveBeenCalledWith(expect.any(Error), 'Sign-in window was blocked');
+		});
+
+		it('should close the popup when credential creation fails', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.createNewCredential.mockRejectedValue(new Error('creation failed'));
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			const credential = await createAndAuthorize('slackOAuth2Api');
+
+			expect(credential).toBeNull();
+			expect(mockPopup.close).toHaveBeenCalled();
 		});
 
 		it('should keep the credential when OAuth succeeds via backend verification (COOP)', async () => {

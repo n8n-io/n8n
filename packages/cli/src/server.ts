@@ -1,16 +1,13 @@
 import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
-import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { SecurityConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { access as fsAccess } from 'fs/promises';
+import { access as fsAccess, readFile } from 'fs/promises';
 import helmet from 'helmet';
-import isEmpty from 'lodash/isEmpty';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
@@ -24,12 +21,15 @@ import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-rela
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
+import { createContentSecurityPolicyMiddleware } from '@/middlewares/content-security-policy';
 import { PostHogClient } from '@/posthog';
-import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
+import { loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
+import { resolveContentSecurityPolicies } from '@/security/content-security-policy';
 import type { FrontendService } from '@/services/frontend.service';
 import { Telemetry } from '@/telemetry';
+import * as requestPath from '@/utils/request-path';
 
 import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
@@ -47,6 +47,7 @@ import '@/controllers/orchestration.controller';
 import '@/controllers/owner.controller';
 import '@/controllers/password-reset.controller';
 import '@/controllers/project.controller';
+import '@/controllers/project-pool-settings.controller.ee';
 import '@/controllers/role.controller';
 import '@/controllers/tags.controller';
 import '@/controllers/translation.controller';
@@ -77,6 +78,7 @@ import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-serv
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from './services/auth-strategy.registry';
+import { SessionCookieAuthStrategy } from './services/session-cookie-auth.strategy';
 
 @Service()
 export class Server extends AbstractServer {
@@ -177,28 +179,24 @@ export class Server extends AbstractServer {
 		}
 
 		await this.postHogClient.init();
+		this.postHogClient.setupExpressSessionContext(this.app);
 
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
 
 		// Register auth strategies in priority order. The registry evaluates them
 		// sequentially — the first strategy that returns a non-null result wins.
 		// API key auth is registered first so existing behavior is preserved.
+		// Session cookie auth is registered last: an explicit but wrong API
+		// key/bearer token fails fast rather than silently falling back to an
+		// ambient browser session cookie.
 		// Additional strategies (e.g. scoped JWT from the token-exchange module)
 		// can be appended later during their own module initialization.
 		const registry = Container.get(AuthStrategyRegistry);
 		registry.register(Container.get(ApiKeyAuthStrategy));
+		registry.register(Container.get(SessionCookieAuthStrategy));
 
-		// ----------------------------------------
-		// Public API
-		// ----------------------------------------
-
-		if (isApiEnabled()) {
-			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
-			this.app.use(...apiRouters);
-			if (frontendService) {
-				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
-			}
-		}
+		// Parse cookies for easier access
+		this.app.use(cookieParser());
 
 		// Extract BrowserId from headers
 		this.app.use((req: APIRequest, _, next) => {
@@ -206,8 +204,32 @@ export class Server extends AbstractServer {
 			next();
 		});
 
-		// Parse cookies for easier access
-		this.app.use(cookieParser());
+		// Installed here on purpose, and the order is the mechanism: `AbstractServer` has
+		// already registered the webhook and form routes, so they never reach this
+		// middleware. Those pages serve HTML that a workflow author wrote, which the
+		// instance policy must not constrain - including when the `sandbox` policy is
+		// switched off with `N8N_INSECURE_DISABLE_*_SANDBOX`, where they carry no policy
+		// at all. Moving this line above `AbstractServer` would silently change that.
+		const securityConfig = Container.get(SecurityConfig);
+		this.app.use(
+			createContentSecurityPolicyMiddleware(
+				resolveContentSecurityPolicies(
+					securityConfig.contentSecurityPolicy,
+					securityConfig.contentSecurityPolicyReportOnly,
+					this.logger,
+				),
+			),
+		);
+
+		// ----------------------------------------
+		// Public API
+		// ----------------------------------------
+
+		const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
+		this.app.use(...apiRouters);
+		if (frontendService) {
+			(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
+		}
 
 		const { restEndpoint, app } = this;
 
@@ -323,25 +345,7 @@ export class Server extends AbstractServer {
 		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 
-		// Protect type files with authentication regardless of UI availability
-		const authService = Container.get(AuthService);
-		const protectedTypeFiles = [
-			'/types/nodes.json',
-			'/types/credentials.json',
-			'/types/node-versions.json',
-		];
-		protectedTypeFiles.forEach((path) => {
-			this.app.get(
-				path,
-				authService.createAuthMiddleware({ allowSkipMFA: true, allowSkipPreviewAuth: true }),
-				async (_, res: express.Response) => {
-					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-					res.sendFile(path.substring(1), {
-						root: staticCacheDir,
-					});
-				},
-			);
-		});
+		this.protectTypeFiles(staticCacheDir);
 
 		if (frontendService) {
 			this.app.use(
@@ -386,24 +390,11 @@ export class Server extends AbstractServer {
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
-			const cspDirectives = jsonParse<{ [key: string]: Iterable<string> }>(
-				Container.get(SecurityConfig).contentSecurityPolicy,
-				{
-					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
-				},
-			);
 			const crossOriginOpenerPolicy = Container.get(SecurityConfig).crossOriginOpenerPolicy;
-			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
+			// `createContentSecurityPolicyMiddleware` serves the CSP instead: helmet cannot
+			// inject a per-request nonce.
 			const securityHeadersMiddleware = helmet({
-				contentSecurityPolicy: isEmpty(cspDirectives)
-					? false
-					: {
-							useDefaults: false,
-							reportOnly: cspReportOnly,
-							directives: {
-								...cspDirectives,
-							},
-						},
+				contentSecurityPolicy: false,
 				xFrameOptions:
 					isPreviewMode || inE2ETests || inDevelopment ? false : { action: 'sameorigin' },
 				dnsPrefetchControl: false,
@@ -431,55 +422,100 @@ export class Server extends AbstractServer {
 				'assets',
 				'static',
 				'types',
+				'\\.well-known',
 				this.endpointHealth,
 				'metrics',
 				'e2e',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
-				isApiEnabled() ? '' : publicApiEndpoint,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
-			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
-			const historyApiHandler: express.RequestHandler = (req, res, next) => {
+			// Matched against the normalised path, so a non-UI asset requested in another
+			// case or spelling reaches the static handler rather than the editor page.
+			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`, 'i');
+
+			// `index.html` does not change while n8n runs. Read it once and keep it split
+			// around the nonce placeholders, so serving a request is only a join.
+			let indexHtmlParts: string[] | undefined;
+			const indexHtmlTemplate = async () => {
+				indexHtmlParts ??= (await readFile(resolve(staticCacheDir, 'index.html'), 'utf8')).split(
+					HTML_NONCE_PLACEHOLDER,
+				);
+				return indexHtmlParts;
+			};
+
+			const historyApiHandler: express.RequestHandler = async (req, res, next) => {
 				const {
 					method,
 					headers: { accept },
 				} = req;
+				// A request with no `Accept` also gets the page. Only this handler fills in the
+				// nonce placeholders, so `express.static` would serve `index.html` with the
+				// placeholders intact, and no script on it could run under the CSP.
 				if (
 					method === 'GET' &&
-					accept &&
-					(accept.includes('text/html') || accept.includes('*/*')) &&
+					(!accept || req.accepts('html') || accept.includes('*/*')) &&
 					!req.path.endsWith('.wasm') &&
-					!nonUIRoutesRegex.test(req.path)
+					!nonUIRoutesRegex.test(requestPath.normalize(req.path))
 				) {
 					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
+
+					let template: string[];
+					try {
+						template = await indexHtmlTemplate();
+					} catch (error) {
+						this.logger.error('Could not read index.html', { error });
+						res.sendStatus(500);
+						return;
+					}
+
+					// Only the placeholders the build wrote get the nonce. Markup that arrived
+					// any other way must not get one.
 					securityHeadersMiddleware(req, res, () => {
-						res.sendFile('index.html', { root: staticCacheDir, maxAge: 0, lastModified: false });
+						res.type('html').send(template.join(res.locals.cspNonce));
 					});
 				} else {
 					next();
 				}
 			};
-			const setCustomCacheHeader = (res: express.Response) => {
-				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
-					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-				}
-			};
-
 			this.app.use(
 				'/',
 				historyApiHandler,
-				express.static(staticCacheDir, {
-					...cacheOptions,
-					setHeaders: setCustomCacheHeader,
-				}),
+				express.static(staticCacheDir, cacheOptions),
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
+	}
 
-		installGlobalProxyAgent();
+	/** Authenticates every request that can reach a type file, whether or not the editor is served. */
+	private protectTypeFiles(staticCacheDir: string) {
+		const authMiddleware = Container.get(AuthService).createAuthMiddleware({
+			allowSkipMFA: true,
+			allowSkipPreviewAuth: true,
+		});
+
+		// Match exact urls. We always expect them in this form, and only a matched route
+		// path can skip AuthService's browser-id check, which the editor's fetch needs.
+		const typeFiles = ['/types/nodes.json', '/types/credentials.json', '/types/node-versions.json'];
+		typeFiles.forEach((typeFile) => {
+			this.app.get(typeFile, authMiddleware, async (_, res: express.Response) => {
+				res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+				res.sendFile(typeFile.substring(1), { root: staticCacheDir });
+			});
+		});
+
+		// Deny any request that can reach /types/* that isn't caught above, rather than
+		// authenticating it: no client asks for those forms, and authenticating here would
+		// clear the session cookie of a signed-in caller, since this matches no route.
+		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+			if (requestPath.mayReachDirectory(req.path, 'types')) {
+				res.status(401).end();
+				return;
+			}
+			next();
+		});
 	}
 
 	private configureSettingsRoute() {

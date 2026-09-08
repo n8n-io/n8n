@@ -5,6 +5,7 @@ import {
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
 	type AgentJsonConfig,
+	type AgentSkill,
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -24,14 +25,25 @@ import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
+import { decomposeJsonConfig } from './json-config/agent-config-composition';
 import {
 	AgentRepository,
 	type AgentSummary,
 	type AgentSummaryFilters,
 } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
-import { isUnconfiguredAgent } from './utils/agent-capabilities';
 import { EventService } from '@/events/event.service';
+
+type CreateAgentOptions = {
+	availableInMCP?: boolean;
+	id?: string;
+	adoptOnCollision?: boolean;
+	defaultModel?: { model: string; credential: string };
+	/** Create with this config instead of the empty draft, so eval thread seeding
+	 *  can recreate an already-built agent in one insert. */
+	schema?: AgentJsonConfig;
+	skills?: Record<string, AgentSkill>;
+};
 
 @Service()
 export class AgentsService {
@@ -53,30 +65,44 @@ export class AgentsService {
 	 * `id` lets the caller mint the agent id before deciding to persist it, so a
 	 * surface can reference the agent (an artifact tab, a thread binding) while
 	 * it is still unsaved. The builder path may race the REST create on the same
-	 * id; with `adoptUnconfiguredOnCollision` the loser adopts a same-project
-	 * still-unconfigured row. REST stays strict (flag defaults false).
+	 * id; with `adoptOnCollision` the loser adopts the same-project row instead
+	 * of failing, so both paths converge on one agent even once the winner has
+	 * configured it. REST stays strict (flag defaults false).
+	 *
+	 * Adoption is an authorization decision, and this method makes none: callers
+	 * pass the flag only after proving the caller may adopt this very agent (see
+	 * `InstanceAiPendingAgentService` and the builder delegate).
 	 *
 	 * Emits no telemetry: a row on its own is not a created agent, so the
 	 * creation events fire from the first configuring write instead (see
 	 * `AgentModificationTelemetryService`).
 	 */
-	async create(
+	async create(projectId: string, name: string, options: CreateAgentOptions = {}): Promise<Agent> {
+		return (await this.createOrAdopt(projectId, name, options)).agent;
+	}
+
+	/**
+	 * `create`, plus whether the id collided and an existing row was adopted — the
+	 * caller cannot tell from the returned entity, and an adopted row is an
+	 * existing agent being edited rather than a new one.
+	 */
+	async createOrAdopt(
 		projectId: string,
 		name: string,
 		{
 			availableInMCP = false,
 			id,
-			adoptUnconfiguredOnCollision = false,
-		}: {
-			availableInMCP?: boolean;
-			id?: string;
-			adoptUnconfiguredOnCollision?: boolean;
-		} = {},
-	): Promise<Agent> {
+			adoptOnCollision = false,
+			defaultModel,
+			schema,
+			skills,
+		}: CreateAgentOptions = {},
+	): Promise<{ agent: Agent; adopted: boolean }> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
 			model: '',
 			instructions: '',
+			...(defaultModel ?? {}),
 			tools: [],
 			skills: [],
 			// Seeded at birth so every agent has a distinct tile, and so the builder
@@ -88,11 +114,17 @@ export class AgentsService {
 			},
 		};
 
+		// Integrations live on their own column; `composeJsonConfig` reads them from
+		// there, so leaving them inside `schema` loses them on the next read.
+		const { schemaConfig, integrations } = decomposeJsonConfig(schema ?? defaultConfig);
+
 		const agent = this.agentRepository.create({
 			...(id ? { id } : {}),
 			name,
 			projectId,
-			schema: defaultConfig,
+			schema: schemaConfig,
+			...(integrations.length > 0 ? { integrations } : {}),
+			...(skills ? { skills } : {}),
 			versionId: uuid(),
 			availableInMCP,
 		});
@@ -104,18 +136,18 @@ export class AgentsService {
 			if (!id || !isUniqueConstraintError(error)) throw error;
 			// Never disclose whether the id exists in another project.
 			const conflict = new ConflictError('An agent with this id already exists');
-			if (!adoptUnconfiguredOnCollision) throw conflict;
+			if (!adoptOnCollision) throw conflict;
+			// Returned as it stands: the winner may already have configured it, and
+			// this call's `name`/`schema` describe a draft that never existed.
 			const existing = await this.agentRepository.findByIdAndProjectId(id, projectId);
-			if (!existing || !isUnconfiguredAgent(existing.schema, existing.integrations ?? [])) {
-				throw conflict;
-			}
+			if (!existing) throw conflict;
 			this.logger.debug('Adopted concurrently created SDK agent', { agentId: id, projectId });
-			return existing;
+			return { agent: existing, adopted: true };
 		}
 
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
 
-		return saved;
+		return { agent: saved, adopted: false };
 	}
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {
@@ -291,7 +323,7 @@ export class AgentsService {
 			});
 		}
 
-		await this.agentKnowledgeService.destroySandbox(projectId, agentId);
+		await this.agentKnowledgeService.destroyKnowledgeSandbox(projectId, agentId);
 
 		try {
 			await this.agentChatAttachmentService.deleteByAgent(agentId);

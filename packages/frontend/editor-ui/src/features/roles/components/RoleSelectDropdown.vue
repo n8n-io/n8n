@@ -8,11 +8,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type {
-	SelectItemProps,
-	SelectValue,
-	SelectVariants,
-} from '@n8n/design-system/v2/components/Select/Select.types';
+import type { SelectItemProps, SelectValue, SelectVariants } from '@n8n/design-system';
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';

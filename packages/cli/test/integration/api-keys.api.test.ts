@@ -335,7 +335,9 @@ describe('Owner shell', () => {
 			apiKey: publicApiKeyService.redactApiKey(apiKeyWithExpiration.body.data.rawApiKey),
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
-			expiresAt: expirationDateInTheFuture,
+			// GET returns JWT `exp`, which can drift 1s from the request value when
+			// sign-time `iat` crosses a second boundary vs generateApiKey's now.
+			expiresAt: publicApiKeyService.getApiKeyExpiration(apiKeyWithExpiration.body.data.rawApiKey),
 			scopes: ['workflow:create'],
 			audience: 'public-api',
 			lastUsedAt: null,
@@ -505,6 +507,24 @@ describe('Member', () => {
 		expect(newApiKeyResponse.statusCode).toBe(400);
 	});
 
+	test('POST /api-keys should create an api key with folder scopes', async () => {
+		const folderScopes: ApiKeyScope[] = [
+			'folder:create',
+			'folder:read',
+			'folder:update',
+			'folder:delete',
+			'folder:list',
+		];
+
+		const newApiKeyResponse = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null, scopes: folderScopes })
+			.expect(200);
+
+		expect(newApiKeyResponse.body.data.scopes).toEqual(folderScopes);
+	});
+
 	test('GET /api-keys should fetch the api key redacted', async () => {
 		const expirationDateInTheFuture = Date.now() + 1000;
 
@@ -541,7 +561,9 @@ describe('Member', () => {
 			apiKey: publicApiKeyService.redactApiKey(apiKeyWithExpiration.body.data.rawApiKey),
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
-			expiresAt: expirationDateInTheFuture,
+			// GET returns JWT `exp`, which can drift 1s from the request value when
+			// sign-time `iat` crosses a second boundary vs generateApiKey's now.
+			expiresAt: publicApiKeyService.getApiKeyExpiration(apiKeyWithExpiration.body.data.rawApiKey),
 			scopes: ['workflow:create'],
 			audience: 'public-api',
 			lastUsedAt: null,

@@ -10,7 +10,8 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, UserError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 
 export function getSchemaHeader(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
@@ -83,6 +84,44 @@ export async function supabaseApiRequest(
 			error.message = `${error.message}: ${error.description}`;
 		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+type SupabaseApiDefinition = {
+	paths?: IDataObject;
+	definitions?: {
+		[table: string]: { properties?: { [column: string]: { type: string } } } | undefined;
+	};
+};
+
+const apiDefinitionsInFlight = new Map<string, Promise<SupabaseApiDefinition>>();
+
+/**
+ * Reads the PostgREST root document, which lists every table and column and so can run to
+ * several megabytes. The editor opens one column dropdown per field and they all ask at
+ * once, so overlapping callers share one request instead of a parsed copy each.
+ */
+export async function getApiDefinition(
+	this: ILoadOptionsFunctions,
+): Promise<SupabaseApiDefinition> {
+	const { host, serviceRole } = await this.getCredentials<{
+		host: string;
+		serviceRole: string;
+	}>('supabaseApi');
+	const header = getSchemaHeader(this, 'GET', 'loadOptions');
+	const key = createHash('sha256')
+		.update(JSON.stringify([host, serviceRole, header]))
+		.digest('hex');
+
+	const inFlight = apiDefinitionsInFlight.get(key);
+	if (inFlight) return await inFlight;
+
+	const request = supabaseApiRequest.call(this, 'GET', '/', {}, {}, undefined, header);
+	apiDefinitionsInFlight.set(key, request);
+	try {
+		return await request;
+	} finally {
+		apiDefinitionsInFlight.delete(key);
 	}
 }
 
@@ -306,25 +345,62 @@ export function getFilters(
 	];
 }
 
-export const buildQuery = (obj: IDataObject, value: IDataObject) => {
-	if (value.condition === 'fullText') {
-		return Object.assign(obj, {
-			[`${value.keyName}`]: `${value.searchFunction}.${value.keyValue}`,
-		});
-	}
-	return Object.assign(obj, { [`${value.keyName}`]: `${value.condition}.${value.keyValue}` });
-};
+const supportedFilterConditions = new Set([
+	'eq',
+	'gt',
+	'gte',
+	'ilike',
+	'is',
+	'lt',
+	'lte',
+	'like',
+	'neq',
+]);
 
-export const buildOrQuery = (key: IDataObject) => {
-	if (key.condition === 'fullText') {
-		return `${key.keyName}.${key.searchFunction}.${key.keyValue}`;
-	}
-	return `${key.keyName}.${key.condition}.${key.keyValue}`;
-};
+const supportedSearchFunctions = new Set(['fts', 'plfts', 'phfts', 'wfts']);
 
-export const buildGetQuery = (obj: IDataObject, value: IDataObject) => {
-	return Object.assign(obj, { [`${value.keyName}`]: `eq.${value.keyValue}` });
-};
+// ,.():"\ - reserved characters by PostgREST
+// &?= - characters used in query strings
+const postgrestReservedCharacters = /[,.():"&?=\\]/;
+
+function quotePostgrestComponent(value: unknown) {
+	const stringValue = String(value);
+	if (!postgrestReservedCharacters.test(stringValue)) {
+		return stringValue;
+	}
+
+	return `"${stringValue.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
+}
+
+function getPostgrestOperator(value: IDataObject) {
+	const condition = String(value.condition);
+	if (condition !== 'fullText') {
+		if (!supportedFilterConditions.has(condition)) {
+			throw new UserError(`Unsupported filter condition: "${condition}"`);
+		}
+
+		return condition;
+	}
+
+	const searchFunction = String(value.searchFunction);
+	if (!supportedSearchFunctions.has(searchFunction)) {
+		throw new UserError(`Unsupported search function: "${searchFunction}"`);
+	}
+
+	return searchFunction;
+}
+
+export const buildQuery = (query: Map<string, string>, value: IDataObject) =>
+	query.set(
+		quotePostgrestComponent(value.keyName),
+		`${getPostgrestOperator(value)}.${String(value.keyValue)}`,
+	);
+
+export const buildOrQuery = (value: IDataObject) =>
+	`${quotePostgrestComponent(value.keyName)}.${getPostgrestOperator(value)}.${quotePostgrestComponent(value.keyValue)}`;
+
+export const buildGetQuery = (query: Map<string, string>, value: IDataObject) =>
+	query.set(quotePostgrestComponent(value.keyName), `eq.${String(value.keyValue)}`);
 
 export async function validateCredentials(
 	this: ICredentialTestFunctions,

@@ -4,6 +4,7 @@ import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowEntity } from '../../entities';
+import type { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { FolderRepository } from '../folder.repository';
@@ -19,12 +20,14 @@ describe('WorkflowRepository', () => {
 	const folderRepository = mockInstance(FolderRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
+	const transactionRunner = mock<TransactionRunner>();
 	const workflowRepository = new WorkflowRepository(
 		entityManager.connection,
 		globalConfig,
 		folderRepository,
 		sharedWorkflowRepository,
 		workflowHistoryRepository,
+		transactionRunner,
 	);
 
 	let queryBuilder: Mocked<SelectQueryBuilder<WorkflowEntity>>;
@@ -40,6 +43,7 @@ describe('WorkflowRepository', () => {
 		queryBuilder.select.mockReturnThis();
 		queryBuilder.addSelect.mockReturnThis();
 		queryBuilder.leftJoin.mockReturnThis();
+		queryBuilder.leftJoinAndSelect.mockReturnThis();
 		queryBuilder.innerJoin.mockReturnThis();
 		queryBuilder.orderBy.mockReturnThis();
 		queryBuilder.addOrderBy.mockReturnThis();
@@ -151,6 +155,7 @@ describe('WorkflowRepository', () => {
 				folderRepository,
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
+				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 
@@ -273,7 +278,7 @@ describe('WorkflowRepository', () => {
 	});
 
 	describe('applyActiveVersionRelation', () => {
-		it('should join activeVersion relation when select.activeVersion is true', async () => {
+		it('should join activeVersion with the shared list columns when select.activeVersion is true', async () => {
 			const workflowIds = ['workflow1'];
 			const options = {
 				select: { activeVersion: true } as const,
@@ -284,8 +289,16 @@ describe('WorkflowRepository', () => {
 			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
 			expect(queryBuilder.addSelect).toHaveBeenCalledWith([
 				'activeVersion.versionId',
+				'activeVersion.workflowId',
 				'activeVersion.nodes',
 				'activeVersion.connections',
+				'activeVersion.nodeGroups',
+				'activeVersion.authors',
+				'activeVersion.name',
+				'activeVersion.description',
+				'activeVersion.autosaved',
+				'activeVersion.createdAt',
+				'activeVersion.updatedAt',
 			]);
 		});
 
@@ -372,6 +385,7 @@ describe('WorkflowRepository', () => {
 				folderRepository,
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
+				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 
@@ -401,6 +415,7 @@ describe('WorkflowRepository', () => {
 				folderRepository,
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
+				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 
@@ -538,6 +553,43 @@ describe('WorkflowRepository', () => {
 			expect(findSpy).toHaveBeenCalledTimes(1);
 			expect(findSpy).toHaveBeenCalledWith({ where: { id: In(workflowIds) } });
 		});
+
+		it('merges workflows returned from different chunks', async () => {
+			const first = Object.assign(new WorkflowEntity(), { id: 'first' });
+			const last = Object.assign(new WorkflowEntity(), { id: 'last' });
+			const findSpy = vi
+				.spyOn(workflowRepository, 'find')
+				.mockResolvedValueOnce([first])
+				.mockResolvedValueOnce([last]);
+			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `workflow-${index}`);
+
+			const result = await workflowRepository.findByIds(workflowIds, { fields: ['name'] });
+
+			expect(findSpy).toHaveBeenCalledTimes(2);
+			expect(findSpy).toHaveBeenNthCalledWith(2, {
+				where: { id: In(['workflow-10000']) },
+				select: ['id', 'name'],
+			});
+			expect(result).toEqual([first, last]);
+		});
+	});
+
+	describe('findPreExistingWorkflows', () => {
+		it('merges workflows returned from different chunks', async () => {
+			const first = Object.assign(new WorkflowEntity(), { id: 'first' });
+			const last = Object.assign(new WorkflowEntity(), { id: 'last' });
+			queryBuilder.getMany.mockResolvedValueOnce([first]).mockResolvedValueOnce([last]);
+			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `workflow-${index}`);
+
+			const result = await workflowRepository.findPreExistingWorkflows(workflowIds);
+
+			expect(queryBuilder.getMany).toHaveBeenCalledTimes(2);
+			expect(result).toEqual([first, last]);
+			expect(queryBuilder.where.mock.calls[1]).toEqual([
+				'workflow.id IN (:...workflowIds)',
+				{ workflowIds: ['workflow-10000'] },
+			]);
+		});
 	});
 
 	describe('getPublishedPersonalWorkflowsCount', () => {
@@ -617,6 +669,7 @@ describe('WorkflowRepository', () => {
 				folderRepository,
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
+				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 			queryBuilder.getMany.mockResolvedValue([]);
@@ -678,6 +731,7 @@ describe('WorkflowRepository', () => {
 				folderRepository,
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
+				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);
 

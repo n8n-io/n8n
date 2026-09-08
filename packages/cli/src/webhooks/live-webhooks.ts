@@ -1,9 +1,16 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowsConfig } from '@n8n/config';
+import { ExpressionEngineConfig, WorkflowsConfig } from '@n8n/config';
 import { WorkflowRepository, type WorkflowEntity, type WorkflowHistory } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	Workflow,
+	CHAT_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_PATH_SUFFIX,
+	WEBHOOK_NODE_TYPE,
+	nodeParametersAreStatic,
+	webhookDescriptionIsNativelyResolvable,
+} from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -41,6 +48,7 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly expressionEngineConfig: ExpressionEngineConfig,
 	) {}
 
 	async getWebhookMethods(path: string) {
@@ -56,7 +64,7 @@ export class LiveWebhooks implements IWebhookManager {
 		});
 
 		const isChatWebhookNode = (type: string, webhookId?: string) =>
-			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/chat` === path;
+			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/${CHAT_TRIGGER_PATH_SUFFIX}` === path;
 
 		const nodes = workflowData?.activeVersion?.nodes;
 		const webhookNode = nodes?.find(
@@ -131,10 +139,15 @@ export class LiveWebhooks implements IWebhookManager {
 			projectId: ownerProjectId,
 		});
 
-		await workflow.expression.acquireIsolate();
+		const startNode = workflow.getNode(webhook.node);
+
+		if (this.webhookPhaseNeedsIsolate(startNode)) {
+			await workflow.expression.acquireIsolate();
+		}
+
 		try {
 			const webhookData = this.webhookService
-				.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)
+				.getNodeWebhooks(workflow, startNode as INode, additionalData)
 				.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
 
 			if (
@@ -183,8 +196,36 @@ export class LiveWebhooks implements IWebhookManager {
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
+			// A no-op when the acquire was skipped.
 			await workflow.expression.releaseIsolate();
 		}
+	}
+
+	/**
+	 * Expression Engine VM acquisition builds a V8 isolate per request, which is
+	 * worth skipping when the webhook phase provably evaluates nothing: every
+	 * description field of the trigger resolves natively (see
+	 * `webhookDescriptionFields` in n8n-workflow) and the node's own parameters
+	 * contain no expressions. Anything not proven below acquires eagerly.
+	 */
+	private webhookPhaseNeedsIsolate(startNode: INode | null): boolean {
+		if (!this.expressionEngineConfig.allowWebhookIsolateSkip) return true;
+		if (startNode === null) return true;
+
+		// Extend only after reviewing the node type's webhook() for
+		// evaluateExpression() calls or other internal evaluations.
+		if (startNode.type !== WEBHOOK_NODE_TYPE) return true;
+
+		// typeVersion 1 body parsing evaluates a hardcoded template.
+		if (startNode.typeVersion === 1) return true;
+
+		if (!nodeParametersAreStatic(startNode)) return true;
+
+		const webhooks = this.nodeTypes.getByNameAndVersion(startNode.type, startNode.typeVersion)
+			?.description.webhooks;
+		if (!webhooks?.length) return true;
+
+		return !webhooks.every(webhookDescriptionIsNativelyResolvable);
 	}
 
 	private async loadWebhookExecutionData(

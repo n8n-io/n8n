@@ -13,6 +13,13 @@ const folderConflict: BlockingIssue = {
 	expectedParentFolderId: 'anchor',
 };
 
+const projectConflict: BlockingIssue = {
+	type: 'project-conflict',
+	kind: 'fail-policy',
+	sourceProjectId: 'p1',
+	name: 'billing',
+};
+
 const credentialUnresolved: BlockingIssue = {
 	type: 'credential-unresolved',
 	kind: 'not_found',
@@ -24,6 +31,16 @@ const variableUnresolved: BlockingIssue = {
 	type: 'variable-unresolved',
 	name: 'API_URL',
 	usedByWorkflows: ['w1'],
+};
+
+const workflowLineageConflict: BlockingIssue = {
+	type: 'workflow-lineage-conflict',
+	sourceWorkflowId: 'source-1',
+	projectId: 'project-1',
+	existingWorkflows: [
+		{ id: 'workflow-1', name: 'First', isArchived: false },
+		{ id: 'workflow-2', name: 'Second', isArchived: false },
+	],
 };
 
 const tagUnresolved = (
@@ -39,6 +56,16 @@ const tagUnresolved = (
 describe('toImportBlockedError', () => {
 	it('maps a folder-conflict to 409 Conflict', () => {
 		const error = toImportBlockedError([folderConflict]);
+		expect(error).toBeInstanceOf(ConflictError);
+	});
+
+	it('maps a project-conflict to 409 Conflict', () => {
+		const error = toImportBlockedError([projectConflict]);
+		expect(error).toBeInstanceOf(ConflictError);
+	});
+
+	it('maps a workflow-lineage-conflict to 409 Conflict', () => {
+		const error = toImportBlockedError([workflowLineageConflict]);
 		expect(error).toBeInstanceOf(ConflictError);
 	});
 

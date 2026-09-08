@@ -7,6 +7,8 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProjectService } from '@/services/project.service.ee';
+import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
+import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { orderBySubWorkflowDependencies } from './sub-workflow-ordering';
@@ -14,6 +16,7 @@ import type { PersistedWorkflowOutcome, PersistedWorkflowPlanItem } from './work
 import { decideWorkflowPublishingAction } from './workflow-publishing-policy';
 import {
 	WorkflowPublishingPolicy,
+	type PublishingAction,
 	type WorkflowPublishingBlockedReason,
 	type WorkflowPublishingContext,
 	type WorkflowPublishingOutcome,
@@ -49,6 +52,7 @@ export class WorkflowPublisher {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly workflowService: WorkflowService,
+		private readonly webhookService: WebhookService,
 	) {}
 
 	/**
@@ -65,9 +69,12 @@ export class WorkflowPublisher {
 		subWorkflowRequirements,
 	}: PackagePublishingRequest): Promise<PackagePublishingResults> {
 		const results = new Map<string, WorkflowPublishingResult>();
+		const claimedPaths = new Set<string>();
 
 		for (const outcome of orderBySubWorkflowDependencies(persisted, subWorkflowRequirements)) {
 			if (outcome.status === 'skipped') continue;
+
+			const webhookKeys = this.webhookKeysOnPublish(outcome, policy);
 
 			const result = await this.apply(
 				user,
@@ -75,7 +82,13 @@ export class WorkflowPublisher {
 				outcome.workflow,
 				policy,
 				outcome.blockedFromPublish,
+				webhookKeys.some((key) => claimedPaths.has(key)),
 			);
+
+			if (result.publishing.state === 'published') {
+				for (const key of webhookKeys) claimedPaths.add(key);
+			}
+
 			// Publish reloads the workflow without parentFolder; restore it for the import summary.
 			result.workflow.parentFolder =
 				result.workflow.parentFolder ??
@@ -86,6 +99,27 @@ export class WorkflowPublisher {
 		}
 
 		return results;
+	}
+
+	/**
+	 * Webhooks the workflow would register, empty unless the policy will publish it. The sweep
+	 * tracks these itself because activation checks `webhook_entity`, whose rows the publication
+	 * service writes asynchronously: a workflow published moments earlier isn't there yet, so the
+	 * check passes and the workflow is reported published while its registration fails after.
+	 */
+	private webhookKeysOnPublish(
+		outcome: Extract<PersistedWorkflowOutcome, { status: 'created' | 'updated' }>,
+		policy: WorkflowPublishingPolicy,
+	): string[] {
+		if (outcome.blockedFromPublish) return [];
+
+		const action = decideWorkflowPublishingAction(
+			policy,
+			toPublishingContext(outcome.item, outcome.workflow),
+		);
+		if (action !== 'publish') return [];
+
+		return this.webhookService.getStaticWebhookKeys(outcome.workflow.nodes);
 	}
 
 	/**
@@ -134,6 +168,7 @@ export class WorkflowPublisher {
 		workflow: WorkflowEntity,
 		policy: WorkflowPublishingPolicy,
 		blockedReason?: WorkflowPublishingBlockedReason,
+		webhookContested = false,
 	): Promise<WorkflowPublishingResult> {
 		const action = decideWorkflowPublishingAction(policy, toPublishingContext(item, workflow));
 
@@ -160,6 +195,10 @@ export class WorkflowPublisher {
 			};
 		}
 
+		if (action === 'publish' && webhookContested) {
+			return this.failed(workflow, action, WEBHOOK_CONFLICT_MESSAGE);
+		}
+
 		try {
 			if (action === 'publish') {
 				return {
@@ -178,17 +217,26 @@ export class WorkflowPublisher {
 				publishing: { state: 'unpublished' },
 			};
 		} catch (error) {
-			// Content import already succeeded; a publish/unpublish failure (e.g. a
-			// triggerless workflow under `publish-all`) must not fail the import.
-			// Keep the post-save state and surface the reason for diagnostics.
-			const message = ensureError(error).message;
-			this.logger.warn('Failed to apply publishing policy to imported workflow', {
-				workflowId: workflow.id,
-				action,
-				error: message,
-			});
-			return { workflow, publishing: { state: 'failed', error: message } };
+			return this.failed(workflow, action, ensureError(error).message);
 		}
+	}
+
+	/**
+	 * Content import already succeeded; a publish/unpublish failure (e.g. a triggerless workflow
+	 * under `publish-all`) must not fail the import. Keep the post-save state and surface the
+	 * reason for diagnostics.
+	 */
+	private failed(
+		workflow: WorkflowEntity,
+		action: PublishingAction,
+		error: string,
+	): WorkflowPublishingResult {
+		this.logger.warn('Failed to apply publishing policy to imported workflow', {
+			workflowId: workflow.id,
+			action,
+			error,
+		});
+		return { workflow, publishing: { state: 'failed', error } };
 	}
 }
 

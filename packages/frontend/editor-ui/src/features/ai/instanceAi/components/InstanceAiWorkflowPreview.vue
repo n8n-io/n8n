@@ -17,7 +17,10 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
-import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
+import {
+	buildInstanceAiArtifactCredentialQuestion,
+	buildInstanceAiCredentialHandoffContext,
+} from '../composables/useInstanceAiHandoff';
 import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
 import type { FixWithAiError } from '../fixWithAi';
@@ -160,10 +163,14 @@ const rootStore = useRootStore();
 // already the thread's subject, which hides the editor hand-off button here.
 const instanceAiCapability: InstanceAiEditorCapability = {
 	openCredential: async (credential) => {
+		// The handoff context carries the recipe's verified key page and the
+		// paste-only steering; without it the agent re-researches or suggests
+		// editing the pre-filled form.
 		void thread.sendMessage(
 			buildInstanceAiArtifactCredentialQuestion(credential),
 			undefined,
 			rootStore.pushRef,
+			buildInstanceAiCredentialHandoffContext(credential),
 		);
 		// Appends to the current thread → close the modal so the conversation shows.
 		return true;

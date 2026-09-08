@@ -1,3 +1,7 @@
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'fs';
+import { tmpdir } from 'os';
+import * as path from 'path';
+
 import {
 	validateNodeConfig,
 	loadSchema,
@@ -101,6 +105,92 @@ describe('schema-validator', () => {
 			expect(result.errors).toEqual([]);
 		});
 
+		describe('missingDiscriminator flag', () => {
+			// Hand-authored union with NO default resolution, so these tests stay
+			// deterministic against generator changes (real node schemas resolve
+			// defaulted discriminators since #35952 and never reach this path).
+			let tmpRoot: string;
+
+			beforeAll(() => {
+				tmpRoot = mkdtempSync(path.join(tmpdir(), 'sdk-schema-discriminator-'));
+				const nodeDir = path.join(tmpRoot, 'nodes', 'custom-pkg', 'messenger');
+				mkdirSync(nodeDir, { recursive: true });
+				writeFileSync(
+					path.join(nodeDir, 'v1.schema.js'),
+					`module.exports = function ({ z }) {
+	const sendVariant = z.object({
+		parameters: z.object({
+			resource: z.literal('message'),
+			operation: z.literal('send'),
+			channel: z.string(),
+			recipient: z.string(),
+		}),
+	});
+	const listVariant = z.object({
+		parameters: z.object({
+			resource: z.literal('channel'),
+			operation: z.literal('list'),
+			channel: z.string(),
+		}),
+	});
+	return z.union([sendVariant, listVariant]);
+};
+`,
+				);
+				setSchemaBaseDirs([tmpRoot]);
+			});
+
+			afterAll(() => {
+				rmSync(tmpRoot, { recursive: true, force: true });
+				setSchemaBaseDirs(originalBaseDirs);
+			});
+
+			it('flags an omitted discriminator when the rest of the config is sound', () => {
+				const result = validateNodeConfig('custom-pkg.messenger', 1, {
+					parameters: { channel: '#general', recipient: 'bob' },
+				});
+				expect(result.valid).toBe(false);
+				expect(result.errors.length).toBeGreaterThan(0);
+				expect(result.errors[0].message).toContain('Missing discriminator');
+				expect(result.errors[0].missingDiscriminator).toBe(true);
+			});
+
+			it('flags when only a later variant is satisfied apart from the discriminators', () => {
+				// `recipient` is missing, so the FIRST variant (send) also fails on a
+				// non-discriminator field; only the second variant (list) is satisfied
+				// apart from the omitted discriminators. The flag must not depend on
+				// which variant best-path selection happens to rank first.
+				const result = validateNodeConfig('custom-pkg.messenger', 1, {
+					parameters: { channel: '#general' },
+				});
+				expect(result.valid).toBe(false);
+				expect(result.errors[0].message).toContain('Missing discriminator');
+				expect(result.errors[0].missingDiscriminator).toBe(true);
+			});
+
+			it('does not flag when the union also fails on other fields', () => {
+				// Discriminators are omitted AND `channel` has the wrong type in
+				// every variant — a genuinely misconfigured node must stay blocking.
+				const result = validateNodeConfig('custom-pkg.messenger', 1, {
+					parameters: { channel: 123 },
+				});
+				expect(result.valid).toBe(false);
+				expect(result.errors[0].message).toContain('Missing discriminator');
+				expect(result.errors[0].missingDiscriminator).toBeUndefined();
+			});
+		});
+
+		it('does not flag a wrong discriminator value as missingDiscriminator', () => {
+			const result = validateNodeConfig('n8n-nodes-base.set', 3, {
+				parameters: {
+					mode: 'invalid-mode',
+					assignments: { assignments: [] },
+				},
+			});
+			expect(result.valid).toBe(false);
+			expect(result.errors[0].missingDiscriminator).toBeUndefined();
+		});
+
 		it('returns clear error when discriminator has wrong value', () => {
 			// Set v3 mode must be 'manual' or 'raw'
 			const result = validateNodeConfig('n8n-nodes-base.set', 3, {
@@ -162,6 +252,126 @@ describe('schema-validator', () => {
 				parameters: {},
 			});
 			expect(result.valid).toBe(true);
+		});
+	});
+
+	describe('path component handling', () => {
+		it.each([
+			'n8n-nodes-base.foo/bar',
+			'n8n-nodes-base.foo\\bar',
+			'foo/bar.set',
+			'n8n-nodes-base.foo\0bar',
+		])('returns null for node types containing path separators (%s)', (nodeType) => {
+			setSchemaBaseDirs(originalBaseDirs);
+			expect(loadSchema(nodeType, 1)).toBeNull();
+		});
+
+		it.each([
+			// "base..." -> nodeName "..", "base.." -> nodeName "."
+			'n8n-nodes-base...',
+			'n8n-nodes-base..',
+		])('returns null for node types with parent/current-dir components (%s)', (nodeType) => {
+			setSchemaBaseDirs(originalBaseDirs);
+			expect(loadSchema(nodeType, 1)).toBeNull();
+		});
+
+		it('does not resolve a module from outside the schema base directory', () => {
+			const tmpRoot = mkdtempSync(path.join(tmpdir(), 'sdk-schema-'));
+			try {
+				const baseDir = path.join(tmpRoot, 'base');
+				mkdirSync(baseDir, { recursive: true });
+
+				// Plant a module where a "../" walk from <baseDir>/nodes/x would land.
+				writeFileSync(
+					path.join(tmpRoot, 'v1.schema.js'),
+					'module.exports = function () { throw new Error("EXECUTED"); };',
+				);
+
+				setSchemaBaseDirs([baseDir]);
+
+				// Count the "../" steps needed to climb from <baseDir>/nodes/x back to tmpRoot,
+				// then build the type the same way an attacker would ("x." + "../" * n).
+				const relative = path.relative(path.join(baseDir, 'nodes', 'x'), tmpRoot);
+				const steps = relative.split(path.sep).filter((segment) => segment === '..').length;
+				const nodeType = 'x.' + '../'.repeat(steps);
+
+				expect(loadSchema(nodeType, 1)).toBeNull();
+				// The planted module must never be required or invoked.
+				const result = validateNodeConfig(nodeType, 1, { parameters: {} });
+				expect(result.valid).toBe(true);
+				expect(result.errors).toEqual([]);
+			} finally {
+				rmSync(tmpRoot, { recursive: true, force: true });
+				setSchemaBaseDirs(originalBaseDirs);
+			}
+		});
+
+		it('does not load a module through a symlinked directory in the schema tree', () => {
+			const tmpRoot = mkdtempSync(path.join(tmpdir(), 'sdk-schema-'));
+			try {
+				const nodesDir = path.join(tmpRoot, 'base', 'nodes');
+				mkdirSync(nodesDir, { recursive: true });
+
+				// Plant a module outside the schema tree, then point a symlinked
+				// package directory inside `nodes/` at it.
+				const outside = path.join(tmpRoot, 'outside', 'evil');
+				mkdirSync(path.join(outside, 'set'), { recursive: true });
+				writeFileSync(
+					path.join(outside, 'set', 'v1.schema.js'),
+					'module.exports = function () { throw new Error("EXECUTED"); };',
+				);
+
+				try {
+					symlinkSync(outside, path.join(nodesDir, 'evil'), 'dir');
+				} catch {
+					return; // Platform doesn't permit symlink creation (e.g. Windows CI) — skip.
+				}
+
+				setSchemaBaseDirs([path.join(tmpRoot, 'base')]);
+
+				// "evil.set" would resolve to nodes/evil/set/v1.schema — inside the tree
+				// lexically, but only reachable by following the symlink out.
+				expect(loadSchema('evil.set', 1)).toBeNull();
+				const result = validateNodeConfig('evil.set', 1, { parameters: {} });
+				expect(result.valid).toBe(true);
+				expect(result.errors).toEqual([]);
+			} finally {
+				rmSync(tmpRoot, { recursive: true, force: true });
+				setSchemaBaseDirs(originalBaseDirs);
+			}
+		});
+
+		it('does not load a module through a symlinked schema file when all parent dirs are real', () => {
+			const tmpRoot = mkdtempSync(path.join(tmpdir(), 'sdk-schema-leaf-'));
+			try {
+				// Every directory in the chain is real — mimics a legitimately installed node package.
+				const nodeDir = path.join(tmpRoot, 'base', 'nodes', 'n8n-nodes-base', 'httpRequest');
+				mkdirSync(nodeDir, { recursive: true });
+
+				// Attacker-controlled file, living outside the schema tree entirely.
+				const outsideFile = path.join(tmpRoot, 'outside.schema.js');
+				writeFileSync(
+					outsideFile,
+					'module.exports = function () { throw new Error("EXECUTED-VIA-LEAF-SYMLINK"); };',
+				);
+
+				// Only the leaf FILE is a symlink — nothing above it is.
+				try {
+					symlinkSync(outsideFile, path.join(nodeDir, 'v1.schema.js'), 'file');
+				} catch {
+					return; // Platform doesn't permit symlink creation (e.g. Windows CI) — skip.
+				}
+
+				setSchemaBaseDirs([path.join(tmpRoot, 'base')]);
+
+				expect(loadSchema('n8n-nodes-base.httpRequest', 1)).toBeNull();
+				const result = validateNodeConfig('n8n-nodes-base.httpRequest', 1, { parameters: {} });
+				expect(result.valid).toBe(true);
+				expect(result.errors).toEqual([]);
+			} finally {
+				rmSync(tmpRoot, { recursive: true, force: true });
+				setSchemaBaseDirs(originalBaseDirs);
+			}
 		});
 	});
 

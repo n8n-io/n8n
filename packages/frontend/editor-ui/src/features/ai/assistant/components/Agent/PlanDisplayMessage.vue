@@ -72,7 +72,6 @@ function approve() {
 			<!-- Actions (only if showActions) - just Implement button, users can type in chat to modify -->
 			<div v-if="showActions" :class="$style.actions">
 				<N8nButton
-					type="primary"
 					:disabled="disabled || isSubmitted"
 					data-test-id="plan-mode-plan-approve"
 					@click="approve"

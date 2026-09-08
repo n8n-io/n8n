@@ -7,9 +7,6 @@ import {
 } from 'reka-ui';
 import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, watch } from 'vue';
 
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
 	DropdownMenuPortalTargetKey,
@@ -20,6 +17,8 @@ import {
 } from './DropdownMenu.types';
 import DropdownMenuItems from './DropdownMenuItems.vue';
 import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
+import N8nButton from '../N8nButton/Button.vue';
+import type { IconName } from '../N8nIcon/icons';
 
 defineOptions({ inheritAttrs: false });
 
@@ -387,6 +386,7 @@ defineExpose({ open, close });
 
 <style module lang="scss">
 @use '../../css/common/var';
+@use '../../css/mixins/mixins' as scrollbar-mixins;
 @use '../../css/mixins/motion';
 
 .content {
@@ -401,7 +401,8 @@ defineExpose({ open, close });
 	width: fit-content;
 	min-width: var(--spacing--4xl);
 	max-width: var(--n8n--dropdown-menu-width);
-	max-height: min(var(--reka-dropdown-menu-content-available-height), calc(var(--height--5xl) * 3));
+	/** This stops dropdown menus expanding beyond the viewport height **/
+	max-height: min(var(--reka-dropdown-menu-content-available-height), 75vh);
 	overflow-y: auto;
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
@@ -410,7 +411,7 @@ defineExpose({ open, close });
 	will-change: transform, opacity;
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
 	z-index: var.$index-popper;
-	scrollbar-width: none;
+	@include scrollbar-mixins.hoverable-scroll-bar;
 
 	&.searchable {
 		overflow-y: hidden;

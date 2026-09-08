@@ -1,45 +1,20 @@
 // ---------------------------------------------------------------------------
 // Lane setup — one authenticated n8n lane per --base-url (TRUST-261):
-// login, MCP-registry seed, optional `claude` MCP config staging, and the
-// pre-run workflow snapshot. Plus the end-of-run per-lane artifact cleanup.
+// login, MCP-registry seed, optional MCP build-user pool, and the pre-run
+// workflow snapshot. Plus the end-of-run per-lane artifact cleanup.
 // ---------------------------------------------------------------------------
 
-import { unlinkSync } from 'fs';
-
 import type { Lane } from './build-orchestrator';
+import { cleanupLaneUsers, LaneUserPool } from './lane-users';
 import type { CliArgs } from '../cli/args';
-import { stageLaneMcpConfig } from '../cli/mcp-builder';
 import { N8nClient } from '../clients/n8n-client';
 import { cleanupCredentials } from '../credentials/seeder';
 import type { EvalLogger } from '../harness/logger';
 import { cleanupPrebuiltWorkflows } from '../harness/prebuilt-workflows';
 import { seedMcpRegistry } from '../mcp-registry/seeder';
-import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
+import { snapshotDataTableIds, snapshotWorkflowIds } from '../outcome/workflow-discovery';
 
-export interface LaneSetup {
-	lanes: Lane[];
-	/** Removes staged `claude` MCP configs (they embed lane bearer tokens). Also
-	 *  registered on process exit; calling it twice is safe. */
-	cleanupStagedMcpConfigs: () => void;
-}
-
-export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<LaneSetup> {
-	// Remove staged MCP configs (they embed the lane's bearer token) on exit,
-	// belt-and-suspenders alongside the explicit finally cleanup below.
-	// Registered before lane init and populated as configs are staged, so a
-	// lane failing setup can't strand another lane's already-staged token file.
-	const stagedMcpConfigPaths: string[] = [];
-	const cleanupStagedMcpConfigs = () => {
-		for (const path of stagedMcpConfigPaths) {
-			try {
-				unlinkSync(path);
-			} catch {
-				// best-effort
-			}
-		}
-	};
-	if (args.buildViaMcp) process.on('exit', cleanupStagedMcpConfigs);
-
+export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lane[]> {
 	// One lane per base URL. The LangSmith path then uses a work-stealing
 	// allocator (lane-allocator.ts) to dispatch builds across lanes; the direct
 	// path partitions test cases statically per lane.
@@ -62,24 +37,17 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				logger.info(`Skipped MCP registry seed (test endpoint unavailable)${tag}`);
 			}
 
-			// --build-via-mcp: enable MCP, mint this lane's own API key, and stage a
-			// `claude` MCP config pointing at this lane's MCP server. Each lane is a
-			// self-contained build+verify target — a workflow built here is verified
-			// here, so N lanes parallelize the whole pipeline within one process.
-			let mcpConfigPath: string | undefined;
+			// --build-via-mcp: enable MCP and set up the lane's build-user pool.
+			// Each lane is a self-contained build+verify target — a workflow built
+			// here is verified here, so N lanes parallelize the whole pipeline.
+			let mcpUserPool: LaneUserPool | undefined;
 			if (args.buildViaMcp) {
 				await client.enableMcpAccess();
-				const apiKey = await client.rotateMcpApiKey();
-				mcpConfigPath = stageLaneMcpConfig({
-					serverName: args.mcpServerName,
-					url: `${baseUrl}/mcp-server/http`,
-					apiKey,
-				});
-				stagedMcpConfigPaths.push(mcpConfigPath);
-				logger.info(`Staged MCP build config${tag}`);
+				mcpUserPool = new LaneUserPool(client);
 			}
 
 			const preRunWorkflowIds = await snapshotWorkflowIds(client);
+			const preRunDataTableIds = await snapshotDataTableIds(client);
 			const claimedWorkflowIds = new Set<string>();
 			const createdCredentialIds = new Set<string>();
 			const workflowIdsToDelete = new Set<string>();
@@ -87,15 +55,16 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				client,
 				baseUrl,
 				preRunWorkflowIds,
+				preRunDataTableIds,
 				claimedWorkflowIds,
 				createdCredentialIds,
 				workflowIdsToDelete,
-				mcpConfigPath,
+				mcpUserPool,
 			};
 		}),
 	);
 
-	return { lanes, cleanupStagedMcpConfigs };
+	return lanes;
 }
 
 /** Per-lane cleanup: each lane only holds the workflows built/fetched on it,
@@ -112,6 +81,11 @@ export async function cleanupLanes(
 				await cleanupPrebuiltWorkflows(lane.client, lane.workflowIdsToDelete, logger);
 			}
 			await cleanupCredentials(lane.client, [...lane.createdCredentialIds]).catch(() => {});
+			// Deleting a user deletes their remaining data, so keep the build
+			// users when workflows are kept.
+			if (cleanupBuiltWorkflows && lane.mcpUserPool) {
+				await cleanupLaneUsers(lane.client, lane.mcpUserPool, logger);
+			}
 		}),
 	);
 }
