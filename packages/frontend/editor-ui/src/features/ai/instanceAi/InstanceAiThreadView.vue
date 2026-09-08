@@ -490,10 +490,8 @@ const isThreadAreaResizing = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentPreviewDockOpen = ref(false);
 const MIN_SPLIT_PANEL_WIDTH = 400;
-const MIN_SPLIT_CONTAINER_WIDTH = MIN_SPLIT_PANEL_WIDTH * 2;
 const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
-// Stored as a share of the thread area so the split survives window and sidebar resizes.
-// -1 means no preference yet; the chat then keeps its default content width.
+// Share of the thread area, so the split survives window and sidebar resizes. -1 = no preference yet.
 const chatPanelWidthRatio = useLocalStorage(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO, -1, {
 	writeDefaults: false,
 });
@@ -504,35 +502,25 @@ watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 	}
 });
 
-function isValidPanelWidthRatio(value: unknown): value is number {
-	return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
-}
-
-const previewMinWidth = computed(() =>
-	threadAreaWidth.value <= MIN_SPLIT_CONTAINER_WIDTH
-		? Math.round(threadAreaWidth.value / 2)
-		: MIN_SPLIT_PANEL_WIDTH,
-);
+// Below two panel minimums the limits meet at half, so both panels share the space evenly.
+const halfThreadAreaWidth = computed(() => Math.round(threadAreaWidth.value / 2));
+const previewMinWidth = computed(() => Math.min(MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value));
 const previewMaxWidth = computed(() =>
-	threadAreaWidth.value <= MIN_SPLIT_CONTAINER_WIDTH
-		? Math.round(threadAreaWidth.value / 2)
-		: threadAreaWidth.value - MIN_SPLIT_PANEL_WIDTH,
+	Math.max(threadAreaWidth.value - MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value),
 );
 const previewPanelWidth = computed(() => {
-	if (threadAreaWidth.value <= MIN_SPLIT_CONTAINER_WIDTH) {
-		return Math.round(threadAreaWidth.value / 2);
-	}
-
-	const preferredChatPanelWidth = isValidPanelWidthRatio(chatPanelWidthRatio.value)
-		? threadAreaWidth.value * chatPanelWidthRatio.value
-		: DEFAULT_CHAT_PANEL_CONTENT_WIDTH;
-	const preferredWidth = threadAreaWidth.value - preferredChatPanelWidth;
+	const ratio = chatPanelWidthRatio.value;
+	const chatPanelWidth =
+		ratio >= 0 && ratio <= 1 ? threadAreaWidth.value * ratio : DEFAULT_CHAT_PANEL_CONTENT_WIDTH;
 	return Math.round(
-		Math.max(previewMinWidth.value, Math.min(preferredWidth, previewMaxWidth.value)),
+		Math.min(
+			Math.max(threadAreaWidth.value - chatPanelWidth, previewMinWidth.value),
+			previewMaxWidth.value,
+		),
 	);
 });
 const isPreviewResizeEnabled = computed(
-	() => !isPreviewExpanded.value && threadAreaWidth.value > MIN_SPLIT_CONTAINER_WIDTH,
+	() => !isPreviewExpanded.value && previewMinWidth.value < previewMaxWidth.value,
 );
 const shouldAnimatePreviewLayout = computed(
 	() =>
@@ -576,7 +564,7 @@ function handleAgentPreviewDockOpenChange(open: boolean) {
 
 function handlePreviewResize({ width }: { width: number }) {
 	// The wrapper clamps the width, so an unchanged value means the drag hit a limit: keep the stored ratio.
-	if (threadAreaWidth.value <= 0 || Math.round(width) === previewPanelWidth.value) return;
+	if (Math.round(width) === previewPanelWidth.value) return;
 	chatPanelWidthRatio.value = (threadAreaWidth.value - width) / threadAreaWidth.value;
 }
 
