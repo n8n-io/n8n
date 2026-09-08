@@ -27,6 +27,8 @@ const localGatewayStatusSchema: z.ZodType<LocalGatewayStatus> = z.discriminatedU
 	z.object({ status: z.literal('disabled') }).strict(),
 ]);
 
+const localGatewayChannelSchema = z.enum(['localComputer', 'browser']);
+
 const mcpStateSchema: z.ZodType<DiscoveryMcpState> = z
 	.object({
 		registry: z.array(z.string().min(1)).optional(),
@@ -79,6 +81,7 @@ export const discoveryTestCaseSchema = z
 		instanceState: z
 			.object({
 				localGateway: localGatewayStatusSchema.optional(),
+				connectableComputerUseChannels: z.array(localGatewayChannelSchema).optional(),
 				browserAvailable: z.boolean().optional(),
 				mcp: mcpStateSchema.optional(),
 				folderExploration: z.boolean().optional(),

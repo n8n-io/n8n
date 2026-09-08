@@ -253,6 +253,9 @@ function applyInstanceState(
 	return {
 		...base,
 		...(localGateway ? { localGatewayStatus: localGateway } : {}),
+		...(state.connectableComputerUseChannels
+			? { connectableComputerUseChannels: state.connectableComputerUseChannels }
+			: {}),
 		...(localMcpServer ? { localMcpServer } : {}),
 		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
 		...(state.folderExploration !== undefined

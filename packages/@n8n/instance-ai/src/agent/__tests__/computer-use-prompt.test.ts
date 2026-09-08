@@ -25,6 +25,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'disabled' },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('## Computer Use');
@@ -34,6 +35,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'disabled' },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('do NOT attempt to use Computer Use tools');
@@ -43,6 +45,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'disabled' },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('+ button beside the chat input');
@@ -56,6 +59,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'disconnected' },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('## Computer Use');
@@ -65,6 +69,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'disconnected' },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('do NOT attempt to use Computer Use tools');
@@ -74,6 +79,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'disconnected' },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('+ button beside the chat input');
@@ -87,6 +93,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'connected', capabilities: [] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('did not enable any capabilities');
@@ -96,6 +103,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'connected', capabilities: [] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).not.toContain('Filesystem Exploration');
@@ -107,6 +115,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'connected', capabilities: ['filesystem'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('### Computer Use - Filesystem Exploration');
@@ -121,6 +130,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).not.toContain('Filesystem Exploration');
@@ -132,6 +142,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('### Computer Use - Browser Automation rules');
@@ -141,6 +152,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('end your turn');
@@ -152,6 +164,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('NEVER include passwords, API keys');
@@ -163,6 +176,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: false,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('Browser Automation (Disabled in Computer Use)');
@@ -174,6 +188,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: false,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).not.toContain('end your turn');
@@ -185,6 +200,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['filesystem', 'browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('Filesystem Exploration');
@@ -197,6 +213,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('When to suggest or use Computer Use');
@@ -206,6 +223,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'disconnected' },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('Proactively suggest connecting');
@@ -215,6 +233,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'disabled' },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('Proactively suggest connecting');
@@ -239,6 +258,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'disconnected' },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).toContain('credential/OAuth/API-key setup');
@@ -265,6 +285,7 @@ describe('getComputerUsePrompt', () => {
 			getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['browser', 'filesystem'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 		it('pairs Credential / OAuth setup with browser', () => {
@@ -307,6 +328,7 @@ describe('getComputerUsePrompt', () => {
 			getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 		it('includes the credential-creation section', () => {
@@ -328,6 +350,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: false,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 			expect(result).not.toContain('Creating credentials from the browser');
 		});
@@ -338,6 +361,7 @@ describe('getComputerUsePrompt', () => {
 			getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 		it('mentions the [REDACTED:...] marker format', () => {
@@ -358,6 +382,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).not.toContain('Sensitive content on screen');
@@ -369,6 +394,7 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			const line = result
@@ -382,9 +408,106 @@ describe('getComputerUsePrompt', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: false,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
+				connectable: ['localComputer', 'browser'],
 			});
 
 			expect(result).not.toContain('browser_tab_open');
+		});
+	});
+
+	// INS-1293: every section below names a "+ menu" entry, and the client renders
+	// each entry only for a user its rollout covers. `connectable` is that gate, so
+	// the prompt must never name an entry missing from it.
+	describe('when no channel is connectable', () => {
+		it.each(['disconnected', 'disabled'] as const)(
+			'returns an empty string for status %s',
+			(status) => {
+				expect(
+					getComputerUsePrompt({
+						browserAvailable: undefined,
+						localGateway: { status },
+						connectable: [],
+					}),
+				).toBe('');
+			},
+		);
+
+		it('returns an empty string when connectable is omitted, so a caller that forgets it advertises nothing', () => {
+			expect(
+				getComputerUsePrompt({
+					browserAvailable: undefined,
+					localGateway: { status: 'disconnected' },
+				}),
+			).toBe('');
+		});
+	});
+
+	describe('when only the local-computer channel is connectable', () => {
+		const result = getComputerUsePrompt({
+			browserAvailable: undefined,
+			localGateway: { status: 'disconnected' },
+			connectable: ['localComputer'],
+		});
+
+		it('offers the "Connect local computer" entry', () => {
+			expect(result).toContain('"Connect local computer"');
+		});
+
+		it('does not offer the "Connect browser" entry or the Chrome extension', () => {
+			expect(result).not.toContain('"Connect browser"');
+			expect(result).not.toContain('chromewebstore.google.com');
+		});
+	});
+
+	describe('when only the browser channel is connectable', () => {
+		const result = getComputerUsePrompt({
+			browserAvailable: undefined,
+			localGateway: { status: 'disconnected' },
+			connectable: ['browser'],
+		});
+
+		it('offers the "Connect browser" entry', () => {
+			expect(result).toContain('"Connect browser"');
+		});
+
+		it('does not offer the "Connect local computer" entry', () => {
+			expect(result).not.toContain('"Connect local computer"');
+		});
+
+		it('does not advertise the local-only capabilities', () => {
+			expect(result).not.toContain('*shell*');
+			expect(result).not.toContain('*filesystem*');
+		});
+	});
+
+	// The connected branch leaks the same way: a user who connected the local gateway
+	// while browser-use is off was told to click a "Connect browser" entry the client
+	// does not render for them.
+	describe('when connected without browser tools', () => {
+		const connectedWithoutBrowser = {
+			browserAvailable: false,
+			localGateway: { status: 'connected' as const, capabilities: ['filesystem'] },
+		};
+
+		it('offers "Connect browser" when the browser channel is connectable', () => {
+			const result = getComputerUsePrompt({
+				...connectedWithoutBrowser,
+				connectable: ['localComputer', 'browser'],
+			});
+
+			expect(result).toContain('"Connect browser"');
+		});
+
+		it('does not offer "Connect browser" when the browser channel is not connectable', () => {
+			const result = getComputerUsePrompt({
+				...connectedWithoutBrowser,
+				connectable: ['localComputer'],
+			});
+
+			// Scope: the harm is naming a + menu entry the client does not render. The
+			// connected intro still describes the browser capability generally, which is
+			// prose about the feature rather than a control to go and click.
+			expect(result).not.toContain('"Connect browser"');
 		});
 	});
 });

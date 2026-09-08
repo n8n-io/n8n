@@ -2303,6 +2303,15 @@ export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections
 
 export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
 
+/** Enables the "Connect browser" Computer Use entry point */
+export const INSTANCE_AI_BROWSER_USE_FLAG = '090_instance_ai_browser_use';
+
+/** Enables the "Connect local computer" Computer Use entry point */
+export const INSTANCE_AI_COMPUTER_USE_FLAG = '091_instance_ai_computer_use';
+
+/** Both Computer Use rollouts share the standard variant name. */
+export const INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT = 'variant';
+
 /** Enables adding selected canvas nodes as chat context in the n8n Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 

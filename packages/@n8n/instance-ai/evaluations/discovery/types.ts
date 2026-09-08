@@ -9,7 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import type { DiscoveryMcpState } from './stub-mcp-registry';
-import type { LocalGatewayStatus } from '../../src/types';
+import type { LocalGatewayChannel, LocalGatewayStatus } from '../../src/types';
 
 /**
  * Pass condition for tool invocations.
@@ -60,6 +60,9 @@ export interface ExpectedToolInvocations {
  */
 export interface DiscoveryInstanceState {
 	localGateway?: LocalGatewayStatus;
+	/** Computer Use + menu entries the client would render. Omit ⇒ the prompt advertises
+	 *  nothing, matching production, where an ungated user sees no entry (INS-1293). */
+	connectableComputerUseChannels?: LocalGatewayChannel[];
 	browserAvailable?: boolean;
 	mcp?: DiscoveryMcpState;
 	/** Turn the folder-exploration capability on for the run (default off). */

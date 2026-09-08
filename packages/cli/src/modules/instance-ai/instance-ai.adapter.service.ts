@@ -13,6 +13,9 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_BROWSER_USE_FLAG,
+	INSTANCE_AI_COMPUTER_USE_FLAG,
+	INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -582,6 +585,10 @@ export class InstanceAiAdapterService {
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
+		/** "Connect local computer" is rendered for this user, so the prompt may name it. */
+		computerUseExperimentEnabled: boolean;
+		/** "Connect browser" is rendered for this user, so the prompt may name it. */
+		browserUseExperimentEnabled: boolean;
 	}> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		try {
@@ -603,6 +610,10 @@ export class InstanceAiAdapterService {
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
 			folderExplorationEnabled: flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] === true,
+			computerUseExperimentEnabled:
+				flags[INSTANCE_AI_COMPUTER_USE_FLAG] === INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
+			browserUseExperimentEnabled:
+				flags[INSTANCE_AI_BROWSER_USE_FLAG] === INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
 		};
 	}
 

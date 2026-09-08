@@ -1279,6 +1279,10 @@ export interface InstanceAiBuilderDelegate {
 
 // ── Local gateway status ─────────────────────────────────────────────────────
 
+/** A Computer Use entry point in the chat input's + menu. The client gates each
+ *  one on its own rollout, so availability is per channel, not one boolean. */
+export type LocalGatewayChannel = 'localComputer' | 'browser';
+
 export type LocalGatewayStatus =
 	| {
 			status: 'connected';
@@ -1391,6 +1395,9 @@ export interface InstanceAiContext {
 	localMcpServer?: LocalMcpServer;
 	/** Connection state of the local gateway — drives system prompt guidance. */
 	localGatewayStatus?: LocalGatewayStatus;
+	/** Computer Use + menu entries the client renders for this user. Drives what the
+	 *  system prompt may tell the user to click (INS-1293). */
+	connectableComputerUseChannels?: readonly LocalGatewayChannel[];
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
 	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.

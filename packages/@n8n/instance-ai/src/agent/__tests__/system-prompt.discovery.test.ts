@@ -54,15 +54,32 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 			expect(prompt).not.toContain('When to suggest or use Computer Use');
 		});
 
+		it('omits the Computer Use section when the client renders no + menu entry for this user', () => {
+			// INS-1293: disconnected-but-ungated must be as silent as disabledGlobally.
+			const prompt = getSystemPrompt({
+				localGateway: { status: 'disconnected' },
+				connectableComputerUseChannels: [],
+			});
+
+			expect(prompt).not.toContain('## Computer Use');
+			expect(prompt).not.toContain('+ button beside the chat input');
+		});
+
 		it('still includes proactive suggestions when computer use is set up but disconnected', () => {
-			const prompt = getSystemPrompt({ localGateway: { status: 'disconnected' } });
+			const prompt = getSystemPrompt({
+				localGateway: { status: 'disconnected' },
+				connectableComputerUseChannels: ['localComputer', 'browser'],
+			});
 
 			expect(prompt).toContain('Proactively suggest connecting');
 			expect(prompt).toContain('credential/OAuth/API-key setup');
 		});
 
 		it('still includes proactive suggestions when computer use has not been set up', () => {
-			const prompt = getSystemPrompt({ localGateway: { status: 'disabled' } });
+			const prompt = getSystemPrompt({
+				localGateway: { status: 'disabled' },
+				connectableComputerUseChannels: ['localComputer', 'browser'],
+			});
 
 			expect(prompt).toContain('Proactively suggest connecting');
 			expect(prompt).toContain('credential/OAuth/API-key setup');
@@ -193,6 +210,7 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 			const prompt = getSystemPrompt({
 				browserAvailable: false,
 				localGateway: { status: 'connected', capabilities: ['filesystem'] },
+				connectableComputerUseChannels: ['localComputer', 'browser'],
 			});
 
 			expect(prompt).toContain('Browser Automation (Disabled in Computer Use)');
