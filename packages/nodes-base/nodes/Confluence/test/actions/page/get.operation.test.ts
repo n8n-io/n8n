@@ -360,21 +360,35 @@ describe('Confluence page:get operation', () => {
 			);
 		});
 
+		const duplicates = Array.from({ length: 7 }, (_, i) => ({
+			id: String(100 + i),
+			title: 'Duplicate',
+			spaceId: String(i),
+		}));
+
+		/** Answers the page lookup with `duplicates` and the space lookup with `spaces`. */
+		function mockAmbiguousTitle(spaces?: IDataObject[]) {
+			apiRequest.mockImplementation(async (_method, endpoint) => {
+				if (endpoint !== '/wiki/api/v2/spaces') return { results: duplicates };
+				if (spaces === undefined) throw new Error('space lookup unavailable');
+				return { results: spaces };
+			});
+		}
+
+		async function captureTitleError(ctx: IExecuteFunctions) {
+			return await execute
+				.call(ctx, 0)
+				.then(() => null)
+				.catch((thrown: NodeOperationError) => thrown);
+		}
+
 		it('throws with up to five candidates when multiple pages match', async () => {
-			const results = Array.from({ length: 7 }, (_, i) => ({
-				id: String(100 + i),
-				title: 'Duplicate',
-				spaceId: String(i),
-			}));
-			apiRequest.mockResolvedValue({ results });
+			mockAmbiguousTitle([]);
 			const ctx = createContext({
 				page: { mode: 'title', value: 'Duplicate' },
 			});
 
-			const error = await execute
-				.call(ctx, 0)
-				.then(() => null)
-				.catch((thrown: NodeOperationError) => thrown);
+			const error = await captureTitleError(ctx);
 
 			expect(error).toBeInstanceOf(NodeOperationError);
 			expect(error?.message).toContain('Found 7 pages titled "Duplicate"');
@@ -383,6 +397,43 @@ describe('Confluence page:get operation', () => {
 			expect(error?.message).not.toContain('ID 105');
 			expect(error?.message).toContain('…');
 			expect(error?.message).toContain('Scope the lookup with the Space field');
+		});
+
+		// A numeric space ID does not tell the user which space to pick in the Space field
+		it('names the candidate spaces the way the Space dropdown does', async () => {
+			mockAmbiguousTitle([
+				{ id: '0', name: 'Node QA KB', key: 'QAKB' },
+				{ id: '4', name: 'Keyless Space' },
+			]);
+			const ctx = createContext({
+				page: { mode: 'title', value: 'Duplicate' },
+			});
+
+			const error = await captureTitleError(ctx);
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/wiki/api/v2/spaces',
+				{},
+				{ ids: '0,1,2,3,4', limit: 250 },
+			);
+			expect(error?.message).toContain('"Duplicate" (space Node QA KB (QAKB), ID 100)');
+			expect(error?.message).toContain('"Duplicate" (space Keyless Space, ID 104)');
+			// Spaces the lookup did not cover keep the ID rather than losing the candidate
+			expect(error?.message).toContain('"Duplicate" (space 1, ID 101)');
+		});
+
+		it('still reports the ambiguity when the space lookup fails', async () => {
+			mockAmbiguousTitle(undefined);
+			const ctx = createContext({
+				page: { mode: 'title', value: 'Duplicate' },
+			});
+
+			const error = await captureTitleError(ctx);
+
+			expect(error).toBeInstanceOf(NodeOperationError);
+			expect(error?.message).toContain('Found 7 pages titled "Duplicate"');
+			expect(error?.message).toContain('"Duplicate" (space 0, ID 100)');
 		});
 
 		it('throws when the title is empty', async () => {
