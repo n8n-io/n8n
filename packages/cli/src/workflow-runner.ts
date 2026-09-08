@@ -6,6 +6,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { sleep } from '@n8n/utils/sleep';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
 	ErrorReporter,
@@ -71,6 +72,12 @@ const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
 
 /** JSON chunk written periodically to keep the streaming connection alive through reverse proxies */
 const STREAMING_KEEPALIVE_CHUNK = '{"type":"keepalive"}\n';
+
+/** How long to keep rechecking the execution status after a max-stalled-count error before failing the run */
+const MAX_STALLED_COUNT_GRACE_WINDOW_MS = 30_000;
+
+/** Delay between execution status rechecks inside the max-stalled-count grace window */
+const MAX_STALLED_COUNT_RECHECK_INTERVAL_MS = 1_000;
 
 /**
  * Flush the response through the compression middleware.
@@ -139,33 +146,45 @@ export class WorkflowRunner {
 		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
 
 		if (isQueueMode) {
-			const executionWithoutData = await this.executionRepository.findSingleExecution(executionId, {
-				includeData: false,
-			});
-			if (executionWithoutData?.finished === true && executionWithoutData?.status === 'success') {
-				// false positive, execution was successful
-				let successRunData: IRun | undefined;
+			const recheckUntil =
+				Date.now() +
+				(error instanceof MaxStalledCountError ? MAX_STALLED_COUNT_GRACE_WINDOW_MS : 0);
 
-				try {
-					const fullExecutionData = await this.executionPersistence.findSingleExecution(
-						executionId,
-						{
-							includeData: true,
-							unflattenData: true,
-						},
-					);
+			for (;;) {
+				const executionWithoutData = await this.executionRepository.findSingleExecution(
+					executionId,
+					{ includeData: false },
+				);
+				if (executionWithoutData?.finished === true && executionWithoutData?.status === 'success') {
+					// false positive, execution was successful
+					let successRunData: IRun | undefined;
 
-					if (fullExecutionData?.data) {
-						successRunData = {
-							finished: fullExecutionData.finished,
-							mode: fullExecutionData.mode,
-							startedAt: fullExecutionData.startedAt,
-							stoppedAt: fullExecutionData.stoppedAt,
-							status: fullExecutionData.status,
-							waitTill: fullExecutionData.waitTill,
-							data: fullExecutionData.data,
-							storedAt: fullExecutionData.storedAt,
-						};
+					try {
+						const fullExecutionData = await this.executionPersistence.findSingleExecution(
+							executionId,
+							{
+								includeData: true,
+								unflattenData: true,
+							},
+						);
+
+						if (fullExecutionData?.data) {
+							successRunData = {
+								finished: fullExecutionData.finished,
+								mode: fullExecutionData.mode,
+								startedAt: fullExecutionData.startedAt,
+								stoppedAt: fullExecutionData.stoppedAt,
+								status: fullExecutionData.status,
+								waitTill: fullExecutionData.waitTill,
+								data: fullExecutionData.data,
+								storedAt: fullExecutionData.storedAt,
+							};
+						}
+					} catch (readError) {
+						this.logger.warn('Could not read execution data for a successful execution', {
+							executionId,
+							error: ensureError(readError),
+						});
 					}
 
 					// No lifecycle hooks ran for this execution, so make the retention
@@ -219,6 +238,11 @@ export class WorkflowRunner {
 
 				return;
 			}
+
+			if (Date.now() >= recheckUntil) break;
+
+			await sleep(MAX_STALLED_COUNT_RECHECK_INTERVAL_MS);
+		}
 		}
 
 		const fullRunData: IRun = {
