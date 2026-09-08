@@ -28,9 +28,10 @@ vi.mock('@/features/execution/executions/executions.store', () => ({
 import { useUserExecutions, isUserExecution } from './useUserExecutions';
 
 // A page of `n` evaluation-mode rows, ids counting down from `startId`.
-function evalPage(startId: number, n: number, count: number) {
+function evalPage(startId: number, n: number, count: number, nextCursor: string | null = null) {
 	return {
 		count,
+		nextCursor,
 		results: Array.from({ length: n }, (_, i) => ({ id: String(startId - i), mode: 'evaluation' })),
 	};
 }
@@ -50,21 +51,24 @@ describe('useUserExecutions', () => {
 
 	it('pages past a full page of evaluation runs to find an older user run', async () => {
 		// Page 1: 10 evaluation runs (no user run). Page 2: a user run.
-		mocks.fetchExecutions.mockResolvedValueOnce(evalPage(100, 10, 11)).mockResolvedValueOnce({
-			count: 11,
-			results: [{ id: '90', mode: 'manual' }],
-		});
+		mocks.fetchExecutions
+			.mockResolvedValueOnce(evalPage(100, 10, 11, 'cursor-1'))
+			.mockResolvedValueOnce({
+				count: 11,
+				nextCursor: null,
+				results: [{ id: '90', mode: 'manual' }],
+			});
 		mocks.fetchExecution.mockResolvedValue({ id: '90' });
 
 		const { fetchLatestUserExecution } = useUserExecutions();
 		const result = await fetchLatestUserExecution();
 
 		expect(result).toEqual({ id: '90' });
-		// Second page requested with the oldest id of the first page as the cursor.
+		// Second page requested with the first page's nextCursor.
 		expect(mocks.fetchExecutions).toHaveBeenCalledTimes(2);
 		expect(mocks.fetchExecutions).toHaveBeenLastCalledWith(
 			{ status: ['success'], workflowId: 'wf-1' },
-			'91',
+			'cursor-1',
 		);
 		expect(mocks.fetchExecution).toHaveBeenCalledWith('90');
 	});

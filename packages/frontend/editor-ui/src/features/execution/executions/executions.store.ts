@@ -7,7 +7,7 @@ import type {
 	ExecutionStatus,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
+import type { ExecutionRedactionQueryDto, SerializedCursor } from '@n8n/api-types';
 import { compareExecutionListItems } from '@n8n/api-types';
 import type {
 	ExecutionFilterType,
@@ -61,7 +61,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const executionsCount = ref(0);
 	const hasMoreExecutions = ref(true);
-	const nextCursor = ref<string | null>(null);
+	const nextCursor = ref<SerializedCursor | null>(null);
 	let loadedPages = 0;
 	let activeFilterKey: string | undefined;
 	const concurrentExecutionsCount = ref(0);
@@ -159,7 +159,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function fetchExecutions(
 		filter = executionsFilters.value,
-		cursor?: string,
+		cursor?: SerializedCursor,
 		refresh = false,
 	) {
 		const filterKey = JSON.stringify(filter);

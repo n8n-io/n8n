@@ -1799,7 +1799,7 @@ export class InstanceAiAdapterService {
 
 				const query: ExecutionSummaries.RangeQuery = {
 					kind: 'range' as const,
-					range: { limit: options?.limit ?? 20, lastId: undefined, firstId: undefined },
+					range: { limit: options?.limit ?? 20 },
 					order: { startedAt: 'DESC' as const },
 					user,
 					sharingOptions,

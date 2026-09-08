@@ -27,6 +27,7 @@ import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	ExecutionError,
 	ExecutionStatus,
+	ExecutionSummary,
 	INode,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
@@ -65,6 +66,7 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
+import { encodeCursorForRow } from './execution-cursor';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import { isExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
@@ -78,13 +80,10 @@ export const schemaGetExecutionsQueryFilter = {
 		id: { type: 'string' },
 		finished: { type: 'boolean' },
 		mode: { type: 'string' },
-		retryOf: { type: 'string' },
-		retrySuccessId: { type: 'string' },
 		status: {
 			type: 'array',
 			items: { type: 'string' },
 		},
-		waitTill: { type: 'boolean' },
 		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
 		startedAfter: { type: 'date-time' },
@@ -115,6 +114,14 @@ export const schemaGetExecutionsQueryFilter = {
 export const allowedExecutionsQueryFilterFields = Object.keys(
 	schemaGetExecutionsQueryFilter.properties,
 );
+
+/** Cursor to continue a page, or `null` when a partial page means there's nothing more. */
+function nextCursorFor(rows: ExecutionSummary[], limit: number): string | null {
+	if (rows.length < limit) return null;
+
+	const lastRow = rows[rows.length - 1];
+	return lastRow ? encodeCursorForRow(lastRow) : null;
+}
 
 @Service()
 export class ExecutionService {
@@ -509,7 +516,11 @@ export class ExecutionService {
 
 		const executionCount = await this.getExecutionsCountForQuery({ ...countQuery, kind: 'count' });
 
-		return { results, ...executionCount };
+		return {
+			results,
+			nextCursor: nextCursorFor(results, query.range.limit),
+			...executionCount,
+		};
 	}
 
 	/**
@@ -548,6 +559,8 @@ export class ExecutionService {
 
 		return {
 			results: current.concat(completed),
+			// Only the completed page is paginated; "current" is refetched in full each time.
+			nextCursor: nextCursorFor(completed, query.range.limit),
 			count: completedCount.count, // exclude current from count for pagination
 			estimated: completedCount.estimated,
 		};

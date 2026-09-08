@@ -1155,14 +1155,13 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}
 
 		if (query.kind === 'range') {
-			const { limit, firstId, lastId } = query.range;
+			const { limit, lastId, before } = query.range;
 
 			qb.limit(limit);
 
-			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
 			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
-			if (query.restList && query.range.before) {
-				const { timestamp, id } = query.range.before;
+			if (before) {
+				const { timestamp, id } = before;
 				qb.andWhere(
 					'(COALESCE(execution.startedAt, execution.createdAt) < :cursorTime OR (COALESCE(execution.startedAt, execution.createdAt) = :cursorTime AND execution.id < :cursorId))',
 					{
@@ -1179,15 +1178,13 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			} else {
 				qb.orderBy({ 'execution.id': 'DESC' });
 			}
-			if (query.restList) qb.addOrderBy('execution.id', 'DESC');
+			qb.addOrderBy('execution.id', 'DESC');
 		}
 
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
-		if (query.restList) {
-			if (query.id) qb.andWhere('execution.id = :filterId', { filterId: query.id });
-			if (query.mode) qb.andWhere('execution.mode = :filterMode', { filterMode: query.mode });
-			if (finished !== undefined) qb.andWhere({ finished });
-		} else if (finished) qb.andWhere({ finished });
+		if (query.id) qb.andWhere('execution.id = :filterId', { filterId: query.id });
+		if (query.mode) qb.andWhere('execution.mode = :filterMode', { filterMode: query.mode });
+		if (finished !== undefined) qb.andWhere({ finished });
 		if (workflowId) qb.andWhere({ workflowId });
 		const startedAt = startedAtCondition({ startedAfter, startedBefore });
 		if (startedAt) qb.andWhere({ startedAt });
@@ -1302,7 +1299,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			} else {
 				qb.orderBy({ 'e.id': 'DESC' });
 			}
-			if (query.restList) qb.addOrderBy('e.id', 'DESC');
+			qb.addOrderBy('e.id', 'DESC');
 		}
 
 		return qb;
