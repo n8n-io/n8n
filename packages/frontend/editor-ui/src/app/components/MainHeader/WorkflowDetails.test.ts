@@ -31,6 +31,13 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { MCP_JSON_NUDGE_MODAL_KEY } from '@/experiments/mcpJsonNudge/constants';
 
+vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility', () => ({
+	useMcpJsonNudgeEligibility: () => ({
+		canShow: () => true,
+		recordImpression: vi.fn(),
+	}),
+}));
+
 // No workflow route meta on purpose: the menu renders both on workflow-layout
 // routes and in host-embedded editors without a workflow route (e.g. the AI
 // artifact view), so nothing here may depend on route meta.

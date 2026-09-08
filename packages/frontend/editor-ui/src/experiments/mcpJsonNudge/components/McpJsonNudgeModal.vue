@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
+import { useMcpJsonNudgeEligibility } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility';
 import McpClientLogoCards from '@/features/ai/mcpAccess/components/McpClientLogoCards.vue';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
@@ -19,6 +20,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const router = useRouter();
+const eligibility = useMcpJsonNudgeEligibility();
 
 const title = computed(() =>
 	props.data.surface === 'export'
@@ -27,6 +29,13 @@ const title = computed(() =>
 );
 
 const dontShowAgain = ref(false);
+
+function onDontShowAgainChange(value: boolean) {
+	dontShowAgain.value = value;
+	if (value) {
+		void eligibility.dismissForever();
+	}
+}
 
 function onConnect(close: () => void) {
 	void router.push({ name: MCP_SETTINGS_VIEW });
@@ -48,7 +57,11 @@ function onSkip(close: () => void) {
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<N8nCheckbox v-model="dontShowAgain" data-test-id="mcp-json-nudge-dont-show-again">
+				<N8nCheckbox
+					:model-value="dontShowAgain"
+					data-test-id="mcp-json-nudge-dont-show-again"
+					@update:model-value="onDontShowAgainChange"
+				>
 					<template #label>{{ i18n.baseText('generic.dontShowAgain') }}</template>
 				</N8nCheckbox>
 				<div :class="$style.actions">

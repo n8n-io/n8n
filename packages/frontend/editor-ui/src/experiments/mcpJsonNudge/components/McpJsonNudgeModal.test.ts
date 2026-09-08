@@ -6,10 +6,15 @@ import McpJsonNudgeModal from './McpJsonNudgeModal.vue';
 
 const routerPushMock = vi.hoisted(() => vi.fn());
 const closeMock = vi.hoisted(() => vi.fn());
+const dismissForeverMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRouter: () => ({ push: routerPushMock }),
+}));
+
+vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility', () => ({
+	useMcpJsonNudgeEligibility: () => ({ dismissForever: dismissForeverMock }),
 }));
 
 const ModalStub = defineComponent({
@@ -43,6 +48,7 @@ describe('McpJsonNudgeModal', () => {
 	beforeEach(() => {
 		routerPushMock.mockClear();
 		closeMock.mockClear();
+		dismissForeverMock.mockClear();
 	});
 
 	it.each([
@@ -87,5 +93,14 @@ describe('McpJsonNudgeModal', () => {
 
 		expect(routerPushMock).not.toHaveBeenCalled();
 		expect(closeMock).toHaveBeenCalled();
+	});
+
+	it('dismisses the nudge forever when "Don\'t show this again" is checked', async () => {
+		const user = userEvent.setup();
+		const { getByTestId } = renderComponent({ props: { data: { surface: 'export' } } });
+
+		await user.click(getByTestId('mcp-json-nudge-dont-show-again'));
+
+		expect(dismissForeverMock).toHaveBeenCalled();
 	});
 });
