@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Kafka/KafkaTrigger.node.ts
+  s_d5e26b609bc9bc::t_0cc0f56c1cd91c 46
+packages/nodes-base/nodes/Kafka/Kafka.node.ts
+  s_d5e26b609bc9bc::t_0cc0f56c1cd91c 38
+  s_d5e26b609bc9bc::t_dbee6631d9cff4 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "224be37e949ce78a3d25ac95a3c50a8b9da7ef89",
+  "prompts": {},
+  "sessions": {
+    "s_d5e26b609bc9bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6dd8ccb-5fb4-436a-b567-d81c08649277",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

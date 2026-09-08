@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_82f03a82e9f736::t_580381ed6cc896 617-619
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "353036896060df7f9cb6ec7a00a36799403c7bd0",
+  "prompts": {},
+  "sessions": {
+    "s_82f03a82e9f736": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01096-38a5-7390-961d-c0c8459540e3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

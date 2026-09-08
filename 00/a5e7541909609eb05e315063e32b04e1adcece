@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/app/components/Modals.vue
+  s_93bfa2eb2d7de3::t_4e62411fc02118 147-151
+  s_93bfa2eb2d7de3::t_5bb07aa3b36e1b 560-565
+  s_93bfa2eb2d7de3::t_6ded4b1164355b 45
+packages/frontend/editor-ui/src/app/constants/modals.ts
+  s_93bfa2eb2d7de3::t_bca3d6d0a31345 52
+packages/frontend/editor-ui/src/experiments/trialIntroModal/constants.ts
+  s_93bfa2eb2d7de3::t_0b5f30b484a80f 1
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_93bfa2eb2d7de3::t_fd1044749bf523 182
+  s_93bfa2eb2d7de3::t_0c206cf1738e4d 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "00a5e7541909609eb05e315063e32b04e1adcece",
+  "prompts": {},
+  "sessions": {
+    "s_93bfa2eb2d7de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d8eb2b-ca0b-4614-a078-4e0fa184fa9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

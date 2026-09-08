@@ -1,0 +1,113 @@
+packages/nodes-base/nodes/Kafka/test/v2/consumer/MessageParser.test.ts
+  s_79c0473179aa3d::t_7e9d7b4489141b 1-8,10-80,89-187
+  s_79c0473179aa3d::t_11b463fe3b3831 81-88
+  s_79c0473179aa3d::t_ac65e619e7d1c4 1-187
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_79c0473179aa3d::t_10d36200397c10 463
+  s_79c0473179aa3d::t_914cded141e1e3 32
+packages/nodes-base/nodes/Kafka/test/v2/consumer/LazyLoad.test.ts
+  s_79c0473179aa3d::t_4c147430d7fe17 1,6-26
+  s_79c0473179aa3d::t_91f0dd74111e85 2-4
+  s_79c0473179aa3d::t_6c8f4029716ce2 5
+packages/nodes-base/nodes/Kafka/v2/consumer/MessageParser.ts
+  s_79c0473179aa3d::t_96cd7b1cc1fdf6 41-43,89
+  s_79c0473179aa3d::t_003aba85e37b9a 1-40,44-88,90-91,96,98-119
+  s_79c0473179aa3d::t_dabc191679cc4c 92-95,97
+packages/nodes-base/nodes/Kafka/test/mocks/confluent-kafka.ts
+  s_79c0473179aa3d::t_7cec10d101ad56 28-29
+  s_79c0473179aa3d::t_080957c4d725ed 1-2,7-13,18-27,30-64,72-94,97-105,144-159
+  s_79c0473179aa3d::t_036dd39384976f 106-113,119-123,130
+  s_79c0473179aa3d::t_8239a9941012a3 114-118
+  s_79c0473179aa3d::t_d980808c50ab6e 114-118
+  s_79c0473179aa3d::t_e58f7b47ec2fc0 14-17
+  s_79c0473179aa3d::t_5e9b820f958dda 95-96
+  s_79c0473179aa3d::t_bd1d12f954a6ef 65-71
+packages/nodes-base/nodes/Kafka/v2/consumer/index.ts
+  s_79c0473179aa3d::t_b9f24f9ecc1163 1,2,8
+  s_79c0473179aa3d::t_090409eeaa0555 1-4,8-11,13
+  s_79c0473179aa3d::t_ac65e619e7d1c4 5-7,14-16
+  s_79c0473179aa3d::t_6097c7bf2ffe0b 6
+packages/nodes-base/nodes/Kafka/v2/transport/consumer.ts
+  s_79c0473179aa3d::t_0a4e12d311510c 1,3,6-19,24-26,75-87,89,93-95,97,100-102
+  s_79c0473179aa3d::t_2ad536e21ce1cf 90
+  s_79c0473179aa3d::t_900279227264e2 4
+  s_79c0473179aa3d::t_06cc9965dae3a3 20-23,27-40,62-67,70-74,92-93,96,98
+  s_79c0473179aa3d::t_3af19ea60000a4 49-50,55-63
+  s_79c0473179aa3d::t_7338e2e361426e 2,5
+  s_79c0473179aa3d::t_ec19b67978d81e 88,99
+  s_bc83fb448b2fad::t_7a5809c1462582 41-46
+packages/nodes-base/nodes/Kafka/test/v2/transport/consumer.test.ts
+  s_79c0473179aa3d::t_fbb3a81f4709a7 4-68,133
+  s_79c0473179aa3d::t_7dcb652ed3f1d8 131
+  s_79c0473179aa3d::t_e520d6c080d1f2 69-79,81-94,98-101,121-130,132
+  s_79c0473179aa3d::t_65acdd24de2c4c 102-120
+  s_79c0473179aa3d::t_322db04fe563ed 1-3
+  s_bc83fb448b2fad::t_2c6b729198c3bd 80,95-97
+packages/nodes-base/nodes/Kafka/v2/transport/client.ts
+  s_79c0473179aa3d::t_ffaa792887caae 3-5
+  s_79c0473179aa3d::t_6f07e5fad929da 23-38
+packages/nodes-base/nodes/Kafka/v2/transport/producer.ts
+  s_79c0473179aa3d::t_0ab15a4634ca14 17
+  s_79c0473179aa3d::t_6bdcf403282460 3
+packages/nodes-base/nodes/Kafka/v2/transport/index.ts
+  s_79c0473179aa3d::t_7e86c0d41818bb 2
+  s_79c0473179aa3d::t_533c191287b4fc 4-10
+packages/nodes-base/nodes/Kafka/test/v2/consumer/DataEmitter.test.ts
+  s_79c0473179aa3d::t_e4a1a8358cf739 1,3-10,12-16,19-25,27-54,56-66,68-74,76-82,84-88,90-99,106-107,109-126,128-136,200-207,223,242-243
+  s_79c0473179aa3d::t_7dcb652ed3f1d8 100-102,104-105
+  s_79c0473179aa3d::t_01b9c4d5353887 137-144,146-151,153-154,156-160
+  s_79c0473179aa3d::t_e7748c7932f697 145,152,161,187-199
+  s_79c0473179aa3d::t_ac65e619e7d1c4 1,3-16,19-25,27-54,56-66,68-74,76-82,84-88,90-102,104-107,109-126,128-154,156-161,187-207,223,242-243
+packages/nodes-base/nodes/Kafka/v2/consumer/ConsumeTopic.ts
+  s_79c0473179aa3d::t_20704dd6028d33 3,16-20,24,88-92,94,100,102,115-117,128,137-139
+  s_79c0473179aa3d::t_ac65e619e7d1c4 1-6,8,12-30,57-58,87-100,102-105,109,111-117,128-134,137-139,141-167
+  s_79c0473179aa3d::t_6097c7bf2ffe0b 3
+packages/nodes-base/nodes/Kafka/test/v2/consumer/ConsumeTopic.test.ts
+  s_79c0473179aa3d::t_cf8da52edf0b5a 1-2,35-36,45,48-49,55-59,61-71,73-74,76,78-81,83-86,88-89,91-92,94-95,97,100-103,106-118,121-123,125-129,132-133,135,137-143,146-147,149,151-157,160-162,164,166-168,170-173,175-176,178-183,185,187-189,192-193,197,199-201,205-210,212,214-216,218-219,221-222,224-225,298-318,349-353,355-356,358-372
+  s_79c0473179aa3d::t_2109549e8fe39b 228-249,256,258,273
+  s_79c0473179aa3d::t_01b9c4d5353887 254-255,257,271-272
+  s_79c0473179aa3d::t_ac65e619e7d1c4 1-5,7-24,33-34,35-38,45-193,196-249,254-258,271-273,298-318,347-374
+  s_79c0473179aa3d::t_44eff7ba27e343 25-28,30,39-43
+  s_79c0473179aa3d::t_6097c7bf2ffe0b 5
+packages/nodes-base/nodes/Kafka/v2/consumer/DataEmitter.ts
+  s_79c0473179aa3d::t_eded042d7d477a 162-163
+  s_79c0473179aa3d::t_1ab6d156b5f745 55,74-77,83-91,93-100,108-109,112,115,117,120,124-125,127-129,132-135,139,144-161,164-167,169-178,181-193,200-212,214-220
+packages/nodes-base/nodes/Kafka/test/v2/kafka.integration.test.ts
+  s_79c0473179aa3d::t_a80680de23cebb 7-13
+  s_79c0473179aa3d::t_a61986d55d4825 49-54
+  s_79c0473179aa3d::t_edafa884e4a46b 1-6,14-17,19-34,36,38-48,55-77,79-93,102-120,122-181,337-368,370-400
+  s_79c0473179aa3d::t_67ba30ab7a1f33 18
+  s_79c0473179aa3d::t_4543f8d5da7ee3 78
+packages/nodes-base/nodes/Kafka/test/v2/transport/LibraryLogger.test.ts
+  s_79c0473179aa3d::t_d3b7fb69b1131c 6
+  s_79c0473179aa3d::t_08a24d5e22d01f 3
+  s_79c0473179aa3d::t_3453b954b499f3 16
+  s_79c0473179aa3d::t_7cb1f340258bc8 1-2,4-5,7,15,17-83,152-153
+packages/nodes-base/nodes/Kafka/v2/transport/LibraryLogger.ts
+  s_79c0473179aa3d::t_22b8e8cb2a474e 88
+  s_79c0473179aa3d::t_3769fafe4f4c30 1-29,44-51,54-61,72,82,87,89-94,98-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c376b3b0b12710f20242658914f29798c9062b24",
+  "prompts": {},
+  "sessions": {
+    "s_79c0473179aa3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae8df3ca-df5d-48ee-a98f-0afbfab05c51",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_bc83fb448b2fad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb78bb6a-b140-4f08-b6bf-9dc97db6e22d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/ai-utilities/package.json
+  s_e1e610a2af0d5b::t_c518db0da48137 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4c3c3f3443f25a9539ab4633a2f2fd6ca724fcf4",
+  "prompts": {},
+  "sessions": {
+    "s_e1e610a2af0d5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7200f500-9f08-4e44-ab61-ad83d61a3fe8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/@n8n/task-runner-python/src/config/task_runner_config.py
+  s_42d50acb63c938::t_5a3bdb17516621 53-54
+packages/cli/src/task-runners/task-broker/task-broker-ws-server.ts
+  s_42d50acb63c938::t_d2e4006bf2c9fd 150-155
+  s_42d50acb63c938::t_6e19ca4a2bec28 264-278
+packages/cli/src/task-runners/task-broker/__tests__/task-broker-ws-server.test.ts
+  s_42d50acb63c938::t_6f5fb50e0bb8e5 1
+  s_42d50acb63c938::t_4ced002801bb4c 36,43,46
+  s_42d50acb63c938::t_0ca2b3f18f13cf 268-272
+  s_42d50acb63c938::t_be5f16ec1fad24 232-267,273-278
+packages/@n8n/task-runner/src/config/base-runner-config.ts
+  s_42d50acb63c938::t_42689261e17433 26-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eb18c163fe110b2bea4884f49e4557e870b8d7ff",
+  "prompts": {},
+  "sessions": {
+    "s_42d50acb63c938": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "319977ec-1d37-4f27-93a6-c4d7af7ba378",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

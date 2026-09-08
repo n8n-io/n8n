@@ -1,0 +1,19 @@
+.github/workflows/test-evals-mcp.yml
+  s_e414677a6d992f::t_69abdb1634de3e 191-193,198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4c69664e46dcfb41eb10b68ab0b19357bad1ad8e",
+  "prompts": {},
+  "sessions": {
+    "s_e414677a6d992f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c56ed550-9fc6-4491-b874-c335e8c94087",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

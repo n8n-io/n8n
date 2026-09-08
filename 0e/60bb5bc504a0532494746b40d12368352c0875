@@ -1,0 +1,19 @@
+packages/@n8n/agents/src/runtime/model/model-token-counter.ts
+  s_02972e2c436d8a::t_50c63f2d44dd14 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0e60bb5bc504a0532494746b40d12368352c0875",
+  "prompts": {},
+  "sessions": {
+    "s_02972e2c436d8a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "288d4719-b01e-42e0-bcfd-9ef695c5c336",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/descriptions/TargetDescription.ts
+  s_c10e563f7c2f73::t_2b4c4bdb776536 81
+packages/nodes-base/nodes/Microsoft/OneDrive/FolderDescription.ts
+  s_c10e563f7c2f73::t_0389078f172634 110,118-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "0fb3013fe0c71937750069c7d3e1dd7f7307a509",
+  "prompts": {},
+  "sessions": {
+    "s_c10e563f7c2f73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db403f6c-3898-4d9e-af22-6e4e17cbd6c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderProgress.test.ts
+  ai_agent 132-133,146-147
+  s_931e59d6055553::t_1e4ef5494eadc9 119-131,134-145,148-150
+  s_931e59d6055553::t_2061734a1e5200 35-57
+  s_931e59d6055553::t_e9d4171a1411f7 113
+  s_931e59d6055553::t_1f3bf748ad22f7 1-34,58-96,98-112,114-118,151
+  s_931e59d6055553::t_e696b8c991efbf 97
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderProgress.vue
+  s_931e59d6055553::t_bc3a87eb306d3a 36,46
+  s_931e59d6055553::t_3784bda1623b9c 25-35,43
+  s_931e59d6055553::t_5eab1be8e9ad05 209
+  s_931e59d6055553::t_7023e53202a707 208
+  s_931e59d6055553::t_e68d40a8b18541 371-372
+  ai_agent 206
+  s_931e59d6055553::t_6c18ec97061054 343-347
+  s_931e59d6055553::t_8a8f5c4943d7ee 386-387,389-390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "86f6127a780b92c59be1c51e3d93044c1aca786b",
+  "prompts": {},
+  "sessions": {
+    "s_931e59d6055553": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34ca578a-6e48-4300-920e-7f739a96b8b5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

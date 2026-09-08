@@ -1,0 +1,192 @@
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_f2e7acc401d88b::t_007424f3a20c89 5
+  s_66be2eb681ad3c::t_f0049da7746f0e 42,54-55,57-59
+  s_66be2eb681ad3c::t_b442ab9139e225 43-46,48-53
+  s_f2e7acc401d88b::t_c1a41c3631ba65 56
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-importer.test.ts
+  s_66be2eb681ad3c::t_020eabf7186922 1-62,79-87,89-96
+  s_f2e7acc401d88b::t_3d4502917c7d11 63-78
+  s_f2e7acc401d88b::t_6d79fc3ca7f655 88
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_66be2eb681ad3c::t_73754f164e02b4 48-52,54-56
+  s_f2e7acc401d88b::t_67e94fda6b656d 53
+  s_66be2eb681ad3c::t_dfbd24cc897339 72-73,93-96,102-104,122-129
+  s_f2e7acc401d88b::t_0d3250c2422226 97-101
+  s_66be2eb681ad3c::t_7467b98782c8a3 144-145
+  s_66be2eb681ad3c::t_451594adcb0384 179,192
+  ai_agent 193-195,197,199
+  s_f2e7acc401d88b::t_52c1e63c57db34 196,198
+  s_66be2eb681ad3c::t_d1619164200906 222,228-229
+  s_f2e7acc401d88b::t_540fab34159323 223
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_66be2eb681ad3c::t_d5c08e93beeb76 1,4,15-26,35-43,45,47,51-63,65,67,69,73-76,79-81
+  s_f2e7acc401d88b::t_3d393a58c63a43 2
+  s_81f9da72a79c26::t_7d562ea02cac6b 5-14
+  s_f2e7acc401d88b::t_bc4c166553d968 27-34
+  s_66be2eb681ad3c::t_448ead19b5e871 44,46,48,50
+  s_66be2eb681ad3c::t_5922e3daa2a921 49
+  s_66be2eb681ad3c::t_14016479aab7a2 64,66,68,72
+  s_f2e7acc401d88b::t_036d9ded03f621 70-71,77
+  s_f2e7acc401d88b::t_04a6d5ae1aa177 82-83
+  s_f2e7acc401d88b::t_14d1f95666aa7a 84-127,129-130
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_66be2eb681ad3c::t_769458698dec38 1,3-4,6-107,109-124,132-150,158-180,188-192,194-205,207-223,231-235,237,239-260,262-283,291-349,351-386,388-389,391-392,397,399,408-409,427-428,433,456-470,478,483-511,513-537,550-552,556,562,564,568-570,572-615,623-625,627-628,632,639-640,643-662,670-671,675-676,679-680,690,702-719
+  s_66be2eb681ad3c::t_306b511fcdd56d 2
+  s_66be2eb681ad3c::t_51f9f643b92600 108
+  ai_agent 125-131,151-157,181-187,224-230,284-290,400-406,471-477,512,571,616-622,663-669,692-698
+  s_66be2eb681ad3c::t_8de35289f4816e 193
+  s_66be2eb681ad3c::t_a1891e40a758c4 206,387,390,407,410,414,419-424,429-432,434-452,455
+  s_66be2eb681ad3c::t_2354129c7c5b1e 236
+  s_66be2eb681ad3c::t_5e5a1d5a8d407c 238,261
+  s_66be2eb681ad3c::t_cbdf1818c8aa88 350
+  s_66be2eb681ad3c::t_1979ecb317bf4a 393-396,398,415,426,454,543,549,553-555,557,559-561,563,672-674,677-678,681-689,691,699-701
+  s_66be2eb681ad3c::t_da9be704ce7aae 411-413,416-418,425,453,538-542,544-548,558,565-567
+  s_f2e7acc401d88b::t_6504cdbed0f514 479-482
+  s_66be2eb681ad3c::t_2485294bc7f7a4 626,629-631,633-638,641-642
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_66be2eb681ad3c::t_06cd8db5adae52 5,21
+  s_66be2eb681ad3c::t_8906e3687c481f 81-88
+  s_66be2eb681ad3c::t_6cf71c510a94b8 109-110
+  s_66be2eb681ad3c::t_28af87df61d623 141-144,146-148
+  s_f2e7acc401d88b::t_899742f9f7fd90 145
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_66be2eb681ad3c::t_35131efffe226e 81-82,114-117,119
+  s_f2e7acc401d88b::t_73ead9fd30af7c 118
+  s_66be2eb681ad3c::t_ce6a5f64c01a63 150-151
+  s_81f9da72a79c26::t_b00afdef0592e2 183
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_66be2eb681ad3c::t_5a64551d9a7995 2241-2242,2273
+  s_66be2eb681ad3c::t_d6637aaba23071 2274-2276,2278-2279
+  s_f2e7acc401d88b::t_b9361c7fdcf35d 2277
+  s_66be2eb681ad3c::t_c02422151f90b3 2299-2300
+  s_66be2eb681ad3c::t_ab75db9d7bbfdf 2314-2316,2318-2319
+  s_f2e7acc401d88b::t_aa9f3d794ebde8 2317
+  s_81f9da72a79c26::t_297bda4ec158aa 2334,2347
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_66be2eb681ad3c::t_40d687139f1ec8 14,17
+  s_66be2eb681ad3c::t_e8e63f499193bb 69-70
+  s_66be2eb681ad3c::t_5050c1712db642 125-126
+  s_66be2eb681ad3c::t_938b55e3341454 349-373,381-390
+  ai_agent 374-380
+  s_f2e7acc401d88b::t_60c1de5ddb1f3a 391-392
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_66be2eb681ad3c::t_58f419e11bb106 24,26
+  s_f2e7acc401d88b::t_15bf946a25e946 25
+  s_66be2eb681ad3c::t_f0c37af9443e20 68,88,99
+  s_66be2eb681ad3c::t_c0dc8940cec512 114
+  s_f2e7acc401d88b::t_02cee8a6a8352d 124-132
+  s_66be2eb681ad3c::t_849b8abd206973 149
+  s_66be2eb681ad3c::t_637d136c3b5697 166-171,189,202
+  s_66be2eb681ad3c::t_25d35b780c512f 225,229-232,234
+  s_66be2eb681ad3c::t_d47fde420c5e8c 281
+  s_66be2eb681ad3c::t_e18c9e96ffb2e3 293,304
+  ai_agent 324
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_66be2eb681ad3c::t_00286b7a8621b3 1-8,10,18-41,43-48,51-54,56-65,67,69-73,75,77-85,87-90,92,94-99,101-105,113,119-124,128-129,133-138,144-150,152-162,167,177-181,186-190,192,194,199-201,203-207,211-214,216,218-220,223-224
+  s_66be2eb681ad3c::t_527cb7f8d78f91 9,76
+  s_f2e7acc401d88b::t_2fa290782bb577 11-17
+  s_f2e7acc401d88b::t_7608640223589c 42
+  s_66be2eb681ad3c::t_01756140a30a6e 49-50,55,66,68,74,93,100,110,217,222
+  s_f2e7acc401d88b::t_90d0ee0ae7461c 86
+  s_66be2eb681ad3c::t_81bbc6e53bee51 91,108
+  ai_agent 106-107,109,111-112,116,118,163-166,195-198,208-210
+  s_f2e7acc401d88b::t_1b4c18876c463a 114-115,117
+  s_f2e7acc401d88b::t_7869c389908d9f 125-127,130-132,139-143,151,168-175
+  s_66be2eb681ad3c::t_4e4949edff2310 191,193,202,215,221
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_66be2eb681ad3c::t_07d44424b95d94 5
+  s_66be2eb681ad3c::t_d3d6cc3458ed37 103-106,108-113,115,117-118
+  s_66be2eb681ad3c::t_e218dd1593bcf5 107
+  s_66be2eb681ad3c::t_5de9f7ab33123a 114
+  s_f2e7acc401d88b::t_ad270681e4a081 116
+  s_66be2eb681ad3c::t_40cc9bf7660d7b 145-148
+  s_81f9da72a79c26::t_af6dbeca3bd7d6 156
+  s_66be2eb681ad3c::t_4278fcb2f8986f 171-172
+  s_66be2eb681ad3c::t_e2de7a5c936480 201-205
+  s_66be2eb681ad3c::t_13fcdb420de74e 222-223
+  s_66be2eb681ad3c::t_74fd446372aef7 258-261,263-265
+  s_f2e7acc401d88b::t_e055936c92b23e 262
+  s_81f9da72a79c26::t_cafeb2b7064977 275
+  s_66be2eb681ad3c::t_606aa7ca980cff 342
+  s_66be2eb681ad3c::t_a223cb53c90c81 418
+  s_66be2eb681ad3c::t_4997aa020a861c 419-422,425-427,436
+  s_f2e7acc401d88b::t_63e495299f4fe9 423-424
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_66be2eb681ad3c::t_d09aa2dfc5d51c 1,3-7,11-18
+  s_f2e7acc401d88b::t_ce1d2e30d2def7 2
+  s_66be2eb681ad3c::t_4a07ceeb3d511a 8-10,19-23,25-31,35,41-43,46,49,51,53-59,63,65-66,76,78,80,89,103-104,113-120,131-143,150-153,157-158
+  s_f2e7acc401d88b::t_e9105849601b4b 24
+  s_66be2eb681ad3c::t_513d7982f6399f 32-34,36
+  s_66be2eb681ad3c::t_55b3b94fd748b1 37
+  s_66be2eb681ad3c::t_de5fad5f9455f1 44-45,50,52,60-61,64,67-75,77,81-87,93-102,105-112
+  s_f2e7acc401d88b::t_526665f18c2c75 47-48
+  s_66be2eb681ad3c::t_8815ce3530ece3 62,79,88,145-149
+  s_f2e7acc401d88b::t_97502e4d37209b 90-92
+  s_f2e7acc401d88b::t_b79b752d258a7f 121-130
+  s_f2e7acc401d88b::t_0a6269ea31387a 155-156
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_66be2eb681ad3c::t_55d2fa872c4067 1,17
+  s_66be2eb681ad3c::t_6fce8f53e09ffa 68,78
+  s_66be2eb681ad3c::t_5e593e3887cedd 117-122,124-133,135-138
+  s_f2e7acc401d88b::t_d8eddfe2c07165 123,134
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-import-decision.test.ts
+  s_66be2eb681ad3c::t_527cb7f8d78f91 1,8,11,32,44,89,107,134
+  s_66be2eb681ad3c::t_f06fa87fab077a 2-7,10,12-18,26-29,31,33-43,45-50,57-60,62-74,76-77,85-88,90-95,97-98,100-106,108,115-117,131-133,135-140,142-145,147-148,150-151,153-154,156-158,162,164-165,167-168,170-171,173-175,178,186-187,189-191,194,196-197,199-203,205-212,220-221,227-231,239-242,247,249-253,261-265,298-299
+  s_66be2eb681ad3c::t_5c9760ee3830d4 9
+  ai_agent 19-25,51-56,61,78-84,99,109-114,146,152,155,163,169,172,179-185,195,204,213-219,222-226,232-238,248,254-260
+  s_66be2eb681ad3c::t_dc9d90cef38da4 30
+  s_66be2eb681ad3c::t_70319c846dfc70 75
+  s_66be2eb681ad3c::t_895c6b94f4bb16 96
+  s_f2e7acc401d88b::t_3c6ac63740b14d 118-130
+  s_66be2eb681ad3c::t_e725344556d121 141
+  s_66be2eb681ad3c::t_2e1bba70adc661 149,159-161,166,176-177,188
+  s_66be2eb681ad3c::t_256fbe3c1910ec 192-193,198
+  s_f2e7acc401d88b::t_ff06b3a46554e7 243,266-295
+  s_66be2eb681ad3c::t_8ac94f1e78a2fe 244-246
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_66be2eb681ad3c::t_a4a69ea288b79e 241-244,246-247
+  s_f2e7acc401d88b::t_c65c1e42a13662 245
+  s_66be2eb681ad3c::t_f3116ffa9374d2 271-272
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_66be2eb681ad3c::t_de06b679f1904e 1066-1067
+  s_66be2eb681ad3c::t_e5f870edf59b38 1081-1083,1085
+  s_f2e7acc401d88b::t_e2228f9707c4d8 1084
+  s_66be2eb681ad3c::t_c72d01de7ce445 1086
+  s_81f9da72a79c26::t_8b0f47df757a35 1098
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_66be2eb681ad3c::t_21d60d94b1718b 77-78,96-97,115-116
+  s_66be2eb681ad3c::t_b236782ac59f25 1224-1227,1229-1231,1317-1320,1322-1324,1379-1382,1384-1386,1443-1446,1448
+  s_f2e7acc401d88b::t_db3c29f403add2 1228,1321,1383,1447
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1a2f445dc47a63c5b725766dcc11803257fdfcb5",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_f2e7acc401d88b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc81e09b-56c0-4298-980d-617e84f5e6aa",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

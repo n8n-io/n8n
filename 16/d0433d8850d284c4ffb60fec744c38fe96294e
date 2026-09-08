@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts
+  s_1ffb4e6f3166e9::t_b103c391bddcd2 441-443
+packages/@n8n/api-types/src/dto/workflows/base-workflow.dto.ts
+  s_1ffb4e6f3166e9::t_26c46592ba4895 2,104-107
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow.dto.test.ts
+  s_1ffb4e6f3166e9::t_b7c9742ce17aa5 536-549
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.test.ts
+  s_1ffb4e6f3166e9::t_4d61e542bb8cdc 551
+  s_1ffb4e6f3166e9::t_e3a63742958ece 521-524,539-550
+  s_1ffb4e6f3166e9::t_fb6f3de1558aa2 525-538
+packages/@n8n/api-types/src/dto/workflows/__tests__/update-workflow.dto.test.ts
+  s_1ffb4e6f3166e9::t_555fdd98a3f1e6 306-317
+packages/cli/src/workflows/workflow-entity-mapper.ts
+  s_1ffb4e6f3166e9::t_2dcfa8ad803725 14-15
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_1ffb4e6f3166e9::t_76c3bcbb39ed20 3340-3360
+  s_1ffb4e6f3166e9::t_6888a8b6d6b582 170-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "16d0433d8850d284c4ffb60fec744c38fe96294e",
+  "prompts": {},
+  "sessions": {
+    "s_1ffb4e6f3166e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25dd5828-d28b-4962-9f1a-6cfc2510d65a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

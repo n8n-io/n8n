@@ -1,0 +1,22 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/test/LmChatAwsBedrock.test.ts
+  s_9422c6a7a8d3b5::t_d39515b9f4b37e 650
+  s_9422c6a7a8d3b5::t_ae77dab9b6f011 709-711,720-723,726-728,734-737
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/methods/listModels.ts
+  s_9422c6a7a8d3b5::t_60e675318b08b4 44-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1502e0dc70df2c1abdb09c6c7f570b44804c6fcb",
+  "prompts": {},
+  "sessions": {
+    "s_9422c6a7a8d3b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b1942f0-84d2-475a-83d5-2bbe6bc42dc1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

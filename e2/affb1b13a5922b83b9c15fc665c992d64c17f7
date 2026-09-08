@@ -1,0 +1,21 @@
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.ts
+  s_5ccc5241cb7dcd::t_63c6520dddfd3b 6
+packages/frontend/editor-ui/src/Interface.ts
+  s_5ccc5241cb7dcd::t_7a95af1110130b 889-892
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e2affb1b13a5922b83b9c15fc665c992d64c17f7",
+  "prompts": {},
+  "sessions": {
+    "s_5ccc5241cb7dcd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e9bc627-e7d4-4b33-8e7c-165585c5e028",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

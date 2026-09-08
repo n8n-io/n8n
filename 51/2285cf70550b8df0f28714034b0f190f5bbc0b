@@ -1,0 +1,53 @@
+packages/cli/test/integration/dynamic-credentials.ee/dynamic-credentials.auth.api.test.ts
+  s_b7be0a7e4f2d1d::t_a5a19bda189a28 274-284,286-295,297-307
+  s_b7be0a7e4f2d1d::t_54399c92397834 285,296
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.controller.ts
+  s_b7be0a7e4f2d1d::t_184ef7273da489 9
+  s_b7be0a7e4f2d1d::t_f572dd00d7977d 81-83,85,104,111-112
+  s_b7be0a7e4f2d1d::t_1f5d0b53c663a9 105-106
+  s_b7be0a7e4f2d1d::t_bbee936f56dd58 141-143,145,187-189,191
+  s_b7be0a7e4f2d1d::t_b901132ba50974 144,190
+  s_b7be0a7e4f2d1d::t_8470811726128c 84,107-110
+  s_b7be0a7e4f2d1d::t_bc5c13cc28bf8f 19,22
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver-workflow.service.ts
+  s_b7be0a7e4f2d1d::t_021f572dcd1386 298-300,302-309
+  s_b7be0a7e4f2d1d::t_9706b6baf8b91e 13
+  s_b7be0a7e4f2d1d::t_e8b2993e9dc3b8 301
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/credential-resolver-workflow.service.test.ts
+  s_b7be0a7e4f2d1d::t_b7c3a5938c48fa 388-457
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/dynamic-credentials.controller.test.ts
+  s_b7be0a7e4f2d1d::t_b57fdea0d5ee1b 949-994,996-998,1001-1004,1006-1008,1010-1020,1023-1035,1038-1041
+  s_b7be0a7e4f2d1d::t_9dc30ee919d85d 999
+  s_b7be0a7e4f2d1d::t_7e29837dced2c0 1021-1022
+  s_b7be0a7e4f2d1d::t_614928146372b0 1036-1037
+  s_b7be0a7e4f2d1d::t_5685e29715754f 995,1000,1005,1009
+packages/cli/src/modules/dynamic-credentials.ee/services/dynamic-credential.service.ts
+  s_b7be0a7e4f2d1d::t_6bf534baee2595 121-122
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/dynamic-credential-storage.service.test.ts
+  s_b7be0a7e4f2d1d::t_6db1538ba03cc5 197-219
+packages/cli/src/modules/dynamic-credentials.ee/services/dynamic-credential-storage.service.ts
+  s_b7be0a7e4f2d1d::t_c437310ff90319 79-80
+  s_b7be0a7e4f2d1d::t_4b5ead1ee102c0 77-78
+  s_b7be0a7e4f2d1d::t_77e1fabd043968 20,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "512285cf70550b8df0f28714034b0f190f5bbc0b",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b7be0a7e4f2d1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a713f551-1f93-4145-b759-f931927e4e20",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

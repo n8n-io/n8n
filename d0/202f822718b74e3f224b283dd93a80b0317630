@@ -1,0 +1,56 @@
+packages/@n8n/agents/src/index.ts
+  s_17a09e1f737b2b::t_c7dd9e8d356757 284
+packages/@n8n/agents/src/runtime/__tests__/planner-todos-tool.test.ts
+  s_17a09e1f737b2b::t_95221a6539bb2f 1-30,35-82
+  s_17a09e1f737b2b::t_167bf60826b3fb 31-34
+  s_78bcef4cf1110e::t_95e7a5d8109cf6 83-85
+packages/@n8n/agents/src/runtime/tools/planner-todos-tool.ts
+  s_e00fbf120c49dd::t_e4f6437ed0fd8d 43
+  s_17a09e1f737b2b::t_ad65947e0ec3f5 1-2,4-42,44-59
+  s_a04650a9144c0a::t_a4d241f1dc8bd0 3
+packages/@n8n/agents/src/runtime/tools/todos-core.ts
+  s_17a09e1f737b2b::t_c79db277ec86f9 1-51
+packages/@n8n/agents/src/runtime/tools/write-todos-tool.ts
+  s_a04650a9144c0a::t_2d406b19cde5d6 87-88
+  s_17a09e1f737b2b::t_0cc8ba9b6193fe 8-13,97-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d0202f822718b74e3f224b283dd93a80b0317630",
+  "prompts": {},
+  "sessions": {
+    "s_17a09e1f737b2b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c9dabbf6-7547-4261-a3b7-e66b16ac3e41",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_78bcef4cf1110e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cb0dab5a-7c87-42b3-b273-a3a9083a1888",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a04650a9144c0a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "72599e6d-963a-4b8d-86d4-b1540eaf437f",
+        "model": "claude-fable-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e00fbf120c49dd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "38d10a5a-f35d-499a-a73f-c0f28ce2bb48",
+        "model": "claude-fable-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

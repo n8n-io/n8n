@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/roles/components/CustomRolesUpgradeModal.vue
+  s_a62ef069e52f66::t_d23a898fdd3d0a 28-34
+  s_a62ef069e52f66::t_c1e61c8d67877e 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "c4f64ac0bb3166351bf91f57dae81961a7713275",
+  "prompts": {},
+  "sessions": {
+    "s_a62ef069e52f66": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "31457e91-5892-4198-847e-4a8e5c824b6f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/upsert.sp.batch.test.ts
+  s_231f86271593fc::t_f1640084704eaa 1-63
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/upsert.sp.batch.workflow.json
+  s_231f86271593fc::t_6b41f18739ca22 1-89
+packages/nodes-base/nodes/Microsoft/Excel/v2/transport/index.ts
+  s_231f86271593fc::t_0cb9e4a114fb51 96
+packages/nodes-base/nodes/Microsoft/Excel/v2/test/transport/index.test.ts
+  s_231f86271593fc::t_d4712fa15df081 12
+  s_231f86271593fc::t_6fc57dc87d0621 864
+  s_231f86271593fc::t_479c4af2e0f85a 891-927
+  s_231f86271593fc::t_6bcf273ed82c66 877
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "4190e8e13d022745058ed29e963500e0ced0d41c",
+  "prompts": {},
+  "sessions": {
+    "s_231f86271593fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00c976d1-dc87-42a8-b0f6-708f6f5a59a9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

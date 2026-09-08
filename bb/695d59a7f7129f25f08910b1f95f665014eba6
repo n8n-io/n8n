@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillViewer.vue
+  s_b5830b3a15f234::t_657273eaccc1f4 563
+  s_b5830b3a15f234::t_6b8f2a9d7662e7 151-152,154
+  s_b5830b3a15f234::t_a70975b8719626 100-102,106,116
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 7074,7121
+packages/@n8n/api-types/src/agents/agent-skill.schema.ts
+  s_b5830b3a15f234::t_aa914160b9c6ac 76-81
+  s_b5830b3a15f234::t_2b771e2b82622b 74-75
+packages/@n8n/api-types/src/agents/__tests__/agent-skill.dto.test.ts
+  s_b5830b3a15f234::t_6aa3bcbbebb9f5 2
+  s_b5830b3a15f234::t_7a33bcfc93ae3d 75-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bb695d59a7f7129f25f08910b1f95f665014eba6",
+  "prompts": {},
+  "sessions": {
+    "s_b5830b3a15f234": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4c515cb-8cb4-4c0e-8e5c-743bf2aa4628",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

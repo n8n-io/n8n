@@ -1,0 +1,47 @@
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_6167e43a9f492f::t_73168ff58747f4 44
+  s_6167e43a9f492f::t_bafbd436fb09e2 1
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  s_6167e43a9f492f::t_8ffc6d2aee4a4f 102-105,115-133
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_6167e43a9f492f::t_982e813cbee59e 511-544
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_6167e43a9f492f::t_abb585d6cecd7e 144-157
+  s_6167e43a9f492f::t_95017a99dfc91a 139-141
+packages/@n8n/api-types/src/agents/inline-agent-config.schema.ts
+  s_6167e43a9f492f::t_398df6978bae92 4
+  s_6167e43a9f492f::t_0f288dadee7dbf 46
+  s_6167e43a9f492f::t_c1d298158eec33 58
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_6167e43a9f492f::t_e2bd7cb83bef8a 404-409
+  s_6167e43a9f492f::t_e8bd7442934392 487-497
+packages/cli/src/modules/agents/json-config/__tests__/sanitize-unknown-agent-credentials.test.ts
+  s_6167e43a9f492f::t_270b094905a414 25,29-33
+  s_6167e43a9f492f::t_49b1b4d3221725 276-296
+packages/@n8n/api-types/src/agents/sanitize-agent-json-config.ts
+  s_6167e43a9f492f::t_53ec08ffd1ebf1 3
+  s_6167e43a9f492f::t_fe42dc8bb95ce6 205
+  s_6167e43a9f492f::t_e8fb325c1316ca 210
+  s_6167e43a9f492f::t_14ace37701e4e5 193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "371c7f5a11c6751900eec57b5b805831d711b407",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6167e43a9f492f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1339a674-ce23-49f2-8f5e-17168a943872",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

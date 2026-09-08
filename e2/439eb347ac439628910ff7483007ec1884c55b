@@ -1,0 +1,21 @@
+packages/nodes-base/credentials/common/atlassian-scopes.ts
+  s_2dd11acf1bf19d::t_882b03c155b0fa 45
+  s_2dd11acf1bf19d::t_1de26d0567e0d4 2-5,7,13
+  s_2dd11acf1bf19d::t_8b8165645bb7da 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e2439eb347ac439628910ff7483007ec1884c55b",
+  "prompts": {},
+  "sessions": {
+    "s_2dd11acf1bf19d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e4031ed-9151-4cc4-abed-6d95597b73f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

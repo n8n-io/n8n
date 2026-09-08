@@ -1,0 +1,60 @@
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDashboard.test.ts
+  s_c5a73481075afb::t_b02dec1772cf3f 26
+  s_c5a73481075afb::t_dcdc0473daff94 77,81
+  s_c5a73481075afb::t_008513b8d38c30 717
+packages/cli/src/modules/insights/__tests__/insights.service.integration.test.ts
+  s_c5a73481075afb::t_19b1e5f7acec6a 13,21-24,31
+  h_5d40c27a8fdfd1 71,81,88,1472
+  s_c5a73481075afb::t_733a6d5e80764e 1580
+packages/cli/src/modules/insights/__tests__/insights.service.test.ts
+  s_c5a73481075afb::t_3976954ba0754b 15
+  h_5d40c27a8fdfd1 31,50
+  s_c5a73481075afb::t_0bf85474469213 17-18,42,857,977,1038
+packages/cli/src/modules/insights/insights.controller.ts
+  s_c5a73481075afb::t_57af84497bbd7b 45,52
+packages/cli/src/modules/insights/__tests__/insights.controller.test.ts
+  s_c5a73481075afb::t_61de7ce56ba12a 430-433,447-454,466-469,481-486,500-503,511,527,541,563,590,652,671,693-696,711-713,734-736
+  s_c5a73481075afb::t_2ed1b546bb59aa 21-27
+  h_5d40c27a8fdfd1 14
+  s_c5a73481075afb::t_a1c4eb1014a9a4 413-415
+  s_c5a73481075afb::t_db0efb8d336626 62,93,134,195-199,221-224,245,261,275,295,320,381-385,411-412,753,766,778,793,812,855,875-877,899-902,916,929,941,956,975
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  h_5d40c27a8fdfd1 444
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_c5a73481075afb::t_286594ae819d2b 11-12
+  s_c5a73481075afb::t_072ccb8dc56c79 189-255
+  s_c5a73481075afb::t_85556da1aeaba8 2-7,9
+  s_c5a73481075afb::t_acb6e8d9a2d6d6 10,13-14,16-17,256-260
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDashboard.vue
+  s_c5a73481075afb::t_7e1e00c2429ffe 12-13
+  s_c5a73481075afb::t_558c0b1109029b 204-208
+packages/cli/src/modules/insights/insights.service.ts
+  h_5d40c27a8fdfd1 19,29,213,221
+  s_c5a73481075afb::t_f55917f66394c1 243
+packages/cli/src/modules/insights/__tests__/insights.module.test.ts
+  s_c5a73481075afb::t_4477aef7894505 42
+  s_c5a73481075afb::t_491596330e71af 9-10
+packages/cli/test/integration/insights/insights.api.test.ts
+  s_c5a73481075afb::t_24598eb7c166e5 7,18-19,150-152,434-436,517-519,577-579
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b3c6f38012cee218cb160ed0957eaf7d9d885f7e",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_c5a73481075afb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d613f4e-8722-42ce-82e5-6d0900809185",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

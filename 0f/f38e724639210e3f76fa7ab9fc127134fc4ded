@@ -1,0 +1,107 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_77a32fd9603843::t_c53e3e04219f2a 272
+  s_85629be8996a13::t_08be20903bcaca 156-157,255-271,273-285,466,487,501,511,566,600-604,606-607,614-619
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_77a32fd9603843::t_c53e3e04219f2a 357-364
+  s_85629be8996a13::t_dbb5363174daba 49-69,137-170,276-356,365-369,649-671
+docs/generated/postgres-schema/README.md
+  s_85629be8996a13::t_2b15822816c131 892
+docs/generated/postgres-schema/public.installed_nodes.md
+  s_85629be8996a13::t_a08e7841b597fa 7,37
+docs/generated/postgres-schema/public.installed_packages.md
+  s_85629be8996a13::t_6834d8c5d36863 46
+docs/generated/sqlite-schema/README.md
+  s_85629be8996a13::t_2a19aa4d050ae0 879
+docs/generated/sqlite-schema/installed_nodes.md
+  s_85629be8996a13::t_a630d117e27cd3 9-16,25,52
+docs/generated/sqlite-schema/installed_packages.md
+  s_85629be8996a13::t_f012cc92773e96 54
+packages/@n8n/db/src/migrations/postgresdb/1785162364000-ChangeInstalledNodeVersionType.ts
+  s_85629be8996a13::t_2cf2e0be358440 1-9
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_85629be8996a13::t_7c0a9f09048882 57,469
+packages/@n8n/db/src/migrations/sqlite/1785162364000-ChangeInstalledNodeVersionType.ts
+  s_85629be8996a13::t_1a80963066d4c9 1-38
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_85629be8996a13::t_c0e762e23df527 62,451
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_85629be8996a13::t_41c21f4d987524 1,14,55-79,163,191
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_85629be8996a13::t_134557facb04e9 3,5,23-88,163-207
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_85629be8996a13::t_4b4eccdaa08fe3 51-52,312-313,332-336,343
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_85629be8996a13::t_e68958278dce46 13-14,24,28-43,197,274,277-278,280
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_85629be8996a13::t_acf0d58fc2b996 48-74
+packages/cli/src/modules/community-packages/installed-nodes.entity.ts
+  s_85629be8996a13::t_51618113e54fad 13
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_85629be8996a13::t_ce900baf34ff74 145-212
+packages/cli/test/migration/1785162364000-change-installed-node-version-type.test.ts
+  s_85629be8996a13::t_408a697fe94353 1-126
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_85629be8996a13::t_1daf55b141a6b1 1409,7105-7107,7110,7596-7597
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_85629be8996a13::t_b05b623e910519 433-439,667-737
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_85629be8996a13::t_73af134cb484dc 58-75,88,90-93,109-127
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_85629be8996a13::t_15c6aedcd918fd 69,76-77,110,115-129,139
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_85629be8996a13::t_408e0ed597d12c 1-94
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_85629be8996a13::t_9d63518993041b 1-247
+packages/frontend/editor-ui/src/features/agents/__tests__/toolDisplayName.test.ts
+  s_85629be8996a13::t_9d8c4592fa8667 1,53-68
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderPreviewHeader.vue
+  s_85629be8996a13::t_4cb073ac361a2f 22,30,35-44,46-47,101,107-108,110
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_85629be8996a13::t_d05d76c5bc4094 110
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_85629be8996a13::t_23a502bf5bf942 1-380
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_85629be8996a13::t_fb3209ea310088 139
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_85629be8996a13::t_08ec75813ad99e 113
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_85629be8996a13::t_f59c41752fda39 50
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_85629be8996a13::t_d4cc08a21f810b 23-24
+packages/frontend/editor-ui/src/features/agents/utils/toolDisplayName.ts
+  s_85629be8996a13::t_2260d2dc05cd04 1,55,60
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_85629be8996a13::t_348bd21f804bc1 77,150-154,1176-1177,1181-1186,1310,1315,1372,1385-1391
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_85629be8996a13::t_e7dfa426a9e150 16,19,37-38,136-138,141-145,211-216
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_85629be8996a13::t_4deb8a7796555a 7-12,19-26,92-101,105-124,146-162,232,241,255-274,393-399
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_85629be8996a13::t_c8a98a319612a8 2279-2282
+packages/nodes-base/credentials/N8nApi.credentials.ts
+  s_85629be8996a13::t_dc28e8709ade32 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0ff38e724639210e3f76fa7ab9fc127134fc4ded",
+  "prompts": {},
+  "sessions": {
+    "s_77a32fd9603843": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3e4-3e06-77d3-b1b7-6e9670e39416",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_85629be8996a13": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa392-cc89-7851-8dc2-697ffc4937ce",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

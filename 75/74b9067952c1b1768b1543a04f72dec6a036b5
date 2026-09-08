@@ -1,0 +1,39 @@
+packages/n8n-test/package.json
+  s_157f08ca3b0299::t_94d696b819588a 1-39
+packages/n8n-test/tsconfig.json
+  s_157f08ca3b0299::t_c87d5f78396b1c 1-14,19
+  s_157f08ca3b0299::t_27170bac6d1041 15-18
+packages/n8n-test/demo/scaffold.test.ts
+  s_157f08ca3b0299::t_aeeb36d28d3578 1-5
+pnpm-lock.yaml
+  ai_agent 6280-6316
+packages/n8n-test/vitest.config.ts
+  s_157f08ca3b0299::t_d54cd61a7c9431 1-21
+packages/n8n-test/eslint.config.mjs
+  s_157f08ca3b0299::t_95d474d2f03bfb 1-4
+packages/n8n-test/src/index.ts
+  s_157f08ca3b0299::t_bdae3c46f1de47 1
+packages/n8n-test/demo/setup.ts
+  s_157f08ca3b0299::t_690196edcf780a 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7574b9067952c1b1768b1543a04f72dec6a036b5",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_157f08ca3b0299": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8158bab5-b092-4dee-bd6c-3fef6d0146f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

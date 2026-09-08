@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/roles/RolesView.test.ts
+  s_8f52ec7b6c500a::t_bf811f5bc39bb0 29-30,36-39
+  s_8f52ec7b6c500a::t_31b12e5b44147a 65-96
+  s_8f52ec7b6c500a::t_06e7d8cc38ec33 2-3
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  h_435b1d7d3e52c0 15,26,40-41,43-44,46-48,104
+packages/cli/test/integration/access-control/instance-roles.test.ts
+  s_8f52ec7b6c500a::t_5a403ba2d24590 165-282,285-286,289
+  s_8f52ec7b6c500a::t_6c424035458b00 1-6,8,10
+  s_8f52ec7b6c500a::t_b49f26e7854e8e 283-284
+  s_8f52ec7b6c500a::t_5b996127ef7a61 287-288
+  s_8f52ec7b6c500a::t_4a3d5cd1e1daac 290-292
+packages/cli/src/controllers/role.controller.ts
+  h_435b1d7d3e52c0 16,29,33-34,43-48,66,71-72,79,83-84,118-119,136-137,153
+packages/@n8n/permissions/src/scope-information.ts
+  s_8f52ec7b6c500a::t_f85b30f331e4a6 117-120
+packages/@n8n/permissions/src/constants.ee.ts
+  s_8f52ec7b6c500a::t_8ed8b73e56d01c 73
+packages/frontend/editor-ui/src/app/router.ts
+  h_435b1d7d3e52c0 838,936
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  h_435b1d7d3e52c0 48,55,112
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_435b1d7d3e52c0 2838
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  h_435b1d7d3e52c0 107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d9d2905c3874b2585e239bd8888e8a2b1c622dc0",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8f52ec7b6c500a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "423ca37e-9e4c-479c-b2d1-af1ced0a48f6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

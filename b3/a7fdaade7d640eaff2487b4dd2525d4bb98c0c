@@ -1,0 +1,94 @@
+packages/@n8n/instance-ai/src/index.ts
+  s_4e2ede072a0878::t_32ae34cac94f6c 184
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_800fc90917ad16::t_31a652cf0ad138 3-8
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_4e2ede072a0878::t_61c1c28b419833 159-180
+  s_4e2ede072a0878::t_990faec75bf0c6 4,11,19-20
+  s_4e2ede072a0878::t_a8dce1b3b12138 75-76
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_f57f1eaf61bc0f::t_c7b4a66c075ea8 22
+  s_4e2ede072a0878::t_d6fd36d6f8a8f3 319-352
+  s_4e2ede072a0878::t_287f02ed7462c8 8,17,23,28-29,31-36,43,48-49
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_800fc90917ad16::t_5ef2c825ee94fa 641,646
+  s_800fc90917ad16::t_232ed04ad1739c 846-851,860-894
+  s_800fc90917ad16::t_37f95bfdda4b72 610-613,618
+  s_800fc90917ad16::t_cddabbdacc8446 607-609,614-617,619-640,642-645,647-704,895
+  s_800fc90917ad16::t_cb4fe920b9fdc0 18
+  s_800fc90917ad16::t_77b028b7b758e4 734
+  s_800fc90917ad16::t_215e316ccce5cf 896
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_4e2ede072a0878::t_0a82124aa78ff7 167,170
+  s_4e2ede072a0878::t_6ce8eeae65fb9d 195-196
+  s_4e2ede072a0878::t_5c88ec1506f093 3716-3811
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_4e2ede072a0878::t_431b3d9b096ed3 17
+  s_4e2ede072a0878::t_0d4248c38016fc 1374-1388
+  s_4e2ede072a0878::t_fcedeedd870f57 1367
+  s_4e2ede072a0878::t_775c1f887e0f14 104
+  s_4e2ede072a0878::t_f9b48011605233 22
+packages/@n8n/instance-ai/docs/tools.md
+  s_a421db1c85d627::t_5684b63779a457 710-716
+  s_a421db1c85d627::t_7d43c85d71f93e 719-725
+  s_a421db1c85d627::t_5d44092078e56b 693-694
+packages/@n8n/instance-ai/src/tools/orchestration/builder-thread-id.ts
+  s_4e2ede072a0878::t_c4b1518c195030 1-8
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_4e2ede072a0878::t_2a6ade59ef5a36 127
+  s_800fc90917ad16::t_fcb783bc8c16eb 146-159
+  s_800fc90917ad16::t_5387003ecf8d33 622-625,627-628
+  s_4e2ede072a0878::t_1b32f700999751 44
+  s_800fc90917ad16::t_e99119c87288cc 535-593
+  s_800fc90917ad16::t_8cd3e863480b75 598-605
+  s_800fc90917ad16::t_680bde3dac296c 467-471
+  s_800fc90917ad16::t_f24e6cf2f3bc3c 434-438
+  s_800fc90917ad16::t_a4f88a689ef07f 183-186
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_800fc90917ad16::t_2aa9972d2a722e 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b3a7fdaade7d640eaff2487b4dd2525d4bb98c0c",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4e2ede072a0878": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8bea04f4-38c7-42fc-bed8-b7b910064070",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_800fc90917ad16": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d693a4ef-8a9f-4165-bb06-ff417fa7a338",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a421db1c85d627": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3f17a026-d9b9-4c91-ade1-2c4edb105f5e",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f57f1eaf61bc0f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8721a92d-3146-4844-b6ec-4e702ca83c4c",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

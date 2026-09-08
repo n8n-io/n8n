@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Git/GenericFunctions.ts
+  s_41df6966a3c9ce::t_42e6b5ef9b9eb7 214-216
+  s_41df6966a3c9ce::t_e42c041c8c0859 167,169,185,201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1b748dbc81caeefe80d8274d3d9dfccb73c234f3",
+  "prompts": {},
+  "sessions": {
+    "s_41df6966a3c9ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "993ad4b4-b06f-4d08-b0a7-4c7de28ec904",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

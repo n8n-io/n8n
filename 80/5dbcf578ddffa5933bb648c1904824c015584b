@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/saml/__tests__/saml-preferences.dto.test.ts
+  s_77088cb56e2173::t_e888392f8ed393 199-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "805dbcf578ddffa5933bb648c1904824c015584b",
+  "prompts": {},
+  "sessions": {
+    "s_77088cb56e2173": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "13874058-b776-4971-b8ba-45ace7a4f281",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_305955daf24d02::t_9dc09e8c0117ca 180-218
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_305955daf24d02::t_b1d0d2bda16d3d 11,13,85-106
+  s_305955daf24d02::t_75cbe52350d578 107-108
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_305955daf24d02::t_b2707424ab4a38 125-132,140,154,162
+  s_305955daf24d02::t_2dddcca5a73fcb 21,26-31,118-119,133,135-136,138-139,141-142,144-153,155-161,163-167
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_305955daf24d02::t_b1d0d2bda16d3d 211
+  s_305955daf24d02::t_b5c6c481744108 86-99
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_305955daf24d02::t_9dc09e8c0117ca 8,48-52,92-110,183-185,187-190,194-197,199-205,209-210
+  s_305955daf24d02::t_a7f126b7ce5214 91,186,198
+  s_305955daf24d02::t_5623e340d81e90 191-193,206-208
+  s_305955daf24d02::t_00d701fbe780b2 211
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_305955daf24d02::t_2dddcca5a73fcb 9,114-130,166-168,211
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_305955daf24d02::t_b5c6c481744108 55-56
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionEventFilter.spec.ts
+  s_305955daf24d02::t_b1d0d2bda16d3d 15-18,23-36,70-93
+  s_305955daf24d02::t_8d945bd6098343 94-95
+packages/frontend/editor-ui/src/features/agents/components/SessionEventFilter.vue
+  s_305955daf24d02::t_2dddcca5a73fcb 4,60-63
+  s_305955daf24d02::t_b2707424ab4a38 51-59
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_305955daf24d02::t_2dddcca5a73fcb 13,65,70-76
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_305955daf24d02::t_2dddcca5a73fcb 12,14,82,387,389-393,502-503,509-515,517
+  s_305955daf24d02::t_b4d69ea08d9c8c 516
+  s_305955daf24d02::t_81f062d09e700f 518
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cb3d2d84407c8bf2281d83863d241a75297819ec",
+  "prompts": {},
+  "sessions": {
+    "s_305955daf24d02": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffb56-d72e-7fb2-bb76-81cc38f4e9a6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

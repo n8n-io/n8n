@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_b2770a9c4c7dcd::t_0b6b0de7104c2d 263,756
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "d7c153039d070d71298587485255559d7b8b8013",
+  "prompts": {},
+  "sessions": {
+    "s_b2770a9c4c7dcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ee5c2-4c3c-7be2-a064-09d90bbc7259",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

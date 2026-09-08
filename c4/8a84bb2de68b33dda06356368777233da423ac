@@ -1,0 +1,19 @@
+packages/cli/src/modules/dynamic-credentials.ee/errors/system-resolver-modification.error.ts
+  s_58acc4bc4a3d27::t_0e23a52b93c19f 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "c48a84bb2de68b33dda06356368777233da423ac",
+  "prompts": {},
+  "sessions": {
+    "s_58acc4bc4a3d27": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "912c2f8a-f52c-4260-a0ae-ba1a609aef8c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

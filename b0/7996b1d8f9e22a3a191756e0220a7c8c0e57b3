@@ -1,0 +1,16 @@
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  h_6ef4cecfee65a2 4,13
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  h_6ef4cecfee65a2 153-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b07996b1d8f9e22a3a191756e0220a7c8c0e57b3",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

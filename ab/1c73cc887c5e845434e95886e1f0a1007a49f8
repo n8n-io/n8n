@@ -1,0 +1,22 @@
+packages/@n8n/nodes-langchain/package.json
+  s_0300db73a84a70::t_466aa2bf3a39a1 273
+  s_0300db73a84a70::t_efa1580f282037 274
+pnpm-lock.yaml
+  s_0300db73a84a70::t_8e6e88717cc8ad 3035-3036,3038-3039,7229-7230,7237-7238,9490-9491,9494-9495,9498-9499,23714,23722,23724,26365-26366,26389,26402,26426,26437,26441,26444-26446,26455
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ab1c73cc887c5e845434e95886e1f0a1007a49f8",
+  "prompts": {},
+  "sessions": {
+    "s_0300db73a84a70": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "179b6cc7-2fb7-4c6f-85d8-cc2998c8f065",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

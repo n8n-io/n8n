@@ -1,0 +1,121 @@
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/components/AppSelectionPage.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 5
+packages/frontend/AGENTS.md
+  s_5fdcbed262972b::t_b0d39b9014426a 16-17
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableDetailsView.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 17
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 11
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FilterConditions/FilterConditions.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 21
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesSearchView.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 15
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/AssignmentCollection.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 2
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceLocator/ResourceLocator.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 7
+packages/frontend/editor-ui/src/features/execution/executions/views/WorkflowExecutionsView.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 15
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FilterConditions/Condition.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 27
+packages/frontend/editor-ui/src/features/setupPanel/setupPanel.store.ts
+  s_5fdcbed262972b::t_8e4abb851a175f 2
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/typescript/client/useTypescript.ts
+  s_5fdcbed262972b::t_8e4abb851a175f 2
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 26
+packages/frontend/editor-ui/src/app/components/BreakpointsObserver.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 11
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AddColumnButton.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 12
+packages/frontend/editor-ui/src/features/ai/assistant/components/AssistantsHub.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 6
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataSearch.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 6
+packages/frontend/editor-ui/src/features/ndv/panel/components/NDVSubConnections.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 15
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 18
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 9
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 27
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceLocator/ResourceLocatorDropdown.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 2
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AddColumnButton.test.ts
+  s_5fdcbed262972b::t_8e4abb851a175f 23
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 56
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ExpressionEditModal.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 20
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue
+  s_5fdcbed262972b::t_8e4abb851a175f 4
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.test.ts
+  s_5fdcbed262972b::t_ae621186ced2d4 74-75
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_5fdcbed262972b::t_8e4abb851a175f 14
+packages/frontend/editor-ui/src/app/composables/useActivityDetection.ts
+  s_5fdcbed262972b::t_ce31a9ff120112 4-5
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts
+  s_5fdcbed262972b::t_a6902fec2ac7b3 7
+packages/frontend/editor-ui/src/app/stores/pushConnection.store.ts
+  s_5fdcbed262972b::t_d560785a45eb10 6-7
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_5fdcbed262972b::t_dfe1fd5a88e6bc 17
+packages/frontend/editor-ui/src/experiments/resourceCenter/views/ResourceCenterView.vue
+  s_5fdcbed262972b::t_214cb35f92bb1b 23-24
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_5fdcbed262972b::t_f8f2cab864579b 12-13
+packages/frontend/editor-ui/src/features/agents/components/AgentSectionEditor.vue
+  s_5fdcbed262972b::t_d5ed07eb274fdc 10-11
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsModal.vue
+  s_5fdcbed262972b::t_d5f884c077ffa5 13-14
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigAutosave.ts
+  s_5fdcbed262972b::t_17472a0f45d17d 3
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_5fdcbed262972b::t_d5aee305270ad4 7-8
+packages/frontend/editor-ui/src/features/ai/assistant/focusedNodes.store.ts
+  s_5fdcbed262972b::t_05a62a1d65d7bd 12-13
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ToolsManagerModal.vue
+  s_5fdcbed262972b::t_a71ba0690bd21e 25-26
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/SuiteConfig.vue
+  s_5fdcbed262972b::t_95dcdd1ebd7674 15-16
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.vue
+  s_5fdcbed262972b::t_ed01fb56508d70 16-17
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.vue
+  s_5fdcbed262972b::t_22f67921aca655 11-12
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_5fdcbed262972b::t_fc0ac78ffc36fe 13-14
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.vue
+  s_5fdcbed262972b::t_4cd83cd80fa2a0 14,29
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_5fdcbed262972b::t_68d7f08476229d 67
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_5fdcbed262972b::t_41ea114bc62a8c 6-7
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_5fdcbed262972b::t_97b0ddfd6d12ad 4-5
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_5fdcbed262972b::t_10828e48f30f2c 6-7
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_5fdcbed262972b::t_6e585a07634bf7 12-13
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.test.ts
+  s_5fdcbed262972b::t_10ac1444abf750 7-8
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.vue
+  s_5fdcbed262972b::t_56cc9b45a867c9 9,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1de4757d79c9a461a9a548e3aed1f7d07ea6e47c",
+  "prompts": {},
+  "sessions": {
+    "s_5fdcbed262972b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9367ccc5-e474-485d-837c-9b6994184a61",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

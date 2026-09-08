@@ -1,0 +1,33 @@
+packages/@n8n/utils/src/number/bytes.ts
+  s_368fdeb7605958::t_636a143a27015a 1-19
+packages/cli/src/push/index.ts
+  s_368fdeb7605958::t_bd91956b1bc803 6
+packages/frontend/editor-ui/src/app/utils/typesUtils.test.ts
+  s_368fdeb7605958::t_5067ee0e2471b2 1
+packages/cli/src/modules/data-table/multer-upload-middleware.ts
+  s_368fdeb7605958::t_2ab4626bed7e12 5
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageAttachments.vue
+  s_368fdeb7605958::t_54646c738e4933 7
+packages/@n8n/utils/src/number/bytes.test.ts
+  s_368fdeb7605958::t_a308171f495a71 1-30
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsPreview.vue
+  s_368fdeb7605958::t_47eb8676df5bfa 14
+packages/cli/src/modules/data-table/data-table-size-validator.service.ts
+  s_368fdeb7605958::t_1f4c2c2e07937d 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "39902e65067d7802b7a3110d91634b9e7f727242",
+  "prompts": {},
+  "sessions": {
+    "s_368fdeb7605958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e50e8d7-8798-4a02-834b-9b995d43a9a2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

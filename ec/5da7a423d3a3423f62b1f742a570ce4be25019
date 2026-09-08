@@ -1,0 +1,1953 @@
+docs/generated/postgres-schema/public.user_api_keys.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-78
+packages/@n8n/benchmark/Dockerfile
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2
+packages/frontend/editor-ui/src/app/stores/executionData.store.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 423-443,560,570,578,650-660,668,688
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 45-47,116
+packages/frontend/editor-ui/src/app/plugins/vitePreloadError.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-66
+package.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 55-57,95,145,152,189-190
+docs/generated/postgres-schema/public.execution_data.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-64
+packages/@n8n/db/scripts/schema-docs.mjs
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-272
+packages/@n8n/instance-ai/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/@n8n/backend-network/src/http/__tests__/outbound-user-agent.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-86
+docs/generated/postgres-schema/public.insights_metadata.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-100
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-matcher.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 188-231
+packages/@n8n/workflow-sdk/.gitignore
+  s_bb17b049fc2e2d::t_e56ced50495c7b 8-9,11
+packages/core/src/execution-engine/__tests__/workflow-execute-run-node.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 81-87,541,574-584
+docs/generated/postgres-schema/public.user_favorites.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-67
+packages/@n8n/permissions/src/utilities/__tests__/get-resource-permissions.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 53,181
+docs/generated/postgres-schema/public.dynamic_credential_entry.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-77
+docs/generated/sqlite-schema/agent_execution.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-108
+jest.config.js
+  s_bb17b049fc2e2d::t_e56ced50495c7b 106
+packages/@n8n/api-types/src/dto/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 263-264
+docs/generated/postgres-schema/public.instance_ai_messages.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-67
+packages/frontend/editor-ui/src/features/ndv/runData/components/error/NodeErrorView.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 11,57,63
+packages/core/src/execution-engine/node-execution-context/hook-context.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,56
+packages/@n8n/instance-ai/evaluations/system-prompts/mock-execution-verify.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 53,58-59,70
+packages/frontend/editor-ui/src/features/agents/composables/agentChatMessages.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 192-239,246,250,272,274
+packages/cli/src/workflows/triggers/__tests__/trigger-count.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-34
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-trigger-resource.resolver.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-111
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 63-69,74,80-86,174-202,361-425
+docs/generated/postgres-schema/public.agent_task_snapshot.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-69
+packages/@n8n/extension-sdk/tsconfig.frontend.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-110
+packages/@n8n/backend-network/src/http/__tests__/http-request.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-810
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyTable.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 9,59,104,113-115
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,27
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 36
+packages/@n8n/api-types/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+packages/@n8n/workflow-sdk/src/real-workflow.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 17,19-22,27
+packages/@n8n/computer-use/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6-9,22,24,30,46-47,55,60,66,76-77,84,88,94-97,99-100,104,126-140,168,171-184,248-258,268,272,275,297,302,305
+packages/@n8n/expression-runtime/tsconfig.build.cjs.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5
+docs/generated/postgres-schema/schema.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-19049
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/tags.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,31
+docs/generated/postgres-schema/public.agents_threads.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-114
+docs/generated/postgres-schema/public.instance_ai_workflow_snapshots.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-52
+.github/actionlint.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-test-trigger-resource.resolver.api.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-280
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-153
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 16,129,137
+docs/generated/sqlite-schema/agent_task_snapshot.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-74
+docs/generated/sqlite-schema/installed_packages.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-63
+docs/generated/sqlite-schema/chat_hub_messages.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-164
+docs/generated/sqlite-schema/project_secrets_provider_access.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-80
+docs/generated/postgres-schema/public.data_table_column.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-64
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 52,320-328
+packages/@n8n/instance-ai/evaluations/data/workflows/rest-api-data-pipeline.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 22-29,32,48,54
+packages/frontend/editor-ui/src/features/ndv/panel/components/TriggerPanel.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 18,58,178,190
+packages/cli/src/workflows/triggers/trigger-count.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-38
+packages/@n8n/chat-hub/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+docs/generated/postgres-schema/public.mcp_registry_server.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-64
+docs/generated/postgres-schema/public.trusted_key.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-56
+docs/generated/sqlite-schema/trusted_key.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-65
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-81
+packages/cli/src/workflows/triggers/__tests__/webhook-trigger-registrar.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-222
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 14-20,34-38,177-180,182,184-196,235-239,245-246,315,318-321,926-935,937-941
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-124
+docs/generated/sqlite-schema/oauth_clients.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-101
+packages/@n8n/backend-network/src/ssrf/hostname-matcher.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-65
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 674-692
+docs/generated/sqlite-schema/agents.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-244
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 31,481-482,488-489,502
+packages/core/src/binary-data/object-store.manager.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1
+docs/generated/sqlite-schema/chat_hub_tools.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-92
+packages/cli/test/integration/workflows/workflow-dependency.controller.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 336-398
+.github/workflows/release-create-patch-pr.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 11-15,24-28,59,68
+docs/generated/sqlite-schema/instance_ai_observational_memory.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-121
+packages/@n8n/instance-ai/evaluations/data/workflows/dont-ask-the-same-question-twice.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-34
+packages/core/src/execution-engine/node-execution-context/utils/get-input-connection-data.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 26,489
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigNodeContent.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 17,51
+packages/@n8n/extension-sdk/tsconfig.backend.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7,21,44,64-66,89-90,142-203
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/legacy-request-adapter.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10-26
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-88
+docs/generated/sqlite-schema/project.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-196
+packages/@n8n/instance-ai/evaluations/data/workflows/dont-keep-asking-when-told-later.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-42
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 29,82,135-136
+AGENTS.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 62-68
+packages/frontend/editor-ui/src/app/composables/useResolvedExpression.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,39,56,126-127
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-67
+packages/@n8n/backend-network/src/http/binary-string.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-19
+packages/@n8n/constants/src/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 23
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-id-policy.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-23
+packages/@n8n/cli/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7
+packages/@n8n/eslint-plugin-community-nodes/src/utils/file-utils.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 170,268-270,281-283,285-294,297-299
+packages/@n8n/instance-ai/evaluations/__tests__/user-proxy.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 213,215-221,246,250-251
+packages/@n8n/workflow-sdk/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-354
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 8
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 11,17,54,61
+packages/@n8n/backend-network/src/http/outbound-user-agent.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-61
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 81
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-172
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 61-76,91,392,405,420,436,459,480,490,500,508,524,538,552
+packages/core/src/execution-engine/node-execution-context/utils/extract-value.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3-4,58,61,65,118-120,124,144,172,178
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyLabelCell.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-78
+packages/extensions/insights/tsconfig.frontend.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+packages/@n8n/agents/src/runtime/mcp-connection.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 130,143
+packages/@n8n/instance-ai/src/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 474
+docs/generated/postgres-schema/public.installed_packages.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-55
+packages/core/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/@n8n/local-gateway/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 8
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/icon-prefer-themed-variants.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-71
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupActions.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 128-129,134-135,138-139,142-144
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-66
+packages/cli/src/wait-tracker.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 176,194,206
+docs/generated/sqlite-schema/shared_workflow.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-93
+docs/generated/sqlite-schema/ai_builder_temporary_workflow.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-88
+docs/generated/postgres-schema/public.execution_annotation_tags.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-58
+docs/generated/postgres-schema/public.instance_ai_resources.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-45
+docs/generated/sqlite-schema/auth_provider_sync_history.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-71
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3-4,6,20-26,32-33,39,44-47,50-53,55-57,81-88,91,93
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsSection.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-43
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 30,51,159-168,252-259
+packages/cli/src/server.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,12
+docs/generated/postgres-schema/public.credential_dependency.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-65
+packages/@n8n/eslint-plugin-community-nodes/src/rules/icon-validation.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 150-153,170-173
+packages/frontend/editor-ui/src/features/ndv/runData/components/error/NodeErrorView.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 14,242-246,281-285
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,664,683-694
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 209-221,1102-1105,1107-1114,1386,1399-1400
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/_canvasNodeStyles.scss
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5-21,29-99
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/normalize-items.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,107
+docs/generated/postgres-schema/public.role_scope.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-57
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,19-23,32-37,39-41,46,507-557
+docs/generated/sqlite-schema/oauth_authorization_codes.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-102
+docs/generated/sqlite-schema/role_scope.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-74
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentPinData.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 434-446
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetupSnapshots.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-628
+packages/frontend/editor-ui/src/features/settings/otel/otel.api.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-30
+packages/@n8n/backend-network/eslint.config.mjs
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4,12-19
+packages/@n8n/task-runner/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/cli/src/workflows/publication/trigger-diff.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-48
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,206,374,392,409,427,578,605,664,695,775,782,842,875
+docs/generated/sqlite-schema/workflow_publication_outbox.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-58
+.github/workflows/ci-pr-quality.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 130
+packages/@n8n/instance-ai/evaluations/data/workflows/asks-clarifying-question.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-35
+packages/cli/src/public-api/v1/handlers/users/spec/paths/users.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,33
+packages/@n8n/db/src/migrations/common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-39
+docs/generated/postgres-schema/public.chat_hub_sessions.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-167
+packages/frontend/editor-ui/src/app/stores/executionData.store.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 410-450,599-758
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 8,10,782-976
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4-5,9,11-12,14,23,25,76-77,80-81,86-88,92-94,105-107,112,115-125,130-131,137,158-179,196,199-254
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-import-match.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,12-13,19-23,30-35,131-186
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 494-497
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusMark.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-54
+docs/generated/postgres-schema/public.test_case_execution.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-107
+packages/nodes-base/credentials/common/aws/system-credentials-utils.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,63,66
+packages/@n8n/ai-workflow-builder.ee/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,4,7,49,58-75,164,245-258,287,297-314,317-332,365-376,405
+packages/@n8n/ai-utilities/src/node-catalog/search-engine.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 44-48,66-85,101-110,150-159,161,163-168,170-194,198-216,219-228,232,235-246,252-272,343,345
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 29,35,71,506
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 14,79,81-82
+packages/frontend/editor-ui/src/features/execution/executions/components/RevealDataWarning.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2-5,12-13,24-31
+packages/cli/src/services/__tests__/protected-resource.registry.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-4,26,38-50,53-56,64,86,89-91,103-118
+docs/generated/postgres-schema/public.workflows_tags.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-71
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,3,26,50-51,119,237-238,277-287,293,298-301,342-345,354-360,395-414,416,418
+packages/cli/src/public-api/v1/handlers/folders/spec/paths/folders.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,40
+packages/@n8n/backend-network/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10-16
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,5-12,15,25,678-789
+packages/frontend/@n8n/design-system/src/components/N8nStepper/Stepper.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-72
+packages/frontend/editor-ui/src/app/components/Modals.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 470-477
+.tbls.sqlite.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-16
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 41,865,893,896,898,902
+packages/@n8n/typescript-config/tsconfig.common.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 24-25
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-115
+docs/generated/sqlite-schema/role_mapping_rule_project.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-74
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-132
+packages/core/src/execution-engine/node-execution-context/__tests__/supply-data-context.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 19,131,139
+packages/@n8n/instance-ai/evaluations/data/workflows/schema.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5-10,22-23,30
+docs/generated/postgres-schema/public.project_relation.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-94
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 22-24,32,36-37,46-47,70-75,83,142-152,157-158,162-170,173-189,199-200,244,345
+docs/generated/sqlite-schema/dynamic_credential_user_entry.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-104
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodeGroups.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 37-48
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 87,156-172
+packages/frontend/editor-ui/src/features/shared/editors/components/CodeNodeEditor/completions/jsonField.completions.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,13,276
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/search-engine.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 256-363,773-794
+packages/frontend/editor-ui/src/app/plugins/sentry.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 41-50
+packages/cli/src/executions/execution-data/types.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 35-36
+docs/generated/postgres-schema/public.instance_ai_observation_cursors.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-58
+docs/generated/postgres-schema/public.webhook_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-73
+packages/cli/src/services/__tests__/ai-workflow-builder.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 17
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 25,72,218
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.serializer.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 20,72
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 55,207-208,417-419
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-145
+packages/core/src/execution-engine/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,92-104
+packages/cli/src/workflows/publication/publication-result.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-35
+packages/cli/src/modules/otel/otel-settings.controller.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-39
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 401-476
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 33,40,77,84
+docs/generated/postgres-schema/public.role.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-92
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-481
+packages/@n8n/backend-network/src/http/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-34
+packages/core/src/execution-engine/node-execution-context/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 16
+packages/cli/src/public-api/v1/handlers/audit/spec/paths/audit.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+docker/images/runners/Dockerfile.distroless
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15,109
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 30,52,143
+packages/cli/src/modules/otel/otel.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4,13,24,29-42,45-62,64,66-67,69,73,82,86,136,143
+packages/@n8n/backend-network/src/http/http-request.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-227
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.id.tags.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,24
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+packages/frontend/editor-ui/src/app/composables/useDataSchema.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 32-47,869-870
+packages/cli/src/modules/oauth-server/oauth-server.module.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,29-42
+docs/generated/postgres-schema/public.instance_ai_mcp_registry_connections.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-98
+docs/generated/postgres-schema/public.data_table.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-72
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 11,611,623,636-648
+docs/generated/postgres-schema/public.folder_tag.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-56
+packages/@n8n/agents/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.store.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 29,109,115-118
+docs/generated/sqlite-schema/settings.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-50
+packages/@n8n/agents/src/__tests__/integration/tool-transform-error-resilience.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-133
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-529
+docs/generated/sqlite-schema/workflow_statistics.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-65
+packages/cli/src/services/__tests__/node-resource-explorer.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-319
+packages/cli/src/scaling/constants.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 33
+packages/@n8n/imap/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/legacy-request-adapter.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,22,456
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-458
+packages/frontend/editor-ui/src/features/agents/components/AgentChatQuickActions.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6,10,12-13,15,23,37-39,57-71,76-107,112-115
+packages/frontend/editor-ui/src/features/workflows/readyToRun/composables/useEmptyStateDetection.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,12-28,30-42,56-63,126-146
+packages/cli/src/workflows/triggers/__tests__/trigger-test-utils.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-66
+docs/generated/sqlite-schema/token_exchange_jti.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-50
+packages/frontend/editor-ui/src/app/stores/settings.store.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 252-256,270-274,288-292,306-310
+packages/frontend/editor-ui/src/app/plugins/sentry.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 17-22
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 182
+packages/@n8n/instance-ai/evaluations/__tests__/transcript-from-events.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 185,190-202,216-217,219-223,229-266
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-resource.resolver.api.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-340
+packages/frontend/editor-ui/src/app/composables/useSelectionValidation.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 432,447-464,471,485-486,499,510-522
+docs/db.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-37
+packages/@n8n/backend-network/src/http/__tests__/axios-utils.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-520
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-296
+.gitignore
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+packages/cli/src/modules/n8n-packages/__tests__/utils/import-package-upload.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,30-31,34-42,102,106-111
+docs/generated/sqlite-schema/mcp_registry_server.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-69
+docs/generated/sqlite-schema/instance_ai_observation_locks.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-69
+docs/generated/sqlite-schema/invalid_auth_token.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-48
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/no-dangerous-functions.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-41
+docs/generated/sqlite-schema/user_api_keys.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-85
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 36,212-217,2454,2456-2457,3010-3016
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 49,60,110-117,136
+packages/@n8n/ai-utilities/package.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 115
+packages/frontend/editor-ui/src/app/components/DependencyPill.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 32,36,288-315
+packages/frontend/editor-ui/src/features/execution/executions/components/RevealDataWarning.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-29
+docs/generated/sqlite-schema/event_destinations.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-52
+docs/generated/sqlite-schema/chat_hub_agents.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-145
+packages/@n8n/agents/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+docs/generated/sqlite-schema/oauth_access_tokens.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-82
+packages/@n8n/eslint-plugin-community-nodes/src/rules/icon-validation.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 12,33,85-86
+docs/generated/sqlite-schema/insights_metadata.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-107
+docs/generated/sqlite-schema/instance_ai_observations.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-84
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/sourceControl.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/core/src/binary-data/utils.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 22,52,66-68,73,78-80,82-84,89,309-332,336-345,347,349-353,355,357-461,463-467,469,471-475,477-491,493-496,498-504,506-507,509-512,514-532,535-547
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/variables.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,25
+docs/generated/sqlite-schema/instance_ai_resources.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-54
+docs/generated/sqlite-schema/workflow_publish_history.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-116
+docs/generated/sqlite-schema/README.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-1311
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionRedaction.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3-5,15-16,22-24,36-37,59,67-72
+packages/cli/src/commands/import/workflow.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 23,156-161
+docs/generated/postgres-schema/public.instance_ai_observation_locks.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-62
+packages/@n8n/instance-ai/evaluations/report/workflow-report.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 670,883-909,1151-1156,1171-1182,1184-1191,1214,1218,1314,1318
+packages/core/src/execution-engine/ssh-clients-manager.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 68-73
+packages/cli/src/modules/mcp/__tests__/list-tags.tool.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-159
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 70-84
+packages/@n8n/backend-test-utils/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+.github/workflows/test-linting-reusable.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15
+packages/cli/src/modules/agents/agents.module.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 91,120
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-subscription-state.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-398
+packages/cli/src/modules/instance-ai/suspended-run-restorer.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-259
+packages/cli/package.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 121
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 58,123
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/tags.id.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,24,47,76
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import-match.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,7-15,18-40
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/useWorkflowDiff.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 24,26-29,129-130,135-149,154,169,176
+docs/generated/postgres-schema/public.project.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-190
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4-6,35-37,99-100,114,118-119
+packages/cli/src/workflows/workflows.controller.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 65
+packages/cli/src/metrics/prometheus/execution-data-metrics.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 9,46,68-74,82,98,102
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 199
+docs/generated/sqlite-schema/evaluation_collection.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-142
+.github/workflows/release-schedule-patch-prs.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 18
+packages/cli/src/modules/instance-ai/sandbox/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-9
+packages/frontend/editor-ui/src/features/ndv/panel/components/InputPanel.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 80-83
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 168
+docs/generated/sqlite-schema/instance_ai_iteration_logs.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-68
+docs/generated/sqlite-schema/instance_ai_messages.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-73
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 38-39,211-225
+packages/cli/src/commands/base-command.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 21,30,268-269,271-280,282-288,293-297,304-316
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/cli/src/services/tag.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4-5,14-41,79-81,83,86-87,90-93,100-101,111-125,137-186
+.claude/plugins/n8n/skills/community-pr-readiness-check/SKILL.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 9,114-128,137
+packages/cli/src/metrics/prometheus/__tests__/execution-data-metrics.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7,111-121,139-140,148,151,157,169-178,271,282,287-297,304,315
+docs/generated/postgres-schema/public.invalid_auth_token.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-38
+packages/core/src/execution-engine/node-execution-context/trigger-context.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10,20,24,28
+docs/generated/sqlite-schema/user_favorites.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-73
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 43,58
+docs/generated/postgres-schema/public.variables.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-61
+packages/cli/src/workflows/triggers/__tests__/non-webhook-trigger-registrar.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-103
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 197,201,402-403
+docs/generated/postgres-schema/public.agent_execution.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-104
+packages/frontend/editor-ui/src/app/composables/useWorkflowNormalization.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-182
+packages/@n8n/client-oauth2/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7
+docker/images/n8n-base/Dockerfile
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,5-6,18-22
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-82
+docs/generated/postgres-schema/README.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-1321
+packages/cli/src/public-api/v1/handlers/folders/spec/paths/folders.folderId.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,41,99
+packages/frontend/editor-ui/src/app/composables/useNodeExecution.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15,105,147,156
+packages/@n8n/backend-network/src/ssrf/ip-range-builder.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-75
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 39
+packages/cli/templates/oauth-error-callback.handlebars
+  s_bb17b049fc2e2d::t_e56ced50495c7b 23-25
+packages/frontend/editor-ui/src/features/settings/otel/module.descriptor.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-30
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.tags.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,26,39,53
+packages/@n8n/db/src/entities/types-db.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 70-71,171
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 34,522-524,526,529-536,540-549,832-885
+packages/core/src/execution-engine/node-execution-context/poll-context.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10,19,23
+packages/cli/src/executions/__tests__/execution-persistence.integration.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 120-151
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-2,15-16,44-45,51-56,61-70,73,118,166,179
+packages/cli/src/services/protected-resource.registry.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,3,17-19,45-78,90-92,98-101,107,112-119,124,135-143,147-159,195-196,198
+packages/core/src/execution-engine/__tests__/triggers-and-pollers.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,52,123
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.id.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,32,68
+packages/cli/src/commands/audit.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4,31-44
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 43,46,98-99,142-143,339-340,444-445,490-491,560-561
+docs/generated/sqlite-schema/execution_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-167
+docs/generated/postgres-schema/public.test_run.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-143
+packages/cli/src/modules/instance-ai/eval/mock-quirks.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 76-83,131
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/outbound-user-agent.integration.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-5,13
+docs/generated/sqlite-schema/agents_observations.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-114
+packages/@n8n/backend-network/src/ssrf/ssrf-protection.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-314
+packages/frontend/editor-ui/src/app/utils/objectUtils.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4-5,50-86
+docs/generated/postgres-schema/public.chat_hub_agent_tools.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-68
+docs/generated/sqlite-schema/agents_threads.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-122
+.github/workflows/build-base-image.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 32
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/ssrf-integration.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2-3
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelListItem.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-164
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3-5,11,17-18,35-37,40-45,60
+packages/cli/src/modules/n8n-packages/entities/credential/id-based-credential-matcher.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 28-29,31,37-41,46,50
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.id.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,28
+packages/frontend/editor-ui/src/features/workflows/readyToRun/composables/useEmptyStateDetection.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3-5,14-16,23-25,34-36,51-53
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 32,37,96-163
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2963-3014,3342,3882,4325,4951-4952,6432-6440,6685,6689,6691-6693,6695,6720-6748,6830-6840
+packages/cli/test/integration/task-runners/js-task-runner-execution.integration.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 215-235
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,31,52
+.github/workflows/release-push-to-channel.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 78
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-47
+packages/cli/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5
+docs/generated/postgres-schema/public.agents_messages.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-67
+docs/generated/postgres-schema/public.workflow_publish_history.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-108
+packages/cli/src/executions/execution-data/__tests__/fs-store.integration.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 84-100
+packages/cli/src/metrics/prometheus/dns-cache-metrics.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-56
+docs/generated/sqlite-schema/chat_hub_agent_tools.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-79
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsViewV2.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 34,221-222,306
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.threadPushRef.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 79,81,99,101
+docs/generated/postgres-schema/public.chat_hub_tools.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-89
+packages/cli/test/integration/task-runners/task-broker-server.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,53-58,60-61,67-81
+docs/generated/sqlite-schema/instance_ai_workflow_snapshots.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-60
+docs/generated/sqlite-schema/data_table.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-79
+docs/generated/postgres-schema/public.binary_data.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-59
+docs/generated/sqlite-schema/variables.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-69
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,28,65
+docs/generated/postgres-schema/public.agents_memory_entry_cursors.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-77
+packages/core/src/execution-engine/__tests__/scheduled-task-manager.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 163-197
+docs/generated/postgres-schema/public.workflow_published_version.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-83
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.schema.id.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/cli/src/modules/instance-ai/__tests__/suspended-thread-persistence.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-160
+packages/frontend/editor-ui/src/app/composables/useNodeDirtiness.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15,144-146,260
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.columns.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,30
+packages/@n8n/instance-ai/evaluations/harness/chat-loop.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 20,33-51,240
+.claude/plugins/n8n/skills/db-migrations/SKILL.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 22,126,783-797
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 29,207,214,225
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 9
+packages/@n8n/syslog-client/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/@n8n/instance-ai/evaluations/system-prompts/build-expectations-verify.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 8,16
+docs/generated/sqlite-schema/oauth_user_consents.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-84
+packages/@n8n/ai-node-sdk/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/@n8n/backend-network/src/http/parse-incoming-message.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-120
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 20,108,116,138
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 181-192
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 115
+packages/frontend/@n8n/design-system/src/components/N8nStepper/Stepper.stories.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-137
+docs/generated/postgres-schema/public.dynamic_credential_user_entry.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-96
+packages/@n8n/ai-workflow-builder.ee/src/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 37
+packages/@n8n/expression-runtime/src/runtime/jmespath.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 39-46,48-49,52-58
+packages/frontend/editor-ui/src/app/plugins/vitePreloadError.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-15
+packages/cli/src/user-management/email/templates/api-key-revoked.mjml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-19
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 158
+packages/frontend/editor-ui/src/app/constants/navigation.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 39
+docs/generated/sqlite-schema/test_case_execution.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-122
+.github/workflows/docker-build-push.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-82
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.id.retry.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/@n8n/di/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+.github/scripts/owners-assign-reviewers.test.mjs
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-174
+packages/cli/src/modules/mcp/__tests__/search-workflows.tool.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,113,126,131-183
+packages/frontend/editor-ui/src/features/execution/logs/components/DemoFooter.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,8-9
+packages/@n8n/instance-ai/evaluations/cli/reshape.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 202
+docs/generated/postgres-schema/public.user.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-291
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 171-186,196-197,204-205,221,404-406,593-606,614-623,630-641,647
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-199
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/oauthCallback.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-72
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.stop.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupLayout.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-565
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-90
+docs/generated/sqlite-schema/trusted_key_source.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-67
+docs/generated/postgres-schema/public.oauth_access_tokens.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-73
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/useWorkflowDiff.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,9-11,33-35,49-50,52-53,176,462-516
+packages/@n8n/mcp-browser/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 17,22,35
+.github/workflows/ci-pull-requests.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 136-138
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.transfer.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/cli/src/executions/execution-data/__tests__/db-store.integration.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6,57-69,91-116
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-205
+packages/cli/src/modules/mcp/tools/workflow-validation.utils.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 42,60
+packages/cli/src/workflows/__tests__/workflows.controller.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3-4
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 23-55,73,76-78
+packages/@n8n/instance-ai/evaluations/export-latest-verifier-request.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 274
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-single-context.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 16,121,129,137
+packages/cli/src/modules/otel/__tests__/otel-settings.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-188
+packages/cli/src/modules/agents/repositories/agent-chat-subscription.repository.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-47
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-106
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 30,1365-1389,1432-1445,1577
+packages/frontend/@n8n/design-system/src/components/N8nStepper/Stepper.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-121
+docs/generated/postgres-schema/public.workflow_dependency.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-85
+docs/generated/postgres-schema/public.dynamic_credential_resolver.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-83
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-dangerous-functions.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-155
+packages/core/src/execution-engine/scheduled-task-manager.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 155-167
+packages/cli/src/services/__tests__/tag.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-223
+packages/@n8n/agents/src/runtime/__tests__/title-generation.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5,210-228
+packages/@n8n/instance-ai/evaluations/README.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 202,219,225,519,523-526,528-530,534-535,541,543,545-564,582
+packages/frontend/editor-ui/src/app/composables/useWorkflowNormalization.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-108
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/workflowPartiallyActivated.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-45
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15-16
+packages/cli/src/modules/mcp/tools/workflow-builder/constants.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 14
+packages/@n8n/agents/src/runtime/agent-runtime.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1223-1227,1236-1237,1544-1564,1574-1577,2086-2105,2388-2397
+docs/generated/sqlite-schema/workflow_builder_session.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-107
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 26,102-103,118,128-145,151,154
+docs/generated/postgres-schema/public.folder.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-93
+docs/generated/sqlite-schema/schema.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-13672
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,33
+docker/images/engine/Dockerfile
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-152
+docs/generated/postgres-schema/public.secrets_provider_connection.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-62
+CONTRIBUTING.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 138-152
+packages/@n8n/mcp-browser/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+.github/workflows/ci-master.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 33,37
+packages/cli/src/modules/instance-ai/eval/mock-handler.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 35,44-45,53,57-59,80,82,240-241,244,246,252-258,264,268-270,280-299,301-303,306-347,349,380,382,385,410-412,414-420,442-449,465-466,468-471,474
+packages/@n8n/typescript-config/modern/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 27
+docker/images/n8n/Dockerfile
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,7-8,19-21,24,31-32
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-450
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-73
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 74-99,101-105,144,185-187,235,284,339,382,445,489-491,552,622,713,801,902,998,1001,1047,1113
+packages/cli/src/metrics/prometheus/__tests__/dns-cache-metrics.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-177
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 27,37
+docs/generated/postgres-schema/public.role_mapping_rule.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-72
+packages/core/src/execution-engine/workflow-active-triggers-state.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 35-39
+packages/core/src/instance-settings/instance-settings.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7,274
+docs/generated/sqlite-schema/role_mapping_rule.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-77
+docs/generated/postgres-schema/public.annotation_tag_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-50
+packages/@n8n/eslint-plugin-community-nodes/src/rules/icon-prefer-themed-variants.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-128
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 399,479-483,555-556,560-583,592,594,607,635-644,676
+docs/generated/sqlite-schema/evaluation_config.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-126
+packages/@n8n/db/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/cli/test/integration/database/repositories/workflow-dependency.repository.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 27,251
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-70
+packages/frontend/editor-ui/src/features/settings/otel/SettingsOpenTelemetryView.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-527
+docs/generated/postgres-schema/public.token_exchange_jti.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-41
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 162-163,166-170,463-465,485-487,570,674,754,890,937-951,1064,1073-1076,1285,1451-1456,1472-1477,1574,1584,1673,1676-1679,1684,1686,1688-1692,1696,1701-1703,1710,1714,1719
+docs/generated/sqlite-schema/agent_history.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-130
+packages/@n8n/tournament/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 23
+packages/core/src/credentials.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4,74
+packages/frontend/editor-ui/src/features/ndv/panel/components/RedactedDataState.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6,43-51
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publisher.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-111
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 167-168,1907-1934
+packages/cli/src/modules/instance-ai/suspended-thread-persistence.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-191
+packages/@n8n/backend-test-utils/src/db/workflows.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10-11,49-69,104
+packages/@n8n/crdt/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/cli/src/active-workflow-manager.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 55,85,326-332,346-358,360,363-364,367-368,373-376,383-384,636-637
+packages/cli/src/modules/agents/integrations/agent-chat-subscription-state.adapter.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-175
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.users.userId.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,33
+packages/frontend/editor-ui/src/features/workflows/canvas/__tests__/utils.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 21,102-114
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-id-policy.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-17
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.activate.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,3,5,9-12,19-20,27-31,33-36,38,50,62-149,159-166,174-209,221,260-262,269-271,291-905
+packages/core/src/execution-engine/__tests__/workflow-execute.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 27,1864-1997
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-75
+packages/cli/src/modules/n8n-packages/utils/import-package-upload.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 17-18,20-24
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 14,17-18,20-21,64-68,72,423-617
+packages/cli/src/modules/instance-ai/eval/__tests__/execution.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 97,110,1177-1272
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 17,31,38-40,42-45,74-112
+packages/@n8n/client-oauth2/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/cli/src/metrics/prometheus/ssrf-metrics.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 70-71,77,79-80,87-88,232,245,330,334,338,357,361,380,384,387,390
+docs/generated/sqlite-schema/execution_metadata.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-72
+docs/generated/sqlite-schema/test_run.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-151
+packages/@n8n/benchmark/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 13-17
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-65
+docs/generated/postgres-schema/public.workflow_builder_session.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-101
+packages/@n8n/codemirror-lang/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5
+docs/generated/postgres-schema/public.tag_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-56
+packages/@n8n/ai-node-sdk/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7
+packages/core/src/execution-engine/node-execution-context/__tests__/shared-tests.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 18,213
+packages/frontend/editor-ui/data/node-popularity.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4,8,12,16,20,24,28,32,36,39-40,43-44,48,51-52,55-56,60,64,68,71-72,75-76,80,84,88,92,96,99-100,103-104,107-108,111-112,115-116,119-120,124,131-132,135-136,140,143-144,147-148,151-152,155-156,159-160,164,168,171-172,175-176,179-180,183-184,187-188,191-192,195-196,200,203-204,207-208,211-212,215-216,219-220,223-224,227-228,231-232,235-236,239-240,243-244,247-248,251-252,255-256,259-260,263-264,267-268,271-272,275,279-280,283,287,291-292,295-296,299,303-304,307,311,319-320,324,327-328,331-332,335-336,340,343-344,347-348,351,355-356,359-360,363-364,367-368,371-372,375-376,379,384,387-388,391-392,395-396,399,403,407-408,411-412,415-416,419-420,423-424,427-428,431-432,435-436,439-440,443-444,447-448,451,455-456,459,463,467-468,471,475-476,479,483-484,491-492,495-496,503-504,507-508,511-512,515-519,523-524,527-528,531-532,535-536,539-540,543-544,547-548,551-552,555-556,559-560,563-564,567-568,571-572,579-580,583-584,587,591-592,595-596,599,602-613,619,623,627-628,631-632,635-636,639,643,647,651-652,656,660,664,667-671,675-676,680,687-688,692-696,700,703-704,707-708,711-712,715-716,719-720,723-724,727-728,731-739,744,747-748,751-752,755-756,759-760,763-764,767-768,771-772,775,779-780,783-784,787-788,791-792,795-796,799-800,803-804,807-808,811-812,815-816,819-820,823-824,827-828,831-832,835-836,839-840,843-844,847-848,851-852,855-856,859-860,863-864,867-868,871-872,875-876,879-880,883-884,887-888,891-892,895-896,899-900,903,907-908,911-912,915-916,919-920,923-924,927-928,931-932,935-936,939-940,943-944,947-948,951-952,955-956,959-960,963-964,967-968,971-972,975-976,979-980,983-984,987-988,991-992,995-996,999-1000,1003-1004,1007-1008,1011-1012,1015-1016,1019-1020,1023-1024,1027-1028,1031-1032,1035-1036,1039-1040,1043-1044,1047-1048,1051-1052,1055-1056,1059-1060,1063-1064,1067-1068,1071-1072,1075-1076,1079-1080,1083-1084,1087-1088,1091-1092,1095-1096,1099-1100,1103-1104,1107-1108,1111-1112,1115-1116,1119-1120,1123-1124,1127-1128,1131-1132,1135-1136,1139-1140,1143-1144,1147-1148,1151-1152,1155-1156,1159-1160,1163-1164,1167-1168,1171-1172,1175-1176,1179-1180,1183-1184,1187-1188,1191-1192,1195-1196,1199-1200,1203-1204,1207-1208,1211-1212,1215-1216,1219-1220,1223-1224,1227-1228,1231-1232,1235-1236,1239-1240,1243-1244,1247-1248,1251-1252,1255-1256,1259-1260,1263-1264,1267-1268,1271-1272,1275-1276,1279-1280,1283-1284,1287-1288,1291-1292,1295-1296,1299-1300,1303-1304,1307-1308,1311-1312,1315-1316,1319-1320,1323-1324,1327-1328,1331-1332,1335-1336,1339-1340,1343-1344,1347-1348,1351-1352,1355-1356,1359-1360,1363-1364,1367-1368,1371-1372,1375-1376,1379-1380,1383-1384,1387-1388,1391-1392,1395-1396,1399-1400,1403-1404,1407-1408,1411-1412,1415-1416,1419-1420,1423-1424,1427-1428,1431-1432,1435-1436,1439-1440,1443-1444,1447-1448,1451-1452,1455-1456,1459-1460,1463-1464,1467-1468,1471-1472,1475-1476,1479-1480,1483-1484,1487-1488,1491-1492,1495-1496,1499-1500,1503-1504,1507-1508,1511-1512,1515-1516,1519-1520,1523-1524,1527-1528,1531-1532,1535-1536,1539-1540,1543-1544,1547-1548,1551-1552,1555-1556,1559-1560,1563-1564,1567-1568,1571-1572,1575-1576,1579-1580,1583-1584,1587-1588,1591-1592,1595-1596,1599-1600,1603-1604,1607-1608,1611-1612,1615-1616,1619-1620,1623-1624,1627-1628,1631-1632,1635-1636,1639-1640,1643-1644,1647-1648,1651-1652,1655-1656,1659-1660,1663-1664,1667-1668,1671-1672,1675-1676,1679-1680,1683-1684,1687-1688,1691-1692,1695-1696,1699-1700,1703-1704,1707-1708,1711-1712,1715-1716,1719-1720,1723-1724,1727-1728,1731-1732,1735-1736,1739-1740,1743-1744,1747-1748,1751-1752,1755-1756,1759-1760,1763-1764,1767-1768,1771-1772,1775-1776,1779-1780,1783-1784,1787-1788,1791-1792,1795-1796,1799-1800,1803-1804,1807-1808,1811-1812,1815-1816,1819-1820,1823-1824,1827-1828,1831-1832,1835-1836,1839-1840,1843-1844,1847-1848,1851-1852,1855-1856,1859-1860,1863-1864,1867-1868,1871-1872,1875-1876,1879-1880,1883-1884,1887-1888,1891-1892,1895-1896,1899-1900,1903-1904,1907-1908,1911-1912,1915-1916,1919-1920,1923-1924,1927-1928,1931-1932,1935-1936,1939-1940,1943-1944,1947-1948,1951-1952,1955-1956,1959-1960,1963-1964,1967-1968,1971-1972,1975-1976,1979-1980,1983-1984,1987-1988,1991-1992,1995-1996,1999-2000,2003-2004,2007-2008,2011-2012,2015-2016,2019-2020,2023-2024,2027-2028,2031-2032,2035-2036,2039-2040,2043-2044,2047-2048,2051-2052,2055-2056,2059-2060,2063-2064,2067-2068,2071-2072,2075-2076,2079-2080,2083-2084,2087-2088,2091-2092,2095-2096,2099-2100,2103-2104,2107-2108,2111-2112,2115-2116,2119-2120,2123-2124,2127-2128,2131-2132,2135-2136,2139-2140,2143-2144,2147-2148,2151-2152,2155-2156,2159-2160,2163-2164,2167-2168,2171-2172,2175-2176,2179-2180,2183-2184,2187-2188,2191-2192,2195-2196,2199-2200,2203-2204,2207-2208,2211-2212,2215-2216,2219-2220,2223-2224,2227-2228,2231-2232,2235-2236,2239-2240,2243-2244,2247-2248,2251-2252,2255-2256,2259-2260,2263-2264,2267-2268,2271-2272,2275-2276,2279-2280,2283-2284,2287-2288,2291-2292,2295-2296,2299-2300,2303-2304,2307-2308,2311-2312,2315-2316,2319-2320,2323-2324,2327-2328,2331-2332,2335-2336,2339-2340,2343-2344,2347-2348,2351-2352,2355-2356,2359-2360,2363-2364,2367-2368,2371-2372,2375-2376,2379-2380,2383-2384,2387-2388,2391-2392,2395-2396,2399-2400,2403-2404,2407-2408,2411-2412,2415-2416,2419-2420,2423-2424,2427-2428,2431-2432,2435-2436,2439-2440,2443-2444,2447-2448,2451-2452,2455-2456,2459-2460,2463-2464,2467-2468,2471-2472,2475-2476,2479-2480,2483-2484,2487-2488,2491-2492,2495-2496,2499-2500,2503-2504,2507-2508,2511-2512,2515-2516,2519-2520,2523-2524,2527-2528,2531-2532,2535-2536,2539-2540,2543-2544,2547-2548,2551-2552,2555-2556,2559-2560,2563-2564,2567-2568,2571-2572,2575-2576,2579-2580,2583-2584,2587-2588,2591-2592,2595-2596,2599-2600,2603-2604,2607-2608,2611-2612,2615-2616,2619-2620,2623-2624,2627-2628,2631-2632,2635-2636,2639-2640,2643-2644,2647-2648,2651-2652,2655-2656,2659-2660,2663-2664,2667-2668,2671-2672,2675-2676,2679-2680,2683-2684,2687-2688,2691-2692,2695-2696,2699-2700,2703-2704,2707-2708,2711-2712,2715-2716,2719-2720,2723-2724,2727-2728,2731-2732,2735-2736,2739-2740,2743-2744,2747-2748,2751-2752,2755-2756,2759-2760,2763-2764,2767-2768,2771-2772,2775-2776,2779-2780,2783-2784,2787-2788,2791-2792,2795-2796,2799-2800,2803-2804,2807-2808,2811-2812,2815-2816,2819-2820,2823-2824,2827-2828,2831-2832,2835-2836,2839-2840,2843-2844,2847-2848,2851-2852,2855-2856,2859-2860,2863-2864,2867-2868,2871-2872,2875-2876,2879-2880,2883-2884,2887-2888,2891-2892,2895-2896,2899-2900,2903-2904,2907-2908,2911-2912,2915-2916,2919-2920,2923-2924,2927-2928,2931-2932,2935-2936,2939-2940,2943-2944,2947-2948,2951-2952,2955-2956,2959-2960,2963-2964,2967-2968,2971-2972,2975-2976,2979-2980,2983-2984,2987-2988,2991-2992,2995-2996,2999-3000,3003-3004,3007-3008,3011-3012,3015-3016,3019-3020,3023-3024,3027-3028,3031-3032,3035-3036,3039-3040,3043-3044,3047-3048,3051-3052,3055-3056,3059-3060,3063-3064,3067-3068,3071-3072,3075-3076,3079-3080,3083-3084,3087-3088,3091-3092,3095-3096,3099-3100,3103-3104,3107-3108,3111-3112,3115-3116,3119-3120,3123-3124,3127-3128,3131-3132,3135-3136,3139-3140,3143-3144,3147-3148,3151-3152,3155-3156,3159-3160,3163-3164,3167-3168,3171-3172,3175-3176,3179-3180,3183-3184,3187-3188,3191-3192,3195-3196,3199-3200,3203-3204,3207-3208,3211-3212,3215-3216,3219-3220,3223-3224,3227-3228,3231-3232,3235-3236,3239-3240,3243-3244,3247-3248,3251-3252,3255-3256,3259-3260,3263-3264,3267-3268,3271-3272,3275-3276,3279-3280,3283-3284,3287-3288,3291-3292,3295-3296,3299-3300,3303-3304,3307-3308,3311-3312,3315-3316,3319-3320,3323-3324,3327-3328,3331-3332,3335-3336,3339-3340,3343-3344,3347-3348,3351-3352,3355-3356,3359-3360,3363-3364,3367-3368,3371-3372,3375-3376,3379-3380,3383-3384,3387-3388,3391-3392,3395-3396,3399-3400,3403-3404,3407-3408,3411-3412,3415-3416,3419-3420,3423-3424,3427-3428,3431-3432,3435-3436,3439-3440,3443-3444,3447-3448,3451-3452,3455-3456,3459-3460,3463-3464,3467-3468,3471-3472,3475-3476,3479-3480,3483-3484,3487-3488,3491-3492,3495-3496,3499-3500,3503-3504,3507-3508,3511-3512,3515-3516,3519-3520,3523-3524,3527-3528,3531-3532,3535-3536,3539-3540,3543-3544,3547-3548,3551-3552,3555-3556,3559-3560,3563-3564,3567-3568,3571-3572,3575-3576,3579-3580,3583-3584,3587-3588,3591-3592,3595-3596,3599-3600,3603-3604,3607-3608,3611-3612,3615-3616,3619-3620,3623-3624,3627-3628,3631-3632,3635-3636,3639-3640,3643-3644,3647-3648,3651-3652,3655-3656,3659-3660,3663-3664,3667-3668,3671-3672,3675-3676,3679-3680,3683-3684,3687-3688,3691-3692,3695-3696,3699-3700,3703-3704,3707-3708,3711-3712,3715-3716,3719-3720,3723-3724,3727-3728,3731-3732,3735-3736,3739-3740,3743-3744,3747-3748,3751-3752,3755-3756,3759-3760,3763-3764,3767-3768,3771-3772,3775-3776,3779-3780,3783-3784,3787-3788,3791-3792,3795-3796,3799-3800,3803-3804,3807-3808,3811-3812,3815-3816,3819-3820,3823-3824,3827-3828,3831-3832,3835-3836,3839-3840,3843-3844,3847-3848,3851-3852,3855-3856,3859-3860,3863-3864,3867-3868,3871-3872,3875-3876,3879-3880,3883-3884,3887-3888,3891-3892,3895-3896,3899-3900,3903-3904,3907-3908,3911-3912,3915-3916,3919-3920,3923-3924,3927-3928,3931-3932,3935-3936,3939-3940,3943-3944,3947-3948,3951-3952,3955-3956,3959-3960,3963-3964,3967-3968,3971-3972,3975-3976,3979-3980,3983-3984,3987-3988,3991-3992,3995-3996,3999-4000
+docs/generated/sqlite-schema/folder.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-100
+packages/@n8n/api-types/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/cli/src/user-management/email/__tests__/user-management-mailer.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,158-214
+packages/@n8n/backend-network/src/dns/__tests__/dns-resolver.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-246
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsModal.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 14,33,138,247-250,269-271,349,397-399,477-478,726,728-729,731-764,767-866,873
+packages/cli/src/services/public-api-key.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 8,24,42-43,179-185,192-204
+packages/@n8n/codemirror-lang-sql/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 39
+docs/generated/sqlite-schema/credential_dependency.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-70
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7,30,205,246,264,271,399,403,471
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 11-14,19,1404-1447
+docs/generated/postgres-schema/public.agents.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-240
+docs/generated/sqlite-schema/workflow_history.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-110
+packages/@n8n/permissions/src/constants.ee.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 76,85-86
+docker/images/runners/Dockerfile
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,85
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 14,29-38,41,202
+packages/cli/src/services/__tests__/public-api-key.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-93
+packages/core/src/execution-engine/workflow-execute.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 14,53,144,972-979,981-984,986-996,1005,1065-1067,1092,1300-1325,1400,1448-1456,1730,1767-1771,1777,2053,2217
+docs/generated/postgres-schema/public.settings.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-41
+docs/generated/postgres-schema/public.installed_nodes.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-54
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 90-93
+packages/core/src/binary-data/__tests__/utils.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+.github/workflows/test-db-reusable.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 27,37,63-67
+packages/@n8n/extension-sdk/tsconfig.common.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsModal.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 103,675,679,682,687
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 204-205,254-255,258,311-313
+docs/generated/sqlite-schema/project_relation.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-102
+packages/cli/test/integration/shared/db/executions.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 47-48,61-62
+docs/generated/postgres-schema/public.agent_history.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-123
+packages/cli/src/executions/execution-data/s3-store.ee.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-117
+packages/cli/test/integration/task-runners/task-runner-process.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 11-15,87-90
+packages/core/package.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 57
+packages/frontend/editor-ui/src/app/stores/rbac.store.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 59
+packages/@n8n/typescript-config/modern/tsconfig.cjs.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 8-9
+packages/frontend/editor-ui/src/features/agents/components/AgentCredentialSelect.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15-31,59,71-110
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,25
+packages/@n8n/backend-network/src/ssrf/ssrf-blocked-ip.error.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-25
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-2,6-7,20-60,62-65,69-156,159-163,165-189,191-199,201,203-233
+docs/generated/sqlite-schema/credentials_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-153
+packages/core/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 23
+packages/frontend/editor-ui/src/features/settings/security/DataRedactionSection.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 9,23-26,174-181
+packages/cli/src/modules/agents/agents.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 929-934,936-950,952-964,966,1309-1313,1315-1327,1329,1331-1340,1342-1357,1359,1487,1490,1492-1496,1498-1513,1515-1518,1545-1547
+packages/frontend/@n8n/design-system/src/css/mixins/motion.scss
+  s_bb17b049fc2e2d::t_e56ced50495c7b 436-451
+packages/@n8n/constants/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+docs/generated/sqlite-schema/instance_ai_observation_cursors.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-65
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-145
+docs/generated/sqlite-schema/chat_hub_session_tools.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-79
+.github/actions/setup-nodejs/action.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10,12,177,241-253,255
+docs/generated/postgres-schema/public.execution_annotations.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-75
+packages/@n8n/tournament/package.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 61-65
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 170,230,283,294-296,302
+docs/generated/postgres-schema/public.evaluation_config.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-125
+docs/generated/sqlite-schema/processed_data.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-79
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 60-64,79,122-208
+packages/@n8n/backend-network/src/dns/dns-resolver.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-119
+packages/@n8n/config/src/configs/user-management.config.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 80-83
+packages/@n8n/workflow-sdk/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+.github/workflows/ci-owners-assign-reviewers.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-60
+packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 90-92,94,96,100,102,106,108,114-117,121-123,125-137,139-148,227-230,239-243,254,258,268-297,300
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,3-9,15,137-185,190,193,204,207,222,225,227,229,231-234
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 170-179
+packages/frontend/editor-ui/src/features/settings/otel/SettingsOpenTelemetryView.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-878
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/typescript/client/useTypescript.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7,36,74,134-137
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigMcpApprovalSetting.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-262
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 173,283,285
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 142-155,340
+docs/generated/sqlite-schema/scope.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-55
+docs/generated/postgres-schema/public.chat_hub_agents.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-143
+.github/scripts/docker/docker-config.mjs
+  s_bb17b049fc2e2d::t_e56ced50495c7b 91
+docs/generated/postgres-schema/public.auth_identity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-65
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 13,380,436-493
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-77
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1
+docs/generated/sqlite-schema/workflow_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-297
+docs/generated/sqlite-schema/insights_by_period.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-64
+packages/@n8n/config/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7
+docs/generated/postgres-schema/public.role_mapping_rule_project.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-63
+docs/generated/sqlite-schema/agents_messages.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-72
+packages/@n8n/engine/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/core/src/binary-data/binary-data.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2
+packages/cli/src/modules/agents/integrations/agent-chat-subscription-state.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-108
+packages/cli/src/modules/otel/otel.module.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4,12,15,17-19,23-25
+packages/core/src/binary-data/object-store/__tests__/object-store.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 12,54,60,63,485-559
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/pagination.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5
+packages/@n8n/permissions/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelTelegramSetup.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-212
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 139-210
+packages/cli/src/executions/execution-data/db-store.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7,22-26,29-60
+.tbls.postgres.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-16
+packages/@n8n/crdt/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+docs/generated/postgres-schema/public.ai_builder_temporary_workflow.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-80
+docs/generated/postgres-schema/public.chat_hub_session_tools.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-68
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publishing-policy.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-88
+packages/core/src/execution-engine/node-execution-context/execute-context.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 23,237,242
+packages/core/src/execution-engine/node-execution-context/execute-single-context.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15,107
+packages/cli/src/executions/execution-data/__tests__/s3-store.ee.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-178
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-747
+.github/workflows/ci-cla-check.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 42-56
+packages/@n8n/permissions/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7
+packages/cli/src/metrics/prometheus/constant.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4-15
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.archive.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/frontend/editor-ui/src/features/credentials/components/CredentialPicker/CredentialsDropdown.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 52-56,58,63,79,89
+packages/@n8n/backend-network/src/http/__tests__/parse-incoming-message.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-278
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 315-316
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1880-1961
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10,660,748,1374-1384,1480-1490
+packages/frontend/editor-ui/src/app/composables/useWorkflowHelpers.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 59-60,96-97
+packages/@n8n/nodes-langchain/nodes/chains/TextClassifier/test/TextClassifier.node.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,14-21,160-162
+packages/cli/src/modules/source-control.ee/source-control-git.service.ee.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,148
+packages/cli/src/webhooks/webhook.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 8,53-64,79,89,95,99-107,525
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.id.test.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+docs/generated/postgres-schema/public.insights_raw.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-57
+packages/frontend/editor-ui/src/app/composables/useToolParameters.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10,30,43
+packages/@n8n/backend-network/package.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15-16,26-40,45,47-49
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 653-688,4871-5068
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.types.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-25
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 46
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10,44,65,93,120
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/variables.id.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,21
+packages/frontend/editor-ui/src/features/ndv/panel/components/InputPanel.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 14,109-110,135,140,196,268
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 85,102-108,143,453-454,482-486,580-596,611,614-622,1357,1367,1623,1625,1712,1802-1806,1844,2175,2597,2604-2606,2609,2614,2687,3810,4345,4369-4370,4372,4527,4698,5350
+packages/@n8n/agents/src/sdk/__tests__/catalog.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 73-126
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderChatColumn.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 105-107
+.github/workflows/test-workflow-scripts-reusable.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataTable.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5,79,93-95
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-2,5-13,16-17,19,22-28,33-70,75-78,81-90,92-97,99-107,109-142,144-207,209,212-300,302-305,308-317,319,332-336
+packages/core/src/nodes-loader/package-directory-loader.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,90
+docs/generated/sqlite-schema/secrets_provider_connection.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-65
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 53,75,247,658-659
+packages/cli/src/user-management/email/user-management-mailer.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,22-40,49-50,101-125
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 30,91-93,286,336-349,367
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-test-trigger-resource.resolver.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-91
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 148,218,258-261,268-272,275
+packages/@n8n/backend-network/src/ssrf/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-3
+docs/generated/postgres-schema/public.oauth_refresh_tokens.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-85
+docs/generated/postgres-schema/public.chat_hub_messages.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-160
+packages/@n8n/chat-hub/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 687-718
+docs/generated/postgres-schema/public.oauth_clients.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-96
+packages/core/src/binary-data/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+packages/@n8n/backend-network/src/http/__tests__/http-proxy.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-279
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10,45,63
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 241,733
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 550,581-582,608-614,616-630,633,637-650
+packages/@n8n/instance-ai/evaluations/data/workflows/mock-test-before-credentials.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-25
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15,32,35-37,64-106,149,167-170,174,181,187,208,211-212,215-217,221-243,246-250,253-257,274-280,296,301,306,334
+packages/cli/src/metrics/prometheus/__tests__/ssrf-metrics.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1
+docs/generated/postgres-schema/public.execution_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-165
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1151,1288,1595,2223,2493
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.api.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 238-240,252-253,377-379,390-391,438-441,446,448-449,452-454,495-496,504-505,693,703-788
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 12,21,279-349,592-700
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigMcpApprovalSetting.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-263
+packages/frontend/editor-ui/src/main.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 30,36
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 26
+packages/cli/src/events/maps/execution-data.event-map.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 24
+packages/cli/src/modules/mcp/__tests__/update-workflow.tool.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,12,53-58,60,72-75,137-144,159-160,970-1163
+packages/cli/test/integration/wait-error-propagation.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-183
+docs/generated/postgres-schema/public.instance_version_history.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-47
+packages/@n8n/mcp-apps/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 9
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 12,26,107,202-205,207-217,219-225,227-243,245-246,248,250-252,255-261,265-266,378-388,412-414
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 48,86,422,527-530
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 144-178,183
+docs/generated/postgres-schema/public.agents_resources.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-68
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/prompts.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 16,20-34,45,51-54,75,100-101,110-113
+packages/cli/src/modules/mcp/__tests__/explore-node-resources.tool.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-194
+packages/cli/src/workflows/publication/__tests__/trigger-diff.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-75
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 12,64,151,162-164,166,171,174-179,181-182,186,190-196
+packages/core/src/nodes-loader/directory-loader.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 20,157-159,198
+packages/@n8n/instance-ai/evaluations/data/workflows/applies-each-change-when-asked.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-46
+packages/frontend/editor-ui/src/features/credentials/composables/oauthCallback.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-43
+docs/generated/postgres-schema/public.agents_observations.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-111
+docs/generated/sqlite-schema/workflows_tags.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-83
+.aikido
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-21
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 12,27
+docs/generated/sqlite-schema/agents_resources.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-77
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 57-58,63
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-73
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 394-398,445-450,464-473,499-505
+packages/frontend/editor-ui/src/features/settings/otel/otel.store.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-277
+docs/generated/sqlite-schema/oauth_refresh_tokens.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-90
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.service.ee.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,382-434
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-57
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,13-17,55-56,65-66,71,112-201,208-209,235-236,283-284,379-380,452-468
+packages/cli/src/modules/otel/__tests__/otel-settings.controller.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-123
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4,25
+packages/@n8n/backend-network/src/http/binary-buffer.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-22
+packages/@n8n/backend-network/src/ssrf/__tests__/ssrf-protection.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-700
+packages/frontend/editor-ui/src/features/agents/components/AgentIntegrationCredentialConnection.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,80,90-100,105,114,117,143
+packages/@n8n/api-types/src/push/workflow.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 21-41,76
+packages/cli/src/modules/mcp/__tests__/workflow-operations.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 797-872
+packages/cli/src/modules/otel/otel.config.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3-4,7,10,13,16,19,22,25,28,31,35
+docs/generated/postgres-schema/public.instance_ai_observations.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-80
+.github/test-metrics/e2e-impact-map.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5735,5794,5848
+docs/generated/sqlite-schema/folder_tag.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-67
+packages/cli/templates/oauth-callback.handlebars
+  s_bb17b049fc2e2d::t_e56ced50495c7b 93-95
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.id.stop.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+docs/generated/sqlite-schema/annotation_tag_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-58
+packages/cli/src/public-api/v1/handlers/insights/spec/paths/insights.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/@n8n/instance-ai/evaluations/outcome/transcript-from-events.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 16,23,41-55,61-80,83,87-91,237-242,277-371
+packages/@n8n/backend-common/src/license-state.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 129-132
+packages/frontend/editor-ui/src/app/composables/useNodeExecution.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 105-116
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 34-36,42,302-305,315
+packages/cli/src/modules/instance-ai/eval/__tests__/mock-handler.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,4,41-42,97,296-424
+packages/@n8n/config/test/config.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 162,242
+packages/@n8n/backend-network/src/http/http-proxy.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-162
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.rows.update.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/@n8n/node-cli/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7
+packages/frontend/editor-ui/src/features/ndv/runData/components/BinaryDataDisplay.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5,20,24-26
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 16-18,39-60,67,101,105-106,357-396,402,417,421-422,563,571,575-576,641,679-682,686-687,696,700-701,798,865-868,874-875,883,893-906,919,937-965
+packages/cli/src/modules/insights/database/repositories/__tests__/insights-by-period.repository.integration.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 88
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/tools.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 59,61
+packages/cli/src/executions/execution-persistence.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,15,19,28,58-59,70,73-76,88,97-98,103,105,135,143-150,160-163,410-440,469,478-497,517,544-560,562,566-567,571-582,600-601,615,661-664,667-668,671,673,675,681,692-698
+packages/frontend/@n8n/storybook/tsconfig.node.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-models.service.integration.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 27
+packages/@n8n/backend-network/src/http/axios-config.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-56
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-133
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.versionId.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/cli/src/workflow-helpers.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 445,447,449,467-481
+docs/generated/sqlite-schema/instance_ai_mcp_registry_connections.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-104
+.github/scripts/package.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 25-29
+packages/frontend/editor-ui/vite.config.mts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 224
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelLinearSetup.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-430
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 19
+packages/cli/test/integration/execution.service.integration.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 99-100,964-965
+packages/@n8n/syslog-client/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7
+docs/generated/sqlite-schema/installed_nodes.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-62
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/axios-utils.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1
+packages/cli/src/commands/start.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 237,267-268
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-113
+docs/generated/sqlite-schema/tag_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-63
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10,167
+packages/cli/src/commands/export/workflow.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15,174-183
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,6-8,15-20,32,687
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.id.transfer.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/@n8n/config/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/@n8n/instance-ai/evaluations/cli/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 987,989,995-999,1001-1009,1012,1014,1017,1024,1027-1031,1034-1049,1114-1121,1126-1127
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 178-179,195-197,230-231,262-267,273-280,335-341,357-368,374-375
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 35,61,191,326-327,339-350,353,355,357,361,363,365-367,566,778
+packages/frontend/AGENTS.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10
+.github/workflows/test-e2e-coverage-nightly.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 100-102
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 641,648,658
+packages/@n8n/backend-network/src/ssrf/__tests__/hostname-matcher.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-58
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 66,235-239,302,321,427,448,974,2189
+packages/cli/src/modules/instance-ai/eval/__tests__/workflow-analysis.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 842-865
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 21,23,31-33,105-119
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-188
+packages/cli/test/integration/database/repositories/workflow.repository.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 448-449,452,462,492,494,511-693
+packages/@n8n/computer-use/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+packages/cli/src/modules/mcp/tools/schemas.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 13-15
+docs/generated/postgres-schema/public.workflow_publication_outbox.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-54
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-dangerous-functions.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-83
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.unarchive.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+docs/generated/postgres-schema/public.event_destinations.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-44
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 11,13-14,30,32-33,51,53-54,71,73-74,97-123,128-155
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/McpClientTool.node.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 234
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/community-packages.packageName.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,50
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 67,71,103,107
+docs/generated/postgres-schema/public.execution_metadata.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-66
+packages/cli/src/public-api/v1/handlers/users/spec/paths/users.id.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,23
+packages/frontend/editor-ui/src/features/execution/logs/composables/useLogsExecutionData.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5-6,36-37,45-46,109,112,144-148,153,156-157,174
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 21-22,32,214,217,221-222,224,226-227,230,241-253,255-270
+packages/cli/test/integration/execution.repository.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 72-90
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1247
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7,225-249
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.users.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,33
+packages/frontend/@n8n/storybook/tsconfig.app.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+packages/@n8n/instance-ai/evaluations/comparison/format.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 886-889,891,893-894,899,901-902,966-972
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-118
+docs/generated/postgres-schema/public.processed_data.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-71
+packages/@n8n/backend-network/src/http/axios-utils.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-335
+packages/frontend/editor-ui/src/features/ndv/panel/components/RedactedDataState.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 17,27-30,88-104
+packages/frontend/editor-ui/src/features/execution/logs/composables/useChatState.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6,48,323
+.github/WORKFLOWS.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 368-369,409,512
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-146
+docs/generated/sqlite-schema/data_table_column.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-69
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.export.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/@n8n/errors/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,8-12,14,23-28,38,46,50,52,56,62-65,69-72,74-79,90-116,128,140,142-148,150-179,181-218,227,230-234,244-248
+packages/@n8n/vitest-config/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionRedaction.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4-7,31-43,52,61,65,75,83,94,99,111,116,123-125,132,136,141,154,158
+packages/cli/src/modules/mcp/tools/list-tags.tool.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-129
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionData.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-2,6,8,10
+packages/nodes-base/credentials/AwsAssumeRole.credentials.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 7,145
+docs/generated/sqlite-schema/workflow_published_version.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-95
+docs/generated/postgres-schema/public.oauth_user_consents.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-78
+docs/generated/sqlite-schema/shared_credentials.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-83
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 24-29,38-50,118,224-254,280-287,290,346-366,371-376,379-380,384-426
+docs/generated/sqlite-schema/execution_annotations.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-81
+docs/generated/sqlite-schema/auth_identity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-81
+packages/@n8n/imap/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4
+packages/cli/src/modules/mcp/tools/search-workflows.tool.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 18,28-31,67,75-76,102,104-105,117,156,159,168,180,193-203,217
+packages/cli/src/modules/n8n-packages/n8n-packages.controller.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/cli/src/modules/otel/otel.constants.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3-15
+docs/generated/sqlite-schema/user.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-297
+docs/generated/sqlite-schema/instance_version_history.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-47
+packages/cli/src/services/__tests__/public-api-key.service.integration.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 28
+docs/generated/sqlite-schema/insights_raw.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-62
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 22,53,63-69,78,85,87,108,136-140,143,147,151
+packages/@n8n/instance-ai/evaluations/data/workflows/no-http-in-code-node.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-25
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 41,49,68,71,135-136,338-342,441-451,544-545
+packages/@n8n/agents/src/runtime/title-generation.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 176-181,185
+docs/generated/sqlite-schema/role.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-100
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 31,35
+packages/@n8n/instance-ai/evaluations/data/workflows/http-node-pagination.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-34
+packages/@n8n/vitest-config/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+docs/generated/sqlite-schema/workflow_dependency.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-88
+packages/@n8n/backend-network/src/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-3
+docs/generated/postgres-schema/public.instance_ai_run_snapshots.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-72
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 11,13-14,27-64,70,72-76
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/icon-validation.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,11-13,24
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-75
+packages/core/src/execution-engine/node-execution-context/__tests__/hook-context.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,137
+packages/cli/test/migration/1784000000029-add-json-size-bytes-and-workflow-version-id-to-execution-entity.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-137
+docs/generated/postgres-schema/public.workflow_statistics.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-50
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/constants.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 137-141
+packages/@n8n/backend-network/src/ssrf/__tests__/ip-range-builder.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-78
+packages/@n8n/eslint-plugin-community-nodes/src/rules/icon-prefer-themed-variants.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-70
+packages/@n8n/typescript-config/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6-7
+docs/generated/postgres-schema/public.shared_credentials.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-75
+packages/@n8n/api-types/src/dto/otel/update-otel-settings.dto.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-16
+packages/cli/src/public-api/v1/handlers/users/spec/paths/users.id.role.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-524
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodeGroups.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 11-14,26,34-38,69,72-76,98
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.rows.upsert.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/cli/src/events/maps/relay.event-map.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1040-1057
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-84
+packages/@n8n/db/src/migrations/common/1784000000030-CreateAgentChatSubscriptions.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-31
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.service.ee.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 14,102,112-167,368-383
+docs/generated/postgres-schema/public.agent_files.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-73
+packages/cli/src/services/node-resource-explorer.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-215
+docs/generated/postgres-schema/public.shared_workflow.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-85
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 16,142-144,150
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.rows.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,50
+packages/cli/src/modules/agents/entities/agent-chat-subscription.entity.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-40
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,14-19,23-25,71-78,88-120,165-169,181-182
+docs/generated/sqlite-schema/dynamic_credential_entry.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-85
+packages/cli/src/modules/agents/integrations/component-mapper.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 160-162
+packages/@n8n/backend-network/src/http/__tests__/binary-string.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-115
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 31-37,42,49-50,53-70,75-76,312-698,798-799,818-822,1163-1202,1248-1441
+docs/generated/postgres-schema/public.scope.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-44
+packages/core/src/execution-engine/node-execution-context/utils/binary-helper-functions.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,20,359
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 13,97,134,141,143
+packages/frontend/editor-ui/src/features/settings/otel/otel.constants.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-15
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4,6,20,53-56,114-226,237,281,288,312,325,337,349,354-375
+docs/generated/sqlite-schema/execution_data.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-78
+packages/@n8n/decorators/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/core/vite.config.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 26-36
+packages/frontend/editor-ui/src/app/composables/useDataSchema.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10,33,188-189,192
+packages/cli/src/modules/agents/integrations/__tests__/component-mapper.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 105-136
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 66,115,118,218,2259-2260
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 145,154,167,172,179,184,203,216,221,229
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 73-83
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatQuickActions.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 26-37,45,117,124-131,134,140-143,147,153-159
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-138
+packages/@n8n/instance-ai/evaluations/cli/aggregator.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6-7,97-120
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-76
+docs/generated/postgres-schema/public.instance_ai_observational_memory.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-127
+docs/generated/sqlite-schema/agents_memory_entry_cursors.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-84
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+packages/frontend/editor-ui/src/features/settings/otel/otel.store.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-97
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-306
+packages/cli/src/modules/instance-ai/sandbox/instance-ai-sandbox.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-433
+packages/@n8n/instance-ai/src/types.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 430
+lefthook.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 43-48
+.github/scripts/owners-assign-reviewers.mjs
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-104
+docs/generated/sqlite-schema/chat_hub_sessions.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-171
+packages/@n8n/backend-network/src/dns/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-2
+packages/cli/src/modules/instance-ai/web-research/__tests__/fetch-and-extract.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2-3
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 42
+packages/cli/src/modules/otel/otel-settings.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-91
+docs/generated/sqlite-schema/webhook_entity.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-58
+packages/cli/src/services/ai-workflow-builder.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5,25
+.github/scripts/github-helpers.mjs
+  s_bb17b049fc2e2d::t_e56ced50495c7b 465-527
+packages/core/src/storage.config.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 10,14-15,18,22-23
+packages/frontend/editor-ui/src/app/composables/useToolParameters.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 8-9,20,55-60,169-174
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 9,54-58,622-656
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 27,80-82,133-137,148-165,185-214,230-239,255,312-315,385,396,402-408,467
+docs/generated/postgres-schema/public.insights_by_period.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-59
+packages/cli/src/modules/instance-ai/__tests__/suspended-run-restorer.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-169
+packages/@n8n/backend-network/src/dns/in-memory-dns-cache.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-81
+packages/cli/src/modules/sso-saml/saml.service.ee.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,12
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialOAuth.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6,555-653
+docs/generated/sqlite-schema/execution_annotation_tags.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-69
+packages/frontend/editor-ui/src/features/ndv/panel/components/TriggerPanel.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 54-63,82,98,114,131
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/__tests__/utils.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-53
+packages/@n8n/instance-ai/evaluations/harness/runner.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 20,334,463,563,964
+packages/cli/src/modules/mcp/tools/workflow-builder/explore-node-resources.tool.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-145
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1626-1645,1708-1778
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 19,95-96
+packages/@n8n/instance-ai/evaluations/utils/conversation-text.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 113-130
+docs/generated/postgres-schema/public.workflow_history.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-105
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow.schema.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 50
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 78-80,151-153,763,765-769,771-805
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentIntegrationCredentialConnection.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 22,31,80
+packages/cli/src/public-api/v1/handlers/discover/spec/paths/discover.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+docs/generated/sqlite-schema/deployment_key.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-64
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.deactivate.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3
+docs/generated/postgres-schema/public.evaluation_collection.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-136
+docs/generated/postgres-schema/public.deployment_key.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-58
+packages/nodes-base/credentials/common/aws/system-credentials-utils.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,39
+packages/frontend/editor-ui/src/app/composables/useRunWorkflow.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 656,678-690
+packages/@n8n/task-runner/tsconfig.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 12
+packages/frontend/editor-ui/eslint.config.mjs
+  s_bb17b049fc2e2d::t_e56ced50495c7b 130-186
+packages/@n8n/backend-network/src/http/http.d.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-14
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publisher.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-145
+packages/core/src/execution-engine/node-execution-context/utils/normalize-items.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1,21,41
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-110
+docs/generated/sqlite-schema/dynamic_credential_resolver.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-89
+packages/frontend/editor-ui/src/features/execution/logs/composables/useClearExecutionButtonVisible.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6,12-13
+docs/generated/sqlite-schema/binary_data.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-64
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 66,88,191-193,198-214,216-217,315-338
+docs/generated/sqlite-schema/agent_files.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-77
+docs/generated/postgres-schema/public.auth_provider_sync_history.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-64
+packages/cli/src/executions/execution-data/fs-store.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 33,42-43,46
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 28-31
+packages/cli/src/modules/instance-ai/web-research/fetch-and-extract.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3-4
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 842-845
+packages/core/src/binary-data/object-store/object-store.service.ee.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 18,20,28-31,261,263-264,266-271,273-285,287-304
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceLocator/ResourceLocator.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 134,158,181,227,272,460,491,531-532,614,641,682,739,939,966,989
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 607,613-614
+docs/generated/postgres-schema/public.trusted_key_source.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-61
+packages/core/src/execution-engine/triggers-and-pollers.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 2,39,103
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/index.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-4
+packages/cli/src/public-api/v1/handlers/executions/executions.handler.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 174-186,189
+packages/@n8n/instance-ai/evaluations/__tests__/comparison-format.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 90
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 180,563
+packages/cli/src/modules/agents/agents.controller.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 898-905,907,909-912
+packages/@n8n/backend-network/src/http/__tests__/axios-config.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-56
+packages/frontend/editor-ui/src/app/utils/objectUtils.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15-22
+packages/@n8n/agents/src/sdk/catalog.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 85-111,176-177
+docs/generated/postgres-schema/public.oauth_authorization_codes.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-101
+docs/generated/sqlite-schema/instance_ai_run_snapshots.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-80
+packages/extensions/insights/tsconfig.vite.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15-16
+.github/workflows/test-unit-reusable.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 15,62-65
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 4,22,34,69,82,127-172,384,465,468,484,491-493,502-505,512-540,543-545,575,645,652,673-674,686-687,691-720,736,772,783-789,996-1082,1107,1154,1277,1496-1569,1617-1706,2013-2120
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.columns.columnId.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,25
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 37-39,44,243-247,258-263,288
+packages/frontend/editor-ui/src/app/components/DependencyPill.vue
+  s_bb17b049fc2e2d::t_e56ced50495c7b 192-194
+packages/@n8n/backend-common/tsconfig.build.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 6
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 13,37,39,41,43,45,47-49
+packages/@n8n/instance-ai/evaluations/__tests__/case-files-schema.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-25
+packages/@n8n/db/src/migrations/postgresdb/1784000000031-AddExecutionEntityWorkflowStatusIndex.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-39
+packages/@n8n/db/package.json
+  s_bb17b049fc2e2d::t_e56ced50495c7b 5,18-24,58
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-121
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,42
+docs/generated/postgres-schema/public.project_secrets_provider_access.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-72
+docs/generated/postgres-schema/public.instance_ai_iteration_logs.md
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-62
+packages/@n8n/backend-network/src/dns/__tests__/in-memory-dns-cache.service.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-189
+packages/cli/src/binary-data/database.manager.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 415,674,739-740,825,829-832
+packages/core/src/execution-engine/__tests__/ssh-clients-manager.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 43-48
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/community-packages.yml
+  s_bb17b049fc2e2d::t_e56ced50495c7b 3,31
+packages/frontend/editor-ui/src/features/settings/otel/otel.api.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-58
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupLayout.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-483
+packages/cli/src/scaling/job-processor.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 307
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentPinData.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 230-233
+packages/@n8n/backend-network/src/http/__tests__/binary-buffer.test.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ec5da7a423d3a3423f62b1f742a570ce4be25019",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

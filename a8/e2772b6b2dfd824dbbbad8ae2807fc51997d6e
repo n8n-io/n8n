@@ -1,0 +1,19 @@
+packages/cli/test/integration/external-secrets/external-secrets.api.test.ts
+  s_6f55bf405ef089::t_ebf7117bdf6ec0 71-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a8e2772b6b2dfd824dbbbad8ae2807fc51997d6e",
+  "prompts": {},
+  "sessions": {
+    "s_6f55bf405ef089": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81cafe35-5423-4906-854f-6212110a4d76",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

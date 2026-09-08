@@ -1,0 +1,20 @@
+packages/cli/src/task-runners/__tests__/task-runner-process.test.ts
+  s_0a856934e0b365::t_27e559ae12b3e3 437
+  s_0a856934e0b365::t_ad210e6ef8a11c 399-400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65a36fef8cf65a37cbf35f5fd82985a772c51db6",
+  "prompts": {},
+  "sessions": {
+    "s_0a856934e0b365": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc97f5d-c336-472a-913d-3993fc6f126c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+packages/@n8n/agents/src/sdk/mcp-client.ts
+  s_60e43f07473cd0::t_ec85dfde625d79 2,215
+packages/@n8n/agents/src/sdk/__tests__/agent-mcp-validation.test.ts
+  s_60e43f07473cd0::t_f00b0e30867807 4-5,11-32,92-102
+  s_60e43f07473cd0::t_d06d3930f693f2 103
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/mcp-connections-persist-across-multiple-generate-calls.json
+  s_60e43f07473cd0::t_407e409577c307 39-40,58-59,73-74,175-176,194-195,209-210,284-285,303-304,318-319,420-421,439-440,454-455
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_60e43f07473cd0::t_f00b0e30867807 153-174
+  s_60e43f07473cd0::t_d978804390141f 271-324
+packages/@n8n/agents/src/sdk/agent.ts
+  s_60e43f07473cd0::t_ec85dfde625d79 13,911
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/calls-an-mcp-tool-during-generation-and-returns-the-result.json
+  s_60e43f07473cd0::t_407e409577c307 39-40,58-59,73-74,174-175,193-194,208-209
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-suspend-a-tool-not-listed-in-config-requireapproval.json
+  s_60e43f07473cd0::t_407e409577c307 39-40,58-59,73-74,175-176,194-195,209-210
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-only-the-listed-tool-when-config-requireapproval-is-a-string-array.json
+  s_60e43f07473cd0::t_407e409577c307 39-40,58-59,73-74
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/merges-static-tools-and-mcp-tools-in-the-same-agent.json
+  s_60e43f07473cd0::t_407e409577c307 55-56,74-75,89-90,207-208,226-227,241-242
+packages/@n8n/agents/src/runtime/mcp/mcp-tool-resolver.ts
+  s_60e43f07473cd0::t_e8f2fc39fa6a0e 3,75-83,92,94-95
+  s_60e43f07473cd0::t_7924f9d4966dcc 12-17,19-20,65,74,84-91,96-100,102-108,112-113,120-123
+  s_60e43f07473cd0::t_6ebf43729114ab 116-119
+  s_60e43f07473cd0::t_ec85dfde625d79 18,28,64,66-73,93,101,109-111,114-115
+  s_60e43f07473cd0::t_0fc032a495ba26 124
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-all-mcp-tools-when-config-requireapproval-true.json
+  s_60e43f07473cd0::t_407e409577c307 39-40,58-59,73-74
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/streams-a-response-that-includes-an-mcp-tool-call.json
+  s_60e43f07473cd0::t_407e409577c307 39-40,58-59,73-74,180-181,199-200,214-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2b5e2a62c3c104f5bd9e2d2f0d9eb3d2ee3243de",
+  "prompts": {},
+  "sessions": {
+    "s_60e43f07473cd0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8fe1-c76f-71c3-8e47-b42265a08f6b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

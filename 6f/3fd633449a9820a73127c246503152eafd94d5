@@ -1,0 +1,40 @@
+packages/@n8n/agents/src/runtime/__tests__/event-bus.test.ts
+  s_3cf72d411caad0::t_07a7047fa9af57 51-76
+packages/@n8n/agents/src/runtime/agent-runtime.ts
+  s_3cf72d411caad0::t_251b3d63d72845 403,422,431-432,437,443-444,454,459,464,468
+  s_3cf72d411caad0::t_a4b90c31ff5d27 509,552,583-587,601-602
+  s_3cf72d411caad0::t_24207c82ac5068 1816-1824,1839,1860
+  s_3cf72d411caad0::t_f2392afa076076 1962,1988,2101-2102
+  s_3cf72d411caad0::t_86bb2d7ea169d7 1032-1033,1410-1411
+  s_3cf72d411caad0::t_250925e7e408a7 909,935-936,981,997
+  s_3cf72d411caad0::t_8467de9b0c554f 1179,1189,1213,1236-1237,1314
+  s_3cf72d411caad0::t_1d38d76bdcc23d 553,576,596
+  s_3cf72d411caad0::t_af2d4a5d796bf8 2134,2240
+  s_3cf72d411caad0::t_d26d1051375dd3 47,322,334-335
+packages/@n8n/agents/src/runtime/event-bus.ts
+  s_3cf72d411caad0::t_5e506d8ee0408d 67-68,150-151
+  s_3cf72d411caad0::t_ff9448a390f12d 4-54,77-78,102-112,156-159
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_3cf72d411caad0::t_0b94259258d112 973-989,991,993-997,999-1000,1002,1004,1006-1025
+  s_3cf72d411caad0::t_f66e44a745472e 2733-2749,2751-2755
+  s_3cf72d411caad0::t_100ca478aab9a3 2750
+  s_3cf72d411caad0::t_ace9951762634b 990,992
+  s_3cf72d411caad0::t_7209b5b20a6a48 1005
+  s_3cf72d411caad0::t_877560d9e12405 998,1001,1003
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "6f3fd633449a9820a73127c246503152eafd94d5",
+  "prompts": {},
+  "sessions": {
+    "s_3cf72d411caad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9749-aea2-7951-bfc8-5671d8e5b8e3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

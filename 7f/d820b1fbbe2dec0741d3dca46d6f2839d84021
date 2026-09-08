@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_6ec654f3394769::t_4fe705103555ce 1213,1216,1239-1251,1324-1332
+  s_6ec654f3394769::t_e612b55146fb28 1299
+  s_6ec654f3394769::t_fd0399997438d5 1594
+  s_bceeef357cf6d8::t_a026c88ebd4e22 1222-1238
+  s_6ec654f3394769::t_edc64738d29ae5 1297,1303-1305
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_6ec654f3394769::t_bcbc5c36c32e50 39,273,305
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_6ec654f3394769::t_ff48a21b514783 50,123
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_6ec654f3394769::t_c8deb16d1b26ed 1627-1730
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_6ec654f3394769::t_e0383701861db0 43,92,97,108-113,115,213-223,225-256
+  s_6ec654f3394769::t_5d04c78dcca620 98,114,224
+  s_6ec654f3394769::t_2b72987f78a4f8 257
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelsSection.vue
+  s_6ec654f3394769::t_bc7f25045e1dc7 22,224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7fd820b1fbbe2dec0741d3dca46d6f2839d84021",
+  "prompts": {},
+  "sessions": {
+    "s_6ec654f3394769": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7cccb2c9-cc06-4fb1-8fe3-acead435ac9c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_bceeef357cf6d8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2e3d09e1-27f6-4ea4-b5a1-7f53d9cbd87b",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

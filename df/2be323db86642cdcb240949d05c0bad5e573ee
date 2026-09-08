@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-30-agent-reasoning-review-fixes-design.md
+  s_dba4acf06224df::t_de8c068fd8a549 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "df2be323db86642cdcb240949d05c0bad5e573ee",
+  "prompts": {},
+  "sessions": {
+    "s_dba4acf06224df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb3c7-3ac6-7b81-aa9b-81479fde0347",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

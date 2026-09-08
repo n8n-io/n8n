@@ -1,0 +1,34 @@
+packages/cli/src/task-runners/task-broker/__tests__/task-broker.service.test.ts
+  s_b8c51f278fe948::t_bd8f09b69bed8b 1397-1400
+  s_b8c51f278fe948::t_7a2cde41e48bee 1310-1396,1401-1408
+  s_b8c51f278fe948::t_7e89ed3d42d4f1 659,685
+packages/cli/src/task-runners/task-broker/task-broker.service.ts
+  s_b8c51f278fe948::t_aac469b9f76654 204-212
+  s_b8c51f278fe948::t_dd3f036ed1735b 840
+  s_b8c51f278fe948::t_13fdb782752c6b 92
+  s_b8c51f278fe948::t_7218b569ec8233 607,611-615,618
+  s_b8c51f278fe948::t_835947a39dc28a 654-655
+  s_b8c51f278fe948::t_610cf999e85805 672-673,675,680-681,693
+  s_b8c51f278fe948::t_35dea8a32cc937 719-720
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4a58f1484cd682a1f445fac246f93fcbf467be61",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b8c51f278fe948": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b4cb48f-4244-45c4-b642-707d92ad7a52",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

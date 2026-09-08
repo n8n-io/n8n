@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ImportCurlModal.vue
+  s_c746ba131f7008::t_261fb48f706271 61-65,68
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_c746ba131f7008::t_e30583300ddd05 648-654,656,659
+  s_c746ba131f7008::t_0c810a8e8a5231 75-78,80-81,90-97
+  s_c746ba131f7008::t_595bca28b62db7 112-114,119-120
+  s_c746ba131f7008::t_177ebe3331bce9 265
+  s_c746ba131f7008::t_f837f0e2945cc0 629-637,646-647,655,658,661-663
+  s_c746ba131f7008::t_ac8b0c16556008 98-99
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ImportCurlModal.test.ts
+  s_c746ba131f7008::t_9e33308091475b 130-139,167-169
+packages/frontend/editor-ui/src/app/stores/defaults/modals.ts
+  s_c746ba131f7008::t_e06f8a66fe4a92 93,95-98,106-108,114,121,129-131,143,148,155-156,175-177,182-183,191-200,202-205,222-224,231-238
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/InstanceAiToolsConnectionModalWrapper.test.ts
+  s_c746ba131f7008::t_a5b44052dbd3df 93
+  s_c746ba131f7008::t_23b634e71e7008 263-283
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_c746ba131f7008::t_e42501430fb69f 130-132
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  s_c746ba131f7008::t_761adffd86d995 5
+  s_c746ba131f7008::t_acd14c97efb4b7 257-281
+  s_c746ba131f7008::t_dc1cfb32aaf6ae 310,313-323,331-363
+  s_c746ba131f7008::t_8b310b96a64562 282-284,364-366
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5986873e1167a81f0dd36a36ef3aae524c9617a7",
+  "prompts": {},
+  "sessions": {
+    "s_c746ba131f7008": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc000276-43ad-4d37-a88f-088abe341c47",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

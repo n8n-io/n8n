@@ -1,0 +1,338 @@
+packages/frontend/editor-ui/src/experiments/instanceAiComputerUse/index.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 44-47,49-54,126-128
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 627-694
+packages/@n8n/instance-ai/src/tools/__tests__/provider-schema.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 53
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-run-pin-data.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-156
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 47,49-51
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.scoped.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-27
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/verification-obligation.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 138-164,322-342
+packages/@n8n/instance-ai/src/tools/orchestration/verification/prepare-run.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-93
+packages/cli/src/modules/instance-ai/instance-ai-run-pin-data.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-284
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 2-8,17-20,27,32,34,249-250,265,472-866
+packages/@n8n/instance-ai/src/workflow-loop/verification-obligation.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 79-85,132-140
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/search.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-87
+packages/@n8n/client-oauth2/src/client-oauth2-token.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1,4,90-99
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 10,12,16,19,58-66,85-90,94,127-182,198-211,215,221,227-238,243,245-255,281,284-286,331-342,346-356,368,380-384,435,451-452,472,474-484,493,498-503,509,515-517,522-532,544,556-560,566,574-639
+packages/workflow/test/trigger-identity.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-85
+packages/nodes-base/nodes/Microsoft/OneDrive/test/MicrosoftOneDriveTrigger.transport.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-72
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  ai_agent 5,13-19,24-29,36-40,61-66,81,119,121,126-137,140-155,158,160-171,174-175,177,179,181,184-189,191-192
+packages/@n8n/instance-ai/src/tools/orchestration/verification/resolve-target.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-130
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 828,1057,1061-1102,1136-1138,1148-1160,1162,1250,1282
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.upload.sp.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-24
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 8,419-428
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 53,106,153,353,461,510,583
+packages/workflow/src/trigger-identity.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-73
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 20,152
+packages/core/src/execution-engine/eval-mock-fixtures.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 4,26,67
+packages/@n8n/instance-ai/evaluations/data/workflows/weather-slack-branch-verification.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-43
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/index.ts
+  s_17f95be7845aae::t_6830b1bdd44b60 4
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 9,153-159,337-378
+packages/@n8n/instance-ai/src/runtime/__tests__/orchestrator-run-control.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-38
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/app-only-ops.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-288
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 3938,5936
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 6-10,18,957-961
+packages/cli/src/modules/external-secrets.ee/provider-registry.service.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 13
+jest.config.js
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 41-47,104-108
+packages/@n8n/instance-ai/src/runtime/stream-runner.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 6-9,33,45,90,121
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 5,57-60,66-68,79-202,212,215,222-236,244,257-264,279,288-300,319,328-338,346-349,397-401,405-406,408,410-411
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 9,43,525,543-544,580
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.sp.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-35
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-routing.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 8-14,25,56,62,85-92,96-97,99
+packages/workflow/test/workflow-data-proxy.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 9,2082-2164
+packages/@n8n/client-oauth2/test/code-flow.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 3,6,204-273
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 11,13,18,53-61,83-88,92,112-123,143-144
+packages/@n8n/client-oauth2/src/client-oauth2.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 11-17,31,33,35,146-158
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 138-146,221,241,293
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.copy.sp.explicitDrive.workflow.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-67
+packages/cli/src/workflows/workflow-history/workflow-history.service.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 15,267-272
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/report-verification-verdict.tool.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 12,108
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-manager.ee.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 4,10,12-15,19-27,40,77,99-100,125,311,319-320,326-334,341,346-349,356,362,369,375,470-474,484,507,517,688,702-717,767,798-806,809,841-853,856,891-900,925-927,929-931,936,954-958,1038-1210,1243-1252
+packages/cli/package.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 105
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 3-302
+  s_17f95be7845aae::t_dbf477f3a1ba71 1-2
+packages/@n8n/instance-ai/evaluations/data/workflows/workflow-verification-failed-loop-repro.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-37
+packages/@n8n/instance-ai/src/workflow-loop/workflow-task-service.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 11-18,42-51
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 152-159,223-231,234
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-json-utils.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 4-8,107-710
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 192,221,236-244,525-529
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 2,21,104-107,177
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionDebugging.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 51,61-62
+packages/@n8n/instance-ai/src/tools/orchestration/verification/finalize-result.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-174
+packages/frontend/editor-ui/src/experiments/instanceAiComputerUse/useInstanceAiComputerUseExperiment.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-16
+packages/frontend/editor-ui/src/app/stores/executionData.store.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 15,101-102,720
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 25-26,35-36,57-58,60,95-97,113-156,159-160,163,172,175-176,194-195
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 7-10,40-41,87-88,300,425-440,505-514
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/workflow-task-service.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 31-35,118-181
+packages/core/package.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 79
+packages/nodes-base/nodes/Microsoft/OneDrive/FolderDescription.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 34-38,110,118-173,207-220,230-232,241-254
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1161-1198,1260-1272,1497,1508-1513
+packages/@n8n/client-oauth2/test/client-oauth2.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 131-147,150-169,173-174,189-190
+pnpm-workspace.yaml
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 135
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 52-55,953-960,966-971,973,978,1000-1014,1050,1059
+packages/@n8n/client-oauth2/test/config.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 16-21
+packages/nodes-base/nodes/Microsoft/OneDrive/FileDescription.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 40-44,248-301,333-346,356-358,367-380,470,472-473
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.utils.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 111-112
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.copy.sp.resolveDrive.workflow.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-66
+packages/frontend/editor-ui/src/experiments/instanceAiComputerUse/useInstanceAiComputerUseExperiment.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-39
+packages/@n8n/instance-ai/evaluations/__tests__/user-proxy.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 90-99,112,370-487
+packages/cli/src/modules/external-secrets.ee/external-secrets-manager.ee.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 15-16,45,147-153,155-156,163-164,229,231,310-313,325-329,347
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 50-58,1562-1563,2008-2012,2336-2345,2367,2389,2405,2480,2575-2672
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/tools.ts
+  s_17f95be7845aae::t_7f036d6de95a3e 5
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 26,54-61,70,94,103-107,143,147-148,156-230
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.sp.resolveDrive.workflow.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-68
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 5-6,48,75-84,167,201-240,274-372
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 162,167,171-178,180-183,186-195,205,210-211
+packages/@n8n/client-oauth2/test/format-private-key.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-88
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 28,69,86,2567-2573,2643,2657-2703
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/move.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-287
+packages/@n8n/client-oauth2/test/client-assertion.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-81
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 621-625
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionDebugging.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 12,23-24,31,46-49,61-62,255-303
+packages/cli/src/modules/external-secrets.ee/external-secrets-provider-connection-manager.ee.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-196
+packages/@n8n/client-oauth2/src/code-flow.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 3,15-16,107-116,119-120
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 34-35,46-47,80-81,83,300-303,323-366
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 432,436-437,449-468,739-756
+packages/@n8n/instance-ai/src/runtime/orchestrator-run-control.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-48
+packages/@n8n/instance-ai/src/types.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 39,352,1229,1298-1299
+packages/@n8n/client-oauth2/src/credentials-flow.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1,13-14,30,42,44-45,47-52,54-60
+packages/@n8n/instance-ai/src/tools/orchestration/plan.tool.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 279
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionsCard.vue
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 13,34,41-45,71-74,78-79,246-252,254
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.copy.sp.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-40
+packages/cli/src/modules/mcp/__tests__/workflow-operations.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 680-780
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1,9,28-118,265-270,312-313,341,715-721,785
+packages/@n8n/instance-ai/src/workflow-loop/guidance.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 40-43
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/guidance.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 145,154,163-164,315
+pnpm-lock.yaml
+  ai_agent 354-356,746,1044,2815,3999-4000,4107-4108,4114,7471-7473,8452,8538,11561-11564,11733-11735,12072-12074,14495-14498,15248-15250,15901-15903,17025-17028,19261,20413-20415,20708-20710,20726-20729,21063-21066,21828,23526-23527,23529-23531,23533,23548-23549,23577-23581,23583,24454-24455,25269,25768,25777,25787,25791,25793,25796-25797,25801,25803,25805,25807,25812,25818-25819,25824-25825,25833,25842,25868,27235,29042-29048,29221-29224,29625-29626,30788-30797,32424-32425,32954,33496,33498-33503,33582-33585,34320,34322,34324-34325,34327-34328,34330,34334,34337,35229,35632,35645-35646,39818,40246,40248,40262-40268,40602
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 79,143,553-554
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 17,56,234-240,307-310,907,919
+packages/core/src/execution-engine/node-execution-context/utils/binary-helper-functions.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 201-202,291-292
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.upload.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 80,107,134,167,193-194,398,425-426
+packages/@n8n/instance-ai/src/index.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 666-672
+packages/cli/jest.config.js
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 9
+packages/@n8n/instance-ai/evaluations/data/workflows/plan-approval-handoff-verification.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-38
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-28
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/verify-built-workflow.tool.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 17,40-49,53-54,450,496,556-559,576,581,710-747,960,979,983,998,1002-1050,1062
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 289-341
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 53,55,62-65,114,275-286
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.workflow.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-66
+packages/@n8n/client-oauth2/src/client-assertion.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-55
+package.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 198
+packages/@n8n/instance-ai/evaluations/system-prompts/build-expectations-verify.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 17
+packages/workflow/src/index.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 30
+packages/cli/test/integration/external-secrets/external-secrets.api.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 12,73,90,146,163
+packages/cli/src/modules/instance-ai/eval/__tests__/mock-handler.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 85,233
+packages/@n8n/instance-ai/src/tools/orchestration/verification/types.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-49
+packages/cli/src/modules/external-secrets.ee/__tests__/secrets-cache.service.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 77-78,92-93,109,124,133,146,161,170,183,198,207,220-221,241,252-253,269,279
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiWorkflowPreview.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-301
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/ConnectionsCard.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-134
+packages/@n8n/client-oauth2/test/credentials-flow.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 3,120-180
+packages/nodes-base/nodes/Microsoft/OneDrive/test/credentials.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-22
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 10,30-31,46-47
+packages/core/src/execution-engine/__tests__/eval-mock-fixtures.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1,25,38-39,47,129,136,206
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.upload.sp.workflow.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-66
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-build-routing.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 56-70
+packages/workflow/src/workflow-data-proxy.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 12,203-228
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 877-902,930,936,945-956
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.oauth2.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-22
+packages/@n8n/instance-ai/src/tools/workflows/workflow-json-utils.ts
+  ai_agent 2-3,134-258
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionFinished.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 12,24,636-697
+packages/@n8n/instance-ai/skills/planned-task-runtime/SKILL.md
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 131-134
+packages/cli/src/modules/mcp/__tests__/update-workflow.tool.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 3-9,17-18,24,72,86-89,114,117,160-173,190-191,337-838,1976-1977,2012-2013
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 8,25,153
+packages/@n8n/client-oauth2/src/format-private-key.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-62
+packages/@n8n/instance-ai/evaluations/data/workflows/setup-follow-up-preserves-slack-channel.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-48
+packages/nodes-base/nodes/Microsoft/OneDrive/test/MicrosoftOneDriveTrigger.node.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1,4,19-21,53-68,94-208
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.oauth2.workflow.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-61
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 5,20,26-28,55,92-105,137-139,255-260,267-415,439-440,445,545-587,592-618,631-633,730
+packages/nodes-base/nodes/Microsoft/OneDrive/descriptions/TargetDescription.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-94
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 52-65,83-85,105-111
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 57-60,62-67,88
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 9,83-86
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 697-718,727,785,889,933,936,940,954
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 13,25,387-388,402-407
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 134-135,169
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 59-60,73-74,1567-1568,2316-2389,3164-3166,3193,3205,3217-3220,3229,3347-3356,3871,3909,3954-3955,3962,4036-4037,4045,4065-4066,4074,4078,4107-4108,4121,4134,4148-4151,4160,4273-4281,4317-4320,4453-4455
+packages/@n8n/client-oauth2/src/types.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 5,8-20,23,25-26
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/copy.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-86
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionFinished.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 549
+packages/cli/src/modules/external-secrets.ee/__tests__/provider-registry.service.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 16-18,28-29,37,52,68,80-81,92,117-118,127-128,144-145,153-154,164-165,182-183,203-204,216,227-228
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-provider-connection-manager.ee.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-152
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.drive.workflow.json
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-66
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/plan.tool.test.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 300-304,311
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiWorkflowPreviewExecution.ts
+  s_17f95be7845aae::t_4ba1d85d3c3c1f 1-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "976bfe4cc3d35d4a34cc630b5dd080bcc0881e4d",
+  "prompts": {},
+  "sessions": {
+    "s_17f95be7845aae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be842455-fb42-4a82-b874-9558a3113383",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

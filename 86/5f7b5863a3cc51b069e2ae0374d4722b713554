@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_69f0f345c55132::t_8191af666c4354 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "865f7b5863a3cc51b069e2ae0374d4722b713554",
+  "prompts": {},
+  "sessions": {
+    "s_69f0f345c55132": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "138879b6-9eeb-4d2c-9768-76825ef2c5c2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

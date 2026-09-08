@@ -1,0 +1,45 @@
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_2aa332997f69a5::t_07ce22058a7652 8-9
+  s_2aa332997f69a5::t_5c645d599909f6 238-240,274
+  s_2aa332997f69a5::t_c2690c1e0ae48f 15,185-204,217-218,221-231,234-237,241-245,248-257,260-273,275-334,337-338,346,348
+  s_2aa332997f69a5::t_956a76ebf25ae0 205-213,215-216
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_2aa332997f69a5::t_36708e83b75cb6 296-300
+  s_2aa332997f69a5::t_07ce22058a7652 1-2,22
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_2aa332997f69a5::t_36708e83b75cb6 1,16,219-223,233-240,246-274
+  s_2aa332997f69a5::t_75398c238b14d5 275-276
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_2aa332997f69a5::t_36708e83b75cb6 26,60,88-94,213,233
+  s_2aa332997f69a5::t_07ce22058a7652 16
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_2aa332997f69a5::t_82c5332c7993ca 1868,1885,1911
+  s_2aa332997f69a5::t_5c645d599909f6 174,1935-1944
+  s_2aa332997f69a5::t_7ef290b2a871e1 178-179
+  s_2aa332997f69a5::t_0f4983fbb829c0 168-173,175-177,180-186,1818-1867,1869-1884,1886-1910,1912-1934,1945-1967,1969
+  s_2aa332997f69a5::t_07ce22058a7652 2,5-6,8-9,99
+  s_2aa332997f69a5::t_2b80732b9ae7cb 1968
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_2aa332997f69a5::t_7ef290b2a871e1 56-60
+  s_2aa332997f69a5::t_07ce22058a7652 2,8,25-27
+  s_2aa332997f69a5::t_36708e83b75cb6 36,46,50-53,55,62-65,99,109,175-181,194,210,221-222,224,232-234,242-244,256-273
+  s_2aa332997f69a5::t_c15b4353a6fe4a 54
+  s_2aa332997f69a5::t_82c5332c7993ca 61
+  s_2aa332997f69a5::t_78c6efccfd990b 274-275,311,358
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "1b5c2a43151a61d93ba7ac8a187867c3be292f5e",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

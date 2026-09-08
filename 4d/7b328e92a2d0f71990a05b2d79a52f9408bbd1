@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_dd8f226d4368c9::t_d6f2d51b325527 1-9,11-16,29-94,96-106,114-186,188-211
+  s_dd8f226d4368c9::t_d09cbd59b5b507 10
+  s_dd8f226d4368c9::t_50834afcc63491 95,107-113
+  s_dd8f226d4368c9::t_5c082517ce7c07 187,212-213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4d7b328e92a2d0f71990a05b2d79a52f9408bbd1",
+  "prompts": {},
+  "sessions": {
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

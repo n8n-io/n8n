@@ -1,0 +1,44 @@
+packages/cli/src/modules/agents/integrations/platforms/telegram-bridge-behavior.ts
+  s_8a6a7414be281a::t_9f2313bfccb975 32,36
+  s_8a6a7414be281a::t_006a0ab606ad38 60-62,66,68-69,79-87,90,92,100,104-107
+  s_8a6a7414be281a::t_97cf01cb21d735 20,22
+  s_1fe9e065afa63e::t_76a41904777013 1-19,21,23-31,33-35,37-59,63-65,67,70-71,73-78,88-89,93,95-99,101-102,108-110
+  h_7555c3ee6524cf 72,91,94,103
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_1fe9e065afa63e::t_76a41904777013 16-22,26-29,213-214,216-219
+  s_8a6a7414be281a::t_527375f75adf43 209-212,215,220
+  s_1fe9e065afa63e::t_0c438d2044a3ce 221-222
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/bridge-behavior.test.ts
+  s_8a6a7414be281a::t_e3a66ec90f3339 149
+  s_1fe9e065afa63e::t_76a41904777013 1-67,112-129,131-148,150-162
+  s_8a6a7414be281a::t_5ae6766eebd43e 130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7c528eef84d61e542a1b0af6063e7e0558ac00f8",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1fe9e065afa63e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad170aba-a651-473f-a272-b5c49387454f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_8a6a7414be281a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54cb7bb5-6993-48be-9ac9-1d30591b7f11",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

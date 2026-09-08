@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  h_7555c3ee6524cf 25
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  h_7555c3ee6524cf 354,417
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "31aabecc315e21d65f27cc4a14c18dbc60975c5c",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

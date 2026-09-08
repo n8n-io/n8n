@@ -1,0 +1,24 @@
+packages/cli/src/evaluation.ee/insights/insights-context-builder.ts
+  s_16a3de3184a4ea::t_abebe4716da4d0 247
+  s_16a3de3184a4ea::t_0301175061eb6e 188
+packages/@n8n/db/src/repositories/test-case-execution.repository.ee.ts
+  s_16a3de3184a4ea::t_f4291af5ae0ef3 49
+packages/cli/src/evaluation.ee/evaluation-test-run.service.ts
+  s_16a3de3184a4ea::t_139729ddd189aa 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "6fb9e9ec4cbdfa8ab2c01a7aec5803a21edd8c30",
+  "prompts": {},
+  "sessions": {
+    "s_16a3de3184a4ea": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "540b3c53-a916-4d6c-9bdf-a6c4c09ecc85",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

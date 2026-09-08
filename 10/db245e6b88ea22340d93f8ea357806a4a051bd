@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Github/Github.node.ts
+  s_b7649b4e90e56b::t_a5f9706a65e386 13,23-24
+  s_b7649b4e90e56b::t_17fd3704605cca 798-817
+  s_b7649b4e90e56b::t_d898fabe2421fc 2442-2445
+  s_b7649b4e90e56b::t_8df669e98d4a02 2477
+packages/nodes-base/nodes/Github/__tests__/node/Github.node.test.ts
+  s_b7649b4e90e56b::t_b1c5f67d412046 2
+  s_b7649b4e90e56b::t_449db9e555a491 702-800
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "10db245e6b88ea22340d93f8ea357806a4a051bd",
+  "prompts": {},
+  "sessions": {
+    "s_b7649b4e90e56b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "542e9695-a9cf-4bc3-8c47-8dd2bcd77b53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

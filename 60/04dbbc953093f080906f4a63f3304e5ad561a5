@@ -1,0 +1,65 @@
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersRoleCell.test.ts
+  s_78adce0f64c626::t_750f05894a564b 2,5-6,26-27,29-31,33-56,82,84-85,88,91-126,139-152,158,160-161,169,171,176,179,187,193,196,201,203-205,209,212,218-219
+  s_78adce0f64c626::t_801d8ea5848f41 10-21,57-60,63-77
+  s_d1043dd4fdb6e3::t_c615a663bbc644 86-87,89-90
+  s_78adce0f64c626::t_e791a986d75fda 221,225-228,230-231,233-243,245,247
+  s_78adce0f64c626::t_f22f99efe31f1b 83
+  s_78adce0f64c626::t_3afbd183c910fd 248
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_78adce0f64c626::t_b3fdf190236d62 199-215
+packages/frontend/editor-ui/src/features/roles/components/RoleContactAdminModal.test.ts
+  s_78adce0f64c626::t_d93272f52464db 4-36
+packages/frontend/editor-ui/src/features/roles/components/RoleSelectDropdown.vue
+  s_d1043dd4fdb6e3::t_f4adb2975f1738 1-20,23-287,289-291,293-388
+  s_d1043dd4fdb6e3::t_c635bd9e5a26cc 21-22
+  s_d1043dd4fdb6e3::t_5b4a23a85e9ec1 288,292
+  s_d1043dd4fdb6e3::t_e618bb33ea74ac 389-391
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_78adce0f64c626::t_265d0232007a3c 43-48
+  s_78adce0f64c626::t_9276b92cd988e3 332-338
+  s_78adce0f64c626::t_ea8358d1ed73c3 13
+packages/frontend/editor-ui/src/features/roles/components/CustomRolesUpgradeModal.test.ts
+  s_78adce0f64c626::t_39fc60d816e390 5-45
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectMembersRoleCell.vue
+  s_d1043dd4fdb6e3::t_8212b0eada3d9d 3,8,32-33,38-49
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_78adce0f64c626::t_2dc5d262594d9c 168-174
+  s_78adce0f64c626::t_71aa326044f6ee 228-233
+  s_78adce0f64c626::t_196f05738de65e 62-67
+  s_78adce0f64c626::t_920808536d9b1f 35
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersTable.vue
+  s_78adce0f64c626::t_365f5fa54bb133 14
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersRoleCell.vue
+  s_78adce0f64c626::t_5c9966d03435ff 5-6,8-10,12-15,18,31-39,55-61,63,65
+  s_d1043dd4fdb6e3::t_83ee866196b1bd 11,17,64,66,113-130
+  s_78adce0f64c626::t_5d07de8cc95d82 62
+  s_78adce0f64c626::t_8cbe7905a139d0 112
+  s_78adce0f64c626::t_859eca2d133a0c 4,7,16,40-41,43-54,67-101,106-111,134-135,137,140-142,150-152,157,162,165
+  s_78adce0f64c626::t_41d792d2d17a16 167
+  s_78adce0f64c626::t_199b3d159c212d 163-164
+  s_78adce0f64c626::t_a6a243f53b7042 166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "6004dbbc953093f080906f4a63f3304e5ad561a5",
+  "prompts": {},
+  "sessions": {
+    "s_78adce0f64c626": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50247200-f127-49ae-a230-f839ff215225",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_d1043dd4fdb6e3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b3856750-fa81-4eed-bc75-7b2fa683df31",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

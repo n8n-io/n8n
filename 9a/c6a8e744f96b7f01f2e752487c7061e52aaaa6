@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/tracing/builder-telemetry.ts
+  s_30fe1ce68aa2b1::t_96063e08b254cc 21,33
+packages/cli/src/modules/agents/tracing/__tests__/builder-telemetry.test.ts
+  s_30fe1ce68aa2b1::t_3e572ecb4de4a5 34-40,57-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "9ac6a8e744f96b7f01f2e752487c7061e52aaaa6",
+  "prompts": {},
+  "sessions": {
+    "s_30fe1ce68aa2b1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eeedc-1696-7831-80b4-d9af01669f6b",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

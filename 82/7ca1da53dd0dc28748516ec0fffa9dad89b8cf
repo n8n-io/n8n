@@ -1,0 +1,182 @@
+packages/@n8n/db/src/repositories/workflow-published-version.repository.ts
+  s_592a334806b52a::t_1832ef70d05aa8 2,96-98,113,118-141
+  s_592a334806b52a::t_2dce00bb92b891 5-10,12-55,99-112,114-117,149,157
+  s_592a334806b52a::t_b27f230792352d 142
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_592a334806b52a::t_2f946b59b34ba5 39,185-187,206-207
+  s_592a334806b52a::t_ec4c1035ad85bf 188-200,202-204
+  s_592a334806b52a::t_2b43442d11a206 205
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_592a334806b52a::t_d32a9d8622a823 339,352,397,433,445,454,469
+  s_592a334806b52a::t_c0d461baa4aa0d 99
+  s_592a334806b52a::t_a5e8e4b06f1957 139-147
+  s_592a334806b52a::t_c98de73fc5d501 481,494,503,520,541,547,561
+  s_592a334806b52a::t_70036b687950ae 400-421
+  s_592a334806b52a::t_98987432605a37 727,766,782,811,874,985,1018,1052,1086,1120
+  s_a95a5287727af3::t_7a8de2cb015a44 398-399
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_592a334806b52a::t_778eb98f979c1d 311-313
+  s_592a334806b52a::t_982400c0590db3 17-18,38-57,62,71,83,86
+  s_592a334806b52a::t_f412e14616c949 666,680-681,686-688,690-691,698-702
+  s_592a334806b52a::t_15ab45b8687721 179-210,265-293
+  s_592a334806b52a::t_42bb102b5c66da 5,22,211-264
+  s_592a334806b52a::t_1c2f3a5c25a01a 488-510
+  s_592a334806b52a::t_12d8a623fa0ff5 147-148,176
+  s_592a334806b52a::t_65a947eee98adf 95,120-146,149-175,177-178,294-310,314-486
+  s_4bc79cf80826f6::t_1a1bfd2fd5283f 487
+packages/cli/src/modules/agents/tool-registry.ts
+  s_592a334806b52a::t_55f69b713d26ba 6,45-46
+  s_4bc79cf80826f6::t_feca29f5a11496 47
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_592a334806b52a::t_1832ef70d05aa8 270-272,303,324-345
+  s_592a334806b52a::t_2dce00bb92b891 18-22,273-302,304-323
+  s_592a334806b52a::t_8cf11e1904e8ca 346
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-loader.service.ts
+  s_592a334806b52a::t_1832ef70d05aa8 1-2,4-31,34-35,39-40,43-68,71-74
+  s_592a334806b52a::t_2dce00bb92b891 3,32-33,36-38,41-42,69-70
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_592a334806b52a::t_a70ac3b8a7e077 70-71,101-102,139-140
+  s_592a334806b52a::t_ea700312766b0e 156-159
+  s_592a334806b52a::t_4b255e5fd19a86 155
+packages/cli/src/utils/__tests__/ttl-map.test.ts
+  s_592a334806b52a::t_d2c458eb452469 1-63
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_592a334806b52a::t_a1c553029ed374 53,129
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_592a334806b52a::t_3f7a54066e6ea3 333,349-352,354,357-369,371-372,374-389,399-441
+  s_592a334806b52a::t_469ee77124e858 463,470-478,480-499,517,524-542,557,564-583,596,602-621
+  s_592a334806b52a::t_151a1402e60beb 97-98
+packages/cli/test/integration/database/repositories/workflow-tool-publication.repository.test.ts
+  s_592a334806b52a::t_a05ec5a8dcba6d 37-40,102-105,164,220
+  s_592a334806b52a::t_0c0b17dcf59691 212
+  s_592a334806b52a::t_006753b65afa74 1-36,41-101,106-131,133-163,165-211,213-219,221-249
+  s_592a334806b52a::t_30c6eaeab72994 132
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_592a334806b52a::t_ebd510e7f16f1b 248
+  s_592a334806b52a::t_a1c553029ed374 75,142
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-workflow-loader.service.test.ts
+  s_592a334806b52a::t_01219c150fc4f7 2,4-65,67-68,87-109,112,114-117,121-123,125-134,140,142-146,150-158,161-180,184-189,191-203,207,211-236,240-259,263-273
+  s_592a334806b52a::t_ceef0a6eb2e4b3 1
+  s_592a334806b52a::t_bc741dee39942c 3,66,69-86,110-111,113,124,135-139,141,147-149,159-160,181-183,190
+  s_592a334806b52a::t_8cd81ae9b1846c 118-120,204-206,208-210,237-239,260-262
+packages/@n8n/db/src/repositories/workflow-execution-data.ts
+  s_592a334806b52a::t_2dce00bb92b891 1-29
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_592a334806b52a::t_34e92810898e62 81,176,524
+packages/cli/src/utils/ttl-map.ts
+  s_592a334806b52a::t_dd330cdfaaaa73 27,43,50-53,99,104-106
+  s_592a334806b52a::t_0d1616ef6262e6 22
+  s_592a334806b52a::t_2ab4d9cf536dad 107-109
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_592a334806b52a::t_778eb98f979c1d 403
+  s_592a334806b52a::t_37ddb600aabf3e 67-69,75,236-237,240,244,247-248,251,298-300,303,310,334
+  s_592a334806b52a::t_9708dbd36fa7b4 203-235,238-239,241-243,245-246,249-250,252-253
+  s_592a334806b52a::t_dd330cdfaaaa73 26-27,100-102
+  s_592a334806b52a::t_51a0180cadbb50 258-259,261-283,286-289,292-295,306,309,311-312,316,323-328
+  s_592a334806b52a::t_730ed6c9ad8689 291,305,307-308,313-315,317,320-322,330-333,348-400
+  s_592a334806b52a::t_e8d7bea81752e4 406-410
+  s_592a334806b52a::t_8b770aca1480d0 50,52-66,74,99,103,149
+  s_592a334806b52a::t_12cdbc95690740 401,404-405,411-423,453-459,467
+  s_592a334806b52a::t_586477aaab4da0 8,22,49,114
+  s_4bc79cf80826f6::t_555fbf185e3019 51,290,402
+packages/@n8n/db/src/repositories/__tests__/workflow.repository.test.ts
+  s_592a334806b52a::t_98a06557f5bd7f 552-587
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_592a334806b52a::t_2640db9c04eff5 3715
+  s_592a334806b52a::t_6f214da2998e77 3719-3728
+  s_592a334806b52a::t_b8617f0fc637d5 3686-3714,3716-3718,3729-3737
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_592a334806b52a::t_ec4c1035ad85bf 648,715,774-778,784
+  s_592a334806b52a::t_a70ac3b8a7e077 1,43,654-658,691-697,699,727-739,741-752
+  s_592a334806b52a::t_03720e65c33488 298-299
+  s_592a334806b52a::t_b77c98d1c5f2fe 307
+  s_592a334806b52a::t_ea700312766b0e 653
+  s_592a334806b52a::t_463505ea0e869d 702-706
+  s_592a334806b52a::t_8a1c76eab31d70 761
+  s_592a334806b52a::t_ddc29a06145bfa 8,42,44-46,90,296,309,312,608-612,614-618,621-624,631-637,639-642,647,659,662-665,670-690,698,700-701,707-714,716-726,740,753-760,762-773,779-783,785-786
+  s_592a334806b52a::t_2d7e1fe9471f4b 787
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_592a334806b52a::t_7415373924da02 16,83-84,92-93,96
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_592a334806b52a::t_6a58249a125d04 1,142,263
+  s_592a334806b52a::t_aa94a2e1518052 21-22
+  s_592a334806b52a::t_271cfe536fca53 16,26-29,104-141,143-149,248-262,264-269
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_592a334806b52a::t_9a00f65fa7c007 38,123,136,159,162-168,213,221
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_592a334806b52a::t_580c221327cd73 446-466
+  s_592a334806b52a::t_463505ea0e869d 207-209,228-230
+  s_592a334806b52a::t_cf9ac3b7106dec 326
+  s_592a334806b52a::t_ec5e0eb4263bae 547
+  s_592a334806b52a::t_0a42125b2a2ec2 541-546,548-578
+  s_592a334806b52a::t_a59d1b1b6cf046 239-252
+  s_592a334806b52a::t_f0ae839cd591d3 202-206,210-227,231-238
+  s_592a334806b52a::t_c836917851d197 312-325,327-445
+  s_592a334806b52a::t_f9ed50121c2095 176-178
+packages/@n8n/agents/src/sdk/tool.ts
+  s_592a334806b52a::t_72657d9e62b5fd 40
+  s_592a334806b52a::t_463505ea0e869d 96-98,281
+  s_592a334806b52a::t_0adef6d42d9615 220-222
+  s_592a334806b52a::t_8bed9a446a347a 277-279
+  s_592a334806b52a::t_6f5c0d62a4894a 8,33-39,41-51,107-137,140-159,179-192,210-213,219,223-241,285-295
+  s_592a334806b52a::t_a70ac3b8a7e077 25,99-106,138-139,260,275-276,280,283
+  s_592a334806b52a::t_3bc8082d69ca66 206,249,274
+  s_592a334806b52a::t_f9ed50121c2095 167
+packages/cli/src/modules/agents/__tests__/tool-registry.test.ts
+  s_592a334806b52a::t_48cb6c750ca227 20,28,51-58
+  s_592a334806b52a::t_e67c6aa345e910 59-61
+  s_80961fb7cf1792::t_7195a4c4fda52a 62
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_592a334806b52a::t_f0ae839cd591d3 1,11,138,140-177,181-183,185,630-650,652-680,682-695,697
+  s_592a334806b52a::t_03720e65c33488 102
+  s_592a334806b52a::t_2f946b59b34ba5 3,8,20,51-65,107-116,120-124,127,132-137,227,248,346,376-443,447-487,489-629,696
+  s_592a334806b52a::t_02756f3b21b63c 178-180
+  s_592a334806b52a::t_b8617f0fc637d5 193-211
+  s_592a334806b52a::t_ec4c1035ad85bf 283-285,298-301,444-446,488
+  s_592a334806b52a::t_463505ea0e869d 651,681
+  s_592a334806b52a::t_8b4de0476c9749 139,698-699
+packages/@n8n/db/src/repositories/__tests__/workflow-published-version.repository.test.ts
+  s_592a334806b52a::t_98a06557f5bd7f 1-51
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_592a334806b52a::t_ea700312766b0e 917
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "827ca1da53dd0dc28748516ec0fffa9dad89b8cf",
+  "prompts": {},
+  "sessions": {
+    "s_4bc79cf80826f6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc821-4348-7fc2-93b6-13c4143d0153",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_592a334806b52a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fd67c-c5d6-7cc0-9a96-4ed4eac859ee",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_80961fb7cf1792": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fd7dd-335e-7080-9867-a1af46e69595",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_a95a5287727af3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fd734-47be-7c62-a3cf-903358e64654",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

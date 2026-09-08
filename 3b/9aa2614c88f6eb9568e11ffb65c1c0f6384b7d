@@ -1,0 +1,32 @@
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_592a334806b52a::t_05c99038ff794c 34,50-51,185
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_592a334806b52a::t_b1f7fa862302d2 305-314,378-382,393-407,409-426,428-433
+  s_592a334806b52a::t_80e52ecd662df1 383-386,392,427
+  s_592a334806b52a::t_dbca6088550471 408
+  s_592a334806b52a::t_a66b40f69d9f87 387-391
+  s_592a334806b52a::t_8f0584e4aea929 434
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_592a334806b52a::t_dbca6088550471 257
+  s_592a334806b52a::t_b1f7fa862302d2 251-256,258-266
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_592a334806b52a::t_dbca6088550471 114,117
+  s_592a334806b52a::t_14c14ec93958ac 115-116
+  s_592a334806b52a::t_05c99038ff794c 444,569,585,680,712,724,741
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3b9aa2614c88f6eb9568e11ffb65c1c0f6384b7d",
+  "prompts": {},
+  "sessions": {
+    "s_592a334806b52a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fd67c-c5d6-7cc0-9a96-4ed4eac859ee",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

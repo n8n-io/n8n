@@ -1,0 +1,34 @@
+packages/cli/test/integration/task-runners/js-task-runner-execution.integration.test.ts
+  s_58e4f702dee73a::t_a2664b3e7a20e9 348-353,371-377,381,390
+  s_58e4f702dee73a::t_13a071e94e69cf 343-347,354-370,378-380,382-389,391-393
+packages/@n8n/task-runner/src/js-task-runner/prototype-hardening.ts
+  s_58e4f702dee73a::t_99be33b8536292 19-21,34-36,52
+  h_32d8cd6a0d6aad 12,14,22,37
+  s_58e4f702dee73a::t_57af87af054ec3 39,48-51,54-63
+  s_58e4f702dee73a::t_2aa8f15d3ca907 3,11
+  s_58e4f702dee73a::t_fe9d32dbae6261 1-2,4-10,13,15-18,23-33,38,40-47,64
+packages/@n8n/task-runner/src/js-task-runner/js-task-runner.ts
+  s_58e4f702dee73a::t_8d211906d8b41e 43
+  s_58e4f702dee73a::t_298db0d0d0c65b 190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8d6f62d0ca486e0d91e873aaa4c6052ad973ec75",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_58e4f702dee73a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6396ea92-04c3-4d49-b28c-5a8941d89c20",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

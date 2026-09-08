@@ -1,0 +1,20 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/does-not-overclaim-verification-of-a-fix.json
+  s_e261f072c3b6bd::t_89bfc0bffb7c9a 2
+  s_e261f072c3b6bd::t_64eba2f1b787ec 134-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f939f8d81fd7133c7457d328a47e5be0da5cb7b9",
+  "prompts": {},
+  "sessions": {
+    "s_e261f072c3b6bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba8bff36-5d40-4efa-9b57-d49a4365067c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

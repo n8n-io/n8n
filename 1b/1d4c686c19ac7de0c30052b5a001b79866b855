@@ -1,0 +1,26 @@
+packages/cli/test/integration/public-api/sso-saml.test.ts
+  s_84458f29d00f13::t_9bacf63e1d1806 58,75-78
+packages/cli/src/public-api/v1/handlers/sso-saml/spec/schemas/saml-configuration.yml
+  s_84458f29d00f13::t_67f40106ed12d3 96-99
+  s_84458f29d00f13::t_bc44c83ad677f7 52-55
+packages/cli/src/public-api/v1/handlers/sso-saml/spec/paths/settings.sso.saml.yml
+  s_84458f29d00f13::t_e8ee33e962fe9a 10-12
+packages/cli/src/public-api/v1/handlers/sso-saml/sso-saml.mapper.ts
+  s_84458f29d00f13::t_8e43cfb3a5209b 12,14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1b1d4c686c19ac7de0c30052b5a001b79866b855",
+  "prompts": {},
+  "sessions": {
+    "s_84458f29d00f13": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "669f064c-fbe2-424f-9767-52ddbcae54b2",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,307 @@
+packages/frontend/editor-ui/src/features/agents/utils/agentNode.ts
+  s_fca2302987ca57::t_8b69268f6b3b43 1-13
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_bb07027ddb0032::t_300d5c786a912e 15,25,28,526-527,530,532-538,548,882-915
+  s_a6f570cd9e29ae::t_6b092ee1195ed8 26-27
+  s_a6f570cd9e29ae::t_1ab73227e63d39 522-525,531
+  s_a6f570cd9e29ae::t_6d28a6bda39c2d 539-547
+  s_a6f570cd9e29ae::t_c4676c3b35d068 805-806,811,816
+  s_a6f570cd9e29ae::t_6167cb1189d460 808,810,846-853
+  ai_agent 809
+  s_fca2302987ca57::t_84a7bf071bb319 29
+  s_fca2302987ca57::t_d1d5b6a4deef7a 528-529
+  s_fca2302987ca57::t_92e63970564dbc 845
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useNdvAgentConfig.ts
+  s_bb07027ddb0032::t_300d5c786a912e 1-16,21-23,25-28,30-36,49-56,59-67,69-70,87-117,123-133,136-143,146-162,195-202,237-243,245-252,256,260,268-271,274-280,295-299,304-306,308,323-325,327-337,339-345,348-354,42-43,184-185,192-194,214-216,221-222,225-226,235-236,309-310,48,77,81-82
+  s_bb07027ddb0032::t_e667ae8e0140b9 163-165,166-173,175-183,186-191,206-213,244
+  s_bb07027ddb0032::t_adb32be7ad36bc 205,217-220,223-224,227-234
+  s_bb07027ddb0032::t_c6b7511d0205f7 20,29,37-41
+  s_bb07027ddb0032::t_3d90d5098c8692 338,346-347
+  s_bb07027ddb0032::t_22de7730909761 24
+  s_bb07027ddb0032::t_0c6aa9ed794591 68
+  s_bb07027ddb0032::t_0c8430251f16f4 311-317,322,326,286
+  s_a6f570cd9e29ae::t_2cce194c663802 17
+  s_a6f570cd9e29ae::t_fd20ce58561a48 44-47
+  s_a6f570cd9e29ae::t_137ab775e3855d 76,78-80
+  s_a6f570cd9e29ae::t_d3ed69934e25a9 144-145
+  s_a6f570cd9e29ae::t_9e17ae8c3f3a5c 174
+  s_a6f570cd9e29ae::t_68eb51c027e6a0 281-285,300-303,307
+  s_fca2302987ca57::t_ffeebf184d08c9 18-19
+  s_fca2302987ca57::t_b88bbacddbc56c 57-58
+  s_fca2302987ca57::t_51daed2b557da0 72-74,83-86
+  s_fca2302987ca57::t_da69029cab99d0 118-121,134
+  s_fca2302987ca57::t_09fe4165d02068 122,135
+  s_fca2302987ca57::t_871725d961a7b0 253-255,257-259,261-267,272-273
+  s_fca2302987ca57::t_c8fd05f4927113 287-294
+  s_fca2302987ca57::t_c48657f3efe568 318-321
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_a6f570cd9e29ae::t_7eaa42143240c7 12-14
+  s_a6f570cd9e29ae::t_800b87d5430dbd 63-65,67-73,75-100,104,112-113
+  s_a6f570cd9e29ae::t_4ddd66fa9d29b1 142,159-161
+  s_a6f570cd9e29ae::t_680502498b4d7f 190
+  s_a6f570cd9e29ae::t_f1b037e7085179 199
+  s_a6f570cd9e29ae::t_e0fad95ce88d94 217-258
+  s_fca2302987ca57::t_a03505f1e6fe75 66
+  s_fca2302987ca57::t_93e3aebd335183 74
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_f3c9e6db456d8f::t_6b8c9b9bb0dc3c 1-8,10,22-27,30-33,39-52,54,56-85,87-102,107-111,113,115,120,125-127,135-137,139-140,142-147,171-185,187-188,206
+  s_f3c9e6db456d8f::t_58a3f0265bf54b 9
+  s_f3c9e6db456d8f::t_8ee12131344ac3 11-14,18-21,28-29
+  ai_agent 15-17
+  s_f3c9e6db456d8f::t_61d7c98bae3934 34-38
+  s_f3c9e6db456d8f::t_6854a5751e433f 53
+  s_f3c9e6db456d8f::t_a70833f8fde864 86
+  s_a6f570cd9e29ae::t_2f4f7564f488dd 103-105
+  s_bb07027ddb0032::t_e064af4bfb81d0 106,114,121-124,131-134
+  s_f3c9e6db456d8f::t_3687924b49547b 112,116-119,128-130
+  s_f3c9e6db456d8f::t_18bfa8a42671a3 138,141,151-152
+  s_f3c9e6db456d8f::t_3e0b2d81ff7a2b 148,150,155-156,160,162,168-169,197-205
+  s_bfe6a865a3bf73::t_f629349d9e9545 149,153-154,157-159,161,163-167
+  s_f3c9e6db456d8f::t_16de2fdebf6c12 186,189-196
+  s_fca2302987ca57::t_607ad16659ddc9 170
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvAdvancedSection.vue
+  s_a6f570cd9e29ae::t_8753195d5cf07a 1-9,16,18-21,23-61,64-109,112-113,117-121,127,145-150,152-154,156-157,161-164,166-171,173-179,181-193,198-209,225-227,234-242,244-249,267-271,273-282,284-285,301,304-319,322,327-333,337,339-346,348,380-381,217,224
+  s_a6f570cd9e29ae::t_6ab6e358595ac9 10-15
+  s_a6f570cd9e29ae::t_6147e3c8f2698e 17
+  s_a6f570cd9e29ae::t_8487e83e2df988 110-111,114-115,123-126,128-144,151
+  s_a6f570cd9e29ae::t_b3b70b9fed7d31 116,122
+  s_a6f570cd9e29ae::t_14d51cc0e63c63 165,172
+  s_a6f570cd9e29ae::t_98744f464a580d 194-197
+  s_fca2302987ca57::t_cd4b5957e27363 210,219-223,228-232
+  s_a6f570cd9e29ae::t_151683869eae7e 233,243,250-266,283
+  s_a6f570cd9e29ae::t_1a9ca2e46c0ad2 320-321,323,325,334-335,338
+  s_a6f570cd9e29ae::t_3879f73d2444b3 336
+  s_a6f570cd9e29ae::t_9d8058196739bf 349,159,211,347,350-379,218
+  s_a6f570cd9e29ae::t_65dbd0001c25e3 22
+  s_a6f570cd9e29ae::t_7df9047a9a3857 155,158,160,180
+  s_a6f570cd9e29ae::t_f745c21f10f24b 212-216
+  s_a6f570cd9e29ae::t_bcd55fb509c4f9 286-300,302-303
+  h_7555c3ee6524cf 324,326
+  s_a6f570cd9e29ae::t_fb012f540d591c 272
+  s_fca2302987ca57::t_5f99bea0253ed9 62-63
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitySummary.ts
+  s_a6f570cd9e29ae::t_55d14f8f6fb32b 5,8-9,16-18,30-34,39-41,43-45,27
+  s_a6f570cd9e29ae::t_3508331b2bb774 72-73
+  h_7555c3ee6524cf 81-82,118,120,15,69
+  s_05cd7ab5f956cf::t_93f4aea26407fa 83
+  s_a6f570cd9e29ae::t_32ca13c9c2ca35 133
+  s_fca2302987ca57::t_69f57370f25a1c 3,12-14,25-26,35-38,42,48-66,68
+  s_fca2302987ca57::t_2a9449d5480cb9 113
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvReferencedControls.test.ts
+  s_bb07027ddb0032::t_300d5c786a912e 1-3,5-113,115-136,138-139,141-160,162-166,168-176,178-181,184,190-194,196-201,203-205,207-208,219-230,232-253,183,211-212,215
+  s_a6f570cd9e29ae::t_c901187ffc09cd 217-218,206,210,213-214
+  s_bb07027ddb0032::t_ae48e1edf1135b 114
+  s_bb07027ddb0032::t_3563d1766e5052 137,140
+  s_bb07027ddb0032::t_4ce802302e0628 177
+  s_bb07027ddb0032::t_ef275b3989aad3 231
+  s_a6f570cd9e29ae::t_46db55e18efd68 4
+  s_a6f570cd9e29ae::t_0cc2311afe6e8d 182,187-189
+  s_a6f570cd9e29ae::t_bbb4d67a4f9518 186
+  s_fca2302987ca57::t_77ba49048e90ef 161,167,195,202,209,216
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_fca2302987ca57::t_cc9be03e8b9d55 39-40,45
+  s_fca2302987ca57::t_3d4ee17d59a2b8 179
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_a6f570cd9e29ae::t_7e2e15aca2985e 169,170-179
+  s_fca2302987ca57::t_d1bc464b310730 237-238,240-247
+  s_fca2302987ca57::t_a1c39ecfa9ce76 269-271
+  s_fca2302987ca57::t_32d8027967680e 275,277-278,280-281
+  h_7555c3ee6524cf 276,279,282
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  s_f3c9e6db456d8f::t_4fc094ca9bf950 5
+  s_f3c9e6db456d8f::t_c805c8c04b71af 27
+  s_fca2302987ca57::t_c49d54f360dc40 35
+  s_f3c9e6db456d8f::t_5e6f0ec9869888 262-270
+  s_fca2302987ca57::t_6944a656507f54 324-326
+  s_f3c9e6db456d8f::t_b3cd4f9251a528 327-328
+packages/frontend/editor-ui/src/features/agents/composables/useAgentNavigation.ts
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 1-10,15-32,43,55-57,59-62
+  s_fca2302987ca57::t_5da0ad6a08c888 11-14
+  s_fca2302987ca57::t_ab055c5e5e21c9 33-42,44-54,58
+packages/frontend/editor-ui/src/features/agents/composables/useAgentScopeProjectId.ts
+  s_fca2302987ca57::t_3af68d4f0394b2 1-27
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_bb07027ddb0032::t_c391426d7d66d7 34
+  s_bb07027ddb0032::t_3042e85bcd80b6 44
+  s_bb07027ddb0032::t_c09ba97187ce00 678-702,706
+  s_bb07027ddb0032::t_f8a958f38e634c 703-705
+  s_edec1786596258::t_b8476a57be50e3 812,814-820
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 813
+  s_bb07027ddb0032::t_cceac8883eed93 1044-1046,1048
+  s_bb07027ddb0032::t_24de027c90a3ae 1075-1078,1081-1085
+  s_a6f570cd9e29ae::t_fda72124e00fcc 557-559,579
+  s_a6f570cd9e29ae::t_0ff2e20a7272f6 708-710
+  s_fca2302987ca57::t_0fb6ce848e4707 768-770
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedControls.vue
+  s_bb07027ddb0032::t_300d5c786a912e 1-2,7,15-17,19-20,22-28,37-43,46-52,56,59-70,72,75,77-78,134-142,146-155,85,96,99,112,36
+  s_bb07027ddb0032::t_d8830b45e75524 8,10-14
+  s_a6f570cd9e29ae::t_082145b4037bd7 3-6,9,18,21,54-55,57-58,73-74,76,81,83-84,86-91,93-95,97,100-101,103-107,109-110,113-133,143
+  s_fca2302987ca57::t_88f708496b6e1a 29-35,44-45
+  s_fca2302987ca57::t_77ba49048e90ef 71,79,92,98
+  s_fca2302987ca57::t_ad505a76db6116 102,108
+packages/frontend/editor-ui/src/features/ndv/agents/composables/__tests__/useNdvAgentConfig.test.ts
+  s_bb07027ddb0032::t_300d5c786a912e 1-95,98-388,426-456,392,394-396,398-402,404-407,411-412,415-416,418,423-425
+  s_a6f570cd9e29ae::t_c7fa744bc74df9 389-390,391,393,397,403,408-410,413-414,417,419-422
+  s_fca2302987ca57::t_2a666261cad156 96-97
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_f3c9e6db456d8f::t_b09da580fcb71b 1,3-7,9,12-20,22-24,26-28,30,46-70,74-76,79-96,114,116-131,133-142,147-148,161-163,180,228-241,244,248,255-256,305-333,335-342,351,353,357-358,360,364-377,383,385-388,394,396-397,403,406,426,431
+  s_f3c9e6db456d8f::t_215638f4be1e5f 8
+  s_f3c9e6db456d8f::t_2a2c426e89a273 11
+  h_7555c3ee6524cf 21,100,106,254,281,283,287,289,293-297,300-301,304
+  s_f3c9e6db456d8f::t_8e341613919eae 29
+  s_f3c9e6db456d8f::t_ba2b1f7ef0b75a 31
+  s_b265f8060764ea::t_5d1947696f1194 32
+  s_f3c9e6db456d8f::t_546f61ee1155e0 33
+  s_f3c9e6db456d8f::t_489963625ad545 35-45,164-169,257-258,270
+  s_f3c9e6db456d8f::t_341d441fc1aa70 77
+  s_f3c9e6db456d8f::t_40d80601d668de 78,143,243,269,352,378-382,384,389,391,393,395,402,404
+  s_f3c9e6db456d8f::t_be6fa6ee389de5 97-99,101-105
+  s_f3c9e6db456d8f::t_715b40c294a666 107-113
+  ai_agent 132,196-214,216-221,223-227
+  s_bfe6a865a3bf73::t_e9293ef5a348ba 153-160
+  s_f3c9e6db456d8f::t_3f2570ab5f926b 170-179,181-192
+  s_f3c9e6db456d8f::t_b908cf851754d0 193-195
+  s_f3c9e6db456d8f::t_bfe4881e1ecc7b 215
+  s_f3c9e6db456d8f::t_1d2e99b0cddfb7 242,249,259-260
+  s_f3c9e6db456d8f::t_173aa9faa6c0c2 245-247
+  s_f3c9e6db456d8f::t_6f661ba94caf8b 250-252,261-263,271-280,286,298-299
+  s_f3c9e6db456d8f::t_495bf9bc203fff 253,264-268
+  s_05cd7ab5f956cf::t_d576ddf1e82633 282,288,292,303
+  s_05cd7ab5f956cf::t_a89fd654b5e082 284-285,290-291,302
+  s_f3c9e6db456d8f::t_c2fcc6f66f43ab 343-344,347,349-350
+  s_f3c9e6db456d8f::t_0758910a50cc74 348,359
+  s_f3c9e6db456d8f::t_1e453de502744e 361,363
+  s_05cd7ab5f956cf::t_35616ad850b841 362
+  s_f3c9e6db456d8f::t_4ce1ef0cd4469b 390,392,405,414
+  s_a6f570cd9e29ae::t_74408e2c0291b6 409-410
+  s_f3c9e6db456d8f::t_ee8ffe0dde1b9c 418,420-421,423-424,427-430
+  s_bb07027ddb0032::t_6825f09d74ae86 115
+  s_bb07027ddb0032::t_2a2fe6c06457c5 149-152
+  s_ee703859d8cd60::t_ce4d1ef79049fc 334
+  s_fca2302987ca57::t_d6760e15c50cd2 10
+  s_fca2302987ca57::t_c10a8c981fb820 71-73
+  s_fca2302987ca57::t_9f7ce5fc40bee7 144-146
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvBuilderBanner.vue
+  s_a6f570cd9e29ae::t_a15d03c51cd9c4 3-7,10-11,14-15,19,22-27,29,33-39,41-48,50-54,56-62,64,68-71,75,77-79,82-84,88-89,91-92,94-99,102-106,109-114,117-119,122-127,130,136-139
+  s_fca2302987ca57::t_db92a05c9302fe 72-74,76,80-81
+  s_fca2302987ca57::t_3cba706d4b526d 131
+  s_fca2302987ca57::t_2de46ea309c756 132-135
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_8e21a83a5682cf::t_11a328ce11050e 23
+  s_a6f570cd9e29ae::t_90cbc7a4532f7d 25
+  ai_agent 26-28,80-81,121,196-199,216-227,229,239,262-267,272,276-281,284-288,294-301,308-311,316,320,293
+  s_f3c9e6db456d8f::t_524d20aeb36dd8 31-37
+  s_8e21a83a5682cf::t_be80170576f2c8 38-48
+  s_f3c9e6db456d8f::t_9086cb51d37444 63
+  s_8e21a83a5682cf::t_1d066d4644f65c 69-77
+  s_8e21a83a5682cf::t_9ab9220ea638bc 78
+  s_f3c9e6db456d8f::t_c34fda7633f55f 110,112
+  s_f3c9e6db456d8f::t_f1f97cd947f4ee 113,363-376
+  s_8e21a83a5682cf::t_eb20d496e52c8f 114
+  s_f3c9e6db456d8f::t_c5486258a4b8f2 139,141
+  h_7555c3ee6524cf 154,158
+  s_edec1786596258::t_9dba7ece331951 182-189,191-192,200-208,210-211,214-215
+  s_8e21a83a5682cf::t_810311b8febef8 209,213,302
+  s_8e21a83a5682cf::t_a2673b4bacb10c 212
+  s_8e21a83a5682cf::t_66e9462ab0cf2e 228,230-238,240-256
+  s_a6f570cd9e29ae::t_7b19674d6805de 257-259,261,268,271,273-274
+  s_edec1786596258::t_a3914f9b8300e3 305-306
+  s_fca2302987ca57::t_8a6277766c95af 22
+  s_fca2302987ca57::t_5c5d3a42857b49 89-91
+  s_fca2302987ca57::t_4fe911ce4fb440 282-283,289-292
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_fca2302987ca57::t_dd8f8d6623296e 180,184,187-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "24bd021739b1fe8829db9634ce6051dce5e62f99",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_05cd7ab5f956cf": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782375244911",
+        "model": "unknown"
+      },
+      "human_author": null
+    },
+    "s_8e21a83a5682cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f38fc08e-17d6-4281-83fb-50de5181b652",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_a6f570cd9e29ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccec31f7-cf7f-4768-8223-01157ee56250",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_b265f8060764ea": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782900149012",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_bb07027ddb0032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ac5de5a-9d81-4e7b-9015-b5d135e16aa4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_bfe6a865a3bf73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "430bf789-cf05-4910-9dda-8fa7dfba9d21",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_edec1786596258": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a019cf0-00e7-4c7f-9c74-45988cd641cc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_ee703859d8cd60": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782989521432",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_f3c9e6db456d8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8298b541-e801-4d7c-9c0d-b2ace99ba5cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_fca2302987ca57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3ee84d5-1fd7-46c3-ba48-70e2c843ec51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

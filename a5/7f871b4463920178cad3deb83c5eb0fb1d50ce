@@ -1,0 +1,14 @@
+packages/@n8n/cli/src/commands/package/export.ts
+  h_9b272a633435fb 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a57f871b4463920178cad3deb83c5eb0fb1d50ce",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

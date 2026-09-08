@@ -1,0 +1,26 @@
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_a34fcfabd7cdbf::t_9769acf47cdfa3 472
+  s_a34fcfabd7cdbf::t_7ee5faf81fa313 332-382,390-414,417,425,430-441,443-471,473-480,483,485,487-502
+  s_a34fcfabd7cdbf::t_81da523d89e549 442
+  s_a34fcfabd7cdbf::t_e1f7d92ceb1981 18
+  s_a34fcfabd7cdbf::t_2888b67e2f00df 481-482,484,486
+  s_a34fcfabd7cdbf::t_397ee4c15212a9 293-316
+  s_a34fcfabd7cdbf::t_538be8df186ad0 383-389
+  s_a34fcfabd7cdbf::t_d3f30833ece656 415-416,418-424,426-429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "45dad76ca66ece06bcb956d54c4449205b15e1eb",
+  "prompts": {},
+  "sessions": {
+    "s_a34fcfabd7cdbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb7c98d7-9bf4-4adc-bb18-cacddf973ef7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

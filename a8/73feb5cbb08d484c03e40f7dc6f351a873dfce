@@ -1,0 +1,35 @@
+packages/cli/src/services/tag.service.ts
+  s_f2e7acc401d88b::t_02bdb1fd5fd020 78
+packages/@n8n/db/src/repositories/tag.repository.ts
+  s_f2e7acc401d88b::t_02bdb1fd5fd020 81
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_f2e7acc401d88b::t_b9e65106c7a292 11
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_f2e7acc401d88b::t_268a6a0d3f28e0 522,524-525,550
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_f2e7acc401d88b::t_04a6d5ae1aa177 84-87
+  s_f2e7acc401d88b::t_3d393a58c63a43 3
+  s_f2e7acc401d88b::t_4e2f0b85d97c45 132
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_f2e7acc401d88b::t_d853118a2fab76 47
+  s_f2e7acc401d88b::t_007424f3a20c89 6
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_f2e7acc401d88b::t_c951477446efef 38-40
+  s_f2e7acc401d88b::t_aa8020f88e5420 144,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a873feb5cbb08d484c03e40f7dc6f351a873dfce",
+  "prompts": {},
+  "sessions": {
+    "s_f2e7acc401d88b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc81e09b-56c0-4298-980d-617e84f5e6aa",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

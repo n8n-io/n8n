@@ -1,0 +1,55 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/fill-workflow-parameters.service.test.ts
+  s_e16ee6ac4c0acf::t_464a3e0619b4b8 207,211-231
+  s_e16ee6ac4c0acf::t_7c72edd5be277b 194
+  s_e16ee6ac4c0acf::t_190217e2aac173 166-169
+  s_e16ee6ac4c0acf::t_ea1f7e59330a95 232-233
+packages/@n8n/instance-ai/src/tools/workflows/plan-workflow-skeleton.tool.ts
+  s_e16ee6ac4c0acf::t_07bc1c28550a7b 4-9,15,17,26,28-30,33-44
+packages/@n8n/instance-ai/src/tools/workflows/fill-workflow-parameters.service.ts
+  s_e16ee6ac4c0acf::t_e6919c89e8eca5 358-368
+  s_e16ee6ac4c0acf::t_785c7812430e6a 315-316,322-328
+packages/@n8n/instance-ai/src/tools/workflows/fill-workflow-parameters.tool.ts
+  s_e16ee6ac4c0acf::t_31298a9efdc4ad 24-30
+  s_e16ee6ac4c0acf::t_27977ba5e48fef 32-35
+  s_e16ee6ac4c0acf::t_9d30a8db614b63 4-9
+  s_e86ede051f7b82::t_383be5b9c06d72 31
+packages/@n8n/instance-ai/src/tools/workflows/fill-workflow-parameters.schema.ts
+  s_e16ee6ac4c0acf::t_3609a8ce25342c 51,53-54
+packages/@n8n/instance-ai/src/tools/workflows/workflow-skeleton.schema.ts
+  s_e16ee6ac4c0acf::t_bf10fd01aba9de 89-92
+  s_e16ee6ac4c0acf::t_fad8b534a21bfa 98
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_e16ee6ac4c0acf::t_5f5373aaa34729 37-39,41-44,46
+  s_e16ee6ac4c0acf::t_5aa0d93bc0d436 6-13
+  s_e16ee6ac4c0acf::t_820a238ac02c22 207-222
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/validate-skeleton.service.test.ts
+  s_e16ee6ac4c0acf::t_c31fef0f440dca 7-12
+  s_e16ee6ac4c0acf::t_3f9512368cd74e 5
+  s_e16ee6ac4c0acf::t_4387010c85bced 437,439-444,446,451,455
+  s_e16ee6ac4c0acf::t_b7ac11140c3c32 435-436,438,445,447-450,452-454,456-458
+  s_e16ee6ac4c0acf::t_25bf3446ab29a3 459-461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "124056e8b00983094ff72e9ed0d5e94facfd22f0",
+  "prompts": {},
+  "sessions": {
+    "s_e16ee6ac4c0acf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40978899-e064-4f0f-9c3d-1ee8c69f6604",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_e86ede051f7b82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43b47ef3-65b8-4377-9eec-111d69aa6bbc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

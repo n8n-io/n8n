@@ -1,0 +1,40 @@
+packages/@n8n/config/test/config.test.ts
+  s_25663cc1cff559::t_501dde6f9b1c81 541
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_25663cc1cff559::t_b3803cf5e384a9 207,339,348
+  s_25663cc1cff559::t_a5c564b842890c 298-300
+  s_25663cc1cff559::t_a8f457497542fc 292-297,301-330
+  s_25663cc1cff559::t_f3d4fbd0e7a0d0 39-42,56-59
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_25663cc1cff559::t_629c6ddbeffab4 130
+  s_25663cc1cff559::t_a75d1f86d689ee 121-122
+  s_25663cc1cff559::t_0b9a43007a80e4 160
+  s_25663cc1cff559::t_b41dab61004e70 59-61
+  h_32d8cd6a0d6aad 5-9
+  s_25663cc1cff559::t_dfcadc628ce8ad 4
+  s_25663cc1cff559::t_b57ff6076fc598 248-267
+packages/@n8n/config/src/configs/executions.config.ts
+  s_25663cc1cff559::t_4a59e2056dec98 169-170,172-173,175-178,184-193
+  s_25663cc1cff559::t_9eea118aad4f67 182-183,194-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a9f38ae5c4950b77286f627b75aa1c69861b2865",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_25663cc1cff559": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da4dc808-c5ce-4f69-a4fa-4ef4ba615417",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

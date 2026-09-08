@@ -1,0 +1,39 @@
+.claude/plugins/n8n/agents/autodev-planner.md
+  s_f66990a2360b6f::t_66cb4840af06ef 10-11
+  s_f66990a2360b6f::t_4169fab27913ca 14
+.claude/plugins/n8n/skills/dev-flow/SKILL.md
+  s_f66990a2360b6f::t_56fa38e04f509c 171,175-181
+  s_f66990a2360b6f::t_16b11b1e1eba48 81-84
+  s_f66990a2360b6f::t_97cfd830ed326e 156,158-163
+  s_f66990a2360b6f::t_910c8f96d0194d 194-197
+.claude/plugins/n8n/agents/autodev-conventions-reviewer.md
+  s_f66990a2360b6f::t_725b67e37c1ada 10
+.claude/plugins/n8n/agents/autodev-plan-reviewer.md
+  s_f66990a2360b6f::t_17c2d7854f4d9d 12,14-15
+.claude/plugins/n8n/agents/autodev-architecture-reviewer.md
+  s_f66990a2360b6f::t_09404a035b3055 10
+.claude/plugins/n8n/agents/autodev-implementer.md
+  s_f66990a2360b6f::t_afb4e1177bc5a5 3
+  s_f66990a2360b6f::t_5158b5fa43c89e 14
+.claude/plugins/n8n/agents/autodev-security-reviewer.md
+  s_f66990a2360b6f::t_e02f2dc2c26f82 3
+.claude/plugins/n8n/agents/autodev-test-reviewer.md
+  s_f66990a2360b6f::t_cdcac4f0c6a10b 3
+  s_f66990a2360b6f::t_29b37c066e62b9 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "133f524bd67505fa684ffa8e2bd054ac562b24a7",
+  "prompts": {},
+  "sessions": {
+    "s_f66990a2360b6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "afb9c0f9-d6c5-4898-b621-d18b6a59eb7e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

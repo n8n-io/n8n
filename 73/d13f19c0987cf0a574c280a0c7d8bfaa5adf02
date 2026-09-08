@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_105436d80ea964::t_7c076e9fce4173 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "73d13f19c0987cf0a574c280a0c7d8bfaa5adf02",
+  "prompts": {},
+  "sessions": {
+    "s_105436d80ea964": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cc5b121b-fd72-43b0-8602-1a6817de87b8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

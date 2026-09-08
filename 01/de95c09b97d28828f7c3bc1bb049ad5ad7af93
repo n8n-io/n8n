@@ -1,0 +1,49 @@
+.github/WORKFLOWS.md
+  s_d8ed300529e078::t_9134852db85794 182
+.github/workflows/util-sync-api-docs.yml
+  s_d8ed300529e078::t_799b63fbfe7c23 12-17,42-46,116-119
+packages/@n8n/api-types/src/dto/data-table/list-data-table-query.dto.ts
+  s_d8ed300529e078::t_198ef56fc78dca 64-65
+packages/@n8n/api-types/src/dto/data-table/public-api-create-data-table.dto.ts
+  s_d8ed300529e078::t_0dbd8f3ff85929 9,12-17
+packages/@n8n/api-types/src/schemas/data-table.schema.ts
+  s_d8ed300529e078::t_452888d8ee01e1 7-12,29-33
+packages/cli/package.json
+  s_d8ed300529e078::t_0e77bf66b6fa7a 130
+packages/cli/scripts/build.mjs
+  s_d8ed300529e078::t_de49c24575be75 3,24-28,67-90
+packages/cli/src/public-api/v1/handlers/data-tables/spec/schemas/createDataTableRequest.generated.yml
+  s_d8ed300529e078::t_07571da1f611e4 7,16-18,21-25,27-28,32-36,39-40
+packages/cli/src/public-api/v1/openapi-gen/data-tables.path.ts
+  s_d8ed300529e078::t_8944644e36347b 1-152
+packages/cli/src/public-api/v1/openapi-gen/data-tables.schemas.ts
+  s_d8ed300529e078::t_1a8ca30e791fe8 1-15
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_d8ed300529e078::t_412d017c26706d 1-108
+packages/cli/src/public-api/v1/openapi-gen/zod-extend.ts
+  s_d8ed300529e078::t_5a44b766f98890 1-8
+packages/cli/src/public-api/v1/openapi.yml
+  s_d8ed300529e078::t_eead5b04e21beb 137
+pnpm-lock.yaml
+  s_d8ed300529e078::t_cef0da8e8dffdf 48-50,3869-3871,6956-6960,19056-19058,22593-22597,22882-22886,37931-37934,42226-42227
+pnpm-workspace.yaml
+  s_d8ed300529e078::t_48425151784a9c 22
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.generated.yml
+  s_d8ed300529e078::t_564875b024d397 5-6,8-10,12-14,16,18-20,22,24-40,47,49,51,56-57,59-63,69,74,76-81,85-86,88-91,98,100,102,104,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "01de95c09b97d28828f7c3bc1bb049ad5ad7af93",
+  "prompts": {},
+  "sessions": {
+    "s_d8ed300529e078": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecbddea-2084-4432-846e-23aea5392cb3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

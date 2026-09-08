@@ -1,0 +1,23 @@
+packages/cli/src/task-runners/task-broker/task-broker.service.ts
+  s_f92fcf69681560::t_66bd70f9cb7892 16,711,734-739,848-849
+packages/cli/src/task-runners/task-broker/__tests__/task-broker.service.test.ts
+  s_f92fcf69681560::t_66bd70f9cb7892 1505-1534
+packages/cli/src/task-runners/task-broker/errors/task-requester-accept-timeout.error.ts
+  s_f92fcf69681560::t_66bd70f9cb7892 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "abf9da7da657d89a3eda06bc22e9b6e13315200e",
+  "prompts": {},
+  "sessions": {
+    "s_f92fcf69681560": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84e70c92-808f-49ec-bff2-eee25cb54df5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

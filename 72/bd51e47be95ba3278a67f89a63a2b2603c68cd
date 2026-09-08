@@ -1,0 +1,31 @@
+packages/@n8n/mcp-browser-extension/src/ui/App.vue
+  h_44f8d1c0f2f8c4 47
+packages/@n8n/mcp-browser-extension/src/relayConnection.ts
+  s_2a64d569f7fd95::t_af71d2b6f62d07 107-108
+  s_2a64d569f7fd95::t_69c56a6d6e18db 225-237,242
+  s_2a64d569f7fd95::t_9504dbced1ed77 92
+  h_44f8d1c0f2f8c4 56
+packages/@n8n/mcp-browser-extension/src/relayConnection.test.ts
+  s_2a64d569f7fd95::t_0f811af8807d42 883-927
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.11",
+  "base_commit_sha": "72bd51e47be95ba3278a67f89a63a2b2603c68cd",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2a64d569f7fd95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee9bcf49-2aeb-4b3f-b6cb-15acc1d3f9e1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

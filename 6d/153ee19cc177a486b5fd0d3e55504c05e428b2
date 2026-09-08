@@ -1,0 +1,30 @@
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_8d71fa9445439e::t_b31db99c7e6746 1-23
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-trigger-resource.resolver.ts
+  s_8d71fa9445439e::t_cd16d285308e42 10
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-resource.resolver.api.test.ts
+  s_8d71fa9445439e::t_c9802be28a9deb 106
+  s_8d71fa9445439e::t_72d43407dbee8f 1-105,107-325
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-test-trigger-resource.resolver.api.test.ts
+  s_8d71fa9445439e::t_b2fad4cb1ce401 1-58,63-100,102-157,159-226,228-231,233-255
+  s_8d71fa9445439e::t_0216003dc57a42 59-62
+  s_8d71fa9445439e::t_1927cc59184fef 101
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-test-trigger-resource.resolver.ts
+  s_8d71fa9445439e::t_54484e6e450f91 4-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "6d153ee19cc177a486b5fd0d3e55504c05e428b2",
+  "prompts": {},
+  "sessions": {
+    "s_8d71fa9445439e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "678a72e2-2d44-40e8-8fe8-c4285e6dac88",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 10,14-16,101-105,115-138
+  s_2f83ef0d3e33ed::t_d9c295ccba7829 11-13,24-30,59-61,64-68,78,84-100,106-114,141-176
+  s_d20909b0237a08::t_bb0eaa5b4f4509 17-23,34-58
+  s_2f83ef0d3e33ed::t_1efbe79465da62 31-33
+  s_2f83ef0d3e33ed::t_dee33ac224ec45 62-63
+  s_d20909b0237a08::t_42febc05ac2976 69-70,77
+  h_8fb27e0cdf6d1e 71-73
+  s_d20909b0237a08::t_2bda04ebf3b612 74-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9db93c6a39de22de8eb269d13b1dbf8858f3044f",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_2f83ef0d3e33ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "173765c5-38e5-4034-a7cd-a7997e9647c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_7c1c7ec71930c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d7fc7e7-0e7e-49e9-aae9-8f8e45f4cb6b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_d20909b0237a08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ce15469-7e3b-47c9-81ba-0d5287f2fa22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

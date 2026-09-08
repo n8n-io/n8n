@@ -1,0 +1,62 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_91c597c7193a8c::t_637baff6275809 1452-1455,1467-1481
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentThreadsApi.test.ts
+  s_91c597c7193a8c::t_637baff6275809 5-10,27-31,41-58
+  s_91c597c7193a8c::t_86ef57fc822623 59-60
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_91c597c7193a8c::t_637baff6275809 5,11,23,30,34-35,39-43,46-47,52-55,77
+  s_91c597c7193a8c::t_6abf7a32dfa7f3 81-84,101,108-112,157-164,199,207,215
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_91c597c7193a8c::t_637baff6275809 819,822-823,835,843-849,854-865
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_91c597c7193a8c::t_637baff6275809 8,247-426,428
+  s_91c597c7193a8c::t_5f86d33f6f7504 427
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_91c597c7193a8c::t_637baff6275809 4,8-12,29-36,40-49,55,102-141
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_91c597c7193a8c::t_637baff6275809 27,33-55,126,128-138
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_91c597c7193a8c::t_3df4c2b45d30fe 1-270
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_91c597c7193a8c::t_637baff6275809 14-18,202-204
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsFilter.spec.ts
+  s_91c597c7193a8c::t_6494f1ad8c13d8 1-70
+packages/frontend/editor-ui/src/features/agents/__tests__/agentSessions.store.spec.ts
+  s_91c597c7193a8c::t_5f80c7a9109ebf 1-130
+packages/cli/src/modules/agents/agent-session.types.ts
+  s_91c597c7193a8c::t_f0b259c0b1fe53 1-20
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_91c597c7193a8c::t_637baff6275809 5,118-120,127-143
+  s_91c597c7193a8c::t_f9bb7abc8633c0 144-145
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_91c597c7193a8c::t_637baff6275809 1-5,41-67
+  s_91c597c7193a8c::t_b4bb1f6bbe7b8a 68
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_91c597c7193a8c::t_637baff6275809 17,21,79,507,514,522,526,536,616-622
+  s_91c597c7193a8c::t_cf0c56397f9790 623-624
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_91c597c7193a8c::t_637baff6275809 9-14,53-56,104-118,232-239,244-246,263,265-268,270-271,273,276,328-332,406
+  s_91c597c7193a8c::t_dbf3cf83860f99 407-410
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_91c597c7193a8c::t_637baff6275809 17,24,32,54-59,79-84,103-105,112,116-124,182,190,194,199,216-217,256-262,266,271-288,297
+  s_91c597c7193a8c::t_16537cec7d30c0 289-296,298
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_91c597c7193a8c::t_800ed66ad98dfa 202
+  s_91c597c7193a8c::t_637baff6275809 2,4,6,108,110-115,117-146,149,160-201,203-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f03b8ca0327bdc4cffcba72ea9464fe3439579f9",
+  "prompts": {},
+  "sessions": {
+    "s_91c597c7193a8c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7122e3e1-00de-42c5-8307-a90549fc03e2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

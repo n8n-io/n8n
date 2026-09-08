@@ -1,0 +1,91 @@
+packages/cli/src/workflows/workflows.controller.ts
+  s_72c7aad84440f3::t_5344200f320ca0 522
+  s_72c7aad84440f3::t_784628cd3afb0e 19
+  s_72c7aad84440f3::t_fe329e322d11ae 91
+  s_72c7aad84440f3::t_1460bd18d7aee3 451,458
+  s_72c7aad84440f3::t_39decdb9c6f022 544-549
+packages/cli/src/workflow-execute-additional-data.ts
+  s_72c7aad84440f3::t_3de9b239e8d58a 707
+  s_72c7aad84440f3::t_6dd92f68cc0197 665,673
+packages/@n8n/api-types/src/dto/workflows/activate-workflow.dto.ts
+  s_72c7aad84440f3::t_81eba4a9fcebbd 14
+single-instance-promotion-prototype/implementation-phase/TASK_2_RESULT_SUMMARY.md
+  h_c63dce324dfc7b 1-14
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  h_c63dce324dfc7b 207,415
+packages/@n8n/db/src/repositories/index.ts
+  s_72c7aad84440f3::t_6329e79584347b 52
+packages/workflow/src/interfaces.ts
+  s_72c7aad84440f3::t_597fc342fe0b2c 3229
+  s_72c7aad84440f3::t_a82c9a0f4cc98c 3369
+packages/frontend/editor-ui/src/features/environments/environments.store.ts
+  s_72c7aad84440f3::t_91b8c8447a2d50 16-21,52-75,80-81,86-87
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowPublishModal.vue
+  s_72c7aad84440f3::t_c779daf734c3da 31
+  s_72c7aad84440f3::t_2021b19c142103 40-41,44
+  s_72c7aad84440f3::t_2fd50e56dd80fa 368-387
+  s_72c7aad84440f3::t_0ab98f4ee3e172 99,101,219
+  s_72c7aad84440f3::t_6fcbd9b9a7dafa 210,216,421,423-463
+  s_72c7aad84440f3::t_c9cfcdc8ec68ff 102-104
+packages/@n8n/db/src/repositories/workflow-published-environment-version.repository.ts
+  s_72c7aad84440f3::t_e3e75663d2094e 1-41
+packages/frontend/editor-ui/src/app/composables/useRunWorkflow.ts
+  s_72c7aad84440f3::t_6b3b572c65291f 2
+  s_72c7aad84440f3::t_f85e6b56aca1a0 90
+  s_72c7aad84440f3::t_ff89c652a155d9 396
+packages/cli/src/workflows/workflow.service.ts
+  s_72c7aad84440f3::t_0e441e40c1c202 763,807-815
+  s_72c7aad84440f3::t_d183f893c681ff 13
+  s_72c7aad84440f3::t_c86357dfeb62c5 93
+packages/frontend/editor-ui/src/features/environments/components/EnvironmentSelector.vue
+  s_72c7aad84440f3::t_eabc92e13e1455 4,8,10-11,13-20,22-23
+  s_72c7aad84440f3::t_d31aad895a2972 2
+  s_72c7aad84440f3::t_0ae27c8e6586f9 3,9
+  s_72c7aad84440f3::t_c9848bd7c5cd4f 1,5-7,12,21,24-28
+packages/@n8n/db/src/entities/index.ts
+  s_72c7aad84440f3::t_c5a1cffaeb2adc 144
+  s_72c7aad84440f3::t_766aa7009b49d3 51
+  s_72c7aad84440f3::t_a5dc061c3352ec 95
+packages/frontend/@n8n/rest-api-client/src/api/projectEnvironments.ts
+  s_72c7aad84440f3::t_b1b92f2753b254 47-65,69
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_72c7aad84440f3::t_cc86601cdf75d3 87
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_72c7aad84440f3::t_0f8f1cecd2737b 86,347
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_72c7aad84440f3::t_ed19d62d981076 168,186,209,225
+  s_72c7aad84440f3::t_494329977229b2 121
+packages/cli/src/workflows/workflow.request.ts
+  s_72c7aad84440f3::t_bd84972472e32b 91
+packages/cli/src/workflow-runner.ts
+  s_72c7aad84440f3::t_9011351e09867b 372
+packages/frontend/editor-ui/src/app/stores/workflows.store.ts
+  s_72c7aad84440f3::t_db7e93ee050072 465-466,471-472
+packages/frontend/editor-ui/src/Interface.ts
+  s_72c7aad84440f3::t_3af04c16ec5d49 207
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  h_c63dce324dfc7b 214,431
+packages/@n8n/db/src/entities/workflow-published-environment-version.ts
+  s_72c7aad84440f3::t_7642da455d3ac6 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "07fbdcc234b5eee8532d4789bbd56d13b68f4ffd",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_72c7aad84440f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75f2441b-f5e6-4eb4-8ec2-6cdd632fe890",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

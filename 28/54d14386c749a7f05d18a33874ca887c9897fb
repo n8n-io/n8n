@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Compression/decompress/BoundedUnzip.ts
+  s_a3cb62373505cb::t_8310eea1357614 2-3,8,27-38,44,46-51
+  s_a3cb62373505cb::t_a3f5f48b64ea53 43
+packages/nodes-base/nodes/Compression/test/node/BoundedUnzip.test.ts
+  s_a3cb62373505cb::t_022646f28b13ee 326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2854d14386c749a7f05d18a33874ca887c9897fb",
+  "prompts": {},
+  "sessions": {
+    "s_a3cb62373505cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02e4f4f6-3ca9-454b-8b69-6f7ef4d9eb93",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

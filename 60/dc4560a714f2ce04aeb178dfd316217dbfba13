@@ -1,0 +1,20 @@
+scripts/build-n8n.mjs
+  s_82029241289295::t_725c53886c298e 26-27
+  s_82029241289295::t_67ac571fce4e3d 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "60dc4560a714f2ce04aeb178dfd316217dbfba13",
+  "prompts": {},
+  "sessions": {
+    "s_82029241289295": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ff8bef7-44df-43fc-b7fe-52a1f3a099b5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

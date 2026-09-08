@@ -1,0 +1,14 @@
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  h_32d8cd6a0d6aad 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0966c42958ad86f38fe5cd31b7efaf5323ad1d1",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

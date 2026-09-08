@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_8e3688b349dbe7::t_63948252731f81 135-138
+  s_8e3688b349dbe7::t_a6a28e912f3e1a 1,7-9
+  s_8e3688b349dbe7::t_8d3628b4e224ab 10
+packages/@n8n/api-types/src/agents/agent-config-lifecycle.ts
+  s_8e3688b349dbe7::t_15ebb2263fe687 9
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_8e3688b349dbe7::t_93a518a955803e 1015-1026
+  s_8e3688b349dbe7::t_5d6a745c7e010a 1012-1014
+  s_8e3688b349dbe7::t_d6856867c0dea6 1006-1011
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2516d05cb4e90e03ac8168f4c3467e11b5b9b192",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8e3688b349dbe7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "73258e85-5506-4ce0-8183-970358ca7f6c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

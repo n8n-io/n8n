@@ -1,0 +1,20 @@
+packages/frontend/@n8n/design-system/src/__tests__/setup.ts
+  s_dae7b98fe363b1::t_aec103a5962c68 3,9-22
+  s_dae7b98fe363b1::t_738ad0861ca2ba 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4a7cd5e4097068084dfc305dc3497612c2a5bfbe",
+  "prompts": {},
+  "sessions": {
+    "s_dae7b98fe363b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27a54e1f-8deb-445a-9fae-240739c76bab",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

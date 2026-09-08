@@ -1,0 +1,46 @@
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_b9ebde5ebc00ba::t_1cd8bd4e437777 1,8,16
+  s_b9ebde5ebc00ba::t_74742ef5564b55 123
+  s_b9ebde5ebc00ba::t_93b19858e4eb2a 162
+  s_b9ebde5ebc00ba::t_5b4a488fb50177 124-140,142-161,163-176
+  s_b9ebde5ebc00ba::t_dcc30c80718691 249,270-273
+  s_b9ebde5ebc00ba::t_cfe6222e1d5154 141
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_b9ebde5ebc00ba::t_ffceccd9ce76fe 920-929
+  s_b9ebde5ebc00ba::t_2e5061d45cbad6 1030-1036,1044-1050
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_b9ebde5ebc00ba::t_7c7c516edc95fa 39-40,50-59,61-75,79,81-82,85-87,95-102
+  s_b9ebde5ebc00ba::t_d702630da53f09 76,83,88-94,105,111,115-118,120-122,133,140,144-150
+  s_b9ebde5ebc00ba::t_bc92e9fd0fcd24 77-78,80,84
+  s_b9ebde5ebc00ba::t_59c0b5390d36ac 8
+  s_b9ebde5ebc00ba::t_cab059a48b9a65 106-110,112-114,119,123-132,134-139,141-143,151-159
+  s_b9ebde5ebc00ba::t_74fab103df4aa8 9
+  s_b9ebde5ebc00ba::t_af326b77b42d21 1,6
+  s_b9ebde5ebc00ba::t_b30985af349b35 60
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_b9ebde5ebc00ba::t_0f5cea236757fb 11
+  s_b9ebde5ebc00ba::t_1a4ceb209b6a3d 219-225
+  s_b9ebde5ebc00ba::t_4a68dd51b1d843 334-342
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_b9ebde5ebc00ba::t_e16129cfd38438 161
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_b9ebde5ebc00ba::t_88b052a06a6861 142-147
+  s_b9ebde5ebc00ba::t_328274ae1ad22d 162
+  s_b9ebde5ebc00ba::t_70cf2fb61713aa 161,163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a303e212d0d9e2b14c12edc3ea2dc5e134511257",
+  "prompts": {},
+  "sessions": {
+    "s_b9ebde5ebc00ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a1339cc-ffc0-4c67-9927-7f58b5b5cdcd",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

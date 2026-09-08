@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/ConnectionsCard.test.ts
+  s_53c8de4ace3cfc::t_1ab7ff628378a5 154-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "76ba2a8d3d3645828405f0d2ff1e06b2748365f7",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_53c8de4ace3cfc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccee9d50-3da4-4b03-9909-29276bbd0483",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

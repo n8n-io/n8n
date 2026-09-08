@@ -1,0 +1,202 @@
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useBuildManually.ts
+  s_0ecd32d98e3b48::t_4458efb6b7b64c 1-28
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0ecd32d98e3b48::t_4216d991e2f4df 1244,1250-1251,1253
+  s_0ecd32d98e3b48::t_ab0db2120736b2 1245
+  s_0ecd32d98e3b48::t_a70b90c44478be 1246
+  s_0ecd32d98e3b48::t_1128c5c2421e3c 1247-1248
+  s_0ecd32d98e3b48::t_4cc9189f11bb2b 1249
+  s_0ecd32d98e3b48::t_77eac37776a8ac 1252
+  s_0ecd32d98e3b48::t_764f1ff0855837 1254
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiPreviewCanvas.vue
+  s_0ecd32d98e3b48::t_4947759f7257e7 1-45,47-281,290-293,296-297,299-310,312-327,329-475,477-521
+  s_0ecd32d98e3b48::t_32b5e867d0dfc2 46
+  s_0ecd32d98e3b48::t_262a71ab744f2a 282-289
+  s_0ecd32d98e3b48::t_a09f541ac6b040 294-295
+  s_0ecd32d98e3b48::t_c5e265285d00b1 298
+  s_0ecd32d98e3b48::t_bc4824de573ad3 311
+  s_0ecd32d98e3b48::t_07f1b3e9ffdc03 328
+  s_0ecd32d98e3b48::t_bfa76b178bbf30 476
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useInstanceAiSplitEmptyStateExperiment.test.ts
+  s_0ecd32d98e3b48::t_96087a9e55f33f 1-11,17,20-22,38
+  s_0ecd32d98e3b48::t_d2acbb2a643cc5 12-13,18-19
+  s_0ecd32d98e3b48::t_242e0cf94dfbbe 14-15
+  s_0ecd32d98e3b48::t_a38e523aca6b1c 16,34
+  ai_agent 23-33,35-37
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_0ecd32d98e3b48::t_c0f21cc71936ed 8
+  s_0ecd32d98e3b48::t_5dd2dc126666fa 36-37,39-40
+  s_0ecd32d98e3b48::t_edccf28671ad41 38
+  s_0ecd32d98e3b48::t_583da6b01a39cc 59-60
+  s_0ecd32d98e3b48::t_2d19e21e16183d 61-63
+  s_0ecd32d98e3b48::t_d56b247ac75d74 64
+  s_0ecd32d98e3b48::t_ffa018ade2db6e 74
+  s_0ecd32d98e3b48::t_7b8bed5b110f26 83-84
+  s_0ecd32d98e3b48::t_f1751a685929ad 85-86
+  s_0ecd32d98e3b48::t_410a24361b580d 87-89
+  s_0ecd32d98e3b48::t_969e1918cda915 90-92,94,96
+  s_0ecd32d98e3b48::t_84b359bb06f513 93,95
+  s_0ecd32d98e3b48::t_89a6e9e513b446 210-213
+  s_0ecd32d98e3b48::t_7f31da64772b11 214-223
+  s_0ecd32d98e3b48::t_af8fd1f20e2b43 228
+  s_0ecd32d98e3b48::t_7c64d57092a8c6 258,260,263,266,270,276-288,292-293,296-302
+  s_0ecd32d98e3b48::t_28fc0216719c3c 259,262,268
+  s_0ecd32d98e3b48::t_9ad79405f46a38 261
+  s_0ecd32d98e3b48::t_7b7afd9727e1d9 264
+  s_0ecd32d98e3b48::t_7fda826b554c02 265
+  s_0ecd32d98e3b48::t_9ca7c76b2c2e54 267,269
+  ai_agent 271-275
+  s_0ecd32d98e3b48::t_7789621ee06e33 289
+  s_0ecd32d98e3b48::t_1931e9a9b1455d 290
+  s_0ecd32d98e3b48::t_f195bbd9538e69 291
+  s_0ecd32d98e3b48::t_77197b6c1b3116 294-295
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_0ecd32d98e3b48::t_c02a939b823807 15
+  s_0ecd32d98e3b48::t_41837f694a7d66 33,77,83,86,89-95,103,106-108,110,112-124,126,284,347-348,356-357,359,368,381,391,396,405,425
+  s_0ecd32d98e3b48::t_a15de9d5ba9369 74
+  s_0ecd32d98e3b48::t_5a268083c34c0b 75,96-97,100-102,104-105,109,111,125,127-129
+  s_265265b3d7ec5f::t_87b709135a919c 76,78-79
+  s_0ecd32d98e3b48::t_909964993aafff 80-81,85,87-88,130-132
+  s_0ecd32d98e3b48::t_850fd42c90e6b7 82
+  s_0ecd32d98e3b48::t_84e0a2841d8e6b 84
+  s_0ecd32d98e3b48::t_0cfdcf70f1c969 98
+  s_0ecd32d98e3b48::t_514a98671567d1 99
+  s_0ecd32d98e3b48::t_2b5455ff8d0c9a 133
+  s_0ecd32d98e3b48::t_8a566cbc88f66e 176
+  s_0ecd32d98e3b48::t_bf52c77197d047 179
+  s_0ecd32d98e3b48::t_e915597cb2bbec 205-207
+  s_0ecd32d98e3b48::t_51de5449f9cf07 221
+  s_0ecd32d98e3b48::t_73e8ef39141aeb 349-353,414-415,417-424,426-433
+  s_0ecd32d98e3b48::t_95fcde4948b3db 354-355,358,360
+  s_0ecd32d98e3b48::t_b6775a7e538d3c 361-364
+  s_0ecd32d98e3b48::t_33d879f6c938b6 365-366,390,392-395,397-404,406-413
+  s_0ecd32d98e3b48::t_0a469585e3d7d7 367,369-380,382-389
+  s_0ecd32d98e3b48::t_3c5d64371ab877 416
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/CyclingPreviewCanvas.vue
+  s_0ecd32d98e3b48::t_5427d7efadc948 1,4-25,27-36,38-49,51-53,55,63-71,94-106,116-129,131-132,135,137-138,140-141,143-145,147-173
+  s_0ecd32d98e3b48::t_a69fa7780f3fc1 2,26
+  s_0ecd32d98e3b48::t_ca770178ce1dee 3
+  s_0ecd32d98e3b48::t_da06e7cf420a3d 37,54,72-93
+  s_0ecd32d98e3b48::t_15b50dfe4ade03 50
+  s_0ecd32d98e3b48::t_1b9073c18bb91e 56-58,62
+  ai_agent 59-61
+  s_0ecd32d98e3b48::t_de054ea402dca3 107-115,130,133-134,136,139,142,146
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiPreviewCanvas.test.ts
+  s_0ecd32d98e3b48::t_5aeb41f23d26aa 1-25,28-29,33-34
+  s_0ecd32d98e3b48::t_115be3f02843a6 26-27,30-32
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_0ecd32d98e3b48::t_fd8a53e1e9a782 118-119,124-125
+  s_0ecd32d98e3b48::t_a520a41adf6b1c 120-123
+  s_0ecd32d98e3b48::t_5b6426f817d22e 156
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiSplitEmptyState.test.ts
+  s_0ecd32d98e3b48::t_f3a12b4179032e 1,3-4,6,8-9,15-17,19-22,54-55,59-65,69-70,74,77,81,85,186,189-190,199
+  s_0ecd32d98e3b48::t_f4c90a65133191 2,7,10,18,23-53,56-58,66,68,71-73,75-76,78-80,82-84,86,88,90,92-94,97,101-104,106,108-109,112,116-127,129-131,133-144,146,148-153,155-156,159,161-165,168-177,180-181,187,192-193,195,197
+  s_0ecd32d98e3b48::t_3dc08b1a7df96c 5
+  s_265265b3d7ec5f::t_fb26b944fa3659 11-14
+  s_265265b3d7ec5f::t_4f7152142c022a 67
+  s_0ecd32d98e3b48::t_17eb4aa9894492 87,105,110-111
+  s_0ecd32d98e3b48::t_1fe542fca81945 89
+  s_0ecd32d98e3b48::t_fc9df1e7d8e3c5 91
+  s_0ecd32d98e3b48::t_09d299cf72eb63 95,107
+  s_0ecd32d98e3b48::t_e9553120c555ca 96
+  ai_agent 98-100,113-115,145,158
+  s_0ecd32d98e3b48::t_54e4eed73cc058 128,154,157,166-167
+  s_0ecd32d98e3b48::t_4d74d2b4988f55 132,147
+  s_0ecd32d98e3b48::t_d38d976c515078 160
+  s_0ecd32d98e3b48::t_28ca0244fc16cc 178-179
+  s_0ecd32d98e3b48::t_9a162198c9f9c3 182-185,188
+  s_265265b3d7ec5f::t_ad6adefeb305bc 191
+  s_0ecd32d98e3b48::t_137f63fa256672 194,196,198
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/index.ts
+  s_0ecd32d98e3b48::t_efa51e738b411f 1-2
+  s_0ecd32d98e3b48::t_2f664efd905517 3
+  s_0ecd32d98e3b48::t_435febd49d496a 4-9
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useCyclingExamples.ts
+  s_0ecd32d98e3b48::t_43a0ff5fa8f89b 1-34,39-57
+  ai_agent 35-38
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/examples.ts
+  s_0ecd32d98e3b48::t_d8436d9ec85c8d 1-52
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_0ecd32d98e3b48::t_c00df5736eeedc 48-49
+  s_0ecd32d98e3b48::t_d4425ecbead651 50-53
+  s_0ecd32d98e3b48::t_649eea03486021 64
+  s_0ecd32d98e3b48::t_1a1488690e1100 65
+  s_0ecd32d98e3b48::t_b12fa5226dad6b 81
+  s_0ecd32d98e3b48::t_e05fc0740e1a7c 83
+  s_265265b3d7ec5f::t_87b709135a919c 84-86
+  s_0ecd32d98e3b48::t_1eec97d37e50f4 99-100
+  s_0ecd32d98e3b48::t_908f98347ca8c2 141-142
+  s_0ecd32d98e3b48::t_5840b90e461ebc 166,182,189,306
+  s_0ecd32d98e3b48::t_fbac075cc5b6ff 319,321-322
+  s_0ecd32d98e3b48::t_582742f2091d96 320
+  s_0ecd32d98e3b48::t_3210866667fbce 323-324
+  s_0ecd32d98e3b48::t_451c21fd34006d 399
+packages/frontend/editor-ui/src/experiments/utils.ts
+  s_0ecd32d98e3b48::t_02641d868303be 44
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/SuggestionList.vue
+  s_0ecd32d98e3b48::t_62e2899d80eb36 2-4,71-72,75,85,94-97,113-147,152,155-158,166,172-173,178,192,211-212,243
+  s_0ecd32d98e3b48::t_a844d3a9ec26fa 10-27,44-62,73,77-81,87-90,98-109,148-149,153-154,159-162,182,219-228,230-238
+  ai_agent 40-43
+  s_0ecd32d98e3b48::t_e816204b81db80 163
+  s_0ecd32d98e3b48::t_9c3ac712fc5415 167-170,181,193-199
+  s_0ecd32d98e3b48::t_8b1c24c47a6134 175,180,183-184
+  s_0ecd32d98e3b48::t_4f14bcffd2bef8 229
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiSplitEmptyState.vue
+  s_0ecd32d98e3b48::t_f73eff0be7eb61 1,4,14,23-24,28-30,65-68,73,89,101-105,109-110,112-116,119-124,132-133,138,149,156-159,161-166
+  s_0ecd32d98e3b48::t_b33b55f43fb163 2,7-8,10-11,13,19,21,27,32,37-64,81-82,84-86,90-91,93-100,111
+  s_265265b3d7ec5f::t_a0fad490522a61 3
+  s_0ecd32d98e3b48::t_b241284ca14d71 5,12,31,33-34,80
+  s_0ecd32d98e3b48::t_2c18ddc60983c5 6,9,15-18,20,22,25
+  s_0ecd32d98e3b48::t_051f4e22931b16 26
+  s_265265b3d7ec5f::t_030f701e2e4a5b 35-36
+  ai_agent 69-72
+  s_0ecd32d98e3b48::t_33e65c6bdb56e8 74-79,88
+  s_0ecd32d98e3b48::t_152dc5563212f4 83,87
+  s_265265b3d7ec5f::t_87b709135a919c 92
+  s_0ecd32d98e3b48::t_423de17a1ab5d3 106-107
+  s_265265b3d7ec5f::t_c07733e7962d0b 108
+  s_265265b3d7ec5f::t_ba1081c4eeb9e4 117-118,134-137,151-155
+  s_0ecd32d98e3b48::t_74b3dc39882eb9 125-131
+  s_0ecd32d98e3b48::t_1168502e8860a2 139-140,142-145,147-148,150
+  s_0ecd32d98e3b48::t_b01db4098444ee 141,146
+  s_0ecd32d98e3b48::t_37e618225c76ae 160
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/CyclingPreviewCanvas.test.ts
+  s_0ecd32d98e3b48::t_43174f2e2388f1 1-67
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/SuggestionList.test.ts
+  s_0ecd32d98e3b48::t_7daffce8c0c608 7-9,23-26,46-51,55-56,60-61,65-68,72-77,81-129,132-138,140,144,146-154
+  s_0ecd32d98e3b48::t_c099f82ffb9cfe 10-22,29,52,130-131,139,145,159
+  ai_agent 57-59,62-64,69-71,78-80,141-143
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useCyclingExamples.test.ts
+  s_0ecd32d98e3b48::t_8ed0604c374a07 1-92
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useInstanceAiSplitEmptyStateExperiment.ts
+  s_0ecd32d98e3b48::t_01d46e05b3dc0d 1-6,11,16
+  s_0ecd32d98e3b48::t_e11c30e8575750 7-10,12
+  s_0ecd32d98e3b48::t_873e2284a5e221 13
+  s_0ecd32d98e3b48::t_a6a89f17e31895 14-15
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useBuildManually.test.ts
+  s_0ecd32d98e3b48::t_5043381028a112 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "07ee570dd54b2e013645bb6befcce11010d529ce",
+  "prompts": {},
+  "sessions": {
+    "s_0ecd32d98e3b48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02ef8fce-68b7-4ab7-9259-b6efca1e0c07",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_265265b3d7ec5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2774dcd1-ea2d-45ec-ae51-09ddfeaeb5c2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

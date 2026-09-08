@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.ts
+  s_550c7bf33f188f::t_74055c2dcc40c4 12
+  s_550c7bf33f188f::t_5229ef5be3257d 40
+  s_550c7bf33f188f::t_aee05a70f548d9 48-75
+  s_550c7bf33f188f::t_af69255d711c98 360-361,364-365,371,373
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.test.ts
+  s_550c7bf33f188f::t_17a2f42996961f 194-237
+  s_550c7bf33f188f::t_3887134417d27c 1
+  s_550c7bf33f188f::t_cb2b1c8bd5253f 57
+  s_550c7bf33f188f::t_4e8d25f879c0d5 33
+  s_550c7bf33f188f::t_fbd72f9a91b4db 34-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "01219a8ea94cb8a4489a970c42b5af41ab517233",
+  "prompts": {},
+  "sessions": {
+    "s_550c7bf33f188f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d3978c2-1e01-4195-bc9f-6de514a8cfd4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

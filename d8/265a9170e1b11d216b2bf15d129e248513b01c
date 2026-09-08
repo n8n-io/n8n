@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/agents.service.ts
+  s_38acf4d2324cb1::t_12553f81487afb 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8265a9170e1b11d216b2bf15d129e248513b01c",
+  "prompts": {},
+  "sessions": {
+    "s_38acf4d2324cb1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7fb06a9-2b0d-49ec-b96c-d919ea3992e1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

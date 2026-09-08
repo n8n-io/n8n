@@ -1,0 +1,38 @@
+packages/@n8n/db/src/migrations/common/1784900752603-ReplaceAgentFileBinaryDataIdWithStoredAt.ts
+  s_701c3478d6707a::t_dab158640871b6 3-12,14-23,26-32,35,41-49,59-62,64-69,71-74,78,81-94,102-104,107-120,122-138
+  s_701c3478d6707a::t_e565121b46bfb1 75-77
+  s_701c3478d6707a::t_51f7e14fe038b0 95-101,105-106,121,139-145
+  s_701c3478d6707a::t_aadbc68c756af1 55
+  s_701c3478d6707a::t_169929f5a31580 146
+packages/cli/test/migration/1784900752603-replace-agent-file-binary-data-id-with-stored-at.test.ts
+  s_701c3478d6707a::t_23cf5dc8c30f95 14-19,87-130,136-152,159,161-174,176,178,181,187,194-195,197-198
+  s_701c3478d6707a::t_f9e6353bc73b44 13,199-200,204
+docs/generated/postgres-schema/README.md
+  s_701c3478d6707a::t_f69d8f1ac91f36 19,449
+docs/generated/postgres-schema/public.agent_files.md
+  s_701c3478d6707a::t_1ecc7dc0f99560 13,30,40,57
+docs/generated/postgres-schema/public.agents.md
+  s_701c3478d6707a::t_a3547c0f65364f 147
+docs/generated/sqlite-schema/README.md
+  s_701c3478d6707a::t_30ed059a276c59 19,436-437
+docs/generated/sqlite-schema/agent_files.md
+  s_701c3478d6707a::t_b8a1149e9db4a2 9,24-25,32,43,60-61
+docs/generated/sqlite-schema/agents.md
+  s_701c3478d6707a::t_e545e6b17a3339 150-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2d9e93a554b934026c77d96f7fd90e3b9bcdf39b",
+  "prompts": {},
+  "sessions": {
+    "s_701c3478d6707a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ff033f2c-41d7-434c-b328-ad4b53b50d81",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

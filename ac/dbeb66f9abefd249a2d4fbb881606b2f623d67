@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupLayout.test.ts
+  s_e3a9912565512d::t_043c8d769d4485 351-364
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.ts
+  s_e3a9912565512d::t_365289d4cd7bb7 256
+  s_e3a9912565512d::t_62882365cde95d 297
+  s_e3a9912565512d::t_ab60fa7649b424 126-140
+  s_e3a9912565512d::t_075b2439626c7e 272
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_e3a9912565512d::t_4599ec2f5c2a8e 128-130
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.test.ts
+  s_e3a9912565512d::t_8bf8ae47d48378 191-193,198-214,216-217
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupLayout.ts
+  s_e3a9912565512d::t_e401c630d0ba44 70,83-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "acdbeb66f9abefd249a2d4fbb881606b2f623d67",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e3a9912565512d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aef491bd-5afe-4ae4-942c-3159685aeffa",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

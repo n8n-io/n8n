@@ -1,0 +1,21 @@
+packages/@n8n/task-runner/src/js-task-runner/__tests__/require-resolver.test.ts
+  s_53b652b2acb8e5::t_63628f188c46f6 165-224
+packages/@n8n/task-runner/src/js-task-runner/require-resolver.ts
+  s_53b652b2acb8e5::t_52165c06eab913 29-45,50-65,69,72-74,77,79,82-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c8af2e0ca03fc521daa0cb7c42da4ba6b7d5c40a",
+  "prompts": {},
+  "sessions": {
+    "s_53b652b2acb8e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_53b652b2acb8e5",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mikerepec@pm.me>"
+    }
+  }
+}

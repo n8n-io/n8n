@@ -1,0 +1,26 @@
+packages/@n8n/task-runner/src/js-task-runner/__tests__/prototype-hardening.test.ts
+  s_a2b8a34da1fa34::t_a136914d807b8d 57,59-61,63
+  s_a2b8a34da1fa34::t_81931fcf0d451b 74
+  s_a2b8a34da1fa34::t_9bb8890461056a 1,4-9,11-12,16,93-95,97-100,104,106-107,119-120
+  s_a2b8a34da1fa34::t_efbb060162e717 2-3,18,24-25,29-31,33-34,38
+  s_a2b8a34da1fa34::t_66c952bf3f9f08 13-15,17,19,21-22,26-28,32,35-37,39,41,62,65-73,75-92,96,101-103,105,108-118
+  ai_agent 10,20,23,40,42-56,58,64
+packages/@n8n/task-runner/src/health-check-server.ts
+  ai_agent 4-6,13-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2e95b246610c6fd5689123b7e1206c567a95da1b",
+  "prompts": {},
+  "sessions": {
+    "s_a2b8a34da1fa34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee5d8116-82e8-409e-a432-c23310ffc13a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

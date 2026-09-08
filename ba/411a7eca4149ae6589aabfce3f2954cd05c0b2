@@ -1,0 +1,25 @@
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_66be2eb681ad3c::t_5b8a52d839edca 48,50-53
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_66be2eb681ad3c::t_068f88e50d1ca4 2,56,247
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_66be2eb681ad3c::t_1979ecb317bf4a 602-622
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_66be2eb681ad3c::t_068f88e50d1ca4 2,52,118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ba411a7eca4149ae6589aabfce3f2954cd05c0b2",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages/frontend/@n8n/stores/src/users.store.ts
+  h_c63dce324dfc7b 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "559ceffada188eccfc5bd7b0f069d359f70c7f55",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+packages/@n8n/scan-community-package/package.json
+  s_51cc314dd74007::t_80a5cdaa92c319 21-23
+packages/@n8n/scan-community-package/scanner/env-proxy.mjs
+  s_6e360942898e30::t_ebc934434d2daa 6-7,22-25,28
+  s_51cc314dd74007::t_4e6a4227ab8aa0 1-5,8-21,26-27,29-42
+pnpm-lock.yaml
+  ai_agent 3579-3587
+packages/@n8n/scan-community-package/scanner/env-proxy.test.mjs
+  s_6e360942898e30::t_51d2677bffc903 90-111
+  s_51cc314dd74007::t_704431cddf59b6 1-21,27-89,112-138
+  s_6e360942898e30::t_35657d7cf2b89f 22-26
+packages/@n8n/scan-community-package/scanner/scanner.mjs
+  s_51cc314dd74007::t_229a322a2e62b1 14,17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fdc353f3e057a2cb408b110203b74b2af84732bc",
+  "prompts": {},
+  "sessions": {
+    "s_51cc314dd74007": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e101b6f-161e-4acc-b93c-8733b20b060d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_6e360942898e30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e49f818e-927b-477a-8b5a-9c3d496ba19b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

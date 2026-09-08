@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue
+  s_eb091413c4d450::t_4c424390aa47e9 20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ee743606f9d8dc61850f934c96680db171d78745",
+  "prompts": {},
+  "sessions": {
+    "s_eb091413c4d450": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef580dc0-eabd-4847-b228-69b5f64af369",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

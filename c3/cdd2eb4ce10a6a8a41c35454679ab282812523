@@ -1,0 +1,14 @@
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  h_0ff5b37e8b04b1 118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c3cdd2eb4ce10a6a8a41c35454679ab282812523",
+  "prompts": {},
+  "humans": {
+    "h_0ff5b37e8b04b1": {
+      "author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+docs/superpowers/specs/2026-08-06-agent-workflow-tool-version-resolution-design.md
+  s_592a334806b52a::t_6bc3fdfae7d2a7 16-19,28-29,68,112
+  s_592a334806b52a::t_e09e6d0fd29e80 1-15,20-27,30-67,69-111,113-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b283883ae7ba048de63979e88782cacdf809a0f2",
+  "prompts": {},
+  "sessions": {
+    "s_592a334806b52a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fd67c-c5d6-7cc0-9a96-4ed4eac859ee",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,62 @@
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_c6a266640f10ab::t_6f68d4e0f2c839 159-200,213,360,394
+packages/cli/src/modules/agents/__tests__/agents-tools.service.test.ts
+  s_c6a266640f10ab::t_965d0e8621a40a 220-248
+packages/cli/src/tool-generation/__tests__/ai-tools.test.ts
+  s_c6a266640f10ab::t_ae2b69bac80e44 2,139-177
+  s_c6a266640f10ab::t_a55fc84792d4ab 178-179
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_c6a266640f10ab::t_76753073637d80 15-16,24-40
+  s_c6a266640f10ab::t_ca3e0bedf18103 142,151,158,161,163-168,171,174,179-185,193,203,228-237
+  s_c6a266640f10ab::t_25a37437f185a1 246,269,281,284-289,291,295,301-307,313-314
+  s_c6a266640f10ab::t_937c78833f6be0 41,238-239
+packages/cli/src/node-execution/node-tool-operation-support.ts
+  s_c6a266640f10ab::t_42a41eac2cbc6e 10-11
+  s_c6a266640f10ab::t_cb4a6cf3b40580 1-9
+packages/cli/src/tool-generation/ai-tools.ts
+  s_c6a266640f10ab::t_cb4a6cf3b40580 8-10,26-40
+  s_c6a266640f10ab::t_7c062cf6ecc0d9 41,56
+packages/cli/src/modules/agents/utils/__tests__/node-tool-validation.test.ts
+  s_c6a266640f10ab::t_965d0e8621a40a 1-48
+packages/cli/src/modules/agents/utils/node-tool-validation.ts
+  s_c6a266640f10ab::t_42a41eac2cbc6e 6-9,54-61
+packages/cli/src/modules/agents/agents-tools.service.ts
+  s_c6a266640f10ab::t_42a41eac2cbc6e 13-17,167-180
+  s_c6a266640f10ab::t_9159fdff8e720a 181-183
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_c6a266640f10ab::t_42a41eac2cbc6e 31-34,260
+  s_c6a266640f10ab::t_cb4a6cf3b40580 35,259
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_c6a266640f10ab::t_b4e016e00ccd42 216-218
+packages/cli/src/modules/agents/integrations/integration-tool-schema.ts
+  s_c6a266640f10ab::t_4483c80639a02c 41,61-66,71,74,79-83,131,134
+packages/cli/src/node-execution/__tests__/ephemeral-node-executor.test.ts
+  s_c6a266640f10ab::t_ae2b69bac80e44 247-252,254-260,262-265
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_c6a266640f10ab::t_204d74abeb1544 31-33,369-404,427-516,657-712,714-748
+  s_c6a266640f10ab::t_bb685890db1263 749
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_c6a266640f10ab::t_193e8ee60f7bb0 344,349,353,365,373,384,389,400,404,411
+packages/cli/src/node-execution/index.ts
+  s_c6a266640f10ab::t_42a41eac2cbc6e 12-15
+packages/cli/src/modules/agents/integrations/integration-tool-factory.ts
+  s_c6a266640f10ab::t_4483c80639a02c 121-133
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_c6a266640f10ab::t_bd3ea7a2c52dac 84-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "51948e180c11c2595af6949a41e4c9ddc17d2d22",
+  "prompts": {},
+  "sessions": {
+    "s_c6a266640f10ab": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7ef9-bd80-7e80-a629-f33cbb14a5e0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

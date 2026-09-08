@@ -1,0 +1,29 @@
+docs/generated/sqlite-schema/git_connection.md
+  ai_agent 9,36-37
+docs/generated/postgres-schema/public.git_connection.md
+  ai_agent 26,28
+packages/@n8n/db/src/migrations/common/1786547629549-CreateGitConnectionTable.ts
+  s_d0ecbd8335692d::t_337e2e774f9093 39-40,42-44,47
+  s_d0ecbd8335692d::t_5ea057a05b28db 4
+  s_d0ecbd8335692d::t_546f319c46abb5 37-38,41,45-46
+packages/cli/test/migration/1786547629549-create-git-connection-table.test.ts
+  s_d0ecbd8335692d::t_305632b2a43c4d 123,125-126,134-136,138-139,146-148,150-151,153-163
+  s_d0ecbd8335692d::t_3a4728ac5bc929 124,127-133,137,140-145,149,152
+  s_d0ecbd8335692d::t_3f1e74c032d0e8 32-61,64,68,70-71,76-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "17010582914827504822e1fe6ab501062e0ce0a5",
+  "prompts": {},
+  "sessions": {
+    "s_d0ecbd8335692d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f4b4595-f633-4926-ab16-1b2e11245ae5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

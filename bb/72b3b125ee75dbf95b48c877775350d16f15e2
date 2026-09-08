@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/experiments/trialIntroModal/components/TrialIntroModal.vue
+  s_93bfa2eb2d7de3::t_0774ce701463e8 131-134,144-147,157-160
+  s_93bfa2eb2d7de3::t_f886c8d3498db0 110,116-118
+  s_93bfa2eb2d7de3::t_e14ec785e15e0e 386
+  s_93bfa2eb2d7de3::t_3b98b902132bec 331-332,335-336,338,343,351-355,367-368,371,373-374,376-378,380-382,385,410-413,419,429,437,451,455,477-479,481-487,493-497,517
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bb72b3b125ee75dbf95b48c877775350d16f15e2",
+  "prompts": {},
+  "sessions": {
+    "s_93bfa2eb2d7de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d8eb2b-ca0b-4614-a078-4e0fa184fa9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

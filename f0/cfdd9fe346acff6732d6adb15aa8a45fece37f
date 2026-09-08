@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/diagnoses-the-last-run-instead-of-asking.json
+  s_d7dc19b022f345::t_758bc0c53dd3b8 1,3-97,99-112,114,116-132
+packages/@n8n/instance-ai/evaluations/data/workflows/checks-the-record-before-accepting-a-false-premise.json
+  s_d7dc19b022f345::t_758bc0c53dd3b8 1-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0cfdd9fe346acff6732d6adb15aa8a45fece37f",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

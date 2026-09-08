@@ -1,0 +1,296 @@
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_8847a3c3fc12a6::t_6a441d6f982478 50-51
+  s_5697298920ee09::t_fe7adbf39cd5fa 43-47
+  s_6a6e99203cc9f0::t_0c49e95a8c4089 195,197,280,285,302,376,988,992,1035,1089
+packages/cli/src/modules/agents/agent-knowledge.controller.ts
+  s_02fa5a53ff6b07::t_43a5ab91f2b5fd 31
+  s_6a6e99203cc9f0::t_efbfd8df12c441 29
+packages/cli/src/modules/agents/__tests__/agent-sandbox.controller.test.ts
+  s_02fa5a53ff6b07::t_85738663b198f9 13-15,29-45
+packages/cli/src/modules/agents/entities/agent-knowledge-sandbox.entity.ts
+  s_6a6e99203cc9f0::t_2b83ff8277b585 1-2,4-22,24-29
+  s_6a6e99203cc9f0::t_11072fbb83d812 3,23
+packages/@n8n/config/src/configs/agents.config.ts
+  s_6a6e99203cc9f0::t_39c01a369ac6e5 74
+packages/@n8n/agents/src/workspace/sandbox/n8n-sandbox-sandbox.ts
+  s_2dfdb1cd471302::t_ef5fc68972db6b 162
+  s_02fa5a53ff6b07::t_a6d5d36b6ef2d0 164
+  s_02fa5a53ff6b07::t_9308369a718755 6
+  s_02fa5a53ff6b07::t_079b790dc8cf6b 71
+  s_02fa5a53ff6b07::t_6608e2b7a9143a 171-172
+  s_02fa5a53ff6b07::t_f525e96bbddeeb 79,152,159-161,163,165-170
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_02fa5a53ff6b07::t_279e8cf8d50f75 578
+docs/generated/sqlite-schema/agent_knowledge_sandboxes.md
+  s_ea84275809488f::t_f75fe9ad705744 1-73
+packages/cli/src/modules/agents/agent-knowledge-sandbox.service.ts
+  s_15802f94ac3ea5::t_817cd3b63b40eb 533,536-538,545
+  s_15802f94ac3ea5::t_ec6960e6b77b70 687-688,691-694,697,791-796,798-800,805-806,808,811,813-815,819-828,831,833-835,842-846,849-850,852-859,882-883,887-888
+  s_6a6e99203cc9f0::t_2bbb99c43b7308 219-221,224,226-230,237-240,242-243,245-266,282
+  s_6a6e99203cc9f0::t_1588f06a6841d7 7-8,15,66,140-141,203-204
+  s_02fa5a53ff6b07::t_a2e9e17affe755 514,518,524,528-529,531,606-609,788,804
+  s_1a91a446815cb1::t_3f8085137cf1f5 278,733-737,740-744,746-749,752,755-773,776-781
+  s_15802f94ac3ea5::t_ae76d7eb3f263a 2-4,6,9-11,25,60-61,80-84
+  s_6a6e99203cc9f0::t_d7e1aad23c5851 701
+  s_6a6e99203cc9f0::t_f004967975b9d7 64,217
+  s_02fa5a53ff6b07::t_9d99812ea0f48a 267-271
+  s_15802f94ac3ea5::t_2db8ef1d1b9aad 187-190,202
+  s_15802f94ac3ea5::t_8e497e7185a7d9 431-433,435,446,449-450,454,456-457,459,465,471,473-476,478,507-510,513
+  s_02fa5a53ff6b07::t_df68e480d120b0 745,790
+  s_02fa5a53ff6b07::t_fb0035721003a6 119-120,123-131,134,136,501-505,511-512
+  s_259c8fc456c014::t_e904b05b1000b4 241,244
+  s_02fa5a53ff6b07::t_b4142d286d45c9 121-122
+  s_6a6e99203cc9f0::t_8b2d7011625583 494,498,689-690,695,702-707,716-722,732,750-751,753-754,782,784,786,789,797,801-802,807,818,860-861,865-874,877-881,889
+  s_15802f94ac3ea5::t_182e2f02fa8f05 272-273
+  s_02fa5a53ff6b07::t_e8d2880301b18f 231-236,280,728-731
+  s_1f042b40eb284d::t_9daa2410ea2529 549,555,561-567,570-574
+  s_02fa5a53ff6b07::t_e86306731044bc 5,164,176,430,543,547
+  s_02fa5a53ff6b07::t_47e206a2ef4b47 428-429
+  s_6a6e99203cc9f0::t_9998add2354509 495
+  s_6a6e99203cc9f0::t_8709e160f755e2 499
+  s_1f042b40eb284d::t_5c367b8a5282d9 575
+  s_02fa5a53ff6b07::t_ebbb0232ecdfc4 610-611
+  s_15802f94ac3ea5::t_cad1c16bea89db 884
+  s_6a6e99203cc9f0::t_909a65feda098b 279,482-483,486,506,532,541,546,588-589,696,803,891,908-910
+packages/cli/src/modules/agents/agent-sandbox.controller.ts
+  s_02fa5a53ff6b07::t_bb92af0bc9b62c 37
+packages/@n8n/agents/src/workspace/sandbox/create-workspace.ts
+  s_5438a835148597::t_696f5a521b4fa7 61
+packages/cli/src/services/sandbox-settings.service.ts
+  s_5697298920ee09::t_b93872968ec7c7 2,104
+  s_5697298920ee09::t_a7001b41840684 1,3-7,9-18,24-38,40-42,44-49,51-52,54-59,61-62,64-65,71-75,77-81,83-103,105-113,115-124,128-130,132-151,156-158,160-169,171-185
+  s_5697298920ee09::t_412713102a6e53 8
+  s_0bafb1d8d2ed4f::t_d58aec65dc9d5e 19-23,39,43,50,53,60,63,66-70,76,82,114,125-127,131,152-155,159,170
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-settings.service.test.ts
+  s_5697298920ee09::t_cf12be66fd2dd2 16-20,67,94-96,136
+packages/cli/src/modules/agents/repositories/agent-knowledge-sandbox.repository.ts
+  s_259c8fc456c014::t_b0dc5b4bb09ba4 44,47
+  s_6a6e99203cc9f0::t_1c7ae4efa85f09 1-43,45-46,48
+packages/@n8n/api-types/src/agents/agent-files.constants.ts
+  s_02fa5a53ff6b07::t_962c8d343dca4c 1
+packages/cli/src/modules/agents/agent-knowledge-commands.ts
+  s_02fa5a53ff6b07::t_564c14df95cf04 560,569,574,579,593,595-596
+  s_02fa5a53ff6b07::t_1e88be49375dda 561,567,571,589-592
+  s_02fa5a53ff6b07::t_6d34aef467d6a6 477
+  s_15802f94ac3ea5::t_504c4946b0d734 546-549,551-552,568,576,580,585
+  s_6a6e99203cc9f0::t_dea48391c6137b 19
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_02fa5a53ff6b07::t_e566b22abdfec8 18-23,37-38
+  s_02fa5a53ff6b07::t_9bc28495e5bcfd 24-36
+packages/cli/src/services/__tests__/sandbox-settings.service.test.ts
+  s_02fa5a53ff6b07::t_e7bc456d532c1c 5
+  s_0bafb1d8d2ed4f::t_86b9d595319b25 7,39,60,72,78,82-87,94-101,104-110,113-115,132-139
+  s_02fa5a53ff6b07::t_3da8b23b7ed562 119-131,140-141
+  s_5697298920ee09::t_7271649715cf03 1-4,6,8-38,40-59,61-71,73-77,79-81,88-93,102-103,111-112,116-118,142-159
+docs/generated/postgres-schema/public.agent_knowledge_sandboxes.md
+  s_ea84275809488f::t_f75fe9ad705744 1-65
+packages/cli/src/modules/agents/__tests__/agent-knowledge-sandbox.service.test.ts
+  s_1a91a446815cb1::t_9ac6509f28b48f 339-353,355-363,369-372
+  s_6a6e99203cc9f0::t_8e04efc868cf26 555-557,565,575,578-579,590,595
+  s_15802f94ac3ea5::t_6ba38e70ed60b4 163,228,250,252-253,255-259,264
+  s_1f042b40eb284d::t_a2ff8f1d3136f5 778-784,786-787,789-790,795
+  s_6a6e99203cc9f0::t_23421a0452a269 206,374-376,379-382
+  s_02fa5a53ff6b07::t_9caa1cde9c90a2 49-50,233-234,266
+  s_5e00b9c7739e27::t_5f999707d393a7 281-282,364-367,377,402-406,436-437,439,457-460,470-472
+  s_02fa5a53ff6b07::t_e56a18e3c9fb21 283-285,312-313
+  s_6a6e99203cc9f0::t_17abdf434a082e 116-134
+  s_5e00b9c7739e27::t_58b7b1d5498894 165-187
+  s_15802f94ac3ea5::t_fd0745c6ce3b9d 465,469,476-478
+  s_15802f94ac3ea5::t_e7c9ec963d1e5d 753-754,756-763,765-766,768-777
+  s_6a6e99203cc9f0::t_d499f67d8981e7 397-400
+  s_15802f94ac3ea5::t_6bc608557eb73c 426,428-430,443-453
+  s_15802f94ac3ea5::t_9a7a2ea937f206 2-4,6-8,17,23,32-35,37-40,46,95,97-100,113,227,238-249
+  s_259c8fc456c014::t_cbe4984e64039f 596-603,608-609
+  s_15802f94ac3ea5::t_c69115f9b2eb15 271-272
+  s_02fa5a53ff6b07::t_ea18e9dfc73409 277,280,554
+  s_6a6e99203cc9f0::t_eb6a17d8d5bf87 385-395,401,408-412,414-415,417-420
+  s_02fa5a53ff6b07::t_d45e7305c0e67e 421-423
+  s_15802f94ac3ea5::t_a76e1c82bcb353 323-329,332-336
+  s_02fa5a53ff6b07::t_f0e027fde4a29e 566-574
+  s_15802f94ac3ea5::t_4a682b854b1e94 650,654-657,659,665,674,676
+  s_6a6e99203cc9f0::t_3262ba66ec828c 693,696-697,706-711,714-717
+  s_02fa5a53ff6b07::t_59fdb342dcccf6 658
+  s_15802f94ac3ea5::t_590659ed9676e9 1,661
+  s_02fa5a53ff6b07::t_8da2c059fd61ab 630,663,680,689
+  s_259c8fc456c014::t_ac8a7485e7d44a 156-161
+  s_02fa5a53ff6b07::t_6608e2b7a9143a 639,646,651-653,670,672,685-686,691,796,802,805,813,821,826,832,846
+  s_02fa5a53ff6b07::t_80107e85c1c777 354
+  s_5e00b9c7739e27::t_cd1f284b334ba3 643,700-701,705,736,739-741,767,788
+  s_15802f94ac3ea5::t_d8f23736f56f6b 279,286-287,293-311,314-319
+  s_6a6e99203cc9f0::t_09c9064706a034 5,11,22,29,47,92-94,96,101-112,114-115,135-155,162,204-205,232,235-237
+  s_02fa5a53ff6b07::t_48650989b3c7cf 690
+  s_02fa5a53ff6b07::t_1a63646dce0451 718-727,732,735,737-738,742-752,791
+  s_5e00b9c7739e27::t_d8fececcdfce43 494,497,558-561,580-585,587,589,591,594,607
+  s_5e00b9c7739e27::t_30fc8723e83104 188
+  s_15802f94ac3ea5::t_60421364eab56d 251
+  s_15802f94ac3ea5::t_bebcf2cdf73cbf 269-270
+  s_15802f94ac3ea5::t_2de58580603f99 475
+  s_02fa5a53ff6b07::t_4aa999e3a2b7f8 628-629
+  s_6a6e99203cc9f0::t_34870e5ca2372d 48,164,265,275,278,619,626
+packages/@n8n/agents/src/workspace/sandbox/workspace-root.ts
+  s_5438a835148597::t_ad728255c649d1 10,13,15,19-22,52-53
+packages/@n8n/agents/src/__tests__/workspace/sandbox/n8n-sandbox-sandbox.test.ts
+  s_5438a835148597::t_8eafff66a98fcc 160
+  s_02fa5a53ff6b07::t_cc579a851735a0 170
+  s_02fa5a53ff6b07::t_d9eb7c164566f5 123-140,148,166,169
+  s_02fa5a53ff6b07::t_9ae9849f4e1ba9 153
+  s_5438a835148597::t_19a94dcd2bee78 159
+  s_6a6e99203cc9f0::t_0b2b6a69c835ca 145,150,155,162,172
+docs/generated/postgres-schema/README.md
+  s_ea84275809488f::t_f75fe9ad705744 23,179,493-498
+  s_02fa5a53ff6b07::t_19c33e25eaf3c9 499
+packages/cli/test/migration/1786030558281-create-agent-knowledge-sandboxes.test.ts
+  s_6a6e99203cc9f0::t_35f3c34f21ac3f 1-112
+packages/@n8n/db/src/migrations/common/1786030558281-CreateAgentKnowledgeSandboxes.ts
+  s_6a6e99203cc9f0::t_85373ee8b25892 4-20,23-24
+  s_6a6e99203cc9f0::t_44d7689cae402b 1-3,21-22,25-26
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_6a6e99203cc9f0::t_0d0fcc52b8bb1c 23,182
+packages/cli/src/modules/agents/__tests__/agent-upload.middleware.test.ts
+  s_02fa5a53ff6b07::t_aeda25b2bf149b 34
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_6a6e99203cc9f0::t_20eb337ae34e19 205
+docs/generated/postgres-schema/public.agents.md
+  s_ea84275809488f::t_f75fe9ad705744 10,60,176-180
+  s_02fa5a53ff6b07::t_1594cadb754654 181-182
+docs/generated/sqlite-schema/agents.md
+  s_ea84275809488f::t_f75fe9ad705744 21,63,179-183
+  s_02fa5a53ff6b07::t_eb05beb447f567 184-185
+packages/cli/src/modules/agents/agents.module.ts
+  s_6a6e99203cc9f0::t_12c16964950dee 223
+  s_5697298920ee09::t_7e5c741ff1208e 13-15
+  s_02fa5a53ff6b07::t_6495f78e11b213 158
+  s_6a6e99203cc9f0::t_81779e0336d38a 198
+packages/cli/src/modules/agents/agent-knowledge-storage.ts
+  s_15802f94ac3ea5::t_764c2e87982864 2,9-21
+docs/generated/sqlite-schema/README.md
+  s_ea84275809488f::t_f75fe9ad705744 23,162,480-485
+  s_02fa5a53ff6b07::t_17790a9787e3c4 486
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_6a6e99203cc9f0::t_33b75909d8dee7 396-397
+packages/@n8n/agents/src/workspace/sandbox/types.ts
+  s_5438a835148597::t_d9d3d1604d0f85 93
+packages/cli/src/modules/agents/__tests__/agent-knowledge-commands.test.ts
+  s_02fa5a53ff6b07::t_054ecf41a405b7 206,219,232-238,241-247
+  s_15802f94ac3ea5::t_d51e183d7d2a5f 11,30,211,213,227,231,239-240,248
+  s_02fa5a53ff6b07::t_17fd9b8e7c8c84 202-205,207-209,212,214-218,224
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_5697298920ee09::t_02236162125dbb 27,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9bf832dd6eeabcdbcf24a5bd68fe0c72ea0f34db",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_02fa5a53ff6b07": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4b9ea011-0576-4291-8fcc-58ead87cde9e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_0bafb1d8d2ed4f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b4f28147-c31b-4080-93a2-0f783a6447ed",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_15802f94ac3ea5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a4ec3467-87eb-4031-96f4-363320b5faf2",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": null
+    },
+    "s_1a91a446815cb1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "28a101e2-13a2-4262-8eb0-9aee179881cc",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": null
+    },
+    "s_1f042b40eb284d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9694a335-404e-4f2c-97ee-af172f777dfd",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": null
+    },
+    "s_259c8fc456c014": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a53a155b-f458-431a-8e19-0b3b82e8c678",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": null
+    },
+    "s_2dfdb1cd471302": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0c9f1ed6-348c-41e3-8ef0-fa56d48755f0",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5438a835148597": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "202867ce-c5b8-47ec-93ae-a0e5b50213d7",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": null
+    },
+    "s_5697298920ee09": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fd60983b-3090-43d8-9a0b-6c617a42eede",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": null
+    },
+    "s_5e00b9c7739e27": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "50b08270-f54f-4c3b-8d8d-097090fc34b9",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_6a6e99203cc9f0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae704ef7-85a5-4d73-8636-506b40fd6721",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": null
+    },
+    "s_8847a3c3fc12a6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a02acb17-266f-492d-a42d-76a69c613451",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": null
+    },
+    "s_ea84275809488f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6bbd468b-a75d-446d-a486-e4e843fd9f5b",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": null
+    }
+  }
+}

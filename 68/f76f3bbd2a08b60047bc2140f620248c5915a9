@@ -1,0 +1,56 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_a1a4e3889846df::t_eac8be4004f1d9 26
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_f066721bbfd491::t_36c7be78640f83 88-105
+  s_8afcebef7d15aa::t_2ab51c09c359f9 106-107,115,117,119-132
+  s_8afcebef7d15aa::t_06e83e8fa182d5 108-114,116,118
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.export.yml
+  s_f066721bbfd491::t_c98103135d1081 14
+  s_8afcebef7d15aa::t_9d5db768bc1047 15-19
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_f066721bbfd491::t_36c7be78640f83 36-42
+  s_f066721bbfd491::t_c98103135d1081 43-44
+  s_8afcebef7d15aa::t_0560d6845e1799 45-55
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_f066721bbfd491::t_36c7be78640f83 9
+  s_8afcebef7d15aa::t_39b407abd8b22c 10-12
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_a1a4e3889846df::t_797e1cc721b239 1
+  s_a1a4e3889846df::t_b4c8177a231312 46
+  s_f066721bbfd491::t_36c7be78640f83 436-442,446-457
+  s_f066721bbfd491::t_5c66e51193d8b3 443-445
+  s_8afcebef7d15aa::t_90a934095bf1fe 458-466,470-483
+  s_8afcebef7d15aa::t_06e83e8fa182d5 467-469
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "68f76f3bbd2a08b60047bc2140f620248c5915a9",
+  "prompts": {},
+  "sessions": {
+    "s_8afcebef7d15aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4151-46fb-7303-9526-e7f2de8e2586",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a1a4e3889846df": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "de9f5a5b-e873-4fef-8c18-9f3471e07730",
+        "model": "default"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_f066721bbfd491": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4161-0a6a-70a2-88e5-eed58ce13450",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

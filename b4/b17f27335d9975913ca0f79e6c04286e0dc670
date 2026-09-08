@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/package.json
+  s_c4fe131c2ca196::t_dd6225a8cf1b41 52
+packages/frontend/editor-ui/src/app/components/AboutModal.vue
+  s_c4fe131c2ca196::t_f32ce338acaede 10
+packages/frontend/editor-ui/src/app/composables/useDebugInfo.test.ts
+  s_c4fe131c2ca196::t_a2e414f71c4c52 65
+packages/frontend/editor-ui/src/app/composables/useDebugInfo.ts
+  s_c4fe131c2ca196::t_d4e8064c971f43 3
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_c4fe131c2ca196::t_4b973a390efbe4 10,24
+packages/frontend/editor-ui/tsconfig.json
+  s_c4fe131c2ca196::t_7f3bda2a9500f0 28-29
+packages/frontend/modules/instance-registry/README.md
+  s_c4fe131c2ca196::t_4beed4205893b4 1-29
+packages/frontend/modules/instance-registry/biome.jsonc
+  s_c4fe131c2ca196::t_549036ae7b6af0 1-4
+packages/frontend/modules/instance-registry/eslint.config.mjs
+  s_c4fe131c2ca196::t_0e1a98cb45ff61 1-4
+packages/frontend/modules/instance-registry/package.json
+  s_c4fe131c2ca196::t_f5c50d6c03803c 1-49
+packages/frontend/modules/instance-registry/src/__tests__/setup.ts
+  s_c4fe131c2ca196::t_d74430b6245ed3 1-12
+packages/frontend/modules/instance-registry/src/index.ts
+  s_c4fe131c2ca196::t_43c9b860578f4a 1-5
+packages/frontend/modules/instance-registry/src/instance-registry.store.test.ts
+  s_c4fe131c2ca196::t_4988e0d91f7f5b 2-5
+packages/frontend/modules/instance-registry/tsconfig.json
+  s_c4fe131c2ca196::t_31c239ac932f10 1-21
+packages/frontend/modules/instance-registry/vite.config.ts
+  s_c4fe131c2ca196::t_17f1db85304965 1-22
+pnpm-lock.yaml
+  s_c4fe131c2ca196::t_84f370170e1d19 5840-5842,6235-6310
+packages/frontend/modules/instance-registry/src/instance-registry.module.ts
+  s_c4fe131c2ca196::t_16e630c62e9641 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b4b17f27335d9975913ca0f79e6c04286e0dc670",
+  "prompts": {},
+  "sessions": {
+    "s_c4fe131c2ca196": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22b23070-f51d-467f-bfdb-0b165ef0f700",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

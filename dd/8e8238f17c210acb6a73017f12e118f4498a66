@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/workflow-review-activity.ts
+  s_ffb7ac8df0495d::t_65956aa63e5eee 10-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd8e8238f17c210acb6a73017f12e118f4498a66",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

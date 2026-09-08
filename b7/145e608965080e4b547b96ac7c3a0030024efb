@@ -1,0 +1,19 @@
+packages/cli/src/modules/source-control.ee/source-control-status.service.ee.ts
+  s_6c03a3aeed0aff::t_ed2248d24dc4eb 744-749
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b7145e608965080e4b547b96ac7c3a0030024efb",
+  "prompts": {},
+  "sessions": {
+    "s_6c03a3aeed0aff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d31eb2e6-e6a3-4d3e-9b31-d4ed736f02c1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/@n8n/design-system/src/components/N8nSuggestedActions/SuggestedActions.vue
+  s_687b6c06271385::t_d5e9c6b0833712 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "435f1a194881ee2ce21fd6ae154df39ad9867750",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_687b6c06271385": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d84fd11-3ba3-44d6-b50f-62f1d56ace4f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

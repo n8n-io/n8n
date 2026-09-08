@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_241d2fbc86d0f3::t_0e48d8f8c9b169 1,4-12
+  s_241d2fbc86d0f3::t_1dce0460744410 13
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_241d2fbc86d0f3::t_fa7222c9f3b919 43-46
+  s_241d2fbc86d0f3::t_1072818f2cafa8 10,12-13
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_241d2fbc86d0f3::t_d7ca112e62efaa 79-81
+  s_241d2fbc86d0f3::t_fb46be78b4ca1e 105-108,110-112,119
+  s_241d2fbc86d0f3::t_e585f01aa7514a 47-50,53
+  s_241d2fbc86d0f3::t_412d8b4217e692 16-18,29-30
+  s_241d2fbc86d0f3::t_a56584a3e807a5 131
+  s_241d2fbc86d0f3::t_5967cc42f7595c 143
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_241d2fbc86d0f3::t_b7638277d1aa7a 55-58
+  s_241d2fbc86d0f3::t_9d91614c67e29e 106-121
+  s_241d2fbc86d0f3::t_81ad8c67fd5a18 147-159
+  s_241d2fbc86d0f3::t_42e5bbe2b0d590 243-253,258-265
+  s_241d2fbc86d0f3::t_6694b9c0634a91 177,183-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "39d37062fea4e5bf94c6f106bd835cb5730ef467",
+  "prompts": {},
+  "sessions": {
+    "s_241d2fbc86d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a89408a0-7bb5-49bb-9209-f821ac47ab47",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

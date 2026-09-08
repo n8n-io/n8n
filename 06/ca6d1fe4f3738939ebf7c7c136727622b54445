@@ -1,0 +1,19 @@
+packages/@n8n/cli/src/commands/package/import.ts
+  s_9ce51a71fd3fed::t_a565acc2eadc53 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "06ca6d1fe4f3738939ebf7c7c136727622b54445",
+  "prompts": {},
+  "sessions": {
+    "s_9ce51a71fd3fed": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9361fb2e-0951-4ac8-b163-5be169229378",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

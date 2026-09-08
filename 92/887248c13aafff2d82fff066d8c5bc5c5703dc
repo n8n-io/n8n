@@ -1,0 +1,80 @@
+packages/@n8n/telemetry/tsconfig.json
+  s_8eac6e899de708::t_ab01173d63834a 1-7
+packages/cli/src/telemetry/index.ts
+  s_8eac6e899de708::t_8012ef114e22f0 12,562-567,569-571
+  s_8eac6e899de708::t_7a06316b8e9bd0 568
+packages/@n8n/telemetry/bin/catalog.mjs
+  s_8eac6e899de708::t_ab01173d63834a 1-7
+packages/frontend/editor-ui/vite.config.mts
+  s_8eac6e899de708::t_8012ef114e22f0 78-85
+packages/@n8n/telemetry/src/__tests__/registry-checks.test.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-152
+packages/@n8n/telemetry/package.json
+  s_8eac6e899de708::t_ab01173d63834a 1-40
+packages/@n8n/telemetry/src/registry-checks.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-40
+packages/@n8n/telemetry/eslint.config.mjs
+  s_8eac6e899de708::t_ab01173d63834a 1-8
+packages/@n8n/telemetry/src/__tests__/catalog.test.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-70
+packages/@n8n/telemetry/src/__tests__/validate.test.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-109
+packages/@n8n/telemetry/src/__tests__/types.test-d.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-56
+packages/frontend/editor-ui/src/app/plugins/telemetry/index.ts
+  s_8eac6e899de708::t_8012ef114e22f0 3,105-110,112-114,125,132-133
+  s_8eac6e899de708::t_7a06316b8e9bd0 111
+packages/frontend/editor-ui/tsconfig.json
+  s_8eac6e899de708::t_8012ef114e22f0 33-34
+packages/@n8n/telemetry/src/constants.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-6
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_8eac6e899de708::t_29ce9b08c56cfd 641,670,679
+packages/@n8n/telemetry/src/index.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-12
+packages/@n8n/telemetry/src/validate.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-147
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_8eac6e899de708::t_61c34f214b8707 564
+  s_8eac6e899de708::t_700468d0e83cd5 24
+packages/@n8n/telemetry/README.md
+  s_8eac6e899de708::t_ab01173d63834a 1-43
+packages/cli/tsconfig.build.json
+  s_8eac6e899de708::t_8012ef114e22f0 5-10
+packages/@n8n/telemetry/src/define.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-30
+packages/@n8n/telemetry/tsconfig.build.json
+  s_8eac6e899de708::t_ab01173d63834a 1-10
+packages/cli/tsconfig.json
+  s_8eac6e899de708::t_8012ef114e22f0 12-13
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_8eac6e899de708::t_efa574aa22b2dc 39,51,108-117,205,213,216-217,226,228-235,246-248,285,331-342,392,460-471,550,585,619,625,627,635
+packages/cli/vitest.config.base.ts
+  s_8eac6e899de708::t_8012ef114e22f0 19
+packages/frontend/editor-ui/package.json
+  s_8eac6e899de708::t_8012ef114e22f0 55-58
+packages/@n8n/telemetry/src/catalog.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-88
+packages/@n8n/telemetry/src/events/platform.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-15
+packages/@n8n/telemetry/vite.config.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-4
+packages/@n8n/telemetry/src/__tests__/define.test.ts
+  s_8eac6e899de708::t_ab01173d63834a 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "92887248c13aafff2d82fff066d8c5bc5c5703dc",
+  "prompts": {},
+  "sessions": {
+    "s_8eac6e899de708": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8fec-26f4-7812-bedb-8d0b2d4970a3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,78 @@
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 198-205
+  s_d7677626d9e151::t_7d66283c908b1f 113,159,217,238,509
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_d7677626d9e151::t_8f8f1f9b76b8df 322,331,333-334,342,344-345
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_d7677626d9e151::t_8fe1cf34d863c3 1009,1024-1035,1050-1051,1056
+  s_d7677626d9e151::t_a2ae2f6026eae7 987-989,993
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 15,56-63,86-89,105,133-138,142-143,183-188,214,219-238,274-275,278-283,287-292,295
+  s_d7677626d9e151::t_dce780bca8997e 23-26,108,200,218
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 231,235-237
+  s_d7677626d9e151::t_6821b73c5b167d 214,225,230,232-234,279,281-284,288,319,321-324,327,455
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 146
+packages/cli/src/modules/agents/__tests__/agent-execution-update-broadcaster.test.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 1-87
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 6,128-130
+  s_d7677626d9e151::t_3318387105c833 131-132
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_d7677626d9e151::t_0e8efd58cacbe6 125,158,203,229
+  s_d7677626d9e151::t_a2ae2f6026eae7 207-214
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_d7677626d9e151::t_7c46c12813b171 226
+  s_d7677626d9e151::t_a2ae2f6026eae7 192-200
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 3-5,11-20,30-33,43-45,58-69,77-80,84-85,134,139,141,148-159,164,167-180,182,185-186,189-192,195,199-226,228-244,247,259-271,276
+  s_d7677626d9e151::t_70b4f6f904a4de 279
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_d7677626d9e151::t_4c0d28895c560b 28
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_d7677626d9e151::t_034f9cfdc67dee 549-552
+  s_d7677626d9e151::t_a2ae2f6026eae7 17
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_d7677626d9e151::t_8b5a57cb9651ab 7-22,34-38,58
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_d7677626d9e151::t_b56995876f4eda 270
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_d7677626d9e151::t_de145d4714d78b 111,182,202,206,223
+  s_d7677626d9e151::t_a2ae2f6026eae7 209-216
+packages/cli/src/modules/agents/agent-execution-update-broadcaster.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 1-54
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_d7677626d9e151::t_1ca2ddd90359b5 62,103
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 619-623,714,718-724
+  s_d7677626d9e151::t_f6fbf9b1d5946f 734
+  s_d7677626d9e151::t_a70edca201e2c2 352-356
+packages/cli/src/scaling/constants.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 41
+packages/@n8n/api-types/src/push/agents.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 1-11
+packages/@n8n/api-types/src/push/index.ts
+  s_d7677626d9e151::t_a2ae2f6026eae7 1,15
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_d7677626d9e151::t_6d270780b7f0ee 103-106,110,125
+  s_d7677626d9e151::t_a2ae2f6026eae7 10,68,85,97,137-142,178-191,206-269,283,326-332,347,760,764,774-781
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_d7677626d9e151::t_a2ae2f6026eae7 2,4,29-30,48,61-63,203,210-212,214-215,218,222,231,234,241-245,249-261,263-266,268-295,300-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "9c53de2216f6a8f0203b92d7ceb6793de271fae9",
+  "prompts": {},
+  "sessions": {
+    "s_d7677626d9e151": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "71b90d0a-3263-488d-8ea8-6c11e5a6cd43",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

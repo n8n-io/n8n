@@ -1,0 +1,23 @@
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_0af44d0617f551::t_657d0ee0a71199 10
+  s_0af44d0617f551::t_6e422e1dbfbdb0 478
+  s_0af44d0617f551::t_d5c03f5bcfa798 482
+  s_0af44d0617f551::t_1489c7c2f453a4 444-445,447-451
+  s_0af44d0617f551::t_e26dec8f6bf5bf 477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "ed05a774b0d38827ac0412483734dcc43c6cc0c7",
+  "prompts": {},
+  "sessions": {
+    "s_0af44d0617f551": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "58e0ca41-21da-454c-8c10-fb497ce3c4d5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

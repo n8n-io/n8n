@@ -1,0 +1,19 @@
+packages/testing/playwright/tests/e2e/api/webhook-isolate-skip.spec.ts
+  s_70a0146006f6ca::t_a74bbea6750a44 35-64,87-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "796c84a49a4ef54a209dcbd055a55bd39b55149b",
+  "prompts": {},
+  "sessions": {
+    "s_70a0146006f6ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_70a0146006f6ca",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/cli/src/modules/agents/integrations/platforms/discord-operations.ts
+  s_5cff78ced0afbf::t_861bc47d6bf76f 10-11,28-45
+  s_5cff78ced0afbf::t_f89933bd8a8212 46
+packages/frontend/editor-ui/src/features/agents/composables/useAgentIntegrationsCatalog.ts
+  s_5cff78ced0afbf::t_075d6a4e55086e 30-31
+  s_5cff78ced0afbf::t_177e08c61a65dc 12,28-29,35
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_5cff78ced0afbf::t_7a7f087cbf661d 205-209
+  s_5cff78ced0afbf::t_497c0cd8dfb985 11,49,65-66,177-202,204,211-214,239-263,265,400-404
+  s_5cff78ced0afbf::t_7360c7911ec938 405-406
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentIntegrationsCatalog.test.ts
+  s_5cff78ced0afbf::t_c611c96c4c4f41 57-82
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_5cff78ced0afbf::t_ea37a5590e68f9 391-394
+  s_5cff78ced0afbf::t_98a10c5aa94e03 38,478-479
+  s_5cff78ced0afbf::t_98507550077c99 480
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5cff78ced0afbf::t_758e2fa68821c4 7931
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_5cff78ced0afbf::t_b86a8bbb1a75fd 751,761,814-867
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_5cff78ced0afbf::t_3801828cfd64f9 56-65,69-71
+  s_5cff78ced0afbf::t_98d2d8ee219b09 331-344
+  s_5cff78ced0afbf::t_bad9ff2e2e6542 7,31-32,66-68,161-164,175,177,310-330,345-357,360-361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b47f22919212e7b283e1e8d0bec3f5bc95951b22",
+  "prompts": {},
+  "sessions": {
+    "s_5cff78ced0afbf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "371811f4-d448-4155-b88e-2991c0c201de",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

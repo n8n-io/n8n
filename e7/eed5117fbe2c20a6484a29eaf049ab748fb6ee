@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_0bf6d2ccb779ff::t_08de006f3c9ead 787-802,805
+  s_0bf6d2ccb779ff::t_982aadc333fcf4 517-552,785-786,803-804,806-807,809-815,817,819
+  s_0bf6d2ccb779ff::t_5eacbad484d979 784
+  s_0bf6d2ccb779ff::t_dab7b3c79bdb8e 808
+  s_0bf6d2ccb779ff::t_b3db00e761c8a2 816
+  s_0bf6d2ccb779ff::t_b87ebb934a1e61 818
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_0bf6d2ccb779ff::t_613b598c24578b 44-45
+  s_0bf6d2ccb779ff::t_d5ae619978a5ce 172,189,191-192
+  s_0bf6d2ccb779ff::t_fdbd1b8160797e 241
+  s_0bf6d2ccb779ff::t_e1a68720c07dc0 295,313,315-316
+  s_0bf6d2ccb779ff::t_4264b0f5522ce2 26-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e7eed5117fbe2c20a6484a29eaf049ab748fb6ee",
+  "prompts": {},
+  "sessions": {
+    "s_0bf6d2ccb779ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d96b4f2b-f082-42a2-bd81-8d59d0458b78",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

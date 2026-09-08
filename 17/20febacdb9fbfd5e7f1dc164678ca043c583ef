@@ -1,0 +1,21 @@
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_874a0c5affc5fe::t_d9ab08fec6f46e 800,807-821,823
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_874a0c5affc5fe::t_df45ba2eba38c7 4823-4867
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "1720febacdb9fbfd5e7f1dc164678ca043c583ef",
+  "prompts": {},
+  "sessions": {
+    "s_874a0c5affc5fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb3d8-256c-7972-b467-0a43adf82ffa",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

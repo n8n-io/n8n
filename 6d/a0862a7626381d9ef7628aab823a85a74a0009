@@ -1,0 +1,44 @@
+packages/cli/src/task-runners/task-broker/__tests__/task-broker.service.test.ts
+  s_0a856934e0b365::t_38863d7a216c37 1175-1176
+  s_0a856934e0b365::t_9aca02220aaf1a 1193-1196
+packages/cli/src/task-runners/task-runner-lifecycle-events.ts
+  s_0a856934e0b365::t_595f851d6f1694 4-5,7-9
+packages/cli/src/task-runners/task-broker/task-broker.service.ts
+  s_0a856934e0b365::t_165dad80e64c90 592-595
+packages/cli/src/task-runners/task-runner-process-base.ts
+  s_0a856934e0b365::t_4e0f7f19431e25 54-55,58-59,63,67-71,73-78
+  h_32d8cd6a0d6aad 72
+packages/cli/src/task-runners/task-broker/__tests__/task-broker-ws-server.test.ts
+  s_0a856934e0b365::t_2d795f6588ed47 287,296,305,311-327
+  s_0a856934e0b365::t_721f615ab87ed6 30-32,35-38,40
+  s_0a856934e0b365::t_6e700cfad9ace0 34
+  s_0a856934e0b365::t_49678c67bdecee 242-245,247
+  s_0a856934e0b365::t_8bc6612be6d7c2 29,33
+packages/cli/src/task-runners/task-broker/task-broker-ws-server.ts
+  s_0a856934e0b365::t_548ab2e436f5e5 96-97,104-108
+packages/cli/src/task-runners/__tests__/task-runner-process.test.ts
+  s_0a856934e0b365::t_2f3cdcfc11618c 526,531
+  s_0a856934e0b365::t_479031114ef6dd 476-485,487,490-495,497,499-500,502-503,505-507
+  s_0a856934e0b365::t_98b2275d348f6d 456
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6da0862a7626381d9ef7628aab823a85a74a0009",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0a856934e0b365": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc97f5d-c336-472a-913d-3993fc6f126c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

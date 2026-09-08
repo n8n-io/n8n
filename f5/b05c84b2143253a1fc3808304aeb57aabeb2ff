@@ -1,0 +1,28 @@
+packages/cli/src/auth/auth.service.ts
+  s_749e9217782dea::t_80a9f0a932b2ec 119-124
+packages/cli/src/auth/__tests__/auth-service-browser-id-whitelist.test.ts
+  s_749e9217782dea::t_361cb04bac0b91 58-79
+  s_749e9217782dea::t_2119f07aad85d6 81-109
+  s_749e9217782dea::t_4e0d176f0fee8a 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f5b05c84b2143253a1fc3808304aeb57aabeb2ff",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_749e9217782dea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9256f74-4f49-46ff-9964-3b3c3eb85678",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

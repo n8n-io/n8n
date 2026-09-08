@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/utils/aws/test/resolveAwsCredentials.test.ts
+  s_716c5144ea2746::t_ac19924ff71517 33-37
+  s_716c5144ea2746::t_5a8e0facbb2830 31,78,97,115,147-148,161,175,198,234-235,245-246,256-257,267-268,295,330,348,366
+  s_716c5144ea2746::t_820e101a6c75d3 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9bf8ad34d651781be32349d1cc47de6020cd16c8",
+  "prompts": {},
+  "sessions": {
+    "s_716c5144ea2746": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e10bd622-3863-483b-8737-b0d99bd0c883",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

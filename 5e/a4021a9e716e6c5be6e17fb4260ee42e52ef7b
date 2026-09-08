@@ -1,0 +1,19 @@
+pnpm-lock.yaml
+  s_474fe0e36cbf49::t_c185c48207318a 3100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5ea4021a9e716e6c5be6e17fb4260ee42e52ef7b",
+  "prompts": {},
+  "sessions": {
+    "s_474fe0e36cbf49": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa5e6-a1de-7801-b0cc-c470a0c5fffa",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

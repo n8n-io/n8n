@@ -1,0 +1,26 @@
+packages/@n8n/mcp-browser-extension/src/background.ts
+  s_e984fb6e8b9edc::t_72ce34e3809b3a 158,162
+packages/@n8n/mcp-browser-extension/src/background.test.ts
+  s_e984fb6e8b9edc::t_b09e438f6c5769 1-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "89b9a72ff21997b0a2144aeadb47eed8baa72d97",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e984fb6e8b9edc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9b76718-8e8d-4e40-8fa1-db80c8ac1151",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

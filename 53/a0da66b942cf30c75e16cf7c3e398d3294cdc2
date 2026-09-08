@@ -1,0 +1,22 @@
+packages/@n8n/ai-utilities/src/prompt-builder/prompt-builder.ts
+  s_80c00fe3320feb::t_6aae49b381e9d8 47-50
+  s_80c00fe3320feb::t_b875d3a8eb3504 45-46,51
+packages/@n8n/ai-workflow-builder.ee/src/prompts/builder/prompt-builder.test.ts
+  s_80c00fe3320feb::t_b4ed08ab43d3cc 678-683
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "53a0da66b942cf30c75e16cf7c3e398d3294cdc2",
+  "prompts": {},
+  "sessions": {
+    "s_80c00fe3320feb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7103-2559-7571-8b3f-e57ae73bfda5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

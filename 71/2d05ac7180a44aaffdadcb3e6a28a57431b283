@@ -1,0 +1,20 @@
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_ce38e707b3774d::t_a94c53d5cff5a4 217-219,225-249
+  s_ce38e707b3774d::t_3da28489b7cfb5 220-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "712d05ac7180a44aaffdadcb3e6a28a57431b283",
+  "prompts": {},
+  "sessions": {
+    "s_ce38e707b3774d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f3d3be-4e23-4ead-99eb-53993886261e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

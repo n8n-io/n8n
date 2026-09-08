@@ -1,0 +1,39 @@
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_704a1a6a42be24::t_08dd68ed50b9f7 324,328
+packages/@n8n/instance-ai/skills/credential-recipe-research/SKILL.md
+  s_704a1a6a42be24::t_44c245006ca96f 5-9
+  s_704a1a6a42be24::t_62d765985d28db 58
+  s_704a1a6a42be24::t_74990630c391e9 34
+  s_704a1a6a42be24::t_4f12f17c9d84c7 62
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_704a1a6a42be24::t_0d2fb0ee6b8d92 125
+  s_704a1a6a42be24::t_e10b8ec6eb4010 80-81,88-93
+packages/@n8n/instance-ai/evaluations/__tests__/redact.test.ts
+  s_704a1a6a42be24::t_fe0027c3b35a3f 273
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_704a1a6a42be24::t_f260fb66bc7152 128
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_704a1a6a42be24::t_720e6a7d17f86d 914
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_704a1a6a42be24::t_251e3f3ae3acb4 116-118
+  s_704a1a6a42be24::t_c26f9c7290e45d 177
+  s_704a1a6a42be24::t_04fa05df63057e 63
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_704a1a6a42be24::t_febd7d3ba536c9 295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a1df3bb40c6fa22cd92f533512387d0dc82965b1",
+  "prompts": {},
+  "sessions": {
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

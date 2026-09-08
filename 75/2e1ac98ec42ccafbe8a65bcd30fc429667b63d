@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_03e31bd3d32fb7::t_d2af34d0ed0104 288-313
+  s_03e31bd3d32fb7::t_e53767bb10fea0 287
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_03e31bd3d32fb7::t_ba1078fba51986 250-254
+  s_03e31bd3d32fb7::t_464ff1018aa7a2 38
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.ts
+  s_03e31bd3d32fb7::t_69cc58a992ecfc 47-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "752e1ac98ec42ccafbe8a65bcd30fc429667b63d",
+  "prompts": {},
+  "sessions": {
+    "s_03e31bd3d32fb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a23cf9e9-0732-42b0-a3d7-4997316c07d1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

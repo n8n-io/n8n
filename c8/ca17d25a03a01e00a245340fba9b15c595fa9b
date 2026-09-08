@@ -1,0 +1,23 @@
+packages/testing/playwright/pages/PublicFormPage.ts
+  s_3550b3e2e6d2d4::t_157450b83f71d7 30-45,47-49
+  s_3550b3e2e6d2d4::t_80131563fa3c6b 46
+packages/testing/playwright/tests/e2e/dynamic-credentials/form-trigger-submit-gate-client.spec.ts
+  s_3550b3e2e6d2d4::t_6734566a569f4d 16-20
+  s_3550b3e2e6d2d4::t_744fec90573b36 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c8ca17d25a03a01e00a245340fba9b15c595fa9b",
+  "prompts": {},
+  "sessions": {
+    "s_3550b3e2e6d2d4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "73286f87-d13b-4608-99b0-a9bee2ac4bce",
+        "model": "grok-4.6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

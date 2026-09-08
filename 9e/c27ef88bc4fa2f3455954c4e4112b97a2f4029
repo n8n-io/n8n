@@ -1,0 +1,21 @@
+packages/@n8n/task-runner/src/js-task-runner/__tests__/js-task-runner.test.ts
+  s_74402fcac1c7e4::t_7a0dea1760f0a8 1162-1170,1176-1177,1180,1189-1190,1193
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_74402fcac1c7e4::t_ed53628e36a3e0 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9ec27ef88bc4fa2f3455954c4e4112b97a2f4029",
+  "prompts": {},
+  "sessions": {
+    "s_74402fcac1c7e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e853d50-a6b5-4c82-b935-d5a8f8ad1608",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

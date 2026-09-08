@@ -1,0 +1,44 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  ai_agent 1-266
+packages/cli/src/workflows/publication/publication-result.ts
+  s_2f83ef0d3e33ed::t_5e7716b73e46b5 1-32
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  ai_agent 3,9-11,14-20,35-36,99,112-121,123,125-129,133-135
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_2f83ef0d3e33ed::t_0db4718fd3219a 3,7-9,18-19,36-37,60-62,137-140,142,144-145,148-149,153-158,162-164,166,168,170,172-180,182,184-185
+  s_baf7d2dbecdbbb::t_25e6922a9666aa 10
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_2f83ef0d3e33ed::t_10f7aa241fb1a5 1-31,33-34,36,38-40,42,44-50,52,54-56,58,60-61,67-86
+  s_2f83ef0d3e33ed::t_0404c724a8d45b 32,35,37,41,43,51,53,57,59,66
+packages/cli/src/workflows/publication/__tests__/trigger-diff.test.ts
+  s_2f83ef0d3e33ed::t_19544e717026f8 3
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_2f83ef0d3e33ed::t_d9c295ccba7829 10-30,38-118
+  s_2f83ef0d3e33ed::t_552fcb9769bb3d 36
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  ai_agent 1-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2699087e0b5ca81aa5d34b644bf4c4d06046ca8a",
+  "prompts": {},
+  "sessions": {
+    "s_2f83ef0d3e33ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "173765c5-38e5-4034-a7cd-a7997e9647c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_baf7d2dbecdbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "617c4ca3-4c59-496a-bdb3-e93f7a9ab1f7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

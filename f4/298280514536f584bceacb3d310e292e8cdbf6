@@ -1,0 +1,26 @@
+packages/@n8n/instance-ai/src/stream/__tests__/usage-accumulator.test.ts
+  s_8df1f1b34b9d13::t_14d29319586fd6 69-111
+packages/@n8n/instance-ai/src/stream/usage-accumulator.ts
+  s_8df1f1b34b9d13::t_2c36635796edc8 103-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f4298280514536f584bceacb3d310e292e8cdbf6",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8df1f1b34b9d13": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c0ae6241-b92b-4d09-952e-b606baf77ef3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_60e43f07473cd0::t_56318718ad2779 2016,2050,2244-2250
+  s_60e43f07473cd0::t_9fb64f88b16e74 2251
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  s_60e43f07473cd0::t_bc563b382a8bb5 255-283,285-286
+  s_60e43f07473cd0::t_43e259bf47f16e 284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "8f629227a40c82262a57f5535f9be6e75c94b784",
+  "prompts": {},
+  "sessions": {
+    "s_60e43f07473cd0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8fe1-c76f-71c3-8e47-b42265a08f6b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

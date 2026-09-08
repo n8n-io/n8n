@@ -1,0 +1,78 @@
+packages/@n8n/decorators/src/controller/api-key-scope.ts
+  s_ffb7dd4d4bc241::t_c57c1a1cd85a04 48
+  s_ffb7dd4d4bc241::t_9c0693339d8917 1-47,49
+packages/@n8n/api-types/src/dto/index.ts
+  s_ffb7dd4d4bc241::t_70059bebff6a20 131-132
+packages/@n8n/decorators/src/controller/public-api-controller.ts
+  s_ffb7dd4d4bc241::t_959a0d3872267e 1-34
+packages/@n8n/decorators/src/controller/api-response.ts
+  s_ffb7dd4d4bc241::t_1551feeee24bdd 1-3,5-20,22-28
+  s_ffb7dd4d4bc241::t_f9e547ea2517f1 4,21
+packages/@n8n/decorators/src/controller/__tests__/api-key-scope.test.ts
+  s_ffb7dd4d4bc241::t_c8f8be6655311e 1-65
+packages/cli/src/services/tag.service.ts
+  s_ffb7dd4d4bc241::t_1056c3f6af9af6 106,108
+  s_ffb7dd4d4bc241::t_8ba91c1d4bcc42 105,107,109-119
+packages/@n8n/decorators/src/controller/__tests__/api-response.test.ts
+  s_ffb7dd4d4bc241::t_cf69fe516db1c7 1-39
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_ffb7dd4d4bc241::t_f457b4543f6daf 1-3,5-11,13-17,19-103,105-141,146-194,196-204,213-216,221-222
+  s_ffb7dd4d4bc241::t_e7f2dd9311da96 18
+  s_ffb7dd4d4bc241::t_0226753747871a 104
+  s_ffb7dd4d4bc241::t_6fb1dcfacd9a64 4,12,142-145,195,205-212,217-220
+packages/cli/src/public-api/index.ts
+  h_ed1b2d65e81e8e 13-15
+  s_ffb7dd4d4bc241::t_d8dd4a16a38a35 195
+  s_ffb7dd4d4bc241::t_1adb6106255265 23-24
+  s_ffb7dd4d4bc241::t_db19a3219f8e86 335-337
+  s_ffb7dd4d4bc241::t_5a5eafbc8a220c 193-194,196-198
+packages/@n8n/api-types/src/dto/tag/list-tags-query.dto.ts
+  s_ffb7dd4d4bc241::t_568ce99344a954 1-13
+packages/cli/src/public-api/v1/controllers/tags.public.controller.ts
+  s_ffb7dd4d4bc241::t_39c74e42e76797 13-16,36
+  s_ffb7dd4d4bc241::t_adf482b3e09e44 1-12,17-35,37-52
+packages/@n8n/decorators/src/controller/__tests__/public-api-controller.test.ts
+  s_ffb7dd4d4bc241::t_731e6ded4b37dd 1-41
+packages/cli/src/controller.registry.ts
+  s_ffb7dd4d4bc241::t_d2262486bfcff7 48-50
+.agents/skills/public-api/SKILL.md
+  s_ffb7dd4d4bc241::t_9e4c7136b23dd6 6,11,13-67,108,110-113
+packages/@n8n/decorators/src/controller/index.ts
+  s_ffb7dd4d4bc241::t_ee3456571a2526 4-6,14
+  s_ffb7dd4d4bc241::t_c83910679e6e9c 18
+packages/@n8n/decorators/src/controller/types.ts
+  s_ffb7dd4d4bc241::t_d49a63f5b27e79 1,4,9-17
+  s_ffb7dd4d4bc241::t_35a301d7cf09eb 60-65
+  s_ffb7dd4d4bc241::t_0dc6e457dd9fdb 66
+  s_ffb7dd4d4bc241::t_9910fab56aadee 19-21
+  s_ffb7dd4d4bc241::t_0822c501e0d20d 96-100
+  s_ffb7dd4d4bc241::t_003c50cf653059 18
+packages/cli/src/public-api/v1/handlers/tags/tags.handler.ts
+  s_ffb7dd4d4bc241::t_b2b618dff00a2c 74-79
+  s_ffb7dd4d4bc241::t_9616ad869bd1c1 84
+  s_ffb7dd4d4bc241::t_da74ee939540a8 5,73,80,83,85
+  s_ffb7dd4d4bc241::t_eefb274b9d3a68 3-4
+packages/@n8n/api-types/src/dto/tag/tag-public.dto.ts
+  s_ffb7dd4d4bc241::t_b826c253415ccd 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e8a0b87d28ef9f9c48f097c0fb4f6eedeb033b71",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ffb7dd4d4bc241": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f4938bcb-e16b-47a0-8c74-c70eb77a07a9",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

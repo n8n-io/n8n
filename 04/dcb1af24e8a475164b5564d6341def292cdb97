@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_9f30e357c1bf9d::t_080e5383c88b88 207-209,211-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "04dcb1af24e8a475164b5564d6341def292cdb97",
+  "prompts": {},
+  "sessions": {
+    "s_9f30e357c1bf9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86539bcf-af50-43ad-a4ae-f42388f0e524",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

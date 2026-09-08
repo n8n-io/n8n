@@ -1,0 +1,26 @@
+packages/cli/src/modules/slack-comms/slack-web-client.ts
+  ai_agent 492-493,528-533
+  s_60dfaf9586b4e7::t_d70b8aa0343ad2 1-491,494-527,534-537
+packages/cli/src/modules/slack-comms/__tests__/slack-web-client.test.ts
+  ai_agent 274
+  s_60dfaf9586b4e7::t_1351ec715c4a99 340
+  s_60dfaf9586b4e7::t_550de7a8d4b295 2
+  s_60dfaf9586b4e7::t_8d5fee4dcd215e 117-120
+  s_60dfaf9586b4e7::t_0a901987cd3b48 1,3-116,121-273,275-339,341-452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7d117af989476fa5480087ed36918accab2303dc",
+  "prompts": {},
+  "sessions": {
+    "s_60dfaf9586b4e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc0705c0-a9e7-42d1-901f-f21c693be3e3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,74 @@
+packages/@n8n/permissions/src/constants.ee.ts
+  s_6e0843ae09343d::t_129000b8ac6fe3 100
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_b5dfb80eedf80c::t_c4bb0b8734a821 370
+  s_78adce0f64c626::t_133e4848d13309 18
+  s_78adce0f64c626::t_9c9226f3487f06 133,165-167,169,171-173
+  s_b5dfb80eedf80c::t_c690d20c878f91 134-164,168,170
+  s_78adce0f64c626::t_58c636037fd353 87
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersTable.test.ts
+  s_6e0843ae09343d::t_cf3b0c13bdcae7 316-317
+  s_6e0843ae09343d::t_129000b8ac6fe3 9-10,132,146-147,252-315
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.test.ts
+  s_6e0843ae09343d::t_992896c0db5056 774-818
+  s_6e0843ae09343d::t_c21871dff9c569 819,969-971
+  s_b5dfb80eedf80c::t_81426ce4dc2965 821-822
+  s_6e0843ae09343d::t_129000b8ac6fe3 17,129,145,926-968
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_6e0843ae09343d::t_129000b8ac6fe3 24,56,145,161-165,325,370
+  s_b5dfb80eedf80c::t_21da0f8e18626a 219-220
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersRoleCell.vue
+  s_6e0843ae09343d::t_129000b8ac6fe3 3,9-10,17,20,24
+packages/frontend/editor-ui/src/app/stores/roles.store.test.ts
+  s_6e0843ae09343d::t_90d943a7fdbf20 287
+  s_6e0843ae09343d::t_129000b8ac6fe3 2,7,13,196-286
+packages/@n8n/api-types/src/schemas/user.schema.ts
+  s_78adce0f64c626::t_f2805ed8c2da78 16
+  s_78adce0f64c626::t_0de15e4fe4d000 17
+packages/frontend/editor-ui/src/features/settings/users/users.types.ts
+  s_6e0843ae09343d::t_129000b8ac6fe3 1-2,7-8
+packages/frontend/@n8n/rest-api-client/src/api/dynamic-banners.ts
+  s_78adce0f64c626::t_376937c5066820 22
+packages/frontend/editor-ui/src/app/stores/roles.store.ts
+  s_6e0843ae09343d::t_129000b8ac6fe3 5,62-64,68-71,128
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersTable.vue
+  s_6e0843ae09343d::t_129000b8ac6fe3 3,22,27,39,107,124-129,132,149-153,173
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersRoleCell.test.ts
+  s_6e0843ae09343d::t_129000b8ac6fe3 28,63-75,128-160
+  s_6e0843ae09343d::t_acfa59c2deb6a7 161-162
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_6e0843ae09343d::t_129000b8ac6fe3 12,41,325-329
+  s_b5dfb80eedf80c::t_fb6b73bce3e88e 119-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "ea7c964ed1c9488dba2385f10a02cc45b6efc6ba",
+  "prompts": {},
+  "sessions": {
+    "s_6e0843ae09343d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "77aeadf9-2df8-48d7-be11-e5055cd8faab",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": null
+    },
+    "s_78adce0f64c626": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50247200-f127-49ae-a230-f839ff215225",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_b5dfb80eedf80c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "92b5b8c7-3149-4c71-b9a9-c100205a88ca",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

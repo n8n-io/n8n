@@ -1,0 +1,23 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_66be2eb681ad3c::t_73aace70922557 239-272
+  s_66be2eb681ad3c::t_c061b5814e25f3 288
+  s_66be2eb681ad3c::t_dc360211046e4b 512-551
+  s_66be2eb681ad3c::t_a42e272181b935 576-578
+  ai_agent 14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f898e4f4c9904c64c31318719dd1635651290ca6",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

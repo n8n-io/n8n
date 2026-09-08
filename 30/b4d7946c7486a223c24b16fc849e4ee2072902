@@ -1,0 +1,41 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/follows-the-house-chat-model-without-being-told.json
+  s_f2ecf78efc7a31::t_925941c334e2ef 6-15,84-85,154-155,224-225
+  ai_agent 25,37,53,95,107,123,165,177,193,236,246-247
+  s_f2ecf78efc7a31::t_b4198070a21a04 1-5,16-24,26-36,38-52,54-83,86-94,96-106,108-122,124-153,156-164,166-176,178-192,194-223,226-235,237-245
+packages/@n8n/instance-ai/evaluations/data/workflows/does-not-drag-recent-activity-into-an-unrelated-ask.json
+  s_f2ecf78efc7a31::t_925941c334e2ef 6-15,61-62
+  ai_agent 25,42,79,89-90
+  s_f2ecf78efc7a31::t_b4198070a21a04 1-5,16-24,26-41,43-60,63-78,80-88
+packages/@n8n/instance-ai/skills/instance-awareness/SKILL.md
+  s_f2ecf78efc7a31::t_8f43ab8ce8267a 1-135
+scripts/ab-activity-eval.sh
+  s_f2ecf78efc7a31::t_9d53f8f0211aa4 1-93
+packages/@n8n/instance-ai/evaluations/README.md
+  s_f2ecf78efc7a31::t_397d2c023b15eb 175,181-208
+packages/cli/src/modules/instance-ai/activity-feed.service.ts
+  s_f2ecf78efc7a31::t_f8add235b385e1 223-228,234
+packages/@n8n/instance-ai/evaluations/data/workflows/surfaces-the-failed-run-on-an-open-opener.json
+  ai_agent 25,42,53,111,130-131
+  s_f2ecf78efc7a31::t_7d64c13c84408a 1-5,16-24,26-41,43-52,54-92,95-110,112-129
+  s_f2ecf78efc7a31::t_925941c334e2ef 6-15,93-94
+packages/@n8n/instance-ai/evaluations/data/workflows/picks-up-the-workflow-from-a-previous-session.json
+  s_f2ecf78efc7a31::t_7d64c13c84408a 1-5,16-24,26-36,38-66,68-100,103-112,114-131
+  s_f2ecf78efc7a31::t_925941c334e2ef 6-15,101-102
+  ai_agent 25,37,67,113,132-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30b4d7946c7486a223c24b16fc849e4ee2072902",
+  "prompts": {},
+  "sessions": {
+    "s_f2ecf78efc7a31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "571634ba-8cae-4e9a-a244-c914fd959e23",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

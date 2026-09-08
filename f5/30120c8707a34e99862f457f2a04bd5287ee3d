@@ -1,0 +1,49 @@
+packages/@n8n/cli/docs/commands/package.md
+  s_9f16307c732f06::t_62438f73fe1d25 42-44
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_6b3fa421555262::t_cbe195ef60a085 80
+  s_9f16307c732f06::t_f6498b6d82d128 81-82
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-dependency-resolver.test.ts
+  s_9f16307c732f06::t_e0c18ee12e76b8 1
+  s_9f16307c732f06::t_085f950e75a0d3 29-44
+  s_9f16307c732f06::t_6cf712779d6429 209-225
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow-resolver.ts
+  s_6b3fa421555262::t_bf525b693f23e0 267
+  s_6b3fa421555262::t_8af60bdf2409eb 258-259,262-266,268-279
+  s_9f16307c732f06::t_8b6955519ab7ee 260-261
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/auto-included-workflow-resolver.test.ts
+  s_6b3fa421555262::t_33159ab35db998 322-339
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_6b3fa421555262::t_0c2a6a32ab4d80 982-1006
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-version-policy.ts
+  h_ce2c4b90496ac9 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f530120c8707a34e99862f457f2a04bd5287ee3d",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6b3fa421555262": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "099e3691-5133-4a26-a84f-ec0d1d1938b1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    },
+    "s_9f16307c732f06": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "109dd724-ee4f-481b-9d4c-a66e3c851e62",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

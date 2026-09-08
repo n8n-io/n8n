@@ -1,0 +1,19 @@
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.integration.test.ts
+  s_c2908ceaab42e0::t_2060205e62f60b 1-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1144b2c3a12268bfbc27644670835c08ce18cf00",
+  "prompts": {},
+  "sessions": {
+    "s_c2908ceaab42e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7599c9ca-b513-4826-b77f-9b5637429270",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

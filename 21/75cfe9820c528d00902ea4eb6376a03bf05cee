@@ -1,0 +1,21 @@
+packages/workflow/src/workflow-data-proxy.ts
+  s_ff8ba147c9dd94::t_2803db1bc86c48 36-41,69-76,1132-1140,1163-1165,1167-1168
+packages/workflow/test/workflow-data-proxy.test.ts
+  s_ff8ba147c9dd94::t_3b0eea89c25c87 1055-1132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2175cfe9820c528d00902ea4eb6376a03bf05cee",
+  "prompts": {},
+  "sessions": {
+    "s_ff8ba147c9dd94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "896d44e1-2395-4d86-ad68-fa2789e50b79",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

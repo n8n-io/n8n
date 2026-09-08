@@ -1,0 +1,22 @@
+packages/cli/test/integration/token-exchange/embed-auth.api.test.ts
+  s_aeac65fc97e940::t_36210c7235e9b4 65
+packages/cli/test/integration/token-exchange/token-exchange.controller.test.ts
+  s_aeac65fc97e940::t_eece9057058c68 46
+  s_aeac65fc97e940::t_347865472e11f6 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7f7bdd5ca5b26981550ecfda01bfa652f7570058",
+  "prompts": {},
+  "sessions": {
+    "s_aeac65fc97e940": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce6a8d16-666e-4e23-8065-70be62c8cf0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_23ac9e46ab1748::t_f45b4b70260d79 315-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5d5e105332fd0896af4e219c79a40746a0228939",
+  "prompts": {},
+  "sessions": {
+    "s_23ac9e46ab1748": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b113851a-c3ab-49d5-8c97-0a2c96719d51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

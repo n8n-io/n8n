@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_90002f1fe023d1::t_28e132653da39e 2282
+  s_90002f1fe023d1::t_45260efbc9a39b 1644
+  s_90002f1fe023d1::t_40604137c1cb7b 663-667
+packages/frontend/editor-ui/src/features/ndv/panel/components/__snapshots__/InputPanel.test.ts.snap
+  ai_agent 134,140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "54606b936047f43b3e631fd1ac5858c8491464f3",
+  "prompts": {},
+  "sessions": {
+    "s_90002f1fe023d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9dd1c3f-0c3e-4ea6-9f03-3f9ec6951428",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

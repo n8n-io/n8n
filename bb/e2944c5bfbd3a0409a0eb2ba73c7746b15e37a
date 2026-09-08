@@ -1,0 +1,29 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer.ts
+  s_dbc3af39d1fa13::t_1d4918c05aa05d 220-226,230-232,681-683
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_dbc3af39d1fa13::t_fbc3910cdb65da 207,220,258
+packages/cli/src/__tests__/utils.test.ts
+  s_dbc3af39d1fa13::t_1694318df61481 2,12,15-55
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_dbc3af39d1fa13::t_425a48cb8e6d02 22,1015-1018
+packages/cli/src/utils.ts
+  s_dbc3af39d1fa13::t_a6fdd5c019b42d 177-184
+packages/frontend/@n8n/storybook/package.json
+  s_dbc3af39d1fa13::t_e37fa51a814017 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bbe2944c5bfbd3a0409a0eb2ba73c7746b15e37a",
+  "prompts": {},
+  "sessions": {
+    "s_dbc3af39d1fa13": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_dbc3af39d1fa13",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d2176d33b46066::t_d009218ce48476 3565
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.test.ts
+  s_76cf314948c8c5::t_3adc466a5e29f3 72,168,196,224
+packages/cli/src/requests.ts
+  s_d2176d33b46066::t_b8e55bf92104c7 317
+packages/frontend/editor-ui/src/features/core/folders/components/FolderBreadcrumbs.test.ts
+  s_76cf314948c8c5::t_be893976680f03 32
+packages/cli/src/controllers/__tests__/project.controller.test.ts
+  s_76cf314948c8c5::t_a5154f55ec01b9 239,251
+  s_76cf314948c8c5::t_c9fcaa3ed61ff5 167
+  s_76cf314948c8c5::t_8816bfbc215294 185-188
+  s_d2176d33b46066::t_7a08fd92bdcc6d 318-331,334-335,351-360,362-384
+  s_76cf314948c8c5::t_84d405a8df2bd9 332-333,336-350,361
+packages/frontend/editor-ui/src/features/collaboration/projects/__tests__/utils.ts
+  s_76cf314948c8c5::t_350dbd094c8fb0 40
+packages/cli/test/integration/public-api/projects.test.ts
+  s_76cf314948c8c5::t_d756eb2e2f5bb6 10,14
+  s_76cf314948c8c5::t_8bcd6ca000c8a2 801,952,1098
+  s_76cf314948c8c5::t_0294db9b333a05 799,950,1096
+  s_76cf314948c8c5::t_535a78c2946561 11
+  s_76cf314948c8c5::t_1245348a8650b9 1094-1095,1097,1099-1123
+  s_76cf314948c8c5::t_0ccc88b3dba227 948-949,951,953-976
+  s_76cf314948c8c5::t_0e9d63cee93ef4 797-798,800,802-826
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.types.ts
+  s_76cf314948c8c5::t_cf0ccba992348e 36
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_d2176d33b46066::t_a2f71e33cc9816 363
+  s_76cf314948c8c5::t_abf46c2abc59cc 238
+  s_d2176d33b46066::t_0cac1e8f7b4142 116,123
+  s_d2176d33b46066::t_dd313e0e5d69bf 336-347,349-362,364,367-369
+  s_d2176d33b46066::t_d2469ca04e056d 348
+  s_d2176d33b46066::t_89e7c6d6680268 75,92
+  s_76cf314948c8c5::t_e42bc5005d0d98 365-366
+packages/cli/src/controllers/project.controller.ts
+  s_d2176d33b46066::t_375749e0bed7b7 278-286,295
+  s_d2176d33b46066::t_4fe504b0d9398e 227,231,255
+  s_d2176d33b46066::t_c4ee85257d7821 369
+  s_d2176d33b46066::t_95efcd709bd49e 341
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_d2176d33b46066::t_6820c31360b542 131
+  s_d2176d33b46066::t_5d29dfa14e20c3 692,695
+  s_d2176d33b46066::t_ec907379e34f1f 562,570
+  s_d2176d33b46066::t_f75c909fcb7738 706
+  s_d2176d33b46066::t_6d21e86961a2a3 671
+packages/cli/src/public-api/v1/handlers/projects/projects.handler.ts
+  s_76cf314948c8c5::t_2bb323631e6c78 220-221
+  s_76cf314948c8c5::t_dc7acd00554e66 15,17
+  s_76cf314948c8c5::t_56967c2b0f61be 47-55
+  s_76cf314948c8c5::t_52c4d6ca15a44b 183-184
+  s_76cf314948c8c5::t_e8a9e93066272b 202-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "e9dea88c33967be192430220cfed96db57a403ae",
+  "prompts": {},
+  "sessions": {
+    "s_76cf314948c8c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68208af4-872f-4186-8a17-5fedffa1af8e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_d2176d33b46066": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c3929aa-e141-4d14-a56a-9cf227daca62",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

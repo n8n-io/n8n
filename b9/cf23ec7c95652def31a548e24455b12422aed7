@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_34811779c9d586::t_ab5d8bec9b0ab0 473
+packages/nodes-base/nodes/Wait/Wait.node.ts
+  s_34811779c9d586::t_07674cc8269cea 534
+packages/nodes-base/nodes/RespondToWebhook/test/RespondToWebhook.test.ts
+  s_34811779c9d586::t_b72a480cb2eb71 84,121,141,162,183,212,235,256,276,302,326,351
+  ai_agent 517,542,570,597
+packages/workflow/src/interfaces.ts
+  s_34811779c9d586::t_c4a5396b897337 1237
+packages/nodes-base/nodes/RabbitMQ/RabbitMQ.node.ts
+  s_34811779c9d586::t_c97694458912fc 394
+packages/nodes-base/nodes/RespondToWebhook/RespondToWebhook.node.ts
+  s_34811779c9d586::t_81ea67219d3560 577
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b9cf23ec7c95652def31a548e24455b12422aed7",
+  "prompts": {},
+  "sessions": {
+    "s_34811779c9d586": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "395804aa-73ad-495d-ad85-228a556bbfab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

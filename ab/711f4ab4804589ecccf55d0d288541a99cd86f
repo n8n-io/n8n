@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Kafka/test/v2/consumer/kafka-consumer.integration.test.ts
+  s_79c0473179aa3d::t_f2406d03101199 241-243
+  s_79c0473179aa3d::t_0d92f6c0c86515 1-240,244-250
+packages/nodes-base/nodes/Kafka/test/v2/consumer/kafka-v1-v2-parity.integration.test.ts
+  s_79c0473179aa3d::t_c3708962bd28c0 1-111,114-166
+  s_79c0473179aa3d::t_96cd7b1cc1fdf6 112-113
+packages/nodes-base/nodes/Kafka/test/mocks/confluent-kafka.ts
+  s_79c0473179aa3d::t_d980808c50ab6e 104-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ab711f4ab4804589ecccf55d0d288541a99cd86f",
+  "prompts": {},
+  "sessions": {
+    "s_79c0473179aa3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae8df3ca-df5d-48ee-a98f-0afbfab05c51",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

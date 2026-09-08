@@ -1,0 +1,30 @@
+packages/cli/src/workflows/workflow-publication-outbox-consumer.ts
+  s_826e31d61245c3::t_b4e71039ff0f07 5,7-8
+  s_826e31d61245c3::t_c60f8d67691385 121,127,131,138-143,145,147-149,151-153,155,159,164,166,168-179,181
+  ai_agent 163
+  s_826e31d61245c3::t_3b56b0a038b212 126,128-130,132,134
+  s_826e31d61245c3::t_ee475f1bfcd18a 150
+packages/@n8n/db/src/entities/index.ts
+  s_826e31d61245c3::t_0718b488a28f66 91
+  s_826e31d61245c3::t_bac95ce0337c85 45-48
+packages/cli/src/workflows/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_826e31d61245c3::t_0a0ca84b37fefc 9,127,180,186,191,198,203
+  s_826e31d61245c3::t_b3ff5342952261 73,79-80
+  ai_agent 74-78,222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7042ddeeb970d166c106af2153134646ea1f4a28",
+  "prompts": {},
+  "sessions": {
+    "s_826e31d61245c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cebc56ee-ce80-433e-9029-b39af1dea235",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

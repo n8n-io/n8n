@@ -1,0 +1,43 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/static-workflow-dependency.exporter.ts
+  s_f67394133527a7::t_2484b6dbb48215 1
+  s_f67394133527a7::t_e12f6b0be8677d 2-56,58-263
+packages/cli/src/modules/n8n-packages/entities/workflow/static-workflow-dependency-resolver.ts
+  s_f67394133527a7::t_671beedcbf9214 1-9,14-51,53-67,72-74,76-80,85-211,216-240,244-267
+  s_f67394133527a7::t_47d6dd71816d37 10-13,241-243
+  s_f67394133527a7::t_c64a30a1fcd978 52,68-71,75,81-84,212-215
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_f67394133527a7::t_ce320f1f6f0ec5 19,72
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_f67394133527a7::t_5c1d6d540c7f19 14,20-23,183-206,208-300
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_f67394133527a7::t_e437e6e95710b9 155-196,226-262
+packages/cli/src/modules/n8n-packages/io/unique-filename-allocator.ts
+  s_f67394133527a7::t_180706c9382c9e 15-20
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_f67394133527a7::t_1c9260e554fe52 18-20,22,55-56,107,111-112,118-166,177-178,186-187,206,249-277
+packages/cli/src/services/folder-finder.service.ts
+  s_f67394133527a7::t_c5fa5227ead634 68-108
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-data-tables.integration.test.ts
+  s_f67394133527a7::t_746cbfb39e9e67 22-25,186-208,210-215
+  s_f67394133527a7::t_9410bfa23d9f57 209
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_f67394133527a7::t_f884cd639d9bd6 24,63-65
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_f67394133527a7::t_79179b84eb8200 153-245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "11ad11d18d4b293be667a4cf15bdb8de360cd0e7",
+  "prompts": {},
+  "sessions": {
+    "s_f67394133527a7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f64db-ac5c-7c31-8392-8711f9c4f952",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

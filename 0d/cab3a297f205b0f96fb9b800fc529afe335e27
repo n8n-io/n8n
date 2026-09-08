@@ -1,0 +1,45 @@
+packages/@n8n/config/src/configs/feature-flags.config.ts
+  s_be3053d6eb937a::t_f4dc660fec6ba6 21-29
+  s_be3053d6eb937a::t_e32866a629f034 18-20
+  s_be3053d6eb937a::t_576d4b2e073b1b 30-32
+  s_be3053d6eb937a::t_32082424e8611a 1-17,33
+packages/@n8n/config/src/index.ts
+  s_be3053d6eb937a::t_6e3b9783255e2f 26,320-322
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_be3053d6eb937a::t_6e3b9783255e2f 230,270,272-273,276-282,287
+  s_be3053d6eb937a::t_427ae0f52e0409 269,271,274-275,283-286,288-331
+  s_be3053d6eb937a::t_16b9def52c7a41 332
+packages/@n8n/config/src/configs/__tests__/feature-flags.config.test.ts
+  s_be3053d6eb937a::t_9b79c0352cdd4f 10,13-14,23,25-38,40,43-45,48,51-53
+  s_be3053d6eb937a::t_e71aa57ce4e8db 7-9
+  s_be3053d6eb937a::t_f8ee4c854b23dc 11-12
+  s_be3053d6eb937a::t_421db4a96da504 15-17,20-22
+  s_be3053d6eb937a::t_73c8a13a89c460 24
+  s_be3053d6eb937a::t_1fc9cc2f0b2a1c 39
+  s_be3053d6eb937a::t_8476bf12baca92 41-42
+  s_be3053d6eb937a::t_6703ce8a795f49 46-47
+  s_be3053d6eb937a::t_bcb0fbd30a8e4d 49-50
+  s_be3053d6eb937a::t_e32bfafafd6d03 54
+  s_be3053d6eb937a::t_bcd0eaebe22c02 1-6,18-19
+packages/@n8n/config/test/config.test.ts
+  s_be3053d6eb937a::t_6e3b9783255e2f 194-196
+packages/cli/src/posthog/index.ts
+  s_be3053d6eb937a::t_01bf17935cc0e7 193-194,196-203
+  s_be3053d6eb937a::t_6e3b9783255e2f 229-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0dcab3a297f205b0f96fb9b800fc529afe335e27",
+  "prompts": {},
+  "sessions": {
+    "s_be3053d6eb937a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1538c797-8fda-4ad5-8dfd-6897b2da5082",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

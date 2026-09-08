@@ -1,0 +1,63 @@
+packages/cli/src/modules/agents/agents.service.ts
+  s_16323f976c7783::t_016e20beef2fb3 16
+  s_16323f976c7783::t_d88d4c0216f6ee 215-216
+  s_16323f976c7783::t_c8041cf4970fbe 38
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_16323f976c7783::t_bbe70c99fc2694 2
+  s_16323f976c7783::t_f7da9f3b471574 274-276
+  s_16323f976c7783::t_1e41f383db4253 4
+  s_16323f976c7783::t_68c0b482192db0 120-121,136-137,144-155
+  s_16323f976c7783::t_bd6a1dbc4e0b17 263,277,279-284,288-292,294-303,306,389
+  s_16323f976c7783::t_04174e1287e5e4 304,355,359-366,368-387,393
+  s_16323f976c7783::t_40c032cc8fe349 55-57
+  s_16323f976c7783::t_812580424f4349 64-66
+  s_16323f976c7783::t_5f48da051190c7 367
+  s_16323f976c7783::t_cc84c77930dd27 5,14
+  s_16323f976c7783::t_20c10580f3d70a 6
+  s_16323f976c7783::t_5b816e4bc47ce0 293
+  s_16323f976c7783::t_ae50d34328ba91 156,305,307,388,390-392,402-406
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_16323f976c7783::t_8d1c28f30d645c 2,5
+  s_16323f976c7783::t_c66c0c032935eb 87-108
+  s_16323f976c7783::t_68c56a4b2cf64f 109-110
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_16323f976c7783::t_5edd2e04ca2f6e 610,625-640
+  s_16323f976c7783::t_b90a3f0d9e471b 566,642,660-675
+  s_16323f976c7783::t_8c4d25e738b77d 92-195
+  s_16323f976c7783::t_306eedc6a0ace6 4,12
+  s_16323f976c7783::t_f0ffc59014d940 62-64,75-77,85-87
+  s_16323f976c7783::t_4d9a92897b8c5f 513,522-565
+  s_16323f976c7783::t_8c6bf0f1f9eef5 567
+  s_16323f976c7783::t_8ecc5a3e54527d 641
+  s_16323f976c7783::t_1418cca1974fd4 643
+packages/cli/src/services/project.service.ee.ts
+  s_16323f976c7783::t_c6c594f006bfa5 126-131
+  s_16323f976c7783::t_c45f0a21920566 241,244,259
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_16323f976c7783::t_d572f725263219 54
+  s_16323f976c7783::t_849140625f4bab 74,88
+  s_16323f976c7783::t_76c689be4989a1 11
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_16323f976c7783::t_8ec48e13e94a24 305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ca368b6e9507ac0966dca867bf935b8505a38049",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_16323f976c7783": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3ba1c9d-62c3-4db4-be71-8ed941f5d77c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.vue
+  s_1d9ef3fe77cd3e::t_9ade48ba568c5b 71,86-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "de75f42c58a27948d24e6daf8cd7cb3f3cf06783",
+  "prompts": {},
+  "sessions": {
+    "s_1d9ef3fe77cd3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cef90b4f-33ea-4920-8fda-54498fce8114",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

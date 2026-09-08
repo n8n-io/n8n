@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDashboard.test.ts
+  s_c5a73481075afb::t_80d9e39fc35068 758-761,763
+  s_c5a73481075afb::t_45d9f4a9fa0025 773-818
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDashboard.vue
+  h_5d40c27a8fdfd1 200-201,203
+  s_c5a73481075afb::t_a9b19d34a402f5 173-174,178-179,202,204,209-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7b46ee629ac2c723a12779a275f22c20ae006828",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_c5a73481075afb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d613f4e-8722-42ce-82e5-6d0900809185",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

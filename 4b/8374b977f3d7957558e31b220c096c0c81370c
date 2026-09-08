@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_e451b03ada1186::t_e4313061d84018 18,24,37-60
+packages/frontend/editor-ui/src/features/roles/composables/useRoleEditorForm.ts
+  s_e451b03ada1186::t_f809daa1bd97f8 1-133
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_e451b03ada1186::t_dc69ecd280f2d1 9-10,13,19,26-42,66-68
+  s_e451b03ada1186::t_ca24106ac02b7c 15
+  s_e451b03ada1186::t_79d0c93a08d21f 69-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "4b8374b977f3d7957558e31b220c096c0c81370c",
+  "prompts": {},
+  "sessions": {
+    "s_e451b03ada1186": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e6ddda45-fd01-4e73-b225-ab6576a89fb1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

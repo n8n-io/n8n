@@ -1,0 +1,94 @@
+packages/@n8n/api-types/src/push/promotion.ts
+  s_bd7ed65860b0bc::t_6caaf598d004e2 1-13
+packages/cli/src/modules/promotions/promotions.controller.ts
+  s_bd7ed65860b0bc::t_396545938be0ee 1-104
+packages/@n8n/api-types/src/push/index.ts
+  s_bd7ed65860b0bc::t_5cd520323dc883 8
+  s_bd7ed65860b0bc::t_678cb01cff237f 25-26
+packages/frontend/editor-ui/src/features/promotions/components/PromotionsSidebar.vue
+  ai_agent 76
+  s_bd7ed65860b0bc::t_9a89c6508a8d7f 1-75,77-199
+packages/frontend/editor-ui/src/features/promotions/views/PromotionsView.vue
+  s_bd7ed65860b0bc::t_d5d01cabfe5d43 1-145
+packages/@n8n/api-types/src/promotion.ts
+  s_bd7ed65860b0bc::t_e63e5d78e1cdc7 1-55
+packages/frontend/editor-ui/src/features/promotions/components/PromotionStateBadge.vue
+  s_bd7ed65860b0bc::t_8957bb7fa3ae20 1-74
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_bd7ed65860b0bc::t_65bfe6ed31bcc0 10
+  s_bd7ed65860b0bc::t_20650657329cef 24
+packages/frontend/editor-ui/src/features/promotions/module.descriptor.ts
+  s_bd7ed65860b0bc::t_ccbf155d5b5aa5 1-33
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_bd7ed65860b0bc::t_f8e83702900a56 139-148
+  s_bd7ed65860b0bc::t_4f99422d8310c5 20-21
+  s_bd7ed65860b0bc::t_3de8f3dc8d7534 214-219
+packages/@n8n/api-types/src/index.ts
+  s_bd7ed65860b0bc::t_9392779fe096d4 19
+packages/cli/src/modules/promotions/promotion.mapper.ts
+  s_bd7ed65860b0bc::t_18169f7e393966 1-49
+packages/cli/src/modules/promotions/promotions.service.ts
+  s_bd7ed65860b0bc::t_432dd124af3bcb 5-6,17,22
+  s_bd7ed65860b0bc::t_01b3db967e6d6c 51-53,62,66-72
+packages/cli/src/modules/promotions/promotion-model-registry.ts
+  s_bd7ed65860b0bc::t_64e71bc9d8ee28 14-17
+packages/frontend/editor-ui/src/features/promotions/promotions.store.ts
+  ai_agent 22,59
+  s_bd7ed65860b0bc::t_9701589bbcb90a 1-21,23-58,60-102
+packages/frontend/editor-ui/src/features/promotions/components/PromotionDetailGeneric.vue
+  s_bd7ed65860b0bc::t_0f19de54aed043 1-107
+packages/frontend/editor-ui/src/features/promotions/constants.ts
+  s_bd7ed65860b0bc::t_f179d543c3c17a 1-6
+packages/cli/src/modules/promotions/promotions.module.ts
+  s_bd7ed65860b0bc::t_97473b1b6f81b5 8-9
+packages/frontend/editor-ui/src/features/promotions/composables/usePromotionsFeature.ts
+  s_bd7ed65860b0bc::t_ab2e42e10ccdc4 1-15
+packages/frontend/editor-ui/src/features/promotions/components/GithubReviewDetail.vue
+  s_bd7ed65860b0bc::t_34818fcba53890 135-145
+  s_bd7ed65860b0bc::t_9f712ebf15cc1b 15-16,22-25
+  s_bd7ed65860b0bc::t_b6a2c35579c067 106-109,113,119-134,146-151
+  ai_agent 116,356-358
+  s_bd7ed65860b0bc::t_d234498200ec34 1-14,17-21,26-32,34-38,40-42,52-105,110-112,114-115,117-118,152-206,225-355,359-553
+  s_bd7ed65860b0bc::t_c7a147f14bfa40 33,39,43-51
+  s_bd7ed65860b0bc::t_7c4fd0c667938c 207-224
+packages/frontend/editor-ui/src/features/promotions/promotions.api.ts
+  s_bd7ed65860b0bc::t_dbece0593085d4 1-60
+packages/frontend/editor-ui/src/features/promotions/components/NewPromotionDialog.vue
+  s_bd7ed65860b0bc::t_e58f6df82c0362 177
+  s_bd7ed65860b0bc::t_5e5e566e262ef3 4,14-15,19,22-26,38,40-41,46-48,53,60,63,65-66,68,70,74-105,110-123,126-127,157,159-161,163,166-169,181,183-184
+  s_bd7ed65860b0bc::t_747c8d10c7711a 200
+  s_bd7ed65860b0bc::t_5c506f3f7278d8 43-45,49
+  s_bd7ed65860b0bc::t_32adbe609fa8bc 1-3,5-13,16-18,20-21,27-37,39,42,50-52,54-59,64,67,69,71-73,106-109,124-125,128-146,149-156,158,162,164-165,170-176,178-180,185-199,201-210
+  s_bd7ed65860b0bc::t_8abfd272692815 182
+  s_bd7ed65860b0bc::t_2221a7465e5c68 147-148
+  s_bd7ed65860b0bc::t_f80827db21728d 61-62
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_bd7ed65860b0bc::t_cde6e1533cfb93 5325-5351,5353-5376,5380,5384-5386,5388
+  s_bd7ed65860b0bc::t_da784f71a971b4 5352
+  s_bd7ed65860b0bc::t_f3659a2800bf2e 5377-5379,5381-5383,5387,5389-5393
+packages/cli/src/modules/promotions/promotion-signals.service.ts
+  s_bd7ed65860b0bc::t_8f8d53c3f1f0aa 43-45
+  s_bd7ed65860b0bc::t_d177c77310c118 4-5
+  s_bd7ed65860b0bc::t_043b488fcd4ea4 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "40909cea8ac44063b5c7f6fd33b15dca81c67069",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bd7ed65860b0bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ad40d42-eab8-4c6a-930c-a53b8ba27f90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

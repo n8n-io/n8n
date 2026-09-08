@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.vue
+  s_78d96f7c8d922e::t_48ab971ae4e1a2 12
+  s_78d96f7c8d922e::t_7c182d8d51c037 63
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_78d96f7c8d922e::t_3a6d9ff618d33f 233-236,238-245,248-253,256-279,284-286
+  s_78d96f7c8d922e::t_3556b085246fbd 11
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_78d96f7c8d922e::t_7d3f4af8af8953 239-240
+  s_78d96f7c8d922e::t_83f8eba494dce7 224-226,228-238,241-259,261-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "19842dbc9aaf55053d9842a12ff30b969af7873f",
+  "prompts": {},
+  "sessions": {
+    "s_78d96f7c8d922e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6542cf9a-f188-442b-84bc-fa44188df322",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

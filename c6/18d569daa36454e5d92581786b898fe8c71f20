@@ -1,0 +1,36 @@
+packages/@n8n/db/src/repositories/tag.repository.ts
+  s_f2e7acc401d88b::t_5b0484515bb128 4,7
+  s_66be2eb681ad3c::t_093c3184be9b17 23,25-30
+  s_66be2eb681ad3c::t_9ee6b4187bcc54 24
+  s_f2e7acc401d88b::t_06d5f7888fc57d 70-75,77,87-88
+packages/cli/src/services/tag.service.ts
+  s_f2e7acc401d88b::t_d33706ff853efe 68-74,76-77
+  s_66be2eb681ad3c::t_26c0b8ccc8ed77 133-137,143-144
+  s_66be2eb681ad3c::t_892669e60c3a5d 138-141
+  s_46457fdbb606db::t_fe33c4b122bee9 142,146-147
+  s_66be2eb681ad3c::t_9ee6b4187bcc54 145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c618d569daa36454e5d92581786b898fe8c71f20",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_f2e7acc401d88b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc81e09b-56c0-4298-980d-617e84f5e6aa",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

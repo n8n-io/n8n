@@ -1,0 +1,108 @@
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_599385eb95e83c::t_70e371ef70bd9a 22,29,36
+  s_599385eb95e83c::t_cf68246594e17e 1
+  s_599385eb95e83c::t_d9396f82a4ae9d 76-86
+  s_599385eb95e83c::t_5daa777812c1b4 58
+packages/cli/src/modules/mcp/tools/folder-error.utils.ts
+  s_599385eb95e83c::t_316427af3f6774 1-12
+packages/cli/src/modules/mcp/__tests__/move-workflows-to-folder.tool.test.ts
+  s_599385eb95e83c::t_1f60502711eeb6 1-192
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_599385eb95e83c::t_4a11358bbd7811 2,775
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_599385eb95e83c::t_4a11358bbd7811 5,1435
+packages/cli/src/modules/mcp/tools/search-folders.tool.ts
+  s_599385eb95e83c::t_a603027f105b13 29-33
+  s_599385eb95e83c::t_d5dbbabe9877e9 49
+  s_599385eb95e83c::t_16c4e40b2b83b2 98-101,106
+packages/cli/src/modules/mcp/__tests__/update-folder.tool.test.ts
+  s_599385eb95e83c::t_84bed85d1c2284 4
+  s_599385eb95e83c::t_bd078ea6c77624 147-149
+  s_599385eb95e83c::t_8383faf8b4b2e0 164-181
+  s_599385eb95e83c::t_8c009afeecb9d1 1-3,5-146,150-163,182
+packages/cli/src/modules/mcp/tools/workflow-validation.utils.ts
+  s_599385eb95e83c::t_a227120cdc6c8f 43
+  s_599385eb95e83c::t_4215e3d624c7d6 62
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_599385eb95e83c::t_1c8107f23db2f8 129,181,388,878,932,1011
+  s_599385eb95e83c::t_285869c0834e11 34
+packages/cli/src/modules/mcp/tools/move-workflows-to-folder.tool.ts
+  s_599385eb95e83c::t_00ac46edcbaaf7 1-166
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_599385eb95e83c::t_092c65e6e437a2 183-196
+  s_599385eb95e83c::t_9c059c0fce8ff9 131-133
+  s_599385eb95e83c::t_d9ad0da0743b7e 95
+  s_599385eb95e83c::t_75e6ec66314633 144
+  s_599385eb95e83c::t_285869c0834e11 24
+packages/cli/src/modules/mcp/__tests__/search-folders.tool.test.ts
+  s_599385eb95e83c::t_20bf8e968d6d62 75-79,92-93,98
+  s_599385eb95e83c::t_c06b5d0e91acf3 16,24
+packages/@n8n/api-types/src/index.ts
+  s_599385eb95e83c::t_9199ee8d5e4b3f 126
+packages/cli/src/modules/mcp/__tests__/create-workflow-from-code.tool.test.ts
+  s_599385eb95e83c::t_7e04778f532307 192
+  s_599385eb95e83c::t_22bfeffd59f400 2
+  s_599385eb95e83c::t_41e0940defc510 172-177
+  s_599385eb95e83c::t_09f527443fb459 254-277
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_599385eb95e83c::t_4c1bd328300b83 1-8
+  s_599385eb95e83c::t_ab4d03808955be 148-156
+  s_599385eb95e83c::t_7bc37e147b4df2 106
+  s_599385eb95e83c::t_b9f0eaf83db85f 278
+  s_599385eb95e83c::t_744d42c4cc22a9 500-502
+  s_599385eb95e83c::t_ed7506d2796071 343-346
+  s_599385eb95e83c::t_2810f5a6d536c0 220
+  s_599385eb95e83c::t_8e4041878a03ea 444-446
+  s_599385eb95e83c::t_74d3f19a298850 213
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_599385eb95e83c::t_9ba8a6fb1ae73c 88-90,94-103
+  s_599385eb95e83c::t_5a0ddd392e27b1 124-126
+  s_599385eb95e83c::t_105d0ca50c84bf 34
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_599385eb95e83c::t_284875110b7d3c 2,6
+  s_599385eb95e83c::t_2fd96695fccd62 55
+  s_599385eb95e83c::t_b20982b96b4520 70,81-82
+packages/cli/src/modules/mcp/__tests__/create-folder.tool.test.ts
+  s_599385eb95e83c::t_028bcca7200052 4
+  s_599385eb95e83c::t_ec851569eb9565 1-3,5-122,124-132,152-153
+  s_599385eb95e83c::t_ed9625e588fd5b 123,133-151
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_599385eb95e83c::t_dc06ff35b948e2 189
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_599385eb95e83c::t_c0c15ac69f70a8 66
+  s_599385eb95e83c::t_325f89aba587d9 674
+  s_599385eb95e83c::t_d807db20704264 725-753
+  s_599385eb95e83c::t_0b30d3e8d04544 226
+  s_599385eb95e83c::t_7bee7f6a6fbdca 84
+  s_599385eb95e83c::t_468353d9f11ba2 93
+  s_599385eb95e83c::t_e2ee8ad29f74ff 41
+packages/cli/src/modules/mcp/tools/create-folder.tool.ts
+  s_599385eb95e83c::t_4639ac1afee909 1-10,12-104,106-117
+  s_599385eb95e83c::t_58608f0ae9f556 105
+  s_599385eb95e83c::t_f2cdefbfe07568 11
+packages/cli/src/modules/mcp/tools/update-folder.tool.ts
+  s_599385eb95e83c::t_5357c0dc24d30d 1-11,13-121,123-125
+  s_599385eb95e83c::t_16014422076cb7 12
+  s_599385eb95e83c::t_85d28f76c2bf59 122
+packages/cli/src/modules/mcp/__tests__/get-workflow-details.tool.test.ts
+  s_599385eb95e83c::t_64536318712391 217-218,223
+  s_599385eb95e83c::t_032a411f9c00af 170-194
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_599385eb95e83c::t_cc899abdb517b9 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5b57dad9b6a038bf6d33e19b7808286e1bf2766b",
+  "prompts": {},
+  "sessions": {
+    "s_599385eb95e83c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa545f50-b67b-4f64-b0ff-48cfeb9a0382",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

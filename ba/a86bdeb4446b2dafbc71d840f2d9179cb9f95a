@@ -1,0 +1,53 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigAutosave.ts
+  s_3e8cffecb25c5f::t_bce3aeac14910d 146-155
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-resolver.ts
+  s_3e8cffecb25c5f::t_3c1e73e059f2a8 1-12
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_3e8cffecb25c5f::t_023244c4d460c1 835,860-863
+  s_3e8cffecb25c5f::t_399014659374aa 978-986
+  s_3e8cffecb25c5f::t_ce4075f150c9c0 864,1253-1276
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_3e8cffecb25c5f::t_1adad4732d9c54 40
+  s_3e8cffecb25c5f::t_bcf351b36e03dc 487-490
+  s_3e8cffecb25c5f::t_831ff9372922ed 577-581
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_3e8cffecb25c5f::t_636a7b39a18459 77
+  s_3e8cffecb25c5f::t_2395f11f61d8d2 260-264
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_3e8cffecb25c5f::t_4e2da581dbfc99 14
+  s_3e8cffecb25c5f::t_0bc8665dcc06a7 174,179-194
+  s_3e8cffecb25c5f::t_3e0c99fdc40fb0 195-196
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_3e8cffecb25c5f::t_755c3efd3ed40c 295-316
+  s_3e8cffecb25c5f::t_f11ac35d31daea 195-241
+  s_3e8cffecb25c5f::t_9ba2c0b701238d 527-528
+  s_3e8cffecb25c5f::t_788650aea66c3d 259-260,271
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_3e8cffecb25c5f::t_8c5f51c371bc7a 564-568
+  s_3e8cffecb25c5f::t_24074bb2e46cea 36
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentConfigAutosave.test.ts
+  s_3e8cffecb25c5f::t_cdb5343303f54f 78-94
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3e8cffecb25c5f::t_77844c125766ba 1098-1099
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_3e8cffecb25c5f::t_41062623dc78f4 98-106,113,116
+  s_3e8cffecb25c5f::t_a94e480db5fb7a 23
+  s_3e8cffecb25c5f::t_9849afd801e231 191-195
+  s_3e8cffecb25c5f::t_c36c2fc963bf5a 117-118,180,188-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "baa86bdeb4446b2dafbc71d840f2d9179cb9f95a",
+  "prompts": {},
+  "sessions": {
+    "s_3e8cffecb25c5f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dd036e9e-8696-404f-b49d-07a286a67434",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

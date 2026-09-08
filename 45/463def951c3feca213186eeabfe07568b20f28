@@ -1,0 +1,614 @@
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/VisualPrimitive.vue
+  s_511ab752d51591::t_34415101b973d4 42-45
+  s_511ab752d51591::t_29d0ecc4d259ec 1-7,11-41,46-141,143-146,148-151,153-184,186-236
+  ai_agent 8-10
+  s_511ab752d51591::t_aac7a72509550d 185
+  s_511ab752d51591::t_0eeae77a8205a9 142,147,152
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/GuidedTimeline.vue
+  s_adbc5d670d999f::t_c5c8308be86a8e 12-13,25-32,35-36,109-111
+  s_adbc5d670d999f::t_977c3f8a9a774d 105
+  s_adbc5d670d999f::t_31c6bfb0c7f22b 1-11,14-24,33-34,37-104,106-108
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Archetypes.test.ts
+  s_adbc5d670d999f::t_d6a8d4b56ba3dd 1,9-20,22-24,27-28,32-68,70-73
+  s_adbc5d670d999f::t_79e31feb83094e 2-8,21,25-26,29-30,69,74-75
+  s_adbc5d670d999f::t_2deea0caa7127f 31
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/workflowGenerativeUi.store.ts
+  s_ec7cee9ea54c39::t_cfe599d349733c 282
+  s_ec7cee9ea54c39::t_0c2d7e95eb7f1f 27-39,41-42,47,49-55,57,59-63,65-69,71,73,75
+  s_f5dd60ba11e01e::t_4adba4b8b2e1b9 315
+  s_f5dd60ba11e01e::t_d8209b4c643618 332
+  s_f5dd60ba11e01e::t_b768e7606d9fb6 161
+  s_f5dd60ba11e01e::t_fd0dc1c4cd6ef4 72
+  s_ec7cee9ea54c39::t_d56ae70b3c3f3c 46,48,56,58,70,78-92
+  s_d0adf0ac7ef45e::t_f8e86a04ba4095 5,190-196,198,273-281,283
+  s_f5dd60ba11e01e::t_a975935f6628c5 153-155
+  s_f5dd60ba11e01e::t_a889204bf75110 121-127
+  s_f5dd60ba11e01e::t_46856756ec6fcd 110
+  s_f5dd60ba11e01e::t_0b2f6a9a356d47 135-139
+  s_f5dd60ba11e01e::t_6001a3c6cba80f 288,296
+  s_f5dd60ba11e01e::t_0598c97c3c7477 163
+  s_a192a8a79a4f90::t_d9e6c3d676c022 43-44,77
+  s_f5dd60ba11e01e::t_fa3ad770349723 112-114
+  s_f5dd60ba11e01e::t_4e5f5b2f9ff3a7 149,177,184,225,261,270,318
+  s_f5dd60ba11e01e::t_460869bf492b4d 164-168
+  s_d0adf0ac7ef45e::t_b2c881df2aae62 187,206-209,211-213
+  s_ec7cee9ea54c39::t_9f3d419698d4f4 197
+  s_f5dd60ba11e01e::t_bb2ab9258397ff 93-97
+  s_f5dd60ba11e01e::t_2a6d1de4d42b28 21
+  s_f5dd60ba11e01e::t_6708d9a6d7e607 202,210
+  s_f5dd60ba11e01e::t_58f32ce27c466d 327
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/live.harness.test.ts
+  s_e7d4b44bc563d3::t_fecfef14d49ebd 29,32-36,43-58,98-100,124,143-150,152-158,167-173,178,207,209,216
+  s_ec7cee9ea54c39::t_353afa387042cd 5
+  s_ec7cee9ea54c39::t_7c8178c459978d 59-67,69-73,76-78
+  s_f5dd60ba11e01e::t_93415b2b5d7e35 1-4,6-24,31,37-41,80,131,214-215,245-247
+  s_f5dd60ba11e01e::t_cf7ec426c734f0 25
+  s_03d1464ae9f6b7::t_78af3f89818908 26-28,30,68,79,81-97,101-123,125-130,132-138,151,174-177,179-180,199-206,208,210-213
+  ai_agent 42,139-142,159-166,181-184,217-244
+  s_ec7cee9ea54c39::t_188b00c6bc7061 185-198
+  s_a192a8a79a4f90::t_46dc47ed1178ed 74-75
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/prompts.test.ts
+  s_28672125053168::t_d5564df54b5c0c 1,5,49-66,75-77,79
+  s_adbc5d670d999f::t_c5a17b8c58dc5c 4,7-11,13-17,20-23,25-28
+  s_ee7fa2dbf47399::t_f02234c7e33c8f 30-38
+  ai_agent 39-48,67-74
+  s_28672125053168::t_2081e2663394ad 78
+  s_30ff66ce7cecc7::t_2c2755623b06bb 12,18-19,24
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/CalendarEvent.vue
+  s_f5dd60ba11e01e::t_6d9075624e54fd 8
+  s_0587f08cc6a4d5::t_d5e634da3296d2 2-7,9-12,15,17-26,28-37,39-40,42,44,47-75,77-80,83-84,86-97,99-100,103-111
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Approval.vue
+  s_0587f08cc6a4d5::t_b861e3bcff092d 2-11,14,16,18-19,22-24,26,37-38,40,42-49,51-60,62-68,90-97,99-100
+  s_0587f08cc6a4d5::t_114032bd4b1a9a 25,27-36,50,61,69-89,98,101,104-105
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/disclosure.ts
+  s_511ab752d51591::t_df538fb79e1141 1-14
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Wait.vue
+  s_0587f08cc6a4d5::t_6b88d7f223dfd6 2-10,13,15-19,21-26,28,30-49,51-52,54-55
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/ViewPicker.vue
+  s_f5dd60ba11e01e::t_8fdadc0fe1b226 71
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/visualGrammar.ts
+  s_583f82a42b4c3a::t_8b56317b25ef0d 1-63,77-128
+  s_511ab752d51591::t_54c9b76de37da2 64-76
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Grid.vue
+  s_511ab752d51591::t_62eaaa7a70810a 3,15,22
+  s_511ab752d51591::t_983f8df201ad26 4-14,23-24,32-36
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/FollowUpBar.test.ts
+  s_d0adf0ac7ef45e::t_24577255ee1d76 17-20,22,31
+  s_f5dd60ba11e01e::t_0004959efd822f 95-100,116-121
+  s_d1191e7d88b2bd::t_5590e549a241ee 1,9-16,32-39,50-89,105,112,126
+  s_f5dd60ba11e01e::t_5356242ec052bf 21,23-30
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/InteractiveSurface.test.ts
+  s_0587f08cc6a4d5::t_7646f60ddaf6d4 1-110
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Summary.vue
+  s_511ab752d51591::t_d9fa68dadaf4c3 1,4-5,9-11,13-24
+  s_511ab752d51591::t_a0e0ed2eca4f2b 2-3,6-8,12
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Crm.vue
+  s_0587f08cc6a4d5::t_789738c21b7557 2-6,12,14,16-17,19,21,23-24,27-47,49,51-76,78-98,100-130,132
+  s_f5dd60ba11e01e::t_465301736cef12 10
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/WorkflowGenerativeUiDev.test.ts
+  s_f5dd60ba11e01e::t_4de140f8c04a0b 30,32-39
+  s_d0adf0ac7ef45e::t_3862d661cb44ab 27-29,31
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/FileTransfer.vue
+  s_30ff66ce7cecc7::t_73f521f9f37600 2,6,16,18,29,46,66,75,81,85,88
+  s_0587f08cc6a4d5::t_392b3575d36c19 3-5,11,13,15,17,20,22,24-25,28,30-41,43,45,47-65,67-74,76-80,82-84,86-87,89-98,100
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/flowCanvasLayout.test.ts
+  s_0f0bfd7bd3fe28::t_624f98a8ce51b4 1-2,11-142,177-190,192-217,243-273
+  ai_agent 191
+  s_f5dd60ba11e01e::t_db00f144d957c0 3-10
+  s_5573eb56c6b990::t_3630bfb0d633aa 143-176,218-242
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/catalog.ts
+  s_adbc5d670d999f::t_10be0c3a0d5bb7 22,49,56,83,89,97,163,182,188,362,393
+  s_583f82a42b4c3a::t_c4e67e1a894777 12,17-21,23,42,44-48,50-51,53-55,57-58,60-61,63-65,67-68,70-71,73,75,77-78,80-82,88,90-91,93-94,96,98,157,159-162,164-165,167-169,171-173,175-176,178-181,187,357-358,392,403
+  s_5838611781172b::t_e851e122b2f7a8 170,174
+  s_28672125053168::t_88dd2faec13f81 117-131,141-143,145-156
+  s_adbc5d670d999f::t_9766c8834e14b9 9-11,16,43,52,59,69,79,86,92,158,166,177,185,191,195,199,203,222,231,241,251,260,269,278,288,298,307,318,328,337,345,354,365,373,381,390
+  s_5838611781172b::t_7f536f8abf468e 4-5
+  s_f5dd60ba11e01e::t_525bf3c6f8d2a6 321
+  s_f5dd60ba11e01e::t_2fafa83a68d8a8 311
+  s_5838611781172b::t_bbbf81c231a6a0 99-116
+  s_5838611781172b::t_c4dfd3be1a33fd 62,66,72,76
+  s_5838611781172b::t_c0c36b792fea11 404-410
+  s_f5dd60ba11e01e::t_d049a142acfee8 401
+  s_f5dd60ba11e01e::t_bfbb4f426069b1 396
+  s_f5dd60ba11e01e::t_0f1e5de69428dc 271
+  s_f5dd60ba11e01e::t_61af578251a04b 215,219
+  s_f5dd60ba11e01e::t_83618db113d6e5 413
+  s_adbc5d670d999f::t_11429e7f95068e 24-41
+  s_28672125053168::t_4f674ad19f71dd 132-140,144
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Timeline.vue
+  s_f5dd60ba11e01e::t_2c46c856614666 8
+  s_511ab752d51591::t_a0e0ed2eca4f2b 2-3,6,11-12,16
+  s_511ab752d51591::t_ec36caeb4429aa 4-5,7,9-10,17-21,29,33,43
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Terminal.vue
+  s_f5dd60ba11e01e::t_ae01056fcb43d4 7
+  s_0587f08cc6a4d5::t_2b98d139562844 2-6,8-11,14,16-35,37,39-77,79,88-89
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/workflowPayload.test.ts
+  s_30ff66ce7cecc7::t_add90f6309f230 26-240
+  s_ec7cee9ea54c39::t_dcc7c0e6de2716 241-358
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/workflowPayload.ts
+  s_ec7cee9ea54c39::t_6254cb1a513e5d 277-278
+  s_30ff66ce7cecc7::t_83fd17ea00f4fe 1-12,22,38-91,116-159,162-206
+  s_ec7cee9ea54c39::t_98d34dd6613d06 26-33,37,221-276,279-281,287-308,311-312
+  s_30ff66ce7cecc7::t_e79f863ac78e13 160-161
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/When.test.ts
+  s_30ff66ce7cecc7::t_67eb5f6043cf38 1-37
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Email.vue
+  s_0587f08cc6a4d5::t_4fa81bc1266532 2-12,15,17-21,23-37,39,41,44-74,76-80,82-83,85-88,90-91,94-95,98,101,104-107
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/flowGraph.ts
+  s_0f0bfd7bd3fe28::t_7b8b0a2ed17a13 1-14
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/flowCanvasLayout.ts
+  s_0f0bfd7bd3fe28::t_5855b91f0d430a 322-345
+  s_0f0bfd7bd3fe28::t_cbfd8bde5e5901 1-17,19-34,42-45,47-58,60-63,72,88-234,236-321,346-360,362-365,368,385,388,390-393,399,401-436,438
+  s_0f0bfd7bd3fe28::t_2ddc92a2156d6a 35-41,46,59,64-71,73-83,87
+  s_5573eb56c6b990::t_9bed458f0dada7 84-86
+  ai_agent 235
+  s_0f0bfd7bd3fe28::t_dda1b4dc455d7e 18
+  s_0f0bfd7bd3fe28::t_12ea29cdd59864 437
+  s_0f0bfd7bd3fe28::t_e8a4e37f702ab2 361,366-367,369-384,386-387,389,394-398,400
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/GenerativeUiOverlay.test.ts
+  s_d1191e7d88b2bd::t_7c4b06c347a95b 195-206
+  s_d0adf0ac7ef45e::t_d5f75e6b8b0396 41,111-130
+  s_f5dd60ba11e01e::t_40e238d4a4a59a 109-110
+  s_d0adf0ac7ef45e::t_b982d93815a885 59-80,170-178
+  s_f5dd60ba11e01e::t_e26114851b16c7 97
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/InteractiveSurface.vue
+  s_0587f08cc6a4d5::t_046021cde815c9 1-53,55,62-68
+  s_f5dd60ba11e01e::t_abae4963577b65 54,56-61
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/VisualPrimitive.test.ts
+  s_511ab752d51591::t_1d5958975cfcdf 143
+  s_d0adf0ac7ef45e::t_651b4bfefad1d7 138-142,164-179,233-248,299-306,383-398
+  s_511ab752d51591::t_587d7bb2eef613 344-382,399-447
+  s_511ab752d51591::t_88fc71e59fe5ac 1-5,11-137,144-163,180-197,199-212,214-228,343,448
+  s_d0adf0ac7ef45e::t_a58bd87f419383 6-10,229-232,249-298,307-342
+  s_511ab752d51591::t_46a5b0c816d516 198,213
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/prompts.ts
+  s_f5dd60ba11e01e::t_43c78f3c8b8340 51
+  s_28672125053168::t_b3be3c7e4af2fc 11-12
+  s_28672125053168::t_8f8ba404653158 3-10,13,32-33,53-54
+  s_30ff66ce7cecc7::t_f69b9b5a8354fa 16-19,35,42-43
+  s_adbc5d670d999f::t_56a35cc5ba81ba 20-24,29,36-37,39-41,50
+  s_5838611781172b::t_9d7e8e251860ea 25-28
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Caption.vue
+  s_511ab752d51591::t_51390c86efca6b 1,4-5,9-11,13-24
+  s_511ab752d51591::t_a0e0ed2eca4f2b 2-3,6-8,12
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/nodeLookup.ts
+  s_d0adf0ac7ef45e::t_9fb7cb54d75a4e 7-8,18-21,27-28
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Decision.vue
+  s_0587f08cc6a4d5::t_30eb7ed75726e9 2-4,9,11,14,16-20,22-39,41,43,46-56,58-61,63-66,68-71,73-85,87-96,98-104,106-107,109-111
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Reveal.vue
+  s_c87522dd2b69eb::t_a13fbabd36f84a 1-87
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/AiTask.vue
+  s_0587f08cc6a4d5::t_6cd3a5e573b4f6 2-5,12,14,16-17,19,21-25,27-40,42-43,45,47-55,57-58,61-84,87-89,91-95,97-98,100-101,104-105,110,112-119
+  s_30ff66ce7cecc7::t_28da9a82c4d712 6-11,13,41,56,59-60,96,99,102-103,106-109,111
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/catalog.test.ts
+  s_c6058f2d196b71::t_490c98dd5dfc84 17
+  ai_agent 142-144,160-163
+  s_adbc5d670d999f::t_0fc88442406159 18-30,55,67-76,168,170-172,174,176,190-193
+  s_f5dd60ba11e01e::t_dfe8ecf1d5326a 56-61
+  s_28672125053168::t_54ec7640079e4d 136-141,145-150,173
+  s_adbc5d670d999f::t_08d35fdb79d6b8 79-81
+  s_28672125053168::t_4313476ccc7b76 6-16,100-135,151-159,164-165
+  s_583f82a42b4c3a::t_376e359e73eece 1,4-5,31-43,62-66,77-78,82-99,166-167,188-189,194-195
+  s_adbc5d670d999f::t_da8f5108d74c34 2,169
+  s_adbc5d670d999f::t_cd57895541d2a1 175,177-187
+  s_28672125053168::t_df5fc426eaaef7 3
+  s_28672125053168::t_9393a6c1699e2a 44-54
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/playground/PlaygroundView.test.ts
+  s_d0adf0ac7ef45e::t_1257ef54a8f0ea 8,23-34
+  s_d1191e7d88b2bd::t_34f64b040597f1 1-6,9-19,35-36
+  s_03d1464ae9f6b7::t_f3ac23ecf29a14 7,20-22
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/OutcomeBoard.vue
+  s_adbc5d670d999f::t_0f45c82c185757 59
+  s_adbc5d670d999f::t_8e899b6afe1212 8-9,20-27,29,33,35,54,62,74-76,78,85,88-90
+  s_adbc5d670d999f::t_85b4420d1cef83 1-7,10-19,28,30-32,34,36-53,55,58,60-61,63-73,77,79-84,86-87
+  s_f5dd60ba11e01e::t_d988ec5b84f9bb 56-57
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Stack.vue
+  s_511ab752d51591::t_b2334f4b74e899 4-5,7-13,20-21,28
+  s_511ab752d51591::t_a62c3e2524c174 2-3,6,14-15,19
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/FlowConnection.vue
+  s_0f0bfd7bd3fe28::t_105c9b5925fb7b 7
+  s_0f0bfd7bd3fe28::t_697ed0d6636564 13
+  s_0f0bfd7bd3fe28::t_cf0f04e4232634 1-6,8-12,14
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Screen.vue
+  s_511ab752d51591::t_eb49431e7c5c39 4-5,7-11,18-25,34-39,47-54,60
+  s_511ab752d51591::t_a0e0ed2eca4f2b 2-3,6,12-13,17
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Lane.vue
+  s_c87522dd2b69eb::t_7f96e8d9982558 1-2,4-5,7-9,11-35,38-40,43-82
+  s_5838611781172b::t_61b15b1d62303b 3,6,10
+  ai_agent 36-37,41-42
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/ActionCard.vue
+  s_0587f08cc6a4d5::t_bb6a9a70df3f51 2
+  s_0587f08cc6a4d5::t_8e24cf15283039 5,12,16-20,22-30,32,37-41,52,84
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/generate.ts
+  s_d0adf0ac7ef45e::t_44f44fdf55f1ee 134-137,605-613
+  s_03d1464ae9f6b7::t_3c97c23a17780f 7
+  s_f5dd60ba11e01e::t_3e8e452070ec5b 150-154,158-165
+  s_ec7cee9ea54c39::t_15533ddc5cce2b 261-291,294-296,298,303-308,310,312-314,317-324,326-327,331-341,343,345-352,355-357,361,367-375,392-393,395,400-407,409,414-426,430-464,466-468,470-479,482-491,526,529,531-532
+  s_f5dd60ba11e01e::t_5594ce943cc85d 362-366
+  s_f5dd60ba11e01e::t_00f1f770d6120a 527-528,530
+  s_f5dd60ba11e01e::t_fab9a84806224a 105-106
+  s_d0adf0ac7ef45e::t_651b4bfefad1d7 203
+  s_ec7cee9ea54c39::t_c9cb57b3b9e0ba 315-316,325,328-330
+  s_f5dd60ba11e01e::t_0bf54d52349e65 107
+  s_f5dd60ba11e01e::t_1693d25f1c550a 114
+  s_f5dd60ba11e01e::t_cbc97fd7a19a39 629,631,636
+  s_ec7cee9ea54c39::t_d4f9d6e629ffd1 14-37,94-104
+  s_d0adf0ac7ef45e::t_4110e5a9aa5109 1-6
+  s_d0adf0ac7ef45e::t_313f41fd4bb886 592-596,598-600
+  s_f5dd60ba11e01e::t_dcea4b1dd6cbfe 214-216,225-258,614-616,624,640
+  s_ec7cee9ea54c39::t_c7a0a9f6a1814a 353-354,358
+  s_f5dd60ba11e01e::t_efee8533593706 342,344
+  s_f5dd60ba11e01e::t_b46d23bdc7087d 183,188-202,204-211
+  s_a192a8a79a4f90::t_f8ccf4d78e93d3 292-293,297,299-302,309,311,376-391,394,396-399,408,410-413,427-429,465,469,480-481
+  s_f5dd60ba11e01e::t_56cf0ad7c4a2a7 359-360
+  s_f5dd60ba11e01e::t_a51d4dac4deb60 48-59
+  s_d0adf0ac7ef45e::t_de3434901a2755 9,259-260,603
+  s_f5dd60ba11e01e::t_22fa1943db676f 544
+  s_f5dd60ba11e01e::t_429431bbbda5c7 597
+  s_f5dd60ba11e01e::t_daf61198b39d9b 71-78,85,88-93
+  s_f5dd60ba11e01e::t_221528e5286692 38-47
+  s_f5dd60ba11e01e::t_d2638f59c9428c 168-177
+  s_f5dd60ba11e01e::t_60e46348f9f397 539
+  s_f5dd60ba11e01e::t_ef6e59f5e799dc 533-534
+  s_f5dd60ba11e01e::t_42e64d4a9b9115 551-554,556-584,589,601
+  s_d0adf0ac7ef45e::t_aecfd8c840c1e4 8,535-538,540-542,545-550,555,585-588,590-591,602,604
+  s_f5dd60ba11e01e::t_628393a1f178fb 509-513,516-518,522-523
+  s_f5dd60ba11e01e::t_fab00b42e90a7c 60-70,79-84,86-87
+  s_f5dd60ba11e01e::t_ba48c23ad32847 492-508,514-515,519-521,524-525
+  s_f5dd60ba11e01e::t_5b66128b424ac7 543
+  s_a192a8a79a4f90::t_3acd3aa3e6e2a1 138-144
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Database.vue
+  s_0587f08cc6a4d5::t_cbb999075f431b 2-11,14,16,18-19,22-34,36,38,40-55,57,59-60,64-100
+  s_30ff66ce7cecc7::t_1be1b13e92bf31 39,56,61
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/operationVisuals.test.ts
+  s_0587f08cc6a4d5::t_b27372640553c2 206
+  s_0587f08cc6a4d5::t_4995d9d1c902fc 331,337-363
+  s_0587f08cc6a4d5::t_5c36c33750a497 1-205,207-330,332-336,364-375
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/registry.ts
+  s_adbc5d670d999f::t_ce250dd9296de2 4,28,34,60-63
+  s_28672125053168::t_a898f01513e121 22-24,73-75
+  s_5838611781172b::t_1b89bde8423bcc 105
+  s_5838611781172b::t_1dbf5c69a8e3e9 33,35
+  s_5838611781172b::t_c7c66eacd345bd 20
+  s_511ab752d51591::t_9425ad409324a1 8-9,12-13,15,30,38-39,43,64-68,70,76-78
+  s_5838611781172b::t_58a5e4c83120ee 71-72
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/generate.test.ts
+  s_ec7cee9ea54c39::t_bdce2f4d2e16df 1-7
+  s_ec7cee9ea54c39::t_c26e2335ec7010 584,586,588-590,599-600
+  s_d0adf0ac7ef45e::t_a0161c9c7e3d5e 278-295
+  s_f5dd60ba11e01e::t_120a736f5f07ff 605-614,618-620
+  s_f5dd60ba11e01e::t_921529e0bfb619 367-402
+  s_f5dd60ba11e01e::t_7118d07103599a 615-617
+  s_f5dd60ba11e01e::t_e0b343fe08168c 835-847
+  s_a192a8a79a4f90::t_6416a755959ae3 12
+  s_f5dd60ba11e01e::t_0d360015b00c93 228-252
+  s_a192a8a79a4f90::t_b016952005ac73 640,645,656,673,742,747
+  s_f5dd60ba11e01e::t_e92d66615060ac 463-529
+  s_f5dd60ba11e01e::t_3473b0c9cebdcf 347-366
+  s_d0adf0ac7ef45e::t_d670d7aee902bf 274,296-344
+  s_f5dd60ba11e01e::t_9ab96dbdf70525 403-462
+  s_f5dd60ba11e01e::t_236973f52d17d7 799-834
+  s_f5dd60ba11e01e::t_8baf05cf23128a 101-165
+  s_f5dd60ba11e01e::t_ea4a8437922a83 166-227
+  s_ec7cee9ea54c39::t_a2540db9e61892 562-583,585,587,591-598,601-604,621-639,641-644,646-655,657-672,674-695,710-741,743-746,748-791,852-858
+  s_d0adf0ac7ef45e::t_2faa7327eb2178 275-277
+  s_d0adf0ac7ef45e::t_cfa7afd69af3fa 346,530-560
+  s_a192a8a79a4f90::t_1227e6a7d30a07 696-709,792-798,848-851
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Beat.vue
+  s_511ab752d51591::t_b9b32cf6fd2bc1 5,19-21
+  s_511ab752d51591::t_7f72ab3144a6f1 1-3,6-14,17-18,22-23,28-39,41-110
+  s_511ab752d51591::t_8c80100ecfcd82 24-27
+  s_511ab752d51591::t_a0e0ed2eca4f2b 4,15-16,40
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/When.vue
+  s_0587f08cc6a4d5::t_92a8e7669d899c 3-4,11,13,29,31,33,35-36,39-47,49,51-90,94-95
+  s_30ff66ce7cecc7::t_31629fd173ec8b 2,5-6,15-28
+  s_f5dd60ba11e01e::t_0b527bfe3886fc 9
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/AdaptiveStoryboard.vue
+  s_adbc5d670d999f::t_a48003082e168c 8-9,20-28,36,64-66,69-71
+  s_adbc5d670d999f::t_d91adcb72b7b18 1-7,10-19,29-35,37-63,67-68
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Signposts.test.ts
+  s_c6058f2d196b71::t_5eed2088f35787 6,14,31-33,42-45,62,77-80,93,112
+  s_c6058f2d196b71::t_3280cdec393c16 1-5,7-13,15-30,34-41,46-61,63-76,81-92,94-111,113-123
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/playground/PlaygroundView.vue
+  s_f5dd60ba11e01e::t_04bbcfcda92a45 148
+  s_f5dd60ba11e01e::t_024cf726beafbf 145-147,149
+  s_d1191e7d88b2bd::t_88c20d4c76f02f 259,261-263
+  s_d0adf0ac7ef45e::t_0c6176d66de70f 17,124-128
+  s_d1191e7d88b2bd::t_097ccf99771142 16
+  s_d0adf0ac7ef45e::t_be942eada666e4 18-22,78-84,123,129-132,134,154,191,205,231,260,265-267,276-289,373,375-381
+  s_d1191e7d88b2bd::t_67b1280987f1da 383
+  s_f5dd60ba11e01e::t_1e7d94f52a926f 87
+  ai_agent 264
+  s_f5dd60ba11e01e::t_23946b65d3470d 229
+  s_f5dd60ba11e01e::t_3320eec55239a8 268-275
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Transform.vue
+  s_0587f08cc6a4d5::t_a28710f5d6ee1b 2-10,13,15-19,21-32,34,36-73,76-78
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/registry.test.ts
+  s_adbc5d670d999f::t_c940d5bc7c41fc 8
+  s_ee7fa2dbf47399::t_f02234c7e33c8f 11-14
+  s_adbc5d670d999f::t_8830657432390a 1-7,9-10,19
+  s_28672125053168::t_eccaa0609560ef 15-18
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/GenerativeUiOverlay.vue
+  s_d0adf0ac7ef45e::t_2b5115df971d99 11-15,33-37,40,42,48-51,63,96
+  s_511ab752d51591::t_bfd2bbfe9834ac 124-129
+  s_d1191e7d88b2bd::t_5e043dbac3adfe 146
+  s_f5dd60ba11e01e::t_ea1c16ca04ae8e 75-77,79,87
+  s_d0adf0ac7ef45e::t_530357e1079ef6 10,43-47
+  s_d1191e7d88b2bd::t_2bc6a38a00f3d5 8
+  ai_agent 105
+  s_f5dd60ba11e01e::t_d78f872670506e 113-120
+  s_f5dd60ba11e01e::t_22072c21f6c005 78
+  s_0f0bfd7bd3fe28::t_d9468336606c37 9
+  s_0f0bfd7bd3fe28::t_e060fcd4e96ea9 52-57,59-61
+  s_f5dd60ba11e01e::t_85173e2a7afc45 163-168
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Tabs.vue
+  s_f5dd60ba11e01e::t_5712217a0ca444 2
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Branch.vue
+  s_511ab752d51591::t_a0e0ed2eca4f2b 2-3,6,11-12,16
+  s_511ab752d51591::t_cd00e2d83cd8e5 1,4-5,7-10,13-15,17-53
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/archetypeSections.ts
+  s_adbc5d670d999f::t_6815354267ec0c 1-16
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/followUpReserve.ts
+  s_d1191e7d88b2bd::t_45865b44c21654 1-10
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/ActionCard.test.ts
+  s_30ff66ce7cecc7::t_d6937e05daad6a 70,75,81-82,86,91,94-95
+  s_0587f08cc6a4d5::t_553f6d486e9499 1-2,9,50,55-56,59,65,71-74,76-80,83,85,87-90,92-93,96-109
+  s_0587f08cc6a4d5::t_1650248b4a426b 84
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Spreadsheet.vue
+  s_0587f08cc6a4d5::t_c901a96dcf1b09 2-12,15,17,19-20,23-36,38,40-58,60-65,67,69-99,101-104
+  s_30ff66ce7cecc7::t_9cbc3324d79c7b 66,68
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Accordion.vue
+  s_f5dd60ba11e01e::t_d7d07a41d994f1 2
+  s_5838611781172b::t_4052375dd0598b 6
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/FlowCanvas.test.ts
+  ai_agent 60
+  s_0f0bfd7bd3fe28::t_b62382e712794f 2-59,61-95,97-103,108-125
+  s_f5dd60ba11e01e::t_a97730a966c484 1
+  s_5573eb56c6b990::t_c2e19612a51be9 106-107
+  s_0f0bfd7bd3fe28::t_82eacf446e9086 96,104-105
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Ends.vue
+  s_c87522dd2b69eb::t_602be6c6830f04 1,5-8,15-17,24-25,29-31,35-79
+  s_5838611781172b::t_e7231a3bdf3213 2-4,9-14,18-23,26-28,32-34
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/ViewPicker.test.ts
+  s_f5dd60ba11e01e::t_79fc3bc09c6f34 39
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/FlowNode.vue
+  s_0f0bfd7bd3fe28::t_6a05004735e8cd 1-55
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/WorkflowGenerativeUiDev.vue
+  s_f5dd60ba11e01e::t_040099024f2155 18,26-29,40-47
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Spotlight.vue
+  s_511ab752d51591::t_bbbb813c3ff055 1,4-5,7-10,13-15,17-51
+  s_511ab752d51591::t_a0e0ed2eca4f2b 2-3,6,11-12,16
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Split.vue
+  s_511ab752d51591::t_c3a3328dd89767 1-2,4-14,16-19,21-43
+  s_511ab752d51591::t_909da69f95fc20 3,15,20
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/README.md
+  s_03d1464ae9f6b7::t_01cb395d9ea8e9 8-26,37-40
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/workflowGenerativeUi.store.test.ts
+  s_a192a8a79a4f90::t_5a0a11886988ed 282,304-313,369-387
+  s_f5dd60ba11e01e::t_1b501c3ccea32a 286
+  ai_agent 324-330
+  s_ec7cee9ea54c39::t_4f626936a02171 3-5,34-48,56-65,91,93-96,104-107,113,135,137,143-148,160,163,165,183,257,277-281,283-285,318-323,331-368
+  s_f5dd60ba11e01e::t_2d8d642be0202f 210,212,216-225
+  s_30ff66ce7cecc7::t_a3fba0acd5e54d 273-276
+  s_f5dd60ba11e01e::t_6671943613492e 20
+  s_d0adf0ac7ef45e::t_debecaf9d50cb0 164,166-182,184-185
+  s_f5dd60ba11e01e::t_bc706d52a3f561 69-79
+  s_d0adf0ac7ef45e::t_5926c890dceb5c 108-112,114-134,138-142,149-152
+  s_f5dd60ba11e01e::t_d94f4f5ad658af 186-198,200-207,233-256
+  s_f5dd60ba11e01e::t_458dfc71a018a9 199
+  s_f5dd60ba11e01e::t_6281caa99220a3 208-209,211,213-215,226-232
+  s_d0adf0ac7ef45e::t_80c637d169d7a0 67-68,80-81,84-90,92,98-103
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/FollowUpBar.vue
+  s_d1191e7d88b2bd::t_396a613b5f9a97 2,21,26,31-41,46-47,51,55,58-59,61-79
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Step.vue
+  s_0587f08cc6a4d5::t_9631ff9cbbe649 3-10,13,15-20,22-23,25
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Cluster.vue
+  s_d0adf0ac7ef45e::t_9b1bb1ee13965c 6-10,26-27,29-34,36,56-59,79-93,152-174
+  s_511ab752d51591::t_621b05bb653084 43-46
+  s_511ab752d51591::t_c9d70b712e962a 1-3,11-21,24-25,28,35,37,41-42,47-55,60-62,64-78,94-151,175-182
+  s_511ab752d51591::t_a0e0ed2eca4f2b 4,22-23,63
+  s_511ab752d51591::t_74fae7091a8ad5 5,38-40
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Form.vue
+  s_0587f08cc6a4d5::t_9bf3506acfa7b3 102-108,114-115,117-119,123
+  s_0587f08cc6a4d5::t_eeba9fbd6b9ed8 31,42
+  s_0587f08cc6a4d5::t_0543b4e3217c51 2-4,9,11,14,16-26,28-30,32-36,43-45,47,49-87,91-92,94,98-101,109,111-112,121-122,124
+  s_0587f08cc6a4d5::t_639682ec94d731 27
+  s_0587f08cc6a4d5::t_430ac83214c132 37-41
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Hero.vue
+  s_511ab752d51591::t_7b01a5255269e9 1,4-5,7-11,14-16,18-52
+  s_511ab752d51591::t_a0e0ed2eca4f2b 2-3,6,12-13,17
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Chapter.vue
+  s_511ab752d51591::t_30a581beeceb8b 1,5-6,8-10,12-13,18-20,22-23,31-50,62-81
+  s_5838611781172b::t_8faac140521ef5 4,11,16-17
+  s_5838611781172b::t_7c9e8bd6b2890b 24-30
+  s_511ab752d51591::t_a0e0ed2eca4f2b 2-3,7,14-15,21
+  s_5838611781172b::t_596d858cc15bab 51-61
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/HttpCall.vue
+  s_30ff66ce7cecc7::t_e11ef61ed016ab 50-52,56-57,59-60,63-66,69
+  s_0587f08cc6a4d5::t_66dcde77e75e61 2-12,14-15,17,19,21-22,25-36,38,40-49,53-55,58,61-62,67-68,70,72-73,78-99
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/ChatMessage.vue
+  s_0587f08cc6a4d5::t_d000e9c7015758 2-12,15,17-21,23-33,35,37-82,86-91
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Knowledge.vue
+  s_0587f08cc6a4d5::t_05f9edde2931a9 2-10,13,15-19,21-28,30,32-57,60-62
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/FlowCanvas.vue
+  s_0f0bfd7bd3fe28::t_94930a0ed178c9 250,254-255,260
+  s_0f0bfd7bd3fe28::t_aed2a355ed4d2a 335-336,343,350
+  s_0f0bfd7bd3fe28::t_70dbf4d2e40577 90
+  s_0f0bfd7bd3fe28::t_da27a1e6b366d3 359-360,367
+  s_5573eb56c6b990::t_bfc6c1b57c5a37 13,46,226,230
+  s_0f0bfd7bd3fe28::t_b3098124e4fd22 1,14-18,20-43,45,52-89,91-133,139-141,143,160-176,183-225,227-229,231-238,245-249,251-253,256-259,261-334,337-342,344-349,351-358,361-366,368-409
+  s_0f0bfd7bd3fe28::t_9a6f862a0aa0af 178-182
+  ai_agent 2-12,134-138,239-244
+  s_0f0bfd7bd3fe28::t_67f5e63e35e8c9 19
+  s_0f0bfd7bd3fe28::t_992a046971488f 142,144-159
+  s_0f0bfd7bd3fe28::t_32e0b70eafa7e8 44,47-51
+  s_f5dd60ba11e01e::t_8a64fb2afa4494 177
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Sms.vue
+  s_0587f08cc6a4d5::t_5a0862771dea0f 2-11,14,16-20,22-30,32,34-69,71,73-74,78-79
+packages/frontend/editor-ui/vite.config.mts
+  s_f5dd60ba11e01e::t_3b63a7ca693ed1 244-250
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/history.ts
+  s_f5dd60ba11e01e::t_80c8548e505219 26-29
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/signposts.ts
+  s_5838611781172b::t_822d28e524545c 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "45463def951c3feca213186eeabfe07568b20f28",
+  "prompts": {},
+  "sessions": {
+    "s_03d1464ae9f6b7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "30672ea0-18e8-4fcd-a713-26308871e839",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_0587f08cc6a4d5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "31c2aa31-b56e-49d3-a17c-efbe44d5ba97",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_0f0bfd7bd3fe28": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2fb8bd2d-769d-4f63-839b-d8e089955ce8",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_28672125053168": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c70dc4e4-2450-48ec-8c5d-bd0e9c6bb4c6",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_30ff66ce7cecc7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "45d2756e-1bc9-4daf-87e3-1dfac48adf58",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_511ab752d51591": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5ac18235-c9c9-4f33-be57-7e80bc76794a",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_5573eb56c6b990": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a11cc396-4f4c-4016-9972-d782e9571f3e",
+        "model": "gpt-5.6-sol-medium"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_5838611781172b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1c0f66fe-6af5-48c1-a36f-a79c4216ae09",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_583f82a42b4c3a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cebe8e73-c8d0-40cc-9c3b-9bb81c89990c",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_a192a8a79a4f90": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "faf6834d-fb57-4b7d-9825-e6ee0861e3bb",
+        "model": "gpt-5.6-sol-medium"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_adbc5d670d999f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "64ead54c-3754-41c3-bcd5-da5b86d592a1",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_c6058f2d196b71": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "404d73da-0483-4ccc-b955-9576780b67a7",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_c87522dd2b69eb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8fbcb2ae-67e9-4128-bb18-e16cbc34ab51",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_d0adf0ac7ef45e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "153bc882-4dfb-4a7b-9811-016e6058b042",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_d1191e7d88b2bd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d1b75fc6-f116-4cd1-baf6-60e94ed1db85",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_e7d4b44bc563d3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ea0026b9-bfd6-4b57-9321-33c18a4d32df",
+        "model": "gpt-5.6-sol-medium"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_ec7cee9ea54c39": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bd6d8f0a-08fd-4320-8e16-94f49085cb1e",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_ee7fa2dbf47399": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1597199a-8e69-4791-ba54-0053ad947130",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_f5dd60ba11e01e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c3c850cb-1ec4-49e4-b604-9b9480910e23",
+        "model": "auto-smart"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

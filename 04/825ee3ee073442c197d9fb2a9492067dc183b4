@@ -1,0 +1,42 @@
+packages/cli/src/modules/agent-evals/case-generation/case-generation-prompt.ts
+  s_3824065843ee5b::t_35097319325fb2 40-42
+  s_3824065843ee5b::t_67ecfb9e4095b1 86-88
+  s_3824065843ee5b::t_69b556101b08d8 19-20,22-23
+  s_3824065843ee5b::t_5e0bb31b935eed 55,57-58
+packages/cli/src/modules/agent-evals/case-generation/__tests__/dimensions.test.ts
+  s_3824065843ee5b::t_b245ff31bdfe41 52-62
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_3824065843ee5b::t_064762e55dc939 110
+  s_3824065843ee5b::t_5e300aefadcfd7 123
+  s_3824065843ee5b::t_036e382d718564 94
+  s_3824065843ee5b::t_5e2d3e4fcb93dc 11,13
+  s_3824065843ee5b::t_2a4075b5ea7d6e 207-213,218,233-240,247,251-253
+  s_3824065843ee5b::t_05a1fd25e8e9a1 167-178
+packages/cli/src/modules/agent-evals/case-generation/dimensions.ts
+  s_3824065843ee5b::t_a1f1337f2b7015 70-74,76
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-case-generation.service.test.ts
+  s_3824065843ee5b::t_f2b076c7d5b8bc 111
+  s_3824065843ee5b::t_58ee8fce787e76 124-134
+  s_3824065843ee5b::t_63f48e3526f236 79
+  s_3824065843ee5b::t_cde280921d98a2 220,224-234,236,240-272
+  s_3824065843ee5b::t_68f35e1a35c3c0 9,11
+  s_3824065843ee5b::t_5c43d674a2eecb 89-92
+packages/cli/src/modules/agent-evals/case-generation/__tests__/case-generation-prompt.test.ts
+  s_3824065843ee5b::t_d7700044cd20f2 53-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "04825ee3ee073442c197d9fb2a9492067dc183b4",
+  "prompts": {},
+  "sessions": {
+    "s_3824065843ee5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0fdd8056-46de-4a0a-a26b-c8a9521f1209",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

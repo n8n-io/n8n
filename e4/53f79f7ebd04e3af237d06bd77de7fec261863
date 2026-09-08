@@ -1,0 +1,73 @@
+packages/@n8n/api-types/src/agents/dto.ts
+  s_8c0bb2d06aee91::t_3677378f100008 7
+  s_8c0bb2d06aee91::t_28ad76338b07da 136,140-143
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageAttachments.vue
+  s_8c0bb2d06aee91::t_01134f820134ea 6,16-27,32,54,67-68
+  s_8c0bb2d06aee91::t_e9698cac835d2b 97
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_8c0bb2d06aee91::t_ed20d52398880e 156-157,159,188-196
+  ai_agent 341-345
+  s_8c0bb2d06aee91::t_805ae7cecf2630 7
+  s_8c0bb2d06aee91::t_c09fe0c2aac5ef 336-340,346-349
+  s_8c0bb2d06aee91::t_848dc3274b6d57 65-75,77-98
+  s_8c0bb2d06aee91::t_82a6199d412c58 16
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_8c0bb2d06aee91::t_bf3b5102ad9edf 40
+  s_8c0bb2d06aee91::t_e2204ee46bc345 616-619,634-638
+  s_8c0bb2d06aee91::t_aa6453f88e1e14 670-673,682
+  s_8c0bb2d06aee91::t_d083f19279db1b 20
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_8c0bb2d06aee91::t_46d2bf00137b7d 346-348,503-505
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_8c0bb2d06aee91::t_a9398237a2df92 234
+  s_8c0bb2d06aee91::t_576f3419acd1e6 199-233,235-337
+packages/@n8n/agents/src/runtime/__tests__/crash-resume.test.ts
+  s_8c0bb2d06aee91::t_f8d7746a0bf8e3 17-18
+  s_8c0bb2d06aee91::t_e30a8b0867e5a9 335-417,419-455
+  s_8c0bb2d06aee91::t_0e7b81f2252b7d 418
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_8c0bb2d06aee91::t_e443911b09d4e2 103-110
+  s_8c0bb2d06aee91::t_e843822d75ae5f 127-137
+packages/core/src/binary-data/blob.manager.ts
+  s_8c0bb2d06aee91::t_d93e4e9b80db95 2
+  s_8c0bb2d06aee91::t_d7eaf1d0efd96c 28
+  s_8c0bb2d06aee91::t_dd460451ce90f4 81-89
+packages/cli/src/services/project.service.ee.ts
+  s_8c0bb2d06aee91::t_206c48f3e27f7c 132-137
+  s_8c0bb2d06aee91::t_44e58f8db61f93 247-253,266-271
+packages/cli/src/commands/base-command.ts
+  s_8c0bb2d06aee91::t_99728b1051f988 344-348
+  s_8c0bb2d06aee91::t_0dd524db63f76e 363-367
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_8c0bb2d06aee91::t_3ea025b3e3bc47 31-34
+  s_8c0bb2d06aee91::t_a627be288fdf4b 2
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_8c0bb2d06aee91::t_bd3531d2498aea 4
+  s_8c0bb2d06aee91::t_58fafd7d5bf035 341,349-350
+  ai_agent 348,393-395,405-407
+  s_8c0bb2d06aee91::t_3d92fce7ecfbe6 336,342-347
+  s_8c0bb2d06aee91::t_6379430bffe033 308
+packages/core/src/binary-data/binary-data.service.ts
+  s_8c0bb2d06aee91::t_f1bf6056f44ed0 45-49
+packages/@n8n/api-types/src/agents/agent-chat-attachments.constants.ts
+  s_8c0bb2d06aee91::t_110c9d9711f728 4-6,8-9
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_8c0bb2d06aee91::t_b997d3641a1dfd 539-545
+  s_8c0bb2d06aee91::t_91728f764c4497 678
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e453f79f7ebd04e3af237d06bd77de7fec261863",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

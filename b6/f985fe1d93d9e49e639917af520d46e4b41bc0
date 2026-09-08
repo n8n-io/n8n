@@ -1,0 +1,51 @@
+packages/cli/src/credentials-overwrites.ts
+  1eaa96a879bfc7d8 150,211,214-221
+packages/cli/src/__tests__/credentials-overwrites.test.ts
+  1eaa96a879bfc7d8 116-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "b6f985fe1d93d9e49e639917af520d46e4b41bc0",
+  "prompts": {
+    "0a87b489b3b72f0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2af9aa26-b48d-48de-899f-4639eaafcd9f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "1eaa96a879bfc7d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b547ed1e-ac8f-442b-985a-7fe820cd7a4e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 1415,
+      "total_deletions": 11,
+      "accepted_lines": 40,
+      "overriden_lines": 0
+    },
+    "cd3c6f4a7b5a7479": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d98dd0fc-2221-437e-9c5e-fc0834d6c5b6",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1066,
+      "overriden_lines": 3
+    }
+  }
+}

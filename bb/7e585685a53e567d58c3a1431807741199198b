@@ -1,0 +1,40 @@
+packages/@n8n/instance-ai/src/runtime/confirmation-payload.ts
+  s_2ee006b070733f::t_5bc853ad500bc6 77
+  s_2ee006b070733f::t_3c479178e149f3 15-18
+  s_2ee006b070733f::t_09396693e3fd21 1-14,19-76,78-94
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_2ee006b070733f::t_850b73a0eec177 113
+  s_2ee006b070733f::t_a65564c7a69408 5077
+packages/@n8n/instance-ai/src/tools/evals/evals.tool.ts
+  s_2ee006b070733f::t_6fbd777ae6285b 143-145
+  s_2ee006b070733f::t_be66a54ab2740e 334
+  s_2ee006b070733f::t_02060b6fdafc83 146
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_2ee006b070733f::t_be66a54ab2740e 434,441,758
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_2ee006b070733f::t_be66a54ab2740e 255,260,1572
+packages/@n8n/instance-ai/src/runtime/__tests__/confirmation-payload.test.ts
+  s_2ee006b070733f::t_200aed6b458c6d 63-66,176-177
+  s_2ee006b070733f::t_435c40b765ac65 1-62,67-175,178-213
+packages/@n8n/instance-ai/src/tools/filesystem/create-tools-from-mcp-server.ts
+  s_2ee006b070733f::t_be66a54ab2740e 72
+packages/@n8n/instance-ai/package.json
+  s_2ee006b070733f::t_42e9144a0decca 59-61
+  s_2ee006b070733f::t_c2cff848dd846a 48-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bb7e585685a53e567d58c3a1431807741199198b",
+  "prompts": {},
+  "sessions": {
+    "s_2ee006b070733f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "144285d2-2b43-472d-b2c8-a2910fcb5e1b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

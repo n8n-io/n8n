@@ -1,0 +1,50 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_d6aa0b35ad7ed7::t_3b417a64a2614f 36
+  s_d6aa0b35ad7ed7::t_b3909a12d5b55e 132,135
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_d6aa0b35ad7ed7::t_a62898f1309642 395
+packages/workflow/src/errors/poll-failure.error.ts
+  h_32d8cd6a0d6aad 197,199,209,211
+  s_d6aa0b35ad7ed7::t_f4a74e2c30ed47 1
+  s_d6aa0b35ad7ed7::t_c772ebf354a188 2-196,198,200-208,210,212-226
+packages/nodes-base/nodes/Google/Drive/test/GoogleDriveTrigger.node.test.ts
+  s_d6aa0b35ad7ed7::t_a32752a4b95e4b 466-523,526-556
+  s_d6aa0b35ad7ed7::t_b80e0f8243e798 4
+  s_d6aa0b35ad7ed7::t_044606b67a3046 524-525
+packages/workflow/src/errors/index.ts
+  s_d6aa0b35ad7ed7::t_3aa2ea3ddf1772 17-28
+packages/nodes-base/nodes/Google/Drive/GoogleDriveTrigger.node.ts
+  h_32d8cd6a0d6aad 544,550-552,558,560-561,563,565,568,570,572-573,575-579,589,591-592,596,607,614-615
+  s_d6aa0b35ad7ed7::t_5d7ccea5da3592 11
+  s_d6aa0b35ad7ed7::t_f48a46ed6433d5 6
+  s_d6aa0b35ad7ed7::t_044606b67a3046 545-549
+  s_d6aa0b35ad7ed7::t_95f33725f58d3a 491-496,505-508
+  s_d6aa0b35ad7ed7::t_4b8bf5b538be77 13-19
+  s_d6aa0b35ad7ed7::t_ba9ee6d852785e 553-557,559,562,564,566-567,569,571,574,580-588,590,593-595,597-606,608-613
+  ai_agent 497-504
+packages/workflow/test/errors/poll-failure.error.test.ts
+  s_d6aa0b35ad7ed7::t_49f6a5996f5b4c 12-14
+  s_d6aa0b35ad7ed7::t_2ae6b49707fae1 33-34
+  s_d6aa0b35ad7ed7::t_fc7f6ae4c67ca2 1-11,15-32,35-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0031cf768056af18fd0056ccfbf74e74be1fb8bc",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d6aa0b35ad7ed7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86471ace-b1f9-44f1-af8b-546f74add5af",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

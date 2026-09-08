@@ -1,0 +1,65 @@
+packages/@n8n/instance-ai/evaluations/cli/mcp-builder.ts
+  s_4d66342479cf5a::t_bbaa90f4d493f8 195
+  s_4d66342479cf5a::t_b25ad942f59b4a 139-142
+  s_4d66342479cf5a::t_1f908b7a467717 170-172
+  s_4d66342479cf5a::t_2c84dcc924409c 173
+packages/@n8n/instance-ai/evaluations/run/lane-users.ts
+  s_4d66342479cf5a::t_84d6719a738ece 1,3,8-29,31-36,38-44,47-57,59-76,81-108,112-122,124-131
+  s_4d66342479cf5a::t_1e6fd192cdf9a9 2,4-7,30,37,45-46,58,77-80,109-111,123
+packages/@n8n/instance-ai/evaluations/run/build-orchestrator.ts
+  s_4d66342479cf5a::t_bd3d2e9df77932 148,156,165-177,179-190,193-196,198-214,216-217
+  s_4d66342479cf5a::t_ec151ee3fa4c5e 459
+  s_4d66342479cf5a::t_d5ba065b7af7d8 178
+  s_4d66342479cf5a::t_91ebb8c3b9fdd6 215
+  s_4d66342479cf5a::t_2b33ccf404d4c9 13,20-25
+  s_4d66342479cf5a::t_67ace9642cb8e6 78,80,82
+  s_4d66342479cf5a::t_df62c8e9384acf 149-151
+  s_4d66342479cf5a::t_a2443dcc124a24 16
+  s_4d66342479cf5a::t_c0b17a1a47adf6 54
+  s_4d66342479cf5a::t_8e9d9378b2c40c 79,81
+packages/@n8n/instance-ai/evaluations/clients/n8n-client.ts
+  s_4d66342479cf5a::t_c55303c272a22b 650-678,682-695,697-702
+  s_4d66342479cf5a::t_1f37682942108a 31-45
+  s_4d66342479cf5a::t_6721ed10e2f0ff 647-649
+  s_4d66342479cf5a::t_3e7921061407f8 696
+  s_4d66342479cf5a::t_28187f25552300 679-681
+packages/@n8n/instance-ai/evaluations/run/lane-setup.ts
+  s_4d66342479cf5a::t_1ca4d5c9eb0f0b 63-65
+  s_4d66342479cf5a::t_d428361982383d 110-112
+  s_4d66342479cf5a::t_229bd82e0579b7 21-22
+  s_4d66342479cf5a::t_30195233c10dd7 3-4,10
+  s_4d66342479cf5a::t_78f9c7559a5a99 108-109
+  s_4d66342479cf5a::t_0a459018994015 66,69,85-86
+  s_4d66342479cf5a::t_503e09f41bfd24 27-28
+packages/@n8n/instance-ai/evaluations/__tests__/lane-users.test.ts
+  s_4d66342479cf5a::t_20cc7c0839726f 2,6,12
+  s_4d66342479cf5a::t_4e6be06123703e 23-28
+  ai_agent 103,169
+  s_4d66342479cf5a::t_9d32316d675d25 93-94,97
+  s_4d66342479cf5a::t_58f309bad9eb13 115-121
+  s_4d66342479cf5a::t_df4245c478f29e 1,3-5,7-11,13-22,29-92,95-96,98-102,104-114,122-168,170-174
+packages/@n8n/instance-ai/evaluations/README.md
+  s_4d66342479cf5a::t_a4cdae2b3e2585 439-451
+packages/@n8n/instance-ai/evaluations/__tests__/mcp-builder.test.ts
+  s_4d66342479cf5a::t_1ec3b4592e5350 132-137
+  s_4d66342479cf5a::t_5028493bea3cc9 170,178
+packages/@n8n/instance-ai/evaluations/run/case-selection.ts
+  s_4d66342479cf5a::t_b07ede3f552b59 67-69
+  s_4d66342479cf5a::t_a0791a4ed689a2 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "544cd72bb17fb051bbd15465c91d40169e1caeb6",
+  "prompts": {},
+  "sessions": {
+    "s_4d66342479cf5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21ca5e52-1c8b-4d36-a581-0e7c2db6d2c0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

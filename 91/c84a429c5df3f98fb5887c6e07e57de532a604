@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiCredentialHelp.ts
+  s_704a1a6a42be24::t_ea529f79241c14 1-3,14-17,22-33,41-44,46-47,50-51,54
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_704a1a6a42be24::t_e400b42c5f1cfa 307-316
+  s_704a1a6a42be24::t_9f243b83f7bd29 632
+  s_704a1a6a42be24::t_06748031517597 30
+  s_704a1a6a42be24::t_fe5904dc457287 348
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.test.ts
+  s_704a1a6a42be24::t_8e270d6bd3be59 71,78-80,87-99,101
+  s_704a1a6a42be24::t_11ed38f4d0dbe8 361-425
+  s_704a1a6a42be24::t_0580a12da1e223 36-41
+  s_704a1a6a42be24::t_7cb4699faf3dc4 100
+  s_704a1a6a42be24::t_2ed016d3361c6a 102
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.vue
+  s_704a1a6a42be24::t_7af177babe5693 240
+  s_704a1a6a42be24::t_ddb4f57f7e9536 25
+  s_704a1a6a42be24::t_b86d791c838e12 72-81
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_704a1a6a42be24::t_c6a43fe7352f10 114-130
+  s_704a1a6a42be24::t_de6f3312893659 289-345
+  s_704a1a6a42be24::t_9103991bf8e0ea 700
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_704a1a6a42be24::t_3d0c320d96048c 89-92
+  s_704a1a6a42be24::t_b7b8b822c4ebca 128
+  s_704a1a6a42be24::t_efa1bd1afbf1a8 540
+  s_704a1a6a42be24::t_e6b7a95e66e875 126-127,129
+  s_704a1a6a42be24::t_2ede50787806f0 775
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "91c84a429c5df3f98fb5887c6e07e57de532a604",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

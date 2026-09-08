@@ -1,0 +1,28 @@
+packages/@n8n/api-types/src/__tests__/helpers/zod-object-keys-match.ts
+  s_77088cb56e2173::t_9de86756f5abee 55-71
+packages/@n8n/api-types/src/dto/saml/__tests__/saml-preferences.dto.test.ts
+  h_ed1b2d65e81e8e 202
+  s_77088cb56e2173::t_b1d41452b72e86 214-217
+  s_77088cb56e2173::t_98dccaa6639402 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "39c0e97b2b637526aebe82adbdb15591b1917aaa",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_77088cb56e2173": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "13874058-b776-4971-b8ba-45ace7a4f281",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

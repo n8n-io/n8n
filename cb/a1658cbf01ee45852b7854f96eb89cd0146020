@@ -1,0 +1,62 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailMetadata.vue
+  s_756f30de40ce04::t_f103eae43a1e12 7,24-31
+  s_756f30de40ce04::t_14da819dca1c3d 183-190
+  s_756f30de40ce04::t_410200e6a89292 1-2,4-6,8-23,32,37-42,44-48,50-54,56-59,68-80,82-117,119-125,132-143,151-158,167-169,172-182,191
+  s_756f30de40ce04::t_7d69fe31a37c4a 126
+  s_756f30de40ce04::t_de2e0e1d6aa5ef 127-131
+  s_756f30de40ce04::t_e8f660d2706a56 159-160,164-166,170-171
+  s_756f30de40ce04::t_a307b238c33fef 161-163
+  h_760178ed151f13 43,55,81,118
+  s_756f30de40ce04::t_3878ea86ede801 49
+  s_756f30de40ce04::t_3a24f7b84e0717 3,33-36,60-67,144-150
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.test.ts
+  s_756f30de40ce04::t_eb292d6ced4fbb 19-27,117-122
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_756f30de40ce04::t_7c29c6015f042c 230,232-233
+  s_756f30de40ce04::t_bd33ac7a532ffa 235-238
+  s_756f30de40ce04::t_ad638b33c031b1 15,239-242,340-344
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.vue
+  s_756f30de40ce04::t_613394ededc03d 216-219
+  s_756f30de40ce04::t_bd412f928f7cff 5,25,53,57-66,68-72,74,77-79
+  s_756f30de40ce04::t_61ad130bbdea99 9,52,67,120-124,126-143,146-162,164,166,171-182,202-207,236-246
+  s_756f30de40ce04::t_bfe594449d8eaa 145
+  s_756f30de40ce04::t_2294d7a7318a6c 163,165,167-170
+  s_756f30de40ce04::t_eceea1149857bb 54-56,73,75-76
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_756f30de40ce04::t_2d0a86dc575ded 371,374,380
+  s_756f30de40ce04::t_829b6e5248f1a7 7
+  s_756f30de40ce04::t_448dc043f52ab7 270-274
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviewStatus.ts
+  s_756f30de40ce04::t_bfe594449d8eaa 3,15-18
+  s_756f30de40ce04::t_da0028e4f5d8d0 1-2,4-14,19-29
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusDot.vue
+  s_756f30de40ce04::t_9904fdf21ffbdd 7-8,17-18
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailMetadata.test.ts
+  s_756f30de40ce04::t_bfe594449d8eaa 25-27
+  s_756f30de40ce04::t_91cd7d867dfdd2 1-24,28-104
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  h_760178ed151f13 195
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_756f30de40ce04::t_b7bff4eb136f03 5408-5413
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cba1658cbf01ee45852b7854f96eb89cd0146020",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_756f30de40ce04": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5124076b-1e6f-483c-b0cd-314e9eaa9724",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

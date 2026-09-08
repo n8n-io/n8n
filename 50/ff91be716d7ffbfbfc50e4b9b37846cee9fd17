@@ -1,0 +1,36 @@
+packages/cli/src/modules/agents/__tests__/agents-credential-provider.test.ts
+  s_81236510e40a37::t_962c98ea31b68b 13
+  s_81236510e40a37::t_59e4d17d0b1e00 3-4,12,14-25
+  s_81236510e40a37::t_3a16f669a2c36a 8
+  s_81236510e40a37::t_e212f30b1e7983 133,138-143,151,156-202
+  s_81236510e40a37::t_5fc0fa5a63bdc8 241,246-252
+  s_81236510e40a37::t_7249e483b595d4 271
+packages/cli/src/modules/agents/__tests__/agent-vector-stores.service.test.ts
+  s_81236510e40a37::t_8c9f1029ebfefe 4-5,23-31
+  s_81236510e40a37::t_05bbea96417105 9
+  s_81236510e40a37::t_236916f94d6fae 81
+  s_81236510e40a37::t_8ec31b04c260b9 109,114
+packages/cli/src/modules/agents/adapters/agents-credential-provider.ts
+  s_81236510e40a37::t_f67887ece2dcec 94
+  s_81236510e40a37::t_b54a07ec5e2fd1 8
+  s_81236510e40a37::t_0f58b5d5cd6635 91
+  s_81236510e40a37::t_4faca631d33750 92-93
+  s_81236510e40a37::t_b1bdb4ef7eb33c 4
+  s_81236510e40a37::t_6c05a424af3d42 58,71,75-90,95-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "50ff91be716d7ffbfbfc50e4b9b37846cee9fd17",
+  "prompts": {},
+  "sessions": {
+    "s_81236510e40a37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46ac684a-8b63-438d-9361-58436e039d01",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

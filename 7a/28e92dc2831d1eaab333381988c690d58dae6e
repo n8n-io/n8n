@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_8ef4ab61d8be89::t_1b90ef7584ee6c 12
+  s_8ef4ab61d8be89::t_fdf4164cd51670 122-127
+  s_8ef4ab61d8be89::t_e9c31da90438ec 329-351
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_8ef4ab61d8be89::t_bc298bd7d902bc 633-636
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7a28e92dc2831d1eaab333381988c690d58dae6e",
+  "prompts": {},
+  "sessions": {
+    "s_8ef4ab61d8be89": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5a228394-f9e8-497c-8f6d-582208260266",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

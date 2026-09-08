@@ -1,0 +1,44 @@
+packages/nodes-base/nodes/Linear/test/GenericFunctions.test.ts
+  s_1182a68f168814::t_487d928e405155 9-14
+  s_1182a68f168814::t_c1539d7bc17821 94-103,109-136
+  s_1182a68f168814::t_63043b1c9f221a 104-108
+packages/nodes-base/credentials/test/LinearOAuth2Api.credentials.test.ts
+  s_1182a68f168814::t_7d61e40e23bc0f 21-32
+  s_1182a68f168814::t_a43413f1ecc948 12,14-15,19-20,33-51
+  s_1182a68f168814::t_d95ff14826ff8f 13,16-18
+packages/nodes-base/nodes/Linear/GenericFunctions.ts
+  s_1182a68f168814::t_e0c4007928965f 71-83
+  s_1182a68f168814::t_502ad1ff523484 56-57,61
+packages/nodes-base/credentials/LinearOAuth2Api.credentials.ts
+  s_1182a68f168814::t_f899b3c3847977 47-51
+  s_1182a68f168814::t_9741daf8d298e6 76
+  s_1182a68f168814::t_43b5f3d67caf6d 16-26
+  s_1182a68f168814::t_51402815f5e81f 84
+  s_1182a68f168814::t_6e47658ce427e5 91
+packages/nodes-base/nodes/Linear/LinearTrigger.node.ts
+  s_1182a68f168814::t_9708106ef4b573 223-224
+  s_1182a68f168814::t_7141e3e69e738e 86-96
+  s_1182a68f168814::t_b5a9b7fb597a9b 183-186
+  s_1182a68f168814::t_3409e881d126b2 12-16
+  s_1182a68f168814::t_35dc8b257cd5f5 187
+  s_1182a68f168814::t_6a355c8a7ef612 225-226
+  s_1182a68f168814::t_4fe7c55bb6ec63 272-275
+packages/nodes-base/nodes/Linear/test/LinearTrigger.node.test.ts
+  s_1182a68f168814::t_98c6de1d5bf90b 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "f831b4397149b6444b8b4f1ea31688b1abed4b81",
+  "prompts": {},
+  "sessions": {
+    "s_1182a68f168814": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50686946-25e2-4100-a0a2-b7a2b7f015d7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
