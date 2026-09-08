@@ -41,7 +41,7 @@ export class AgentWakeService {
 
 	private readonly failures = new Map<string, FailureState>();
 
-	/** Threads whose wake run this process is currently executing. */
+	/** Threads with an active wake in this process. */
 	private readonly activeWakes = new Set<string>();
 
 	constructor(
@@ -91,9 +91,9 @@ export class AgentWakeService {
 	}
 
 	/**
-	 * Volatile hint for a running parent turn. Scoped to the turn's own memory
-	 * resource so authors sharing one integration thread only see their jobs.
-	 * A wake run already carries its mail as input, so it gets no hint.
+	 * Return a hint about pending job results for the current memory resource.
+	 * Authors who share a thread see only their own jobs.
+	 * Wake runs already receive these results as input and need no hint.
 	 */
 	async getBackgroundUpdates(threadId: string, resourceId: string): Promise<string | undefined> {
 		if (!this.agentsConfig.backgroundTasksEnabled) return undefined;
@@ -104,8 +104,8 @@ export class AgentWakeService {
 		);
 		if (jobs.length === 0) return undefined;
 
-		// Titles are model- or editor-controlled text: strip tag characters and
-		// quote them so they cannot close the tag or read as instructions.
+		// Remove tag characters so titles cannot close the surrounding tag.
+		// Quote titles to distinguish them from instructions.
 		const summaries = jobs
 			.map((job) => {
 				const title = job.title.replace(/[<>]/g, '').slice(0, HINT_TITLE_MAX_CHARS);
@@ -136,7 +136,7 @@ export class AgentWakeService {
 				{ waitTimeoutMs: WAKE_LOCK_WAIT_MS, leaseTtlMs: WAKE_LOCK_TTL_MS },
 			);
 		} catch (error) {
-			this.logger.warn('Could not acquire the background job wake lease', { threadId, error });
+			this.logger.warn('Failed to acquire the background job wake lease', { threadId, error });
 		}
 	}
 
@@ -145,9 +145,8 @@ export class AgentWakeService {
 		const first = pending[0];
 		if (!first || signal.aborted) return;
 
-		// One integration thread can carry mail for several authors. Each wake
-		// runs under one identity: the oldest row picks it, and rows of other
-		// authors stay pending for the next attempt.
+		// Each wake delivers results for one author. The oldest pending job determines
+		// the wake identity. Results for other authors stay pending for the next wake.
 		const jobs = pending.filter((job) => this.hasSameParentIdentity(job, first));
 		const generation = jobs
 			.map((job) => job.id)
@@ -158,9 +157,8 @@ export class AgentWakeService {
 			return;
 		}
 
-		// Execution rows keep their suspended status after a resume, so they can
-		// only rule a thread out cheaply; the checkpoint store decides whether a
-		// suspension is live.
+		// Execution records keep their suspended status after a resume.
+		// Check the checkpoint store to determine whether the thread is still suspended.
 		if (
 			(await this.executionRepository.existsRunningByThread(threadId)) ||
 			((await this.executionRepository.hasSuspendedRun(threadId)) &&
@@ -172,7 +170,7 @@ export class AgentWakeService {
 
 		const agent = await this.agentRepository.findById(first.parentAgentId);
 		if (!agent) {
-			this.recordFailure(threadId, generation, 'Background job parent no longer exists');
+			this.recordFailure(threadId, generation, 'Background job parent agent no longer exists');
 			return;
 		}
 
@@ -217,8 +215,8 @@ export class AgentWakeService {
 			if (jobs.length < pending.length) this.scheduleLocal(threadId);
 		} catch {
 			if (signal.aborted) return;
-			// The run's error text can carry provider or tool output. The recorded
-			// execution keeps it; the log only needs the fact.
+			// Keep provider and tool error details in the execution record.
+			// Log only that the wake failed.
 			this.recordFailure(threadId, generation, 'Wake run failed');
 		}
 	}
@@ -235,8 +233,7 @@ export class AgentWakeService {
 				throw new UnexpectedError('Draft wake identity does not match its principal');
 			}
 
-			// The stored identity is a capability to run the agent later. It must
-			// not outlive the user's current access. The scope check reads the role.
+			// Load the current user role to verify that the user still has permission to run the agent.
 			const user = await this.userRepository.findByIdWithRole(userId);
 			if (!user || user.disabled) throw new OperationalError('Draft wake user is no longer active');
 			if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
@@ -268,7 +265,7 @@ export class AgentWakeService {
 		const previous = this.failures.get(threadId);
 		const count = previous?.generation === generation ? previous.count + 1 : 1;
 		this.failures.set(threadId, { generation, count });
-		this.logger.warn('Failed to deliver background job mail to its parent agent', {
+		this.logger.warn('Failed to deliver background job results to the parent agent', {
 			threadId,
 			attempt: count,
 			reason,

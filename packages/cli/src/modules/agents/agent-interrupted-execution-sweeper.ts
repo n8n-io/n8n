@@ -72,7 +72,7 @@ export class AgentInterruptedExecutionSweeper {
 		try {
 			await this.agentWakeService.drainUnconsumed();
 		} catch (error) {
-			this.logger.error('Failed to schedule pending background job mail', { error });
+			this.logger.error('Failed to schedule delivery of pending background job results', { error });
 		}
 	}
 }

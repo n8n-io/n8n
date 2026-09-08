@@ -771,7 +771,7 @@ describe('AgentRuntime — volatile instruction provider', () => {
 		streamText.mockReset();
 	});
 
-	it('adds host instructions to the uncached system message without persisting them', async () => {
+	it('adds host instructions to the uncached system message without saving them', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const provider = vi
 			.fn()
@@ -793,7 +793,7 @@ describe('AgentRuntime — volatile instruction provider', () => {
 		expect(JSON.stringify(result.getState())).not.toContain('<background-updates>');
 	});
 
-	it('calls the provider before each model-loop iteration', async () => {
+	it('calls the provider before each model call', async () => {
 		generateText
 			.mockResolvedValueOnce({
 				...makeGenerateWithToolCall('tc-provider', 'openai.web_search', { query: 'n8n' }),
@@ -827,7 +827,9 @@ describe('AgentRuntime — volatile instruction provider', () => {
 			name: 'test',
 			model: 'openai/gpt-4o-mini',
 			instructions: 'Base instructions.',
-			volatileInstructionsProvider: vi.fn().mockRejectedValue(new Error('mail unavailable')),
+			volatileInstructionsProvider: vi
+				.fn()
+				.mockRejectedValue(new Error('instructions unavailable')),
 		});
 
 		await expect(runtime.generate('hello')).resolves.toEqual(

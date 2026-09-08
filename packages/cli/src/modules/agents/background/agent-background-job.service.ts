@@ -365,15 +365,14 @@ export class AgentBackgroundJobService {
 	}
 
 	/**
-	 * The model already saw the cancel result, so its mail is consumed. This
-	 * runs after the stop so a failed write cannot leave the child running,
-	 * and a failure only means one redundant wake later.
+	 * Mark the cancellation result as delivered after the child stops.
+	 * If this write fails, a later wake can repeat the result.
 	 */
 	private async consumeCancelledMail(parentThreadId: string, jobId: string): Promise<void> {
 		try {
 			await this.jobRepository.markMailConsumed(parentThreadId, [jobId]);
 		} catch (error) {
-			this.logger.warn('Failed to consume mail of a cancelled background job', { jobId, error });
+			this.logger.warn('Failed to mark the cancelled job result as delivered', { jobId, error });
 		}
 	}
 

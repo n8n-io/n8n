@@ -694,8 +694,8 @@ async function backgroundWaitingExecution(
 	const agentRun = context.agentRun ?? agentRunOf(context, ctx);
 	const parentResourceId = ctx.persistence?.resourceId;
 	const sandboxScope = decodeAgentSandboxHostMetadata(ctx.persistence?.hostMetadata);
-	// A task session has no chat identity a wake could run as, so it keeps the
-	// legacy wait handling instead of registering a job nobody can deliver.
+	// Task sessions have no chat identity for a wake.
+	// Keep the existing wait behavior so the parent can receive the result.
 	if (
 		!agentRun ||
 		!reference.workflowId ||
@@ -754,8 +754,8 @@ async function backgroundWaitingExecution(
 						: null,
 				error: fresh.error ?? null,
 			});
-			// The model receives this result inline, so no wake needs to repeat it,
-			// whichever writer settled the row first.
+			// The tool returns the result directly. Mark it as delivered
+			// even if another writer settled the job.
 			await consumeInlineMail(jobService, agentRun.threadId, jobId);
 
 			return { ...withoutWaitState(fresh), jobId };
@@ -784,8 +784,8 @@ async function backgroundWaitingExecution(
 }
 
 /**
- * Mail bookkeeping must never change the tool result: a failed write only
- * means one redundant wake later.
+ * Return the tool result even if the delivery status cannot be saved.
+ * If this write fails, a later wake can repeat the result.
  */
 async function consumeInlineMail(
 	jobService: AgentBackgroundJobService,
@@ -795,7 +795,7 @@ async function consumeInlineMail(
 	try {
 		await jobService.markMailConsumed(parentThreadId, [jobId]);
 	} catch (error) {
-		Container.get(Logger).warn('Failed to consume mail of an inline workflow result', {
+		Container.get(Logger).warn('Failed to mark the inline workflow result as delivered', {
 			jobId,
 			error: error instanceof Error ? error.message : String(error),
 		});
@@ -813,7 +813,7 @@ async function settleOutcomeUnknown(
 		status: 'failed',
 		error: EXECUTION_OUTCOME_UNKNOWN_ERROR,
 	});
-	// The model receives this outcome inline, so no wake needs to repeat it.
+	// If another writer settled the job, leave its result pending for delivery.
 	if (claimed) await consumeInlineMail(jobService, parentThreadId, jobId);
 	return {
 		executionId,

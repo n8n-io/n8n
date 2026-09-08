@@ -144,7 +144,7 @@ describe('settle', () => {
 		Container.reset();
 	});
 
-	it('requests a parent wake after the row settles', async () => {
+	it('requests a parent wake after the job settles', async () => {
 		const { service, jobRepository } = setup({ backgroundTasksEnabled: true });
 		const wakeService = mock<AgentWakeService>();
 		Container.set(AgentWakeService, wakeService);
@@ -157,10 +157,10 @@ describe('settle', () => {
 		expect(wakeService.requestWake).toHaveBeenCalledWith('thread-1');
 	});
 
-	it('still settles when the wake request fails or the feature is off', async () => {
+	it('settles the job when the wake request fails or background tasks are disabled', async () => {
 		const failing = setup({ backgroundTasksEnabled: true });
 		const wakeService = mock<AgentWakeService>();
-		wakeService.requestWake.mockRejectedValue(new Error('pubsub down'));
+		wakeService.requestWake.mockRejectedValue(new Error('pubsub unavailable'));
 		Container.set(AgentWakeService, wakeService);
 		failing.jobRepository.findById.mockResolvedValue(makeJob({ status: 'completed' }));
 		await expect(
@@ -256,10 +256,10 @@ describe('cancel', () => {
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 
-	it('still stops the child and reports cancelled when consuming its mail fails', async () => {
+	it('stops the child and reports cancellation when marking the result as delivered fails', async () => {
 		const { service, jobRepository } = setup();
 		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
-		jobRepository.markMailConsumed.mockRejectedValue(new Error('db down'));
+		jobRepository.markMailConsumed.mockRejectedValue(new Error('database unavailable'));
 		const controller = new AbortController();
 		service.registerAbortController('job-1', controller);
 

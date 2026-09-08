@@ -39,7 +39,7 @@ describe('AgentTestChatService', () => {
 		});
 	});
 
-	it('hides synthetic wake input and keeps its assistant response', async () => {
+	it('hides the internal wake input and keeps the assistant response', async () => {
 		const { service, memory } = makeService();
 		memory.getMessages.mockResolvedValue([
 			{
@@ -56,7 +56,7 @@ describe('AgentTestChatService', () => {
 		]);
 	});
 
-	it('keeps a user row whose content is not an array', async () => {
+	it('keeps a user message whose content is not an array', async () => {
 		const { service, memory } = makeService();
 		const malformed = { role: 'user', content: 'plain text' };
 		memory.getMessages.mockResolvedValue([malformed] as never);

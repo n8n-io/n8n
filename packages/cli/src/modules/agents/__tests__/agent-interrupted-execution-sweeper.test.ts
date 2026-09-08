@@ -77,7 +77,7 @@ describe('AgentInterruptedExecutionSweeper', () => {
 		expect(enabled.backgroundJobService.reconcileWorkflowJobs).not.toHaveBeenCalled();
 	});
 
-	it('scans for pending mail after reconciliation', async () => {
+	it('checks for pending job results after reconciliation', async () => {
 		const { sweeper, repository, agentWakeService } = setup();
 		repository.findRunning.mockResolvedValue([]);
 

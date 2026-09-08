@@ -189,9 +189,9 @@ export interface StreamChatResponseConfig {
 	/** Add full sanitized tool configuration to approval cards in preview chat. */
 	includeHitlToolDetails?: boolean;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
-	/** Keep an internal wake instruction out of the user-facing execution transcript. */
+	/** Hide the internal wake instruction from the execution transcript. */
 	hideUserMessageFromTranscript?: boolean;
-	/** Prevent a wake run from scheduling another wake when it finishes. */
+	/** Prevent this wake run from triggering another wake. */
 	isWakeRun?: boolean;
 }
 
@@ -543,8 +543,7 @@ export class AgentExecutionOrchestratorService {
 						},
 					},
 				});
-				// Mail that settled while the parent waited for approval is delivered
-				// once the resumed turn ends.
+				// After the resumed turn, request any job results that arrived during the approval wait.
 				if (!recorder.suspended) await this.requestPendingBackgroundWake(threadId);
 			} finally {
 				this.runtimeCacheService.releaseRuntimeLease(agentInstance);
@@ -761,7 +760,7 @@ export class AgentExecutionOrchestratorService {
 	async executeForWake(config: ExecuteForWakeConfig): Promise<void> {
 		const { agentId, projectId, message, memory, identity, abortSignal } = config;
 		const isDraft = identity.type === 'draft';
-		// Draft wakes are test runs; like executeForChat they skip the quota hook.
+		// Draft wakes skip the quota hook, like other test chat runs.
 		if (!isDraft) await this.externalHooks.run('agent.preExecute', [agentId]);
 		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;
 		const runtime = await this.runtimeCacheService.getRuntime({
@@ -793,16 +792,15 @@ export class AgentExecutionOrchestratorService {
 				hideUserMessageFromTranscript: true,
 				isWakeRun: true,
 			});
-			// The runtime reports model failures as chunks instead of throwing. A
-			// wake has no client to show them to, so surface them here: the caller
-			// must leave the mail pending for a retry.
+			// The runtime returns model errors as stream chunks. Throw here so the caller
+			// leaves the job results pending for a retry.
 			let runError: unknown;
 			for await (const chunk of stream) {
 				if (chunk.type === 'error') runError = chunk.error;
 				if (chunk.type === 'finish' && chunk.finishReason === 'error') runError ??= chunk;
 			}
 			if (runError !== undefined) {
-				throw new OperationalError('Background job wake run ended with an error', {
+				throw new OperationalError('Background job wake failed', {
 					cause: runError,
 				});
 			}

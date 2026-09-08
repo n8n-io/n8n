@@ -70,7 +70,7 @@ describe('spawn_background_subagent', () => {
 		});
 	});
 
-	it('rejects inside a task session, which has no chat identity for a wake', async () => {
+	it('rejects background jobs in task sessions', async () => {
 		const { backgroundRunner, options } = setup();
 		const tool = createSpawnBackgroundSubAgentTool(options);
 
@@ -250,7 +250,7 @@ describe('check_background_jobs', () => {
 		});
 	});
 
-	it('consumes only settled rows returned by the check', async () => {
+	it('marks only the returned settled jobs as delivered', async () => {
 		const { jobService, options } = setup();
 		jobService.listForThread.mockResolvedValue([
 			jobView(),

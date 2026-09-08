@@ -145,7 +145,7 @@ export type PubSubCommandMap = {
 		jobId: string;
 	};
 
-	/** Ask mains to deliver settled background job mail to its parent thread. */
+	/** Ask main instances to deliver background job results to the parent thread. */
 	'wake-agent-background-job': {
 		threadId: string;
 	};

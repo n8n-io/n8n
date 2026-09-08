@@ -124,7 +124,7 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(foreign?.notifiedAt).toBeNull();
 	});
 
-	it('prunes only consumed rows past the retention cutoff', async () => {
+	it('deletes old settled jobs only if their results are marked as delivered', async () => {
 		const old = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000);
 		const consumedId = uuid();
 		const pendingId = uuid();
@@ -158,11 +158,11 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(job?.parentResourceId).toHaveLength(255);
 	});
 
-	it('settles, debounces, retries, and consumes the same durable row', async () => {
+	it('settles a job, delays its wake, retries delivery, and marks the result as delivered', async () => {
 		vi.useFakeTimers();
 		try {
 			const jobId = uuid();
-			// An owner passes the wake's agent:execute check through its global role.
+			// The owner role grants the agent:execute permission required for a wake.
 			const user = await createOwner();
 			const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id });
 			await insertJob({

@@ -103,8 +103,7 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 					note: 'Background jobs need a persisted conversation thread; none is active.',
 				};
 			}
-			// A task session has no chat identity a wake could run as, so its jobs
-			// would never be delivered.
+			// Task sessions have no chat identity, so a wake cannot deliver their job results.
 			if (isTaskRunMemoryResourceId(parentResourceId)) {
 				return {
 					status: 'rejected',

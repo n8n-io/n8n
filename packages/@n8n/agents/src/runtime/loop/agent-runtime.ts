@@ -147,7 +147,7 @@ export interface AgentRuntimeConfig {
 	 * aborting the run.
 	 */
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
-	/** Host instructions resolved before each model call. The runtime never persists them. */
+	/** The runtime loads these host instructions before each model call but does not save them. */
 	volatileInstructionsProvider?: VolatileInstructionsProvider;
 }
 

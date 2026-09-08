@@ -130,7 +130,6 @@ function makeService(sandboxEnabled = false) {
 		isEnabled: () => sandboxEnabled,
 	});
 	const agentRepository = mock<AgentRepository>();
-	// The orchestrator resolves the wake service lazily through the container.
 	const wakeService = mock<AgentWakeService>();
 	Container.set(AgentWakeService, wakeService);
 
@@ -713,7 +712,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('asks for pending background mail after a chat turn and tolerates a failing request', async () => {
+	it('requests pending job results after a chat turn and ignores request errors', async () => {
 		const first = makeService();
 		first.runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
 
@@ -731,7 +730,9 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const failing = makeService();
 		failing.runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
-		failing.wakeService.onParentTurnFinished.mockRejectedValue(new Error('wake down'));
+		failing.wakeService.onParentTurnFinished.mockRejectedValue(
+			new Error('wake service unavailable'),
+		);
 
 		await expect(
 			collect(
@@ -746,7 +747,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		).resolves.toEqual(expect.any(Array));
 	});
 
-	it('runs a draft wake headlessly and hides its synthetic input from execution history', async () => {
+	it('runs a draft wake without a chat client and hides its input from execution history', async () => {
 		const { service, runtimeCacheService, executionService, externalHooks, wakeService } =
 			makeService();
 		const runtime = makeRuntime([
@@ -791,12 +792,12 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			}),
 		);
-		// A draft wake is a test run: no quota hook, and it must not chain another wake.
+		// Draft wakes skip the quota hook and do not trigger another wake.
 		expect(externalHooks.run).not.toHaveBeenCalled();
 		expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
 	});
 
-	it('rejects a wake whose model run ended with an error but still records the execution', async () => {
+	it('records the execution and rejects the wake when the model run fails', async () => {
 		const { service, runtimeCacheService, executionService, wakeService } = makeService();
 		const cause = new Error('provider unavailable');
 		runtimeCacheService.getRuntime.mockResolvedValue(
@@ -1050,7 +1051,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 		expect(externalHooks.run).not.toHaveBeenCalled();
-		// Mail that settled while the parent waited for approval is delivered after the resumed turn.
+		// After the resumed turn, request any job results that arrived during the approval wait.
 		expect(wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(

@@ -291,7 +291,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/** Set host instructions that the runtime resolves before each model call. */
+	/** Set the provider that supplies host instructions before each model call. */
 	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this {
 		this.volatileInstructionsProviderValue = provider;
 		return this;

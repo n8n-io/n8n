@@ -949,7 +949,6 @@ describe('workflow tool → background job handoff', () => {
 			result: '{"Result":[{"approved":true}]}',
 			error: null,
 		});
-		// The model gets this result inline, so no wake should repeat it.
 		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(result).toMatchObject({
 			status: 'success',
@@ -959,10 +958,10 @@ describe('workflow tool → background job handoff', () => {
 		expect(suspend).not.toHaveBeenCalled();
 	});
 
-	it('returns the inline result even when consuming its mail fails', async () => {
+	it('returns the inline result when marking it as delivered fails', async () => {
 		setPersistence(settledInDb());
 		const jobService = setJobService();
-		jobService.markMailConsumed.mockRejectedValue(new Error('db down'));
+		jobService.markMailConsumed.mockRejectedValue(new Error('database unavailable'));
 		const logger = mock<Logger>();
 		Container.set(Logger, logger);
 		const tool = await buildBackgroundTool();
@@ -975,7 +974,7 @@ describe('workflow tool → background job handoff', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it('consumes the mail of an inline result even when the settle hook won the claim', async () => {
+	it('marks the inline result as delivered even if the settle hook settled the job first', async () => {
 		setPersistence(settledInDb());
 		const jobService = setJobService();
 		jobService.settle.mockResolvedValue(false);
@@ -1122,7 +1121,7 @@ describe('workflow tool → background job handoff', () => {
 			jobId: 'job-1',
 			note: expect.stringContaining('check_background_jobs'),
 		});
-		// The settle hook owns that outcome, so its mail must stay deliverable.
+		// The settle hook recorded the actual outcome. Leave it pending for delivery.
 		expect(jobService.markMailConsumed).not.toHaveBeenCalled();
 	});
 });
