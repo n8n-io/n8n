@@ -162,6 +162,25 @@ describe('BreakingChangeMigrationService', () => {
 		expect(updateData.nodes.find((n) => n.id === otherNode.id)).toEqual(otherNode);
 	});
 
+	it('keeps the connections of a node-for-node migration intact', async () => {
+		const aiNode = createNode('Transform', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
+		const connections = { Transform: { main: [[{ node: 'End', type: 'main', index: 0 }]] } };
+		// A plain object so the connections reach the service as real data, not a deep mock.
+		const workflow = {
+			id: 'wf-1',
+			name: 'My WF',
+			nodes: [aiNode, createNode('End', 'n8n-nodes-base.noOp')],
+			connections: structuredClone(connections),
+		} as unknown as WorkflowEntity;
+		workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
+		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
+
+		await service.migrateWorkflow(RULE_ID, 'wf-1', user);
+
+		const [, updateData] = workflowService.update.mock.calls[0];
+		expect(updateData.connections).toEqual(connections);
+	});
+
 	it('marks a clean migration republishable when the published version was migrated and it validates', async () => {
 		const aiNode = createNode('Transform', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
 		// Published version == the version being migrated.
@@ -273,11 +292,22 @@ describe('BreakingChangeMigrationService', () => {
 			});
 
 			const [, updateData] = workflowService.update.mock.calls[0];
-			expect(updateData.nodes.map((n) => n.name)).toEqual(['Trigger', 'Loop Over Items', 'Sub']);
+			expect(updateData.nodes.map((n) => n.name)).toEqual([
+				'Trigger',
+				'Loop Over Items',
+				'Drop empty results',
+				'Sub',
+			]);
 			expect(updateData.connections).toEqual({
 				Trigger: { main: [[{ node: 'Loop Over Items', type: 'main', index: 0 }]] },
-				'Loop Over Items': { main: [[], [{ node: 'Sub', type: 'main', index: 0 }]] },
+				'Loop Over Items': {
+					main: [
+						[{ node: 'Drop empty results', type: 'main', index: 0 }],
+						[{ node: 'Sub', type: 'main', index: 0 }],
+					],
+				},
 				Sub: { main: [[{ node: 'Loop Over Items', type: 'main', index: 0 }]] },
+				'Drop empty results': { main: [[]] },
 			});
 			// The rewired graph, not the original one, is what gets validated for re-publish.
 			expect(workflowValidationService.validateForActivation).toHaveBeenCalledWith(

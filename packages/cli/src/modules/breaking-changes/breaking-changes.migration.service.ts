@@ -83,7 +83,7 @@ export class BreakingChangeMigrationService {
 
 		const applied = isWorkflowMigration(migration)
 			? this.applyWorkflowMigration(migration, workflow, affectedNodeIds)
-			: this.applyNodeMigration(migration, workflow.nodes, affectedNodeIds);
+			: this.applyNodeMigration(migration, workflow, affectedNodeIds);
 		const { nodes, connections, migratedNodeIds } = applied;
 		const unmapped = applied.unmapped ?? [];
 		const notes = applied.notes ?? [];
@@ -128,17 +128,17 @@ export class BreakingChangeMigrationService {
 		};
 	}
 
-	/** Swaps each affected node for its replacement in place; connections are untouched. */
+	/** Swaps each affected node for its replacement in place; connections are passed through untouched. */
 	private applyNodeMigration(
 		migration: NodeMigration,
-		nodes: INode[],
+		workflow: WorkflowEntity,
 		affectedNodeIds: Set<string>,
 	): WorkflowMigrationOutput {
 		const unmapped: string[] = [];
 		const notes: string[] = [];
 		const migratedNodeIds: string[] = [];
 
-		const migratedNodes = nodes.map((node) => {
+		const migratedNodes = workflow.nodes.map((node) => {
 			if (!affectedNodeIds.has(node.id)) return node;
 
 			// A node the migration refuses aborts the whole workflow before any save.
@@ -164,7 +164,13 @@ export class BreakingChangeMigrationService {
 			} satisfies INode;
 		});
 
-		return { nodes: migratedNodes, connections: {}, migratedNodeIds, unmapped, notes };
+		return {
+			nodes: migratedNodes,
+			connections: workflow.connections,
+			migratedNodeIds,
+			unmapped,
+			notes,
+		};
 	}
 
 	/** Hands the whole graph to the migration so it can add nodes and rewire edges. */
