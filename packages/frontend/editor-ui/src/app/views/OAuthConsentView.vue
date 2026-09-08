@@ -3,7 +3,7 @@ import { useConsentStore } from '@/app/stores/consent.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { onMounted, computed, ref, watch } from 'vue';
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue';
 import type { ConsentDetailsPicker } from '@n8n/rest-api-client/api/consent';
 import {
 	N8nButton,
@@ -35,8 +35,14 @@ const waitingForRedirect = ref(false);
 // the visitor never clicked anything here, so a "success" message would be confusing —
 // this renders the same blank state as the initial fetch, not a message that then flashes.
 const autoApprovedRedirect = ref(false);
+const detailsResolved = ref(false);
 const redirectUriTrusted = ref(false);
 const selectedScopes = ref<string[]>([]);
+
+let isActive = true;
+onUnmounted(() => {
+	isActive = false;
+});
 
 const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
@@ -149,6 +155,8 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('oauth.consentView.title'));
 	try {
 		const details = await consentStore.fetchConsentDetails();
+		if (!isActive) return;
+		detailsResolved.value = true;
 		if (details?.autoApproved && details.redirectUrl) {
 			autoApprovedRedirect.value = true;
 			window.location.href = details.redirectUrl;
@@ -159,6 +167,7 @@ onMounted(async () => {
 			available_scopes_count: availableScopes.value.length,
 		});
 	} catch (err) {
+		if (!isActive) return;
 		toast.showError(err, i18n.baseText('oauth.consentView.error.fetchDetails'));
 	}
 });
@@ -232,7 +241,7 @@ onMounted(async () => {
 				the visitor didn't ask for — the header's own connector spinner already
 				signals activity while this redirects. -->
 			<div
-				v-else-if="autoApprovedRedirect || !clientDetails"
+				v-else-if="autoApprovedRedirect || !detailsResolved"
 				:class="$style.content"
 				data-test-id="consent-loading"
 			/>
@@ -309,7 +318,7 @@ onMounted(async () => {
 				</div>
 			</div>
 			<footer
-				v-if="!waitingForRedirect && !autoApprovedRedirect && (error || clientDetails)"
+				v-if="!waitingForRedirect && !autoApprovedRedirect && (error || detailsResolved)"
 				:class="$style.footer"
 			>
 				<!-- Third-party clients: the redirect destination, with the trust acknowledgment
