@@ -6,7 +6,7 @@ const ALNUM = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const alnum = (minLength: number, maxLength: number) =>
 	fc.stringOf(fc.constantFrom(...ALNUM), { minLength, maxLength });
 
-// The documented vocabulary, optionally as a snake/kebab compound in any case.
+// The documented vocabulary, optionally as a snake/kebab/dotted compound in any case.
 const SECRET_WORDS = [
 	'password',
 	'passwd',
@@ -29,7 +29,7 @@ const SECRET_WORDS = [
 ];
 const keyArb = fc
 	.tuple(
-		fc.option(fc.tuple(alnum(1, 12), fc.constantFrom('_', '-')), { nil: undefined }),
+		fc.option(fc.tuple(alnum(1, 12), fc.constantFrom('_', '-', '.')), { nil: undefined }),
 		fc.constantFrom(...SECRET_WORDS),
 		fc.constantFrom('lower', 'upper', 'capital'),
 	)
@@ -51,6 +51,7 @@ const shapeArb = fc.constantFrom<(key: string, value: string) => string>(
 	(k, v) => `"${k}": '${v}'`,
 	(k, v) => `{"outer": {"${k}": "${v}"}}`,
 	(k, v) => `{"${k}": "${v}", "next": 1}`,
+	(k, v) => `{"message": "failed: {\\"${k}\\": \\"${v}\\"}"}`,
 	(_, v) => `Authorization: Bearer ${v}`,
 	(_, v) => `sk-${v}`,
 	(_, v) => `xoxb-${v}`,
@@ -88,6 +89,8 @@ describe('scrubSecretsInText properties', () => {
 		// From 10k repetitions the quadratic form needs 400 ms+; the linear one <15 ms.
 		const fragmentArb = fc.constantFrom(
 			'ab-',
+			'ab.',
+			'1.2.',
 			'a_',
 			'-',
 			'_',
@@ -96,6 +99,8 @@ describe('scrubSecretsInText properties', () => {
 			"'",
 			'https://',
 			'"password": "',
+			'\\"password\\": \\"',
+			'\\\\\\"',
 			'token=',
 			'{"a":',
 			' Bearer',

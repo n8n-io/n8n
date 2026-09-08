@@ -96,9 +96,19 @@ describe('scrubSecretsInText', () => {
 
 	it('redacts JSON-shaped credential fields with quoted keys and values', () => {
 		const input =
-			'{"apiKey": "abc123XYZ", "password": "hunter2", "accessToken": "tok-xyz", "client_secret": "value", "webhook_secret": "whsec_x"}';
+			'{"apiKey": "abc123XYZ", "password": "hunter2", "accessToken": "tok-xyz", "client_secret": "value", "webhook_secret": "whsec_x", "slack.token": "xyz"}';
 		expect(scrubSecretsInText(input)).toBe(
-			'{[REDACTED], [REDACTED], [REDACTED], [REDACTED], [REDACTED]}',
+			'{[REDACTED], [REDACTED], [REDACTED], [REDACTED], [REDACTED], [REDACTED]}',
+		);
+	});
+
+	it('redacts credential fields inside a JSON-encoded string value', () => {
+		// An upstream body serialized into an error message: every quote is `\"`,
+		// and the secret itself holds an escaped quote and a backslash.
+		const body = JSON.stringify({ api_key: 'hunter2', password: 'hun"t3r\\2', other: 'v' });
+		const input = JSON.stringify({ message: `401 from API: ${body}` });
+		expect(scrubSecretsInText(input)).toBe(
+			'{"message":"401 from API: {[REDACTED],[REDACTED],\\"other\\":\\"v\\"}"}',
 		);
 	});
 

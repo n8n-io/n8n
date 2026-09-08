@@ -17,14 +17,15 @@ export const SECRET_KEYS =
 
 // `\b` never fires inside a compound key (`webhook_secret`, `bot_token`)
 // because `_` is a word character, so key patterns also accept an optional
-// snake/kebab prefix before the secret word. The quoted-field matcher can only
-// start at a quote, so scanning the whole key stays linear. The unanchored
-// assignment matcher can start at every `\b` of a long hyphenated non-secret
-// token, where an unbounded prefix backtracks through every separator at every
-// start position (quadratic) — so that one is length-bounded, and a `_`-joined
-// unquoted key with a longer prefix is the accepted gap.
-const QUOTED_KEY_PREFIX = '(?:[\\w-]*[_-])?';
-const BOUNDED_KEY_PREFIX = '(?:[\\w-]{0,128}[_-])?';
+// snake/kebab/dotted prefix (`slack.token`) before the secret word. The
+// quoted-field matchers can only start at a quote, so scanning the whole key
+// stays linear. The unanchored assignment matcher can start at every `\b` of a
+// long hyphenated or dotted non-secret token, where an unbounded prefix
+// backtracks through every separator at every start position (quadratic) — so
+// that one is length-bounded, and a `_`-joined unquoted key with a longer
+// prefix is the accepted gap.
+const QUOTED_KEY_PREFIX = '(?:[\\w.-]*[._-])?';
+const BOUNDED_KEY_PREFIX = '(?:[\\w.-]{0,128}[._-])?';
 
 export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// PEM private-key blocks (RSA/EC/DSA/OpenSSH/PGP). Whole block, multiline.
@@ -83,6 +84,18 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// payloads, mcp-browser markers).
 	new RegExp(
 		`(["'])${QUOTED_KEY_PREFIX}(?:${SECRET_KEYS})\\1\\s*:\\s*(["'])(?!\\[(?:redacted|REDACTED)(?::[^\\]]*)?\\]\\2)(?:(?!\\2)[^\\\\\\r\\n]|\\\\.)*\\2`,
+		'gi',
+	),
+	// The same field inside a JSON-encoded string (an upstream response body
+	// serialized into an error `message`) has every quote escaped:
+	// `\"api_key\": \"…\"`. The pattern above can't see it because the key is
+	// followed by `\`, not by its quote. Here the value body has three units that
+	// are disjoint by their first two characters — a plain character, a `\x`
+	// escape other than the closing `\"`, or `\\` together with the token it
+	// escapes — so an inner escaped quote (`\\\"`) is consumed as one unit rather
+	// than ending the match early, and every input still has a single parse.
+	new RegExp(
+		`\\\\(["'])${QUOTED_KEY_PREFIX}(?:${SECRET_KEYS})\\\\\\1\\s*:\\s*\\\\(["'])(?!\\[(?:redacted|REDACTED)(?::[^\\]]*)?\\]\\\\\\2)(?:(?!\\2)[^\\\\\\r\\n]|\\\\(?!\\2)[^\\\\\\r\\n]|\\\\\\\\(?:\\\\.|[^\\\\\\r\\n]))*\\\\\\2`,
 		'gi',
 	),
 	// Generic `password=...` / `api_key=...` / `secret=...` style assignments.
