@@ -1,0 +1,15 @@
+// Private rule for LOLBAS system information gathering tools detection
+// These patterns are reused across multiple threat and capability rules
+
+rule lolbas_sysinfo
+{
+    strings:
+        // Require the sysinfo command to appear as the argument of an exec call,
+        // so dict keys (result['hostname']), XML lookups (findall("hostname"))
+        // and API paths (/workers/whoami) no longer match.
+        $whoami = /\b(popen|system|getoutput|getstatusoutput|check_output|check_call|Popen|run|call|spawn\w*|execl?p?e?|exec_command)\s*\(\s*\[?\s*['"]whoami\b/ nocase
+        $hostname = /\b(popen|system|getoutput|getstatusoutput|check_output|check_call|Popen|run|call|spawn\w*|execl?p?e?|exec_command)\s*\(\s*\[?\s*['"]hostname\b/ nocase
+
+    condition:
+        any of them
+}

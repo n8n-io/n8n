@@ -327,6 +327,9 @@ catalogs:
     '@types/xml2js':
       specifier: ^0.4.14
       version: 0.4.14
+    '@virustotal/yara-x':
+      specifier: 1.20.0
+      version: 1.20.0
     '@vitest/browser-playwright':
       specifier: ^4.1.9
       version: 4.1.9
@@ -3603,7 +3606,10 @@ importers:
         version: link:../eslint-plugin-community-nodes
       '@typescript-eslint/parser':
         specifier: ^8.35.0
-        version: 8.35.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
+        version: 8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+      '@virustotal/yara-x':
+        specifier: 'catalog:'
+        version: 1.20.0
       axios:
         specifier: 1.18.0
         version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
@@ -3612,7 +3618,7 @@ importers:
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       eslint-plugin-n8n-nodes-base:
         specifier: 'catalog:'
-        version: 1.16.7(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
+        version: 1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -3623,8 +3629,8 @@ importers:
         specifier: 0.2.7
         version: 0.2.7
       typescript:
-        specifier: catalog:typescript
-        version: 7.0.2
+        specifier: catalog:typescript-tooling
+        version: '@typescript/typescript6@6.0.2'
     devDependencies:
       '@n8n/vitest-config':
         specifier: workspace:*
@@ -14756,6 +14762,9 @@ packages:
   '@vercel/oidc@3.2.0':
     resolution: {integrity: sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==}
     engines: {node: '>= 20'}
+
+  '@virustotal/yara-x@1.20.0':
+    resolution: {integrity: sha512-JaDD6twvaTAqsUhW5wNq+iua7+H4epNUOUO3sqk6dvmdCMjGG9n8hfVDURbq3/HNKsYfQ2b1k0YbLH8qTEu4OQ==}
 
   '@vitejs/plugin-legacy@8.0.0':
     resolution: {integrity: sha512-o5BmEuu4N+woyv+yUsiDrMUfMntJ1kEJITUYLd2ELOAETObwkWNFn5GNIQLLGx8liaobIvoXeSRiM/aYVIaeTQ==}
@@ -34049,18 +34058,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)':
-    dependencies:
-      '@typescript-eslint/scope-manager': 8.35.0
-      '@typescript-eslint/types': 8.35.0
-      '@typescript-eslint/typescript-estree': 8.35.0(supports-color@8.1.1)(typescript@7.0.2)
-      '@typescript-eslint/visitor-keys': 8.35.0
-      debug: 4.4.3(supports-color@8.1.1)
-      eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
-      typescript: 7.0.2
-    transitivePeerDependencies:
-      - supports-color
-
   '@typescript-eslint/project-service@8.35.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1)':
     dependencies:
       '@typescript-eslint/tsconfig-utils': 8.35.0(@typescript/typescript6@6.0.2)
@@ -34421,6 +34418,8 @@ snapshots:
     optional: true
 
   '@vercel/oidc@3.2.0': {}
+
+  '@virustotal/yara-x@1.20.0': {}
 
   '@vitejs/plugin-legacy@8.0.0(supports-color@8.1.1)(terser@5.16.1)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
     dependencies:

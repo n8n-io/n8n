@@ -1,0 +1,24 @@
+// Private rule for LOLBAS network tools detection
+// These patterns are reused across multiple threat and capability rules
+// Patterns require invocation context: flags, URLs, or IP/host arguments
+
+rule lolbas_net
+{
+    strings:
+        // curl with flags, URLs, or piped
+        $curl_flag = /\bcurl\s+-[sSfLokOdXH]/ nocase
+        $curl_url = /\bcurl\s+['"]?https?:\/\// nocase
+        $curl_pipe = /\bcurl\s.*\|/ nocase
+
+        // wget with flags or URLs
+        $wget_flag = /\bwget\s+-/ nocase
+        $wget_url = /\bwget\s+['"]?https?:\/\// nocase
+
+        // nc/netcat with flags or host:port arguments
+        $nc_flag = /\bnc\s+-[lvnzwep]/ nocase
+        $nc_host = /\bnc\s+\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/ nocase
+        $netcat_cmd = /\bnetcat\s/ nocase
+
+    condition:
+        any of them
+}

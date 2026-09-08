@@ -170,6 +170,7 @@ catalog:
   '@types/uuid': ^11.0.0
   '@types/ws': ^8.18.1
   '@types/xml2js': ^0.4.14
+  '@virustotal/yara-x': 1.20.0
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
