@@ -12,6 +12,7 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -101,7 +102,10 @@ describe('WorkingCopyUpdater', () => {
 	let root: string;
 	let exportFolder: string;
 	let stagingFolder: string;
-	const updater = new WorkingCopyUpdater(mock<InstanceSettings>({ instanceId: 'inst-1' }));
+	const updater = new WorkingCopyUpdater(
+		mock<InstanceSettings>({ instanceId: 'inst-1' }),
+		mockLogger(),
+	);
 
 	const writeTree = async (base: string, files: Record<string, string>) => {
 		for (const [filePath, content] of Object.entries(files)) {
@@ -313,6 +317,74 @@ describe('WorkingCopyUpdater', () => {
 	});
 
 	describe('applySelection', () => {
+		it('rejects a cross-project delete before it writes', async () => {
+			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
+			const other = { id: 'w-other', name: 'WOther', target: 'projects/beta/workflows/w-other' };
+			await writeTree(exportFolder, {
+				'manifest.json': manifestFile(
+					makeManifest({
+						projects: [alpha, beta],
+						workflows: [wf('w1'), other],
+					}),
+				),
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/beta/project.json': JSON.stringify({ id: beta.id, name: beta.name }),
+				'projects/beta/workflows/w-other/workflow.json': workflowFile('w-other'),
+			});
+			const staging = makeManifest({ projects: [alpha] });
+			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
+
+			await expect(
+				updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					{ projects: [alpha, beta], workflows: [wf('w1'), other] },
+					selection({ deletedWorkflowIds: ['w-other'] }),
+				),
+			).rejects.toThrow('Deleted workflows do not belong to the selected project: w-other');
+
+			expect(await readExported('projects/beta/workflows/w-other/workflow.json')).toBe(
+				workflowFile('w-other'),
+			);
+		});
+
+		it('rejects a cross-project move before it writes', async () => {
+			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
+			const inBeta = { id: 'w-moved', name: 'WMoved', target: 'projects/beta/workflows/w-moved' };
+			await writeTree(exportFolder, {
+				'manifest.json': manifestFile(
+					makeManifest({ projects: [alpha, beta], workflows: [inBeta] }),
+				),
+				'projects/alpha/project.json': projectFile,
+				'projects/beta/project.json': JSON.stringify({ id: beta.id, name: beta.name }),
+				'projects/beta/workflows/w-moved/workflow.json': workflowFile('w-moved'),
+			});
+			const staging = makeManifest({
+				projects: [alpha],
+				workflows: [wf('w-moved')],
+			});
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w-moved/workflow.json': workflowFile('w-moved', { v: 2 }),
+			});
+
+			await expect(
+				updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					{ projects: [alpha, beta], workflows: [inBeta] },
+					selection({ workflowIds: ['w-moved'] }),
+				),
+			).rejects.toThrow('These workflows moved to another project: w-moved');
+
+			expect(await readExported('projects/beta/workflows/w-moved/workflow.json')).toBe(
+				workflowFile('w-moved'),
+			);
+		});
+
 		it('keeps a renamed folder where the branch has it, so unselected workflows stay put', async () => {
 			await apply(
 				{
@@ -550,16 +622,27 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/project.json': projectFile,
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
-			const staging = makeManifest({ projects: [alpha] });
-			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
+			const staging = makeManifest({
+				projects: [alpha],
+				workflows: [wf('w1')],
+				credentials: [cred('c1')],
+			});
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
 
 			await expect(
 				updater.applySelection(
 					exportFolder,
 					stagingFolder,
 					staging,
-					{ projects: [alpha], workflows: [{ id: 'w1', name: 'W1', target: '.' }] },
-					selection({ deletedWorkflowIds: ['w1'] }),
+					{
+						projects: [alpha],
+						workflows: [wf('w1')],
+						credentials: [{ id: 'c1', name: 'c1', target: '.' }],
+					},
+					selection({ workflowIds: ['w1'] }),
 				),
 			).rejects.toThrow('not a managed leaf directory');
 
@@ -577,7 +660,11 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
 			});
-			const staging = makeManifest({ projects: [alpha] });
+			const staging = makeManifest({
+				projects: [alpha],
+				workflows: [wf('w1')],
+				credentials: [cred('c1')],
+			});
 			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
 
 			await expect(
@@ -587,9 +674,10 @@ describe('WorkingCopyUpdater', () => {
 					staging,
 					{
 						projects: [alpha],
-						workflows: [wf('w1'), { id: 'w2', name: 'W2', target: 'projects/alpha' }],
+						workflows: [wf('w1'), wf('w2')],
+						credentials: [{ id: 'c1', name: 'c1', target: 'projects/alpha' }],
 					},
-					selection({ deletedWorkflowIds: ['w2'] }),
+					selection({ workflowIds: ['w1'] }),
 				),
 			).rejects.toThrow('would delete content the selection keeps');
 

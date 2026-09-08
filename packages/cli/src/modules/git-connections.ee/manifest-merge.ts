@@ -40,7 +40,7 @@ export interface Placement {
 
 const entriesOf = (state: BranchState, kind: EntryKind): ManifestEntry[] => state[kind] ?? [];
 
-const isUnder = (target: string, prefix: string) => target.startsWith(`${prefix}/`);
+export const isUnder = (target: string, prefix: string) => target.startsWith(`${prefix}/`);
 
 /**
  * Where the staging files land. A project or folder the branch holds keeps its
@@ -271,8 +271,8 @@ export function mergeManifests(
 	staging: PackageManifest,
 	deletedWorkflowIds: Set<string>,
 	projectId: string,
+	placement: Placement = containerPlacement(existing, staging),
 ): PackageManifest {
-	const placement = containerPlacement(existing, staging);
 	const stagingWorkflows = staging.workflows ?? [];
 	const replacedWorkflowIds = new Set([
 		...stagingWorkflows.map((w) => w.id),

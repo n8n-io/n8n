@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -11,10 +12,14 @@ import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { containerPlacement, mergeManifests, pinPath, staleTargets } from './manifest-merge';
+import {
+	containerPlacement,
+	isUnder,
+	mergeManifests,
+	pinPath,
+	staleTargets,
+} from './manifest-merge';
 import type { BranchState, Placement } from './manifest-merge';
-
-const isUnder = (target: string, prefix: string) => target.startsWith(`${prefix}/`);
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -31,7 +36,12 @@ export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
  */
 @Service()
 export class WorkingCopyUpdater {
-	constructor(private readonly instanceSettings: InstanceSettings) {}
+	constructor(
+		private readonly instanceSettings: InstanceSettings,
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('git-connections');
+	}
 
 	validateSelection(selection: SelectivePushOptions): void {
 		const parsed = selectivePushOptionsSchema.safeParse(selection);
@@ -120,9 +130,10 @@ export class WorkingCopyUpdater {
 		}
 
 		const projectTarget = branch.projects?.find((p) => p.id === selection.projectId)?.target;
-		const foreign = selection.deletedWorkflowIds.filter(
-			(id) => !projectTarget || !targetById.get(id)?.startsWith(`${projectTarget}/`),
-		);
+		const foreign = selection.deletedWorkflowIds.filter((id) => {
+			const target = targetById.get(id);
+			return !projectTarget || !target || !isUnder(target, projectTarget);
+		});
 		if (foreign.length > 0) {
 			throw new BadRequestError(
 				`Deleted workflows do not belong to the selected project: ${foreign.join(', ')}`,
@@ -141,7 +152,7 @@ export class WorkingCopyUpdater {
 		const projectTarget = branch.projects?.find((p) => p.id === selection.projectId)?.target;
 		const selected = new Set(selection.workflowIds);
 		const moved = (branch.workflows ?? []).filter(
-			(w) => selected.has(w.id) && (!projectTarget || !w.target.startsWith(`${projectTarget}/`)),
+			(w) => selected.has(w.id) && (!projectTarget || !isUnder(w.target, projectTarget)),
 		);
 		if (moved.length > 0) {
 			throw new BadRequestError(
@@ -162,13 +173,18 @@ export class WorkingCopyUpdater {
 		existing: BranchState,
 		selection: SelectivePushOptions,
 	): Promise<PackageManifest> {
+		this.validateSelection(selection);
+		this.assertDeletionsOnBranch(existing, selection);
+		this.assertNoCrossProjectMoves(existing, selection);
+
+		const placement = containerPlacement(existing, staging);
 		const merged = mergeManifests(
 			existing,
 			staging,
 			new Set(selection.deletedWorkflowIds),
 			selection.projectId,
+			placement,
 		);
-		const placement = containerPlacement(existing, staging);
 		const parent = path.dirname(exportFolder);
 		const workFolder = await fs.mkdtemp(path.join(parent, `.${path.basename(exportFolder)}-`));
 		let backupFolder: string | undefined;
@@ -198,8 +214,20 @@ export class WorkingCopyUpdater {
 			backupFolder = undefined;
 		} catch (error) {
 			if (backupFolder !== undefined) {
-				await fs.rm(exportFolder, { recursive: true, force: true }).catch(() => undefined);
-				await fs.rename(backupFolder, exportFolder).catch(() => undefined);
+				await fs
+					.rm(exportFolder, { recursive: true, force: true })
+					.catch((restoreError: unknown) => {
+						this.logger.warn('Failed to remove the incomplete export after a failed swap', {
+							exportFolder,
+							error: restoreError,
+						});
+					});
+				await fs.rename(backupFolder, exportFolder).catch((restoreError: unknown) => {
+					this.logger.warn(
+						'Failed to restore the export from backup. The copy is at the backup path.',
+						{ exportFolder, backupFolder, error: restoreError },
+					);
+				});
 			}
 			throw error;
 		} finally {
