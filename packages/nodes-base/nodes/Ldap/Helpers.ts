@@ -1,6 +1,9 @@
 import { Client } from 'ldapts';
 import type { ClientOptions, Entry } from 'ldapts';
 import type { ICredentialDataDecryptedObject, IDataObject, Logger } from 'n8n-workflow';
+
+import { getResolvables } from '@utils/utilities';
+
 export const BINARY_AD_ATTRIBUTES = ['objectGUID', 'objectSid'];
 
 const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
@@ -64,4 +67,37 @@ export function escapeValue(value: string) {
 		.replace(/\(/g, '\\28')
 		.replace(/\)/g, '\\29')
 		.replace(/\x00/g, '\\00');
+}
+
+/**
+ * Resolves the expressions in a raw, expression-capable filter field and escapes
+ * only what each expression evaluated to.
+ *
+ * The literal text around the expressions is filter syntax the user wrote on
+ * purpose, so it has to reach the server untouched — escaping the whole
+ * resolved string would turn every hand-written `*`, `(` and `)` into a literal
+ * character and break the field.
+ */
+export function escapeResolvables(
+	rawValue: string,
+	evaluateExpression: (resolvable: string) => unknown,
+): string {
+	// A raw expression-capable value keeps the leading `=` that marks it as an expression
+	let value = rawValue.replace(/^=+/, '');
+	// Everything before this index is already resolved, so it is never rescanned
+	let searchFrom = 0;
+
+	for (const resolvable of getResolvables(value)) {
+		const start = value.indexOf(resolvable, searchFrom);
+		if (start === -1) continue;
+
+		const resolvedValue = escapeValue(String(evaluateExpression(resolvable)));
+		// Splice by index instead of `String.replace`. That keeps a resolved value
+		// which itself looks like an expression from being substituted again, and
+		// keeps `$` sequences from expanding into the surrounding filter.
+		value = value.slice(0, start) + resolvedValue + value.slice(start + resolvable.length);
+		searchFrom = start + resolvedValue.length;
+	}
+
+	return value;
 }

@@ -1597,6 +1597,94 @@ describe('resolveCredentials', () => {
 	});
 });
 
+// With the setup panel the user can connect a credential while the build is
+// still iterating, so consecutive resolve passes see a changing credential
+// set. Each pass runs against the current stored credentials and the saved
+// workflow, and never rebinds a slot the previous pass already settled.
+describe('resolveCredentials across build iterations while the user connects credentials', () => {
+	function makeSlackWorkflow(credential?: { id: string; name: string }) {
+		return makeWorkflow({
+			nodes: [
+				{
+					id: '1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2,
+					position: [0, 0],
+					credentials: {
+						slackApi: credential ?? (undefined as unknown as { id: string; name: string }),
+					},
+				},
+			],
+		});
+	}
+
+	it('binds a credential the user connected between two iterations', async () => {
+		const first = makeSlackWorkflow();
+		const firstResult = await resolveCredentials(first, 'wf-1', createMockContext(first));
+		expect(firstResult.mockedNodeNames).toEqual(['Slack']);
+		expect(first.nodes[0].credentials).toEqual({});
+
+		// The user connects Slack from the panel; the saved workflow still has the open slot.
+		const second = makeSlackWorkflow();
+		const secondResult = await resolveCredentials(
+			second,
+			'wf-1',
+			createMockContext(first),
+			makeCredentialMap([{ id: 'slack-new', name: 'Team Slack', type: 'slackApi' }]),
+		);
+
+		expect(secondResult.mockedNodeNames).toEqual([]);
+		expect(secondResult.resolvedCredentialsByNode).toEqual({
+			Slack: [{ type: 'slackApi', id: 'slack-new', name: 'Team Slack' }],
+		});
+		expect(second.nodes[0].credentials).toEqual({
+			slackApi: { id: 'slack-new', name: 'Team Slack' },
+		});
+	});
+
+	it('keeps the credential the previous iteration bound when a second one appears', async () => {
+		const bound = { id: 'slack-1', name: 'Slack A' };
+		const saved = makeSlackWorkflow(bound);
+		const next = makeSlackWorkflow();
+
+		const result = await resolveCredentials(
+			next,
+			'wf-1',
+			createMockContext(saved),
+			makeCredentialMap([
+				{ id: 'slack-1', name: 'Slack A', type: 'slackApi' },
+				{ id: 'slack-2', name: 'Slack B', type: 'slackApi' },
+			]),
+		);
+
+		expect(result.mockedNodeNames).toEqual([]);
+		expect(next.nodes[0].credentials).toEqual({ slackApi: bound });
+		expect(result.resolvedCredentialsByNode).toEqual({
+			Slack: [{ type: 'slackApi', ...bound }],
+		});
+	});
+
+	it('leaves an open slot alone when two candidates appeared since the last iteration', async () => {
+		const saved = makeSlackWorkflow();
+		const next = makeSlackWorkflow();
+
+		const result = await resolveCredentials(
+			next,
+			'wf-1',
+			createMockContext(saved),
+			makeCredentialMap([
+				{ id: 'slack-1', name: 'Slack A', type: 'slackApi' },
+				{ id: 'slack-2', name: 'Slack B', type: 'slackApi' },
+			]),
+		);
+
+		expect(result.mockedNodeNames).toEqual(['Slack']);
+		expect(result.resolvedCredentialsByNode).toEqual({});
+		expect(next.nodes[0].credentials).toEqual({});
+	});
+});
+
 // The user asking for a new credential ("create a new Slack credential") must
 // beat every automatic attachment — otherwise the build silently answers the
 // request with a credential they already had and setup never opens (INS-361).

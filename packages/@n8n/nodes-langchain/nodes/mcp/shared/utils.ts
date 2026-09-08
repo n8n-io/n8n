@@ -8,6 +8,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	McpOAuth2CredentialType,
 	McpRegistryConnection,
 	INode,
 	ISupplyDataFunctions,
@@ -20,6 +21,7 @@ import {
 	assertUrlAllowed,
 	getMcpAuthHeaders,
 	NodeOperationError,
+	shouldRefreshMcpOAuth2Token,
 } from 'n8n-workflow';
 
 import {
@@ -80,13 +82,6 @@ function isForbiddenError(error: unknown): boolean {
 type OnUnauthorizedHandler = (
 	headers?: Record<string, string>,
 ) => Promise<Record<string, string> | null>;
-
-const OAUTH2_REFRESH_BUFFER_MS = 2 * 60 * 1000;
-const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
-
-type McpOAuth2Credentials = ICredentialDataDecryptedObject & {
-	oauthTokenData?: ClientOAuth2TokenData;
-};
 
 type ConnectMcpClientError =
 	| { type: 'invalid_url'; error: Error }
@@ -297,7 +292,9 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
  *   - validates the initial URL and every redirect hop against `allowedDomains`
  *     so credentials are never sent to a host the credential doesn't allow,
  *   - validates the initial URL and every redirect hop against the instance
- *     `secureEgressFilter`, and pins the connection to the validated address.
+ *     `secureEgressFilter`, and pins the connection to the validated address,
+ *   - withholds the auth headers once a redirect crosses origins, so
+ *     credentials never reach a host other than the one the request started on.
  */
 function createAuthFetch(
 	initialHeaders: Record<string, string> | undefined,
@@ -323,24 +320,6 @@ function createAuthFetch(
 	});
 }
 
-function shouldRefreshOAuth2Token(credentials: McpOAuth2Credentials): boolean {
-	const tokenData = credentials.oauthTokenData;
-	if (!tokenData?.refresh_token) return false;
-
-	const expiresAt = Number(tokenData.n8n_expires_at);
-	if (!Number.isFinite(expiresAt)) {
-		return false;
-	}
-
-	const expiresInMs = Number(tokenData.expires_in) * 1000;
-	const refreshBufferMs =
-		Number.isFinite(expiresInMs) && expiresInMs > 0
-			? Math.min(OAUTH2_REFRESH_BUFFER_MS, expiresInMs * OAUTH2_REFRESH_BUFFER_RATIO)
-			: OAUTH2_REFRESH_BUFFER_MS;
-
-	return Date.now() + refreshBufferMs >= expiresAt;
-}
-
 export async function getAuthHeaders(
 	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	authentication: McpAuthenticationOption,
@@ -354,7 +333,7 @@ export async function getAuthHeaders(
 	if (isMcpOAuth2Authentication(authentication)) {
 		credentialType = authentication;
 	} else {
-		const credentialTypes = {
+		const credentialTypes: Record<string, string> = {
 			headerAuth: 'httpHeaderAuth',
 			bearerAuth: 'httpBearerAuth',
 			multipleHeadersAuth: 'httpMultipleHeadersAuth',
@@ -368,7 +347,10 @@ export async function getAuthHeaders(
 		.catch(() => null);
 	if (!credentials) return {};
 
-	if (isMcpOAuth2Authentication(authentication) && shouldRefreshOAuth2Token(credentials)) {
+	if (
+		isMcpOAuth2Authentication(authentication) &&
+		shouldRefreshMcpOAuth2Token(credentials.oauthTokenData, credentials.grantType)
+	) {
 		const refreshedHeaders = await tryRefreshOAuth2Token(ctx, authentication);
 		if (refreshedHeaders) return { headers: refreshedHeaders, credentials };
 	}
@@ -435,6 +417,7 @@ export async function connectMcpClientForCredential(
 		endpointUrl: string;
 		registryCredential?: {
 			connection: McpRegistryConnection;
+			credentialType: McpOAuth2CredentialType;
 			prepareConnection(
 				input: PrepareMcpRegistryConnectionInput,
 			): PrepareMcpRegistryConnectionResult;
@@ -445,6 +428,7 @@ export async function connectMcpClientForCredential(
 ): Promise<Result<Client, ConnectMcpClientError>> {
 	const node = ctx.getNode();
 	const { headers, credentials } = await getAuthHeaders(ctx, config.authentication);
+	const isOAuth2 = isMcpOAuth2Authentication(config.authentication);
 	let endpointUrl = config.endpointUrl;
 	let serverTransport = config.serverTransport;
 	let authHeaders = headers;
@@ -456,6 +440,7 @@ export async function connectMcpClientForCredential(
 		}
 		const prepared = config.registryCredential.prepareConnection({
 			connection: config.registryCredential.connection,
+			credentialType: config.registryCredential.credentialType,
 			credentialData: credentials,
 			headers,
 		});
@@ -483,7 +468,9 @@ export async function connectMcpClientForCredential(
 		secureEgressFilter: ctx.helpers.getSecureEgressFilter(),
 		name: node.type,
 		version: node.typeVersion,
-		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
+		onUnauthorized: isOAuth2
+			? async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h)
+			: undefined,
 		signal: config.signal,
 	});
 }
