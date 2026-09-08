@@ -309,6 +309,29 @@ describe('apps tool', () => {
 			expect(commands[2]).toContain("'out/index.html'");
 		});
 
+		it.each(['../other-app', 'dist/../../other-app', '/etc', '.', '..', ''])(
+			'returns denied for outDir %j without running any command',
+			async (outDir) => {
+				const context = createMockContext();
+
+				const result = await runBuild(context, { outDir });
+
+				expect(result).toEqual({
+					denied: true,
+					reason: expect.stringContaining('outDir'),
+				});
+				expect(executeCommandMock(context)).not.toHaveBeenCalled();
+				expect(context.appService?.storeVersion).not.toHaveBeenCalled();
+			},
+		);
+
+		it('normalizes a nested outDir before using it in the check script', async () => {
+			const context = createMockContext();
+			await runBuild(context, { outDir: './out/./public//' });
+
+			expect(commandsRun(context)[2]).toContain("'out/public/index.html'");
+		});
+
 		it('puts node_modules/.bin on PATH and disables core dumps without altering the command', async () => {
 			const context = createMockContext();
 			const command = 'vite build --mode "my mode" && echo \'done\'';

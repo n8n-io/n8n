@@ -6,6 +6,7 @@
 import { Tool } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { posix } from 'node:path';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -97,6 +98,16 @@ export function slugifyNamespace(name: string): string {
 
 export function tailLog(stdout: string, maxBytes = LOG_TAIL_BYTES): string {
 	return stdout.length > maxBytes ? stdout.slice(-maxBytes) : stdout;
+}
+
+/**
+ * The check script runs `tar -C <outDir>` and `--exclude=<outDir>` inside the
+ * app, so the output directory must be a proper subdirectory of it.
+ */
+function resolveOutDir(raw: string | undefined): string | undefined {
+	const outDir = posix.normalize(raw ?? DEFAULT_OUT_DIR).replace(/\/+$/, '');
+	const escapes = posix.isAbsolute(outDir) || outDir === '.' || outDir.split('/')[0] === '..';
+	return escapes ? undefined : outDir;
 }
 
 const q = (value: string) => `'${escapeSingleQuotes(value)}'`;
@@ -281,9 +292,15 @@ async function handleBuild(
 	const { workspace, run } = requireSandbox(context, abortSignal);
 	const app = await appService.get(input.appId);
 
+	const outDir = resolveOutDir(input.outDir);
+	if (!outDir) {
+		return {
+			denied: true,
+			reason: `outDir ${JSON.stringify(input.outDir)} must be a subdirectory of the app, for example "${DEFAULT_OUT_DIR}".`,
+		};
+	}
 	const root = await getWorkspaceRoot(workspace);
 	const appDir = `${root}/${APPS_DIR}/${app.namespace}`;
-	const outDir = (input.outDir ?? DEFAULT_OUT_DIR).replace(/^\/+|\/+$/g, '') || DEFAULT_OUT_DIR;
 	const command = input.command ?? DEFAULT_BUILD_COMMAND;
 
 	const install = await run(
