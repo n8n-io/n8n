@@ -23,6 +23,24 @@ type OAuthJweKeyEntry = {
 	kid: string;
 };
 
+/**
+ * Stored private JWKs written by earlier releases carry this base64 header:
+ * their storage format emits the fixed OpenSSL EVP magic bytes (`Salted__`)
+ * first, and `U2FsdGVkX1` is their base64 encoding, so every such value
+ * starts with it. New values are wrapped the same way DEKs are (see
+ * {@link Cipher.encryptDEKWithInstanceKey}), whose output starts with a
+ * version byte (`A` in base64) and can never carry this prefix — the stored
+ * value alone identifies its format, without a schema change. The
+ * `algorithm` column cannot be the marker here: on these rows it already
+ * names the JWE algorithm.
+ *
+ * Rows in the earlier format are read, never rewritten: a rolling deployment
+ * can still run instances that only read that format, and this service's
+ * cache is shared between instances. Rewriting the stored rows is staged for
+ * a release after every supported reader accepts both formats.
+ */
+const EARLIER_WRAP_PREFIX = 'U2FsdGVkX1';
+
 type OAuthJweKeyPair = {
 	algorithm: JweKeyAlgorithm;
 	privateKey: CryptoKey;
@@ -110,8 +128,16 @@ export class OAuthJweKeyService {
 		return data;
 	}
 
+	/** Unwraps a stored private JWK of either wrap format. */
+	private unwrapPrivateJwk(value: string): string {
+		if (value.startsWith(EARLIER_WRAP_PREFIX)) {
+			return this.cipher.decryptWithInstanceKey(value);
+		}
+		return this.cipher.decryptDEKWithInstanceKey(value);
+	}
+
 	private async deriveKeyPair(entry: OAuthJweKeyEntry): Promise<OAuthJweKeyPair> {
-		const decryptedPrivate = this.cipher.decryptWithInstanceKey(entry.encryptedPrivateJwk);
+		const decryptedPrivate = this.unwrapPrivateJwk(entry.encryptedPrivateJwk);
 		const privateJwk = jsonParse<JWK>(decryptedPrivate, {
 			errorMessage: 'Failed to parse OAuth JWE private key',
 		});
@@ -164,7 +190,7 @@ export class OAuthJweKeyService {
 		});
 		if (!privateRow) return null;
 
-		const decryptedPrivate = this.cipher.decryptWithInstanceKey(privateRow.value);
+		const decryptedPrivate = this.unwrapPrivateJwk(privateRow.value);
 		const privateJwk = jsonParse<JWK>(decryptedPrivate, {
 			errorMessage: 'Failed to parse OAuth JWE private key',
 		});
@@ -198,7 +224,8 @@ export class OAuthJweKeyService {
 			use: JWE_KEY_USE,
 		};
 
-		const encryptedPrivate = this.cipher.encryptWithInstanceKey(JSON.stringify(privateJwk));
+		// Same wrapping as data-encryption keys: instance-key wrapped, GCM.
+		const encryptedPrivate = this.cipher.encryptDEKWithInstanceKey(JSON.stringify(privateJwk));
 
 		try {
 			await this.deploymentKeyRepository.insert({
