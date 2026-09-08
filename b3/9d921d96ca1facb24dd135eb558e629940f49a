@@ -1,0 +1,28 @@
+packages/core/src/execution-engine/declarative-poll.ts
+  s_2a1c69d003515b::t_e31277fb18c022 133-135,141
+  s_2a1c69d003515b::t_3643adfeba0333 136-139,144
+  s_2a1c69d003515b::t_8d83b2dfc04534 142-143
+packages/nodes-base/nodes/RssFeedRead/test/RssFeedRead.test.ts
+  s_2a1c69d003515b::t_019ac54cc394ed 1-5
+  s_2a1c69d003515b::t_407430e477a8ad 20,25
+packages/core/src/execution-engine/__tests__/declarative-poll.test.ts
+  s_2a1c69d003515b::t_bdc8b7db8ad699 154,157-161
+  s_2a1c69d003515b::t_c0021fde371599 156
+  s_2a1c69d003515b::t_807e87b9d49566 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b39d921d96ca1facb24dd135eb558e629940f49a",
+  "prompts": {},
+  "sessions": {
+    "s_2a1c69d003515b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d877d31-e0fb-4643-abbc-d84c31b962b3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
