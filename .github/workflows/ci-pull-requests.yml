@@ -122,6 +122,7 @@ jobs:
               packages/frontend/@n8n/chat/**
               packages/frontend/@n8n/frontend-vite-config/**
               turbo.json
+              .github/workflows/ci-pull-requests.yml
               .github/workflows/test-frontend-declarations-reusable.yml
               .github/actions/setup-nodejs/**
             workflows: .github/**
