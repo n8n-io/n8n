@@ -23,6 +23,7 @@ import type {
 	AgentSkill,
 	EvaluationConfigDto,
 } from '@n8n/api-types';
+import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
 
@@ -187,7 +188,7 @@ interface ExecutionListItem {
 export interface ExecutionDetail {
 	id: string;
 	workflowId: string;
-	status: string;
+	status: ExecutionStatus;
 	/** Flatted-serialized execution data (contains error details, run data per node) */
 	data: string;
 }

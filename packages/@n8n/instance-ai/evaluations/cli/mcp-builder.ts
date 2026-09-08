@@ -220,6 +220,7 @@ export function unsupportedMcpBuildSetupFields(testCase: WorkflowTestCase): stri
 	const values: Partial<Record<string, unknown>> = { ...testCase };
 	return ORCHESTRATOR_ONLY_KEYS.filter((key) => {
 		const value = values[key];
+		if (key === 'allowUserExecution') return value === true;
 		if (value === undefined || value === null || value === '') return false;
 		// An empty array declares nothing to seed.
 		return !Array.isArray(value) || value.length > 0;

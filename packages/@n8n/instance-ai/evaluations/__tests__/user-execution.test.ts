@@ -119,23 +119,40 @@ describe('user execution during a conversation', () => {
 		await expect(run()).rejects.toThrow('without credentials');
 	});
 
-	it('waits for a terminal execution and preserves failures for inspection', async () => {
-		client.getExecution.mockResolvedValueOnce({
-			id: 'execution',
-			workflowId: 'primary',
-			status: 'running',
-			data: '',
+	it.each(['new', 'running', 'waiting', 'unknown'] as const)(
+		'waits through %s and preserves failures for inspection',
+		async (status) => {
+			client.getExecution.mockResolvedValueOnce({
+				id: 'execution',
+				workflowId: 'primary',
+				status,
+				data: '',
+			});
+			client.getExecution.mockResolvedValueOnce({
+				id: 'execution',
+				workflowId: 'primary',
+				status: 'error',
+				data: '',
+			});
+			await run();
+			expect(client.getExecution).toHaveBeenCalledTimes(2);
+			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('status=error'));
+			expect(client.sendMessage).toHaveBeenCalledTimes(1);
+		},
+	);
+
+	it('stops an indeterminate execution when the case deadline expires', async () => {
+		let now = 1_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		client.getExecution.mockImplementationOnce(async () => {
+			now += 10_000;
+			await Promise.resolve();
+			return { id: 'execution', workflowId: 'primary', status: 'unknown', data: '' };
 		});
-		client.getExecution.mockResolvedValueOnce({
-			id: 'execution',
-			workflowId: 'primary',
-			status: 'error',
-			data: '',
-		});
-		await run();
-		expect(client.getExecution).toHaveBeenCalledTimes(2);
-		expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('status=error'));
-		expect(client.sendMessage).toHaveBeenCalledTimes(1);
+		client.stopExecution.mockResolvedValueOnce(undefined);
+		await expect(run()).rejects.toThrow('Case timed out');
+		expect(client.stopExecution).toHaveBeenCalledWith('execution');
+		expect(client.sendMessage).not.toHaveBeenCalled();
 	});
 
 	it('bounds each execution request by the remaining case time', async () => {

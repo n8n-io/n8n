@@ -16,6 +16,7 @@ import { truncate } from '@n8n/utils/string/truncate';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { resolveEvalBuildMode } from './build-mode';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
@@ -494,14 +495,6 @@ export interface BuildWorkflowConfig {
 	caseIdentity?: { fileSlug: string; iteration: number };
 }
 
-/** A case override takes precedence over the suite mode. Unset means control. */
-export function resolveEvalBuildMode(
-	buildMode: WorkflowTestCase['buildMode'],
-): InstanceAiBuildMode | undefined {
-	const mode = buildMode ?? process.env.N8N_EVAL_BUILD_MODE;
-	return mode === 'progressive' ? 'progressive' : undefined;
-}
-
 /** A case needs a workflow iff something judges one: execution scenarios or
  *  outcome expectations. Cases with neither are graded on the conversation. */
 export function workflowExpectedForCase(
@@ -519,6 +512,7 @@ export function workflowExpectedForCase(
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
+	const buildMode = resolveEvalBuildMode(config.buildMode);
 	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -975,19 +969,25 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				conversation,
 				messageBudget: config.messageBudget,
-				buildMode: resolveEvalBuildMode(config.buildMode),
+				buildMode,
 				allowUserExecution: config.allowUserExecution,
 				beforeUserExecution: async (deadline) => {
 					const scenario = config.executionScenarios?.[0];
 					if (scenario) {
-						await reseedScenarioTables(
-							client,
-							scenario,
-							threadId,
-							scenarioTableIdsByName,
-							logger,
-							deadline,
-						);
+						try {
+							await reseedScenarioTables(
+								client,
+								scenario,
+								threadId,
+								scenarioTableIdsByName,
+								logger,
+								deadline,
+							);
+						} catch (error) {
+							// Keep overall case timeouts separate from input setup failures.
+							seedingFailed = Date.now() < deadline;
+							throw error;
+						}
 					}
 				},
 				events,
@@ -1020,7 +1020,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				openingMessage + scenarioSeedTablesNote,
 				openingAttachments,
-				resolveEvalBuildMode(config.buildMode),
+				buildMode,
 			);
 			await waitForAllActivity({
 				client,

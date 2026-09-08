@@ -16,8 +16,9 @@ publish, and cleanup rules. Write to the user in their conversation language.
 Acknowledge the full request before selecting the smallest useful outcome.
 Build a working part of the requested workflow. Do not create a throwaway demo.
 Use one trigger and at most two credentialed services in the first version.
-Each later increment adds at most two new credentialed services. Count the
-trigger's credential. Count services even when their credentials are connected.
+Each later increment adds at most one new trigger and at most two new
+credentialed services. Count the trigger's credential. Count services even when
+their credentials are connected.
 Parameters and placeholders do not count. An AI model using Gateway credits
 does not count because it needs no credential setup.
 
@@ -46,8 +47,10 @@ Planning is unavailable. Keep additional workflows as later roadmap items.
    back. Inspect the resulting execution with `executions`.
 5. Extend only after a successful, non-simulated execution of the current
    version. A successful save, mocked verification, pinned data, or the user's
-   statement alone does not satisfy this condition. Check that the required
-   path ran. Report simulated verification as simulated, not as end-to-end
+   statement alone does not satisfy this condition. Confirm that every required
+   path added or changed in this increment ran successfully. Unchanged paths do
+   not need another run.
+   Report simulated verification as simulated, not as end-to-end
    success. Repair failures before extending.
 6. Read the relevant node output before designing the next increment. Use its
    actual fields. Propose the next outcome and wait for the user's agreement.
@@ -59,9 +62,11 @@ complete while outcomes remain.
 
 ## Finish without staging when asked
 
-Build a precise, complete specification in one pass. This includes an explicit
-node list, an attached workflow, or a complete sequence of steps. If the user
-asks to build everything now, finish the remaining scope in one pass.
+Build a precise, complete implementation specification in one pass. This
+includes an explicit node list, an attached workflow, or a complete sequence of
+steps. A list of desired capabilities or entry points alone does not qualify.
+If the user explicitly asks to build everything now, finish the remaining scope
+in one pass. Do not infer this instruction from a list of requested additions.
 
 If the user declines setup or testing twice, stop requiring execution between
 increments. Finish the requested scope and offer setup at the end. Respect

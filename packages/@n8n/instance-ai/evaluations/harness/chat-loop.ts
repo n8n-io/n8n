@@ -13,6 +13,7 @@
 
 import type { InstanceAiBuildMode, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
+import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import type { EvalLogger } from './logger';
@@ -446,7 +447,7 @@ async function applyUserExecution(config: MultiTurnConfig, workflowId: string): 
 	try {
 		while (true) {
 			const execution = await config.client.getExecution(executionId, remainingMs());
-			if (!['new', 'running', 'waiting'].includes(execution.status)) {
+			if (isTerminalExecutionStatus(execution.status)) {
 				config.logger.info(
 					`[user-run] Executed ${workflowId}: status=${execution.status} executionId=${executionId}`,
 				);

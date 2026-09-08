@@ -633,13 +633,17 @@ function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): s
 export function savedWorkflowsFromEvents(
 	events: CapturedEvent[],
 ): Array<{ id: string; name: string }> {
+	const names = new Map<string, string>();
 	return extractOutcomeFromEvents(events).toolCalls.flatMap((call) => {
 		if (!WORKFLOW_TOOLS.has(call.toolName)) return [];
 		const result = toResultRecord(call.result);
 		if (result?.success !== true) return [];
 		const id = extractIdFromResult(result, 'workflowId', 'id');
 		if (!id) return [];
-		return [{ id, name: typeof result.workflowName === 'string' ? result.workflowName : id }];
+		if (typeof result.workflowName === 'string' && result.workflowName.trim()) {
+			names.set(id, result.workflowName);
+		}
+		return [{ id, name: names.get(id) ?? id }];
 	});
 }
 
