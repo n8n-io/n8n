@@ -25,23 +25,14 @@ export type PackageWorkflow = SerializedWorkflow & Partial<SerializedWorkflowLif
 
 function workflowFiles(workflow: PackageWorkflow): {
 	content: SerializedWorkflow;
-	lifecycle: SerializedWorkflowLifecycle | null;
+	lifecycle: SerializedWorkflowLifecycle;
 } {
 	const { publishedVersionId, isArchived, ...content } = workflow;
-
-	if (publishedVersionId === undefined && isArchived === undefined) {
-		return { content, lifecycle: null };
-	}
 
 	return {
 		content,
 		lifecycle: { publishedVersionId: publishedVersionId ?? null, isArchived: isArchived ?? false },
 	};
-}
-
-export function withoutLifecycle(workflow: PackageWorkflow): PackageWorkflow {
-	const { publishedVersionId, isArchived, ...content } = workflow;
-	return content;
 }
 
 /** Credential type used in package import integration tests (matches `randomCredentialPayload` default). */
@@ -239,6 +230,7 @@ export async function buildImportPackageBuffer(
 	options: {
 		manifestExtras?: Partial<PackageManifest>;
 		sourceId?: string;
+		omitWorkflowLifecycle?: boolean;
 	} = {},
 ): Promise<Buffer> {
 	const writer = new TarPackageWriter();
@@ -273,7 +265,7 @@ export async function buildImportPackageBuffer(
 		const { content, lifecycle } = workflowFiles(wf);
 		writer.writeDirectory(`workflows/wf-${idx}`);
 		writer.writeFile(`workflows/wf-${idx}/workflow.json`, JSON.stringify(content));
-		if (lifecycle) {
+		if (!options.omitWorkflowLifecycle) {
 			writer.writeFile(`workflows/wf-${idx}/workflow-lifecycle.json`, JSON.stringify(lifecycle));
 		}
 	});
@@ -441,9 +433,7 @@ export async function buildEntityPackageBuffer(options: {
 		const { content, lifecycle } = workflowFiles(workflow);
 		writer.writeDirectory(target);
 		writer.writeFile(`${target}/workflow.json`, JSON.stringify(content));
-		if (lifecycle) {
-			writer.writeFile(`${target}/workflow-lifecycle.json`, JSON.stringify(lifecycle));
-		}
+		writer.writeFile(`${target}/workflow-lifecycle.json`, JSON.stringify(lifecycle));
 	}
 	for (const { target, folder } of folders) {
 		writer.writeDirectory(target);

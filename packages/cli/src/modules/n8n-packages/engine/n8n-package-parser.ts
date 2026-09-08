@@ -121,15 +121,13 @@ export class N8nPackageParser {
 		const path = entityFilePath('workflows', entry.target);
 		const wire = await this.readJson<SerializedWorkflow>(reader, path, 'workflow');
 		const lifecycle = await this.readWorkflowLifecycle(reader, entry);
-		const sourceArchived = lifecycle?.isArchived;
+		const sourceArchived = lifecycle.isArchived;
 		const sourcePublished = derivePublishedState(lifecycle, wire.versionId);
 
 		let entity: WorkflowEntity;
 		try {
 			const partial = this.workflowSerializer.deserialize(wire);
-			entity = Object.assign(new WorkflowEntity(), partial, {
-				isArchived: sourceArchived ?? false,
-			});
+			entity = Object.assign(new WorkflowEntity(), partial, { isArchived: sourceArchived });
 		} catch (cause) {
 			if (cause instanceof ZodError) {
 				throw new UserError(`Package workflow file at ${path} failed schema validation.`, {
@@ -146,8 +144,8 @@ export class N8nPackageParser {
 			entity,
 			sourceWorkflowId: entry.id,
 			parentFolderId,
+			sourceArchived,
 			...(sourcePublished !== undefined ? { sourcePublished } : {}),
-			...(sourceArchived !== undefined ? { sourceArchived } : {}),
 			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
 		};
 	}
@@ -155,10 +153,9 @@ export class N8nPackageParser {
 	private async readWorkflowLifecycle(
 		reader: PackageReader,
 		entry: ManifestEntry,
-	): Promise<SerializedWorkflowLifecycle | null> {
+	): Promise<SerializedWorkflowLifecycle> {
 		const path = workflowLifecycleFilePath(entry.target);
-		const wire = await this.readOptionalJson(reader, path, 'workflow lifecycle');
-		if (wire === null) return null;
+		const wire = await this.readJson(reader, path, 'workflow lifecycle');
 
 		try {
 			return serializedWorkflowLifecycleSchema.parse(wire);
@@ -323,19 +320,6 @@ export class N8nPackageParser {
 			});
 		}
 
-		return this.parseJson<T>(content, path, label);
-	}
-
-	private async readOptionalJson<T = unknown>(
-		reader: PackageReader,
-		path: string,
-		label: string,
-	): Promise<T | null> {
-		const content = await reader.readOptionalFile(path);
-		return content === null ? null : this.parseJson<T>(content, path, label);
-	}
-
-	private parseJson<T>(content: Buffer, path: string, label: string): T {
 		return jsonParse<T>(content.toString('utf-8'), {
 			errorMessage: `Package ${label} file at ${path} is not valid JSON.`,
 		});

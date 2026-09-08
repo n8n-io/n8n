@@ -1,10 +1,6 @@
 import { derivePublishedState } from '../workflow-published-state';
 
 describe('derivePublishedState', () => {
-	it('says nothing without a lifecycle file', () => {
-		expect(derivePublishedState(null, 'version-1')).toBeUndefined();
-	});
-
 	it('reports published when the lifecycle file names the exported version', () => {
 		const lifecycle = { publishedVersionId: 'version-1', isArchived: false };
 

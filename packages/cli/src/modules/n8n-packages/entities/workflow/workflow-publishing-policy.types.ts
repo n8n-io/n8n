@@ -42,7 +42,7 @@ export interface WorkflowPublishingOutcome {
 /** Inputs available after content is saved. */
 export interface WorkflowPublishingContext {
 	status: 'created' | 'updated' | 'skipped';
-	/** Absent when the package states no opinion; `match-source` then leaves the target alone. */
+	/** Absent when the source publishes a version the package does not carry; the target keeps its own. */
 	sourcePublished?: boolean;
 	currentlyPublished: boolean;
 	isArchived: boolean;

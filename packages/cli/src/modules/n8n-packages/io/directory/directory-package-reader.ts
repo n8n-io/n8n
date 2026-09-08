@@ -11,10 +11,6 @@ import type { PackageReader } from '../package-reader';
 const MANIFEST_PATH = 'manifest.json';
 const ALLOWED_PATH_CHARS = /^[a-zA-Z0-9._/-]+$/;
 
-function isFileNotFound(error: unknown): boolean {
-	return error instanceof Error && 'code' in error && error.code === 'ENOENT';
-}
-
 export interface DirectoryReaderLimits {
 	maxUncompressedBytes: number;
 	maxEntryBytes: number;
@@ -47,16 +43,6 @@ export class DirectoryPackageReader implements PackageReader {
 			return await this.readWithinBase(entryPath);
 		} catch (error) {
 			if (error instanceof BadRequestError) throw error;
-			throw new BadRequestError(`Package does not contain entry: ${entryPath}`);
-		}
-	}
-
-	async readOptionalFile(entryPath: string): Promise<Buffer | null> {
-		try {
-			return await this.readWithinBase(entryPath);
-		} catch (error) {
-			if (error instanceof BadRequestError) throw error;
-			if (isFileNotFound(error)) return null;
 			throw new BadRequestError(`Package does not contain entry: ${entryPath}`);
 		}
 	}

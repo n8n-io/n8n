@@ -47,11 +47,6 @@ export class TarPackageReader implements PackageReader {
 		return content;
 	}
 
-	async readOptionalFile(entryPath: string): Promise<Buffer | null> {
-		const entries = await this.load();
-		return entries.get(entryPath) ?? null;
-	}
-
 	async listEntries(): Promise<string[]> {
 		const entries = await this.load();
 		return Array.from(entries.keys());

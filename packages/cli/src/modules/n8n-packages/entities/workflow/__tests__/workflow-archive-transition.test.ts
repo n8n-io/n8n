@@ -17,11 +17,4 @@ describe('decideWorkflowArchiveTransition', () => {
 	it('unarchives an archived target for an active package workflow', () => {
 		expect(decideWorkflowArchiveTransition(false, true)).toBe('unarchive');
 	});
-
-	it.each([true, false])(
-		'returns no transition without a lifecycle file, target archived: %s',
-		(existingArchived) => {
-			expect(decideWorkflowArchiveTransition(undefined, existingArchived)).toBeNull();
-		},
-	);
 });

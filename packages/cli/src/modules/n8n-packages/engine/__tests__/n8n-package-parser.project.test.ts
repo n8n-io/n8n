@@ -16,10 +16,6 @@ function makeReader(manifest: PackageManifest, files: Record<string, unknown>): 
 			if (!(path in files)) throw new Error(`missing file ${path}`);
 			return await Promise.resolve(Buffer.from(JSON.stringify(files[path]), 'utf-8'));
 		},
-		readOptionalFile: async (path: string) =>
-			await Promise.resolve(
-				path in files ? Buffer.from(JSON.stringify(files[path]), 'utf-8') : null,
-			),
 		listEntries: async () => await Promise.resolve(Object.keys(files)),
 	};
 }

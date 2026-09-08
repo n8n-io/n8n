@@ -2,10 +2,9 @@
 export type WorkflowArchiveTransition = 'archive' | 'unarchive';
 
 export function decideWorkflowArchiveTransition(
-	packageArchived: boolean | undefined,
+	packageArchived: boolean,
 	existingArchived: boolean,
 ): WorkflowArchiveTransition | null {
-	if (packageArchived === undefined) return null;
 	if (packageArchived === existingArchived) return null;
 	return packageArchived ? 'archive' : 'unarchive';
 }

@@ -52,7 +52,6 @@ import {
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
 	WIRE_VERSION_ID,
-	withoutLifecycle,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
@@ -1098,6 +1097,20 @@ describe('Package import rejection cases', () => {
 				packageBuffer: tarBuffer,
 			}),
 		).rejects.toThrow(BadRequestError);
+	});
+
+	it('rejects a workflow without its lifecycle file', async () => {
+		const owner = await createOwner();
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer(
+					[serializedWorkflow({ id: 'wf-x', name: 'X' })],
+					{ omitWorkflowLifecycle: true },
+				),
+			}),
+		).rejects.toThrow(/missing workflow lifecycle file/);
 	});
 
 	it('rejects when the requested projectId does not exist', async () => {
@@ -2510,62 +2523,6 @@ describe('Package import workflow publishing policy', () => {
 
 		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
 		expect(stored.activeVersionId).not.toBeNull();
-	});
-
-	it('"match-source" leaves a published target alone when the package has no lifecycle file', async () => {
-		const owner = await createOwner();
-		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			owner.id,
-		);
-		const active = await createActiveWorkflow({ name: 'Active workflow' }, personalProject);
-		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
-
-		const result = await importPackage({
-			user: owner,
-			packageBuffer: await buildImportPackageBuffer([
-				withoutLifecycle(
-					serializedWorkflow({
-						id: 'wf-active',
-						name: 'Active updated',
-						nodes: scheduleTriggerNodes(),
-					}),
-				),
-			]),
-			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
-			workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
-		});
-
-		const summary = result.workflows.find(
-			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
-		);
-		expect(summary?.activeVersionId).toEqual(expect.any(String));
-
-		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
-		expect(stored.activeVersionId).not.toBeNull();
-	});
-
-	it('leaves an archived target archived when the package has no lifecycle file', async () => {
-		const owner = await createOwner();
-		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			owner.id,
-		);
-		const archived = await createWorkflow({ name: 'Archived workflow' }, personalProject);
-		await Container.get(WorkflowRepository).update(archived.id, {
-			sourceWorkflowId: 'wf-archived',
-			isArchived: true,
-		});
-
-		await importPackage({
-			user: owner,
-			packageBuffer: await buildImportPackageBuffer([
-				withoutLifecycle(serializedWorkflow({ id: 'wf-archived', name: 'Archived updated' })),
-			]),
-			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
-			workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
-		});
-
-		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: archived.id });
-		expect(stored.isArchived).toBe(true);
 	});
 
 	it('"unpublish-all" unpublishes a previously published matched workflow', async () => {

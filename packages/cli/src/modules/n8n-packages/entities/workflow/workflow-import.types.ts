@@ -17,10 +17,13 @@ export interface WorkflowImportContext extends ImportContext {
 export interface PreparedWorkflow {
 	entity: WorkflowEntity;
 	sourceWorkflowId: string;
-	/** From `workflow-lifecycle.json`. Absent leaves the target's publish state alone. */
+	/**
+	 * From `workflow-lifecycle.json`. Absent when the source published a version this package does
+	 * not carry, which leaves the target's publish state alone.
+	 */
 	sourcePublished?: boolean;
-	/** From `workflow-lifecycle.json`. Absent leaves the target's archived state alone. */
-	sourceArchived?: boolean;
+	/** From `workflow-lifecycle.json`. */
+	sourceArchived: boolean;
 	/**
 	 * Source id of the package folder this workflow is nested under or null for a scope-root workflow that lands in the request's
 	 * target folder.
