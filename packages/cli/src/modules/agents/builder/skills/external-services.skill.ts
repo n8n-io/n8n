@@ -1,14 +1,11 @@
 import type { RuntimeSkill } from '@n8n/agents';
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { ASK_QUESTIONS_TOOL_NAME, McpServerConfigSchema } from '@n8n/api-types';
-import type { JSONSchema7 } from 'json-schema';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer';
 import { INITIAL_BUILD_NOTE } from '../prompts/initial-build.prompt';
 
-const mcpServerSchemaText = jsonSchemaToCompactText(
-	zodToJsonSchema(McpServerConfigSchema) as JSONSchema7,
-);
+const mcpServerSchemaText = jsonSchemaToCompactText(zodSchemaToJsonSchema(McpServerConfigSchema));
 
 export function externalServicesSkill(): RuntimeSkill {
 	return {
