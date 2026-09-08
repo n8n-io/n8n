@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-import { TypeToNumber } from '../database/entities/insights-shared';
+import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import type { InsightsCompactionService } from '../insights-compaction.service';
 import type { InsightsPruningService } from '../insights-pruning.service';
@@ -115,7 +115,7 @@ describe('InsightsService', () => {
 		}) => {
 			const aggregates: Array<{
 				period: 'previous' | 'current';
-				type: (typeof TypeToNumber)[keyof typeof TypeToNumber];
+				type: TypeUnitNumber;
 				total_value: string | number;
 			}> = [];
 
