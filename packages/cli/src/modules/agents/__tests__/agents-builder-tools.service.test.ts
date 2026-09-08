@@ -21,6 +21,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -484,9 +485,37 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
+		});
+
+		it('patch_config reports a stale result when the config changes during the write', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			agentsService.updateConfig.mockRejectedValue(
+				new ConflictError('Agent config was changed elsewhere; reload to get the latest version'),
+			);
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
+					]),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				stage: 'stale',
+				errors: [expect.objectContaining({ path: '(root)' })],
+			});
 		});
 
 		it('patch_config rejects stale baseConfigHash without updating or echoing the config', async () => {
@@ -556,7 +585,7 @@ describe('AgentsBuilderToolsService', () => {
 					integrations: [currentIntegrations[0], currentIntegrations[2]],
 				}),
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -601,7 +630,7 @@ describe('AgentsBuilderToolsService', () => {
 					instructions: 'Updated instructions',
 				}),
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 		});
 
@@ -636,7 +665,10 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -670,7 +702,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({ integrations: [] }),
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 		});
 
@@ -804,7 +836,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -854,7 +886,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -898,7 +930,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -944,7 +976,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -1049,7 +1081,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({ model: '', instructions: 'Help the user.' }),
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentDraftConfig), modifiedBy: 'builder' },
 			);
 		});
 
@@ -1148,7 +1180,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({ model: '', instructions: 'Triage Slack messages.' }),
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 		});
 
@@ -1230,7 +1262,7 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ modifiedBy: 'builder' },
+					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 				);
 			});
 
@@ -1269,7 +1301,7 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ modifiedBy: 'builder' },
+					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 				);
 			});
 
@@ -1316,7 +1348,7 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ modifiedBy: 'builder' },
+					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 				);
 			});
 
@@ -1365,7 +1397,7 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ modifiedBy: 'builder' },
+					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 				);
 			});
 		});

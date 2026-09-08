@@ -43,6 +43,7 @@ import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -458,13 +459,13 @@ export class AgentsBuilderToolsService {
 							projectId,
 							configWithDefaults,
 							user,
-							{ modifiedBy: 'builder' },
+							{ baseConfigHash: snapshot.configHash, modifiedBy: 'builder' },
 						);
 						return { ok: true };
 					} catch (e) {
 						return {
 							ok: false,
-							stage: 'schema',
+							stage: e instanceof ConflictError ? 'stale' : 'schema',
 							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
 						};
 					}
@@ -580,13 +581,13 @@ export class AgentsBuilderToolsService {
 							projectId,
 							configWithDefaults,
 							user,
-							{ modifiedBy: 'builder' },
+							{ baseConfigHash: snapshot.configHash, modifiedBy: 'builder' },
 						);
 						return { ok: true };
 					} catch (e) {
 						return {
 							ok: false,
-							stage: 'schema',
+							stage: e instanceof ConflictError ? 'stale' : 'schema',
 							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
 						};
 					}
@@ -1421,6 +1422,7 @@ export class AgentsBuilderToolsService {
 		);
 
 		await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults, user, {
+			baseConfigHash: snapshot.configHash,
 			modifiedBy: 'builder',
 		});
 		return { applied: true };

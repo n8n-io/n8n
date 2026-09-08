@@ -147,7 +147,7 @@ export class AgentConfigService {
 		config: unknown,
 		user: User,
 		options: {
-			baseConfigHash?: string;
+			baseConfigHash?: string | null;
 			clearOmittedOptionalFields?: boolean;
 			modifiedBy: AgentActor;
 		},

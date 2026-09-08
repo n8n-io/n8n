@@ -28,6 +28,7 @@ import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -653,12 +654,22 @@ export class McpAgentToolsService {
 							};
 						}
 
-						const { resource, config: newConfig } = await this.applyMutation(
-							user,
-							input,
-							config,
-							projectId,
-						);
+						let mutation: Awaited<ReturnType<typeof this.applyMutation>>;
+						try {
+							mutation = await this.applyMutation(user, input, config, projectId, configHash);
+						} catch (error) {
+							if (!(error instanceof ConflictError)) throw error;
+							const latestConfigHash = await this.fetchConfigHash(projectId, input.agentId);
+							if (latestConfigHash === configHash) throw error;
+							return {
+								ok: false,
+								code: 'stale_config',
+								agentId: input.agentId,
+								configHash: latestConfigHash,
+								message: 'Call get_agent before retrying the mutation.',
+							};
+						}
+						const { resource, config: newConfig } = mutation;
 						return {
 							ok: true,
 							agentId: input.agentId,
@@ -1292,6 +1303,7 @@ export class McpAgentToolsService {
 		input: MutateAgentInput,
 		config: AgentJsonConfig,
 		projectId: string,
+		baseConfigHash: string,
 	): Promise<{ resource?: MutationResource; config?: AgentJsonConfig }> {
 		const { agentId, operation } = input;
 		const telemetryContext = { user, modifiedBy: 'mcp' as const };
@@ -1308,7 +1320,7 @@ export class McpAgentToolsService {
 					projectId,
 					operation.config,
 					user,
-					{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
+					{ baseConfigHash, clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
 				);
 				return { config: result.config };
 			}
@@ -1332,6 +1344,7 @@ export class McpAgentToolsService {
 					patched,
 					user,
 					{
+						baseConfigHash,
 						clearOmittedOptionalFields: true,
 						modifiedBy: 'mcp',
 					},
@@ -1382,6 +1395,7 @@ export class McpAgentToolsService {
 							operation.taskId,
 							operation.enabled,
 							config,
+							baseConfigHash,
 						);
 						return { resource: { type: 'task', id: result.id }, config: updated };
 					}
@@ -1423,6 +1437,7 @@ export class McpAgentToolsService {
 				};
 				await this.assertAccessibleCredentials(next, user, projectId);
 				const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user, {
+					baseConfigHash,
 					modifiedBy: 'mcp',
 				});
 				return { resource: { type: 'customTool', id: built.id }, config: result.config };
@@ -1515,6 +1530,7 @@ export class McpAgentToolsService {
 		taskId: string,
 		enabled: boolean,
 		config: AgentJsonConfig,
+		baseConfigHash: string,
 	): Promise<AgentJsonConfig> {
 		let found = false;
 		const tasks = (config.tasks ?? []).map((task) => {
@@ -1526,6 +1542,7 @@ export class McpAgentToolsService {
 		const next = { ...config, tasks };
 		await this.assertAccessibleCredentials(next, user, projectId);
 		const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user, {
+			baseConfigHash,
 			modifiedBy: 'mcp',
 		});
 		return result.config;

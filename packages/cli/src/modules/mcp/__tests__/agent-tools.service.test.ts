@@ -27,6 +27,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EventService } from '@/events/event.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
@@ -472,6 +473,28 @@ describe('McpAgentToolsService', () => {
 			);
 		});
 
+		it('returns the latest hash when the config changes during the mutation', async () => {
+			const latestConfig = { ...composedConfig, instructions: 'Newer work' };
+			agentConfigService.updateConfig.mockRejectedValue(
+				new ConflictError('Agent config was changed elsewhere; reload to get the latest version'),
+			);
+			agentConfigService.getConfig.mockResolvedValue(latestConfig);
+
+			const result = await callTool(
+				'mutate_agent',
+				mutateInput({ type: 'config.replace', config: { name: 'Renamed' } }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toEqual({
+				ok: false,
+				code: 'stale_config',
+				agentId: 'agent-1',
+				configHash: getAgentConfigHash(latestConfig),
+				message: 'Call get_agent before retrying the mutation.',
+			});
+		});
+
 		it('rejects a patch with entries the config sanitizer would silently drop', async () => {
 			const result = await callTool(
 				'mutate_agent',
@@ -519,7 +542,11 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ name: 'Renamed' },
 				user,
-				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
+				{
+					baseConfigHash: getAgentConfigHash(composedConfig),
+					clearOmittedOptionalFields: true,
+					modifiedBy: 'mcp',
+				},
 			);
 			// The resolved entity's config is reused; the response hash comes
 			// from updateConfig's return value, not a re-fetch.
@@ -557,7 +584,11 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ ...composedConfig, name: 'Patched' },
 				user,
-				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
+				{
+					baseConfigHash: getAgentConfigHash(composedConfig),
+					clearOmittedOptionalFields: true,
+					modifiedBy: 'mcp',
+				},
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true, operation: 'config.patch' });
 		});
@@ -1878,7 +1909,11 @@ describe('McpAgentToolsService', () => {
 				'project-9',
 				{ name: 'My Agent' },
 				user,
-				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
+				{
+					baseConfigHash: getAgentConfigHash(composedConfig),
+					clearOmittedOptionalFields: true,
+					modifiedBy: 'mcp',
+				},
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true });
 		});
