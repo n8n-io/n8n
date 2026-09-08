@@ -1,5 +1,10 @@
 {
   "name": "workflow-scripts",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=12.3.4"
+  },
+  "packageManager": "pnpm@12.3.4",
   "scripts": {
     "test": "node --test --experimental-test-module-mocks ./*.test.mjs"
   },

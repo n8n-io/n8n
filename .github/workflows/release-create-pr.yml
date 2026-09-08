@@ -74,12 +74,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
 
       - name: Bump package versions
         run: |

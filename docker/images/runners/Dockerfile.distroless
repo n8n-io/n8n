@@ -13,6 +13,7 @@
 # ==============================================================================
 
 ARG NODE_VERSION=24.13.1
+ARG PNPM_VERSION=12.3.4
 ARG PYTHON_VERSION=3.13
 
 
@@ -43,7 +44,7 @@ RUN node -e "const pkg = require('./package.json'); \
 
 # Install moment by default (special case for n8n cloud)
 RUN rm -f node_modules/.modules.yaml && \
-    pnpm add moment@2.30.1 --prod --no-lockfile
+    pnpm add moment@2.30.1 --save-prod --no-lockfile
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv

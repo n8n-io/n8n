@@ -1,4 +1,5 @@
 ARG NODE_VERSION=24.13.1
+ARG PNPM_VERSION=12.3.4
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
@@ -26,9 +27,14 @@ RUN node -e "const pkg = require('./package.json'); \
     delete pkg.devDependencies; \
     require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
 
+# `--config.minimum-release-age=0`: pnpm defaults it to 1440 (24h), which would make
+# this reject any dependency published less than a day ago — e.g. a first-party
+# @n8n_io/ai-assistant-sdk bump landed within hours of its npm publish. This step only
+# re-resolves an already-vetted, already-pinned dependency set; the real supply-chain age
+# policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
 # Install moment (special case for backwards compatibility)
 RUN rm -f node_modules/.modules.yaml && \
-    pnpm add moment@2.30.1 --prod --no-lockfile
+    pnpm add moment@2.30.1 --save-prod --no-lockfile --config.minimum-release-age=0
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
