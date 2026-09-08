@@ -99,9 +99,6 @@ const facts = computed(() => {
 				<N8nText size="small" color="text-base">{{ fact }}</N8nText>
 			</li>
 		</ul>
-		<N8nText v-if="claim.liveTestRecommended" size="small" color="text-light">
-			{{ i18n.baseText('instanceAi.verificationVerdict.liveTest') }}
-		</N8nText>
 	</N8nCard>
 </template>
 
@@ -117,7 +114,7 @@ const facts = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
-	margin: 0 0 var(--spacing--2xs);
+	margin: 0;
 	padding-left: var(--spacing--sm);
 
 	li {

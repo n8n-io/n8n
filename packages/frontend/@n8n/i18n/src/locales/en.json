@@ -7150,7 +7150,6 @@
 	"instanceAi.verificationVerdict.notReached": "{count} of {total} nodes were never reached, so they are unverified: {nodes}.",
 	"instanceAi.verificationVerdict.simulated": "Output was simulated, so nothing real happened at: {nodes}.",
 	"instanceAi.verificationVerdict.pinned": "Some output came from pinned data saved on the workflow: {nodes}. Remove those pins for a live test.",
-	"instanceAi.verificationVerdict.liveTest": "Ask for a live end-to-end test to confirm the rest.",
 	"instanceAi.verificationVerdict.andMore": "{nodes} and {count} more",
 	"instanceAi.artifactCard.updatedAgo": "Last updated {time} ago",
 	"instanceAi.artifactCard.minute": "{count} minute",

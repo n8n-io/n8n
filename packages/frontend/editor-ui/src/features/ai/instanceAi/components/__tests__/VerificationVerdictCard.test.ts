@@ -34,7 +34,14 @@ describe('VerificationVerdictCard', () => {
 		expect(
 			getByText('Output was simulated, so nothing real happened at: Create Event.'),
 		).toBeInTheDocument();
-		expect(getByText('Ask for a live end-to-end test to confirm the rest.')).toBeInTheDocument();
+	});
+
+	it('states the verdict and nothing else', () => {
+		// No call to action: what to do next depends on setup state the card
+		// cannot see, so the assistant owns that and the card owns the facts.
+		const { getByTestId } = renderComponent({ props: { claim: makeClaim() } });
+
+		expect(getByTestId('instance-ai-verification-verdict').textContent).not.toMatch(/live/i);
 	});
 
 	it('leads with the unproven fix target', () => {
@@ -69,12 +76,11 @@ describe('VerificationVerdictCard', () => {
 		expect(getByText(/Node 8 and 3 more\.$/)).toBeInTheDocument();
 	});
 
-	it('omits the live-test line when it is not recommended', () => {
+	it('titles a failed verification', () => {
 		const { queryByText } = renderComponent({
 			props: { claim: makeClaim({ level: 'failed', liveTestRecommended: false }) },
 		});
 
-		expect(queryByText('Ask for a live end-to-end test to confirm the rest.')).toBeNull();
 		expect(queryByText('Verification did not pass')).toBeInTheDocument();
 	});
 });
