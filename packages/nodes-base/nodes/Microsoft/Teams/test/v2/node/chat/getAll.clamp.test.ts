@@ -37,6 +37,9 @@ describe('Microsoft Teams V2, chat getAll paging arguments', () => {
 		['asks for a single chat when the limit is one', { returnAll: false, limit: 1 }, 1, 1],
 		['caps the page size but keeps a limit above 50', { returnAll: false, limit: 51 }, 50, 51],
 		['caps the page size for the default limit', { returnAll: false, limit: 100 }, 50, 100],
+		// Graph rejects a fractional `$top`, and an expression can resolve the limit to one.
+		// A fraction below 1 needs no row: the low clamp already returns 1 without the floor.
+		['rounds a fractional limit down', { returnAll: false, limit: 2.7 }, 2, 2],
 		['asks for a full page and no limit when returning all', { returnAll: true }, 50, undefined],
 	])('%s', async (_name, params, expectedTop, expectedLimit) => {
 		setParams(ctx, { resource: 'chat', operation: 'getAll', ...params });
