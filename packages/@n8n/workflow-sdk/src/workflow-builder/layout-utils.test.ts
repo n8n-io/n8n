@@ -9,6 +9,7 @@ import {
 	START_X,
 	DEFAULT_Y,
 	DEFAULT_NODE_SIZE,
+	AGENT_NODE_SIZE,
 } from './constants';
 import { calculateNodePositions, calculateNodePositionsDagre } from './layout-utils';
 import type { GraphNode, ConnectionTarget } from '../types/base';
@@ -27,12 +28,13 @@ function createGraphNode(
 	]),
 	position?: [number, number],
 	parameters?: Record<string, unknown>,
+	version: string | number = 1,
 ): GraphNode {
 	return {
 		instance: {
 			type,
 			name,
-			version: 1,
+			version,
 			config: {
 				...(position ? { position } : {}),
 				...(parameters ? { parameters } : {}),
@@ -235,6 +237,39 @@ describe('calculateNodePositionsDagre', () => {
 			expect(falsePos[0]).toBeGreaterThan(ifPos[0]);
 			expect(truePos[0]).toBe(falsePos[0]);
 			expect(truePos[1]).not.toBe(falsePos[1]);
+		});
+
+		it('positions message an agent successors clear of the agent card', () => {
+			const nodes = new Map<string, GraphNode>();
+			const triggerConns = makeMainConns([[0, [makeTarget('agent')]]]);
+			const agentConns = makeMainConns([
+				[0, [makeTarget('first')]],
+				[1, [makeTarget('second')]],
+			]);
+			nodes.set('start', createGraphNode('start', 'n8n-nodes-base.manualTrigger', triggerConns));
+			nodes.set(
+				'agent',
+				createGraphNode(
+					'agent',
+					'n8n-nodes-base.messageAnAgent',
+					agentConns,
+					undefined,
+					undefined,
+					3.1,
+				),
+			);
+			nodes.set('first', createGraphNode('first', 'n8n-nodes-base.set'));
+			nodes.set('second', createGraphNode('second', 'n8n-nodes-base.set'));
+			const positions = calculateNodePositionsDagre(nodes);
+			const triggerPosition = positions.get('start')!;
+			const agentPosition = positions.get('agent')!;
+
+			expect(agentPosition[0]).toBeGreaterThan(triggerPosition[0]);
+			for (const successor of ['first', 'second']) {
+				expect(positions.get(successor)![0]).toBeGreaterThanOrEqual(
+					agentPosition[0] + AGENT_NODE_SIZE[0],
+				);
+			}
 		});
 	});
 
