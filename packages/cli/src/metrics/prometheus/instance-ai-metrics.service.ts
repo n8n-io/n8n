@@ -65,6 +65,18 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 		});
 		costTotal.inc(0);
 
+		const runsRefusedTotal = new promClient.Counter({
+			name: `${this.config.prefix}instance_ai_runs_refused_total`,
+			help: 'Instance AI runs refused by a concurrency cap, by reason.',
+			labelNames: ['reason'],
+		});
+		runsRefusedTotal.inc({ reason: 'user_run_limit' }, 0);
+		runsRefusedTotal.inc({ reason: 'instance_run_limit' }, 0);
+
+		this.eventService.on('instance-ai-run-refused', ({ reason }) => {
+			runsRefusedTotal.inc({ reason });
+		});
+
 		const runProbe = this.runProbe;
 		new promClient.Gauge({
 			name: `${this.config.prefix}instance_ai_active_runs`,

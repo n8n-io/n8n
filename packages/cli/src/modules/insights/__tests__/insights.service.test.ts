@@ -10,8 +10,6 @@ import type { WorkflowSharingService } from '@/workflows/workflow-sharing.servic
 
 import { TypeToNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import type { InsightsCompactionService } from '../insights-compaction.service';
-import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -24,8 +22,6 @@ describe('InsightsService', () => {
 	let insightsService: InsightsService;
 
 	let mockInsightsByPeriodRepository: MockProxy<InsightsByPeriodRepository>;
-	let mockCompactionService: MockProxy<InsightsCompactionService>;
-	let mockPruningService: MockProxy<InsightsPruningService>;
 	let mockLicenseState: MockProxy<LicenseState>;
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
 	let mockWorkflowSharingService: MockProxy<WorkflowSharingService>;
@@ -34,8 +30,6 @@ describe('InsightsService', () => {
 		vi.clearAllMocks();
 
 		mockInsightsByPeriodRepository = mock<InsightsByPeriodRepository>();
-		mockCompactionService = mock<InsightsCompactionService>();
-		mockPruningService = mock<InsightsPruningService>();
 		mockLicenseState = mock<LicenseState>();
 		mockInstanceSettings = mock<InstanceSettings>();
 		mockWorkflowSharingService = mock<WorkflowSharingService>();
@@ -43,8 +37,6 @@ describe('InsightsService', () => {
 
 		insightsService = new InsightsService(
 			mockInsightsByPeriodRepository,
-			mockCompactionService,
-			mockPruningService,
 			mockLicenseState,
 			mockInstanceSettings,
 			mockLogger(),

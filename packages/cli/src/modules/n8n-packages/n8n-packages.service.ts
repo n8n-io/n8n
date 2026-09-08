@@ -69,6 +69,7 @@ interface WrittenExport {
 	folderIds: string[];
 	projectIds: string[];
 	credentialExportPolicy: CredentialExportPolicy;
+	includeArchivedWorkflows: boolean;
 }
 
 @Service()
@@ -107,6 +108,7 @@ export class N8nPackagesService {
 			...(result.projectIds.length ? { projectIds: result.projectIds } : {}),
 			counts: result.counts,
 			credentialExportPolicy: result.credentialExportPolicy,
+			includeArchivedWorkflows: result.includeArchivedWorkflows,
 		});
 
 		return { stream, counts: result.counts };
@@ -142,6 +144,7 @@ export class N8nPackagesService {
 		const workflowVersionPolicy = request.workflowVersionPolicy ?? WorkflowVersionPolicy.Latest;
 		const credentialExportPolicy =
 			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
+		const includeArchivedWorkflows = request.includeArchivedWorkflows ?? false;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -151,6 +154,7 @@ export class N8nPackagesService {
 						writer,
 						includeTags,
 						workflowVersionPolicy,
+						includeArchivedWorkflows,
 					})
 				: undefined;
 
@@ -175,9 +179,11 @@ export class N8nPackagesService {
 				? await this.projectExporter.export({
 						user: request.user,
 						projectIds,
+						workflowIds: request.projectWorkflowIds,
 						writer,
 						includeTags,
 						workflowVersionPolicy,
+						includeArchivedWorkflows,
 					})
 				: undefined;
 
@@ -353,6 +359,7 @@ export class N8nPackagesService {
 			folderIds: allFolders.map(({ id }) => id),
 			projectIds: allProjects.map(({ id }) => id),
 			credentialExportPolicy,
+			includeArchivedWorkflows,
 		};
 	}
 

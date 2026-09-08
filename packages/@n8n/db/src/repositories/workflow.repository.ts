@@ -36,6 +36,7 @@ import type {
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { chunkIds } from '../utils/chunk-ids';
+import { escapeLike, LIKE_ESCAPE_CLAUSE } from '../utils/escape-like';
 import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
@@ -70,6 +71,26 @@ type WorkflowListResult = {
 	workflows: ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[];
 	count: number;
 };
+
+/**
+ * The workflows an agent's workflow tools refer to: refs by id, legacy refs by
+ * name, both inside the agent's project. Shared by the runtime lookup and the
+ * agent dependency index, so the two cannot resolve a reference differently.
+ */
+export function agentToolReferenceWhere(
+	projectId: string,
+	workflowIds: string[],
+	legacyWorkflowNames: string[],
+): Array<FindOptionsWhere<WorkflowEntity>> {
+	const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
+	if (workflowIds.length > 0) {
+		where.push({ id: In(workflowIds), shared: { projectId } });
+	}
+	if (legacyWorkflowNames.length > 0) {
+		where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
+	}
+	return where;
+}
 
 @Service()
 export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
@@ -322,13 +343,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		workflowIds: string[],
 		legacyWorkflowNames: string[],
 	) {
-		const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
-		if (workflowIds.length > 0) {
-			where.push({ id: In(workflowIds), shared: { projectId } });
-		}
-		if (legacyWorkflowNames.length > 0) {
-			where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
-		}
+		const where = agentToolReferenceWhere(projectId, workflowIds, legacyWorkflowNames);
 		if (where.length === 0) return [];
 
 		return await this.find({
@@ -337,7 +352,8 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			// scope its check to nodes reachable from a supported trigger; without
 			// it the backend falls back to scanning every enabled node and
 			// disagrees with the frontend picker, which fetches connections.
-			select: ['id', 'name', 'nodes', 'connections'],
+			// `activeVersionId` tells the publish check whether the workflow is published.
+			select: ['id', 'name', 'nodes', 'connections', 'activeVersionId'],
 		});
 	}
 
@@ -1071,7 +1087,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const conditions: string[] = [];
 		const params: Record<string, string> = {
 			cpParentWorkflowId: parentWorkflowId,
-			cpCallerIdMembership: `%,${this.escapeLike(parentWorkflowId)},%`,
+			cpCallerIdMembership: `%,${escapeLike(parentWorkflowId)},%`,
 		};
 
 		// Branch 1: callerPolicy = 'any'
@@ -1079,7 +1095,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		// Branch 2: callerPolicy = 'workflowsFromAList' and the allowlist contains parentWorkflowId as a whole ID.
 		conditions.push(
-			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ESCAPE '\\')`,
+			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ${LIKE_ESCAPE_CLAUSE})`,
 		);
 
 		// Branch 3: callerPolicy = 'workflowsFromSameOwner' (or NULL when default is 'workflowsFromSameOwner').
@@ -1103,11 +1119,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return this.globalConfig.database.type === 'postgresdb'
 			? `${field} ->> '${key}'`
 			: `JSON_EXTRACT(${field}, '$.${key}')`;
-	}
-
-	/** Escape LIKE metacharacters (`\`, `%`, `_`) so the value matches literally. */
-	private escapeLike(value: string): string {
-		return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 	}
 
 	/**

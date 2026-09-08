@@ -33,6 +33,7 @@ import {
 	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	instanceAiEvalSeedAgentSchema,
 	instanceAiAttachmentSchema,
+	instanceAiHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
@@ -100,22 +101,61 @@ describe('instanceAiEventSchema', () => {
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
 	});
 
+	it('parses historical eval-setup agent events', () => {
+		const event = {
+			type: 'agent-spawned',
+			runId: 'run-legacy-eval',
+			agentId: 'agent-legacy-eval',
+			payload: {
+				parentId: 'agent-root',
+				role: 'evaluation setup',
+				tools: ['workflows'],
+				taskId: 'task-legacy-eval',
+				kind: 'eval-setup',
+				title: 'Setting up evaluations',
+				targetResource: { type: 'workflow', id: 'workflow-1' },
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
 	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
 	});
 
-	it('rejects a credential setup item without a credentialType', () => {
+	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
 		const event = {
 			type: 'setup-items',
 			runId: 'run-1',
 			agentId: 'agent-1',
 			payload: {
 				workflowId: 'wf-1',
-				items: [{ id: 'wf-1:credential:slackApi', kind: 'credential' }],
+				items: [
+					// Missing credentialType.
+					{ id: 'wf-1:credential:slackApi', kind: 'credential' },
+					// A kind this client predates.
+					{ id: 'wf-1:question:q-1', kind: 'question', prompt: 'Region?' },
+					{
+						id: 'wf-1:credential:notionApi',
+						kind: 'credential',
+						credentialType: 'notionApi',
+					},
+				],
 			},
 		};
 
-		expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
+		const result = instanceAiEventSchema.safeParse(event);
+		expect(result.success).toBe(true);
+		if (result.success && result.data.type === 'setup-items') {
+			expect(result.data.payload.items).toEqual([
+				{
+					id: 'wf-1:credential:notionApi',
+					kind: 'credential',
+					credentialType: 'notionApi',
+				},
+			]);
+		}
 	});
 });
 
@@ -1037,5 +1077,32 @@ describe('InstanceAiThreadMessagesQuery', () => {
 		{ page: -1 },
 	])('rejects out-of-range paging (%o)', (query) => {
 		expect(InstanceAiThreadMessagesQuery.safeParse(query).success).toBe(false);
+	});
+});
+
+describe('instanceAiHandoffContextSchema', () => {
+	it('accepts the setup panel execute context', () => {
+		const result = instanceAiHandoffContextSchema.safeParse({
+			source: 'setup-panel-execute',
+			workflowId: 'wf-1',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a setup panel execute context without a workflowId', () => {
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel-execute' }).success,
+		).toBe(false);
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel-execute', workflowId: '' })
+				.success,
+		).toBe(false);
+	});
+
+	it('rejects an unknown source', () => {
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel', workflowId: 'wf-1' })
+				.success,
+		).toBe(false);
 	});
 });

@@ -4,6 +4,7 @@ import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
+import { clientMintedAgentIdSchema } from '../agents/dto';
 import { Z } from '../zod-class';
 
 // ---------------------------------------------------------------------------
@@ -663,7 +664,15 @@ export const mcpConnectServerSchema = z.object({
 	serverSlug: z.string(),
 	title: z.string(),
 	tagline: z.string().optional(),
-	credentialType: z.string(),
+	usesCredentials: z
+		.array(
+			z.object({
+				credentialType: z.string(),
+				name: z.string(),
+				value: z.string(),
+			}),
+		)
+		.min(1),
 });
 export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
 
@@ -1001,7 +1010,9 @@ export const tasksUpdatePayloadSchema = z.object({
  */
 const setupItemBase = {
 	/** Stable identity: `${workflowId}:${kind}:${key}` — key = credentialType
-	 *  for credential items, nodeName for parameter items. */
+	 *  for credential items (`${credentialType}:${nodeName}` for generic auth
+	 *  types, where one credential serves many services so items are per
+	 *  node), nodeName for parameter items. */
 	id: z.string(),
 };
 
@@ -1031,8 +1042,12 @@ export const setupItemsPayloadSchema = z.object({
 	workflowId: z.string().min(1).max(64),
 	/** FULL current list for this workflow. Each event replaces the previous
 	 *  snapshot — removal is implicit (an item absent from the next snapshot is
-	 *  gone). No delta/retraction protocol. */
-	items: z.array(setupItemSchema),
+	 *  gone). No delta/retraction protocol. Items that fail to parse (e.g. a
+	 *  kind added after this client was built) drop individually instead of
+	 *  failing the whole event — deployed clients keep the items they know. */
+	items: z
+		.array(setupItemSchema.nullable().catch(null))
+		.transform((items) => items.filter((item): item is InstanceAiSetupItem => item !== null)),
 });
 
 export const threadTitleUpdatedPayloadSchema = z.object({
@@ -1355,9 +1370,23 @@ export type InstanceAiAgentPreviewHandoffContext = z.infer<
 	typeof instanceAiAgentPreviewHandoffContextSchema
 >;
 
+/**
+ * Sent with the setup panel's synthesized "Execute" user message. Signals the
+ * agent to run a test execution of the workflow instead of treating the
+ * message as a build request.
+ */
+export const instanceAiSetupPanelExecuteHandoffContextSchema = z.object({
+	source: z.literal('setup-panel-execute'),
+	workflowId: z.string().min(1).max(64),
+});
+export type InstanceAiSetupPanelExecuteHandoffContext = z.infer<
+	typeof instanceAiSetupPanelExecuteHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
+	instanceAiSetupPanelExecuteHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
@@ -1436,6 +1465,17 @@ export class InstanceAiEnsureThreadRequest extends Z.class({
 	sourceContext: instanceAiSourceContextSchema.optional(),
 }) {}
 
+/**
+ * Persist the pending new-agent artifact a thread has open: creates the agent
+ * under the id the frontend minted, or adopts it when a concurrent writer got
+ * there first, and binds it to the thread in the same request.
+ */
+export class InstanceAiPersistPendingAgentRequest extends Z.class({
+	projectId: z.string().min(1),
+	agentId: clientMintedAgentIdSchema,
+	name: z.string().min(1),
+}) {}
+
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
 
 export class InstanceAiGatewayEventsQuery extends Z.class({
@@ -1469,6 +1509,21 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 export interface InstanceAiSendMessageResponse {
 	runId: string;
 }
+
+/**
+ * Why a run was refused admission, sent as `meta.reason` on the 429 so the editor can
+ * tell the two cases apart. They need different copy and different advice: an instance
+ * limit is transient and not the user's fault, so retrying is right; a user limit means
+ * they already have runs in flight and retrying is exactly wrong.
+ */
+export const INSTANCE_AI_RUN_LIMIT_REASONS = ['user_run_limit', 'instance_run_limit'] as const;
+
+export type InstanceAiRunLimitReason = (typeof INSTANCE_AI_RUN_LIMIT_REASONS)[number];
+
+export type InstanceAiRunLimitMeta = {
+	reason: InstanceAiRunLimitReason;
+	limit: number;
+};
 
 // ---------------------------------------------------------------------------
 // Frontend store types (shared so both sides agree on structure)
@@ -2228,6 +2283,23 @@ export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
 
 /** Enables adding selected canvas nodes as chat context in the AI Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
+
+/** Enables the conversation-history tool and the past-conversations first-turn hint */
+export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
+
+export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
+/** Enables the node-usage context surface for Instance AI: the `node-usage`
+
+ *  action and the `nodeTypes` filter on `workflows(action="list")`. */
+export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
+
+/**
+ * Rollout flag for folder exploration in Instance AI: folder attribution on
+ * `workflows(action="list")` rows plus `folderPath` / `folderId` / `recursive`
+ * on that action. Off by default. PostHog owns cohort rollout;
+ * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
+ */
+export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

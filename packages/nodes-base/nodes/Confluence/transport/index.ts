@@ -13,6 +13,25 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { getAtlassianApiBaseUrl, resolveAtlassianCloudId } from '@utils/atlassian';
 
 export const CONFLUENCE_CREDENTIAL_NAME = 'confluenceCloudOAuth2Api';
+export const SERVICE_ACCOUNT_CREDENTIAL_NAME = 'atlassianServiceAccountApi';
+
+/**
+ * Resolves which credential the node is configured with. Dual-context like
+ * `getSiteParameter`: dropdown searches run in a load-options context, where only
+ * `getCurrentNodeParameter` sees the NDV's unsaved value. Anything other than the
+ * literal 'serviceAccount' — including the parameter being absent on workflows
+ * saved before the selector existed — maps to Cloud OAuth2.
+ */
+export function getConfluenceCredentialName(
+	ctx: IExecuteFunctions | ILoadOptionsFunctions,
+): string {
+	const raw =
+		'getCurrentNodeParameter' in ctx
+			? ctx.getCurrentNodeParameter('authentication')
+			: ctx.getNodeParameter('authentication', 0, 'cloudOAuth2');
+
+	return raw === 'serviceAccount' ? SERVICE_ACCOUNT_CREDENTIAL_NAME : CONFLUENCE_CREDENTIAL_NAME;
+}
 
 interface CaughtRequestError {
 	response?: { status?: unknown; data?: unknown };
@@ -107,7 +126,7 @@ export async function getConfluenceCloudId(
 ): Promise<string> {
 	return await resolveAtlassianCloudId.call(
 		this,
-		CONFLUENCE_CREDENTIAL_NAME,
+		getConfluenceCredentialName(this),
 		getSiteParameter(this),
 		'confluence',
 	);
@@ -135,7 +154,7 @@ export async function confluenceApiRequest(
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(
 			this,
-			CONFLUENCE_CREDENTIAL_NAME,
+			getConfluenceCredentialName(this),
 			options,
 		);
 	} catch (error) {
@@ -167,7 +186,7 @@ export async function confluenceApiRequestBinary(
 	try {
 		data = await this.helpers.httpRequestWithAuthentication.call(
 			this,
-			CONFLUENCE_CREDENTIAL_NAME,
+			getConfluenceCredentialName(this),
 			options,
 		);
 	} catch (error) {
@@ -207,7 +226,7 @@ export async function confluenceApiRequestUpload(
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(
 			this,
-			CONFLUENCE_CREDENTIAL_NAME,
+			getConfluenceCredentialName(this),
 			options,
 		);
 	} catch (error) {
