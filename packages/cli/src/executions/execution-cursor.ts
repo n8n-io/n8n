@@ -8,6 +8,7 @@ const timestamp = z.string().datetime({ offset: true });
 const Cursor = z
 	.object({
 		version: z.literal(1),
+		// TODO: add a `v2` position for engine 2.0 (UUID) execution ids, as a followup.
 		v1: z
 			.object({
 				timestamp,
@@ -18,7 +19,6 @@ const Cursor = z
 			})
 			.strict()
 			.optional(),
-		v2: z.object({ timestamp, id: z.string().uuid() }).strict().optional(),
 	})
 	.strict();
 
@@ -41,22 +41,25 @@ export function encodeExecutionCursor(cursor: ExecutionCursor): string {
 	return Buffer.from(JSON.stringify(cursor)).toString('base64url');
 }
 
-/** The row position to keep paging from, regardless of which execution version it names. */
+/** The row position to keep paging from. */
 export function positionOf(cursor: ExecutionCursor): ExecutionPosition | undefined {
-	return cursor.v1 ?? cursor.v2;
+	return cursor.v1;
 }
 
-/** Encode the cursor that continues a list from just after `row`. */
+/**
+ * Encode the cursor that continues a list from just after `row`, or `null` if `row` is an
+ * engine 2.0 execution — those aren't supported as a cursor position yet.
+ */
 export function encodeCursorForRow(row: {
 	id: string;
 	startedAt: Date | string | null;
 	createdAt: Date | string;
-}): string {
+}): string | null {
+	if (isExecutionIdV2(row.id)) return null;
+
 	const position: ExecutionPosition = {
 		timestamp: new Date(row.startedAt ?? row.createdAt).toISOString(),
 		id: row.id,
 	};
-	return encodeExecutionCursor(
-		isExecutionIdV2(row.id) ? { version: 1, v2: position } : { version: 1, v1: position },
-	);
+	return encodeExecutionCursor({ version: 1, v1: position });
 }
