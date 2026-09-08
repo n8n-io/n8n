@@ -27,6 +27,7 @@
     "@joplin/turndown-plugin-gfm": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@mozilla/readability": "catalog:",
+    "@n8n/api-types": "workspace:*",
     "agent-browser": "catalog:",
     "jsdom": "^23.0.1",
     "nanoid": "catalog:",

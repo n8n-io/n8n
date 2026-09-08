@@ -43,6 +43,16 @@ const showTabSelection = ref(false);
 
 const isConnected = computed(() => status.value === 'connected');
 const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.value);
+const recordingTitle = computed(() => {
+	if (!recording.value) return '';
+	if (recording.value.status === 'recording') {
+		const actionCount = recording.value.actions.length;
+		return `Recording · ${actionCount} ${actionCount === 1 ? 'action' : 'actions'}`;
+	}
+	if (recording.value.status === 'submitted') return 'Recording sent';
+	if (recording.value.status === 'submitting') return 'Sending recording…';
+	return 'Review recording';
+});
 </script>
 
 <template>
@@ -73,17 +83,7 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 					</template>
 				</div>
 				<div v-if="recording" class="recording-panel">
-					<h2 class="recording-title">
-						{{
-							recording.status === 'recording'
-								? `Recording · ${recording.actions.length} actions`
-								: recording.status === 'submitted'
-									? 'Recording sent'
-									: recording.status === 'submitting'
-										? 'Sending recording…'
-										: 'Review recording'
-						}}
-					</h2>
+					<h2 class="recording-title">{{ recordingTitle }}</h2>
 					<p v-if="recording.status === 'recording'" class="subtitle">
 						Use the browser as usual. Passwords and detected secrets are redacted.
 					</p>
@@ -182,6 +182,10 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 				<N8nButton size="large" :disabled="recording.actions.length === 0" @click="submitRecording">
 					Send to n8n
 				</N8nButton>
+			</template>
+			<template v-else-if="recording?.status === 'submitted'">
+				<N8nButton variant="outline" size="large" @click="disconnect">Disconnect</N8nButton>
+				<N8nButton size="large" @click="recordAgain">Record again</N8nButton>
 			</template>
 			<template v-else>
 				<N8nButton variant="outline" size="large" @click="disconnect">Disconnect</N8nButton>

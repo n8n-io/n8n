@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { N8nButton } from '@n8n/design-system';
-
-import type { BrowserRecordingAction } from '../../types';
+import type { BrowserRecordingAction } from '@n8n/api-types';
 
 defineProps<{ actions: BrowserRecordingAction[] }>();
 

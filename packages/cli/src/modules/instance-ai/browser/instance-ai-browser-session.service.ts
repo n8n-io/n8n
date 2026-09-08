@@ -1,4 +1,5 @@
 import type {
+	BrowserRecording,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
 	ToolCategory,
@@ -10,7 +11,6 @@ import { Service } from '@n8n/di';
 import type { BrowserExtensionTraceContext } from '@n8n/instance-ai';
 import type {
 	BrowserConnection,
-	BrowserRecording,
 	CDPRelayServer,
 	CreateCredentialPayload,
 	SecretsBuffer,

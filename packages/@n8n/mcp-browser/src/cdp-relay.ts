@@ -8,6 +8,7 @@
  * All tab IDs are CDP Target.targetId strings resolved by the extension.
  */
 
+import { browserRecordingSchema, type BrowserRecording } from '@n8n/api-types';
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import http from 'node:http';
@@ -16,14 +17,12 @@ import { WebSocketServer, WebSocket } from 'ws';
 
 import { getExtensionInstallInstructions } from './browser-discovery';
 import type {
-	BrowserRecording,
 	CDPCommand,
 	CDPResponse,
 	ExtensionCommands,
 	ExtensionEvents,
 	ExtensionResponse,
 } from './cdp-relay-protocol';
-import { browserRecordingSchema } from './cdp-relay-protocol';
 import {
 	ConnectionLostError,
 	ExtensionNotConnectedError,

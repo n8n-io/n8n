@@ -320,7 +320,6 @@ async function stopRecording(): Promise<void> {
 			}
 		}),
 	);
-	await new Promise((resolve) => setTimeout(resolve, 100));
 	pendingRecordingTabIds.clear();
 	recordingTabIds.clear();
 	activatingRecordingTabIds.clear();
@@ -336,7 +335,12 @@ function submitRecording(): { success: boolean; error?: string } {
 	if (!activeConnection) return { success: false, error: 'Reconnect before sending.' };
 	recording.status = 'submitting';
 	broadcastRecordingChange();
-	if (!activeConnection.relay.sendRecording(recording)) {
+	const recordingData = {
+		id: recording.id,
+		startedAt: recording.startedAt,
+		actions: recording.actions,
+	};
+	if (!activeConnection.relay.sendRecording(recordingData)) {
 		recording.status = 'review';
 		broadcastRecordingChange('The recording could not be sent. Try again.');
 		return { success: false, error: 'The recording could not be sent. Try again.' };
@@ -358,13 +362,7 @@ async function discardRecording(): Promise<void> {
 }
 
 function appendRecordingAction(
-	action: {
-		type: 'click' | 'context_menu' | 'copy' | 'input' | 'key' | 'select' | 'submit';
-		timestamp: number;
-		url: string;
-		target?: { tag: string; role?: string; label?: string; name?: string; inputType?: string };
-		value?: string;
-	},
+	action: Extract<ExtensionMessage, { type: 'recordingAction' }>['action'],
 	sender: chrome.runtime.MessageSender,
 ): void {
 	if (
@@ -394,14 +392,11 @@ function appendRecordingAction(
 		(action.type === 'copy' || action.type === 'context_menu') && action.value
 			? sanitizeUrl(action.value)
 			: '';
-	const value =
-		action.type === 'context_menu'
-			? sanitizedLink
-				? { value: sanitizedLink }
-				: {}
-			: sanitizedLink
-				? { value: sanitizedLink }
-				: sanitizeValue(action.value, target);
+	const value = sanitizedLink
+		? { value: sanitizedLink }
+		: action.type === 'context_menu'
+			? {}
+			: sanitizeValue(action.value, target);
 	recording.actions.push({
 		id: crypto.randomUUID(),
 		type: action.type,

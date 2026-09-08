@@ -1,3 +1,9 @@
+import type {
+	BrowserRecording as BrowserRecordingData,
+	BrowserRecordingActionType,
+	BrowserRecordingTarget,
+} from '@n8n/api-types';
+
 // ---------------------------------------------------------------------------
 // Shared shapes
 // ---------------------------------------------------------------------------
@@ -51,40 +57,8 @@ export interface ClearRelayUrlMessage {
 	type: 'clearRelayUrl';
 }
 
-export type BrowserRecordingActionType =
-	| 'navigation'
-	| 'click'
-	| 'context_menu'
-	| 'copy'
-	| 'input'
-	| 'key'
-	| 'select'
-	| 'submit'
-	| 'tab_switch';
-
-export interface BrowserRecordingTarget {
-	tag: string;
-	role?: string;
-	label?: string;
-	name?: string;
-	inputType?: string;
-}
-
-export interface BrowserRecordingAction {
-	id: string;
-	type: BrowserRecordingActionType;
-	timestamp: number;
-	url: string;
-	target?: BrowserRecordingTarget;
-	value?: string;
-	redacted?: boolean;
-}
-
-export interface BrowserRecording {
-	id: string;
-	startedAt: string;
+export interface BrowserRecording extends BrowserRecordingData {
 	status: 'recording' | 'review' | 'submitting' | 'submitted';
-	actions: BrowserRecordingAction[];
 }
 
 export interface StartRecordingMessage {
@@ -126,10 +100,6 @@ export interface RecordingActionMessage {
 		target?: BrowserRecordingTarget;
 		value?: string;
 	};
-}
-
-export interface StopBrowserRecordingMessage {
-	type: 'stopBrowserRecording';
 }
 
 export type ExtensionMessage =

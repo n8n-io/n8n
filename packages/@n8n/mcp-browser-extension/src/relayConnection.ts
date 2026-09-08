@@ -7,10 +7,11 @@
  * All communication with the relay uses these CDP target IDs.
  */
 
+import type { BrowserRecording } from '@n8n/api-types';
+
 import { DocumentPreparation } from './documentPreparation';
 import { ForeignFrames } from './foreignFrames';
 import { createLogger } from './logger';
-import type { BrowserRecording } from './types';
 
 interface ProtocolCommand {
 	id: number;

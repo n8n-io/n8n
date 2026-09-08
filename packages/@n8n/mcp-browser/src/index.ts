@@ -2,8 +2,6 @@ export { BrowserConnection } from './connection';
 export type { BrowserConnectionOptions } from './connection';
 export { CDPRelayServer } from './cdp-relay';
 export type { CDPRelayServerOptions } from './cdp-relay';
-export { browserRecordingSchema } from './cdp-relay-protocol';
-export type { BrowserRecording } from './cdp-relay-protocol';
 export { BROWSER_USE_EXTENSION_ID, buildExtensionConnectUrl } from './extension-connect';
 // Exposed for the eval harness's local (real-site) browser mode, which needs the
 // developer's installed browser AND its profile directory. Export-only: no

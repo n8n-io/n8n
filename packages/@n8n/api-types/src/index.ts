@@ -97,6 +97,18 @@ export {
 
 export { isValidTimeZone, StrictTimeZoneSchema, TimeZoneSchema } from './schemas/timezone.schema';
 
+export {
+	browserRecordingActionSchema,
+	browserRecordingSchema,
+	browserRecordingTargetSchema,
+} from './schemas/browser-recording.schema';
+export type {
+	BrowserRecording,
+	BrowserRecordingAction,
+	BrowserRecordingActionType,
+	BrowserRecordingTarget,
+} from './schemas/browser-recording.schema';
+
 export type {
 	ChatHubPushMessage,
 	ChatHubStreamEvent,

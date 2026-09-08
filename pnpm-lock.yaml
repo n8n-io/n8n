@@ -2957,6 +2957,9 @@ importers:
       '@mozilla/readability':
         specifier: 'catalog:'
         version: 0.6.0
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       agent-browser:
         specifier: 'catalog:'
         version: 0.26.0
@@ -3021,6 +3024,9 @@ importers:
 
   packages/@n8n/mcp-browser-extension:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../../frontend/@n8n/design-system

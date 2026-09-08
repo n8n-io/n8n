@@ -13,8 +13,5 @@ export default defineConfig({
 		},
 		outDir: 'dist',
 		emptyOutDir: false,
-		rollupOptions: {
-			output: { entryFileNames: 'recorder.js' },
-		},
 	},
 });

@@ -16,6 +16,7 @@ if (existing) {
 } else {
 	const state: RecorderState = { active: true, inputTimers: new Map() };
 	window.__n8nBrowserRecorder = state;
+	const inFlightMessages = new Set<Promise<unknown>>();
 
 	const normalized = (value: string | null | undefined, limit = 160) => {
 		const result = value?.replace(/\s+/g, ' ').trim().slice(0, limit);
@@ -90,13 +91,13 @@ if (existing) {
 		);
 	};
 
-	const send = (
+	const send = async (
 		type: 'click' | 'context_menu' | 'copy' | 'input' | 'key' | 'select' | 'submit',
 		element: Element,
 		value?: string,
-	) => {
+	): Promise<void> => {
 		if (!state.active) return;
-		void chrome.runtime.sendMessage({
+		const message = chrome.runtime.sendMessage({
 			type: 'recordingAction',
 			action: {
 				type,
@@ -106,6 +107,14 @@ if (existing) {
 				...(value === undefined ? {} : { value }),
 			},
 		});
+		inFlightMessages.add(message);
+		try {
+			await message;
+		} catch {
+			// The extension can stop while an action is in flight.
+		} finally {
+			inFlightMessages.delete(message);
+		}
 	};
 
 	const valueFor = (element: Element): string | undefined => {
@@ -123,12 +132,14 @@ if (existing) {
 		return undefined;
 	};
 
-	const flushPendingInputs = () => {
+	const flushPendingInputs = async (): Promise<void> => {
+		const pendingMessages: Array<Promise<void>> = [];
 		for (const [element, timer] of state.inputTimers) {
 			clearTimeout(timer);
-			send('input', element, valueFor(element));
+			pendingMessages.push(send('input', element, valueFor(element)));
 		}
 		state.inputTimers.clear();
+		await Promise.allSettled([...pendingMessages, ...inFlightMessages]);
 	};
 
 	const copiedText = (event: ClipboardEvent): string | undefined => {
@@ -157,9 +168,9 @@ if (existing) {
 		'click',
 		(event) => {
 			if (!event.isTrusted) return;
-			flushPendingInputs();
+			void flushPendingInputs();
 			const target = eventTarget(event);
-			if (target) send('click', target);
+			if (target) void send('click', target);
 		},
 		true,
 	);
@@ -168,7 +179,7 @@ if (existing) {
 		'contextmenu',
 		(event) => {
 			if (!event.isTrusted) return;
-			flushPendingInputs();
+			void flushPendingInputs();
 			const target = eventTarget(event);
 			if (!target) return;
 			const selection = document.getSelection()?.toString().slice(0, 200);
@@ -178,7 +189,7 @@ if (existing) {
 				timestamp: Date.now(),
 			};
 			const link = target instanceof HTMLAnchorElement ? target : target.closest('a[href]');
-			send('context_menu', target, link instanceof HTMLAnchorElement ? link.href : undefined);
+			void send('context_menu', target, link instanceof HTMLAnchorElement ? link.href : undefined);
 		},
 		true,
 	);
@@ -194,7 +205,7 @@ if (existing) {
 			) {
 				return;
 			}
-			flushPendingInputs();
+			void flushPendingInputs();
 			const target = eventTarget(event);
 			const key = [
 				event.ctrlKey ? 'Control' : '',
@@ -205,7 +216,7 @@ if (existing) {
 			]
 				.filter(Boolean)
 				.join('+');
-			if (target) send('key', target, key);
+			if (target) void send('key', target, key);
 		},
 		true,
 	);
@@ -215,7 +226,7 @@ if (existing) {
 		(event) => {
 			if (!event.isTrusted) return;
 			const target = copySource(event);
-			if (target) send('copy', target, copiedText(event) ?? recentCopyContext()?.value);
+			if (target) void send('copy', target, copiedText(event) ?? recentCopyContext()?.value);
 			state.copyContext = undefined;
 		},
 		true,
@@ -233,7 +244,7 @@ if (existing) {
 				target,
 				setTimeout(() => {
 					state.inputTimers.delete(target);
-					send('input', target, valueFor(target));
+					void send('input', target, valueFor(target));
 				}, 400),
 			);
 		},
@@ -249,7 +260,7 @@ if (existing) {
 			const timer = state.inputTimers.get(target);
 			if (timer) clearTimeout(timer);
 			state.inputTimers.delete(target);
-			send(target instanceof HTMLSelectElement ? 'select' : 'input', target, valueFor(target));
+			void send(target instanceof HTMLSelectElement ? 'select' : 'input', target, valueFor(target));
 		},
 		true,
 	);
@@ -258,27 +269,36 @@ if (existing) {
 		'submit',
 		(event) => {
 			if (!event.isTrusted) return;
-			flushPendingInputs();
+			void flushPendingInputs();
 			const target = eventTarget(event);
-			if (target) send('submit', target);
+			if (target) void send('submit', target);
 		},
 		true,
 	);
 
 	document.addEventListener('visibilitychange', () => {
-		if (document.visibilityState === 'hidden') flushPendingInputs();
+		if (document.visibilityState === 'hidden') void flushPendingInputs();
 	});
-	window.addEventListener('pagehide', flushPendingInputs);
+	window.addEventListener('pagehide', () => {
+		void flushPendingInputs();
+	});
 
-	chrome.runtime.onMessage.addListener((message: unknown) => {
+	chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
 		if (
 			message !== null &&
 			typeof message === 'object' &&
 			(message as { type?: unknown }).type === 'stopBrowserRecording'
 		) {
-			flushPendingInputs();
+			const pendingFlush = flushPendingInputs();
 			state.active = false;
+			void pendingFlush
+				.finally(() => {
+					sendResponse();
+				})
+				.catch(() => {});
+			return true;
 		}
+		return undefined;
 	});
 }
 
