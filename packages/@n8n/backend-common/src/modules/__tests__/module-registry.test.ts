@@ -4,7 +4,9 @@ import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import type { LicenseState } from '../../license-state';
+import { MissingModuleError } from '../errors/missing-module.error';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
+import { PackagedModuleLoadError } from '../errors/packaged-module-load.error';
 import { getModuleEntryUrl, ModuleRegistry } from '../module-registry';
 
 beforeEach(() => {
@@ -154,6 +156,91 @@ describe('loadModules', () => {
 		await moduleRegistry.loadModules([]);
 
 		expect(moduleRegistry.entities).toEqual([]);
+	});
+});
+
+describe('loadModules routes', () => {
+	const newRegistry = () => {
+		const ModuleClass = { entities: vi.fn().mockReturnValue([]) };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getClasses: vi.fn().mockReturnValue([ModuleClass]),
+		});
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
+
+		return new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+	};
+
+	it('should import a module from the manifest, and skip the filesystem route', async () => {
+		const importPackagedModule = vi.fn().mockResolvedValue({});
+		const moduleRegistry = newRegistry();
+		moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+		// The filesystem route has no `dist/modules/insights` to import here, so it
+		// would throw `MissingModuleError`. Resolving proves the name was skipped.
+		await moduleRegistry.loadModules(['insights']);
+
+		expect(importPackagedModule).toHaveBeenCalledTimes(1);
+	});
+
+	it('should use the filesystem route for a name the manifest does not carry', async () => {
+		const importPackagedModule = vi.fn().mockResolvedValue({});
+		const moduleRegistry = newRegistry();
+		moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+		await expect(moduleRegistry.loadModules(['otel'])).rejects.toThrowError(MissingModuleError);
+
+		expect(importPackagedModule).not.toHaveBeenCalled();
+	});
+
+	it('should not import a manifest module that is not being loaded', async () => {
+		const importInsights = vi.fn().mockResolvedValue({});
+		const importOtel = vi.fn().mockResolvedValue({});
+		const moduleRegistry = newRegistry();
+		moduleRegistry.registerPackagedModules({ insights: importInsights, otel: importOtel });
+
+		await moduleRegistry.loadModules(['insights']);
+
+		expect(importInsights).toHaveBeenCalledTimes(1);
+		expect(importOtel).not.toHaveBeenCalled();
+	});
+
+	it('should not import a manifest module that is disabled', async () => {
+		process.env.N8N_DISABLED_MODULES = 'insights';
+		const importInsights = vi.fn().mockResolvedValue({});
+		const moduleRegistry = newRegistry();
+		moduleRegistry.registerPackagedModules({ insights: importInsights });
+
+		await moduleRegistry.loadModules([]);
+
+		expect(importInsights).not.toHaveBeenCalled();
+	});
+
+	it('should preserve the requested load order across both routes', async () => {
+		const loaded: string[] = [];
+		const recordLoad = (name: string) => async () => {
+			loaded.push(name);
+			await Promise.resolve();
+		};
+
+		const moduleRegistry = newRegistry();
+		moduleRegistry.registerPackagedModules({
+			'oauth-server': recordLoad('oauth-server'),
+			mcp: recordLoad('mcp'),
+		});
+
+		await moduleRegistry.loadModules(['oauth-server', 'mcp']);
+
+		expect(loaded).toEqual(['oauth-server', 'mcp']);
+	});
+
+	it('should wrap a failing manifest import in `PackagedModuleLoadError`', async () => {
+		const importPackagedModule = vi.fn().mockRejectedValue(new Error('Cannot find package'));
+		const moduleRegistry = newRegistry();
+		moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+		await expect(moduleRegistry.loadModules(['insights'])).rejects.toThrowError(
+			PackagedModuleLoadError,
+		);
 	});
 });
 

@@ -8,6 +8,7 @@ import picocolors from 'picocolors';
 import { z, ZodError } from 'zod';
 
 import './zod-alias-support';
+import { packagedModules } from './modules/modules.manifest';
 
 /**
  * Registry that manages CLI commands, their execution, and metadata.
@@ -24,6 +25,10 @@ export class CommandRegistry {
 		private readonly cliParser: CliParser,
 	) {
 		this.commandName = process.argv[2] ?? 'start';
+
+		// Must precede every `loadModules` call below, so modules that live in a
+		// workspace package take the manifest route instead of the filesystem one.
+		this.moduleRegistry.registerPackagedModules(packagedModules);
 	}
 
 	async execute() {

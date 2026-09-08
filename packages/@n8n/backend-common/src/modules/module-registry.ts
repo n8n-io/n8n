@@ -9,10 +9,17 @@ import { pathToFileURL } from 'url';
 
 import { MissingModuleError } from './errors/missing-module.error';
 import { ModuleConfusionError } from './errors/module-confusion.error';
+import { PackagedModuleLoadError } from './errors/packaged-module-load.error';
 import { ModulesConfig } from './modules.config';
 import type { ModuleName } from './modules.config';
 import { LicenseState } from '../license-state';
 import { Logger } from '../logging/logger';
+
+/**
+ * Modules that live in a workspace package instead of `n8n/dist/modules`, keyed
+ * by module name. Values are thunks, so an ineligible module is never imported.
+ */
+export type PackagedModules = Partial<Record<ModuleName, () => Promise<unknown>>>;
 
 export const getModuleEntryUrl = (modulesDir: string, moduleName: string, isEnterprise = false) =>
 	pathToFileURL(
@@ -78,6 +85,17 @@ export class ModuleRegistry {
 
 	private readonly activeModules: string[] = [];
 
+	private readonly packagedModules: PackagedModules = {};
+
+	/**
+	 * Declares which modules `loadModules` must import from a workspace package
+	 * instead of the `n8n/dist/modules` filesystem path. Call this before
+	 * `loadModules`; cli passes its `src/modules/modules.manifest.ts`.
+	 */
+	registerPackagedModules(packagedModules: PackagedModules) {
+		Object.assign(this.packagedModules, packagedModules);
+	}
+
 	get eligibleModules(): ModuleName[] {
 		const { enabledModules, disabledModules } = this.modulesConfig;
 
@@ -95,44 +113,26 @@ export class ModuleRegistry {
 	 * This only registers the database entities for module and should be done
 	 * before instantiating the datasource.
 	 *
+	 * Each module takes exactly one of two routes: the packaged-module manifest
+	 * (see `registerPackagedModules`) or the `n8n/dist/modules` filesystem path.
+	 * A name in the manifest is skipped on the filesystem route, so a module
+	 * class can never be registered twice.
+	 *
 	 * This will not register routes or do any other kind of module related
 	 * setup.
 	 */
 	async loadModules(modules?: ModuleName[]) {
-		let modulesDir: string;
-
-		try {
-			// docker + tests
-			const n8nPackagePath = require.resolve('n8n/package.json');
-			const n8nRoot = path.dirname(n8nPackagePath);
-			const srcDirExists = existsSync(path.join(n8nRoot, 'src'));
-			const dir = process.env.NODE_ENV === 'test' && srcDirExists ? 'src' : 'dist';
-			modulesDir = path.join(n8nRoot, dir, 'modules');
-		} catch {
-			// local dev
-			// n8n binary is inside the bin folder, so we need to go up two levels
-			modulesDir = path.resolve(process.argv[1], '../../dist/modules');
-		}
+		const modulesDir = this.resolveModulesDir();
 
 		for (const moduleName of modules ?? this.eligibleModules) {
-			try {
-				await import(getModuleEntryUrl(modulesDir, moduleName));
-			} catch (primaryError) {
-				try {
-					await import(getModuleEntryUrl(modulesDir, moduleName, true));
-				} catch (error) {
-					const loggedError =
-						primaryError instanceof Error &&
-						'code' in primaryError &&
-						primaryError.code !== 'MODULE_NOT_FOUND'
-							? primaryError
-							: error;
-					throw new MissingModuleError(
-						moduleName,
-						loggedError instanceof Error ? loggedError.message : '',
-					);
-				}
+			const importPackagedModule = this.packagedModules[moduleName];
+
+			if (importPackagedModule) {
+				await this.loadPackagedModule(moduleName, importPackagedModule);
+				continue; // explicit skip - never also load this name from the filesystem
 			}
+
+			await this.loadFilesystemModule(modulesDir, moduleName);
 		}
 
 		for (const ModuleClass of this.moduleMetadata.getClasses()) {
@@ -145,6 +145,54 @@ export class ModuleRegistry {
 			if (loaders?.length) this.nodeLoaders.push(...loaders);
 
 			await Container.get(ModuleClass).commands?.();
+		}
+	}
+
+	private resolveModulesDir() {
+		try {
+			// docker + tests
+			const n8nPackagePath = require.resolve('n8n/package.json');
+			const n8nRoot = path.dirname(n8nPackagePath);
+			const srcDirExists = existsSync(path.join(n8nRoot, 'src'));
+			const dir = process.env.NODE_ENV === 'test' && srcDirExists ? 'src' : 'dist';
+			return path.join(n8nRoot, dir, 'modules');
+		} catch {
+			// local dev
+			// n8n binary is inside the bin folder, so we need to go up two levels
+			return path.resolve(process.argv[1], '../../dist/modules');
+		}
+	}
+
+	private async loadPackagedModule(
+		moduleName: ModuleName,
+		importPackagedModule: () => Promise<unknown>,
+	) {
+		try {
+			await importPackagedModule();
+			this.logger.debug(`Loaded module "${moduleName}" from its workspace package`);
+		} catch (error) {
+			throw new PackagedModuleLoadError(moduleName, error instanceof Error ? error.message : '');
+		}
+	}
+
+	private async loadFilesystemModule(modulesDir: string, moduleName: ModuleName) {
+		try {
+			await import(getModuleEntryUrl(modulesDir, moduleName));
+		} catch (primaryError) {
+			try {
+				await import(getModuleEntryUrl(modulesDir, moduleName, true));
+			} catch (error) {
+				const loggedError =
+					primaryError instanceof Error &&
+					'code' in primaryError &&
+					primaryError.code !== 'MODULE_NOT_FOUND'
+						? primaryError
+						: error;
+				throw new MissingModuleError(
+					moduleName,
+					loggedError instanceof Error ? loggedError.message : '',
+				);
+			}
 		}
 	}
 
