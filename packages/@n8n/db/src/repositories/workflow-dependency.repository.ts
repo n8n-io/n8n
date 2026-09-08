@@ -1,6 +1,14 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
+import {
+	DataSource,
+	EntityManager,
+	IsNull,
+	LessThan,
+	LessThanOrEqual,
+	Repository,
+	Not,
+} from '@n8n/typeorm';
 
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type { User } from '../entities';
@@ -213,8 +221,11 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			workflowVersionId: LessThan(dependencies.workflowVersionId),
 			publishedVersionId: publishedVersionCondition,
 		});
+		// The workflow version bound stops a stale request from replacing rows a
+		// newer workflow version wrote before this indexer version deployed.
 		const outdatedIndexResult = await tx.delete(WorkflowDependency, {
 			workflowId,
+			workflowVersionId: LessThanOrEqual(dependencies.workflowVersionId),
 			indexVersionId: LessThan(WORKFLOW_DEPENDENCY_INDEX_VERSION),
 			publishedVersionId: publishedVersionCondition,
 		});

@@ -314,6 +314,39 @@ describe('WorkflowIndexService', () => {
 			);
 		});
 
+		it('should not create workflowCall dependencies for expression-based workflow IDs', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.executeWorkflow',
+					parameters: { workflowId: '={{ $json.workflowId }}' },
+				}),
+				createNode({
+					id: 'node-2',
+					type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+					parameters: {
+						source: 'database',
+						workflowId: { mode: 'id', value: '={{ $json.workflowId }}' },
+					},
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowCall',
+						}),
+					]),
+				}),
+			);
+		});
+
 		it('should handle multiple credentials on a single node', async () => {
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 

@@ -321,6 +321,10 @@ export class WorkflowIndexService {
 		if (!calledWorkflowId) {
 			return;
 		}
+		// Expressions resolve at runtime, so they are not static dependencies.
+		if (calledWorkflowId.trim().startsWith('=')) {
+			return;
+		}
 		dependencyUpdates.add({
 			dependencyType: 'workflowCall',
 			dependencyKey: calledWorkflowId,

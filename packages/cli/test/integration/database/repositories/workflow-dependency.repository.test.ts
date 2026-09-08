@@ -227,6 +227,53 @@ describe('WorkflowDependencyRepository', () => {
 			});
 		});
 
+		it('should not let a stale request replace rows a newer workflow version wrote', async () => {
+			//
+			// ARRANGE
+			//
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+
+			// Rows an older indexer version wrote for a newer workflow version.
+			await workflowDependencyRepository.insert({
+				workflowId: workflow.id,
+				workflowVersionId: 5,
+				publishedVersionId: null,
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-newer',
+				dependencyInfo: null,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
+
+			const staleDeps = new WorkflowDependencies(workflow.id, 3);
+			staleDeps.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-stale',
+				dependencyInfo: null,
+			});
+
+			//
+			// ACT
+			//
+			const result = await workflowDependencyRepository.updateDependenciesForWorkflow(
+				workflow.id,
+				staleDeps,
+			);
+
+			//
+			// ASSERT
+			//
+			expect(result).toBe(false);
+			const savedDependencies = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id },
+			});
+			expect(savedDependencies).toHaveLength(1);
+			expect(savedDependencies[0]).toMatchObject({
+				dependencyKey: 'cred-newer',
+				workflowVersionId: 5,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
+		});
+
 		it('should prevent races between concurrent updates', async () => {
 			//
 			// ARRANGE
