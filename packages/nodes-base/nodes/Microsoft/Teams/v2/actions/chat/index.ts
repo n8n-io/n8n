@@ -1,10 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import * as create from './create.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import { SERVICE_PRINCIPAL_AUTH, SP_HIDE } from '../../transport';
 
-export { get, getAll };
+export { create, get, getAll };
 
 export const description: INodeProperties[] = [
 	{
@@ -35,6 +36,12 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a chat',
+				action: 'Create chat',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a chat',
@@ -47,9 +54,10 @@ export const description: INodeProperties[] = [
 				action: 'Get many chats',
 			},
 		],
-		default: 'getAll',
+		default: 'create',
 	},
 
+	...create.description,
 	...get.description,
 	...getAll.description,
 ];
