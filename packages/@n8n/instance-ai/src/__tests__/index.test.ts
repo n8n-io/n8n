@@ -37,9 +37,6 @@ vi.mock('../tools/web-research/sanitize-web-content', () => ({
 	wrapUntrustedData: (content: string, source: string) =>
 		`<untrusted_data source="${source}">${content}</untrusted_data>`,
 }));
-vi.mock('../tools', () => ({
-	createAllTools: () => ['all-tools'],
-}));
 vi.mock('../tools/orchestration/agent-persistence', () => ({
 	SUB_AGENT_RESOURCE_PREFIX: 'instance-ai-subagent',
 	createSubAgentResourceIdPrefix: (threadId: string) => `instance-ai-subagent:${threadId}:`,
@@ -188,7 +185,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		const entrypoint = await import('../index.js');
 
 		expect(entrypoint.MAX_STEPS.ORCHESTRATOR).toBeGreaterThan(0);
-		expect(entrypoint.createAllTools).toEqual(expect.any(Function));
 		expect(entrypoint.createInstanceAgent).toEqual(expect.any(Function));
 		expect(entrypoint.createLazyRuntimeWorkspace).toEqual(expect.any(Function));
 		expect(entrypoint.getParseableAttachmentMimeTypes).toEqual(expect.any(Function));
@@ -218,8 +214,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(entrypoint.wrapUntrustedData('hello', 'https://example.com')).toContain(
 			'<untrusted_data source="https://example.com">',
 		);
-		expect(call(entrypoint.createAllTools)).toEqual(['all-tools']);
-
 		expect(entrypoint.PURE_REPLAY_TOOLS.has('web-search')).toBe(true);
 		expect(entrypoint.createSubAgentResourceIdPrefix('thread-1')).toBe(
 			'instance-ai-subagent:thread-1:',

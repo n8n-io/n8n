@@ -525,6 +525,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				workflowId,
 				projectId,
 				executionId,
+				node: executeData?.node,
 			});
 		}
 

@@ -1281,3 +1281,57 @@ describe('InstanceAiMemoryService.cleanupExpiredThreads', () => {
 		dateNow.mockRestore();
 	});
 });
+
+describe('bindAgentBuilderTarget', () => {
+	const target = { agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'Support Triage' };
+
+	function seedThread(metadata: Record<string, unknown>, resourceId = 'user-1') {
+		mockGetThread.mockResolvedValue({
+			id: 'thread-1',
+			title: 'Chat',
+			resourceId,
+			metadata,
+			createdAt: new Date('2026-08-20T00:00:00.000Z'),
+			updatedAt: new Date('2026-08-20T00:00:00.000Z'),
+		});
+		mockSaveThread.mockImplementation(async (thread: unknown) => thread);
+	}
+
+	beforeEach(() => {
+		mockGetThread.mockReset();
+		mockSaveThread.mockReset();
+	});
+
+	// A merge-style update cannot delete a key, and a thread carrying both makes a
+	// reload show a phantom blank artifact next to the real agent.
+	it('replaces the pending marker with the bound target in one write', async () => {
+		seedThread({
+			instanceAiPendingAgentTarget: { agentId: target.agentId, projectId: target.projectId },
+			creditsUsed: 2,
+		});
+
+		const thread = await createService().bindAgentBuilderTarget('user-1', 'thread-1', target);
+
+		expect(mockSaveThread).toHaveBeenCalledTimes(1);
+		expect(thread.metadata?.instanceAiPendingAgentTarget).toBeUndefined();
+		expect(thread.metadata?.instanceAiAgentBuilderTarget).toEqual(target);
+		expect(thread.metadata?.creditsUsed).toBe(2);
+	});
+
+	it('refuses a thread owned by someone else instead of reporting success', async () => {
+		seedThread({}, 'someone-else');
+
+		await expect(
+			createService().bindAgentBuilderTarget('user-1', 'thread-1', target),
+		).rejects.toThrow('Not authorized for this thread');
+		expect(mockSaveThread).not.toHaveBeenCalled();
+	});
+
+	it('reports a missing thread', async () => {
+		mockGetThread.mockResolvedValue(null);
+
+		await expect(
+			createService().bindAgentBuilderTarget('user-1', 'thread-1', target),
+		).rejects.toThrow('Thread thread-1 not found');
+	});
+});

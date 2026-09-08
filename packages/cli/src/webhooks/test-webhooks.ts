@@ -19,7 +19,6 @@ import type {
 } from 'n8n-workflow';
 
 import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
-import { isChatOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
@@ -359,9 +358,7 @@ export class TestWebhooks implements IWebhookManager {
 
 		if (node?.type !== CHAT_TRIGGER_NODE_TYPE) return false;
 
-		return classifyTriggerIdentity(node.type, node.parameters, {
-			isChatOAuth2Enabled: isChatOAuth2Enabled(),
-		}).providesN8nIdentity;
+		return classifyTriggerIdentity(node.type, node.parameters).providesN8nIdentity;
 	}
 
 	/**
@@ -380,7 +377,7 @@ export class TestWebhooks implements IWebhookManager {
 		webhooks: IWebhookData[],
 		n8nAuthCookie?: string,
 	) {
-		if (!n8nAuthCookie || !isChatOAuth2Enabled()) return undefined;
+		if (!n8nAuthCookie) return undefined;
 
 		const anyEstablishesIdentity = webhooks.some((webhook) =>
 			this.establishesRunnerIdentity(workflow, webhook.node),
