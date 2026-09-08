@@ -1,5 +1,7 @@
 import { DateTime, IANAZone, Settings } from 'luxon';
 
+import { createTimezoneAwareDateConstructor } from './workflow-timezone-date';
+
 import { extend, extendOptional } from '../extensions/extend';
 import { extendedFunctions } from '../extensions/function-extensions';
 
@@ -107,6 +109,11 @@ export function buildContext(
 	Settings.defaultZone = timezone ?? 'system';
 
 	const target: Record<string, unknown> = {};
+
+	// Local Date getters use the workflow timezone so expression preview and
+	// execution agree. Tournament resolves `Date` from this context (not the
+	// isolate global), matching Luxon's Settings.defaultZone behavior.
+	target.Date = createTimezoneAwareDateConstructor(timezone ?? 'system');
 
 	// __sanitize must be on the context because PrototypeSanitizer generates:
 	// obj[this.__sanitize(expr)] where 'this' is the context (via .call(ctx) wrapping)

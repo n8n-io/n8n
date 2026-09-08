@@ -2,6 +2,8 @@ import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expressio
 import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
+import { createTimezoneAwareDateConstructor } from './expression-timezone-date';
+
 import { UnexpectedError, UserError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
@@ -421,8 +423,9 @@ export class Expression {
 		 * Allowlist
 		 */
 
-		// Dates
-		data.Date = Date;
+		// Dates — local getters use the workflow timezone so preview and
+		// execution agree (browser vs server OS timezone mismatch).
+		data.Date = createTimezoneAwareDateConstructor(this.timezone);
 		data.DateTime = DateTime;
 		data.Interval = Interval;
 		data.Duration = Duration;
