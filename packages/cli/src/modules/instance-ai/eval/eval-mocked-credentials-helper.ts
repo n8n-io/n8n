@@ -23,6 +23,8 @@ import { ICredentialsHelper } from 'n8n-workflow';
 
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 
+import { isVendorSdkSubNode } from './workflow-analysis';
+
 const MOCK_MARKER = '__evalMockedCredential' as const;
 
 // `pathPrefix` must match what the vendor SDK appends to `baseURL`. OpenAI SDK appends
@@ -39,6 +41,8 @@ function getCredentialId(nodeCredentials: INodeCredentialsDetails): string | und
 export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 	readonly mockedCredentials: InstanceAiEvalMockedCredential[] = [];
 	readonly rewrittenCredentials: InstanceAiEvalRewrittenCredential[] = [];
+	/** Vendor sub-node calls this run could not point at the wire server, one per (node, reason). */
+	readonly interceptionGaps: string[] = [];
 
 	constructor(
 		private readonly inner: ICredentialsHelper,
@@ -149,17 +153,36 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		return this.applyServerUrlRewrite(credentials, type, nodeCredentials, executeData);
 	}
 
+	// Only vendor sub-nodes: every other node's traffic reaches the HTTP mock whatever its credential URL.
+	private recordInterceptionGap(node: INode | undefined, reason: string): void {
+		if (!node || !isVendorSdkSubNode(node.type)) return;
+		const message =
+			`Vendor sub-node "${node.name}" (${node.type}) executed without interception — ${reason}. ` +
+			'Its model/embedding call did not reach the mock layer, so this scenario did not exercise the built workflow.';
+		if (!this.interceptionGaps.includes(message)) this.interceptionGaps.push(message);
+	}
+
 	private applyServerUrlRewrite(
 		credentials: ICredentialDataDecryptedObject,
 		type: string,
 		nodeCredentials: INodeCredentialsDetails,
 		executeData: IExecuteData | undefined,
 	): ICredentialDataDecryptedObject {
-		if (!this.serverUrl) return credentials;
+		if (!this.serverUrl) {
+			this.recordInterceptionGap(
+				executeData?.node,
+				'vendor SDK interception is not active for this run',
+			);
+			return credentials;
+		}
 		const mapping = EVAL_PROVIDER_URL_FIELD[type];
 		if (!mapping) {
 			// No rewrite mapping — vendor SDK will hit its default URL. Refused upfront
 			// by assertUnpinCompatibility for LLM sub-nodes; this branch is for non-LLM HTTP creds.
+			this.recordInterceptionGap(
+				executeData?.node,
+				`credential type "${type}" has no wire-server URL rewrite mapping`,
+			);
 			this.logger.warn(
 				`[EvalMock] No URL rewrite mapping for credential type "${type}" — ` +
 					`vendor traffic from "${executeData?.node?.name ?? 'unknown'}" will hit the real provider.`,
@@ -174,6 +197,10 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		if (subNodeName && !rootName && this.subNodeToRoot) {
 			// Sub-node not in routing map — unexpected topology; wire server's
 			// unrouted-/v1 handler will surface this loudly too.
+			this.recordInterceptionGap(
+				executeData?.node,
+				'it has no vendor LLM routing entry, so its traffic reaches the wire server unrouted',
+			);
 			this.logger.warn(
 				`[EvalMock] No vendor LLM routing entry for sub-node "${subNodeName}" — ` +
 					'wire-server attribution will be unrouted. Check buildVendorLlmRouting coverage.',
