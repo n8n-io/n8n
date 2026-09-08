@@ -1,5 +1,3 @@
-import { DATA_TABLE_SYSTEM_COLUMNS } from './data-table.types';
-
 export const DIGITS = '0123456789';
 export const UPPERCASE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 export const LOWERCASE_LETTERS = UPPERCASE_LETTERS.toLowerCase();
@@ -34,16 +32,12 @@ export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
 // Fields the Evaluation Trigger adds to its output alongside dataset columns,
-// regardless of source (Data table or Google Sheets).
-export const EVALUATION_TRIGGER_METADATA_FIELDS = ['row_number', 'row_id', '_rowsLeft'] as const;
-// Additional bookkeeping columns spread into the trigger's output as-is
-// (DATA_TABLE_SYSTEM_COLUMNS) — only present when the trigger's source is
-// Data table. A Google Sheets-sourced trigger can have a genuine user column
-// with one of these names, so callers must only apply this when they know
-// the trigger's source is Data table.
-export const EVALUATION_TRIGGER_DATA_TABLE_METADATA_FIELDS = [
-	...DATA_TABLE_SYSTEM_COLUMNS,
-] as const;
+// regardless of source (Data table or Google Sheets). `row_id` and the Data
+// table system columns (id/createdAt/updatedAt) are NOT here — those are only
+// added by the Data table source, so callers needing that distinction should
+// combine this with `DATA_TABLE_SYSTEM_COLUMNS` (from './data-table.types')
+// and `row_id` themselves, only when they know the trigger's source.
+export const EVALUATION_TRIGGER_METADATA_FIELDS = ['row_number', '_rowsLeft'] as const;
 export const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';

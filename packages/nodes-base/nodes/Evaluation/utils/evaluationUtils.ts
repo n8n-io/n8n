@@ -3,7 +3,6 @@ import {
 	NodeOperationError,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_TRIGGER_METADATA_FIELDS,
-	EVALUATION_TRIGGER_DATA_TABLE_METADATA_FIELDS,
 	jsonStringify,
 } from 'n8n-workflow';
 import type {
@@ -123,16 +122,13 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 	const rowNumber =
 		evaluationTrigger.row_number === 'row_number' ? 1 : evaluationTrigger.row_number;
 
-	const source = this.getNodeParameter('source', 0) as string;
-	// Data table bookkeeping columns (id/createdAt/updatedAt) only ever appear as
-	// metadata when the source is Data table — a Google Sheets source can have a
-	// genuine user column with one of those names, so don't strip them there.
-	const metadataFields: readonly string[] =
-		source === 'dataTable'
-			? [...EVALUATION_TRIGGER_METADATA_FIELDS, ...EVALUATION_TRIGGER_DATA_TABLE_METADATA_FIELDS]
-			: EVALUATION_TRIGGER_METADATA_FIELDS;
-
-	const columnNames = Object.keys(evaluationTrigger).filter((key) => !metadataFields.includes(key));
+	// `columnNames` only ever feeds the googleSheets branch below (the sheet's
+	// header row and its write-offset list) — the dataTable branch works off
+	// `outputs`/`data` directly — so this only needs the fields the trigger
+	// always adds, never the Data table-only bookkeeping columns.
+	const columnNames = Object.keys(evaluationTrigger).filter(
+		(key) => !(EVALUATION_TRIGGER_METADATA_FIELDS as readonly string[]).includes(key),
+	);
 
 	outputFields.forEach(({ outputName }) => {
 		if (!columnNames.includes(outputName)) {
@@ -144,6 +140,8 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		acc[outputName] = outputValue;
 		return acc;
 	}, {});
+
+	const source = this.getNodeParameter('source', 0) as string;
 
 	if (source === 'dataTable') {
 		if (this.helpers.getDataTableProxy === undefined) {

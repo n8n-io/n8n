@@ -1,7 +1,7 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
-	EVALUATION_TRIGGER_DATA_TABLE_METADATA_FIELDS,
+	DATA_TABLE_SYSTEM_COLUMNS,
 	EVALUATION_TRIGGER_METADATA_FIELDS,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
@@ -157,6 +157,11 @@ export function buildEvaluationTriggerSources(
 	);
 }
 
+// Data table row bookkeeping columns spread into the trigger's output as-is —
+// only present when the trigger's source is Data table (row_id, plus the Data
+// table's own id/createdAt/updatedAt system columns).
+const DATA_TABLE_TRIGGER_METADATA_FIELDS = ['row_id', ...DATA_TABLE_SYSTEM_COLUMNS] as const;
+
 export function readFirstOutputItem(
 	runData: RunData,
 	nodeName: string,
@@ -169,7 +174,7 @@ export function readFirstOutputItem(
 	// alongside the dataset columns; strip them when it's read as an input source.
 	const isDataTableSource = evaluationTriggers.get(nodeName) === true;
 	const metadataFields: readonly string[] = isDataTableSource
-		? [...EVALUATION_TRIGGER_METADATA_FIELDS, ...EVALUATION_TRIGGER_DATA_TABLE_METADATA_FIELDS]
+		? [...EVALUATION_TRIGGER_METADATA_FIELDS, ...DATA_TABLE_TRIGGER_METADATA_FIELDS]
 		: EVALUATION_TRIGGER_METADATA_FIELDS;
 	return Object.fromEntries(Object.entries(json).filter(([key]) => !metadataFields.includes(key)));
 }
