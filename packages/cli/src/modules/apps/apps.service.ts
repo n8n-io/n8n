@@ -1,4 +1,5 @@
 import type { CreateAppDto, CreatePageDto, UpdateAppDto, UpdatePageDto } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -7,6 +8,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { AppVersionService } from './app-version.service';
 import { AppRepository } from './app.repository';
 import { AppNotFoundError } from './errors/app-not-found.error';
+import { AppQuotaExceededError } from './errors/app-quota-exceeded.error';
 import { DataWorkflowNotFoundError } from './errors/data-workflow-not-found.error';
 import { IndexPageCannotHaveChildrenError } from './errors/index-page-cannot-have-children.error';
 import { IndexPageMustBeTopLevelError } from './errors/index-page-must-be-top-level.error';
@@ -21,9 +23,14 @@ export class AppsService {
 		private readonly pageRepository: PageRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly appVersionService: AppVersionService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto) {
+		const count = await this.appRepository.countByProjectId(projectId);
+		if (count >= this.globalConfig.apps.maxAppsPerProject) {
+			throw new AppQuotaExceededError(this.globalConfig.apps.maxAppsPerProject, count);
+		}
 		return await this.appRepository.createApp(projectId, dto.name, dto.namespace);
 	}
 
@@ -49,7 +56,8 @@ export class AppsService {
 	}
 
 	async createVersion(appId: string, source: Buffer, dist: Buffer) {
-		const version = await this.appVersionService.create(appId, source, dist);
+		const app = await this.getApp(appId);
+		const version = await this.appVersionService.create(appId, app.projectId, source, dist);
 		return this.appVersionService.toResponse(version);
 	}
 

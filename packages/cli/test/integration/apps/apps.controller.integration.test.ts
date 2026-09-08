@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { createWorkflow, getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { AppsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -56,6 +57,29 @@ describe('POST /projects/:projectId/apps', () => {
 			.post(`/projects/${ownerProject.id}/apps`)
 			.send({ name: 'My App', namespace: 'my-app' })
 			.expect(403);
+	});
+
+	test('rejects creating an app past maxAppsPerProject with a friendly message', async () => {
+		const appsConfig = Container.get(AppsConfig);
+		const original = appsConfig.maxAppsPerProject;
+		appsConfig.maxAppsPerProject = 1;
+
+		try {
+			await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/apps`)
+				.send({ name: 'First', namespace: 'first' })
+				.expect(200);
+
+			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/apps`)
+				.send({ name: 'Second', namespace: 'second' })
+				.expect(400);
+
+			expect(response.body.message).toContain('App limit exceeded');
+			expect(await appRepository.countByProjectId(ownerProject.id)).toBe(1);
+		} finally {
+			appsConfig.maxAppsPerProject = original;
+		}
 	});
 
 	test('rejects a duplicate namespace in the same project with 409', async () => {

@@ -26,4 +26,11 @@ export class AppVersion extends WithTimestampsAndStringId {
 	/** Null once retention pruned the dist tarball; the source tarball stays. */
 	@Column({ type: String, nullable: true })
 	distStorageKey: string | null;
+
+	@Column({ type: Number, default: 0 })
+	sourceSizeBytes: number;
+
+	/** Null once retention pruned the dist tarball, same as {@link distStorageKey}. */
+	@Column({ type: Number, nullable: true })
+	distSizeBytes: number | null;
 }

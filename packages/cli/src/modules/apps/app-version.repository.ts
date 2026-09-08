@@ -10,7 +10,16 @@ export class AppVersionRepository extends Repository<AppVersion> {
 	}
 
 	async insertVersion(
-		version: Pick<AppVersion, 'id' | 'appId' | 'storedAt' | 'sourceStorageKey' | 'distStorageKey'>,
+		version: Pick<
+			AppVersion,
+			| 'id'
+			| 'appId'
+			| 'storedAt'
+			| 'sourceStorageKey'
+			| 'distStorageKey'
+			| 'sourceSizeBytes'
+			| 'distSizeBytes'
+		>,
 	) {
 		return await this.save(this.create(version));
 	}
@@ -24,6 +33,20 @@ export class AppVersionRepository extends Repository<AppVersion> {
 		return await this.find({ where: { appId }, order: { createdAt: 'DESC', id: 'DESC' } });
 	}
 
+	async countByAppId(appId: string): Promise<number> {
+		return await this.countBy({ appId });
+	}
+
+	/** Sum of source+dist bytes across every version of every app in a project. */
+	async sumSizeByProjectId(projectId: string): Promise<number> {
+		const row = await this.createQueryBuilder('v')
+			.innerJoin('v.app', 'app')
+			.select('COALESCE(SUM(v.sourceSizeBytes), 0) + COALESCE(SUM(v.distSizeBytes), 0)', 'total')
+			.where('app.projectId = :projectId', { projectId })
+			.getRawOne<{ total: string | null }>();
+		return Number(row?.total ?? 0);
+	}
+
 	/** Versions that still have a dist beyond the newest `keep`, never the active one. */
 	async findDistPrunable(appId: string, keep: number, activeVersionId: string | null) {
 		const withDist = await this.find({
@@ -35,7 +58,7 @@ export class AppVersionRepository extends Repository<AppVersion> {
 
 	async clearDist(ids: string[]) {
 		if (ids.length === 0) return;
-		await this.update({ id: In(ids) }, { distStorageKey: null });
+		await this.update({ id: In(ids) }, { distStorageKey: null, distSizeBytes: null });
 	}
 
 	async deleteByAppId(appId: string) {

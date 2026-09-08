@@ -63,8 +63,10 @@ erDiagram
 "app_version" {
   varchar_36_ appId FK
   datetime_3_ createdAt
+  INTEGER distSizeBytes
   varchar_255_ distStorageKey
   varchar_36_ id PK
+  INTEGER sourceSizeBytes
   varchar_255_ sourceStorageKey
   varchar_8_ storedAt
   datetime_3_ updatedAt
