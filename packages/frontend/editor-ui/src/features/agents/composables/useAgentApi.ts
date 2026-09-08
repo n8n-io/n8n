@@ -492,7 +492,7 @@ export const getChatMessages = async (
 	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/messages`,
 	);
 };
 

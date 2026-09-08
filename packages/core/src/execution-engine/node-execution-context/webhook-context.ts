@@ -184,6 +184,14 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		});
 	}
 
+	async getTestWebhookUser(): Promise<IUser | undefined> {
+		// Only test-webhook registrations record the user who started the run, so this is
+		// `undefined` on a production webhook by construction.
+		const userId = this.webhookData.userId;
+		if (!userId) return undefined;
+		return await this.additionalData.getUserById?.(userId);
+	}
+
 	async validateCookieAuth(cookieValue: string): Promise<IUser> {
 		if (!this.additionalData.validateCookieAuth) {
 			throw new UnexpectedError('Cookie auth validation is not available');

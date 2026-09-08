@@ -1,0 +1,78 @@
+operationId: stopExecution
+tags:
+  - Executions
+summary: Stop an execution
+description: Stop an execution by id.
+x-required-scope: execution:stop
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: executionId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            mode:
+              type: string
+              enum:
+                - cli
+                - error
+                - integrated
+                - internal
+                - manual
+                - retry
+                - trigger
+                - webhook
+                - evaluation
+                - chat
+                - agent
+              example: manual
+            startedAt:
+              type: string
+              format: date-time
+              description: The time at which the execution started.
+            stoppedAt:
+              type: string
+              format: date-time
+              description: The time at which the execution stopped. Absent when no stop time was recorded.
+            finished:
+              type: boolean
+              description: Whether the execution ran to completion. Use `status` instead.
+              example: false
+              deprecated: true
+            status:
+              type: string
+              enum:
+                - canceled
+                - crashed
+                - error
+                - new
+                - running
+                - success
+                - unknown
+                - waiting
+              example: canceled
+          required:
+            - mode
+            - startedAt
+            - finished
+            - status
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
