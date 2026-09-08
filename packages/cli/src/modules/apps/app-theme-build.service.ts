@@ -127,7 +127,9 @@ export class AppThemeBuildService {
 			sandboxIdForApp(appId),
 			user,
 		);
-		const executeCommand = entry?.workspace.sandbox?.executeCommand;
+		// `.bind`: sandbox.executeCommand reads `this.ensureRunning()` internally, so
+		// hoisting the method off the instance without binding leaves `this` undefined.
+		const executeCommand = entry?.workspace.sandbox?.executeCommand?.bind(entry.workspace.sandbox);
 		const filesystem = entry?.workspace.filesystem;
 		if (!entry || !executeCommand || !filesystem) {
 			return { error: true, message: 'The sandbox is not available on this instance.' };
