@@ -6,6 +6,7 @@ import {
 	ModelConfig,
 	ToolDescriptor,
 } from '@n8n/agents';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	N8N_CHAT_ACTION_TOOL_NAME,
 	N8N_CHAT_CONTEXT_TOOL_NAME,
@@ -236,6 +237,8 @@ export class AgentRuntimeReconstructionService {
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 		/** Pass false when the caller cannot resume a suspended run (workflow executions). */
 		supportsHitl?: boolean,
+		/** Disable background jobs for task-triggered runtimes. */
+		allowBackgroundTasks = true,
 	): Promise<{
 		agent: RuntimeAgent;
 		toolRegistry: ToolRegistry;
@@ -292,6 +295,7 @@ export class AgentRuntimeReconstructionService {
 			instrumentation,
 			sandboxPrincipalHash,
 			unavailableTools,
+			allowBackgroundTasks,
 		});
 		return {
 			...runtime,
@@ -490,6 +494,7 @@ export class AgentRuntimeReconstructionService {
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash;
+		allowBackgroundTasks?: boolean;
 		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 		/** Tools the access filter already dropped; reported together with build-time stubs. */
 		unavailableTools?: UnavailableTool[];
@@ -514,8 +519,13 @@ export class AgentRuntimeReconstructionService {
 			instrumentation,
 			sandboxPrincipalHash,
 			parentWorkspace,
+			allowBackgroundTasks = true,
 		} = options;
 		const unavailable = [...(options.unavailableTools ?? [])];
+		const backgroundTasksEnabled =
+			runtimeProfile === 'top-level' &&
+			allowBackgroundTasks &&
+			Container.get(AgentsConfig).backgroundTasksEnabled;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
 		// Callers that cannot resume a suspended run (agents invoked as workflow
@@ -537,13 +547,11 @@ export class AgentRuntimeReconstructionService {
 				supportsHitl: canResume,
 				// Only an interactive top-level agent backgrounds waiting workflows: a
 				// child's job would nest under its own thread, where no check/cancel
-				// tools exist, and a top-level agent invoked as a workflow step
-				// (supportsHitl false) has no interactive turn to hand a receipt to.
-				// Everyone else handles waits the legacy way.
-				backgroundTasksEnabled:
-					runtimeProfile === 'top-level' &&
-					canResume &&
-					Container.get(AgentsConfig).backgroundTasksEnabled,
+				// tools exist; a top-level agent invoked as a workflow step
+				// (supportsHitl false) or by a task (allowBackgroundTasks false) has no
+				// interactive turn to hand a receipt to. Everyone else handles waits
+				// the legacy way.
+				backgroundTasksEnabled: backgroundTasksEnabled && canResume,
 			},
 			instrumentation,
 			unavailable,
@@ -627,6 +635,7 @@ export class AgentRuntimeReconstructionService {
 			user,
 			instrumentation,
 			sandboxPrincipalHash,
+			backgroundTasksEnabled,
 		});
 
 		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
@@ -797,6 +806,7 @@ export class AgentRuntimeReconstructionService {
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash;
+		backgroundTasksEnabled: boolean;
 		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 	}): Promise<void> {
 		const {
@@ -815,6 +825,7 @@ export class AgentRuntimeReconstructionService {
 			user,
 			instrumentation,
 			sandboxPrincipalHash,
+			backgroundTasksEnabled,
 			parentWorkspace,
 		} = params;
 
@@ -947,7 +958,7 @@ export class AgentRuntimeReconstructionService {
 			});
 			this.attachWriteTodosTool(agent, agentId);
 
-			if (Container.get(AgentsConfig).backgroundTasksEnabled) {
+			if (backgroundTasksEnabled) {
 				await this.attachBackgroundJobTools({
 					agent,
 					parentAgentId: parentAgentIdForDelegation,
@@ -958,6 +969,7 @@ export class AgentRuntimeReconstructionService {
 					delegation: subAgentDelegation,
 					user,
 					instrumentation,
+					...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				});
 			}
 		}
@@ -972,9 +984,11 @@ export class AgentRuntimeReconstructionService {
 		// never match a row — inline agents get their file input via workflow
 		// items instead.
 		if (runtimeProfile !== 'inline') {
-			const provider = config.model.split('/')[0];
 			agent.fileStore(
-				this.agentChatAttachmentService.getFileStore({ agentId, projectId }, provider),
+				this.agentChatAttachmentService.getFileStore(
+					{ agentId, projectId },
+					getProviderPrefix(config.model),
+				),
 			);
 		}
 	}
@@ -1068,6 +1082,7 @@ export class AgentRuntimeReconstructionService {
 		delegation: SubAgentDelegationConfig;
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
+		parentWorkspaceHandle?: AgentSandboxRuntime;
 	}): Promise<void> {
 		const { agent, parentAgentId, projectId, delegation, ...runContext } = params;
 		const {
