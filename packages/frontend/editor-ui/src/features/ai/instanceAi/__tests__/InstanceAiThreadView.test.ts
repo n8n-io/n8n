@@ -1767,6 +1767,13 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-preview-panel').style.width).toBe('480px');
 	});
 
+	it('falls back to the default chat panel width when the stored ratio is not a number', async () => {
+		localStorageState.store.set(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO, 'null');
+		const { getByTestId } = await renderAgentArtifact({ threadAreaWidth: 1200 });
+
+		expect(getByTestId('instance-ai-preview-panel').style.width).toBe('400px');
+	});
+
 	it('keeps expanded preview state independent from the agent dock', async () => {
 		const { getByTestId, user } = await renderAgentArtifact();
 		const previewPanel = getByTestId('instance-ai-preview-panel');
