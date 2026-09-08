@@ -293,6 +293,7 @@ export class SubAgentRunner {
 							parentAgentId: context.parentAgentId,
 						},
 						telemetry: {
+							userId: context.user?.id,
 							runType: context.runType,
 							configuration: buildAgentConfigurationTelemetryFromConfig(
 								runtimeSource.source.config,
@@ -331,6 +332,7 @@ export class SubAgentRunner {
 				userMessage,
 				record: messageRecord,
 				executionId,
+				userId: context.user?.id,
 				...(hitlStatus !== undefined ? { hitlStatus } : {}),
 			});
 			recorded = true;
@@ -361,6 +363,7 @@ export class SubAgentRunner {
 					userMessage,
 					record: recorder.getMessageRecord(),
 					executionId,
+					userId: context.user?.id,
 					...(operation.type === 'resume' ? { hitlStatus: 'resumed' as const } : {}),
 				});
 			}
@@ -413,6 +416,7 @@ export class SubAgentRunner {
 		userMessage: string | null;
 		record: MessageRecord;
 		executionId?: string;
+		userId?: string;
 		hitlStatus?: 'suspended' | 'resumed';
 	}): Promise<void> {
 		const {
@@ -426,6 +430,7 @@ export class SubAgentRunner {
 			userMessage,
 			record,
 			executionId,
+			userId,
 			hitlStatus,
 		} = params;
 
@@ -445,6 +450,7 @@ export class SubAgentRunner {
 					...(parentAgentId !== undefined ? { parentAgentId } : {}),
 				},
 				telemetry: {
+					userId,
 					runType,
 					configuration: buildAgentConfigurationTelemetryFromConfig(runtimeSource.config),
 				},

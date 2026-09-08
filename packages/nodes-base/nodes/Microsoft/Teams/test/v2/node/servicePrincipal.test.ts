@@ -72,14 +72,16 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
 	});
 
-	it.each(['getAll'])(
+	it.each(['add', 'getAll'])(
 		'chatMember:%s throws a static error and issues no request under SP',
 		async (operation) => {
 			selectSp({
 				resource: 'chatMember',
 				operation,
 				chatId: 'chatID',
+				userId: 'e76f456f-5c3f-4f1e-9d5e-4d8f0f6ab111',
 				returnAll: true,
+				options: {},
 			});
 
 			await expect(node.execute.call(ctx)).rejects.toThrow(
@@ -95,6 +97,14 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 	it.each([
 		['create', { subject: 'Sync', startDateTime: '2026-09-01T10:00:00Z' }],
 		['get', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
+		['deleteMeeting', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
+		[
+			'update',
+			{
+				meetingId: { __rl: true, mode: 'id', value: 'meeting-id' },
+				updateFields: { subject: 'Renamed' },
+			},
+		],
 	])(
 		'onlineMeeting:%s throws a static error and issues no request under SP',
 		async (op, params) => {

@@ -81,6 +81,7 @@ packages/cli/src/events/                                @n8n-io/catalysts
 packages/cli/src/security-audit/                        @n8n-io/catalysts
 packages/cli/src/modules/workflow-index/                @n8n-io/catalysts
 packages/cli/src/modules/breaking-changes/              @n8n-io/catalysts
+packages/cli/src/workflows/publication/                 @n8n-io/catalysts required
 packages/cli/src/modules/otel/                          @n8n-io/ligo
 
 packages/cli/src/auth/                                  @n8n-io/iam
