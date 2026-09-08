@@ -6,6 +6,7 @@ import type {
 	AgentEventData,
 	MemoryTaskUsageReport,
 } from '@n8n/agents';
+import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
@@ -37,8 +38,6 @@ import {
 	createInstanceAgent,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
-	getPromptWorkspaceRoot,
-	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
