@@ -1,6 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import type { McpJsonNudgeAction } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import userEvent from '@testing-library/user-event';
 import type { Mock } from 'vitest';
 import { defineComponent } from 'vue';
@@ -9,6 +10,7 @@ import McpJsonNudgeModal from './McpJsonNudgeModal.vue';
 const routerPushMock = vi.hoisted(() => vi.fn());
 const closeMock = vi.hoisted(() => vi.fn());
 const dismissForeverMock = vi.hoisted(() => vi.fn());
+const trackMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -17,6 +19,10 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility', () => ({
 	useMcpJsonNudgeEligibility: () => ({ dismissForever: dismissForeverMock }),
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
 }));
 
 // Mirrors the real Modal: the footer `close` fn closes the modal, and every
@@ -59,6 +65,7 @@ describe('McpJsonNudgeModal', () => {
 		routerPushMock.mockClear();
 		closeMock.mockClear();
 		dismissForeverMock.mockClear();
+		trackMock.mockClear();
 		onContinue = vi.fn<McpJsonNudgeAction>();
 	});
 
@@ -89,18 +96,25 @@ describe('McpJsonNudgeModal', () => {
 		expect(getByTestId('mcp-json-nudge-dont-show-again')).toBeInTheDocument();
 	});
 
-	it('continues the original action once and closes when Skip is clicked', async () => {
+	it('continues the original action once, closes, and tracks the skip when Skip is clicked', async () => {
 		const user = userEvent.setup();
-		const { getByTestId } = renderWith();
+		const { getByTestId } = renderWith('import_url');
 
 		await user.click(getByTestId('mcp-json-nudge-skip-button'));
 
 		expect(onContinue).toHaveBeenCalledTimes(1);
 		expect(closeMock).toHaveBeenCalled();
 		expect(routerPushMock).not.toHaveBeenCalled();
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.MCP.MCP_NUDGE_SKIPPED, {
+			surface: 'import_url',
+		});
+		expect(trackMock).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.MCP.MCP_NUDGE_DISMISSED,
+			expect.anything(),
+		);
 	});
 
-	it('abandons the original action, navigates to MCP settings, and closes when Connect n8n is clicked', async () => {
+	it('abandons the original action, navigates to MCP settings, closes, and tracks the connect click when Connect n8n is clicked', async () => {
 		const user = userEvent.setup();
 		const { getByTestId } = renderWith();
 
@@ -109,9 +123,12 @@ describe('McpJsonNudgeModal', () => {
 		expect(routerPushMock).toHaveBeenCalledWith({ name: MCP_SETTINGS_VIEW });
 		expect(closeMock).toHaveBeenCalled();
 		expect(onContinue).not.toHaveBeenCalled();
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.MCP.MCP_NUDGE_CONNECT_CLICKED, {
+			surface: 'export',
+		});
 	});
 
-	it('continues the original action once when closed without an action (× / esc)', async () => {
+	it('continues the original action once and tracks the dismissal when closed without an action (× / esc)', async () => {
 		const user = userEvent.setup();
 		const { getByTestId } = renderWith();
 
@@ -119,14 +136,24 @@ describe('McpJsonNudgeModal', () => {
 
 		expect(onContinue).toHaveBeenCalledTimes(1);
 		expect(routerPushMock).not.toHaveBeenCalled();
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.MCP.MCP_NUDGE_DISMISSED, {
+			surface: 'export',
+		});
+		expect(trackMock).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.MCP.MCP_NUDGE_SKIPPED,
+			expect.anything(),
+		);
 	});
 
-	it('dismisses the nudge forever when "Don\'t show this again" is checked', async () => {
+	it('dismisses the nudge forever and tracks the opt-out when "Don\'t show this again" is checked', async () => {
 		const user = userEvent.setup();
 		const { getByTestId } = renderWith();
 
 		await user.click(getByTestId('mcp-json-nudge-dont-show-again'));
 
 		expect(dismissForeverMock).toHaveBeenCalled();
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.MCP.MCP_NUDGE_OPTED_OUT, {
+			surface: 'export',
+		});
 	});
 });

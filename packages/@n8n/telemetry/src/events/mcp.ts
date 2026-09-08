@@ -14,7 +14,57 @@ const clientBrand = z
 
 const clientType = z.enum(['cli', 'ide', 'editor', 'assistant']).nullable();
 
+/**
+ * Which JSON action opened the MCP nudge modal. Copy and paste are separate
+ * surfaces owned by a later ticket and are not emitted yet.
+ */
+const nudgeSurface = z
+	.enum(['export', 'import_file', 'import_url'])
+	.describe(
+		'The action that opened the nudge: the Export JSON menu item, Import from file, or Import from URL',
+	);
+
 export const MCP_TELEMETRY = defineTelemetryEvents({
+	MCP_NUDGE_VIEWED: {
+		name: 'User viewed MCP nudge',
+		description:
+			'The MCP nudge modal opened after the user exported a workflow as JSON or imported one from a file or URL. Fires only when the modal opens, so a trigger that the flag, the two-impression cap, an opt-out, or instance-level MCP access suppresses emits nothing. Each fire consumes one impression.',
+		properties: z.object({
+			surface: nudgeSurface,
+		}),
+	},
+	MCP_NUDGE_CONNECT_CLICKED: {
+		name: 'User clicked connect in MCP nudge',
+		description:
+			'The user clicked "Connect n8n" in the MCP nudge. The app navigates to the MCP settings page and abandons the export or import that opened the nudge. Kept separate from the skip and dismiss events so the connect-to-export click ratio stays computable.',
+		properties: z.object({
+			surface: nudgeSurface,
+		}),
+	},
+	MCP_NUDGE_SKIPPED: {
+		name: 'User skipped MCP nudge',
+		description:
+			'The user clicked "Skip" in the MCP nudge. The export or import that opened the nudge completes unchanged. Closing with × or Escape is "User dismissed MCP nudge" instead.',
+		properties: z.object({
+			surface: nudgeSurface,
+		}),
+	},
+	MCP_NUDGE_DISMISSED: {
+		name: 'User dismissed MCP nudge',
+		description:
+			'The user closed the MCP nudge with × or Escape without choosing an action. The export or import that opened the nudge completes unchanged.',
+		properties: z.object({
+			surface: nudgeSurface,
+		}),
+	},
+	MCP_NUDGE_OPTED_OUT: {
+		name: 'User opted out of MCP nudge',
+		description:
+			'The user checked "Don\'t show this again" in the MCP nudge. Fires when the checkbox is checked, independent of which button later closes the modal. The nudge never shows again for this user.',
+		properties: z.object({
+			surface: nudgeSurface,
+		}),
+	},
 	USER_GAVE_MCP_ACCESS_TO_WORKFLOW: {
 		name: 'User gave MCP access to workflow',
 		description: 'A workflow was exposed over MCP.',

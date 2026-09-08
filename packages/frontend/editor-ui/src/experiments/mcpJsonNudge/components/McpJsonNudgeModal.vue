@@ -4,8 +4,10 @@ import { useMcpJsonNudgeEligibility } from '@/experiments/mcpJsonNudge/composabl
 import type { McpJsonNudgeAction } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 import McpClientLogoCards from '@/features/ai/mcpAccess/components/McpClientLogoCards.vue';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -24,6 +26,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const router = useRouter();
+const telemetry = useTelemetry();
 const eligibility = useMcpJsonNudgeEligibility();
 const modalBus = createEventBus();
 
@@ -39,18 +42,21 @@ const title = computed(() =>
 function onDontShowAgainChange(value: boolean) {
 	dontShowAgain.value = value;
 	if (value) {
+		telemetry.track(TELEMETRY_EVENT.MCP.MCP_NUDGE_OPTED_OUT, { surface: props.data.surface });
 		void eligibility.dismissForever();
 	}
 }
 
 function onConnect(close: () => void) {
 	closedByAction.value = true;
+	telemetry.track(TELEMETRY_EVENT.MCP.MCP_NUDGE_CONNECT_CLICKED, { surface: props.data.surface });
 	void router.push({ name: MCP_SETTINGS_VIEW });
 	close();
 }
 
 function onSkip(close: () => void) {
 	closedByAction.value = true;
+	telemetry.track(TELEMETRY_EVENT.MCP.MCP_NUDGE_SKIPPED, { surface: props.data.surface });
 	void props.data.onContinue?.();
 	close();
 }
@@ -59,6 +65,7 @@ function onSkip(close: () => void) {
 // export/import still completes.
 function onModalClosed() {
 	if (!closedByAction.value) {
+		telemetry.track(TELEMETRY_EVENT.MCP.MCP_NUDGE_DISMISSED, { surface: props.data.surface });
 		void props.data.onContinue?.();
 	}
 }

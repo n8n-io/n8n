@@ -4,12 +4,15 @@ import {
 	MCP_JSON_NUDGE_MODAL_KEY,
 	type McpJsonNudgeSurface,
 } from '@/experiments/mcpJsonNudge/constants';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 export type McpJsonNudgeAction = () => void | Promise<void>;
 
 export function useMcpJsonNudgeTrigger() {
 	const uiStore = useUIStore();
 	const eligibility = useMcpJsonNudgeEligibility();
+	const telemetry = useTelemetry();
 
 	/**
 	 * Runs `action` (the export or import) behind the nudge. When the nudge is
@@ -26,6 +29,7 @@ export function useMcpJsonNudgeTrigger() {
 			name: MCP_JSON_NUDGE_MODAL_KEY,
 			data: { surface, onContinue: action },
 		});
+		telemetry.track(TELEMETRY_EVENT.MCP.MCP_NUDGE_VIEWED, { surface });
 		void eligibility.recordImpression();
 	}
 
