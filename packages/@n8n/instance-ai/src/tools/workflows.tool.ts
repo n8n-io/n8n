@@ -1895,11 +1895,15 @@ async function handlePublish(
 	}
 
 	const supportingWorkflowIds = await resolveSupportingWorkflowIds(context, input.workflowId);
-	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
-
-	// Refused before the approval dialog, so the coverage facts reach the model
-	// even on an `always_allow` instance, which never shows the dialog at all.
 	const unverifiedDisclosure = await resolveUnverifiedPublishDisclosure(context, input.workflowId);
+	// `always_allow` covers routine publishing. An unverified publish is not
+	// routine, and `acknowledgeUnverified` is only the model's word that the user
+	// asked — so the dialog stays the proof, and the user reads the facts in it.
+	const needsApproval =
+		context.permissions?.publishWorkflow !== 'always_allow' || unverifiedDisclosure !== undefined;
+
+	// Refused before the dialog so the coverage facts reach the model first, and
+	// it has to relay them rather than answer a prompt the user never saw.
 	if (unverifiedDisclosure && input.acknowledgeUnverified !== true) {
 		return {
 			success: false,

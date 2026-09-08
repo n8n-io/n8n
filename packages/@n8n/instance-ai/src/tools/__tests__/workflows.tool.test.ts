@@ -2477,6 +2477,44 @@ describe('workflows tool', () => {
 			expect(result).toMatchObject({ success: false, denied: true, reason: 'not_verified' });
 		});
 
+		it('still asks the user to approve an acknowledged unverified publish under always_allow', async () => {
+			// The acknowledgement is only the model's word that the user asked, so
+			// it must not be the sole gate: without the dialog an `always_allow`
+			// instance would publish an unverified workflow with no disclosure
+			// anywhere the user could see.
+			const context = contextWithClaim(partialClaim, { publishWorkflow: 'always_allow' });
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{ action: 'publish', workflowId: 'wf1', acknowledgeUnverified: true },
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
+			expect(suspend).toHaveBeenCalledTimes(1);
+			const { message } = (suspend as Mock).mock.calls[0][0] as { message: string };
+			expect(message).toContain('NOT fully verified');
+		});
+
+		it('keeps always_allow routine for a verified publish', async () => {
+			const context = contextWithClaim(
+				{ ...partialClaim, level: 'verified', publishReady: true },
+				{ publishWorkflow: 'always_allow' },
+			);
+			(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend,
+			} as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: true });
+		});
+
 		it('should disclose the coverage in the approval prompt once acknowledged', async () => {
 			const context = contextWithClaim(partialClaim);
 			const suspend = vi.fn();
