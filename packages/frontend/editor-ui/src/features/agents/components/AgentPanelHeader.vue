@@ -9,28 +9,18 @@ defineProps<{
 </script>
 
 <template>
-	<div :class="$style.text">
-		<div :class="$style.row">
-			<div :class="$style.copy">
-				<N8nText :id="headerId" tag="h3" step="sm" :bold="true">{{ title }}</N8nText>
-				<N8nText v-if="description" color="text-light">{{ description }}</N8nText>
-			</div>
-			<div v-if="$slots.actions" :class="$style.actions">
-				<slot name="actions" />
-			</div>
+	<div :class="$style.row">
+		<div :class="$style.copy">
+			<N8nText :id="headerId" tag="h3" step="sm" :bold="true">{{ title }}</N8nText>
+			<N8nText v-if="description" color="text-light">{{ description }}</N8nText>
+		</div>
+		<div v-if="$slots.actions" :class="$style.actions">
+			<slot name="actions" />
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
-.text {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	flex: 1;
-	min-width: 0;
-}
-
 .row {
 	display: flex;
 	align-items: flex-start;

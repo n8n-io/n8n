@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nCard, N8nTabs } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
@@ -84,6 +84,7 @@ const emit = defineEmits<{
 	'tasks-changed': [];
 	'agent-changed': [];
 	'generate-eval-cases': [];
+	'open-preview': [];
 }>();
 
 const i18n = useI18n();
@@ -129,6 +130,16 @@ const i18n = useI18n();
 						:header="i18n.baseText('agents.builder.triggers.title')"
 						:description="i18n.baseText('agents.builder.triggers.description')"
 					>
+						<template #header-actions>
+							<N8nButton
+								variant="subtle"
+								icon="play"
+								size="medium"
+								:label="i18n.baseText('agents.builder.preview.button')"
+								data-testid="agent-triggers-preview-chat-button"
+								@click="emit('open-preview')"
+							/>
+						</template>
 						<AgentTriggersSection
 							:key="`${projectId}:${agentId}`"
 							:connected-triggers="connectedTriggers"
@@ -175,14 +186,12 @@ const i18n = useI18n();
 						/>
 					</AgentPanel>
 
-					<AgentPanel>
-						<AgentMemoryPanel
-							:config="localConfig"
-							:disabled="childrenDisabled"
-							data-testid="agent-memory-panel"
-							@update:config="emit('update:config', $event)"
-						/>
-					</AgentPanel>
+					<AgentMemoryPanel
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						data-testid="agent-memory-panel"
+						@update:config="emit('update:config', $event)"
+					/>
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel

@@ -28,7 +28,11 @@ const headerId = useId();
 			:header-id="headerId"
 			:title="props.header"
 			:description="props.description"
-		/>
+		>
+			<template v-if="$slots['header-actions']" #actions>
+				<slot name="header-actions" />
+			</template>
+		</AgentPanelHeader>
 		<slot />
 	</section>
 </template>
@@ -38,7 +42,7 @@ const headerId = useId();
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 	padding: var(--spacing--sm);
 	padding-block: var(--spacing--md);
 	background-color: var(--background--surface);
