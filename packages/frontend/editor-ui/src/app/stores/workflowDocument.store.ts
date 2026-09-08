@@ -39,7 +39,13 @@ import { assignNodeId, serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
 import type { INode, ProjectSharingData } from 'n8n-workflow';
-import { deepCopy, nodeIssuesToString } from 'n8n-workflow';
+import {
+	deepCopy,
+	migrateGroupNodesToNodeGroups,
+	migrateNodeGroupsToGroupNodes,
+	nodeIssuesToString,
+} from 'n8n-workflow';
+import { useGroupNodeExperiment } from '@/experiments/groupNode/useGroupNodeExperiment';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
@@ -195,6 +201,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const hydrated = ref(false);
 
 		const nodeTypesStore = useNodeTypesStore();
+		// Gates the group-node model. When off, `hydrate`/`serialize` keep the
+		// legacy `nodeGroups` path byte-for-byte.
+		const { isFeatureEnabled: isGroupNodeEnabled } = useGroupNodeExperiment();
 
 		const { cloneWorkflowObject, createWorkflowObject, ...workflowDocumentWorkflowObject } =
 			useWorkflowDocumentWorkflowObject({ workflowId });
@@ -292,6 +301,17 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			// nodes not present in the nodes snapshot, violating a BE invariant.
 			const connections = deepCopy(workflowDocumentConnections.connectionsBySourceNode.value);
 
+			// On the group-node path the store holds group nodes plus `parentId`
+			// members, so `nodeGroups` is reverse-derived from them. Writing both
+			// shapes keeps an old client or a downgrade coherent. Off the path, the
+			// legacy `nodeGroups` store is the source of truth, unchanged.
+			const nodeGroups = isGroupNodeEnabled.value
+				? migrateGroupNodesToNodeGroups({ nodes, connections }).nodeGroups
+				: workflowDocumentNodeGroups.allGroups.value.map((group) => ({
+						...group,
+						nodeIds: [...group.nodeIds],
+					}));
+
 			const data: WorkflowData = {
 				name: workflowDocumentName.name.value,
 				nodes,
@@ -302,10 +322,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				tags: [...workflowDocumentTags.tags.value],
 				versionId: workflowDocumentVersionData.versionId.value,
 				meta: workflowDocumentMeta.meta.value,
-				nodeGroups: workflowDocumentNodeGroups.allGroups.value.map((group) => ({
-					...group,
-					nodeIds: [...group.nodeIds],
-				})),
+				nodeGroups,
 			};
 
 			if (workflowId) {
@@ -356,16 +373,32 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				name: workflow.name ?? null,
 				description: workflow.description ?? null,
 			});
-			workflowDocumentNodes.setNodes(workflow.nodes ?? []);
-			workflowDocumentConnections.setConnections(workflow.connections ?? {});
+			// On the group-node path a legacy `nodeGroups` workflow is converted to
+			// group nodes plus `parentId` members before it reaches the store, so the
+			// canvas (which reads `parentId`) sees the group. The conversion skips a
+			// group whose id already exists as a node, so a D-shape workflow is left
+			// unchanged. `nodeGroups` is kept for the reverse-derive on save.
+			const shouldConvert = isGroupNodeEnabled.value && (workflow.nodeGroups?.length ?? 0) > 0;
+			const converted = shouldConvert
+				? migrateNodeGroupsToGroupNodes({
+						nodes: workflow.nodes ?? [],
+						connections: workflow.connections ?? {},
+						nodeGroups: workflow.nodeGroups ?? [],
+					})
+				: undefined;
+			const nodes = converted?.nodes ?? workflow.nodes ?? [];
+			const connections = converted?.connections ?? workflow.connections ?? {};
+
+			workflowDocumentNodes.setNodes(nodes);
+			workflowDocumentConnections.setConnections(connections);
 			workflowDocumentPinData.setPinData(workflow.pinData ?? {});
 			workflowDocumentNodeGroups.setNodeGroups(workflow.nodeGroups ?? []);
 
 			workflowDocumentWorkflowObject.initWorkflowObject({
 				id: workflow.id,
 				name: workflow.name,
-				nodes: workflow.nodes,
-				connections: workflow.connections,
+				nodes,
+				connections,
 				settings: workflow.settings ?? { ...DEFAULT_SETTINGS },
 				pinData: workflow.pinData ?? {},
 			});

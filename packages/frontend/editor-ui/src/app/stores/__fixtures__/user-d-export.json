@@ -1,0 +1,63 @@
+{
+	"name": "empty groups D",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-1120, -368],
+			"id": "75313b74-24ac-48d4-aa5e-3b2cc8e05271",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": { "options": {} },
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.5,
+			"position": [-896, -368],
+			"id": "8262b36b-a436-4679-939d-f0ea401d7601",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": { "options": {} },
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.5,
+			"position": [-672, -368],
+			"id": "8c26d7f0-5756-4d09-95be-3eb58c1a28dd",
+			"name": "Edit Fields1"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.group",
+			"typeVersion": 1,
+			"name": "Group",
+			"id": "1f44ac84-d73a-4743-83f2-ffd3e861fd9c",
+			"position": [-608, 176]
+		},
+		{
+			"parameters": { "options": {} },
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.5,
+			"position": [-560, 112],
+			"id": "86c4a617-4dcd-4610-b83d-c9b1204d4dd2",
+			"name": "Edit Fields2"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+		},
+		"Edit Fields": { "main": [[{ "node": "Edit Fields1", "type": "main", "index": 0 }]] }
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1", "binaryMode": "separate" },
+	"nodeGroups": [
+		{
+			"id": "1772dc83-87bf-4dcc-acfa-7ad643f7c20f",
+			"name": "Group 1",
+			"nodeIds": ["8262b36b-a436-4679-939d-f0ea401d7601", "8c26d7f0-5756-4d09-95be-3eb58c1a28dd"]
+		}
+	],
+	"id": "HTL5SPYhHY9nAsEF",
+	"tags": []
+}
