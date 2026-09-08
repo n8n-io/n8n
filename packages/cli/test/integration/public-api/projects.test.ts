@@ -390,7 +390,7 @@ describe('Projects in Public API', () => {
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty(
 				'message',
-				'request/query must NOT have additional properties',
+				"request/query Unrecognized key(s) in object: 'transferId'",
 			);
 			await expect(getProjectByNameOrFail(project.name)).resolves.not.toThrow();
 		});
@@ -601,7 +601,7 @@ describe('Projects in Public API', () => {
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty(
 				'message',
-				'request/body must NOT have additional properties',
+				"request/body Unrecognized key(s) in object: 'icon'",
 			);
 			await expect(getProjectByNameOrFail('old-name')).resolves.not.toThrow();
 		});
