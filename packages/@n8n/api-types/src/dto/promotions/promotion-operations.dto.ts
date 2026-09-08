@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 
 export class PromotePackageDto extends Z.class(
@@ -35,8 +36,8 @@ export const promotePackageCountsSchema = z.object({
 
 /** Describes the instance that handled the request, not any other instance. */
 export const promotePackageResultSchema = z.object({
-	connectionId: z.string(),
-	configId: z.string(),
+	connectionId: n8nIdSchema,
+	configId: n8nIdSchema,
 	counts: promotePackageCountsSchema,
 	git: promotionGitResultSchema,
 });
@@ -80,8 +81,8 @@ export const applyPackageCountsSchema = z.object({
 });
 
 export const applyPackageResultSchema = z.object({
-	connectionId: z.string(),
-	configId: z.string(),
+	connectionId: n8nIdSchema,
+	configId: n8nIdSchema,
 	counts: applyPackageCountsSchema,
 	git: promotionGitResultSchema,
 });
