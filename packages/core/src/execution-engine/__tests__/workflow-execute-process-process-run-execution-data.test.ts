@@ -2,6 +2,7 @@ import type {
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
 	EngineResponse,
+	EngineRequest,
 	WorkflowExecuteMode,
 	IExecuteFunctions,
 	IPairedItemData,
@@ -962,6 +963,83 @@ describe('processRunExecutionData', () => {
 				),
 			);
 			expect(selfReferences).toEqual([]);
+		});
+
+		test('runs a follow-up tool request after the requesting node resumed without source data', async () => {
+			const toolNode = createNodeData({ name: 'tool1', type: types.passThrough });
+
+			const requestFor = (id: string, query: string): EngineRequest => ({
+				actions: [
+					{
+						actionType: 'ExecutionNodeAction',
+						nodeName: toolNode.name,
+						input: { query },
+						type: 'ai_tool',
+						id,
+						metadata: {},
+					},
+				],
+				metadata: {},
+			});
+
+			const responses: Array<EngineResponse | undefined> = [];
+			const nodeTypeWithRequests = modifyNode(passThroughNode)
+				.return(requestFor('action_1', 'first'))
+				.return((r) => {
+					responses.push(r);
+					return requestFor('action_2', 'second');
+				})
+				.return((r) => {
+					responses.push(r);
+					return [[{ json: { done: true } }]];
+				})
+				.done();
+
+			const nodeWithRequests = createNodeData({
+				name: 'nodeWithRequests',
+				type: 'nodeWithRequests',
+			});
+
+			const nodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				nodeWithRequests: { type: nodeTypeWithRequests, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(nodeWithRequests, toolNode)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: nodeWithRequests.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: { main: [[{ json: { prompt: 'test prompt' } }]] },
+							node: nodeWithRequests,
+							source: null,
+						},
+					],
+				},
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			const runData = result.data.resultData.runData;
+
+			expect(
+				runData[toolNode.name].map((task) => task.inputOverride?.ai_tool?.[0]?.[0]?.json.query),
+			).toEqual(['first', 'second']);
+			expect(responses.map((r) => r?.actionResponses[0].action.id)).toEqual([
+				'action_1',
+				'action_2',
+			]);
+
+			const agentRuns = runData[nodeWithRequests.name];
+			expect(agentRuns.at(-1)?.executionStatus).toBe('success');
+			expect(agentRuns.at(-1)?.data?.main?.[0]?.[0]?.json).toEqual({ done: true });
+			expect(agentRuns.flatMap((run) => run.source)).toEqual([]);
 		});
 
 		test('resets responses between different node executions', async () => {

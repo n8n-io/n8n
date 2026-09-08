@@ -685,10 +685,10 @@ describe('WorkflowDataProxy', () => {
 		});
 	});
 
-	describe('Self-referencing paired item lineage', () => {
-		const createWorkflowWithSelfReference = (): IWorkflowBase => ({
+	describe('Cyclic paired item lineage', () => {
+		const createWorkflowWithCycle = (): IWorkflowBase => ({
 			id: '123',
-			name: 'self referencing lineage',
+			name: 'cyclic lineage',
 			nodes: [
 				{
 					id: 'node1',
@@ -730,7 +730,7 @@ describe('WorkflowDataProxy', () => {
 			updatedAt: new Date(),
 		});
 
-		const createRunWithSelfReference = (): IRun => ({
+		const createRunWithCycle = (middlePreviousNode: string): IRun => ({
 			data: createRunExecutionData({
 				resultData: {
 					runData: {
@@ -748,7 +748,7 @@ describe('WorkflowDataProxy', () => {
 								startTime: 110,
 								executionTime: 1,
 								executionIndex: 0,
-								source: [{ previousNode: 'Middle' }],
+								source: [{ previousNode: middlePreviousNode }],
 								data: { main: [[{ json: { id: 1 }, pairedItem: { item: 0 } }]] },
 							},
 						],
@@ -770,26 +770,32 @@ describe('WorkflowDataProxy', () => {
 			storedAt: 'db',
 		});
 
-		test('$("NodeName").item reports a circular link instead of exhausting the stack', () => {
-			const proxy = getProxyFromFixture(
-				createWorkflowWithSelfReference(),
-				createRunWithSelfReference(),
-				'End',
-			);
+		test.each([
+			{ label: 'a node that links back to itself', middlePreviousNode: 'Middle' },
+			{ label: 'two nodes that link back to each other', middlePreviousNode: 'End' },
+		])(
+			'reports a circular link instead of exhausting the stack for $label',
+			({ middlePreviousNode }) => {
+				const proxy = getProxyFromFixture(
+					createWorkflowWithCycle(),
+					createRunWithCycle(middlePreviousNode),
+					'End',
+				);
 
-			let caught: unknown;
-			try {
-				proxy.$('Start').item;
-			} catch (error) {
-				caught = error;
-			}
+				let caught: unknown;
+				try {
+					proxy.$('Start').item;
+				} catch (error) {
+					caught = error;
+				}
 
-			expect(caught).toBeInstanceOf(ExpressionError);
-			const exprError = caught as ExpressionError;
-			expect(exprError.message).toEqual('Circular item linking');
-			expect(exprError.context.type).toEqual('paired_item_invalid_info');
-			expect(exprError.context.nodeCause).toEqual('Middle');
-		});
+				expect(caught).toBeInstanceOf(ExpressionError);
+				const exprError = caught as ExpressionError;
+				expect(exprError.message).toEqual('Circular item linking');
+				expect(exprError.context.type).toEqual('paired_item_invalid_info');
+				expect(exprError.context.nodeCause).toEqual('Middle');
+			},
+		);
 	});
 
 	describe('Pinned data with manual execution', () => {
