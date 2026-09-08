@@ -209,6 +209,37 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 			: defaultCredentialType;
 	}
 
+	/**
+	 * The credential's Graph host, normalized without a trailing slash. Also exposed on
+	 * the returned object for callers that need the host outside a request.
+	 */
+	async function getGraphBaseUrl(
+		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	): Promise<string> {
+		const credentials = await this.getCredentials(getCredentialType.call(this));
+		const baseUrl = (
+			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+				? credentials.graphApiBaseUrl
+				: 'https://graph.microsoft.com'
+		).replace(/\/+$/, '');
+		// Guarantee an origin to compare against: `microsoftApiRequest` compares
+		// `new URL(baseUrl).origin` unguarded, and that is the string "null" for a scheme
+		// with no defined origin, which would make the comparison pass for any host. Same
+		// refusal message as the request-time guard (one concept, one string); the
+		// description is what distinguishes them.
+		if (!URL.canParse(baseUrl) || new URL(baseUrl).origin === 'null') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Refusing to send credentials to an unexpected host',
+				{
+					description:
+						'The Graph API base URL on the credential is not a valid URL. Fix it on the credential and try again.',
+				},
+			);
+		}
+		return baseUrl;
+	}
+
 	async function microsoftApiRequest(
 		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 		method: IHttpRequestMethods,
@@ -220,12 +251,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	): Promise<any> {
 		const credentialType = getCredentialType.call(this);
 		const isServicePrincipal = credentialType === SERVICE_PRINCIPAL_AUTH;
-		const credentials = await this.getCredentials(credentialType);
-		const baseUrl = (
-			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
-				? credentials.graphApiBaseUrl
-				: 'https://graph.microsoft.com'
-		).replace(/\/+$/, '');
+		const baseUrl = await getGraphBaseUrl.call(this);
 		// An explicit `uri` (e.g. a next-page link from Graph) is used verbatim,
 		// but it must stay on the credential's Graph host: the bearer token must
 		// never travel to an unexpected origin. Graph's own @odata.nextLink is
@@ -356,10 +382,12 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 			if (limit && returnData.length >= limit) {
 				return returnData.slice(0, limit);
 			}
+			// `uri`, not `responseData['@odata.nextLink']`: a literal `null` next link is not
+			// `undefined`, and with `uri` falsy the identical request would be re-sent forever.
 		} while (responseData['@odata.nextLink'] !== undefined);
 
 		return returnData;
 	}
 
-	return { getCredentialType, microsoftApiRequest, microsoftApiRequestAllItems };
+	return { getCredentialType, getGraphBaseUrl, microsoftApiRequest, microsoftApiRequestAllItems };
 }

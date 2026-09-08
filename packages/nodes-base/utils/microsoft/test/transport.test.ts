@@ -10,7 +10,7 @@ import {
 	validateMicrosoftGraphId,
 } from '../transport';
 
-const { getCredentialType, microsoftApiRequest, microsoftApiRequestAllItems } =
+const { getCredentialType, getGraphBaseUrl, microsoftApiRequest, microsoftApiRequestAllItems } =
 	createMicrosoftGraphTransport({ defaultCredentialType: 'microsoftTeamsOAuth2Api' });
 
 describe('Microsoft Graph transport kernel', () => {
@@ -98,6 +98,9 @@ describe('Microsoft Graph transport kernel', () => {
 						json: true,
 					}),
 				);
+				// The base URL is read through `getGraphBaseUrl`, which must not add a
+				// second credential read to every request.
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
 			});
 		});
 
@@ -459,6 +462,28 @@ describe('Microsoft Graph transport kernel', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
 
 			expect(getCredentialType.call(mockExecuteFunctions)).toBe(SERVICE_PRINCIPAL_AUTH);
+		});
+	});
+
+	// The commercial / empty / sovereign matrix is already covered through
+	// `microsoftApiRequest` above; only the refusals live here.
+	describe('getGraphBaseUrl', () => {
+		it('refuses a base URL that cannot be parsed', async () => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'not-a-url' });
+
+			await expect(getGraphBaseUrl.call(mockExecuteFunctions)).rejects.toThrow(
+				'Refusing to send credentials to an unexpected host',
+			);
+		});
+
+		it('refuses a base URL whose scheme has no origin', async () => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				graphApiBaseUrl: 'foo://graph.microsoft.com',
+			});
+
+			await expect(getGraphBaseUrl.call(mockExecuteFunctions)).rejects.toThrow(
+				'Refusing to send credentials to an unexpected host',
+			);
 		});
 	});
 

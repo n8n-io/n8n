@@ -10,9 +10,8 @@ import {
 	validateMicrosoftGraphId,
 } from '@utils/microsoft/transport';
 
-// Thin facade over the shared Microsoft Graph transport kernel. The export
-// surface is unchanged so operations, listSearch and the Trigger keep
-// importing from this path.
+// Thin facade over the shared Microsoft Graph transport kernel: operations,
+// listSearch and the Trigger all import the transport from this path.
 export {
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
@@ -25,11 +24,17 @@ export type TeamsCredentialType = MicrosoftGraphCredentialType<'microsoftTeamsOA
 
 const {
 	getCredentialType: getTeamsCredentialType,
+	getGraphBaseUrl,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 } = createMicrosoftGraphTransport({ defaultCredentialType: 'microsoftTeamsOAuth2Api' });
 
-export { getTeamsCredentialType, microsoftApiRequest, microsoftApiRequestAllItems };
+export {
+	getTeamsCredentialType,
+	getGraphBaseUrl,
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+};
 
 /**
  * App-only Microsoft Graph has no `/me`, so the joined-teams listing is fetched
