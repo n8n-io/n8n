@@ -2168,7 +2168,6 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/common/var';
-@use '@n8n/design-system/css/mixins/breakpoints';
 
 .wrapper {
 	display: flex;
@@ -2186,7 +2185,7 @@ onBeforeUnmount(() => {
 	bottom: var(--spacing--sm);
 	width: auto;
 
-	@include breakpoints.breakpoint('sm-only') {
+	@include mixins.breakpoint('sm-only') {
 		left: auto;
 		right: var(--spacing--sm);
 		transform: none;

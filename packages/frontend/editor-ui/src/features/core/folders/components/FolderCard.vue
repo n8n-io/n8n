@@ -371,8 +371,6 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
-
 .card {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -430,7 +428,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	width: 200px;
 }
 
-@include breakpoints.breakpoint('sm-and-down') {
+@include mixins.breakpoint('sm-and-down') {
 	.card {
 		flex-wrap: wrap;
 

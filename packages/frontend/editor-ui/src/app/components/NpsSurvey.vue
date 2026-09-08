@@ -190,8 +190,6 @@ watch(
 </template>
 
 <style module lang="scss">
-@use '@/app/css/_variables.scss' as *;
-
 .title {
 	height: 16px;
 	text-align: center;

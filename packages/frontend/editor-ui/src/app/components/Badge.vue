@@ -28,8 +28,6 @@ export default {
 </template>
 
 <style lang="scss" module>
-@use '@/app/css/_variables.scss' as *;
-
 .badge {
 	font-size: 11px;
 	line-height: 18px;

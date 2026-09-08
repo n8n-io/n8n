@@ -188,7 +188,6 @@ watch(
 
 <style lang="scss" module>
 @use '@/app/css/variables' as *;
-@use '@/app/css/_variables.scss' as *;
 
 .ioSearch {
 	transition: max-width 0.3s $ease-out-expo;

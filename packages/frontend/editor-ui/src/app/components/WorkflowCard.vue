@@ -791,8 +791,6 @@ const tags = computed(
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
-
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -880,7 +878,7 @@ const tags = computed(
 	color: var(--color--text);
 }
 
-@include breakpoints.breakpoint('sm-and-down') {
+@include mixins.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;
@@ -900,7 +898,7 @@ const tags = computed(
 	}
 }
 
-@include breakpoints.breakpoint('xs-only') {
+@include mixins.breakpoint('xs-only') {
 	.breadcrumbs > div {
 		flex-direction: column;
 	}

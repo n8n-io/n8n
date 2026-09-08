@@ -256,8 +256,6 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss">
-@use '@n8n/design-system/css/mixins/utils';
-
 // TODO: neither scoped nor module works here. Is there a way to resolve this?
 .data-table-column-header-wrapper {
 	display: flex;
@@ -298,7 +296,7 @@ onUnmounted(() => {
 }
 
 .ag-header-cell-text {
-	@include utils.utils-ellipsis;
+	@include mixins.utils-ellipsis;
 	min-width: 0;
 
 	// Remove overflow hidden when inline edit is active to show border

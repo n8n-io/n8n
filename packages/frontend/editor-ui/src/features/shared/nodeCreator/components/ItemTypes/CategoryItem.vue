@@ -40,8 +40,6 @@ const categoryName = computed(() => {
 </template>
 
 <style lang="scss" module>
-@use '@/app/css/_variables.scss' as *;
-
 .triggerIcon {
 	color: var(--color--primary);
 	margin-left: var(--spacing--3xs);

@@ -108,8 +108,6 @@ onBeforeRouteLeave(async (to, _, next) => {
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/breakpoints';
-
 .container {
 	display: flex;
 	height: 100%;
@@ -120,7 +118,7 @@ onBeforeRouteLeave(async (to, _, next) => {
 	flex: 1;
 }
 
-@include breakpoints.breakpoint('sm-and-down') {
+@include mixins.breakpoint('sm-and-down') {
 	.container {
 		flex-direction: column;
 	}

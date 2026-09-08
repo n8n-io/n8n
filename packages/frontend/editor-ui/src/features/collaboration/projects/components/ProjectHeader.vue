@@ -639,8 +639,6 @@ const onSelect = (action: string, source: CreateSource) => {
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
-
 .projectHeader {
 	display: flex;
 	align-items: flex-start;
@@ -706,7 +704,7 @@ const onSelect = (action: string, source: CreateSource) => {
 	opacity: 1;
 }
 
-@include breakpoints.breakpoint('xs-only') {
+@include mixins.breakpoint('xs-only') {
 	.projectHeader {
 		flex-direction: column;
 		align-items: flex-start;

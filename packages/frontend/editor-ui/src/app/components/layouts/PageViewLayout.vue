@@ -14,8 +14,6 @@ const { fullWidth = false } = defineProps<{
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
-
 .wrapper {
 	display: flex;
 	flex-direction: column;
@@ -26,7 +24,7 @@ const { fullWidth = false } = defineProps<{
 	align-content: start;
 	padding: var(--spacing--lg) var(--spacing--2xl) 0;
 
-	@include breakpoints.breakpoint('sm-and-down') {
+	@include mixins.breakpoint('sm-and-down') {
 		padding: var(--spacing--sm) var(--spacing--sm) 0;
 	}
 }

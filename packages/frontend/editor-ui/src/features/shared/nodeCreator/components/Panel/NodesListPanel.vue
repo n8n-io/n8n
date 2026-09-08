@@ -339,8 +339,6 @@ function onBackButton() {
 </template>
 
 <style lang="scss" module>
-@use '@/app/css/_variables.scss' as *;
-
 :global(.panel-slide-in-leave-active),
 :global(.panel-slide-in-enter-active),
 :global(.panel-slide-out-leave-active),
@@ -466,8 +464,6 @@ function onBackButton() {
 </style>
 
 <style lang="scss">
-@use '@/app/css/_variables.scss' as *;
-
 @each $node-type in $supplemental-node-types {
 	.nodes-list-panel-#{$node-type} .nodes-list-panel-header {
 		.n8n-node-icon svg {

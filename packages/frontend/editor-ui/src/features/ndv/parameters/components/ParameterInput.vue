@@ -2218,8 +2218,6 @@ onUpdated(async () => {
 </style>
 
 <style lang="scss">
-@use '@/app/css/_variables.scss' as *;
-
 .ql-editor {
 	padding: 6px;
 	line-height: 26px;

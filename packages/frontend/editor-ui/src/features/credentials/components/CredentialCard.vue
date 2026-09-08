@@ -310,8 +310,6 @@ function moveResource() {
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
-
 .cardLink {
 	--card--padding: 0 0 0 var(--spacing--sm);
 
@@ -355,7 +353,7 @@ function moveResource() {
 	cursor: default;
 }
 
-@include breakpoints.breakpoint('sm-and-down') {
+@include mixins.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;

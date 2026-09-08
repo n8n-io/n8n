@@ -79,8 +79,6 @@ const i18n = useI18n();
 </template>
 
 <style module lang="scss">
-@use '@/app/css/_variables.scss' as *;
-
 .title {
 	margin: 0;
 	font-size: 24px;

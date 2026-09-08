@@ -251,8 +251,6 @@ watch(
 </template>
 
 <style scoped lang="scss">
-@use '@/app/css/_variables.scss' as *;
-
 .webhooks {
 	padding-bottom: var(--spacing--xs);
 	margin: var(--spacing--xs) 0;

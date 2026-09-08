@@ -783,8 +783,6 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
-
 .filters-row {
 	display: flex;
 	flex-direction: row;
@@ -815,7 +813,7 @@ defineExpose({
 		}
 	}
 
-	@include breakpoints.breakpoint('xs-only') {
+	@include mixins.breakpoint('xs-only') {
 		grid-auto-flow: row;
 		grid-auto-columns: unset;
 		grid-template-columns: 1fr;
@@ -826,7 +824,7 @@ defineExpose({
 	max-width: 196px;
 	justify-self: end;
 
-	@include breakpoints.breakpoint('sm-and-down') {
+	@include mixins.breakpoint('sm-and-down') {
 		max-width: 100%;
 	}
 }
@@ -858,7 +856,7 @@ defineExpose({
 .sort-and-filter {
 	white-space: nowrap;
 
-	@include breakpoints.breakpoint('sm-and-down') {
+	@include mixins.breakpoint('sm-and-down') {
 		width: 100%;
 	}
 }

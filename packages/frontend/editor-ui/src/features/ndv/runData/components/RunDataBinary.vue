@@ -161,8 +161,6 @@ function openWorkflowSettings() {
 </template>
 
 <style lang="scss" module>
-@use '@/app/css/_variables.scss' as *;
-
 .component {
 	position: absolute;
 	top: 0;
