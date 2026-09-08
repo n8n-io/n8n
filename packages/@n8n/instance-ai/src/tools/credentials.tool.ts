@@ -360,7 +360,11 @@ const deleteAction = z.object({
 });
 
 const searchTypesAction = z.object({
-	action: z.literal('search-types').describe('Search available credential types by keyword'),
+	action: z
+		.literal('search-types')
+		.describe(
+			"Search available credential types by keyword. Each result carries the type's `documentationUrl` — pass it to `n8n-docs` to ground an auth answer (scopes, permissions, setup steps) instead of recalling it.",
+		),
 	query: z
 		.string()
 		.optional()

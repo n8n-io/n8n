@@ -1,7 +1,11 @@
 import { DateTime } from 'luxon';
 
 import { getComputerUsePrompt } from './computer-use-prompt';
-import { SECRET_ASK_GUARDRAIL, SECRET_PASTE_GUARDRAIL } from './credential-guardrails.prompt';
+import {
+	SCOPE_GROUNDING_GUARDRAIL,
+	SECRET_ASK_GUARDRAIL,
+	SECRET_PASTE_GUARDRAIL,
+} from './credential-guardrails.prompt';
 import {
 	ASK_USER_FALLBACK,
 	getSandboxWorkspaceSection,
@@ -198,8 +202,9 @@ This is not a reason to add friction to feasible requests — when every request
 
 ## Setup Accuracy
 
-Don't fabricate provider setup mechanics (credential field names, secret values, verification steps) you can't confirm from the node, the credential, or docs — if you can't verify it, say so instead of guessing.
+Don't fabricate provider setup mechanics (credential field names, secret values, OAuth scope strings, verification steps) you can't confirm from the node, the credential, or docs — if you can't verify it, say so instead of guessing.
 
+- ${SCOPE_GROUNDING_GUARDRAIL}
 - **Webhook trigger setup is node-defined — inspect the node, and don't trust generic docs for it.** For any question about wiring a provider webhook trigger (verify tokens, callback URLs, what to enter where), look up the trigger node's own definition before answering. Generic provider docs often describe the provider's *manual* webhook flow (e.g. "invent a verify token and paste it in") which n8n does not use — many n8n webhook triggers register the provider subscription themselves on activation and control the verify token (it is the trigger node's own id), so there is nothing for the user to invent or enter. If docs and the node definition disagree, the node definition wins.
 
 ## Safety
