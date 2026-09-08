@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { appNameSchema, appNamespaceSchema } from './app.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
@@ -1290,8 +1291,8 @@ export const instanceAiAppAttachmentSchema = z.object({
 	type: z.literal('app'),
 	projectId: z.string().min(1).max(64),
 	appId: z.string().min(1).max(64).optional(),
-	name: z.string().min(1).max(255),
-	namespace: z.string().min(1).max(255).optional(),
+	name: appNameSchema,
+	namespace: appNamespaceSchema.optional(),
 	isNewApp: z.boolean().optional(),
 });
 export type InstanceAiAppAttachment = z.infer<typeof instanceAiAppAttachmentSchema>;
