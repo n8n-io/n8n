@@ -403,6 +403,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				source: 'instance-ai',
 				taskId: undefined,
 				telemetry: {
+					userId,
 					runType: 'test',
 					configuration: runtime.telemetryConfiguration,
 				},

@@ -39,7 +39,7 @@ const project = computed(() => {
 		: { type: 'icon' as const, value: 'layers' as const };
 	return {
 		name: isPersonal ? i18n.baseText('instanceAi.artifactsPanel.personalSpace') : match.name,
-		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,
+		icon: isPersonal ? { type: 'icon' as const, value: 'user' as const } : icon,
 	};
 });
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);

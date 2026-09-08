@@ -980,6 +980,29 @@ describe('McpAgentToolsService', () => {
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
 
+		it('names unpublished workflow tools in the validation error', async () => {
+			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+				status: 'invalid',
+				issues: [
+					{
+						code: 'incompatible_reference',
+						reason: 'not_published',
+						path: 'tools.0.workflowId',
+						capability: { kind: 'tool', toolType: 'workflow', id: 'Lookup', index: 0 },
+					},
+				],
+			} as never);
+
+			const result = await callTool('publish_agent', { agentId: 'agent-1' });
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error:
+					'Agent is not runnable: tools.0.workflowId (workflow "Lookup" is not published; publish it first with publish_workflow)',
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
 		it('publishes a valid agent', async () => {
 			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 				status: 'valid',
