@@ -75,48 +75,6 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 		);
 	});
 
-	describe('scope expression', () => {
-		const scopeField = microsoftTeamsOAuth2Api.properties.find((p) => p.name === 'scope');
-
-		// Evaluates the credential's real default expression, so a change to the formula
-		// fails this table directly.
-		const evaluate = ($self: Record<string, unknown>) => {
-			const expression = (scopeField?.default as string).replace(/^=\{\{/, '').replace(/\}\}$/, '');
-			// eslint-disable-next-line @typescript-eslint/no-implied-eval
-			const evalScope = new Function('$self', `return (${expression});`) as (
-				$self: Record<string, unknown>,
-			) => string;
-			return evalScope($self);
-		};
-		const defaults = defaultScopes.join(' ');
-
-		// ChatMember.ReadWrite needs tenant admin consent. In the defaults it would block every
-		// new or reconnected credential until an admin re-consents, so a toggle adds it instead.
-		it('does not request ChatMember.ReadWrite by default', () => {
-			expect(evaluate({ customScopes: false, includeChatMemberScope: false })).toBe(defaults);
-		});
-
-		it('appends ChatMember.ReadWrite when Include Chat Member Scope is on', () => {
-			expect(evaluate({ customScopes: false, includeChatMemberScope: true })).toBe(
-				`${defaults} ChatMember.ReadWrite`,
-			);
-		});
-
-		it.each([
-			['openid Chat.ReadWrite', false, 'openid Chat.ReadWrite'],
-			['openid Chat.ReadWrite', true, 'openid Chat.ReadWrite ChatMember.ReadWrite'],
-			// Already present by hand: no duplicate
-			['openid ChatMember.ReadWrite', true, 'openid ChatMember.ReadWrite'],
-		])(
-			'with custom scopes "%s" and toggle %s -> "%s"',
-			(enabledScopes, includeChatMemberScope, expected) => {
-				expect(evaluate({ customScopes: true, enabledScopes, includeChatMemberScope })).toBe(
-					expected,
-				);
-			},
-		);
-	});
-
 	describe('OAuth2 flow with default scopes', () => {
 		it('should include default scopes in authorization URI', () => {
 			const oauthClient = createOAuthClient(defaultScopes);

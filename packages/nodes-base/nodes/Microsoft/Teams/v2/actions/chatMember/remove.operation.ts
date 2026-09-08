@@ -11,20 +11,7 @@ import { throwIfChatMemberUnsupported } from './sharedGuard';
 import { chatMemberRLC, chatRLC } from '../../descriptions';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 
-const properties: INodeProperties[] = [
-	{
-		// Not a default scope: it needs tenant admin consent, and putting it in the defaults
-		// would block every new or reconnected Teams credential until an admin re-consents.
-		// The credential toggle appends it; see MicrosoftTeamsOAuth2Api.credentials.ts.
-		displayName:
-			'Removing a member needs the <code>ChatMember.ReadWrite</code> permission, which is not requested by default because it needs tenant admin consent. Turn on "Include Chat Member Scope" on the credential and reconnect.',
-		name: 'chatMemberRemoveScopeNotice',
-		type: 'notice',
-		default: '',
-	},
-	chatRLC,
-	chatMemberRLC,
-];
+const properties: INodeProperties[] = [chatRLC, chatMemberRLC];
 
 const displayOptions = {
 	show: {
@@ -66,7 +53,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			throw new NodeOperationError(this.getNode(), error, {
 				itemIndex: i,
 				description:
-					'Removing a member needs the ChatMember.ReadWrite permission, which is not requested by default. Turn on "Include Chat Member Scope" on the credential and reconnect (a tenant admin may have to consent). Microsoft also refuses this call on a one-on-one chat, when removing the last owner, and when removing yourself.',
+					'Microsoft refuses this call on a one-on-one chat, when removing the last owner, and when removing yourself. It also documents the ChatMember.ReadWrite permission for this call, although the default Chat.ReadWrite is accepted in practice. If none of the above applies, add ChatMember.ReadWrite through Custom Scopes on the credential and reconnect.',
 			});
 		}
 		throw error;
