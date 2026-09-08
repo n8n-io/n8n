@@ -55,6 +55,8 @@ describe('resolveOffsetPagination', () => {
 		{ offset: 1.5, limit: 10 },
 		{ offset: 'abc', limit: 10 },
 		{ offset: 0, limit: 'abc' },
+		{ offset: 1e100, limit: 10 },
+		{ offset: 0, limit: 1e100 },
 	])('throws BadRequestError for a cursor carrying %j', (payload) => {
 		const cursor = encodeCursor(payload);
 

@@ -15,7 +15,7 @@ export const decodeCursor = (cursor: string): PaginationOffsetDecoded | Paginati
 };
 
 const isPageIndex = (value: unknown): value is number =>
-	typeof value === 'number' && Number.isInteger(value) && value >= 0;
+	typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 
 /**
  * Resolves the offset and limit to query with for a list endpoint either from defaults
