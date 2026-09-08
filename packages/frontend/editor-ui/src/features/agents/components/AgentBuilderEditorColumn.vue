@@ -102,11 +102,7 @@ const i18n = useI18n();
 					:disabled="childrenDisabled"
 					:class="$style.identityHeader"
 					@update:config="emit('update:config', $event)"
-				>
-					<template #actions>
-						<slot name="identity-actions" />
-					</template>
-				</AgentIdentityHeader>
+				/>
 			</div>
 			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
 				<div :class="$style.tabsRule" data-testid="agent-tabs-rule">
@@ -340,6 +336,7 @@ const i18n = useI18n();
 	flex-shrink: 0;
 	display: flex;
 	width: 100%;
+	padding-inline: var(--spacing--xs);
 }
 
 .identityHeader {

@@ -1,28 +1,31 @@
 <script setup lang="ts">
 /**
  * Top header bar for the agent builder. Hosts breadcrumb navigation,
- * agent switcher, Assistant button, and the existing action-menu dropdown.
+ * agent switcher, publish button, and the existing action-menu dropdown.
  *
  * Navigation intents are emitted as events, except for the project breadcrumb
  * which links back to the owning project/personal page.
  */
 import { computed, onMounted, useCssModule } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
-	N8nAssistantIcon,
 	N8nBreadcrumbs,
 	N8nButton,
 	N8nDropdownMenu,
 	N8nDropdownMenuItem,
 	N8nIcon,
+	N8nToggle,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { PROJECT_AGENTS } from '@/features/agents/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
+import AgentPublishButton from './AgentPublishButton.vue';
+import AgentValidationTooltip from './AgentValidationTooltip.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 
@@ -33,14 +36,23 @@ const props = defineProps<{
 	projectName: string | null;
 	headerActions: Array<ActionDropdownItem<string>>;
 	saveStatus?: 'idle' | 'saving' | 'saved';
+	beforeRevertToPublished?: () => Promise<void> | void;
 	artifactMode?: boolean;
-	showAssistant?: boolean;
-	assistantDisabled?: boolean;
+	isPreviewOpen?: boolean;
+	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
+	editingLocked?: boolean;
+	configValidationStatus?: 'valid' | 'invalid' | null;
+	configValidationIssues?: AgentConfigValidationIssue[];
+	beforePublish?: () => Promise<boolean>;
 }>();
 
 const emit = defineEmits<{
 	'header-action': [item: string];
-	'open-assistant': [];
+	'open-preview': [];
+	'close-preview': [];
+	published: [agent: AgentResource];
+	unpublished: [agent: AgentResource];
+	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 	'toggle-version-history': [];
 }>();
@@ -71,6 +83,15 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
+const isPreviewDisabled = computed(() => !props.isPreviewOpen && props.agent?.isRunnable !== true);
+const previewLabel = computed(() =>
+	props.isPreviewOpen
+		? i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)
+		: i18n.baseText('agents.builder.preview.button' as BaseTextKey),
+);
+const previewDisabledTooltip = computed(() =>
+	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
+);
 const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	const list = agentsList.value ?? [];
 	const others = list.filter((a) => a.id !== props.agentId);
@@ -101,6 +122,14 @@ function onCreateAgent() {
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id !== props.projectId) return;
 	void router.push(projectRoute.value);
+}
+
+function onPreviewClick() {
+	if (props.isPreviewOpen) {
+		emit('close-preview');
+		return;
+	}
+	if (!isPreviewDisabled.value) emit('open-preview');
 }
 
 /**
@@ -207,19 +236,36 @@ function onMenuSelect(id: string) {
 						: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
-			<N8nButton
-				v-if="props.showAssistant"
-				variant="outline"
-				icon="sparkles"
-				size="large"
-				:disabled="props.assistantDisabled"
-				:aria-label="i18n.baseText('aiAssistant.tooltip')"
-				:class="$style.aiButton"
-				data-testid="agent-builder-instance-ai-btn"
-				@click="emit('open-assistant')"
+			<AgentValidationTooltip
+				:disabled="!isPreviewDisabled"
+				:fallback="previewDisabledTooltip"
+				action="preview"
+				:issues="props.configValidationIssues ?? []"
 			>
-				Edit agent
-			</N8nButton>
+				<N8nToggle
+					:model-value="props.isPreviewOpen"
+					variant="ghost"
+					size="medium"
+					icon="play"
+					:label="previewLabel"
+					:disabled="isPreviewDisabled"
+					data-testid="agent-header-preview-btn"
+					@click="onPreviewClick"
+				/>
+			</AgentValidationTooltip>
+			<AgentPublishButton
+				:agent="agent"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:is-saving="saveStatus === 'saving' || editingLocked"
+				:before-revert-to-published="beforeRevertToPublished"
+				:config-validation-status="configValidationStatus"
+				:config-validation-issues="props.configValidationIssues ?? []"
+				:before-publish="beforePublish"
+				@published="(a: AgentResource) => emit('published', a)"
+				@unpublished="(a: AgentResource) => emit('unpublished', a)"
+				@reverted="(a: AgentResource) => emit('reverted', a)"
+			/>
 		</div>
 	</header>
 </template>
@@ -305,12 +351,6 @@ function onMenuSelect(id: string) {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
 	user-select: none;
-}
-
-.aiButton {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
 }
 
 .headerActionsMenu {

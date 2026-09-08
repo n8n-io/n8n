@@ -2,7 +2,7 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useStorage } from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
-import { N8nIcon, N8nToggle, type ActionDropdownItem } from '@n8n/design-system';
+import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
@@ -76,8 +76,6 @@ import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
-import AgentPublishButton from '../components/AgentPublishButton.vue';
-import AgentValidationTooltip from '../components/AgentValidationTooltip.vue';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -280,17 +278,6 @@ const isUnsaved = ref(false);
 const pendingExternalRefresh = ref(false);
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
-const isPreviewDisabled = computed(
-	() => !isPreviewDockOpen.value && agent.value?.isRunnable !== true,
-);
-const previewLabel = computed(() =>
-	isPreviewDockOpen.value
-		? locale.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)
-		: locale.baseText('agents.builder.preview.button' as BaseTextKey),
-);
-const previewDisabledTooltip = computed(() =>
-	locale.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
-);
 const agentFiles = ref<AgentFileDto[]>([]);
 const agentFilesLoading = ref(false);
 const agentFilesUploading = ref(false);
@@ -1839,17 +1826,26 @@ function onSwitchAgent(nextAgentId: string) {
 			@view-trace="viewPreviewTrace"
 		/>
 		<AgentBuilderHeader
-			v-else-if="!isArtifactMode"
+			v-else
 			:agent="agent"
 			:project-id="projectId"
 			:agent-id="agentId"
 			:project-name="projectName"
 			:header-actions="headerActions"
 			:save-status="saveStatus"
-			:show-assistant="instanceAiAvailable"
-			:assistant-disabled="!agent"
+			:before-revert-to-published="settleAutosave"
+			:artifact-mode="isArtifactMode"
+			:editing-locked="props.artifactEditingLocked"
+			:config-validation-status="configValidation?.status ?? null"
+			:config-validation-issues="configValidation?.issues ?? []"
+			:before-publish="refreshValidationBeforePublish"
+			:is-preview-open="isPreviewDockOpen"
 			@header-action="onHeaderAction"
-			@open-assistant="onOpenInstanceAi"
+			@open-preview="onOpenPreview"
+			@close-preview="closePreviewDock"
+			@published="onPublished"
+			@unpublished="onUnpublished"
+			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
 		<div
@@ -1862,6 +1858,27 @@ function onSwitchAgent(nextAgentId: string) {
 				},
 			]"
 		>
+			<div
+				v-if="!isPreviewDockOpen && !isArtifactMode && instanceAiAvailable"
+				:class="$style.aiButtonWrapper"
+			>
+				<N8nButton
+					variant="subtle"
+					icon-only
+					size="large"
+					:disabled="!agent"
+					:aria-label="locale.baseText('aiAssistant.tooltip')"
+					:class="$style.aiButtonIcon"
+					data-testid="agent-builder-instance-ai-btn"
+					@click="onOpenInstanceAi"
+				>
+					<template #default>
+						<div>
+							<N8nAssistantIcon size="large" />
+						</div>
+					</template>
+				</N8nButton>
+			</div>
 			<div v-if="showBuilderLoading" :class="$style.loading">
 				<N8nIcon icon="spinner" spin />
 			</div>
@@ -1926,40 +1943,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
-				>
-					<template #identity-actions>
-						<AgentValidationTooltip
-							:disabled="!isPreviewDisabled"
-							:fallback="previewDisabledTooltip"
-							action="preview"
-							:issues="configValidation?.issues ?? []"
-						>
-							<N8nToggle
-								:model-value="isPreviewDockOpen"
-								variant="ghost"
-								size="large"
-								icon="play"
-								:label="previewLabel"
-								:disabled="isPreviewDisabled"
-								data-testid="agent-header-preview-btn"
-								@click="isPreviewDockOpen ? closePreviewDock() : onOpenPreview()"
-							/>
-						</AgentValidationTooltip>
-						<AgentPublishButton
-							:agent="agent"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:is-saving="saveStatus === 'saving' || props.artifactEditingLocked"
-							:before-revert-to-published="settleAutosave"
-							:config-validation-status="configValidation?.status ?? null"
-							:config-validation-issues="configValidation?.issues ?? []"
-							:before-publish="refreshValidationBeforePublish"
-							@published="onPublished"
-							@unpublished="onUnpublished"
-							@reverted="onReverted"
-						/>
-					</template>
-				</AgentBuilderEditorColumn>
+				/>
 
 				<AgentVersionHistoryPanel
 					v-if="!isStandalonePreview && isVersionHistoryOpen"
@@ -2062,5 +2046,26 @@ function onSwitchAgent(nextAgentId: string) {
 
 .standalonePreview {
 	padding-right: 0;
+}
+
+.aiButtonWrapper {
+	position: absolute;
+	top: 0;
+	right: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
+	z-index: 1;
+}
+
+.aiButtonIcon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+
+	svg {
+		display: block;
+	}
 }
 </style>

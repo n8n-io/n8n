@@ -30,7 +30,7 @@ const props = withDefaults(defineProps<AgentPanelProps>(), {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--xs);
 	padding: var(--spacing--sm);
 	padding-block: var(--spacing--md);
 	background-color: var(--background--surface);

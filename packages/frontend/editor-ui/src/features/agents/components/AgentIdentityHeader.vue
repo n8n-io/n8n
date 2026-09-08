@@ -68,22 +68,17 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 
 <template>
 	<div :class="$style.text" data-testid="agent-identity-header">
-		<div :class="$style.topRow">
-			<N8nIconPicker
-				v-model="iconPickerModel"
-				:style="personalisationStyle(personalisation)"
-				:button-tooltip="i18n.baseText('agents.builder.agent.personalisation.change')"
-				button-size="xlarge"
-				:is-read-only="props.disabled"
-				icons-only
-				:container-class="$style.personalisationPicker"
-				:button-class="$style.personalisationIcon"
-				data-testid="agent-personalisation-icon"
-			/>
-			<div v-if="$slots.actions" :class="$style.actions">
-				<slot name="actions" />
-			</div>
-		</div>
+		<N8nIconPicker
+			v-model="iconPickerModel"
+			:style="personalisationStyle(personalisation)"
+			:button-tooltip="i18n.baseText('agents.builder.agent.personalisation.change')"
+			button-size="xlarge"
+			:is-read-only="props.disabled"
+			icons-only
+			:container-class="$style.personalisationPicker"
+			:button-class="$style.personalisationIcon"
+			data-testid="agent-personalisation-icon"
+		/>
 		<N8nInlineTextEdit
 			:model-value="name"
 			:placeholder="i18n.baseText('agents.builder.agent.name.placeholder')"
@@ -107,24 +102,6 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 	gap: var(--spacing--md);
 	flex: 1;
 	min-width: 0;
-}
-
-.topRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--md);
-	width: 100%;
-}
-
-.actions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	margin-left: auto;
-	white-space: nowrap;
-	/** Push down 1px to align horizontally with IdentityIcon **/
-	transform: translateY(1px);
 }
 
 .personalisationPicker {

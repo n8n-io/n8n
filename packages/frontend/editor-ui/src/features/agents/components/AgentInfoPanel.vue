@@ -443,7 +443,7 @@ function onInstructionsInput(value: string) {
 					</N8nText>
 				</div>
 			</div>
-
+			<div :class="$style.divider" aria-hidden="true"></div>
 			<div
 				v-if="props.showInstructions"
 				:class="$style.field"
@@ -529,5 +529,12 @@ function onInstructionsInput(value: string) {
 .defaultHintText {
 	flex: 1;
 	min-width: 0;
+}
+
+.divider {
+	flex: initial;
+	height: 1px;
+	background-color: var(--border-color--subtle);
+	margin-inline: calc(var(--spacing--sm) * -1);
 }
 </style>
