@@ -26,6 +26,7 @@ function makeRecord(
 	const outcome = {
 		workItemId,
 		taskId: 'task_1',
+		workflowId: 'wf_1',
 		submitted: true,
 		triggerType: 'manual_or_testable',
 		needsUserInput: false,
@@ -41,7 +42,7 @@ const args = {
 };
 
 describe('buildVerdictDisclosureEvent', () => {
-	it('discloses a partial claim as a text event on the root agent', () => {
+	it('discloses a partial claim as a structured event on the root agent', () => {
 		const event = buildVerdictDisclosureEvent({
 			...args,
 			records: [makeRecord('wi_1', '2026-09-03T10:00:00.000Z', makeClaim())],
@@ -49,14 +50,32 @@ describe('buildVerdictDisclosureEvent', () => {
 		});
 
 		expect(event).toBeDefined();
-		expect(event?.type).toBe('text-delta');
+		expect(event?.type).toBe('verification-verdict');
 		expect(event?.agentId).toBe('orchestrator:run-1');
 		expect(event?.responseId).toBe('verdict-disclosure:wi_1:2026-09-03T10:00:00.000Z');
-		const text = (event as { payload: { text: string } }).payload.text;
-		expect(text).toContain('Not fully verified');
-		expect(text).toContain('Send Email, Log Row');
-		expect(text).toContain('Create Event');
-		expect(text).toContain('live end-to-end test');
+		// Structure, not prose: the client owns the wording, so it stays
+		// rewordable and translatable after the row is written.
+		expect(event).toMatchObject({
+			payload: {
+				claim: {
+					level: 'partial',
+					nodesNotReached: ['Send Email', 'Log Row'],
+					simulatedNodes: [{ nodeName: 'Create Event', reason: 'Creates a record' }],
+					publishReady: false,
+					liveTestRecommended: true,
+				},
+			},
+		});
+	});
+
+	it('carries the workflow id so the client can offer a live test', () => {
+		const event = buildVerdictDisclosureEvent({
+			...args,
+			records: [makeRecord('wi_1', '2026-09-03T10:00:00.000Z', makeClaim())],
+			events: [],
+		});
+
+		expect(event).toMatchObject({ payload: { workflowId: 'wf_1' } });
 	});
 
 	it('stays silent for a fully verified claim', () => {
@@ -95,9 +114,9 @@ describe('buildVerdictDisclosureEvent', () => {
 			events: [],
 		});
 
-		const text = (event as { payload: { text: string } }).payload.text;
-		expect(text).toContain('Changed, but not verified');
-		expect(text).toContain('This change was about Send Email');
+		expect(event).toMatchObject({
+			payload: { claim: { level: 'unproven', unprovenTargets: ['Send Email'] } },
+		});
 	});
 
 	it('discloses once per verification however often the run hands back', () => {

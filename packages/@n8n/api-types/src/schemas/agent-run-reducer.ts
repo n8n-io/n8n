@@ -507,6 +507,30 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'verification-verdict': {
+			// Sits in the timeline so the verdict keeps its place in the turn.
+			// Deduped on responseId — the id is one per verification, so a replay
+			// that overlaps the live emit cannot render the verdict twice.
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				const alreadyShown =
+					event.responseId !== undefined &&
+					agent.timeline.some(
+						(entry) =>
+							entry.type === 'verification-verdict' && entry.responseId === event.responseId,
+					);
+				if (!alreadyShown) {
+					agent.timeline.push({
+						type: 'verification-verdict',
+						claim: event.payload.claim,
+						...(event.payload.workflowId ? { workflowId: event.payload.workflowId } : {}),
+						...(event.responseId ? { responseId: event.responseId } : {}),
+					});
+				}
+			}
+			break;
+		}
+
 		case 'status': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {

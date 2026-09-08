@@ -3,13 +3,16 @@
  *
  * A direct build never calls `report-verification-verdict`, so the loop
  * guidance cannot be the channel that tells the user how strong the claim is.
- * This builds the user-facing block straight from the persisted claim, at the
- * point the run hands control back — independent of anything the model wrote.
+ * This emits the claim straight from the persisted record, at the point the
+ * run hands control back — independent of anything the model wrote.
+ *
+ * The claim travels as structure, not as rendered text: the event log is
+ * append-only, so a persisted sentence could never be reworded or translated
+ * afterwards. The client owns the wording.
  */
 
 import type { InstanceAiEvent } from '@n8n/api-types';
 
-import { formatClaimVerdictBlock } from './render-claim';
 import type { VerificationClaim, WorkflowBuildOutcome } from './workflow-loop-state';
 
 export const VERDICT_DISCLOSURE_RESPONSE_PREFIX = 'verdict-disclosure';
@@ -24,6 +27,7 @@ interface LatestVerification {
 	workItemId: string;
 	verifiedAt: string;
 	claim: VerificationClaim;
+	workflowId?: string;
 }
 
 function disclosureResponseId(workItemId: string, verifiedAt: string): string {
@@ -45,7 +49,14 @@ function latestVerification(
 		const verifiedAt = verification?.verifiedAt;
 		if (!claim || verifiedAt === undefined) continue;
 		if (latest === undefined || verifiedAt > latest.verifiedAt) {
-			latest = { workItemId: record.state.workItemId, verifiedAt, claim };
+			latest = {
+				workItemId: record.state.workItemId,
+				verifiedAt,
+				claim,
+				...(record.lastBuildOutcome?.workflowId
+					? { workflowId: record.lastBuildOutcome.workflowId }
+					: {}),
+			};
 		}
 	}
 	return latest;
@@ -66,17 +77,21 @@ export function buildVerdictDisclosureEvent(args: {
 	const latest = latestVerification(args.records);
 	if (!latest) return undefined;
 
-	const block = formatClaimVerdictBlock(latest.claim);
-	if (block === undefined) return undefined;
+	// A verified claim needs no disclosure. A verdict on every successful build
+	// is noise, and noise teaches people to skip it.
+	if (latest.claim.level === 'verified') return undefined;
 
 	const responseId = disclosureResponseId(latest.workItemId, latest.verifiedAt);
 	if (args.events.some((event) => event.responseId === responseId)) return undefined;
 
 	return {
-		type: 'text-delta',
+		type: 'verification-verdict',
 		runId: args.runId,
 		agentId: args.agentId,
 		responseId,
-		payload: { text: `\n\n${block}\n` },
+		payload: {
+			claim: latest.claim,
+			...(latest.workflowId ? { workflowId: latest.workflowId } : {}),
+		},
 	};
 }
