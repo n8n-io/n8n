@@ -4,10 +4,13 @@ import {
 	CreateDataTableDto,
 	DeleteDataTableRowsDto,
 	DownloadDataTableCsvQueryDto,
+	GetDataTableKanbanBoardQueryDto,
+	GetDataTableKanbanLaneQueryDto,
 	ImportCsvToDataTableDto,
 	ListDataTableContentQueryDto,
 	ListDataTableQueryDto,
 	MoveDataTableColumnDto,
+	MoveDataTableKanbanRowDto,
 	RenameDataTableColumnDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
@@ -41,6 +44,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { assertRowReadAccessIfReturningRows } from './data-table-permissions';
 import { DataTableService } from './data-table.service';
 import { DataTableColumnInUseError } from './errors/data-table-column-in-use.error';
+import { DataTableKanbanConflictError } from './errors/data-table-kanban-conflict.error';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { FileUploadError } from './errors/data-table-file-upload.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
@@ -75,6 +79,22 @@ export class DataTableController {
 			throw new InternalServerError(e.message, e);
 		}
 		throw e;
+	}
+
+	private handleKanbanError(error: unknown): never {
+		if (error instanceof DataTableNotFoundError) {
+			throw new NotFoundError(error.message);
+		}
+		if (error instanceof DataTableKanbanConflictError) {
+			throw new ConflictError(error.message);
+		}
+		if (error instanceof DataTableValidationError) {
+			throw new BadRequestError(error.message);
+		}
+		if (error instanceof Error) {
+			throw new InternalServerError(error.message, error);
+		}
+		throw error;
 	}
 
 	private checkInstanceWriteAccess(): void {
@@ -308,6 +328,70 @@ export class DataTableController {
 			} else {
 				throw e;
 			}
+		}
+	}
+
+	@Get('/:dataTableId/kanban')
+	@ProjectScope('dataTable:readRow')
+	async getKanbanBoard(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Query dto: GetDataTableKanbanBoardQueryDto,
+	) {
+		try {
+			return await this.dataTableService.getKanbanBoard(
+				dataTableId,
+				req.params.projectId,
+				dto,
+			);
+		} catch (error) {
+			this.handleKanbanError(error);
+		}
+	}
+
+	@Get('/:dataTableId/kanban/rows')
+	@ProjectScope('dataTable:readRow')
+	async getKanbanLanePage(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Query dto: GetDataTableKanbanLaneQueryDto,
+	) {
+		try {
+			return await this.dataTableService.getKanbanLanePage(
+				dataTableId,
+				req.params.projectId,
+				dto,
+			);
+		} catch (error) {
+			this.handleKanbanError(error);
+		}
+	}
+
+	@Patch('/:dataTableId/kanban/rows/:rowId')
+	@ProjectScope('dataTable:writeRow')
+	async moveKanbanRow(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Param('rowId') rawRowId: string,
+		@Body dto: MoveDataTableKanbanRowDto,
+	) {
+		this.checkInstanceWriteAccess();
+		const rowId = Number(rawRowId);
+		if (!Number.isSafeInteger(rowId) || rowId <= 0) {
+			throw new BadRequestError('The Data Table row ID must be a positive integer');
+		}
+		try {
+			return await this.dataTableService.moveKanbanRow(
+				dataTableId,
+				req.params.projectId,
+				rowId,
+				dto,
+			);
+		} catch (error) {
+			this.handleKanbanError(error);
 		}
 	}
 

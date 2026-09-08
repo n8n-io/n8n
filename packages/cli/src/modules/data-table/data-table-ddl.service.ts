@@ -5,12 +5,17 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
 import {
+	DATA_TABLE_KANBAN_ORDER_COLUMN,
+	DATA_TABLE_KANBAN_ORDER_LENGTH,
+} from './data-table.types';
+import {
 	addColumnQuery,
 	deleteColumnQuery,
 	isValidDataTableId,
 	renameColumnQuery,
 	renameTableQuery,
 	toDslColumns,
+	toKanbanIndexName,
 	toTableName,
 } from './utils/sql-utils';
 
@@ -32,12 +37,44 @@ export class DataTableDDLService {
 				throw new UnexpectedError('QueryRunner is not available');
 			}
 
-			const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
+			const dslColumns = [
+				new DslColumn('id').int.autoGenerate2.primary,
+				new DslColumn(DATA_TABLE_KANBAN_ORDER_COLUMN)
+					.varchar(DATA_TABLE_KANBAN_ORDER_LENGTH)
+					.notNull,
+				...toDslColumns(columns),
+			];
 			const createTable = new CreateTable(toTableName(dataTableId), '', em.queryRunner).withColumns(
 				...dslColumns,
 			).withTimestamps;
 
 			await createTable.execute(em.queryRunner);
+			const tableName = this.dataSource.driver.escape(toTableName(dataTableId));
+			const indexName = this.dataSource.driver.escape(toKanbanIndexName(dataTableId));
+			const orderColumn = this.dataSource.driver.escape(DATA_TABLE_KANBAN_ORDER_COLUMN);
+			const idColumn = this.dataSource.driver.escape('id');
+			await em.query(
+				`CREATE INDEX ${indexName} ON ${tableName} (${orderColumn} DESC, ${idColumn} DESC)`,
+			);
+		});
+	}
+
+	async replaceKanbanIndex(
+		dataTableId: string,
+		groupColumnName: string | null,
+		trx?: EntityManager,
+	): Promise<void> {
+		await withTransaction(this.dataSource.manager, trx, async (em) => {
+			const indexName = this.dataSource.driver.escape(toKanbanIndexName(dataTableId));
+			await em.query(`DROP INDEX IF EXISTS ${indexName}`);
+			const tableName = this.dataSource.driver.escape(toTableName(dataTableId));
+			const orderColumn = this.dataSource.driver.escape(DATA_TABLE_KANBAN_ORDER_COLUMN);
+			const idColumn = this.dataSource.driver.escape('id');
+			const columns =
+				groupColumnName === null
+					? `${orderColumn} DESC, ${idColumn} DESC`
+					: `${this.dataSource.driver.escape(groupColumnName)}, ${orderColumn} DESC, ${idColumn} DESC`;
+			await em.query(`CREATE INDEX ${indexName} ON ${tableName} (${columns})`);
 		});
 	}
 
@@ -112,4 +149,5 @@ export class DataTableDDLService {
 			);
 		});
 	}
+
 }

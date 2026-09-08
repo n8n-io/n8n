@@ -2,10 +2,14 @@ import type {
 	AddDataTableColumnDto,
 	CreateDataTableDto,
 	DeleteDataTableRowsDto,
+	GetDataTableKanbanBoardQueryDto,
+	GetDataTableKanbanLaneQueryDto,
 	ListDataTableContentQueryDto,
+	MoveDataTableKanbanRowDto,
 	MoveDataTableColumnDto,
 	RenameDataTableColumnDto,
 	DataTableListOptions,
+	DataTableMetadata,
 	UpsertDataTableRowDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
@@ -34,7 +38,9 @@ import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workfl
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableCsvImportService } from './data-table-csv-import.service';
+import { DataTableDDLService } from './data-table-ddl.service';
 import { normalizeColumn } from './data-table-enum.utils';
+import { InvalidKanbanCursorError } from './data-table-kanban.utils';
 import { DataTableMutationEventRecorder } from './data-table-mutation-event.repository';
 import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTableSizeValidator } from './data-table-size-validator.service';
@@ -59,6 +65,7 @@ export class DataTableService {
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly dataTableColumnRepository: DataTableColumnRepository,
 		private readonly dataTableRowsRepository: DataTableRowsRepository,
+		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly logger: Logger,
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly projectRelationRepository: ProjectRelationRepository,
@@ -99,6 +106,96 @@ export class DataTableService {
 		}
 
 		return dataTable;
+	}
+
+	async getKanbanBoard(
+		dataTableId: string,
+		projectId: string,
+		dto: GetDataTableKanbanBoardQueryDto,
+	) {
+		const table = await this.getOne(dataTableId, projectId);
+		const groupingColumn = this.getKanbanGroupingColumn(table.columns, dto.groupByColumnId);
+		const lanes = await this.dataTableRowsRepository.getKanbanBoard(
+			dataTableId,
+			groupingColumn.name,
+			[...(groupingColumn.options ?? []), null],
+			dto.rowsPerLane,
+			dto.search,
+			table.updatedAt.toISOString(),
+			table.columns,
+		);
+		return { lanes, revision: table.updatedAt.toISOString() };
+	}
+
+	async getKanbanLanePage(
+		dataTableId: string,
+		projectId: string,
+		dto: GetDataTableKanbanLaneQueryDto,
+	) {
+		const table = await this.getOne(dataTableId, projectId);
+		const groupingColumn = this.getKanbanGroupingColumn(table.columns, dto.groupByColumnId);
+		this.validateKanbanLaneValue(groupingColumn, dto.laneValue ?? null);
+		try {
+			return await this.dataTableRowsRepository.getKanbanLanePage(
+				dataTableId,
+				groupingColumn.name,
+				dto.laneValue ?? null,
+				dto.limit,
+				dto.cursor,
+				dto.search,
+				table.updatedAt.toISOString(),
+				table.columns,
+			);
+		} catch (error) {
+			if (error instanceof InvalidKanbanCursorError) {
+				throw new DataTableValidationError(error.message);
+			}
+			throw error;
+		}
+	}
+
+	async moveKanbanRow(
+		dataTableId: string,
+		projectId: string,
+		rowId: number,
+		dto: MoveDataTableKanbanRowDto,
+	) {
+		await this.validateDataTableSize();
+		await this.validateDataTableExists(dataTableId, projectId);
+		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
+			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
+			const groupingColumn = this.getKanbanGroupingColumn(columns, dto.groupByColumnId);
+			this.validateKanbanLaneValue(groupingColumn, dto.targetValue);
+			const capture = await this.mutationEventService.prepareCapture(
+				dataTableId,
+				'columnUpdated',
+				[groupingColumn.id],
+				trx,
+			);
+			const moved = await this.dataTableRowsRepository.moveKanbanRow(
+				dataTableId,
+				rowId,
+				groupingColumn.name,
+				dto.targetValue,
+				dto.afterRowId,
+				columns,
+				trx,
+			);
+			if (capture.shouldCapture) {
+				await this.mutationEventService.recordUpdated(
+					dataTableId,
+					[moved.before],
+					[moved.after],
+					columns,
+					capture.subscriptions,
+					trx,
+				);
+			}
+			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
+			return moved.after;
+		});
+		this.dataTableSizeValidator.reset();
+		return result;
 	}
 
 	async resolveOwningProjectId(user: User, projectId?: string): Promise<string> {
@@ -232,6 +329,7 @@ export class DataTableService {
 		}
 		const metadata =
 			dto.metadata === undefined ? undefined : { ...table.metadata, ...dto.metadata };
+		let kanbanGroupingColumnName: string | null | undefined;
 		if (metadata) {
 			if (metadata.view === 'kanban' && !metadata.kanban) {
 				throw new DataTableValidationError('Select an enum column to use the kanban view');
@@ -244,6 +342,7 @@ export class DataTableService {
 				if (groupingColumn?.type !== 'enum') {
 					throw new DataTableValidationError('Select an enum column from this table');
 				}
+				kanbanGroupingColumnName = groupingColumn.name;
 				if (metadata.kanban.titleColumnId) {
 					const titleColumn = await this.dataTableColumnRepository.findOneBy({
 						id: metadata.kanban.titleColumnId,
@@ -255,10 +354,25 @@ export class DataTableService {
 				}
 			}
 		}
-		await this.dataTableRepository.updateProperties(dataTableId, projectId, {
+		const properties = {
 			...(dto.name === undefined ? {} : { name: dto.name }),
 			...(metadata === undefined ? {} : { metadata }),
-		});
+		};
+		const groupingChanged =
+			kanbanGroupingColumnName !== undefined &&
+			table.metadata?.kanban?.groupByColumnId !== metadata?.kanban?.groupByColumnId;
+		if (groupingChanged) {
+			await this.dataTableColumnRepository.manager.transaction(async (trx) => {
+				await this.dataTableDDLService.replaceKanbanIndex(
+					dataTableId,
+					kanbanGroupingColumnName ?? null,
+					trx,
+				);
+				await this.dataTableRepository.updateProperties(dataTableId, projectId, properties, trx);
+			});
+		} else {
+			await this.dataTableRepository.updateProperties(dataTableId, projectId, properties);
+		}
 
 		return true;
 	}
@@ -339,15 +453,27 @@ export class DataTableService {
 	}
 
 	async deleteColumn(dataTableId: string, projectId: string, columnId: string) {
-		await this.validateDataTableExists(dataTableId, projectId);
+		const table = await this.validateDataTableExists(dataTableId, projectId);
 		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
 		if (await this.mutationEventService.hasSubscriptionForColumn(dataTableId, columnId)) {
 			throw new DataTableColumnInUseError(existingColumn.name);
 		}
 
-		await this.dataTableColumnRepository.deleteColumn(dataTableId, existingColumn);
-
-		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+		await this.dataTableColumnRepository.manager.transaction(async (trx) => {
+			if (table.metadata?.kanban?.groupByColumnId === columnId) {
+				await this.dataTableDDLService.replaceKanbanIndex(dataTableId, null, trx);
+				const metadata: DataTableMetadata = { ...table.metadata, view: 'table' };
+				delete metadata.kanban;
+				await this.dataTableRepository.updateProperties(
+					dataTableId,
+					projectId,
+					{ metadata },
+					trx,
+				);
+			}
+			await this.dataTableColumnRepository.deleteColumn(dataTableId, existingColumn, trx);
+			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
+		});
 
 		return true;
 	}
@@ -507,7 +633,7 @@ export class DataTableService {
 		dryRun: boolean = false,
 	) {
 		await this.validateDataTableSize();
-		await this.validateDataTableExists(dataTableId, projectId);
+		const table = await this.validateDataTableExists(dataTableId, projectId);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
@@ -532,7 +658,11 @@ export class DataTableService {
 				updatedColumnIds,
 				trx,
 			);
-			const beforeRows = updateCapture.shouldCapture
+			const groupingColumn = table.metadata?.kanban
+				? columns.find((column) => column.id === table.metadata.kanban?.groupByColumnId)
+				: undefined;
+			const updatesGroupingColumn = groupingColumn ? groupingColumn.name in data : false;
+			const beforeRows = updateCapture.shouldCapture || updatesGroupingColumn
 				? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
 						dataTableId,
 						filter,
@@ -551,6 +681,19 @@ export class DataTableService {
 			);
 
 			if (Array.isArray(updated) && updated.length > 0) {
+				if (updatesGroupingColumn && groupingColumn) {
+					const changedRowIds = beforeRows
+						.filter(
+							(row) =>
+								!Object.is(row[groupingColumn.name] ?? null, data[groupingColumn.name]),
+						)
+						.map((row) => row.id);
+					await this.dataTableRowsRepository.moveRowsToKanbanTop(
+						dataTableId,
+						changedRowIds,
+						trx,
+					);
+				}
 				if (updateCapture.shouldCapture) {
 					await this.mutationEventService.recordUpdated(
 						dataTableId,
@@ -661,7 +804,7 @@ export class DataTableService {
 		dryRun: boolean = false,
 	) {
 		await this.validateDataTableSize();
-		await this.validateDataTableExists(dataTableId, projectId);
+		const table = await this.validateDataTableExists(dataTableId, projectId);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
@@ -686,7 +829,11 @@ export class DataTableService {
 				updatedColumnIds,
 				trx,
 			);
-			const beforeRows = capture.shouldCapture
+			const groupingColumn = table.metadata?.kanban
+				? columns.find((column) => column.id === table.metadata.kanban?.groupByColumnId)
+				: undefined;
+			const updatesGroupingColumn = groupingColumn ? groupingColumn.name in data : false;
+			const beforeRows = capture.shouldCapture || updatesGroupingColumn
 				? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
 						dataTableId,
 						filter,
@@ -700,9 +847,19 @@ export class DataTableService {
 				data,
 				filter,
 				columns,
-				returnData || capture.shouldCapture,
+				returnData || capture.shouldCapture || updatesGroupingColumn,
 				trx,
 			);
+			if (updatesGroupingColumn && Array.isArray(updated) && groupingColumn) {
+				const changedRowIds = beforeRows
+					.filter((row) => !Object.is(row[groupingColumn.name] ?? null, data[groupingColumn.name]))
+					.map((row) => row.id);
+				await this.dataTableRowsRepository.moveRowsToKanbanTop(
+					dataTableId,
+					changedRowIds,
+					trx,
+				);
+			}
 			if (capture.shouldCapture && Array.isArray(updated)) {
 				await this.mutationEventService.recordUpdated(
 					dataTableId,
@@ -943,6 +1100,25 @@ export class DataTableService {
 					'updatedAt' in row,
 			)
 		);
+	}
+
+	private getKanbanGroupingColumn(
+		columns: DataTableColumn[],
+		columnId: string,
+	): DataTableColumn {
+		const column = columns.find((candidate) => candidate.id === columnId);
+		if (column?.type !== 'enum') {
+			throw new DataTableValidationError('Select an enum column from this table');
+		}
+		return column;
+	}
+
+	private validateKanbanLaneValue(column: DataTableColumn, value: string | null): void {
+		if (value !== null && !column.options?.includes(value)) {
+			throw new DataTableValidationError(
+				`value '${value}' is not an option for enum column '${column.name}'`,
+			);
+		}
 	}
 
 	private validateAndTransformCell(

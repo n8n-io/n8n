@@ -26,7 +26,16 @@ import {
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
-import { DataTableUserTableName } from './data-table.types';
+import {
+	allocateKanbanOrders,
+	decodeKanbanCursor,
+	encodeKanbanCursor,
+} from './data-table-kanban.utils';
+import {
+	DATA_TABLE_KANBAN_ORDER_COLUMN,
+	type DataTableUserTableName,
+} from './data-table.types';
+import { DataTableKanbanConflictError } from './errors/data-table-kanban-conflict.error';
 import {
 	escapeLikeSpecials,
 	extractInsertedIds,
@@ -41,6 +50,20 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
+
+export type DataTableKanbanLane = {
+	value: string | null;
+	count: number;
+	rows: DataTableRowReturn[];
+	nextCursor: string | null;
+	hasMore: boolean;
+};
+
+export type DataTableKanbanPage = {
+	rows: DataTableRowReturn[];
+	nextCursor: string | null;
+	hasMore: boolean;
+};
 
 /**
  * Converts filter conditions to SQL WHERE clauses with parameters.
@@ -141,15 +164,23 @@ export class DataTableRowsRepository {
 		table: DataTableUserTableName,
 		rows: DataTableRows,
 		columns: DataTableColumn[],
+		kanbanOrders: string[],
 		trx?: EntityManager,
 	) {
+		const columnNames = columns.map((column) => column.name);
+		columnNames.push(DATA_TABLE_KANBAN_ORDER_COLUMN);
+
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			let insertedRows = 0;
 
 			// Special case: no columns, insert each row individually
 			if (columns.length === 0) {
-				for (const row of rows) {
-					const query = em.createQueryBuilder().insert().into(table).values(row);
+				for (const [index, row] of rows.entries()) {
+					const query = em
+						.createQueryBuilder()
+						.insert()
+						.into(table)
+						.values({ ...row, [DATA_TABLE_KANBAN_ORDER_COLUMN]: kanbanOrders[index] });
 					await query.execute();
 					insertedRows++;
 				}
@@ -161,10 +192,9 @@ export class DataTableRowsRepository {
 			// In practice 20000 works here, but performance didn't meaningfully change
 			// so this should be a safe limit
 			const batchSize = 800;
-			const batches = Math.max(1, Math.ceil((columns.length * rows.length) / batchSize));
+			const batches = Math.max(1, Math.ceil((columnNames.length * rows.length) / batchSize));
 			const rowsPerBatch = Math.ceil(rows.length / batches);
 
-			const columnNames = columns.map((x) => x.name);
 			const dbType = this.dataSource.options.type;
 
 			for (let i = 0; i < batches; ++i) {
@@ -177,12 +207,14 @@ export class DataTableRowsRepository {
 				for (let j = start; j < endExclusive; ++j) {
 					const insertArray: DataTableColumnJsType[] = [];
 
-					for (let h = 0; h < columnNames.length; ++h) {
+					for (let h = 0; h < columns.length; ++h) {
 						const column = columns[h];
 						// Fill missing columns with null values to support partial data insertion
 						const value = rows[j][column.name] ?? null;
 						insertArray[h] = normalizeValueForDatabase(value, column.type, dbType);
 					}
+					// Update last column which is the kanban order column
+					insertArray[columns.length] = kanbanOrders[j];
 					completeRows[j - start] = insertArray;
 				}
 
@@ -218,6 +250,7 @@ export class DataTableRowsRepository {
 			const useReturning = dbType === 'postgres';
 
 			const table = toTableName(dataTableId);
+			const kanbanOrders = await this.allocateTopKanbanOrders(dataTableId, rows.length, em);
 			const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 			const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 				this.dataSource.driver.escape(x),
@@ -225,14 +258,14 @@ export class DataTableRowsRepository {
 			const selectColumns = [...escapedSystemColumns, ...escapedColumns];
 
 			if (returnType === 'count') {
-				return await this.insertRowsBulk(table, rows, columns, em);
+				return await this.insertRowsBulk(table, rows, columns, kanbanOrders, em);
 			}
 
 			// We insert one by one as the default behavior of returning the last inserted ID
 			// is consistent, whereas getting all inserted IDs when inserting multiple values is
 			// surprisingly awkward without Entities, e.g. `RETURNING id` explicitly does not aggregate
 			// and the `identifiers` array output of `execute()` is empty
-			for (const row of rows) {
+			for (const [rowIndex, row] of rows.entries()) {
 				// Fill missing columns with null values to support partial data insertion
 				const completeRow = { ...row };
 				for (const column of columns) {
@@ -245,6 +278,7 @@ export class DataTableRowsRepository {
 						dbType,
 					);
 				}
+				completeRow[DATA_TABLE_KANBAN_ORDER_COLUMN] = kanbanOrders[rowIndex];
 
 				const query = em.createQueryBuilder().insert().into(table).values(completeRow);
 
@@ -440,6 +474,7 @@ export class DataTableRowsRepository {
 					this.applyFilters(selectQuery, filter, 'dataTable');
 				}
 
+				selectQuery.select(this.publicSelectColumns('dataTable', columns));
 				const rawRows = await selectQuery.getRawMany<DataTableRawRowReturn>();
 				affectedRows = normalizeRows(rawRows, columns);
 			}
@@ -491,8 +526,12 @@ export class DataTableRowsRepository {
 	): Promise<T extends true ? Array<Pick<DataTableRowReturn, 'id'>> : DataTableRowReturn[]> {
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const table = toTableName(dataTableId);
-			const selectColumns = idsOnly ? 'id' : '*';
-			const selectQuery = em.createQueryBuilder().select(selectColumns).from(table, 'dataTable');
+			const selectQuery = em.createQueryBuilder().from(table, 'dataTable');
+			if (idsOnly) {
+				selectQuery.select('id');
+			} else {
+				selectQuery.select(this.publicSelectColumns('dataTable', columns));
+			}
 			this.applyFilters(selectQuery, filter, 'dataTable');
 			const rawRows: DataTableRowsReturn = await selectQuery.getRawMany();
 
@@ -551,6 +590,219 @@ export class DataTableRowsRepository {
 		];
 	}
 
+	async getKanbanBoard(
+		dataTableId: string,
+		groupColumnName: string,
+		laneValues: Array<string | null>,
+		rowsPerLane: number,
+		search: string | undefined,
+		generation: string,
+		columns: DataTableColumn[],
+		trx?: EntityManager,
+	): Promise<DataTableKanbanLane[]> {
+		const em = trx ?? this.dataSource.manager;
+		const dbType = this.dataSource.options.type;
+		const tableReference = 'dataTable';
+		const tableRef = quoteIdentifier(tableReference, dbType);
+		const groupColumn = `${tableRef}.${quoteIdentifier(groupColumnName, dbType)}`;
+		const orderColumn = `${tableRef}.${quoteIdentifier(DATA_TABLE_KANBAN_ORDER_COLUMN, dbType)}`;
+		const idColumn = `${tableRef}.${quoteIdentifier('id', dbType)}`;
+		const baseQuery = em
+			.createQueryBuilder()
+			.select('*')
+			.addSelect(groupColumn, '__laneValue')
+			.addSelect(orderColumn, '__kanbanOrder')
+			.addSelect(
+				`ROW_NUMBER() OVER (PARTITION BY ${groupColumn} ORDER BY ${orderColumn} DESC, ${idColumn} DESC)`,
+				'__laneRowNumber',
+			)
+			.addSelect(`COUNT(*) OVER (PARTITION BY ${groupColumn})`, '__laneCount')
+			.from(toTableName(dataTableId), tableReference)
+			.andWhere(`${orderColumn} IS NOT NULL`);
+		if (search?.trim()) this.applySearch(baseQuery, search, tableReference, columns);
+
+		const laneRowNumber = quoteIdentifier('__laneRowNumber', dbType);
+		const laneValue = quoteIdentifier('__laneValue', dbType);
+		const rankedQuery = em
+			.createQueryBuilder()
+			.select('*')
+			.from(`(${baseQuery.getQuery()})`, 'ranked')
+			.where(`${laneRowNumber} <= :rowsPerLane`, { rowsPerLane })
+			.setParameters(baseQuery.getParameters())
+			.orderBy(laneValue, 'ASC')
+			.addOrderBy(laneRowNumber, 'ASC');
+		const rawRows = await rankedQuery.getRawMany<
+			DataTableRawRowReturn & {
+				__laneValue: string | null;
+				__kanbanOrder: string;
+				__laneRowNumber: number | string;
+				__laneCount: number | string;
+			}
+		>();
+
+		const grouped = new Map<string | null, typeof rawRows>();
+		for (const rawRow of rawRows) {
+			const group = grouped.get(rawRow.__laneValue) ?? [];
+			group.push(rawRow);
+			grouped.set(rawRow.__laneValue, group);
+		}
+
+		return laneValues.map((value) => {
+			const laneRows = grouped.get(value) ?? [];
+			const rows = laneRows.map((row) => this.normalizeKanbanRow(row, columns));
+			const count = Number(laneRows[0]?.__laneCount ?? 0);
+			const last = laneRows.at(-1);
+			return {
+				value,
+				count,
+				rows,
+				hasMore: rows.length < count,
+				nextCursor:
+					rows.length < count && last
+						? encodeKanbanCursor(last.__kanbanOrder, last.id, generation)
+						: null,
+			};
+		});
+	}
+
+	async getKanbanLanePage(
+		dataTableId: string,
+		groupColumnName: string,
+		laneValue: string | null,
+		limit: number,
+		cursor: string | undefined,
+		search: string | undefined,
+		generation: string,
+		columns: DataTableColumn[],
+		trx?: EntityManager,
+	): Promise<DataTableKanbanPage> {
+		const em = trx ?? this.dataSource.manager;
+		const dbType = this.dataSource.options.type;
+		const tableReference = 'dataTable';
+		const tableRef = quoteIdentifier(tableReference, dbType);
+		const orderColumn = `${tableRef}.${quoteIdentifier(DATA_TABLE_KANBAN_ORDER_COLUMN, dbType)}`;
+		const idColumn = `${tableRef}.${quoteIdentifier('id', dbType)}`;
+		const query = em
+			.createQueryBuilder()
+			.select('*')
+			.from(toTableName(dataTableId), tableReference)
+			.andWhere(`${orderColumn} IS NOT NULL`);
+		this.applyKanbanLaneFilter(query, tableReference, groupColumnName, laneValue);
+		if (search?.trim()) this.applySearch(query, search, tableReference, columns);
+		if (cursor) {
+			const decoded = decodeKanbanCursor(cursor, generation);
+			query.andWhere(
+				`(${orderColumn} < :cursorOrder OR (${orderColumn} = :cursorOrder AND ${idColumn} < :cursorId))`,
+				{ cursorOrder: decoded.order, cursorId: decoded.id },
+			);
+		}
+		query.orderBy(orderColumn, 'DESC').addOrderBy(idColumn, 'DESC').take(limit + 1);
+		const rawRows = await query.getRawMany<DataTableRawRowReturn>();
+		const hasMore = rawRows.length > limit;
+		const pageRows = hasMore ? rawRows.slice(0, limit) : rawRows;
+		const rows = pageRows.map((row) => this.normalizeKanbanRow(row, columns));
+		const last = pageRows.at(-1);
+		return {
+			rows,
+			hasMore,
+			nextCursor:
+				hasMore && last
+					? encodeKanbanCursor(
+							String(last[DATA_TABLE_KANBAN_ORDER_COLUMN]),
+							last.id,
+							generation,
+						)
+					: null,
+		};
+	}
+
+	async moveKanbanRow(
+		dataTableId: string,
+		rowId: number,
+		groupColumnName: string,
+		targetValue: string | null,
+		afterRowId: number | null,
+		columns: DataTableColumn[],
+		trx: EntityManager,
+	): Promise<{ before: DataTableRowReturn; after: DataTableRowReturn }> {
+		const beforeRaw = await this.getKanbanRowRaw(dataTableId, rowId, trx);
+		if (!beforeRaw) throw new DataTableKanbanConflictError();
+
+		let upperOrder: string | null = null;
+		if (afterRowId !== null) {
+			if (afterRowId === rowId) throw new DataTableKanbanConflictError();
+			const anchor = await this.getKanbanRowRaw(dataTableId, afterRowId, trx);
+			if (!anchor || anchor[groupColumnName] !== targetValue) {
+				throw new DataTableKanbanConflictError();
+			}
+			upperOrder = String(anchor[DATA_TABLE_KANBAN_ORDER_COLUMN]);
+		}
+
+		let lowerOrder = await this.findKanbanSuccessorOrder(
+			dataTableId,
+			rowId,
+			groupColumnName,
+			targetValue,
+			upperOrder,
+			afterRowId,
+			trx,
+		);
+		let [newOrder] = allocateKanbanOrders(1, upperOrder, lowerOrder) ?? [];
+		if (!newOrder) {
+			await this.rebalanceKanbanLane(dataTableId, groupColumnName, targetValue, trx);
+			if (afterRowId !== null) {
+				const anchor = await this.getKanbanRowRaw(dataTableId, afterRowId, trx);
+				upperOrder = anchor ? String(anchor[DATA_TABLE_KANBAN_ORDER_COLUMN]) : null;
+			}
+			lowerOrder = await this.findKanbanSuccessorOrder(
+				dataTableId,
+				rowId,
+				groupColumnName,
+				targetValue,
+				upperOrder,
+				afterRowId,
+				trx,
+			);
+			[newOrder] = allocateKanbanOrders(1, upperOrder, lowerOrder) ?? [];
+		}
+		if (!newOrder) throw new UnexpectedError('Could not allocate a Kanban position');
+
+		const dbType = this.dataSource.options.type;
+		await trx
+			.createQueryBuilder()
+			.update(toTableName(dataTableId))
+			.set({
+				[groupColumnName]: targetValue,
+				[DATA_TABLE_KANBAN_ORDER_COLUMN]: newOrder,
+				updatedAt: normalizeValueForDatabase(new Date(), 'date', dbType),
+			})
+			.where({ id: rowId })
+			.execute();
+		const afterRaw = await this.getKanbanRowRaw(dataTableId, rowId, trx);
+		if (!afterRaw) throw new UnexpectedError('Could not read the moved Kanban row');
+		return {
+			before: this.normalizeKanbanRow(beforeRaw, columns),
+			after: this.normalizeKanbanRow(afterRaw, columns),
+		};
+	}
+
+	async moveRowsToKanbanTop(
+		dataTableId: string,
+		rowIds: number[],
+		trx: EntityManager,
+	): Promise<void> {
+		const sortedIds = [...new Set(rowIds)].sort((left, right) => left - right);
+		const orders = await this.allocateTopKanbanOrders(dataTableId, sortedIds.length, trx);
+		for (const [index, rowId] of sortedIds.entries()) {
+			await trx
+				.createQueryBuilder()
+				.update(toTableName(dataTableId))
+				.set({ [DATA_TABLE_KANBAN_ORDER_COLUMN]: orders[index] })
+				.where({ id: rowId })
+				.execute();
+		}
+	}
+
 	async getManyAndCount(
 		dataTableId: string,
 		dto: ListDataTableContentQueryDto,
@@ -560,7 +812,9 @@ export class DataTableRowsRepository {
 		const em = trx ?? this.dataSource.manager;
 
 		const [countQuery, query] = this.getManyQuery(dataTableId, dto, columns, em);
-		const data: DataTableRowsReturn = await query.select('*').getRawMany();
+		const data: DataTableRowsReturn = await query
+			.select(this.publicSelectColumns('dataTable', columns))
+			.getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
 		}>();
@@ -709,6 +963,177 @@ export class DataTableRowsRepository {
 
 		const quotedField = `${quoteIdentifier('dataTable', dbType)}.${quoteIdentifier(field, dbType)}`;
 		query.orderBy(quotedField, direction);
+	}
+
+	private publicSelectColumns(tableReference: string, columns: DataTableColumn[]): string[] {
+		const dbType = this.dataSource.options.type;
+		const tableRef = quoteIdentifier(tableReference, dbType);
+		return [...DATA_TABLE_SYSTEM_COLUMNS, ...columns.map((column) => column.name)].map(
+			(column) => `${tableRef}.${quoteIdentifier(column, dbType)}`,
+		);
+	}
+
+	private normalizeKanbanRow(
+		rawRow: DataTableRawRowReturn,
+		columns: DataTableColumn[],
+	): DataTableRowReturn {
+		const publicRow: DataTableRawRowReturn = {
+			id: rawRow.id,
+			createdAt: rawRow.createdAt,
+			updatedAt: rawRow.updatedAt,
+		};
+		for (const column of columns) {
+			publicRow[column.name] = rawRow[column.name] ?? null;
+		}
+		const [row] = normalizeRows([publicRow], columns);
+		return row;
+	}
+
+	private applyKanbanLaneFilter(
+		query: QueryBuilder,
+		tableReference: string,
+		groupColumnName: string,
+		laneValue: string | null,
+	): void {
+		const dbType = this.dataSource.options.type;
+		const column = `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(groupColumnName, dbType)}`;
+		if (laneValue === null) {
+			query.andWhere(`${column} IS NULL`);
+		} else {
+			query.andWhere(`${column} = :laneValue`, { laneValue });
+		}
+	}
+
+	private async allocateTopKanbanOrders(
+		dataTableId: string,
+		count: number,
+		em: EntityManager,
+	): Promise<string[]> {
+		if (count === 0) return [];
+		const dbType = this.dataSource.options.type;
+		const tableReference = 'dataTable';
+		const orderColumn = `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(DATA_TABLE_KANBAN_ORDER_COLUMN, dbType)}`;
+		const current = await em
+			.createQueryBuilder()
+			.select(orderColumn, 'order')
+			.from(toTableName(dataTableId), tableReference)
+			.where(`${orderColumn} IS NOT NULL`)
+			.orderBy(orderColumn, 'DESC')
+			.limit(1)
+			.getRawOne<{ order: string }>();
+		let orders = allocateKanbanOrders(count, null, current?.order ?? null);
+		if (orders) return orders;
+
+		await this.rebalanceKanbanTable(dataTableId, em);
+		const rebalanced = await em
+			.createQueryBuilder()
+			.select(orderColumn, 'order')
+			.from(toTableName(dataTableId), tableReference)
+			.where(`${orderColumn} IS NOT NULL`)
+			.orderBy(orderColumn, 'DESC')
+			.limit(1)
+			.getRawOne<{ order: string }>();
+		orders = allocateKanbanOrders(count, null, rebalanced?.order ?? null);
+		if (!orders) throw new UnexpectedError('Could not allocate Kanban positions');
+		return orders;
+	}
+
+	private async getKanbanRowRaw(
+		dataTableId: string,
+		rowId: number,
+		em: EntityManager,
+	): Promise<DataTableRawRowReturn | null> {
+		return (
+			(await em
+			.createQueryBuilder()
+			.select('*')
+			.from(toTableName(dataTableId), 'dataTable')
+			.where({ id: rowId })
+			.getRawOne<DataTableRawRowReturn>()) ?? null
+		);
+	}
+
+	private async findKanbanSuccessorOrder(
+		dataTableId: string,
+		movingRowId: number,
+		groupColumnName: string,
+		targetValue: string | null,
+		upperOrder: string | null,
+		afterRowId: number | null,
+		em: EntityManager,
+	): Promise<string | null> {
+		const dbType = this.dataSource.options.type;
+		const tableReference = 'dataTable';
+		const tableRef = quoteIdentifier(tableReference, dbType);
+		const orderColumn = `${tableRef}.${quoteIdentifier(DATA_TABLE_KANBAN_ORDER_COLUMN, dbType)}`;
+		const idColumn = `${tableRef}.${quoteIdentifier('id', dbType)}`;
+		const query = em
+			.createQueryBuilder()
+			.select(orderColumn, 'order')
+			.from(toTableName(dataTableId), tableReference)
+			.where(`${idColumn} != :movingRowId`, { movingRowId })
+			.andWhere(`${orderColumn} IS NOT NULL`);
+		this.applyKanbanLaneFilter(query, tableReference, groupColumnName, targetValue);
+		if (upperOrder !== null && afterRowId !== null) {
+			query.andWhere(
+				`(${orderColumn} < :upperOrder OR (${orderColumn} = :upperOrder AND ${idColumn} < :afterRowId))`,
+				{ upperOrder, afterRowId },
+			);
+		}
+		const successor = await query
+			.orderBy(orderColumn, 'DESC')
+			.addOrderBy(idColumn, 'DESC')
+			.limit(1)
+			.getRawOne<{ order: string }>();
+		return successor?.order ?? null;
+	}
+
+	private async rebalanceKanbanLane(
+		dataTableId: string,
+		groupColumnName: string,
+		laneValue: string | null,
+		em: EntityManager,
+	): Promise<void> {
+		const query = this.kanbanOrderIdsQuery(dataTableId, em);
+		this.applyKanbanLaneFilter(query, 'dataTable', groupColumnName, laneValue);
+		const rows = await query.getRawMany<{ id: number }>();
+		await this.writeRebalancedOrders(dataTableId, rows, em);
+	}
+
+	private async rebalanceKanbanTable(dataTableId: string, em: EntityManager): Promise<void> {
+		const rows = await this.kanbanOrderIdsQuery(dataTableId, em).getRawMany<{ id: number }>();
+		await this.writeRebalancedOrders(dataTableId, rows, em);
+	}
+
+	private kanbanOrderIdsQuery(dataTableId: string, em: EntityManager): QueryBuilder {
+		const dbType = this.dataSource.options.type;
+		const tableReference = 'dataTable';
+		const tableRef = quoteIdentifier(tableReference, dbType);
+		const orderColumn = `${tableRef}.${quoteIdentifier(DATA_TABLE_KANBAN_ORDER_COLUMN, dbType)}`;
+		const idColumn = `${tableRef}.${quoteIdentifier('id', dbType)}`;
+		return em
+			.createQueryBuilder()
+			.select(idColumn, 'id')
+			.from(toTableName(dataTableId), tableReference)
+			.orderBy(orderColumn, 'DESC')
+			.addOrderBy(idColumn, 'DESC');
+	}
+
+	private async writeRebalancedOrders(
+		dataTableId: string,
+		rows: Array<{ id: number }>,
+		em: EntityManager,
+	): Promise<void> {
+		const orders = allocateKanbanOrders(rows.length, null, null);
+		if (!orders) throw new UnexpectedError('Could not rebalance Kanban positions');
+		for (const [index, row] of rows.entries()) {
+			await em
+				.createQueryBuilder()
+				.update(toTableName(dataTableId))
+				.set({ [DATA_TABLE_KANBAN_ORDER_COLUMN]: orders[index] })
+				.where({ id: row.id })
+				.execute();
+		}
 	}
 
 	private applyPagination(query: QueryBuilder, dto: ListDataTableContentQueryDto): void {

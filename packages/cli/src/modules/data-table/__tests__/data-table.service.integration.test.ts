@@ -745,6 +745,8 @@ describe('dataTable', () => {
 						createdAt: expect.any(Date),
 						updatedAt: expect.any(Date),
 						index: 0,
+						options: null,
+						defaultValue: null,
 					},
 					{
 						id: expect.any(String),
@@ -753,6 +755,8 @@ describe('dataTable', () => {
 						createdAt: expect.any(Date),
 						updatedAt: expect.any(Date),
 						index: 1,
+						options: null,
+						defaultValue: null,
 					},
 					{
 						id: expect.any(String),
@@ -761,6 +765,8 @@ describe('dataTable', () => {
 						createdAt: expect.any(Date),
 						updatedAt: expect.any(Date),
 						index: 2,
+						options: null,
+						defaultValue: null,
 					},
 					{
 						id: expect.any(String),
@@ -769,6 +775,8 @@ describe('dataTable', () => {
 						createdAt: expect.any(Date),
 						updatedAt: expect.any(Date),
 						index: 3,
+						options: null,
+						defaultValue: null,
 					},
 				]),
 			);

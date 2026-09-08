@@ -25,6 +25,8 @@ import { z } from 'zod';
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import { initialKanbanOrder } from '@/modules/data-table/data-table-kanban.utils';
+import { DATA_TABLE_KANBAN_ORDER_COLUMN } from '@/modules/data-table/data-table.types';
 import {
 	normalizeUserRowValueForDatabase,
 	quoteIdentifier,
@@ -962,6 +964,14 @@ export class ImportService {
 							value,
 							columnTypeMap.get(key),
 							dbType,
+						);
+					}
+					if (
+						normalizedRow[DATA_TABLE_KANBAN_ORDER_COLUMN] === null ||
+						normalizedRow[DATA_TABLE_KANBAN_ORDER_COLUMN] === undefined
+					) {
+						normalizedRow[DATA_TABLE_KANBAN_ORDER_COLUMN] = initialKanbanOrder(
+							Number(normalizedRow.id),
 						);
 					}
 

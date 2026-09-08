@@ -392,6 +392,11 @@ export function toTableName(dataTableId: string): DataTableUserTableName {
 	return `${tablePrefix}data_table_user_${dataTableId}`;
 }
 
+export function toKanbanIndexName(dataTableId: string): string {
+	const { tablePrefix } = Container.get(GlobalConfig).database;
+	return `IDX_${tablePrefix}data_table_kanban_${dataTableId}`;
+}
+
 export function toTableId(tableName: DataTableUserTableName) {
 	return tableName.replace(/.*data_table_user_/, '');
 }

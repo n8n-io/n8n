@@ -34,8 +34,11 @@ export class DataTableRepository extends Repository<DataTable> {
 			name?: string;
 			metadata?: DataTableMetadata;
 		},
+		trx?: EntityManager,
 	) {
-		await this.update({ id: dataTableId, projectId }, properties);
+		await withTransaction(this.manager, trx, async (em) => {
+			await em.update(DataTable, { id: dataTableId, projectId }, properties);
+		});
 	}
 
 	constructor(

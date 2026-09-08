@@ -5,6 +5,9 @@ import type {
 	DataTableColumnCreatePayload,
 	DataTable,
 	DataTableColumn,
+	DataTableKanbanBoard,
+	DataTableKanbanMove,
+	DataTableKanbanPage,
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import type { DataTablesSizeResult } from 'n8n-workflow';
@@ -185,6 +188,58 @@ export const getDataTableRowsApi = async (
 		...(options ?? {}),
 	});
 };
+
+export const getDataTableKanbanBoardApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	options: { groupByColumnId: string; rowsPerLane: number; search?: string },
+) =>
+	await makeRestApiRequest<DataTableKanbanBoard>(
+		context,
+		'GET',
+		`/projects/${projectId}/data-tables/${dataTableId}/kanban`,
+		options,
+	);
+
+export const getDataTableKanbanLanePageApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	options: {
+		groupByColumnId: string;
+		laneValue: string | null;
+		limit: number;
+		cursor?: string;
+		search?: string;
+	},
+) =>
+	await makeRestApiRequest<DataTableKanbanPage>(
+		context,
+		'GET',
+		`/projects/${projectId}/data-tables/${dataTableId}/kanban/rows`,
+		{
+			groupByColumnId: options.groupByColumnId,
+			...(options.laneValue === null ? {} : { laneValue: options.laneValue }),
+			limit: options.limit,
+			cursor: options.cursor,
+			search: options.search,
+		},
+	);
+
+export const moveDataTableKanbanRowApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	rowId: number,
+	move: DataTableKanbanMove,
+) =>
+	await makeRestApiRequest<DataTableRow>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataTableId}/kanban/rows/${rowId}`,
+		move,
+	);
 
 export const insertDataTableRowApi = async (
 	context: IRestApiContext,

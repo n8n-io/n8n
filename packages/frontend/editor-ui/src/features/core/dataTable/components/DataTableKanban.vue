@@ -20,8 +20,11 @@ type Lane = {
 	value: string | null;
 	rows: DataTableRow[];
 	count: number;
-	loading: boolean;
-	loaded: boolean;
+	nextCursor: string | null;
+	hasMore: boolean;
+	initialLoading: boolean;
+	loadingMore: boolean;
+	refreshing: boolean;
 	failed: boolean;
 };
 const lanes = ref<Lane[]>([]);
@@ -53,7 +56,8 @@ const previewColumns = computed(() =>
 let generation = 0;
 let disposed = false;
 let polling: ReturnType<typeof setInterval> | undefined;
-const busy = computed(() => saving.value || lanes.value.some((lane) => lane.loading));
+let revision = '';
+const busy = computed(() => saving.value || lanes.value.some((lane) => lane.initialLoading));
 
 function formatValue(value: DataTableValue | undefined) {
 	if (value === null || value === undefined || value === '')
@@ -63,61 +67,153 @@ function formatValue(value: DataTableValue | undefined) {
 	return value instanceof Date ? value.toLocaleString() : String(value);
 }
 
-async function loadLane(lane: Lane, append = false) {
+function emptyLanes(): Lane[] {
+	return [
+		...(groupColumn.value?.options ?? []).map((value, index) => ({
+			key: String(index),
+			value,
+			rows: [],
+			count: 0,
+			nextCursor: null,
+			hasMore: false,
+			initialLoading: true,
+			loadingMore: false,
+			refreshing: false,
+			failed: false,
+		})),
+		{
+			key: 'unassigned',
+			value: null,
+			rows: [],
+			count: 0,
+			nextCursor: null,
+			hasMore: false,
+			initialLoading: true,
+			loadingMore: false,
+			refreshing: false,
+			failed: false,
+		},
+	];
+}
+
+async function hydrateLane(
+	lane: {
+		value: string | null;
+		count: number;
+		rows: DataTableRow[];
+		nextCursor: string | null;
+		hasMore: boolean;
+	},
+	targetSize: number,
+	requestGeneration: number,
+): Promise<Lane> {
 	const column = groupColumn.value;
-	if (!column || lane.loading) return;
+	if (!column) throw new Error('Kanban grouping column is not available');
+	const rows = [...lane.rows];
+	let nextCursor = lane.nextCursor;
+	let hasMore = lane.hasMore;
+	while (rows.length < targetSize && nextCursor && hasMore) {
+		const page = await store.fetchDataTableKanbanLanePage(
+			props.dataTable.id,
+			props.dataTable.projectId,
+			{
+				groupByColumnId: column.id,
+				laneValue: lane.value,
+				limit: Math.min(PAGE_SIZE, targetSize - rows.length),
+				cursor: nextCursor,
+				search: props.search || undefined,
+			},
+		);
+		if (disposed || requestGeneration !== generation) break;
+		rows.push(...page.rows);
+		nextCursor = page.nextCursor;
+		hasMore = page.hasMore;
+	}
+	return {
+		key: lane.value === null ? 'lane:null' : `lane:${lane.value}`,
+		value: lane.value,
+		rows: [...new Map(rows.map((row) => [row.id, row])).values()],
+		count: lane.count,
+		nextCursor,
+		hasMore,
+		initialLoading: false,
+		loadingMore: false,
+		refreshing: false,
+		failed: false,
+	};
+}
+
+async function fetchRows(refresh = true) {
+	const column = groupColumn.value;
+	if (!column) return;
 	const requestGeneration = generation;
-	lane.loading = true;
+	if (!refresh) lanes.value = emptyLanes();
+	else lanes.value.forEach((lane) => (lane.refreshing = true));
+	try {
+		const response = await store.fetchDataTableKanbanBoard(
+			props.dataTable.id,
+			props.dataTable.projectId,
+			column.id,
+			PAGE_SIZE,
+			props.search || undefined,
+		);
+		if (disposed || requestGeneration !== generation) return;
+		const oldLanes = new Map(lanes.value.map((lane) => [lane.value, lane]));
+		const nextLanes = await Promise.all(
+			response.lanes.map(async (lane) => {
+				const oldLane = oldLanes.get(lane.value);
+				return await hydrateLane(
+					lane,
+					refresh ? Math.max(PAGE_SIZE, oldLane?.rows.length ?? 0) : PAGE_SIZE,
+					requestGeneration,
+				);
+			}),
+		);
+		if (disposed || requestGeneration !== generation) return;
+		lanes.value = nextLanes;
+		revision = response.revision;
+	} catch (error) {
+		if (!disposed && requestGeneration === generation) {
+			lanes.value.forEach((lane) => {
+				lane.initialLoading = false;
+				lane.refreshing = false;
+				lane.failed = true;
+			});
+			toast.showError(error, i18n.baseText('dataTable.kanban.loadError'));
+		}
+	}
+}
+
+async function loadMore(lane: Lane) {
+	const column = groupColumn.value;
+	if (!column || lane.loadingMore || !lane.nextCursor) return;
+	const requestGeneration = generation;
+	lane.loadingMore = true;
 	lane.failed = false;
 	try {
-		const loaded: DataTableRow[] = append ? [...lane.rows] : [];
-		const target = append ? loaded.length + PAGE_SIZE : Math.max(PAGE_SIZE, lane.rows.length);
-		let page = append ? Math.floor(loaded.length / PAGE_SIZE) + 1 : 1;
-		let count = 0;
-		do {
-			const response = await store.fetchDataTableContent(
-				props.dataTable.id,
-				props.dataTable.projectId,
-				page,
-				PAGE_SIZE,
-				'id:asc',
-				JSON.stringify({
-					type: 'and',
-					filters: [{ columnName: column.name, condition: 'eq', value: lane.value }],
-				}),
-				props.search,
-			);
-			if (disposed || requestGeneration !== generation) return;
-			loaded.push(...response.data);
-			count = response.count;
-			page++;
-			if (!response.data.length) break;
-		} while (loaded.length < Math.min(target, count));
-		lane.rows = [...new Map(loaded.map((row) => [row.id, row])).values()];
-		lane.count = count;
-		lane.loaded = true;
+		const page = await store.fetchDataTableKanbanLanePage(
+			props.dataTable.id,
+			props.dataTable.projectId,
+			{
+				groupByColumnId: column.id,
+				laneValue: lane.value,
+				limit: PAGE_SIZE,
+				cursor: lane.nextCursor,
+				search: props.search || undefined,
+			},
+		);
+		if (disposed || requestGeneration !== generation) return;
+		lane.rows = [...new Map([...lane.rows, ...page.rows].map((row) => [row.id, row])).values()];
+		lane.nextCursor = page.nextCursor;
+		lane.hasMore = page.hasMore;
 	} catch (error) {
 		if (!disposed && requestGeneration === generation) {
 			lane.failed = true;
 			toast.showError(error, i18n.baseText('dataTable.kanban.loadError'));
 		}
 	} finally {
-		lane.loading = false;
+		lane.loadingMore = false;
 	}
-}
-
-async function fetchRows() {
-	// Limit concurrent requests when an enum has many options.
-	const queue = [...lanes.value];
-	const requestGeneration = generation;
-	await Promise.all(
-		Array.from({ length: Math.min(4, queue.length) }, async () => {
-			while (queue.length && !disposed && requestGeneration === generation) {
-				const lane = queue.shift();
-				if (lane) await loadLane(lane);
-			}
-		}),
-	);
 }
 
 watch(
@@ -132,27 +228,7 @@ watch(
 	async () => {
 		generation++;
 		dialog.value = undefined;
-		lanes.value = [
-			...(groupColumn.value?.options ?? []).map((value, index) => ({
-				key: String(index),
-				value,
-				rows: [],
-				count: 0,
-				loading: false,
-				loaded: false,
-				failed: false,
-			})),
-			{
-				key: 'unassigned',
-				value: null,
-				rows: [],
-				count: 0,
-				loading: false,
-				loaded: false,
-				failed: false,
-			},
-		];
-		await fetchRows();
+		await fetchRows(false);
 	},
 	{ immediate: true, deep: true },
 );
@@ -166,34 +242,67 @@ function editRow(row: DataTableRow) {
 	if (!dragging.value && !busy.value) dialog.value = { row: { ...row } };
 }
 
-async function onCardListChange(event: { added?: { element: DataTableRow } }, lane: Lane) {
-	if (!event.added || !groupColumn.value || props.readOnly) return;
-	const row = event.added.element;
+type CardListChangeEvent = {
+	added?: { element: DataTableRow; newIndex: number };
+	moved?: { element: DataTableRow; newIndex: number };
+};
+
+function onDragStart() {
+	dragging.value = true;
+	generation++;
+	lanes.value.forEach((lane) => (lane.refreshing = false));
+}
+
+async function onCardListChange(event: CardListChangeEvent, lane: Lane) {
+	const change = event.added ?? event.moved;
+	if (!change || !groupColumn.value || props.readOnly) return;
+	const row = change.element;
 	const columnName = groupColumn.value.name;
 	const oldValue = row[columnName] ?? null;
-	if (oldValue === lane.value) return;
 	const source = lanes.value.find((item) => item.value === oldValue);
-	const oldSourceRows = source
-		? [...source.rows, row].sort((a, b) => Number(a.id) - Number(b.id))
-		: [];
-	const oldTargetRows = lane.rows.filter((item) => item.id !== row.id);
+	const previousRow = lane.rows[change.newIndex - 1];
 	saving.value = true;
 	emit('toggleSave', true);
 	generation++;
 	row[columnName] = lane.value;
+	if (source && source !== lane) {
+		source.count = Math.max(0, source.count - 1);
+		lane.count++;
+	}
 	try {
-		await store.updateRow(props.dataTable.id, props.dataTable.projectId, Number(row.id), {
-			[columnName]: lane.value,
-		});
+		const moved = await store.moveDataTableKanbanRow(
+			props.dataTable.id,
+			props.dataTable.projectId,
+			Number(row.id),
+			{
+				groupByColumnId: groupColumn.value.id,
+				targetValue: lane.value,
+				afterRowId: previousRow ? Number(previousRow.id) : null,
+			},
+		);
+		Object.assign(row, moved);
+		revision = '';
 	} catch (error) {
-		row[columnName] = oldValue;
-		lane.rows = oldTargetRows;
-		if (source) source.rows = oldSourceRows;
 		toast.showError(error, i18n.baseText('dataTable.kanban.moveError'));
 	} finally {
 		saving.value = false;
 		emit('toggleSave', false);
-		await fetchRows();
+		await fetchRows(true);
+	}
+}
+
+async function refreshIfChanged() {
+	const requestGeneration = generation;
+	try {
+		const latest = await store.fetchDataTableDetails(
+			props.dataTable.id,
+			props.dataTable.projectId,
+			false,
+		);
+		if (disposed || dragging.value || requestGeneration !== generation) return;
+		if (latest && latest.updatedAt !== revision) await fetchRows(true);
+	} catch {
+		// The next interval retries this best-effort background refresh.
 	}
 }
 
@@ -204,9 +313,11 @@ onMounted(() => {
 			!busy.value &&
 			!dragging.value &&
 			!dialog.value &&
+			!lanes.value.some((lane) => lane.refreshing) &&
 			!lanes.value.some((lane) => lane.failed)
-		)
-			void fetchRows();
+		) {
+			void refreshIfChanged();
+		}
 	}, 3 * TIME.SECOND);
 });
 onBeforeUnmount(() => {
@@ -229,7 +340,7 @@ defineExpose({ fetchRows, addRow });
 			>
 				<header :class="$style.columnHeader">
 					<N8nText bold>{{ lane.value ?? i18n.baseText('dataTable.kanban.unassigned') }}</N8nText>
-					<N8nSpinner v-if="lane.loading && !lane.loaded" />
+					<N8nSpinner v-if="lane.initialLoading" />
 					<N8nText v-else size="small" color="text-light">{{ lane.count }}</N8nText>
 				</header>
 				<div :class="$style.columnScroller">
@@ -237,13 +348,13 @@ defineExpose({ fetchRows, addRow });
 						v-model="lane.rows"
 						:group="{ name: `data-table-${dataTable.id}` }"
 						item-key="id"
-						:sort="false"
+						:sort="true"
 						:disabled="readOnly || busy || !!dialog"
 						:force-fallback="true"
 						:fallback-on-body="true"
 						ghost-class="data-table-kanban-ghost"
 						:class="$style.cardList"
-						@start="dragging = true"
+						@start="onDragStart"
 						@end="dragging = false"
 						@change="onCardListChange($event, lane)"
 					>
@@ -279,14 +390,15 @@ defineExpose({ fetchRows, addRow });
 							</button>
 						</template>
 					</Draggable>
-					<N8nButton v-if="lane.failed" variant="ghost" :disabled="busy" @click="loadLane(lane)">{{
+					<N8nButton v-if="lane.failed" variant="ghost" :disabled="busy" @click="fetchRows(true)">{{
 						i18n.baseText('dataTable.kanban.retry')
 					}}</N8nButton>
 					<N8nButton
-						v-else-if="lane.rows.length < lane.count"
+						v-else-if="lane.hasMore"
 						variant="ghost"
-						:disabled="busy || dragging || !!dialog"
-						@click="loadLane(lane, true)"
+						:disabled="busy || lane.loadingMore || dragging || !!dialog"
+						:loading="lane.loadingMore"
+						@click="loadMore(lane)"
 						>{{ i18n.baseText('dataTable.kanban.loadMore') }}</N8nButton
 					>
 				</div>

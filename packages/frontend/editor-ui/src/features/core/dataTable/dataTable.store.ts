@@ -13,6 +13,8 @@ import {
 	moveDataTableColumnApi,
 	renameDataTableColumnApi,
 	getDataTableRowsApi,
+	getDataTableKanbanBoardApi,
+	getDataTableKanbanLanePageApi,
 	insertDataTableRowApi,
 	updateDataTableRowsApi,
 	deleteDataTableRowsApi,
@@ -20,10 +22,12 @@ import {
 	downloadDataTableCsvApi,
 	importCsvToDataTableApi,
 	uploadCsvFileApi,
+	moveDataTableKanbanRowApi,
 } from '@/features/core/dataTable/dataTable.api';
 import type {
 	DataTable,
 	DataTableColumnCreatePayload,
+	DataTableKanbanMove,
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -231,13 +235,17 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return updated;
 	};
 
-	const fetchDataTableDetails = async (dataTableId: string, projectId: string) => {
+	const fetchDataTableDetails = async (
+		dataTableId: string,
+		projectId: string,
+		updateStore = true,
+	) => {
 		const response = await fetchDataTablesApi(rootStore.restApiContext, projectId, undefined, {
 			projectId,
 			id: dataTableId,
 		});
 		if (response.data.length > 0) {
-			dataTables.value = response.data;
+			if (updateStore) dataTables.value = response.data;
 			return response.data[0];
 		}
 		return null;
@@ -347,6 +355,51 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			search,
 		});
 	};
+
+	const fetchDataTableKanbanBoard = async (
+		dataTableId: string,
+		projectId: string,
+		groupByColumnId: string,
+		rowsPerLane: number,
+		search?: string,
+	) =>
+		await getDataTableKanbanBoardApi(rootStore.restApiContext, dataTableId, projectId, {
+			groupByColumnId,
+			rowsPerLane,
+			search,
+		});
+
+	const fetchDataTableKanbanLanePage = async (
+		dataTableId: string,
+		projectId: string,
+		options: {
+			groupByColumnId: string;
+			laneValue: string | null;
+			limit: number;
+			cursor?: string;
+			search?: string;
+		},
+	) =>
+		await getDataTableKanbanLanePageApi(
+			rootStore.restApiContext,
+			dataTableId,
+			projectId,
+			options,
+		);
+
+	const moveDataTableKanbanRow = async (
+		dataTableId: string,
+		projectId: string,
+		rowId: number,
+		move: DataTableKanbanMove,
+	) =>
+		await moveDataTableKanbanRowApi(
+			rootStore.restApiContext,
+			dataTableId,
+			projectId,
+			rowId,
+			move,
+		);
 
 	const insertEmptyRow = async (dataTableId: string, projectId: string) => {
 		const inserted = await insertDataTableRowApi(
@@ -471,6 +524,9 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		moveDataTableColumn,
 		renameDataTableColumn,
 		fetchDataTableContent,
+		fetchDataTableKanbanBoard,
+		fetchDataTableKanbanLanePage,
+		moveDataTableKanbanRow,
 		insertEmptyRow,
 		insertRow,
 		updateRow,

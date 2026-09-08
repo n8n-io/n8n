@@ -9,6 +9,7 @@ import type { Mocked } from 'vitest';
 import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableCsvImportService } from '../data-table-csv-import.service';
+import { DataTableDDLService } from '../data-table-ddl.service';
 import { DataTableMutationEventRecorder } from '../data-table-mutation-event.repository';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
@@ -29,6 +30,7 @@ describe('DataTableService', () => {
 	let mockDataTableRepository: Mocked<DataTableRepository>;
 	let mockDataTableColumnRepository: Mocked<DataTableColumnRepository>;
 	let mockDataTableRowsRepository: Mocked<DataTableRowsRepository>;
+	let mockDataTableDDLService: Mocked<DataTableDDLService>;
 	let mockLogger: Mocked<Logger>;
 	let mockDataTableSizeValidator: Mocked<DataTableSizeValidator>;
 	let mockProjectRelationRepository: Mocked<ProjectRelationRepository>;
@@ -47,6 +49,7 @@ describe('DataTableService', () => {
 		mockDataTableRepository = mockInstance(DataTableRepository);
 		mockDataTableColumnRepository = mockInstance(DataTableColumnRepository);
 		mockDataTableRowsRepository = mockInstance(DataTableRowsRepository);
+		mockDataTableDDLService = mockInstance(DataTableDDLService);
 		mockLogger = mockInstance(Logger);
 		mockDataTableSizeValidator = mockInstance(DataTableSizeValidator);
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
@@ -69,6 +72,7 @@ describe('DataTableService', () => {
 			mockDataTableRepository,
 			mockDataTableColumnRepository,
 			mockDataTableRowsRepository,
+			mockDataTableDDLService,
 			mockLogger,
 			mockDataTableSizeValidator,
 			mockProjectRelationRepository,

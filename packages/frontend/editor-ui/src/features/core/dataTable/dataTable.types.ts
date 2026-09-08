@@ -46,6 +46,30 @@ export type DataTableValue = string | number | boolean | Date | null;
 
 export type DataTableRow = Record<string, DataTableValue>;
 
+export type DataTableKanbanLane = {
+	value: string | null;
+	count: number;
+	rows: DataTableRow[];
+	nextCursor: string | null;
+	hasMore: boolean;
+};
+
+export type DataTableKanbanBoard = {
+	lanes: DataTableKanbanLane[];
+	revision: string;
+};
+
+export type DataTableKanbanPage = Pick<
+	DataTableKanbanLane,
+	'rows' | 'nextCursor' | 'hasMore'
+>;
+
+export type DataTableKanbanMove = {
+	groupByColumnId: string;
+	targetValue: string | null;
+	afterRowId: number | null;
+};
+
 export type AddColumnResponse = {
 	success: boolean;
 	httpStatus?: number;

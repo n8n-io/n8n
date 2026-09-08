@@ -295,6 +295,11 @@ export {
 	ListDataTableContentQueryDto,
 	PublicApiListDataTableContentQueryDto,
 } from './data-table/list-data-table-content-query.dto';
+export {
+	GetDataTableKanbanBoardQueryDto,
+	GetDataTableKanbanLaneQueryDto,
+	MoveDataTableKanbanRowDto,
+} from './data-table/kanban-data-table.dto';
 export { CreateDataTableColumnDto } from './data-table/create-data-table-column.dto';
 export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
