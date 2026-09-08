@@ -42,6 +42,9 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('get_node_types')).toBe('instanceAi.tools.get_node_types');
 		expect(getToolNameTranslationKey('list_credentials')).toBe('instanceAi.tools.list_credentials');
 		expect(getToolNameTranslationKey('list_workflows')).toBe('instanceAi.tools.list_workflows');
+		expect(getToolNameTranslationKey('list_skills')).toBe('instanceAi.tools.list_skills');
+		expect(getToolNameTranslationKey('read_skill')).toBe('instanceAi.tools.read_skill');
+		expect(getToolNameTranslationKey('update_skill')).toBe('instanceAi.tools.update_skill');
 	});
 
 	it('returns an empty string for missing or blank names', () => {

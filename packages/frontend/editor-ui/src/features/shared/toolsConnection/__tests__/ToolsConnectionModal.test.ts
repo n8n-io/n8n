@@ -39,7 +39,7 @@ vi.mock('@n8n/design-system', async () => {
 			scrollTo: scrollToMock,
 		},
 		template: `
-			<div>
+			<div class="recycle-scroller-wrapper">
 				<div v-for="item in items" :key="item[itemKey]">
 					<slot :item="item" :update-item-size="() => {}" />
 				</div>
@@ -91,6 +91,7 @@ function renderWith(
 		categories: ToolCategoryKey[];
 		detailItem: ToolConnectionItem | null;
 		detailMode: 'detail' | 'settings';
+		allowWorkflowCreation: boolean;
 	}>,
 ) {
 	return renderModal({
@@ -100,6 +101,10 @@ function renderWith(
 			categories: props.categories ?? ALL_CATEGORIES,
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
+			allowWorkflowCreation: props.allowWorkflowCreation,
+		},
+		slots: {
+			'suggestion-footer': '<div data-test-id="suggest-tool-footer">Suggest a tool</div>',
 		},
 		pinia: createTestingPinia(),
 	});
@@ -147,6 +152,25 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('Notion onboarding flow')).toBeNull();
 	});
 
+	it('treats every status except none as having a connection', () => {
+		const items: ToolConnectionItem[] = [
+			{ ...connectedMcpFixture, id: 'connected', title: 'Operational', status: 'connected' },
+			{ ...connectedMcpFixture, id: 'connecting', title: 'In progress', status: 'connecting' },
+			{ ...connectedMcpFixture, id: 'disconnected', title: 'Unavailable', status: 'disconnected' },
+			{ ...connectedMcpFixture, id: 'none', title: 'Never added', status: 'none' },
+		];
+		const { getByTestId, queryByText } = renderWith({
+			items,
+			categories: ['connected', 'mcp'],
+		});
+
+		expect(getByTestId('tab-connected')).toHaveTextContent('(3)');
+		expect(queryByText('Operational')).toBeTruthy();
+		expect(queryByText('In progress')).toBeTruthy();
+		expect(queryByText('Unavailable')).toBeTruthy();
+		expect(queryByText('Never added')).toBeNull();
+	});
+
 	it('gathers every item under the all tab, connected ones included', () => {
 		const { getByTestId, queryByText } = renderWith({
 			categories: ['all', ...ALL_CATEGORIES],
@@ -157,6 +181,37 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('GitHub')).toBeTruthy();
 		expect(queryByText('OpenAI')).toBeTruthy();
 		expect(queryByText('Notion onboarding flow')).toBeTruthy();
+	});
+
+	it('labels and populates the n8n-connect tab and finds its items in search', async () => {
+		const gatewayItem: ToolConnectionItem = {
+			id: 'n8n-connect:slack',
+			kind: 'node',
+			title: 'Slack',
+			description: 'Send messages',
+			status: 'none',
+			category: 'n8n-connect',
+			freeCredits: true,
+			nodeTypeName: 'n8n-nodes-base.slackTool',
+		};
+		const { getByTestId, getByPlaceholderText, queryByText } = renderWith({
+			items: [gatewayItem, ...realisticItems],
+			categories: ['n8n-connect', 'all', ...ALL_CATEGORIES],
+		});
+
+		const tab = getByTestId('tab-n8n-connect');
+		expect(tab.textContent).toContain('Gateway credits');
+		expect(tab.textContent).toContain('(1)');
+		// First tab is active, so the gateway item is visible immediately.
+		expect(queryByText('Slack')).toBeTruthy();
+
+		const inputEl = getByPlaceholderText('Search all tools...') as HTMLInputElement;
+		// A non-matching query empties the tab, proving the debounced filter runs.
+		await fireEvent.update(inputEl, 'zzzznomatch');
+		await waitFor(() => expect(getByTestId('tab-n8n-connect').textContent).toContain('(0)'));
+		// Searching the item's description text brings it back.
+		await fireEvent.update(inputEl, 'send messages');
+		await waitFor(() => expect(getByTestId('tab-n8n-connect').textContent).toContain('(1)'));
 	});
 
 	it('keeps connected items in their own category when the connected tab is omitted', () => {
@@ -171,12 +226,56 @@ describe('ToolsConnectionModal', () => {
 	});
 
 	it('shows the empty state when items is empty', () => {
-		const { getByTestId } = renderWith({ items: [] });
+		const { getByTestId } = renderWith({ items: [], categories: ['mcp'] });
 		expect(getByTestId('tools-connection-empty')).toBeTruthy();
+		expect(getByTestId('suggest-tool-footer')).toBeTruthy();
+	});
+
+	it('renders the suggestion footer after the tool rows inside the scroller', () => {
+		const { getByTestId, getAllByTestId, container } = renderWith({
+			items: makeLargeMcpList(20),
+			categories: ['mcp'],
+		});
+		const scroller = container.querySelector('.recycle-scroller-wrapper');
+		const footer = getByTestId('suggest-tool-footer');
+		const rows = getAllByTestId('tools-connection-row');
+
+		expect(scroller).toContainElement(footer);
+		expect(rows.at(-1)?.compareDocumentPosition(footer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+	});
+
+	it('does not render the suggestion footer outside the MCP category', async () => {
+		const { getByTestId, queryByTestId } = renderWith({
+			categories: ['mcp', 'ai'],
+		});
+
+		expect(queryByTestId('suggest-tool-footer')).toBeTruthy();
+		await fireEvent.click(getByTestId('tab-ai'));
+		expect(queryByTestId('suggest-tool-footer')).toBeNull();
+	});
+
+	it('offers workflow creation when the workflows category is empty', async () => {
+		const { emitted, getByTestId, queryByTestId } = renderWith({
+			items: [],
+			categories: ['mcp', 'workflows'],
+			allowWorkflowCreation: true,
+		});
+
+		expect(queryByTestId('tools-connection-create-workflow')).toBeNull();
+
+		await fireEvent.click(getByTestId('tab-workflows'));
+		expect(getByTestId('tools-connection-empty')).toBeTruthy();
+
+		await fireEvent.click(getByTestId('tools-connection-create-workflow'));
+		expect(emitted()['create-workflow']).toEqual([[]]);
 	});
 
 	it('renders the detail view when a detailItem is set', () => {
-		const unconnectedMcp = { ...connectedMcpFixture, isConnected: false, settings: undefined };
+		const unconnectedMcp = {
+			...connectedMcpFixture,
+			status: 'none' as const,
+			settings: undefined,
+		};
 		const { queryByTestId, queryByText, queryAllByTestId } = renderWith({
 			detailItem: unconnectedMcp,
 		});
@@ -249,7 +348,7 @@ describe('ToolsConnectionModal', () => {
 	});
 
 	it('states a count on every tab, zero included', () => {
-		const items = realisticItems.filter((item) => !item.isConnected);
+		const items = realisticItems.filter((item) => item.status !== 'connected');
 		const { getByTestId } = renderWith({ items, categories: ALL_CATEGORIES });
 
 		expect(getByTestId('tab-ai').textContent).toContain('(2)');
@@ -360,7 +459,11 @@ describe('ToolsConnectionModal', () => {
 	});
 
 	it('emits update:detailItem(null) when the back button is clicked', async () => {
-		const unconnectedMcp = { ...connectedMcpFixture, isConnected: false, settings: undefined };
+		const unconnectedMcp = {
+			...connectedMcpFixture,
+			status: 'none' as const,
+			settings: undefined,
+		};
 		const { getByTestId, emitted } = renderWith({ detailItem: unconnectedMcp });
 
 		await fireEvent.click(getByTestId('tools-connection-detail-back'));

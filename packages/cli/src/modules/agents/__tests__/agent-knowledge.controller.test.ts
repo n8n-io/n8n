@@ -1,15 +1,14 @@
 import type { Mocked } from 'vitest';
-import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import multer from 'multer';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { AiService } from '@/services/ai.service';
 
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -17,28 +16,23 @@ import {
 
 function makeController({
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
-	agentsConfig = {
-		sandboxEnabled: true,
-		sandboxProvider: 'daytona',
-	} as AgentsConfig,
+	agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+		isEnabled: () => true,
+	}),
 	runtimeCacheService = mock<AgentRuntimeCacheService>(),
-	aiService = mock<AiService>({ isProxyEnabled: () => false }),
 }: {
 	agentKnowledgeService?: Mocked<AgentKnowledgeService>;
-	agentsConfig?: AgentsConfig;
+	agentSandboxRuntimeService?: Mocked<AgentSandboxRuntimeService>;
 	runtimeCacheService?: Mocked<AgentRuntimeCacheService>;
-	aiService?: Mocked<AiService>;
 } = {}) {
 	return {
 		controller: new AgentKnowledgeController(
 			agentKnowledgeService,
-			agentsConfig,
+			agentSandboxRuntimeService,
 			runtimeCacheService,
-			aiService,
 		),
 		agentKnowledgeService,
 		runtimeCacheService,
-		aiService,
 	};
 }
 
@@ -135,10 +129,9 @@ describe('AgentKnowledgeController file deletion', () => {
 describe('AgentKnowledgeController knowledge base gating', () => {
 	it('returns not found for file endpoints when the knowledge base is disabled', async () => {
 		const { controller } = makeController({
-			agentsConfig: {
-				sandboxEnabled: false,
-				sandboxProvider: 'daytona',
-			} as AgentsConfig,
+			agentSandboxRuntimeService: mock<AgentSandboxRuntimeService>({
+				isEnabled: () => false,
+			}),
 		});
 
 		await expect(

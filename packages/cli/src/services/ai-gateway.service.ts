@@ -2,6 +2,7 @@ import {
 	AiGatewayConfigDto,
 	getAgentModelProviderCredentialTypes,
 	type AiGatewayUsageResponse,
+	type AiGatewayWalletResponse,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -10,24 +11,20 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { ICredentialDataDecryptedObject, IHttpRequestMethods } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/license';
+import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 
 interface GatewayTokenResponse {
 	token: string;
 	expiresIn: number;
-}
-
-interface GatewayWalletResponse {
-	budget: number;
-	balance: number;
 }
 
 export type AiGatewayAvailability =
@@ -81,7 +78,7 @@ export class AiGatewayService {
 
 	assertEnabled(): void {
 		if (!this.isEnabled()) {
-			throw new BadRequestError('n8n Connect is not enabled on this instance');
+			throw new BadRequestError('Gateway credits are not enabled on this instance');
 		}
 	}
 
@@ -99,7 +96,7 @@ export class AiGatewayService {
 	): Promise<T> {
 		const response = await this.outboundHttp
 			.requests({
-				ssrf: 'disabled', // the gateway base URL is n8n-owned configuration
+				useDefaultSsrfPolicy: 'unsafe', // the gateway base URL is n8n-owned configuration
 			})
 			.request({
 				method: options.method,
@@ -131,11 +128,7 @@ export class AiGatewayService {
 		workflowId: string | undefined;
 	}): Promise<string | undefined> {
 		if (userId) return userId;
-		const resolvedProjectId =
-			projectId ??
-			(workflowId
-				? (await this.ownershipService.getWorkflowProjectCached(workflowId))?.id
-				: undefined);
+		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
 		const owner = resolvedProjectId
 			? await this.ownershipService.getPersonalProjectOwnerCached(resolvedProjectId)
 			: null;
@@ -148,9 +141,35 @@ export class AiGatewayService {
 	}
 
 	/**
+	 * Resolves the concrete project a request belongs to: the explicit `projectId`
+	 * when provided, otherwise the owning project of `workflowId` (cached lookup).
+	 * Returns undefined when neither is available or workflow ownership cannot be
+	 * resolved, so project attribution never blocks gateway credential creation.
+	 */
+	private async resolveProjectId({
+		projectId,
+		workflowId,
+	}: {
+		projectId: string | undefined;
+		workflowId: string | undefined;
+	}): Promise<string | undefined> {
+		if (projectId) return projectId;
+		if (!workflowId) return undefined;
+		try {
+			return (await this.ownershipService.getWorkflowProjectCached(workflowId)).id;
+		} catch {
+			return undefined;
+		}
+	}
+
+	/**
 	 * Returns a synthetic credential for the given type, pointing the node at the gateway
 	 * instead of the real provider. Called from `CredentialsHelper.getDecrypted` when
 	 * `nodeCredentials.__aiGatewayManaged` is set.
+	 *
+	 * `node` is optional — callers with no workflow node to check against (e.g.
+	 * Agents) skip eligibility entirely. When provided, it's checked against
+	 * `checkAiGatewayEligibility` before minting.
 	 */
 	async getSyntheticCredential({
 		credentialType,
@@ -158,18 +177,20 @@ export class AiGatewayService {
 		workflowId,
 		projectId,
 		executionId,
+		node,
 	}: {
 		credentialType: string;
 		userId: string | undefined;
 		workflowId?: string;
 		projectId?: string;
 		executionId?: string;
+		node?: Pick<INode, 'type' | 'typeVersion' | 'parameters'>;
 	}): Promise<ICredentialDataDecryptedObject> {
 		if (!this.licenseState.isAiGatewayLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
 		}
 		if (!this.isEnabled()) {
-			throw new UserError('n8n Connect is not enabled on this instance.');
+			throw new UserError('Gateway credits are not enabled on this instance.');
 		}
 
 		const baseUrl = this.requireBaseUrl();
@@ -177,19 +198,39 @@ export class AiGatewayService {
 		const config = await this.getGatewayConfig();
 		const providerConfig = config.providerConfig[credentialType];
 		if (!providerConfig) {
-			throw new UserError(`Credential type "${credentialType}" is not supported by n8n credits.`);
+			throw new UserError(
+				`Credential type "${credentialType}" is not supported by Gateway credits.`,
+			);
 		}
 
-		const resolvedUserId = await this.resolveUserId({ userId, projectId, workflowId });
+		if (node) {
+			const eligibility = checkAiGatewayEligibility(node, credentialType, config);
+			if (!eligibility.eligible) {
+				throw new UserError(
+					`Gateway credits eligibility check failed: ${eligibility.reason}${eligibility.details ? ` (${eligibility.details})` : ''}.`,
+				);
+			}
+		}
+
+		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
+		const resolvedUserId = await this.resolveUserId({
+			userId,
+			projectId: resolvedProjectId,
+			workflowId,
+		});
 		if (!resolvedUserId) {
-			throw new UserError('Failed to resolve user for n8n credits attribution.');
+			throw new UserError('Failed to resolve user for Gateway credits attribution.');
 		}
 		const jwt = await this.getOrFetchToken(resolvedUserId);
 		if (!jwt) {
-			throw new UserError('Failed to obtain a valid n8n credits token.');
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
 		}
 
-		const urlFields = this.buildUrlFields(baseUrl, providerConfig, { executionId, workflowId });
+		const urlFields = this.buildUrlFields(baseUrl, providerConfig, {
+			executionId,
+			workflowId,
+			projectId: resolvedProjectId,
+		});
 
 		return {
 			[providerConfig.apiKeyField]: jwt,
@@ -207,7 +248,7 @@ export class AiGatewayService {
 	private buildUrlFields(
 		baseUrl: string,
 		providerConfig: { gatewayPath: string; urlField: string; routing?: Record<string, string> },
-		context: { executionId?: string; workflowId?: string },
+		context: { executionId?: string; workflowId?: string; projectId?: string },
 	): Record<string, string> {
 		const routing = providerConfig.routing;
 		if (routing && Object.keys(routing).length > 0) {
@@ -231,7 +272,7 @@ export class AiGatewayService {
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
-			throw new UserError('Failed to obtain a valid n8n credits token.');
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
 		}
 
 		const url = new URL(`${baseUrl}/v1/gateway/usage`);
@@ -247,7 +288,7 @@ export class AiGatewayService {
 			'Failed to fetch AI Gateway usage',
 		);
 		if (!Array.isArray(data.entries) || typeof data.total !== 'number') {
-			throw new UserError('n8n credits returned an invalid usage response.');
+			throw new UserError('Gateway credits returned an invalid usage response.');
 		}
 		return data;
 	}
@@ -255,12 +296,12 @@ export class AiGatewayService {
 	/**
 	 * Returns the current wallet (budget and remaining balance) for the given user.
 	 */
-	async getWallet(userId: string): Promise<GatewayWalletResponse> {
+	async getWallet(userId: string): Promise<AiGatewayWalletResponse> {
 		const baseUrl = this.requireBaseUrl();
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
-			throw new UserError('Failed to obtain a valid n8n credits token.');
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
 		}
 		const data = await this.gatewayRequest<unknown>(
 			{
@@ -274,12 +315,16 @@ export class AiGatewayService {
 		return this.parseWalletResponse(data);
 	}
 
-	private parseWalletResponse(data: unknown): GatewayWalletResponse {
-		const d = data as GatewayWalletResponse;
+	private parseWalletResponse(data: unknown): AiGatewayWalletResponse {
+		const d = data as { budget?: unknown; balance?: unknown; hasEverToppedUp?: unknown };
 		if (typeof d.budget !== 'number' || typeof d.balance !== 'number') {
-			throw new UserError('n8n credits returned an invalid wallet response.');
+			throw new UserError('Gateway credits returned an invalid wallet response.');
 		}
-		return d;
+		return {
+			budget: d.budget,
+			balance: d.balance,
+			hasEverToppedUp: d.hasEverToppedUp === true,
+		};
 	}
 
 	/**
@@ -288,30 +333,39 @@ export class AiGatewayService {
 	 * When both `executionId` and `workflowId` are provided, embeds them as an
 	 * `/exec/:executionId/:workflowId/` prefix inside the gateway path. The AI Gateway's
 	 * URL-rewriting middleware strips this prefix before proxying upstream, so all SDK
-	 * clients remain unaware of it while the gateway can record both IDs in usage metadata.
+	 * clients remain unaware of it while the gateway can record the IDs in usage metadata.
+	 *
+	 * When a `projectId` is available it is appended to the workflow path segment as a
+	 * `|`-joined, encoded list (`:workflowId|:projectId`, the `|` percent-encoded), so the
+	 * gateway can group usage by project. Omitting it keeps the `:workflowId`-only form.
 	 *
 	 * Example (OpenAI):
 	 *   without context → `<base>/v1/gateway/openai/v1`
 	 *   with context    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/openai/v1`
+	 *   with project    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/openai/v1`
 	 */
 	private buildGatewayUrl(
 		baseUrl: string,
 		gatewayPath: string,
-		context: { executionId?: string; workflowId?: string },
+		context: { executionId?: string; workflowId?: string; projectId?: string },
 	): string {
 		if (context.executionId && context.workflowId) {
 			if (!gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
 				return `${baseUrl}${gatewayPath}`;
 			}
 			const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
-			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${encodeURIComponent(context.workflowId)}${providerSuffix}`;
+			const contextSegment = encodeURIComponent(
+				[context.workflowId, context.projectId].filter(Boolean).join('|'),
+			);
+			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${contextSegment}${providerSuffix}`;
 		}
 		return `${baseUrl}${gatewayPath}`;
 	}
 
 	private requireBaseUrl(): string {
 		const url = this.globalConfig.aiAssistant.baseUrl;
-		if (!url) throw new UserError('n8n credits is not configured. Set the AI assistant base URL.');
+		if (!url)
+			throw new UserError('Gateway credits are not configured. Set the AI assistant base URL.');
 		return url;
 	}
 
@@ -345,7 +399,9 @@ export class AiGatewayService {
 			this.configFetchFailedAt > 0 &&
 			Date.now() - this.configFetchFailedAt < AiGatewayService.CONFIG_FAILURE_TTL_MS
 		) {
-			throw new OperationalError('n8n credits config fetch recently failed; retry is throttled.');
+			throw new OperationalError(
+				'Gateway credits config fetch recently failed; retry is throttled.',
+			);
 		}
 
 		const baseUrl = this.requireBaseUrl();
@@ -360,7 +416,7 @@ export class AiGatewayService {
 			);
 			const parsed = AiGatewayConfigDto.safeParse(data);
 			if (!parsed.success) {
-				throw new UserError('n8n credits returned an invalid config response.');
+				throw new UserError('Gateway credits returned an invalid config response.');
 			}
 
 			this.gatewayConfig = parsed.data;
@@ -486,7 +542,7 @@ export class AiGatewayService {
 			'Failed to fetch AI Gateway token',
 		);
 		if (!token || typeof expiresIn !== 'number') {
-			throw new UserError('n8n credits returned an invalid token response.');
+			throw new UserError('Gateway credits returned an invalid token response.');
 		}
 		if (this.tokenCache.size >= this.TOKEN_CACHE_MAX_SIZE) {
 			this.tokenCache.delete(this.tokenCache.keys().next().value as string);

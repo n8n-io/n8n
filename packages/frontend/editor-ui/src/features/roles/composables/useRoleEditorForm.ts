@@ -25,10 +25,18 @@ export interface UseRoleEditorFormOptions {
 	defaultScopes?: () => string[];
 	/**
 	 * Filter applied to every scope set entering the form (default seed, fetched role,
-	 * reset). Keeps the editor — and anything it saves — limited to scopes it exposes,
-	 * so a role loaded with non-assignable scopes is sanitized rather than forwarded.
+	 * reset) and to the persisted snapshot. Keeps the editor — and anything it saves —
+	 * limited to scopes it exposes, so a role loaded with non-assignable scopes is
+	 * sanitized rather than forwarded. Must only strip; adding scopes here would
+	 * rewrite `initialState` and hide the difference from what is stored.
 	 */
 	filterScopes?: (scopes: string[]) => string[];
+	/**
+	 * Applied to form scopes after `filterScopes`, but not to `initialState`.
+	 * Inject required scopes that should persist on the next save without treating
+	 * a legacy role as already up to date.
+	 */
+	ensureScopes?: (scopes: string[]) => string[];
 	/** Error message shown when the initial role fetch fails. */
 	fetchError: string;
 }
@@ -38,6 +46,7 @@ export function useRoleEditorForm({
 	viewRoute,
 	defaultScopes,
 	filterScopes,
+	ensureScopes,
 	fetchError,
 }: UseRoleEditorFormOptions) {
 	const rolesStore = useRolesStore();
@@ -60,10 +69,13 @@ export function useRoleEditorForm({
 	const sanitizeScopes = (scopes: string[]): string[] =>
 		filterScopes ? filterScopes(scopes) : scopes;
 
+	const formScopes = (scopes: string[]): string[] =>
+		ensureScopes ? ensureScopes(sanitizeScopes(scopes)) : sanitizeScopes(scopes);
+
 	const defaultForm = (): RoleEditorForm => ({
 		displayName: '',
 		description: '',
-		scopes: sanitizeScopes(defaultScopes?.() ?? []),
+		scopes: formScopes(defaultScopes?.() ?? []),
 	});
 
 	const initialState = ref<Role | undefined>();
@@ -77,13 +89,14 @@ export function useRoleEditorForm({
 
 			try {
 				const role = await rolesStore.fetchRoleBySlug({ slug });
-				const scopes = sanitizeScopes(role.scopes);
-				// Sanitize initialState too so the form isn't falsely dirty on load.
-				initialState.value = structuredClone({ ...role, scopes });
+				// Snapshot is stripped only. Required scopes go on the form so a stored
+				// role missing them stays unsaved until the next save.
+				const persistedScopes = sanitizeScopes(role.scopes);
+				initialState.value = structuredClone({ ...role, scopes: persistedScopes });
 				return {
 					displayName: role.displayName,
 					description: role.description,
-					scopes,
+					scopes: formScopes(role.scopes),
 				};
 			} catch (error) {
 				showError(error, fetchError);
@@ -149,7 +162,7 @@ export function useRoleEditorForm({
 			? {
 					displayName: payload.displayName,
 					description: payload.description,
-					scopes: sanitizeScopes(payload.scopes),
+					scopes: formScopes(payload.scopes),
 				}
 			: defaultForm();
 	}

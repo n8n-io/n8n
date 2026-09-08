@@ -3,6 +3,7 @@ import { LogScope, TaskRunnersConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
+import { nanoid } from 'nanoid';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 
@@ -14,6 +15,9 @@ export type ChildProcess = ReturnType<typeof spawn>;
 
 const RESTART_RETRY_BASE_DELAY_MS = 5_000;
 const RESTART_RETRY_MAX_DELAY_MS = 30_000;
+
+/** How long a stopping runner gets to exit gracefully before it is force-killed. */
+export const RUNNER_EXIT_GRACE_MS = 2_000;
 
 export function restartRetryDelay(attempt: number): number {
 	return Math.min(RESTART_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1), RESTART_RETRY_MAX_DELAY_MS);
@@ -31,7 +35,8 @@ export type TaskRunnerProcessEventMap = {
 export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProcessEventMap> {
 	protected readonly name: string;
 
-	protected readonly taskType: string;
+	/** ID assigned to the runner in the current process, for it to identify as to the broker. */
+	private runnerId: string | null = null;
 
 	protected process: ChildProcess | null = null;
 
@@ -51,28 +56,22 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		super();
 		this.logger = logger.scoped(loggerScope);
 
-		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', ({ taskTypes }) => {
-			this.restartIfOwnRunner(taskTypes, 'failed heartbeat check');
+		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', ({ runnerId }) => {
+			this.restartIfOwnRunner(runnerId, 'failed heartbeat check');
 		});
 
-		this.runnerLifecycleEvents.on('runner:timed-out-during-task', ({ taskTypes }) => {
-			this.restartIfOwnRunner(taskTypes, 'timed out during task');
+		this.runnerLifecycleEvents.on('runner:timed-out-during-task', ({ runnerId }) => {
+			this.restartIfOwnRunner(runnerId, 'timed out during task');
 		});
 
-		this.runnerLifecycleEvents.on('runner:unresponsive', ({ taskTypes }) => {
-			this.restartIfOwnRunner(taskTypes, 'was reported unresponsive');
+		this.runnerLifecycleEvents.on('runner:unresponsive', ({ runnerId }) => {
+			this.restartIfOwnRunner(runnerId, 'was reported unresponsive');
 		});
 	}
 
-	/**
-	 * Force-restarts this process if the reported runner is the one it spawned.
-	 *
-	 * Internal mode runs one process per task type, so the task type is what says
-	 * which process to restart.
-	 * The runner ID cannot: runners mint their own, so it is never tied to a process n8n spawned.
-	 */
-	private restartIfOwnRunner(taskTypes: string[], cause: string) {
-		if (taskTypes.includes(this.taskType)) {
+	/** Force-restarts this process if the reported runner is the one currently running in it. */
+	private restartIfOwnRunner(runnerId: string, cause: string) {
+		if (runnerId === this.runnerId) {
 			this.logger.warn(`Task runner ${cause}, restarting...`);
 			void this.forceRestart();
 		}
@@ -107,9 +106,13 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 	}
 
 	private async spawnAndMonitor() {
-		const grantToken = await this.authService.createGrantToken();
+		// A relaunched runner is a new runner, so it gets a new ID.
+		this.runnerId = nanoid();
+
+		const grantToken = await this.authService.createGrantToken(this.runnerId);
 		const taskBrokerUri = `http://127.0.0.1:${this.runnerConfig.port}`;
-		const runnerProcess = this.startProcess(grantToken, taskBrokerUri);
+
+		const runnerProcess = this.startProcess(grantToken, taskBrokerUri, this.runnerId);
 
 		try {
 			forwardToLogger(this.logger, runnerProcess, `[${this.name}] `);
@@ -131,7 +134,13 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 
 		if (this.process) {
 			this.process.kill();
-			await this._runPromise;
+			// A runner wedged on an in-flight task never exits gracefully and would
+			// hold shutdown until the force-kill timer. Escalate after a short grace.
+			await Promise.race([this._runPromise, sleep(RUNNER_EXIT_GRACE_MS)]);
+			if (this.process) {
+				this.process.kill('SIGKILL');
+				await this._runPromise;
+			}
 		}
 	}
 
@@ -148,6 +157,7 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 
 	protected onProcessExit(code: number | null, resolveFn: () => void) {
 		this.process = null;
+		this.runnerId = null;
 		const exitReason = this.analyzeExitReason?.(code) ?? { reason: 'unknown' };
 		this.emit('exit', exitReason);
 		resolveFn();
@@ -204,7 +214,7 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 	 * an `exit` emitted before that attachment is lost, leaving the runner dead
 	 * with no relaunch. Any async preparation belongs before the spawn.
 	 */
-	abstract startProcess(grantToken: string, taskBrokerUri: string): ChildProcess;
+	abstract startProcess(grantToken: string, taskBrokerUri: string, runnerId: string): ChildProcess;
 	setupProcessMonitoring?(process: ChildProcess): void;
 	analyzeExitReason?(code: number | null): { reason: ExitReason };
 }

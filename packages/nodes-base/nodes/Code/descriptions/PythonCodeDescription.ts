@@ -10,11 +10,11 @@ const commonDescription: INodeProperties = {
 	},
 	default: '',
 	description:
-		'Python code to execute.<br><br>Tip: You can use built-in methods and variables like <code>_today</code> for dates and <code>_jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/code/builtin/">Learn more</a>.',
+		'Python code to execute. Runs in a sandbox with no network access, and imports only work if your instance allowlists them: read the input items from <code>_items</code> (all-items mode) or <code>_item</code> (per-item mode). <a href="https://docs.n8n.io/code/builtin/">Learn more</a>.',
 	noDataExpression: true,
 	builderHint: {
 		propertyHint:
-			'The sandbox has NO network access: requests, urllib, httpx and other HTTP libraries are unavailable and fail at runtime. NEVER make HTTP requests here — use the HTTP Request node and process its output in this node instead.',
+			'Locked-down sandbox. Imports are off unless the deployment allowlists them, so assume none are available — even `import re` fails on a stock instance. Write import-free Python with builtins, or use javaScript when the task needs a library; never tell the user to change the allowlist. NO network — use an HTTP Request node and process its output here. The only globals are _items (runOnceForAllItems), _item (runOnceForEachItem) and print(); the other mode\'s accessor, _("Node Name"), _input, _json and $-prefixed helpers are all undefined.',
 	},
 };
 
@@ -41,7 +41,7 @@ export const pythonCodeDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: `${PRINT_INSTRUCTION}<br><br>The Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode.`,
+		displayName: `${PRINT_INSTRUCTION}<br><br>The Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode.<br><br>Imports are disabled unless your instance allows them.`,
 		name: 'notice',
 		type: 'notice',
 		displayOptions: {

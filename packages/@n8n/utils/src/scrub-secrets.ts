@@ -39,6 +39,11 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	/\bAKIA[0-9A-Z]{16}\b/g,
 	// Telegram bot token (`<bot id>:<35-char secret>`, also inside `/bot…/` URLs)
 	/\b(?:bot)?\d{8,10}:[A-Za-z0-9_-]{35}\b/g,
+	// Discord bot token: three base64url segments, the first being the encoded
+	// application id (so it starts with the encoding of a snowflake's leading digit).
+	/\b[MNO][A-Za-z0-9_-]{22,}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27,}\b/g,
+	// Linear API keys (`lin_api_…`) and OAuth tokens (`lin_oauth_…`)
+	/\blin_(?:api|oauth)_[A-Za-z0-9]{20,}/g,
 	// Credentials embedded in a URL: `scheme://user:password@` — redact the userinfo.
 	/(?<=:\/\/)[^\s:/@]+:[^\s:/@]+(?=@)/g,
 	// JSON-shaped `"key": "value"` — matches the quoted field as a whole.

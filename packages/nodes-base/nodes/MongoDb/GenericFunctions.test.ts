@@ -1,64 +1,117 @@
-import type { INode, IExecuteFunctions } from 'n8n-workflow';
 import { Binary, ObjectId } from 'mongodb';
+import type { INode, IExecuteFunctions } from 'n8n-workflow';
 
 import {
-	parseAndResolveQueryParameters,
+	buildParameterizedConnString,
 	prepareItems,
+	sanitizeMongoUriInMessage,
 	serializeMongoItems,
 } from './GenericFunctions';
 
 const mockNode = { name: 'MongoDB', type: 'n8n-nodes-base.mongoDb' } as INode;
 
 describe('MongoDB Node: Generic Functions', () => {
-	describe('parseAndResolveQueryParameters', () => {
-		it('replaces placeholders with scalars and scalar arrays', () => {
-			const query = JSON.stringify({
-				name: '$1',
-				age: { $gte: '$2' },
-				tags: { $in: '$3' },
+	describe('buildParameterizedConnString', () => {
+		it('trims user and host values', () => {
+			const connectionString = buildParameterizedConnString({
+				configurationType: 'values',
+				host: '  localhost  ',
+				database: 'database',
+				user: '  user  ',
+				password: ' password ',
+				port: 27017,
 			});
 
-			const result = parseAndResolveQueryParameters(
-				query,
-				'["Alice", 30, ["active", "admin"]]',
-				mockNode,
-				0,
-			);
+			expect(connectionString).toBe('mongodb://user: password @localhost:27017');
+		});
 
-			expect(result).toEqual({
-				name: 'Alice',
-				age: { $gte: 30 },
-				tags: { $in: ['active', 'admin'] },
+		it('keeps values without surrounding whitespace unchanged', () => {
+			const connectionString = buildParameterizedConnString({
+				configurationType: 'values',
+				host: 'localhost',
+				database: 'database',
+				user: 'user',
+				password: 'password',
+				port: 27017,
+			});
+
+			expect(connectionString).toBe('mongodb://user:password@localhost:27017');
+		});
+	});
+
+	describe('sanitizeMongoUriInMessage', () => {
+		describe('when replacing the supplied connection string', () => {
+			it('redacts repeated occurrences', () => {
+				const connectionString = 'mongodb://user:password@host:27017/db';
+				const message = `tried ${connectionString} then retried ${connectionString}`;
+
+				expect(sanitizeMongoUriInMessage(message, connectionString)).toBe(
+					'tried mongodb://[REDACTED] then retried mongodb://[REDACTED]',
+				);
+			});
+
+			it('redacts the connection string when the regex does not match', () => {
+				const connectionString = 'mongodb://user\nsecret@host:27017/db';
+				const message = `Invalid URL: ${connectionString}`;
+
+				expect(sanitizeMongoUriInMessage(message, connectionString)).toBe(
+					'Invalid URL: mongodb://[REDACTED]',
+				);
+			});
+
+			it('is idempotent', () => {
+				const connectionString = 'mongodb://user:password@host:27017/db';
+				const message = `Invalid URL: ${connectionString}`;
+				const sanitized = sanitizeMongoUriInMessage(message, connectionString);
+
+				expect(sanitizeMongoUriInMessage(sanitized, connectionString)).toBe(sanitized);
 			});
 		});
 
-		it('only replaces complete values, not keys or parts of strings', () => {
-			const query = JSON.stringify({ $1: 'key', exact: '$1', partial: 'user-$1' });
+		describe('when matching MongoDB URIs with the regex', () => {
+			it.each([
+				[
+					'Invalid URL: mongodb://leaky_user:supersecret@:27017/?appname=n8n',
+					'Invalid URL: mongodb://[REDACTED]',
+				],
+				[
+					'connect failed: mongodb+srv://user:password@cluster.example.net/db',
+					'connect failed: mongodb+srv://[REDACTED]',
+				],
+				[
+					'connect failed: mongodb://%41%42%43:%44%45%46@host:27017/db',
+					'connect failed: mongodb://[REDACTED]',
+				],
+				['Invalid URL: mongodb://user/secret@host:27017/db', 'Invalid URL: mongodb://[REDACTED]'],
+				['Invalid URL: mongodb://user:p@ss@host:27017/db', 'Invalid URL: mongodb://[REDACTED]'],
+			])('redacts authentication from %s', (message, expected) => {
+				expect(sanitizeMongoUriInMessage(message, '')).toBe(expected);
+			});
 
-			const result = parseAndResolveQueryParameters(query, ['Alice'], mockNode, 0);
+			it('redacts multiple different URIs', () => {
+				const message = 'tried mongodb://a:b@host1, then mongodb+srv://c:d@cluster, both failed';
 
-			expect(result).toEqual({ $1: 'key', exact: 'Alice', partial: 'user-$1' });
-		});
+				expect(sanitizeMongoUriInMessage(message, '')).toBe(
+					'tried mongodb://[REDACTED] then mongodb+srv://[REDACTED] both failed',
+				);
+			});
 
-		it('does not replace placeholders when parameters are empty', () => {
-			const result = parseAndResolveQueryParameters('{ "name": "$1" }', [], mockNode, 0);
+			it('redacts repeated occurrences of the same URI', () => {
+				const connectionString = 'mongodb://user:password@host:27017/db';
+				const message = `tried ${connectionString} then retried ${connectionString}`;
 
-			expect(result).toEqual({ name: '$1' });
-		});
+				expect(sanitizeMongoUriInMessage(message, '')).toBe(
+					'tried mongodb://[REDACTED] then retried mongodb://[REDACTED]',
+				);
+			});
 
-		it.each([{ parameters: [{ name: 'Alice' }] }, { parameters: [[['nested']]] }])(
-			'throws for unsupported parameter value $parameters',
-			({ parameters }) => {
-				expect(() =>
-					parseAndResolveQueryParameters('{ "name": "$1" }', parameters, mockNode, 0),
-				).toThrow(/must be a scalar or an array of scalars/);
-			},
-		);
-
-		it('throws when a parameter is not used', () => {
-			expect(() =>
-				parseAndResolveQueryParameters('{ "name": "$1" }', ['Alice', 30], mockNode, 0),
-			).toThrow('Query parameter 2 is not used');
+			it.each([
+				'connect ECONNREFUSED 127.0.0.1:27017',
+				'connect failed: mongodb://host:27017/db',
+				'',
+			])('leaves messages without URI authentication unchanged', (message) => {
+				expect(sanitizeMongoUriInMessage(message, '')).toBe(message);
+			});
 		});
 	});
 

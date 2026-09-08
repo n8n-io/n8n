@@ -8,6 +8,7 @@ import {
 	type ScopedMemoryTaskEvent,
 	type ToolContext,
 } from '@n8n/agents';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	ROOT_CONTEXT,
@@ -685,6 +686,11 @@ function getOrCreateProxyClient(proxyConfig: ServiceProxyConfig): Client {
 	return client;
 }
 
+export interface BrowserExtensionTraceContext {
+	connectionState: 'connected' | 'disconnected';
+	version?: string;
+}
+
 interface CreateInstanceAiTraceContextOptions {
 	projectName?: string;
 	threadId: string;
@@ -698,6 +704,7 @@ interface CreateInstanceAiTraceContextOptions {
 	metadata?: Record<string, unknown>;
 	n8nVersion?: string;
 	workflowSdkVersion?: string;
+	browserExtension?: BrowserExtensionTraceContext;
 	/** When set, traces are routed through the AI service proxy instead of directly to LangSmith. */
 	proxyConfig?: ServiceProxyConfig;
 }
@@ -778,10 +785,6 @@ function isInternalOperationTracingEnabled(): boolean {
 		process.env.N8N_INSTANCE_AI_TRACE_INTERNAL === 'true' ||
 		process.env.N8N_INSTANCE_AI_TRACE_INCLUDE_INTERNAL === 'true'
 	);
-}
-
-function normalizeErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
 }
 
 function normalizeTags(...tagGroups: Array<string[] | undefined>): string[] | undefined {
@@ -981,7 +984,7 @@ export async function withCurrentTraceSpan<T>(
 		return result;
 	} catch (error) {
 		await finishProductSpanBestEffort(currentProductTrace.runtime, spanRun, {
-			error: normalizeErrorMessage(error),
+			error: getErrorMessage(error),
 			metadata: { final_status: 'error' },
 		});
 		throw error;
@@ -1272,7 +1275,7 @@ function createTraceContext(
 			proxyConfig,
 			async () =>
 				await finishProductSpanBestEffort(otelRuntime, run, {
-					error: normalizeErrorMessage(error),
+					error: getErrorMessage(error),
 					metadata,
 					forceFlush: isRootRun,
 				}),
@@ -1636,6 +1639,14 @@ async function buildBaseMetadata(
 		...(options.n8nVersion !== undefined ? { n8n_version: options.n8nVersion } : {}),
 		...(options.workflowSdkVersion !== undefined
 			? { workflow_sdk_version: options.workflowSdkVersion }
+			: {}),
+		...(options.browserExtension
+			? {
+					browser_connection_state: options.browserExtension.connectionState,
+					...(options.browserExtension.version !== undefined
+						? { browser_extension_version: options.browserExtension.version }
+						: {}),
+				}
 			: {}),
 		...(options.modelId !== undefined
 			? { model_id: serializeModelIdForTrace(options.modelId) }

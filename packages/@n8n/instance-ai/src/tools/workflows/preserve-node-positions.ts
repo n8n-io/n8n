@@ -172,7 +172,8 @@ function separateAddedNodes(added: NodeJSON[], allNodes: NodeJSON[]): void {
  * The sandbox build has no view of the saved workflow, so `toJSON({ tidyUp: true })`
  * lays the whole graph out from scratch and every node lands wherever the layout
  * engine put it — scattering a canvas the user had arranged by hand. Reconciling by
- * name here keeps the user's layout authoritative, mirroring ensureWebhookIds.
+ * id (name for nodes without one) keeps the user's layout authoritative, so a
+ * renamed node keeps its place, mirroring ensureWebhookIds.
  *
  * Nodes the build added are translated into the saved canvas's frame, keeping the
  * layout engine's relative arrangement, then nudged clear of anything they land on.
@@ -195,24 +196,50 @@ export async function preserveExistingNodePositions(
 		);
 	}
 
-	const savedPositionsByName = new Map<string, Position>();
+	// Saved positions are claimed by id first: preserveExistingNodeIds has just run,
+	// so a surviving node carries its saved id even after a rename. Name is the
+	// fallback for a node without one, and a position claimed by id is not handed
+	// out again by name.
+	type SavedNode = { id?: string; name?: string; position: Position };
+	const savedById = new Map<string, SavedNode>();
+	const savedByName = new Map<string, SavedNode>();
 	for (const node of existing.nodes ?? []) {
-		if (node.name && Array.isArray(node.position)) {
-			savedPositionsByName.set(node.name, [node.position[0], node.position[1]]);
-		}
+		if (!Array.isArray(node.position)) continue;
+		const saved: SavedNode = {
+			id: node.id,
+			name: node.name,
+			position: [node.position[0], node.position[1]],
+		};
+		if (saved.id) savedById.set(saved.id, saved);
+		if (saved.name) savedByName.set(saved.name, saved);
 	}
-	if (savedPositionsByName.size === 0) return;
+	if (savedById.size === 0 && savedByName.size === 0) return;
 
 	const nodes = json.nodes ?? [];
 	const survivors: Survivor[] = [];
 	const added: NodeJSON[] = [];
+	const claimed = new Set<SavedNode>();
+	const unclaimed: NodeJSON[] = [];
 	for (const node of nodes) {
-		const saved = node.name ? savedPositionsByName.get(node.name) : undefined;
-		if (saved) survivors.push({ node, saved });
-		else added.push(node);
+		const saved = node.id ? savedById.get(node.id) : undefined;
+		if (saved) {
+			claimed.add(saved);
+			survivors.push({ node, saved: saved.position });
+		} else {
+			unclaimed.push(node);
+		}
+	}
+	for (const node of unclaimed) {
+		const saved = node.name ? savedByName.get(node.name) : undefined;
+		if (saved && !claimed.has(saved)) {
+			claimed.add(saved);
+			survivors.push({ node, saved: saved.position });
+		} else {
+			added.push(node);
+		}
 	}
 
-	// Every node is new (or renamed) — there is no prior layout left to honour.
+	// Every node is new (or replaced) — there is no prior layout left to honour.
 	if (survivors.length === 0) return;
 
 	if (added.length > 0) {

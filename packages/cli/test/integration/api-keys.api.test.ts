@@ -335,7 +335,9 @@ describe('Owner shell', () => {
 			apiKey: publicApiKeyService.redactApiKey(apiKeyWithExpiration.body.data.rawApiKey),
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
-			expiresAt: expirationDateInTheFuture,
+			// GET returns JWT `exp`, which can drift 1s from the request value when
+			// sign-time `iat` crosses a second boundary vs generateApiKey's now.
+			expiresAt: publicApiKeyService.getApiKeyExpiration(apiKeyWithExpiration.body.data.rawApiKey),
 			scopes: ['workflow:create'],
 			audience: 'public-api',
 			lastUsedAt: null,
@@ -541,7 +543,9 @@ describe('Member', () => {
 			apiKey: publicApiKeyService.redactApiKey(apiKeyWithExpiration.body.data.rawApiKey),
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
-			expiresAt: expirationDateInTheFuture,
+			// GET returns JWT `exp`, which can drift 1s from the request value when
+			// sign-time `iat` crosses a second boundary vs generateApiKey's now.
+			expiresAt: publicApiKeyService.getApiKeyExpiration(apiKeyWithExpiration.body.data.rawApiKey),
 			scopes: ['workflow:create'],
 			audience: 'public-api',
 			lastUsedAt: null,

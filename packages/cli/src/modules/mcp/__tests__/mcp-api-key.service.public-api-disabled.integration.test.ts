@@ -8,7 +8,7 @@ import { McpServerApiKeyService } from '../mcp-api-key.service';
 // Regression guard for IAM-574: ApiKeyAuthStrategy must be registered regardless
 // of whether the public API is enabled, otherwise MCP API keys stop working on
 // instances that disable the public REST API. Omitting 'publicApi' from
-// endpointGroups mirrors a production instance where isApiEnabled() returns
+// endpointGroups mirrors a production instance where isApiKeyAuthEnabled() returns
 // false — the MCP endpoint group is still set up so we can exercise the real
 // strategy-registration wiring.
 // Loading the MCP module plus DB init can exceed the default 30s hook timeout

@@ -12,6 +12,7 @@ import {
 } from '../../package-export.errors';
 import { AutoIncludedWorkflowResolver } from '../auto-included-workflow-resolver';
 import type { WorkflowSubWorkflowRequirement } from '../workflow.types';
+import { WorkflowVersionPolicy } from '../../../n8n-packages.types';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -105,6 +106,7 @@ function resolveInput(options: {
 		projectWorkflowIds: options.projectWorkflowIds ?? [],
 		requirements: options.requirements,
 		includeTags: true,
+		workflowVersionPolicy: WorkflowVersionPolicy.Latest,
 	};
 }
 
@@ -317,6 +319,24 @@ describe('AutoIncludedWorkflowResolver', () => {
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
+	it('names the unpublished sub-workflow when ignore-unpublished drops a dependency', async () => {
+		const unpublished = { ...makeWorkflow('b'), activeVersionId: null } as WorkflowEntity;
+		const { resolver } = makeResolver({
+			workflows: [makeWorkflow('seed'), unpublished],
+			owners: { b: makeProject('p1') },
+		});
+
+		await expect(
+			resolver.resolve({
+				...resolveInput({
+					topLevelWorkflowIds: ['seed'],
+					requirements: [requirement('seed', 'b')],
+				}),
+				workflowVersionPolicy: WorkflowVersionPolicy.IgnoreUnpublished,
+			}),
+		).rejects.toThrow('1 sub-workflow dependency has no published version. Export aborted.');
+	});
+
 	it('requests exportable workflows with the workflow:export scope and parent folder', async () => {
 		const { resolver, workflowFinder } = makeResolver({
 			workflows: [makeWorkflow('seed'), makeWorkflow('b')],
@@ -334,7 +354,7 @@ describe('AutoIncludedWorkflowResolver', () => {
 			['b'],
 			user,
 			['workflow:export'],
-			{ includeParentFolder: true, includeTags: true },
+			{ includeParentFolder: true, includeTags: true, includeActiveVersion: false },
 		);
 	});
 });

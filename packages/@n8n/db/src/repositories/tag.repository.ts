@@ -8,11 +8,12 @@ import { FolderTagMapping, TagEntity, WorkflowTagMapping } from '../entities';
 import { BaseRepository } from './base-repository';
 import type { IWorkflowDb } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 
 @Service()
 export class TagRepository extends BaseRepository<TagEntity> {
-	constructor(dataSource: DataSource) {
-		super(TagEntity, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(TagEntity, dataSource.manager, transactionRunner);
 	}
 
 	async findMany(tagIds: string[]) {

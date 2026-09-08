@@ -439,9 +439,10 @@ export function useNodeExecution(
 	}
 
 	async function stopExecution(): Promise<void> {
-		if (isListening.value) {
+		// While the run waits for a test webhook there is no execution to stop.
+		if (workflowExecutionStateStore.value.executionWaitingForWebhook) {
 			await stopWaitingForWebhook();
-		} else if (isListeningForWorkflowEvents.value) {
+		} else {
 			await stopCurrentExecution();
 		}
 	}

@@ -6,8 +6,8 @@ import {
 } from 'n8n-workflow';
 import {
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
-	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
-	SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
+	getWorkflowToolIncompatibilityReason,
+	type WorkflowToolIncompatibilityReason,
 } from '@n8n/api-types';
 import nodePopularity from 'virtual:node-popularity-data';
 
@@ -19,10 +19,6 @@ import type { IWorkflowDb } from '@/Interface';
 import { isMcpRelatedNodeType } from './useMcpServerAdapter';
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
-const supportedWorkflowToolTriggerTypes = new Set<string>(SUPPORTED_WORKFLOW_TOOL_TRIGGERS);
-const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
-	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
-);
 const hiddenAvailableToolNodeTypes = new Set<string>(
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 );
@@ -46,14 +42,7 @@ export function isAvailableN8nToolType(nodeType: INodeTypeDescription): boolean 
 }
 
 export function isWorkflowCompatibleWithAgentTools(workflow: IWorkflowDb): boolean {
-	const nodes = workflow.nodes ?? [];
-	const hasSupportedTrigger = nodes.some((node) =>
-		supportedWorkflowToolTriggerTypes.has(node.type),
-	);
-	const hasIncompatibleBodyNode = nodes.some((node) =>
-		incompatibleWorkflowToolBodyNodeTypes.has(node.type),
-	);
-	return hasSupportedTrigger && !hasIncompatibleBodyNode;
+	return getWorkflowToolIncompatibilityReason(workflow) === null;
 }
 
 /**
@@ -136,12 +125,42 @@ export function useAgentToolCatalog() {
 		),
 	);
 
+	/**
+	 * Workflows that can't be attached as agent tools, with the reason why.
+	 * Surfaced greyed-out at the bottom of the picker so the user can see why a
+	 * workflow is missing instead of it simply being absent. Archived workflows
+	 * are excluded — they're not relevant in the picker either way.
+	 */
+	const incompatibleWorkflows = computed<
+		Array<{ workflow: IWorkflowDb; reason: WorkflowToolIncompatibilityReason }>
+	>(() =>
+		projectWorkflows.value
+			.filter((workflow) => !workflow.isArchived)
+			.flatMap((workflow) => {
+				const reason = getWorkflowToolIncompatibilityReason(workflow);
+				return reason ? [{ workflow, reason }] : [];
+			}),
+	);
+
 	async function loadWorkflows(projectId?: string): Promise<void> {
 		try {
+			// Fetch all project workflows (not just those with a supported trigger)
+			// so unsupported ones can be shown greyed-out with a reason in the picker.
+			// `connections` is needed to scope the incompatibility check to nodes
+			// actually reachable from a supported trigger. A null `activeVersionId`
+			// marks unpublished workflows, which the published agent cannot call yet.
 			projectWorkflows.value = await workflowsListStore.searchWorkflows({
 				projectId,
-				triggerNodeTypes: [...SUPPORTED_WORKFLOW_TOOL_TRIGGERS],
-				select: ['id', 'name', 'description', 'isArchived', 'nodes', 'updatedAt'],
+				select: [
+					'id',
+					'name',
+					'description',
+					'isArchived',
+					'activeVersionId',
+					'nodes',
+					'connections',
+					'updatedAt',
+				],
 			});
 		} catch (error) {
 			console.warn('[useAgentToolCatalog] failed to load workflows for project', error);
@@ -151,6 +170,7 @@ export function useAgentToolCatalog() {
 	return {
 		availableToolTypes,
 		availableWorkflows,
+		incompatibleWorkflows,
 		projectWorkflows,
 		loadWorkflows,
 		resolveToolNodeType,

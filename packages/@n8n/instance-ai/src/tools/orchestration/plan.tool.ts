@@ -1,5 +1,5 @@
 import { Tool } from '@n8n/agents';
-import { taskListSchema } from '@n8n/api-types';
+import { instanceAiApprovalResumeSchema, taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -59,9 +59,7 @@ const planOutputSchema = z.object({
 	taskCount: z.number(),
 });
 
-export const planResumeSchema = z.object({
-	approved: z.boolean(),
-	userInput: z.string().optional(),
+export const planResumeSchema = instanceAiApprovalResumeSchema.extend({
 	denied: z.boolean().optional(),
 });
 

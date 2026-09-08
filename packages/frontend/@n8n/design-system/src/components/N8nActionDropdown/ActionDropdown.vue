@@ -123,6 +123,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 					variant="ghost"
 					:class="$style.activator"
 					:size="activatorSize"
+					:icon-size="activatorIconSize"
 					:icon="activatorIcon"
 					:disabled="disabled"
 					:aria-label="t('actionDropdown.activator')"

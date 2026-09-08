@@ -13,6 +13,26 @@ function assertNever(_value: never): _value is never {
 	return true;
 }
 
+// Captured at module load so printing stays stable even if the global is later replaced.
+const safeStringify = JSON.stringify;
+
+// A string literal carrying its own printed form. recast's printer emits `extra.raw`
+// verbatim (when it matches the value) instead of stringifying at print time.
+export const rawStringLiteral = (value: string) => {
+	const literal = b.literal(value);
+	// JSON.stringify leaves U+2028/U+2029 unescaped; since the raw form is printed
+	// verbatim, escape them so the emitted literal stays single-line and valid.
+	const raw = safeStringify(value)
+		.replace(/\u2028/g, '\\u2028')
+		.replace(/\u2029/g, '\\u2029');
+	// Attach `extra` in place so the ast-types node identity is preserved.
+	(literal as namedTypes.Literal & { extra?: { raw: string; rawValue: string } }).extra = {
+		raw,
+		rawValue: value,
+	};
+	return literal;
+};
+
 export const globalIdentifier = b.identifier(
 	// @ts-expect-error window not in lib target
 	typeof window !== 'object' ? 'global' : 'window',
@@ -21,7 +41,7 @@ export const globalIdentifier = b.identifier(
 const buildGlobalSwitch = (node: types.namedTypes.Identifier, dataNode: DataNode) => {
 	return b.memberExpression(
 		b.conditionalExpression(
-			b.binaryExpression('in', b.literal(node.name), dataNode),
+			b.binaryExpression('in', rawStringLiteral(node.name), dataNode),
 			dataNode,
 			globalIdentifier,
 		),
@@ -80,6 +100,10 @@ const customPatches: Partial<Record<ParentKind['type'], CustomPatcher>> = {
 		}
 	},
 	Property(path, parent: namedTypes.Property, dataNode) {
+		if (parent.computed && parent.key === path.node) {
+			polyfillVar(path, dataNode);
+			return;
+		}
 		if (path.node !== parent.value) {
 			return;
 		}
@@ -117,6 +141,36 @@ const customPatches: Partial<Record<ParentKind['type'], CustomPatcher>> = {
 			polyfillVar(path, dataNode);
 		}
 	},
+	SpreadElement(path, parent: namedTypes.SpreadElement, dataNode) {
+		if (parent.argument === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
+	SpreadProperty(path, parent: namedTypes.SpreadProperty, dataNode) {
+		if (parent.argument === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
+	MethodDefinition(path, parent: namedTypes.MethodDefinition, dataNode) {
+		if (parent.computed && parent.key === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
+	SwitchCase(path, parent: namedTypes.SwitchCase, dataNode) {
+		if (parent.test === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
+	ClassDeclaration(path, parent: namedTypes.ClassDeclaration, dataNode) {
+		if (parent.superClass === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
+	ClassExpression(path, parent: namedTypes.ClassExpression, dataNode) {
+		if (parent.superClass === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
 };
 
 export const jsVariablePolyfill = (
@@ -143,6 +197,12 @@ export const jsVariablePolyfill = (
 				case 'OptionalMemberExpression':
 				case 'VariableDeclarator':
 				case 'ArrowFunctionExpression':
+				case 'SpreadElement':
+				case 'SpreadProperty':
+				case 'MethodDefinition':
+				case 'SwitchCase':
+				case 'ClassDeclaration':
+				case 'ClassExpression':
 					if (!customPatches[parent.type]) {
 						throw new Error(`Couldn't find custom patcher for parent type: ${parent.type}`);
 					}
@@ -211,12 +271,9 @@ export const jsVariablePolyfill = (
 				case 'RestElement':
 				case 'ArrayPattern':
 				case 'ObjectPattern':
-				case 'ClassExpression':
 				case 'RecordExpression':
 				case 'V8IntrinsicIdentifier':
 				case 'TopicReference':
-				case 'MethodDefinition':
-				case 'ClassDeclaration':
 				case 'ClassProperty':
 				case 'StaticBlock':
 				case 'ClassBody':
@@ -314,6 +371,7 @@ export const jsVariablePolyfill = (
 					// This is a simple type guard that guarantees we haven't missed
 					// a case. It'll result in a type error at compile time.
 					assertNever(parent);
+					polyfillVar(path, dataNode);
 					break;
 			}
 		},

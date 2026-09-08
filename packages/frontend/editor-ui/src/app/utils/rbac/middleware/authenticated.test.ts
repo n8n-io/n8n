@@ -20,7 +20,7 @@ describe('Middleware', () => {
 			>);
 
 			const nextMock = vi.fn();
-			const toMock = { query: {} } as RouteLocationNormalized;
+			const toMock = { query: {}, fullPath: '/' } as RouteLocationNormalized;
 			const fromMock = {} as RouteLocationNormalized;
 
 			await authenticatedMiddleware(toMock, fromMock, nextMock, {});
@@ -54,7 +54,7 @@ describe('Middleware', () => {
 			>);
 
 			const nextMock = vi.fn();
-			const toMock = { query: {} } as RouteLocationNormalized;
+			const toMock = { query: {}, fullPath: '/' } as RouteLocationNormalized;
 			const fromMock = {} as RouteLocationNormalized;
 
 			await authenticatedMiddleware(toMock, fromMock, nextMock, {});

@@ -80,8 +80,23 @@ export async function createStubServices(
 	const capturedWorkflows: WorkflowJSON[] = [];
 
 	const workflowService: InstanceAiWorkflowService = {
-		async list() {
-			return [];
+		async list(options) {
+			// A folder request gets a realistic miss so the transcript shows what the
+			// agent does with `folderResolution`, instead of an empty success.
+			const requestedFolder = options?.folderId ?? options?.folderPath;
+			if (requestedFolder !== undefined) {
+				return {
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: {
+						requested: requestedFolder,
+						reason: 'not-found',
+						candidates: ['Clients/Acme', 'Clients/Globex'],
+					},
+				};
+			}
+			return { workflows: [], total: 0, totalInScope: 0 };
 		},
 		async get(workflowId: string) {
 			return emptyWorkflowDetail(workflowId);
@@ -495,7 +510,7 @@ function coerceCodex(value: unknown): SearchableNodeDescription['codex'] | undef
 function coerceBuilderHint(value: unknown): SearchableNodeDescription['builderHint'] | undefined {
 	if (!isRecord(value)) return undefined;
 	const hint: NonNullable<SearchableNodeDescription['builderHint']> = {};
-	if (typeof value.message === 'string') hint.message = value.message;
+	if (typeof value.searchHint === 'string') hint.searchHint = value.searchHint;
 	const inputs = coerceHintPortMap(value.inputs);
 	if (inputs) hint.inputs = inputs;
 	const outputs = coerceHintPortMap(value.outputs);

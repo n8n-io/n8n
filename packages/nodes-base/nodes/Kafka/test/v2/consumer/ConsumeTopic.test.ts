@@ -118,6 +118,90 @@ describe('consumeTopic', () => {
 		});
 	});
 
+	describe('group join wait', () => {
+		// connect/subscribe/run resolve before the join settles, so startup holds
+		// until the outcome is known (ENT-340).
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('resolves as soon as the group assigns partitions', async () => {
+			const consumer = await newConsumer();
+			// Not joined on the first check, joined on the next poll.
+			consumer.assignment.mockImplementationOnce(() => []);
+
+			const startup = consumeTopic(consumer as never, {
+				topic: 'orders',
+				parseMessage,
+				emit,
+				logger,
+			});
+
+			// One poll interval, nowhere near the full grace period.
+			await vi.advanceTimersByTimeAsync(250);
+			await expect(startup).resolves.toBeDefined();
+		});
+
+		it('fails startup and disconnects when a fatal error arrives while unjoined', async () => {
+			const consumer = await newConsumer();
+			consumer.assignment.mockImplementation(() => []);
+			let failStartup!: (error: Error) => void;
+			const startupFailure = new Promise<never>((_, reject) => (failStartup = reject));
+
+			const startup = consumeTopic(consumer as never, {
+				topic: 'orders',
+				parseMessage,
+				emit,
+				logger,
+				startupFailure,
+			});
+			failStartup(new Error('Broker: Group authorization failed'));
+
+			await expect(startup).rejects.toThrow('Group authorization failed');
+			expect(consumer.disconnect).toHaveBeenCalledTimes(1);
+		});
+
+		it('proceeds after the grace period when the group has assigned nothing', async () => {
+			// Zero partitions can be legitimate, so only an observed fatal error may
+			// fail startup, never the clock.
+			const consumer = await newConsumer();
+			consumer.assignment.mockImplementation(() => []);
+
+			const startup = consumeTopic(consumer as never, {
+				topic: 'orders',
+				parseMessage,
+				emit,
+				logger,
+			});
+
+			await vi.advanceTimersByTimeAsync(3000);
+			await expect(startup).resolves.toBeDefined();
+			expect(consumer.disconnect).not.toHaveBeenCalled();
+		});
+
+		it('treats an assignment read that throws as not joined, not as a failure', async () => {
+			// The real assignment() throws ERR__STATE unless the consumer is CONNECTED.
+			const consumer = await newConsumer();
+			consumer.assignment.mockImplementation(() => {
+				throw new Error('Assignment can only be called while connected.');
+			});
+
+			const startup = consumeTopic(consumer as never, {
+				topic: 'orders',
+				parseMessage,
+				emit,
+				logger,
+			});
+
+			await vi.advanceTimersByTimeAsync(3000);
+			await expect(startup).resolves.toBeDefined();
+		});
+	});
+
 	describe('chunking', () => {
 		it('emits one execution per message by default', async () => {
 			const { consumer } = await start();
@@ -257,7 +341,7 @@ describe('consumeTopic', () => {
 				await consumer.deliverBatch({ messages: messages('a', 'b') });
 
 				// Every message reaches a workflow, whatever the setting was.
-				expect(emit.mock.calls.flatMap((call) => call[0] as INodeExecutionData[])).toHaveLength(2);
+				expect(emit.mock.calls.flatMap((call) => call[0])).toHaveLength(2);
 				expect(consumer.payloadSpies.resolveOffset).toHaveBeenCalledWith('1');
 			},
 		);

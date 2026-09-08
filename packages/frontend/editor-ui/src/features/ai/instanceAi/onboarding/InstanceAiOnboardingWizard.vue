@@ -30,12 +30,15 @@ import { SANDBOX_PROVIDER_LABELS } from '../constants';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import {
 	INSTANCE_AI_MODEL_PROVIDERS,
+	INSTANCE_AI_CURATED_MODELS,
 	INSTANCE_AI_SANDBOX_PROVIDERS,
 	INSTANCE_AI_SEARCH_PROVIDERS,
 	type InstanceAiModelProvider,
 	type InstanceAiSearchProvider,
 } from '../instanceAiConnection.constants';
+import { getAllInstanceAiModelOptions, getInstanceAiModelOptions } from '../instanceAiModelCatalog';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { sanitizeFailureDetail } from './sanitizeFailureDetail';
 import type { InstanceAiOnboardingStep } from './useInstanceAiOnboarding';
 
 const DAYTONA_API_URL = 'https://app.daytona.io/api';
@@ -43,11 +46,13 @@ const N8N_SANDBOX_HEADER = 'x-api-key';
 const STATIC_SECRET_MASK = '••••••••••••';
 const SANDBOX_DOCS_URL =
 	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant#configure-a-sandbox-provider';
-const SEARCH_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
+const SEARCH_DOCS_URL =
+	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant#enable-web-search';
 const BRAVE_SEARCH_KEYS_URL = 'https://api-dashboard.search.brave.com/app/keys';
 const ENV_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
 const SUCCESS_PAUSE_MS = TIME.SECOND * 1.5;
 const DEFAULT_MODEL_PROVIDER = INSTANCE_AI_MODEL_PROVIDERS[0]!;
+const DEFAULT_MODEL_NAME = INSTANCE_AI_CURATED_MODELS[DEFAULT_MODEL_PROVIDER.id][0] ?? '';
 type VerificationSuccess = Extract<InstanceAiVerificationResponse, { ok: true }>;
 const VERIFICATION_FAILURE_COPY: Record<InstanceAiVerificationFailure, BaseTextKey> = {
 	unauthorized: 'instanceAi.onboarding.verification.unauthorized',
@@ -91,11 +96,12 @@ const { credentialTestError, testSavedCredential } = useInstanceCredentialTest()
 
 const busy = ref(false);
 const failure = ref<InstanceAiVerificationFailure | null>(null);
+const failureDetail = ref<string | null>(null);
 const success = ref<VerificationSuccess | null>(null);
 const modelProvider = ref<InstanceAiModelProvider>('anthropic');
 const modelApiKey = ref('');
 const modelBaseUrl = ref('');
-const modelName = ref<string>(DEFAULT_MODEL_PROVIDER.models[0] ?? '');
+const modelName = ref<string>(DEFAULT_MODEL_NAME);
 const sandboxProvider = ref<'n8n-sandbox' | 'daytona' | null>(null);
 const sandboxServiceUrl = ref('');
 const sandboxApiKey = ref('');
@@ -114,13 +120,11 @@ const modelConfig = computed(
 );
 const modelConnectionLocked = computed(() => store.settings?.envManaged?.model?.provider === true);
 const modelNameLocked = computed(() => store.settings?.envManaged?.model?.model === true);
-const modelOptions = computed(() => {
-	const options: string[] = modelConnectionLocked.value
-		? INSTANCE_AI_MODEL_PROVIDERS.flatMap(({ models }) => models)
-		: [...modelConfig.value.models];
-	if (modelName.value && !options.includes(modelName.value)) options.unshift(modelName.value);
-	return [...new Set(options)];
-});
+const modelOptions = computed(() =>
+	modelConnectionLocked.value
+		? getAllInstanceAiModelOptions(store.modelCatalog, modelName.value)
+		: getInstanceAiModelOptions(modelProvider.value, store.modelCatalog, modelName.value),
+);
 const sandboxEnvManaged = computed(() => store.settings?.sandboxEnvConfigured === true);
 const searchEnvManaged = computed(() => store.settings?.searchEnvConfigured === true);
 const readOnly = computed(() => !store.canManageInstanceCredentials);
@@ -312,7 +316,7 @@ function applyExistingCredential(credential: InstanceAiProviderConnection): void
 		modelProvider.value = modelProviderForCredentialType(credential.type);
 		modelName.value =
 			(credential.id === assignedCredentialId() ? store.settings?.modelName : null) ||
-			INSTANCE_AI_MODEL_PROVIDERS.find(({ id }) => id === modelProvider.value)?.models[0] ||
+			INSTANCE_AI_CURATED_MODELS[modelProvider.value][0] ||
 			'';
 	} else if (props.step === 'sandbox') {
 		sandboxProvider.value = credential.type === 'daytonaApi' ? 'daytona' : 'n8n-sandbox';
@@ -340,7 +344,7 @@ async function hydrateModel(generation: number, rememberProvider = true): Promis
 	modelProvider.value = 'anthropic';
 	modelApiKey.value = '';
 	modelBaseUrl.value = '';
-	modelName.value = store.settings?.modelName || DEFAULT_MODEL_PROVIDER.models[0] || '';
+	modelName.value = store.settings?.modelName || DEFAULT_MODEL_NAME;
 	if (modelConnectionLocked.value) {
 		if (modelNameLocked.value) modelName.value = '';
 		return;
@@ -411,6 +415,7 @@ async function hydrateSearch(generation: number): Promise<void> {
 async function hydrate(): Promise<void> {
 	const generation = ++hydrationGeneration;
 	failure.value = null;
+	failureDetail.value = null;
 	success.value = null;
 	if (props.step === 'model') await hydrateModel(generation);
 	if (props.step === 'sandbox') await hydrateSandbox(generation);
@@ -423,7 +428,11 @@ async function hydrate(): Promise<void> {
 watch(
 	() => [props.open, props.step] as const,
 	async ([open]) => {
-		if (open) await hydrate();
+		if (!open) return;
+		await hydrate();
+		if (props.step === 'model' && modelProvider.value !== 'custom') {
+			void store.loadModelCatalog();
+		}
 	},
 	{ immediate: true },
 );
@@ -444,6 +453,7 @@ watch(
 	],
 	() => {
 		failure.value = null;
+		failureDetail.value = null;
 		success.value = null;
 		credentialTestError.value = '';
 	},
@@ -463,7 +473,8 @@ async function selectModelProvider(provider: unknown): Promise<void> {
 	modelProvider.value = next.id;
 	modelApiKey.value = '';
 	modelBaseUrl.value = '';
-	modelName.value = next.models[0] ?? '';
+	modelName.value = INSTANCE_AI_CURATED_MODELS[next.id][0] ?? '';
+	if (next.id !== 'custom') void store.loadModelCatalog();
 }
 
 function selectSandboxProvider(provider: unknown): void {
@@ -588,7 +599,13 @@ async function verifyExistingCredential(): Promise<InstanceAiVerificationRespons
 	if (!credential) return { ok: false, failure: 'provider_error' };
 	return (await testSavedCredential(credential.id, credential.name, credential.type))
 		? { ok: true }
-		: { ok: false, failure: 'provider_error' };
+		: {
+				ok: false,
+				failure: 'provider_error',
+				error: credentialTestError.value
+					? sanitizeFailureDetail(credentialTestError.value)
+					: undefined,
+			};
 }
 
 async function runVerification(): Promise<InstanceAiVerificationResponse | null> {
@@ -629,11 +646,13 @@ async function handlePrimary(): Promise<void> {
 	}
 	busy.value = true;
 	failure.value = null;
+	failureDetail.value = null;
 	success.value = null;
 	try {
 		const result = await runVerification();
 		if (!result?.ok) {
 			failure.value = result?.failure ?? 'provider_error';
+			failureDetail.value = result?.ok === false ? (result.error ?? null) : null;
 			return;
 		}
 		let saved = true;
@@ -663,8 +682,10 @@ async function handlePrimary(): Promise<void> {
 			}
 			emit('advance');
 		}
-	} catch {
+	} catch (error) {
 		failure.value = 'provider_error';
+		failureDetail.value =
+			error instanceof Error && error.message ? sanitizeFailureDetail(error.message) : null;
 	} finally {
 		busy.value = false;
 	}
@@ -677,6 +698,14 @@ function handleOpenChange(value: boolean): void {
 
 function preventOutsideClose(event: Event): void {
 	event.preventDefault();
+}
+
+// Reka's focus trap otherwise focuses the first tabbable field, which makes a
+// filterable select open its dropdown as soon as the wizard appears. Focus the
+// dialog itself instead so keyboard navigation still starts inside it.
+function focusDialogInsteadOfFirstField(event: Event): void {
+	event.preventDefault();
+	if (event.target instanceof HTMLElement) event.target.focus();
 }
 
 const failureKey = computed(() => VERIFICATION_FAILURE_COPY[failure.value ?? 'provider_error']);
@@ -711,6 +740,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 		:data-test-id="dialogTestId"
 		@update:open="handleOpenChange"
 		@interact-outside="preventOutsideClose"
+		@open-auto-focus="focusDialogInsteadOfFirstField"
 	>
 		<div :class="$style.body">
 			<template v-if="step === 'model'">
@@ -846,6 +876,8 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 							id="assistant-model-name"
 							:model-value="modelName"
 							:teleported="true"
+							filterable
+							:disabled="readOnly"
 							:data-test-id="
 								surface === 'settings' ? 'n8n-agent-model-name-input' : 'assistant-model-name'
 							"
@@ -853,12 +885,12 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 						>
 							<N8nOption
 								v-for="model in modelOptions"
-								:key="model"
-								:value="model"
+								:key="model.id"
+								:value="model.id"
 								:label="
-									model === modelConfig.models[0]
-										? `${model} · ${i18n.baseText('instanceAi.onboarding.recommended')}`
-										: model
+									model.recommended
+										? `${model.name} · ${i18n.baseText('instanceAi.onboarding.recommended')}`
+										: model.name
 								"
 							/>
 						</N8nSelect>
@@ -867,7 +899,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 							id="assistant-model-name"
 							v-model="modelName"
 							class="ph-no-capture"
-							:disabled="modelNameLocked"
+							:disabled="modelNameLocked || readOnly"
 							:placeholder="modelNameLocked ? STATIC_SECRET_MASK : 'qwen3-coder'"
 							:spellcheck="false"
 							:data-test-id="
@@ -1278,7 +1310,20 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 							: 'assistant-verification-error'
 					"
 				>
-					{{ i18n.baseText(failureKey) }}
+					<div>
+						{{ i18n.baseText(failureKey) }}
+						<div
+							v-if="failureDetail"
+							:class="$style.failureDetail"
+							data-test-id="assistant-verification-error-details"
+						>
+							{{
+								i18n.baseText('instanceAi.onboarding.verification.errorDetails', {
+									interpolate: { details: failureDetail },
+								})
+							}}
+						</div>
+					</div>
 				</N8nCallout>
 			</Transition>
 		</div>
@@ -1306,7 +1351,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 				@click="emit('back')"
 			/>
 			<div
-				v-if="step !== 'done' && !editMode"
+				v-if="step !== 'done' && !editMode && visibleSetupSteps.length > 1"
 				:class="$style.dots"
 				:data-test-id="progressTestId"
 				aria-hidden="true"
@@ -1526,6 +1571,11 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 
 .editFooter > :last-child {
 	margin-left: 0;
+}
+
+.failureDetail {
+	margin-top: var(--spacing--4xs);
+	overflow-wrap: anywhere;
 }
 
 .dots {

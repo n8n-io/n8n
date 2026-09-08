@@ -120,6 +120,56 @@ describe('InstanceAiErrorReporterService', () => {
 		);
 	});
 
+	it('logs at warning level instead of reporting when the provider connection drops', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = Object.assign(new TypeError('terminated'), {
+			cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+		});
+
+		service.beginRun('r');
+		service.report(error, {
+			component: 'instance-ai-stream',
+			providerStream: true,
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Instance AI stream transport failure in instance-ai-stream',
+			expect.objectContaining({ threadId: 't', runId: 'r' }),
+		);
+	});
+
+	it('still reports a dropped connection outside the provider stream', () => {
+		const { service, errorReporter } = createService();
+		const error = Object.assign(new TypeError('terminated'), {
+			cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+		});
+
+		service.report(error, {
+			component: 'instance-ai-ensure-thread',
+			threadId: 't',
+		});
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
+	});
+
+	it('still reports application errors that merely mention a socket code', () => {
+		const { service, errorReporter } = createService();
+
+		service.beginRun('r');
+		service.report(new Error('tool returned ECONNRESET in its output'), {
+			component: 'instance-ai-stream',
+			providerStream: true,
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
+	});
+
 	it('reports at warning level when the context declares warning severity', () => {
 		const { service, errorReporter, logger } = createService();
 		const error = new Error('Observer failed');

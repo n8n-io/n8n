@@ -9,9 +9,11 @@
  */
 import { Tool } from '@n8n/agents';
 import {
+	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	LLM_JUDGE_PROVIDER_NODE_TYPES,
 } from '@n8n/api-types';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -151,9 +153,7 @@ const confirmationSuspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-});
+const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 type ResumeData = z.infer<typeof confirmationResumeSchema>;
 
@@ -179,10 +179,6 @@ function toUpsertInput(
 		dataTableId: input.dataTableId,
 		metrics: input.metrics,
 	};
-}
-
-function errorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
 }
 
 // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -238,7 +234,7 @@ async function handleCreate(
 		const config = await service.create(input.workflowId, toUpsertInput(input));
 		return { config };
 	} catch (error) {
-		return { error: errorMessage(error) };
+		return { error: getErrorMessage(error) };
 	}
 }
 
@@ -264,7 +260,7 @@ async function handleUpdate(
 		const config = await service.update(input.workflowId, input.configId, toUpsertInput(input));
 		return { config };
 	} catch (error) {
-		return { error: errorMessage(error) };
+		return { error: getErrorMessage(error) };
 	}
 }
 

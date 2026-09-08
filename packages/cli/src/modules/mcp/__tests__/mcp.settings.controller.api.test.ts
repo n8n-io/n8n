@@ -203,7 +203,7 @@ describe('PATCH /mcp/settings', () => {
 			.send({ mcpAccessEnabled: true });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ mcpAccessEnabled: true });
+		expect(response.body.data).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: false });
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
 		expect(stored?.value).toBe('true');
@@ -218,7 +218,7 @@ describe('PATCH /mcp/settings', () => {
 			.send({ mcpAccessEnabled: false });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ mcpAccessEnabled: false });
+		expect(response.body.data).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
 		expect(stored?.value).toBe('false');
@@ -238,6 +238,12 @@ describe('PATCH /mcp/settings', () => {
 			.authAgentFor(owner)
 			.patch('/mcp/settings')
 			.send({ mcpAccessEnabled: 'yes' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('rejects an empty body with 400', async () => {
+		const response = await testServer.authAgentFor(owner).patch('/mcp/settings').send({});
 
 		expect(response.statusCode).toBe(400);
 	});

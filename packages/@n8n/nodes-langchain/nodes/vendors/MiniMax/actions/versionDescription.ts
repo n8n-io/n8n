@@ -11,7 +11,8 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'minimax',
 	icon: 'file:minimax.svg',
 	group: ['transform'],
-	version: 1,
+	version: [1, 1.1],
+	defaultVersion: 1.1,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 	description: 'Message MiniMax, generate speech, images, and video',
 	defaults: {

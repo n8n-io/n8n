@@ -156,7 +156,7 @@ describe('useAgentCapabilitiesActions', () => {
 
 	it('saves a skill-modal confirm for the agent it was opened on', () => {
 		const skill: AgentSkill = { name: 'PR Reviewer', description: '', instructions: 'Review.' };
-		const { actions, scheduleSkillSave, agent } = makeActions({
+		const { actions, scheduleConfigUpdate, scheduleSkillSave, agent } = makeActions({
 			skills: [{ type: 'skill', id: 's1' }],
 		} as Partial<AgentJsonConfig>);
 		agent.value = { id: 'agent-1', skills: { s1: skill } } as unknown as AgentResource;
@@ -171,6 +171,28 @@ describe('useAgentCapabilitiesActions', () => {
 			skillId: 's1',
 			skill: expect.objectContaining({ instructions: 'Edited.' }),
 		});
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+	});
+
+	it('persists a skill rename without scheduling a config save', () => {
+		const skill: AgentSkill = { name: 'PR Reviewer', description: '', instructions: 'Review.' };
+		const { actions, scheduleConfigUpdate, scheduleSkillSave, agent } = makeActions({
+			skills: [{ type: 'skill', id: 's1' }],
+		} as Partial<AgentJsonConfig>);
+		agent.value = { id: 'agent-1', skills: { s1: skill } } as unknown as AgentResource;
+
+		actions.onOpenSkillFromList('s1');
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: { onConfirm: (payload: { id?: string; skill: AgentSkill }) => void };
+		};
+		modalData.data.onConfirm({ id: 's1', skill: { ...skill, name: 'Renamed skill' } });
+
+		expect(scheduleSkillSave).toHaveBeenCalledWith({
+			skillId: 's1',
+			skill: expect.objectContaining({ name: 'Renamed skill' }),
+		});
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+		expect(agent.value.skills?.s1?.name).toBe('Renamed skill');
 	});
 
 	it('drops the tool ref from the config when onRemoveTool removes it', () => {

@@ -259,6 +259,50 @@ test.describe(
 			await expect(n8n.executions.logsPanel.getLogEntries().nth(2)).toContainText('E2E Chat Model');
 		});
 
+		test('should refresh chat history when switching between past executions', async ({
+			n8n,
+			anthropicCredential,
+			setupRequirements,
+		}) => {
+			await setupRequirements({ workflow: 'Workflow_ai_agent.json' });
+
+			await n8n.canvas.clickZoomToFitButton();
+			await n8n.canvas.openNode('E2E Chat Model');
+			await expect(n8n.ndv.getCredentialSelect()).toHaveValue(anthropicCredential.name);
+			await n8n.ndv.close();
+			await n8n.canvas.logsPanel.open();
+
+			// Prompts must match MockServer expectations under expectations/execution.logs
+			// (strictBodyMatching). Use refreshSession between turns so each Anthropic
+			// request stays single-message and matches a recorded expectation.
+			await n8n.canvas.logsPanel.sendManualChatMessage('Hi!');
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(0)).toContainText('Hi!');
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
+
+			await n8n.canvas.logsPanel.refreshSession();
+			await expect(n8n.canvas.logsPanel.getManualChatMessages()).not.toBeAttached();
+
+			await n8n.canvas.logsPanel.sendManualChatMessage('Hey!');
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(0)).toContainText('Hey!');
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
+
+			await n8n.canvas.openExecutions();
+			await n8n.executions.getAutoRefreshButton().click();
+			await expect(n8n.executions.getExecutionItems()).toHaveCount(2);
+
+			// Newest execution first
+			await n8n.executions.getExecutionItems().nth(0).click();
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText('Hey!');
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
+
+			await n8n.executions.getExecutionItems().nth(1).click();
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText('Hi!');
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
+
+			await n8n.executions.getExecutionItems().nth(0).click();
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText('Hey!');
+		});
+
 		test('should show logs for a workflow with a node that waits for webhook', async ({
 			n8n,
 			api,

@@ -2,6 +2,10 @@
 import { reactivePick } from '@vueuse/core';
 import { computed, useCssModule, useTemplateRef } from 'vue';
 
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import { useI18n } from '@n8n/design-system/composables/useI18n';
+import type { IconSize } from '@n8n/design-system/types/icon';
+
 import {
 	TagsInputInput,
 	TagsInputItem,
@@ -9,25 +13,27 @@ import {
 	TagsInputItemText,
 	TagsInputRoot,
 	useForwardPropsEmits,
+	type TagsInputRootProps,
 } from './reka-ui';
 import type {
 	TagsInputEmits,
-	TagsInputProps,
+	TagsInputOwnProps,
 	TagsInputSizes,
 	TagsInputSlots,
 	TagsInputValue,
 } from './TagsInput.types';
-import Icon from '../../../components/N8nIcon/Icon.vue';
 
 defineOptions({ inheritAttrs: false });
 
 const $style = useCssModule();
+const { t } = useI18n();
 
-const props = withDefaults(defineProps<TagsInputProps>(), {
+const props = withDefaults(defineProps<TagsInputOwnProps & TagsInputRootProps<TagsInputValue>>(), {
 	placeholder: 'Add a tag...',
 	size: 'large',
 	delimiter: ',',
 	disabled: false,
+	embedded: false,
 });
 
 const emit = defineEmits<TagsInputEmits>();
@@ -41,6 +47,10 @@ const sizes: Record<TagsInputSizes, string> = {
 	large: $style.large,
 	xlarge: $style.xlarge,
 };
+
+const deleteIconSize = computed(
+	(): IconSize => (props.size === 'mini' || props.size === 'small' ? 'xsmall' : 'small'),
+);
 
 const rootRef = useTemplateRef<HTMLElement>('root');
 
@@ -152,19 +162,20 @@ function getInputClass(isEmpty: boolean): string {
 </script>
 
 <template>
-	<div ref="root" :class="[$style.root, sizes[props.size]]">
+	<div ref="root" :class="[props.embedded ? $style.embedded : $style.root, sizes[props.size]]">
 		<TagsInputRoot
 			v-bind="{ ...$attrs, ...rootProps }"
 			:display-value="getDisplayValue"
-			:class="$style.tags"
+			:class="[$style.tags, props.embedded && $style.tagsEmbedded]"
 			@invalid="onInvalid"
 		>
-			<template #default="{ modelValue }">
+			<template #default="{ modelValue: tags }">
 				<TagsInputItem
-					v-for="(tag, index) in modelValue"
+					v-for="(tag, index) in tags"
 					:key="getTagKey(tag, index)"
 					:value="tag"
 					:class="$style.tag"
+					data-test-id="tags-input-tag"
 				>
 					<slot
 						name="tag"
@@ -175,8 +186,17 @@ function getInputClass(isEmpty: boolean): string {
 						:ui="{ text: $style.tagText, delete: $style.tagDelete }"
 					>
 						<TagsInputItemText :class="$style.tagText" />
-						<TagsInputItemDelete :class="$style.tagDelete" :disabled="props.disabled">
-							<Icon icon="x" size="small" />
+						<TagsInputItemDelete as-child :disabled="props.disabled" @mousedown.prevent>
+							<button
+								type="button"
+								:class="$style.tagDelete"
+								tabindex="-1"
+								:disabled="props.disabled"
+								aria-labelledby=""
+								:aria-label="t('tagsInput.removeTag', { tag: getDisplayValue(tag) })"
+							>
+								<Icon icon="x" :size="deleteIconSize" />
+							</button>
 						</TagsInputItemDelete>
 					</slot>
 				</TagsInputItem>
@@ -184,15 +204,15 @@ function getInputClass(isEmpty: boolean): string {
 				<slot
 					:id="props.id"
 					name="input"
-					:placeholder="modelValue.length ? '' : props.placeholder"
+					:placeholder="tags.length ? '' : props.placeholder"
 					:auto-focus="props.autoFocus"
 					:disabled="props.disabled"
-					:class="getInputClass(modelValue.length === 0)"
+					:class="getInputClass(tags.length === 0)"
 				>
 					<TagsInputInput
 						:id="props.id"
-						:class="getInputClass(modelValue.length === 0)"
-						:placeholder="modelValue.length ? '' : props.placeholder"
+						:class="getInputClass(tags.length === 0)"
+						:placeholder="tags.length ? '' : props.placeholder"
 						:auto-focus="props.autoFocus"
 						:disabled="props.disabled"
 					/>
@@ -206,13 +226,19 @@ function getInputClass(isEmpty: boolean): string {
 @use '@n8n/design-system/css/mixins/focus';
 @use '@n8n/design-system/css/mixins/input' as input-mixin;
 
-.root {
+.root,
+.embedded {
 	@include input-mixin.size-variables('large');
 	@include input-mixin.theme-variables(var(--border-color));
 
 	--tags-input--gap: calc(var(--tags-input--padding) - 1px);
 	--tag--height: calc(var(--input--height) - 2 * var(--tags-input--padding));
+	--tag--gap: var(--spacing--4xs);
+	--tag--delete--size: max(var(--height--4xs), calc(var(--tag--height) - 2 * var(--spacing--4xs)));
+	--tag--padding-inline-end: calc((var(--tag--height) - var(--tag--delete--size) - 2px) / 2);
+}
 
+.root {
 	display: flex;
 	flex: 1;
 	width: 100%;
@@ -249,15 +275,19 @@ function getInputClass(isEmpty: boolean): string {
 	}
 }
 
+.embedded {
+	width: 100%;
+}
+
 .mini {
 	@include input-mixin.size-variables('mini');
 
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--5xs);
-	--tag--padding: 0 var(--spacing--5xs) 1px var(--spacing--4xs);
+	--tag--padding-block-end: 1px;
+	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--4xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--3xs);
-	--tag--delete--offset: 1px;
 }
 
 .small {
@@ -265,10 +295,10 @@ function getInputClass(isEmpty: boolean): string {
 
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--4xs);
-	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--3xs);
+	--tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--2xs);
-	--tag--delete--offset: 2px;
 }
 
 .medium {
@@ -276,10 +306,10 @@ function getInputClass(isEmpty: boolean): string {
 
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--4xs);
-	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--3xs);
+	--tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--2xs);
-	--tag--delete--offset: var(--spacing--5xs);
 }
 
 .large {
@@ -287,10 +317,10 @@ function getInputClass(isEmpty: boolean): string {
 
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--3xs);
-	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--3xs);
+	--tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
 	--tag--radius: var(--radius--3xs);
 	--tag--font-size: var(--font-size--xs);
-	--tag--delete--offset: var(--spacing--5xs);
 }
 
 .xlarge {
@@ -298,10 +328,10 @@ function getInputClass(isEmpty: boolean): string {
 
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--2xs);
-	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--2xs);
+	--tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--2xs);
 	--tag--radius: var(--radius--3xs);
 	--tag--font-size: var(--font-size--xs);
-	--tag--delete--offset: var(--spacing--5xs);
 }
 
 .tags {
@@ -318,10 +348,14 @@ function getInputClass(isEmpty: boolean): string {
 	overflow: auto;
 }
 
+.tagsEmbedded {
+	padding: 0;
+}
+
 .tag {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--5xs);
+	gap: var(--tag--gap);
 	max-width: 100%;
 	min-width: 0;
 	height: var(--tag--height);
@@ -336,8 +370,8 @@ function getInputClass(isEmpty: boolean): string {
 
 	&[data-state='active'],
 	&[aria-current='true'] {
-		background-color: var(--tag--color--background--hover);
-		border-color: var(--tag--border-color--hover);
+		background-color: var(--tag--color--background--active);
+		border-color: var(--tag--border-color--active);
 	}
 }
 
@@ -347,6 +381,7 @@ function getInputClass(isEmpty: boolean): string {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	line-height: normal;
+	padding-block-end: var(--tag--padding-block-end);
 }
 
 .tagDelete {
@@ -354,17 +389,26 @@ function getInputClass(isEmpty: boolean): string {
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
+	width: var(--tag--delete--size);
+	height: var(--tag--delete--size);
 	padding: 0;
 	border: none;
-	border-radius: var(--radius--full);
+	border-radius: var(--radius--4xs);
 	background: transparent;
 	color: var(--icon-color);
 	cursor: pointer;
-	margin-top: var(--tag--delete--offset);
 
-	&:hover,
-	&:focus {
+	@media (hover: hover) {
+		&:hover {
+			background-color: var(--background--hover);
+			color: var(--icon-color--strong);
+		}
+	}
+
+	&:focus,
+	&:focus-visible {
 		outline: none;
+		background-color: var(--background--hover);
 		color: var(--icon-color--strong);
 	}
 

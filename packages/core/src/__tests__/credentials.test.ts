@@ -16,13 +16,28 @@ describe('Credentials', () => {
 	const nodeCredentials = { id: '123', name: 'Test Credential' };
 	const credentialType = 'testApi';
 
+	const encryptionKeyProxy = new EncryptionKeyProxy();
 	const cipher = new Cipher(
 		mock<InstanceSettings>({ encryptionKey: 'password' }),
 		new CipherAes256GCM(),
 		new CipherAes256CBC(),
-		new EncryptionKeyProxy(),
+		encryptionKeyProxy,
 	);
 	Container.set(Cipher, cipher);
+
+	// The default deployment: no rotation, so every key is the legacy instance-key
+	// descriptor (no-prefix, instance-key-wrapped), matching KeyManagerService.
+	const legacyDescriptor = {
+		id: 'instance-key',
+		value: cipher.encryptDEKWithInstanceKey('password'),
+		algorithm: 'aes-256-cbc' as const,
+		format: 'no-prefix' as const,
+	};
+	encryptionKeyProxy.setProvider({
+		getActiveKey: async () => legacyDescriptor,
+		getKeyById: async () => null,
+		getLegacyKey: async () => legacyDescriptor,
+	});
 
 	const setDataKey = async (credentials: Credentials, key: string, data: CredentialInformation) => {
 		let fullData;
@@ -77,7 +92,7 @@ describe('Credentials', () => {
 
 		test('should throw an error when decryption fails', async () => {
 			const credentials = new Credentials(nodeCredentials, credentialType);
-			credentials.data = '{"key": "already-decrypted-credentials-data" }';
+			credentials.data = 'already-decrypted-credentials-data';
 
 			await expect(credentials.getData()).rejects.toThrow(CREDENTIAL_ERRORS.DECRYPTION_FAILED);
 

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
+import { rememberObservedWorkflowChecksum } from './observed-workflow-checksums';
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
 import { readWorkspaceFile } from '../../workspace/workspace-files';
@@ -82,6 +83,30 @@ export async function getWorkflowSourceFileBinding(
 	return getFallbackBindings(context).get(normalizedFilePath);
 }
 
+/**
+ * Bindings that point at a workflow, or at a file path. Thread metadata wins over
+ * the in-memory fallback for the same path. `workflowId` undefined matches every
+ * binding, which lets a caller ask "who owns this path" regardless of workflow.
+ */
+export async function findWorkflowSourceFileBindingsForWorkflow(
+	context: InstanceAiContext,
+	workflowId: string | undefined,
+	filePath?: string,
+): Promise<WorkflowSourceFileBinding[]> {
+	const normalizedFilePath = filePath ? normalizeWorkflowSourceFilePath(filePath) : undefined;
+	const threadBindings = (await readThreadBindings(context)) ?? {};
+	const merged = new Map<string, WorkflowSourceFileBinding>(Object.entries(threadBindings));
+	for (const [path, binding] of getFallbackBindings(context)) {
+		if (!merged.has(path)) merged.set(path, binding);
+	}
+
+	return Array.from(merged.values()).filter(
+		(binding) =>
+			(workflowId === undefined || binding.workflowId === workflowId) &&
+			(normalizedFilePath === undefined || binding.filePath === normalizedFilePath),
+	);
+}
+
 export async function saveWorkflowSourceFileBinding(
 	context: InstanceAiContext,
 	binding: WorkflowSourceFileBinding,
@@ -90,6 +115,10 @@ export async function saveWorkflowSourceFileBinding(
 		...binding,
 		filePath: normalizeWorkflowSourceFilePath(binding.filePath),
 	};
+
+	// Always keep the run-local copy: a later thread-metadata read can fail, and the
+	// binding must still be found so an existing file is never treated as unbound.
+	getFallbackBindings(context).set(normalizedBinding.filePath, normalizedBinding);
 
 	if (context.threadMemory && context.threadId) {
 		try {
@@ -110,7 +139,6 @@ export async function saveWorkflowSourceFileBinding(
 		}
 	}
 
-	getFallbackBindings(context).set(normalizedBinding.filePath, normalizedBinding);
 	return normalizedBinding;
 }
 
@@ -147,6 +175,11 @@ export async function refreshWorkflowSourceFileBindingFromSave(
 	workflowId: string,
 	saved: { versionId: string; checksum?: string },
 ): Promise<void> {
+	// Every agent-side save routes through here, so this is also where the
+	// conversation's view of the workflow (used by `workflows(action="update")`)
+	// stays in step with the DB.
+	await rememberObservedWorkflowChecksum(context, workflowId, saved.checksum);
+
 	const threadBindings = await readThreadBindings(context);
 	const fallback = getFallbackBindings(context);
 	const entries: WorkflowSourceFileBinding[] = [];
