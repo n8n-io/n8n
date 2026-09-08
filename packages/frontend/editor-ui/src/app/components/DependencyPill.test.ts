@@ -36,7 +36,6 @@ vi.mock('@/app/composables/useDependencies', () => ({
 	useDependencies: () => ({
 		getDependencies: () => mockDepsResult,
 		fetchDependencies: fetchDependenciesMock,
-		getDependencyCounts: () => undefined,
 		getTotalCount: () => 0,
 	}),
 }));
@@ -426,46 +425,6 @@ describe('DependencyPill', () => {
 			params: { workflowId: 'parent-wf-1' },
 		});
 		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
-	});
-
-	it('should only show the given dependency types when filtered', () => {
-		mockDepsResult = createDepsResult();
-		renderComponent({ props: { ...defaultProps, dependencyTypes: ['workflowParent'] } });
-
-		const items = capturedItems as Array<{ id: string; label: string; disabled?: boolean }>;
-
-		expect(items).toHaveLength(2);
-		expect(items[0].id).toBe('header-workflowParent');
-		expect(items[1].id).toBe('workflowParent:wf-2');
-	});
-
-	it('should count only the given dependency types when filtered', () => {
-		mockDepsResult = createDepsResult(2);
-		const { getByText } = renderComponent({
-			props: { ...defaultProps, dependencyTypes: ['workflowParent'] },
-		});
-
-		// 1 parent workflow; the inaccessible count is not split by type, so it is excluded
-		expect(getByText('1')).toBeInTheDocument();
-	});
-
-	it('should not show hidden notice when filtered', () => {
-		mockDepsResult = createDepsResult(2);
-		const { queryByText } = renderComponent({
-			props: { ...defaultProps, dependencyTypes: ['workflowParent'] },
-		});
-
-		expect(queryByText(/not accessible to you/)).not.toBeInTheDocument();
-	});
-
-	it('should render a custom trigger via slot', () => {
-		mockDepsResult = createDepsResult();
-		const { getByText } = renderComponent({
-			props: defaultProps,
-			slots: { trigger: '<a>Used by 1 workflow</a>' },
-		});
-
-		expect(getByText('Used by 1 workflow')).toBeInTheDocument();
 	});
 
 	it('should group error workflow dependencies in menu items', () => {

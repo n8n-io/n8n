@@ -91,6 +91,25 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	}),
 }));
 
+let mockDependenciesResult:
+	| {
+			dependencies: Array<{ type: string; id: string; name: string; projectId?: string }>;
+			inaccessibleCount: number;
+	  }
+	| undefined;
+
+const fetchDependenciesMock = vi.fn();
+const fetchDependencyCountsMock = vi.fn();
+
+vi.mock('@/app/composables/useDependencies', () => ({
+	useDependencies: () => ({
+		getDependencies: () => mockDependenciesResult,
+		fetchDependencies: fetchDependenciesMock,
+		fetchDependencyCounts: fetchDependencyCountsMock,
+		hasDependencies: () => (mockDependenciesResult?.dependencies.length ?? 0) > 0,
+	}),
+}));
+
 const initialState = {
 	[STORES.SETTINGS]: {
 		settings: {
@@ -210,6 +229,7 @@ describe('WorkflowDetails', () => {
 		message = useMessage();
 		toast = useToast();
 		router = useRouter();
+		mockDependenciesResult = undefined;
 	});
 
 	afterEach(() => {
@@ -250,6 +270,38 @@ describe('WorkflowDetails', () => {
 	});
 
 	describe('Workflow menu', () => {
+		it('should not show a dependencies entry when the workflow has none', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:read']);
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { ...defaultProps },
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+
+			expect(queryByTestId('workflow-menu-item-dependencies')).not.toBeInTheDocument();
+		});
+
+		it('should show a dependencies entry and refetch details when the menu opens', async () => {
+			mockDependenciesResult = {
+				dependencies: [{ type: 'workflowCall', id: 'wf-sub', name: 'Sub-Workflow A' }],
+				inaccessibleCount: 0,
+			};
+
+			workflowDocumentStoreRef.value?.setScopes(['workflow:read']);
+			const { getByTestId } = renderComponent({
+				props: { ...defaultProps },
+			});
+
+			// The lightweight counts load on mount, so the menu knows to show the entry
+			expect(fetchDependencyCountsMock).toHaveBeenCalledWith(['1'], 'workflow');
+
+			await userEvent.click(getByTestId('workflow-menu'));
+
+			// The dependencies entry is a sub-menu; its trigger stands in for its items here
+			expect(getByTestId('workflow-menu-item-dependencies')).toBeInTheDocument();
+			expect(fetchDependenciesMock).toHaveBeenCalledWith(['1'], 'workflow');
+		});
+
 		it('should not have workflow duplicate and import when branch is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 

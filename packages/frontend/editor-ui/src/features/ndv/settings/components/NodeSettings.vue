@@ -14,7 +14,7 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
 import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-import { BASE_NODE_SURVEY_URL, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, VIEWS } from '@/app/constants';
+import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 
 import NDVSubConnections from '@/features/ndv/panel/components/NDVSubConnections.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -40,7 +40,6 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
-import WorkflowCallersDropdown from '@/features/ndv/panel/components/WorkflowCallersDropdown.vue';
 import { RenameNodeCommand } from '@/app/models/history';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -176,10 +175,6 @@ const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
 );
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
-
-const isSubWorkflowTrigger = computed(
-	() => node.value?.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -751,10 +746,6 @@ function handleSelectAction(params: INodeParameters) {
 			<div v-show="openPanel === 'params'">
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
-				<div v-if="isSubWorkflowTrigger" :class="$style.workflowCallers">
-					<WorkflowCallersDropdown :workflow-id="workflowDocumentStore.workflowId" />
-				</div>
-
 				<ParameterInputList
 					v-if="nodeValuesInitialized"
 					:parameters="parametersByTab.params"
@@ -900,11 +891,6 @@ function handleSelectAction(params: INodeParameters) {
 
 .quickConnectBanner {
 	margin-top: var(--spacing--sm);
-}
-
-.workflowCallers {
-	margin-top: var(--spacing--sm);
-	margin-bottom: var(--spacing--xs);
 }
 
 .uiBlocker {
