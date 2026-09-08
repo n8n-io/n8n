@@ -319,6 +319,15 @@ export default defineConfig(
 		},
 	},
 	{
+		// Extraction gate: the eager phase must not become a third way for the shell to
+		// reacquire a modal key. Error level, and only on the manifest — the rule reads
+		// the `eagerModals` literal, so it means nothing anywhere else.
+		files: ['src/app/modals.manifest.ts'],
+		rules: {
+			'n8n-local-rules/no-shell-resident-eager-modal': 'error',
+		},
+	},
+	{
 		files: ['src/features/agents/**/*.ts', 'src/features/agents/**/*.vue'],
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [

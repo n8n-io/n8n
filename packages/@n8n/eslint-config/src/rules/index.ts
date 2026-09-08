@@ -35,6 +35,7 @@ import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
 import { NoMisplacedCipherPrimitivesRule } from './no-misplaced-cipher-primitives.js';
 import { NoDeploymentKeyDeleteRule } from './no-deployment-key-delete.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
+import { NoShellResidentEagerModalRule } from './no-shell-resident-eager-modal.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -73,4 +74,5 @@ export const rules = {
 	'no-misplaced-cipher-primitives': NoMisplacedCipherPrimitivesRule,
 	'no-deployment-key-delete': NoDeploymentKeyDeleteRule,
 	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
+	'no-shell-resident-eager-modal': NoShellResidentEagerModalRule,
 } satisfies Record<string, AnyRuleModule>;

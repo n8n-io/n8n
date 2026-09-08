@@ -10,6 +10,10 @@ import { AUTH_MODALS } from '@/features/core/auth/modals';
  * preview/demo mode, or a navigation that throws before it (the
  * `MfaRequiredError` redirect still renders Personal Settings). Everything else
  * is module-owned and registers post-login through its descriptor.
+ *
+ * Every entry must be a spread of a fragment imported from `src/features/**`. A
+ * definition that lives in the shell gives the shell back a modal key that the
+ * extraction gives up. `n8n-local-rules/no-shell-resident-eager-modal` rejects one.
  */
 const eagerModals: ModalDefinition[] = [...AUTH_MODALS];
 
