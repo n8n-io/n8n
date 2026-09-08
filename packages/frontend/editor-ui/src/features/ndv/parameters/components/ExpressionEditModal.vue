@@ -279,6 +279,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 </template>
 
 <style module lang="scss">
+@use '@/app/css/_variables.scss' as *;
+
 .modal {
 	--dialog--close--spacing--top: var(--spacing--md);
 	display: flex;

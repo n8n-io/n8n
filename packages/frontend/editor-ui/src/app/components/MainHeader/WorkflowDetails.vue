@@ -404,6 +404,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped lang="scss">
+@use '@/app/css/_variables.scss' as *;
+
 $--header-spacing: 20px;
 
 .name-container {

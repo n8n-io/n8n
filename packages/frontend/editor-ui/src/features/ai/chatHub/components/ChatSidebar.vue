@@ -108,6 +108,8 @@ const onLogout = () => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/_variables.scss' as *;
+
 .sideMenu {
 	position: relative;
 	height: 100%;

@@ -109,10 +109,6 @@ const plugins: UserConfig['plugins'] = [
 				: html;
 		},
 	},
-	// For sanitize-html
-	// nodePolyfills({
-	// 	include: ['fs', 'path', 'url', 'util', 'timers'],
-	// }),
 	{
 		name: 'i18n-locales-hmr',
 		configureServer(server) {
@@ -188,16 +184,9 @@ export default defineConfig({
 	base: publicPath,
 	envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 	css: {
+		// No `additionalData` prelude: injecting the mixins graph into every style block cost
+		// ~6ms per unit across ~1000 units. Each file `@use`s what it needs instead.
 		preprocessorMaxWorkers: 2,
-		preprocessorOptions: {
-			scss: {
-				additionalData: [
-					'',
-					'@use "@/app/css/_variables.scss" as *;',
-					'@use "@n8n/design-system/css/mixins" as mixins;',
-				].join('\n'),
-			},
-		},
 	},
 	build: {
 		minify: !!release,

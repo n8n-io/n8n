@@ -214,6 +214,7 @@ const handleAppSelectionContinue = () => {
 
 <style lang="scss" module>
 @use '@/app/css/variables' as vars;
+@use '@/app/css/_variables.scss' as *;
 
 .emptyStateLayout {
 	display: flex;

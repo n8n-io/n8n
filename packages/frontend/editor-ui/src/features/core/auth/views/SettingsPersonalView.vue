@@ -505,6 +505,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/_variables.scss' as *;
+
 .container {
 	padding-bottom: 100px;
 

@@ -417,6 +417,8 @@ watch(workflows, (newWorkflows) => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/_variables.scss' as *;
+
 .wrapper {
 	display: flex;
 	justify-content: space-between;

@@ -473,6 +473,8 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+@use '@/app/css/_variables.scss' as *;
+
 .scope-badge {
 	text-transform: none;
 	display: flex;

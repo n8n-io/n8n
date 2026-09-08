@@ -77,6 +77,8 @@ const shortcutTooltipLabel = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/_variables.scss' as *;
+
 .container {
 	display: inline-flex;
 	justify-content: center;
