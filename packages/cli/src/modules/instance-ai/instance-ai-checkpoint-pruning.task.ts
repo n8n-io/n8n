@@ -1,6 +1,6 @@
 import { InstanceAiConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
+import { SystemTask, wholeSeconds } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InstanceAiService } from './instance-ai.service';
@@ -16,9 +16,8 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = {
 		kind: 'interval',
-		intervalSeconds: Math.max(
-			1,
-			Math.round(this.instanceAiConfig.pruneInterval * Time.milliseconds.toSeconds),
+		intervalSeconds: wholeSeconds(
+			this.instanceAiConfig.pruneInterval * Time.milliseconds.toSeconds,
 		),
 	};
 
