@@ -81,8 +81,9 @@ export default {
 };
 ```
 
-Set `export const prerender = true;` and `export const ssr = false;` in
-`src/routes/+layout.ts`. Links use `{base}` from `$app/paths`. `outDir`: `build`.
+Set `export const ssr = false;` in `src/routes/+layout.ts`. The `fallback`
+option writes the SPA shell; do not add `prerender = true`. Links use `{base}`
+from `$app/paths`. `outDir`: `build`.
 
 ## Next.js
 
