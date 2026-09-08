@@ -87,7 +87,9 @@ export class WorkflowHistoryCompactionService {
 	}
 
 	// One-shot catch-up pass on startup and on leader change, so a gap between
-	// leaders is compacted without waiting a full task interval.
+	// leaders is compacted without waiting a full task interval. Not `runOnTakeover`
+	// on the tasks: `trimOnStartUp` forces a trim only here, and a task run cannot
+	// tell a takeover from a scheduled tick.
 	@OnLeaderTakeover()
 	runStartupCompaction() {
 		const { connectionState } = this.dbConnection;
