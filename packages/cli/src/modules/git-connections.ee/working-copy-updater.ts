@@ -1,18 +1,7 @@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import {
-	copyFile,
-	cp,
-	lstat,
-	mkdir,
-	mkdtemp,
-	readdir,
-	readFile,
-	rename,
-	rm,
-	writeFile,
-} from 'node:fs/promises';
+import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 
@@ -103,7 +92,7 @@ export class WorkingCopyUpdater {
 
 	private async readManifestIfPresent(packageDir: string): Promise<PackageManifest | undefined> {
 		const file = await this.resolveContained(packageDir, MANIFEST_FILE);
-		const raw = await readFile(file, 'utf-8').catch((error: NodeJS.ErrnoException) => {
+		const raw = await fs.readFile(file, 'utf-8').catch((error: NodeJS.ErrnoException) => {
 			if (error.code === 'ENOENT') return undefined;
 			throw error;
 		});
@@ -181,39 +170,40 @@ export class WorkingCopyUpdater {
 		);
 		const placement = containerPlacement(existing, staging);
 		const parent = path.dirname(exportFolder);
-		const workFolder = await mkdtemp(path.join(parent, `.${path.basename(exportFolder)}-`));
+		const workFolder = await fs.mkdtemp(path.join(parent, `.${path.basename(exportFolder)}-`));
 		let backupFolder: string | undefined;
 
 		try {
-			await rm(workFolder, { recursive: true, force: true });
-			await cp(exportFolder, workFolder, { recursive: true, verbatimSymlinks: true });
+			await fs.rm(workFolder, { recursive: true, force: true });
+			await fs.cp(exportFolder, workFolder, { recursive: true, verbatimSymlinks: true });
 
 			for (const target of staleTargets(existing, merged, staging)) {
-				await rm(await this.assertRemovableLeafTarget(workFolder, target, merged), {
+				await fs.rm(await this.assertRemovableLeafTarget(workFolder, target, merged, staging), {
 					recursive: true,
 					force: true,
 				});
 			}
 			await this.overlayDirectory(stagingFolder, workFolder, placement);
-			await writeFile(
+			await fs.writeFile(
 				await this.resolveContained(workFolder, MANIFEST_FILE),
 				JSON.stringify(merged, null, '\t'),
 			);
 
-			backupFolder = `${exportFolder}.bak`;
-			await rm(backupFolder, { recursive: true, force: true });
-			await rename(exportFolder, backupFolder);
-			await rename(workFolder, exportFolder);
-			await rm(backupFolder, { recursive: true, force: true });
+			const backupPath = `${exportFolder}.bak`;
+			await fs.rm(backupPath, { recursive: true, force: true });
+			await fs.rename(exportFolder, backupPath);
+			backupFolder = backupPath;
+			await fs.rename(workFolder, exportFolder);
+			await fs.rm(backupFolder, { recursive: true, force: true });
 			backupFolder = undefined;
 		} catch (error) {
 			if (backupFolder !== undefined) {
-				await rm(exportFolder, { recursive: true, force: true }).catch(() => undefined);
-				await rename(backupFolder, exportFolder).catch(() => undefined);
+				await fs.rm(exportFolder, { recursive: true, force: true }).catch(() => undefined);
+				await fs.rename(backupFolder, exportFolder).catch(() => undefined);
 			}
 			throw error;
 		} finally {
-			await rm(workFolder, { recursive: true, force: true });
+			await fs.rm(workFolder, { recursive: true, force: true });
 		}
 
 		return merged;
@@ -228,6 +218,7 @@ export class WorkingCopyUpdater {
 		exportFolder: string,
 		target: string,
 		remaining: PackageManifest,
+		staging: PackageManifest,
 	): Promise<string> {
 		const segments = target.split(/[\\/]/).filter(Boolean);
 		if (segments.length === 0 || segments.includes('.') || segments.includes('..')) {
@@ -243,22 +234,21 @@ export class WorkingCopyUpdater {
 			);
 		}
 
-		const descendants = [
-			remaining.projects,
-			remaining.folders,
-			remaining.workflows,
-			remaining.credentials,
-			remaining.dataTables,
-			remaining.variables,
-			remaining.tags,
-		]
-			.flatMap((entries) => entries ?? [])
-			.map((entry) => entry.target);
-
-		if (descendants.some((keptTarget) => isUnder(keptTarget, target))) {
-			throw new BadRequestError(
-				`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
-			);
+		const leafKinds = ['workflows', 'credentials', 'dataTables', 'variables', 'tags'] as const;
+		for (const kind of leafKinds) {
+			const writtenIds = new Set((staging[kind] ?? []).map((entry) => entry.id));
+			for (const entry of remaining[kind] ?? []) {
+				if (isUnder(entry.target, target)) {
+					throw new BadRequestError(
+						`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
+					);
+				}
+				if (entry.target === target && !writtenIds.has(entry.id)) {
+					throw new BadRequestError(
+						`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
+					);
+				}
+			}
 		}
 
 		const containers = [...(remaining.projects ?? []), ...(remaining.folders ?? [])].map(
@@ -281,7 +271,7 @@ export class WorkingCopyUpdater {
 	private async overlayDirectory(src: string, dest: string, placement: Placement): Promise<void> {
 		const verified = new Set<string>();
 		const walk = async (dir: string): Promise<void> => {
-			const entries = await readdir(dir, { withFileTypes: true });
+			const entries = await fs.readdir(dir, { withFileTypes: true });
 			for (const entry of entries) {
 				if (entry.isSymbolicLink()) continue;
 
@@ -295,11 +285,11 @@ export class WorkingCopyUpdater {
 					verified,
 				);
 				if (entry.isDirectory()) {
-					await mkdir(destPath, { recursive: true });
+					await fs.mkdir(destPath, { recursive: true });
 					await walk(fullPath);
 				} else if (entry.isFile()) {
-					await mkdir(path.dirname(destPath), { recursive: true });
-					await copyFile(fullPath, destPath);
+					await fs.mkdir(path.dirname(destPath), { recursive: true });
+					await fs.copyFile(fullPath, destPath);
 				}
 			}
 		};
@@ -330,7 +320,7 @@ export class WorkingCopyUpdater {
 
 		for (const component of components) {
 			if (verified.has(component)) continue;
-			const info = await lstat(component).catch(() => null);
+			const info = await fs.lstat(component).catch(() => null);
 			if (!info) break;
 			if (info.isSymbolicLink()) {
 				throw new BadRequestError(

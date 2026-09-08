@@ -233,6 +233,35 @@ describe('mergeManifests', () => {
 			expect(staleTargets(existing, result, staging)).toContain(`${P}/variables/api-key`);
 		});
 
+		it('does not keep a project-scoped variable because another project still uses the name', () => {
+			const existing = makeManifest({
+				projects: [acme, entry('p2', 'Other', OTHER)],
+				workflows: [
+					entry('w1', 'W1', `${P}/workflows/w1`),
+					entry('w3', 'W3', `${OTHER}/workflows/w3`),
+				],
+				variables: [
+					entry('v1', 'API_KEY', `${P}/variables/api-key`),
+					entry('v3', 'API_KEY', `${OTHER}/variables/api-key`),
+				],
+				requirements: { variables: [{ name: 'API_KEY', usedByWorkflows: ['w1', 'w3'] }] },
+			});
+			const staging = makeManifest({
+				projects: [acme],
+				workflows: [entry('w1', 'W1', `${P}/workflows/w1`)],
+				variables: [entry('v2', 'API_KEY', 'variables/api-key')],
+				requirements: { variables: [{ name: 'API_KEY', usedByWorkflows: ['w1'] }] },
+			});
+
+			const result = merge(existing, staging);
+
+			expect(result.variables).toEqual([
+				entry('v3', 'API_KEY', `${OTHER}/variables/api-key`),
+				entry('v2', 'API_KEY', 'variables/api-key'),
+			]);
+			expect(staleTargets(existing, result, staging)).toContain(`${P}/variables/api-key`);
+		});
+
 		it('keeps the project-scoped variable when an unselected workflow still uses the name', () => {
 			const existing = makeManifest({
 				projects: [acme],
