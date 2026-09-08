@@ -97,6 +97,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [oauth_refresh_tokens](oauth_refresh_tokens.md) | 8 |  | table |
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
 | [poller_state](poller_state.md) | 7 |  | table |
+| [preference](preference.md) | 8 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
 | [project](project.md) | 9 |  | table |
 | [project_pool_settings](project_pool_settings.md) | 4 |  | table |
@@ -278,6 +279,9 @@ erDiagram
 "oauth_user_consents" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "poller_state" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "processed_data" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project" }o--o| "user" : "FOREIGN KEY (creatorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "project_pool_settings" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1249,6 +1253,16 @@ erDiagram
   varchar_36_ nodeId PK
   datetime_3_ updatedAt
   varchar_36_ workflowId PK
+}
+"preference" {
+  TEXT content
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar id PK
+  varchar_36_ projectId FK
+  varchar_16_ scope
+  datetime_3_ updatedAt
+  varchar userId FK
 }
 "processed_data" {
   varchar_255_ context PK
