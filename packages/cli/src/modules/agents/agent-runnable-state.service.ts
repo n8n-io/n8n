@@ -10,6 +10,7 @@ import {
 } from './agent-publish.service';
 import { AgentValidationService } from './agent-validation.service';
 import type { Agent } from './entities/agent.entity';
+import { getAgentSkillHash } from './utils/agent-config-hash';
 
 @Service()
 export class AgentRunnableStateService {
@@ -33,12 +34,22 @@ export class AgentRunnableStateService {
 		projectId: string,
 		user: User,
 		draftValidation?: ValidAgentConfigValidationResponse,
-	): Promise<Agent & { isRunnable: boolean; hasPublishHistory: boolean }> {
+	): Promise<
+		Agent & {
+			isRunnable: boolean;
+			hasPublishHistory: boolean;
+			skillHashes: Record<string, string>;
+		}
+	> {
+		const skillHashes = Object.fromEntries(
+			Object.entries(agent.skills ?? {}).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
+		);
 		if (draftValidation) {
 			const hasPublishHistory = await this.agentPublishService.hasPublishHistory(agent.id);
 			return Object.assign(agent, {
 				isRunnable: true,
 				hasPublishHistory,
+				skillHashes,
 			});
 		}
 
@@ -60,6 +71,7 @@ export class AgentRunnableStateService {
 		return Object.assign(agent, {
 			isRunnable: validation.status === 'valid',
 			hasPublishHistory,
+			skillHashes,
 		});
 	}
 }

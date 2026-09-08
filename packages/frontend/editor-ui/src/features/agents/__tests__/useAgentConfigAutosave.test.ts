@@ -144,6 +144,45 @@ describe('useAgentConfigAutosave', () => {
 		expect(autosave.saveStatus.value).toBe('idle');
 	});
 
+	it('drops saves queued before a stale response but accepts later edits', async () => {
+		vi.useFakeTimers();
+		let resolveFirstSave: (result: 'stale') => void = () => {};
+		const save = vi.fn((snapshot: { value: string }) =>
+			snapshot.value === 'stale'
+				? new Promise<'stale'>((resolve) => {
+						resolveFirstSave = resolve;
+					})
+				: Promise.resolve(undefined),
+		);
+		const onSaved = vi.fn();
+		const autosave = useAgentConfigAutosave<{ value: string }>({
+			save,
+			onSaved,
+			debounceMs: 500,
+		});
+
+		autosave.scheduleAutosave({ value: 'stale' });
+		await vi.advanceTimersByTimeAsync(500);
+		autosave.scheduleAutosave({ value: 'queued-before-conflict' });
+		await vi.advanceTimersByTimeAsync(500);
+
+		resolveFirstSave('stale');
+		await autosave.settleAutosave();
+
+		expect(save).toHaveBeenCalledTimes(1);
+		expect(onSaved).not.toHaveBeenCalled();
+		expect(autosave.saveStatus.value).toBe('idle');
+		expect(autosave.hasPendingSave.value).toBe(false);
+
+		autosave.scheduleAutosave({ value: 'new-after-conflict' });
+		await vi.advanceTimersByTimeAsync(500);
+		await autosave.settleAutosave();
+
+		expect(save).toHaveBeenCalledTimes(2);
+		expect(save).toHaveBeenLastCalledWith({ value: 'new-after-conflict' });
+		expect(onSaved).toHaveBeenCalledWith({ value: 'new-after-conflict' });
+	});
+
 	it('reset() clears saveStatus and drops a pending debounced snapshot', async () => {
 		vi.useFakeTimers();
 		const save = vi.fn().mockResolvedValue(undefined);

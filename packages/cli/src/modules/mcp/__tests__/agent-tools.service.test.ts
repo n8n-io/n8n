@@ -504,6 +504,7 @@ describe('McpAgentToolsService', () => {
 			const stored = { ...baseConfig, name: 'Renamed' };
 			agentConfigService.updateConfig.mockResolvedValue({
 				config: stored,
+				configHash: getAgentConfigHash(stored),
 				updatedAt: 'now',
 				versionId: 'v2',
 			});
@@ -538,6 +539,7 @@ describe('McpAgentToolsService', () => {
 		it('applies a valid config.patch to the current config', async () => {
 			agentConfigService.updateConfig.mockResolvedValue({
 				config: { ...baseConfig, name: 'Patched' },
+				configHash: getAgentConfigHash({ ...baseConfig, name: 'Patched' }),
 				updatedAt: 'now',
 				versionId: 'v2',
 			});
@@ -823,6 +825,7 @@ describe('McpAgentToolsService', () => {
 			});
 			agentConfigService.updateConfig.mockResolvedValue({
 				config: baseConfig,
+				configHash: getAgentConfigHash(baseConfig),
 				updatedAt: 'now',
 				versionId: 'v2',
 			});
@@ -1859,6 +1862,7 @@ describe('McpAgentToolsService', () => {
 			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ projectId: 'project-9' }));
 			agentConfigService.updateConfig.mockResolvedValue({
 				config: baseConfig,
+				configHash: getAgentConfigHash(baseConfig),
 				updatedAt: 'now',
 				versionId: 'v2',
 			});

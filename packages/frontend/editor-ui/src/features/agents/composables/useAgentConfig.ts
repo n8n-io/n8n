@@ -6,6 +6,7 @@ import type { AgentJsonConfig } from '../types';
 export function useAgentConfig() {
 	const rootStore = useRootStore();
 	const config = ref<AgentJsonConfig | null>(null);
+	const configHash = ref<string | null>(null);
 	const loading = ref(false);
 
 	// Tracks the most recently requested (project, agent) pair. fetch/update
@@ -30,6 +31,7 @@ export function useAgentConfig() {
 	function repoint(projectId: string, agentId: string) {
 		latestKey = keyFor(projectId, agentId);
 		config.value = null;
+		configHash.value = null;
 		loading.value = false;
 	}
 
@@ -39,7 +41,10 @@ export function useAgentConfig() {
 		loading.value = true;
 		try {
 			const fresh = await getAgentConfig(rootStore.restApiContext, projectId, agentId);
-			if (latestKey === key) config.value = fresh;
+			if (latestKey === key) {
+				config.value = fresh.config;
+				configHash.value = fresh.configHash;
+			}
 		} finally {
 			if (latestKey === key) loading.value = false;
 		}
@@ -51,11 +56,20 @@ export function useAgentConfig() {
 		data: AgentJsonConfig,
 	): Promise<{ versionId: string | null; stale: boolean }> {
 		const key = keyFor(projectId, agentId);
-		const result = await updateAgentConfig(rootStore.restApiContext, projectId, agentId, data);
+		const result = await updateAgentConfig(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			data,
+			configHash.value ?? undefined,
+		);
 		const stale = latestKey !== key;
-		if (!stale) config.value = result.config;
+		if (!stale) {
+			config.value = result.config;
+			configHash.value = result.configHash;
+		}
 		return { versionId: result.versionId, stale };
 	}
 
-	return { config, loading, repoint, fetchConfig, updateConfig };
+	return { config, configHash, loading, repoint, fetchConfig, updateConfig };
 }

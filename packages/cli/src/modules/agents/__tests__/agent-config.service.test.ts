@@ -17,9 +17,11 @@ import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { getAgentConfigHash } from '../utils/agent-config-hash';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -220,6 +222,48 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('updateConfig', () => {
+		it('rejects an update based on a stale config without mutating the agent', async () => {
+			const { service, agentRepository, eventService, telemetry } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, instructions: 'Replace newer work' },
+					user,
+					{ ...byUser, baseConfigHash: 'stale-hash' },
+				),
+			).rejects.toThrow('Agent config was changed elsewhere; reload to get the latest version');
+
+			expect(agent.schema).toBe(baseConfig);
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('accepts the current config hash and returns the hash of the saved config', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			const currentConfig = composeJsonConfig(agent);
+			if (!currentConfig) throw new Error('Expected the agent to have a config');
+			const baseConfigHash = getAgentConfigHash(currentConfig);
+
+			const result = await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, instructions: 'Keep the latest work' },
+				user,
+				{ ...byUser, baseConfigHash },
+			);
+
+			expect(result.config.instructions).toBe('Keep the latest work');
+			expect(result.configHash).toMatch(/^[a-f0-9]{64}$/);
+			expect(result.configHash).not.toBe(baseConfigHash);
+		});
+
 		it('rejects saving an HTTP Request URL controlled by $fromAI', async () => {
 			const { service, agentRepository } = makeService();
 			const agent = makeAgent();

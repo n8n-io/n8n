@@ -4,6 +4,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsConfigController } from '../agents-config.controller';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -38,6 +39,7 @@ describe('AgentsConfigController getValidation', () => {
 			agentValidationService,
 			mock<CredentialsService>(),
 			agentRepository,
+			mock<AgentUpdateBroadcaster>(),
 		);
 
 		await expect(

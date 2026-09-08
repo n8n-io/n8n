@@ -8,4 +8,12 @@ export type AgentExecutionUpdated = {
 	};
 };
 
-export type AgentsPushMessage = AgentExecutionUpdated;
+export type AgentUpdated = {
+	type: 'agentUpdated';
+	data: {
+		projectId: string;
+		agentId: string;
+	};
+};
+
+export type AgentsPushMessage = AgentExecutionUpdated | AgentUpdated;

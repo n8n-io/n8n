@@ -6,8 +6,10 @@ import type { Response } from 'express';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentConfigService } from './agent-config.service';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentValidationService } from './agent-validation.service';
 import { AgentRepository } from './repositories/agent.repository';
+import { getAgentConfigHash } from './utils/agent-config-hash';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -19,13 +21,15 @@ export class AgentsConfigController {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRepository: AgentRepository,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	@Get('/:agentId/config')
 	@ProjectScope('agent:read')
 	async getConfig(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
-		return await this.agentConfigService.getConfig(agentId, projectId);
+		const config = await this.agentConfigService.getConfig(agentId, projectId);
+		return { config, configHash: getAgentConfigHash(config) };
 	}
 
 	/**
@@ -66,10 +70,19 @@ export class AgentsConfigController {
 		@Body payload: UpdateAgentConfigDto,
 	) {
 		const { projectId } = req.params;
-		const { config } = payload;
-		return await this.agentConfigService.updateConfig(agentId, projectId, config, req.user, {
-			modifiedBy: 'user',
-		});
+		const { config, baseConfigHash } = payload;
+		const result = await this.agentConfigService.updateConfig(
+			agentId,
+			projectId,
+			config,
+			req.user,
+			{
+				baseConfigHash,
+				modifiedBy: 'user',
+			},
+		);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
+		return result;
 	}
 
 	@Delete('/:agentId/tools/:toolId')
@@ -85,6 +98,7 @@ export class AgentsConfigController {
 			user: req.user,
 			modifiedBy: 'user',
 		});
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
 		return { ok: true };
 	}
 }

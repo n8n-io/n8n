@@ -42,5 +42,6 @@ export type Agent = {
 	schema?: Pick<AgentJsonConfig, 'personalisation'> | null;
 	tools: Record<string, CustomToolEntry>;
 	skills: Record<string, AgentSkill>;
+	skillHashes?: Record<string, string>;
 	activeVersion: AgentVersion | null;
 };

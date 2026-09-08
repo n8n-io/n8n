@@ -6,6 +6,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentPublishService } from '../agent-publish.service';
 import { AgentPublishController } from '../agent-publish.controller';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
 import {
 	expectProjectScopedAgentRoutes,
@@ -28,7 +29,11 @@ function makeController({
 	);
 
 	return {
-		controller: new AgentPublishController(agentPublishService, agentRunnableStateService),
+		controller: new AgentPublishController(
+			agentPublishService,
+			agentRunnableStateService,
+			mock<AgentUpdateBroadcaster>(),
+		),
 		agentPublishService,
 		agentValidationService,
 	};

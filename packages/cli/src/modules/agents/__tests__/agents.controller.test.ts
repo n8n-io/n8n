@@ -191,6 +191,13 @@ describe('AgentsController agent resource', () => {
 		agentsService.findById.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
+			skills: {
+				triage: {
+					name: 'Triage',
+					description: 'Triage requests',
+					instructions: 'Route each request.',
+				},
+			},
 		} as never);
 		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'valid',
@@ -219,6 +226,7 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
+		expect(result.skillHashes.triage).toMatch(/^[a-f0-9]{64}$/);
 		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'agent-1' }),
 			'project-1',

@@ -13,10 +13,14 @@ import {
 import type { Response } from 'express';
 
 import { AgentSkillsService } from './agent-skills.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsSkillsController {
-	constructor(private readonly agentSkillsService: AgentSkillsService) {}
+	constructor(
+		private readonly agentSkillsService: AgentSkillsService,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+	) {}
 
 	@Get('/:agentId/skills')
 	@ProjectScope('agent:read')
@@ -46,10 +50,12 @@ export class AgentsSkillsController {
 		@Body payload: CreateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload, {
+		const result = await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
 		});
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
+		return result;
 	}
 
 	@Patch('/:agentId/skills/:skillId')
@@ -62,10 +68,20 @@ export class AgentsSkillsController {
 		@Body payload: UpdateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		return await this.agentSkillsService.updateSkill(agentId, projectId, skillId, payload, {
-			user: req.user,
-			modifiedBy: 'user',
-		});
+		const { baseSkillHash, ...updates } = payload;
+		const result = await this.agentSkillsService.updateSkill(
+			agentId,
+			projectId,
+			skillId,
+			updates,
+			{
+				user: req.user,
+				modifiedBy: 'user',
+			},
+			baseSkillHash,
+		);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
+		return result;
 	}
 
 	@Delete('/:agentId/skills/:skillId')
@@ -81,6 +97,7 @@ export class AgentsSkillsController {
 			user: req.user,
 			modifiedBy: 'user',
 		});
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
 		return { ok: true };
 	}
 }

@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref, computed, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
+import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES, type PushMessage } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import type {
 	AgentJsonConfig,
 	AgentJsonSkillRef,
@@ -29,6 +30,8 @@ const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
+const pushConnectMock = vi.fn();
+const pushListeners = new Set<(event: PushMessage) => void>();
 const sendPreviewSessionToInstanceAiMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -118,6 +121,16 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({
 		openModalWithData: openModalWithDataMock,
 		closeModal: closeModalMock,
+	}),
+}));
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: pushConnectMock,
+		addEventListener: (listener: (event: PushMessage) => void) => {
+			pushListeners.add(listener);
+			return () => pushListeners.delete(listener);
+		},
 	}),
 }));
 
@@ -275,6 +288,7 @@ function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 		name: 'Agent One',
 		tools: {},
 		skills: {},
+		skillHashes: {},
 		updatedAt: '2026-01-01T00:00:00Z',
 		activeVersionId: null,
 		activeVersion: null,
@@ -695,6 +709,9 @@ function resetViewMocks() {
 	uploadAgentFilesMock.mockReset();
 	uploadAgentFilesMock.mockResolvedValue([]);
 	showErrorMock.mockReset();
+	showMessageMock.mockReset();
+	pushConnectMock.mockReset();
+	pushListeners.clear();
 	fetchConfigMock.mockClear();
 	builderTelemetryMock.fetchInitialTriggersBaseline.mockResolvedValue(null);
 	favoritesStoreMock.isFavorite.mockReturnValue(false);
@@ -2027,6 +2044,39 @@ describe('AgentBuilderView — configuration validation', () => {
 		);
 	});
 
+	it('reloads the latest agent and drops an autosave rejected as stale', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
+		};
+		intendedConfig = {
+			name: 'Agent One',
+			...defaultLlmConfig,
+			instructions: 'Newer instructions from another tab',
+		};
+		updateConfigMock.mockRejectedValueOnce(
+			new ResponseError('Agent config was changed elsewhere', { httpStatusCode: 409 }),
+		);
+
+		vm.onConfigFieldUpdate({ instructions: 'Stale local edit' });
+		await vm.flushAutosave();
+		await flushPromises();
+
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+		).toEqual(expect.objectContaining({ instructions: 'Newer instructions from another tab' }));
+		expect(showMessageMock).toHaveBeenCalledWith({
+			title: 'agents.builder.remoteChange.title',
+			message: 'agents.builder.remoteChange.message',
+			type: 'warning',
+		});
+
+		await vm.flushAutosave();
+		expect(updateConfigMock).toHaveBeenCalledTimes(1);
+	});
+
 	it('refreshes validation after a successful config autosave lands', async () => {
 		getAgentConfigValidationMock
 			.mockResolvedValueOnce({ status: 'invalid', issues: [] })
@@ -2515,6 +2565,50 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(fetchConfigMock).not.toHaveBeenCalled();
 
 		wrapper.unmount();
+	});
+
+	it('reloads an idle agent from push and ignores push while an autosave is pending', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p-push',
+				artifactAgentId: 'a-push',
+			},
+		});
+		const update: PushMessage = {
+			type: 'agentUpdated',
+			data: { projectId: 'p-push', agentId: 'a-push' },
+		};
+		getAgentMock.mockClear();
+		fetchConfigMock.mockClear();
+
+		vi.useFakeTimers();
+		try {
+			for (const listener of pushListeners) listener(update);
+			await vi.advanceTimersByTimeAsync(400);
+			await flushPromises();
+
+			expect(getAgentMock).toHaveBeenCalledTimes(1);
+			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+
+			getAgentMock.mockClear();
+			fetchConfigMock.mockClear();
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { instructions: 'Local pending edit' });
+			await nextTick();
+
+			for (const listener of pushListeners) listener(update);
+			await vi.advanceTimersByTimeAsync(400);
+			await flushPromises();
+
+			expect(getAgentMock).not.toHaveBeenCalled();
+			expect(fetchConfigMock).not.toHaveBeenCalled();
+			await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+		} finally {
+			vi.useRealTimers();
+			wrapper.unmount();
+		}
 	});
 
 	it('coalesces rapid external agent updates into one refresh cascade', async () => {
@@ -3244,11 +3338,13 @@ describe('AgentBuilderView — three-column shell', () => {
 		createAgentSkillMock.mockResolvedValueOnce({
 			id: 'skill_0Ab9ZkLm3Pq7Xy2N',
 			skill,
+			skillHash: 'skill-hash-1',
 			versionId: 'v2',
 		});
 		getAgentMock.mockResolvedValueOnce(
 			makeAgentResponse({
 				skills: { skill_0Ab9ZkLm3Pq7Xy2N: skill },
+				skillHashes: { skill_0Ab9ZkLm3Pq7Xy2N: 'skill-hash-1' },
 			}),
 		);
 
@@ -3317,11 +3413,13 @@ describe('AgentBuilderView — three-column shell', () => {
 				skills: {
 					summarize_notes: skill,
 				},
+				skillHashes: { summarize_notes: 'skill-hash-1' },
 			}),
 		);
 		updateAgentSkillMock.mockResolvedValueOnce({
 			id: 'summarize_notes',
 			skill: updatedSkill,
+			skillHash: 'skill-hash-2',
 			versionId: 'v2',
 		});
 
@@ -3355,6 +3453,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			'a1',
 			'summarize_notes',
 			updatedSkill,
+			'skill-hash-1',
 		);
 	});
 
@@ -3376,6 +3475,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				skills: {
 					summarize_notes: skill,
 				},
+				skillHashes: { summarize_notes: 'skill-hash-1' },
 			}),
 		);
 		updateAgentSkillMock.mockResolvedValueOnce({
@@ -3385,6 +3485,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				description: skill.description,
 				instructions: skill.instructions,
 			},
+			skillHash: 'skill-hash-2',
 			versionId: 'v2',
 		});
 
@@ -3406,6 +3507,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				description: skill.description,
 				instructions: skill.instructions,
 			},
+			'skill-hash-1',
 		);
 	});
 
