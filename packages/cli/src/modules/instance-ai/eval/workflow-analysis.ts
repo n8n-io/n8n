@@ -1,3 +1,4 @@
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
@@ -699,11 +700,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 				abortSignal: AbortSignal.timeout(HINT_LLM_TIMEOUT_MS),
 			});
 
-			const text = extractText(result)
-				.replace(/^```(?:json)?\s*\n?/i, '')
-				.replace(/\n?\s*```\s*$/i, '')
-				.trim();
-
+			const text = extractJsonCandidate(extractText(result));
 			const parsed: Record<string, unknown> = jsonParse(text);
 
 			// globalContext may come back as a string or object — normalize to string
