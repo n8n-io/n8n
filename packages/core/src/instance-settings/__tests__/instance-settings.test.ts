@@ -226,6 +226,8 @@ describe('InstanceSettings', () => {
 		const mockRepo = {
 			findActiveByType: vi.fn(),
 			insertOrIgnore: vi.fn(),
+			findActiveSigningSecret: vi.fn(),
+			seedSigningSecret: vi.fn(),
 		};
 
 		let settings: InstanceSettings;
@@ -240,6 +242,8 @@ describe('InstanceSettings', () => {
 			// Default: no DB rows, inserts succeed
 			mockRepo.findActiveByType.mockResolvedValue(null);
 			mockRepo.insertOrIgnore.mockResolvedValue(undefined);
+			mockRepo.findActiveSigningSecret.mockResolvedValue(null);
+			mockRepo.seedSigningSecret.mockResolvedValue(undefined);
 		});
 
 		describe('instance.id', () => {
@@ -315,23 +319,23 @@ describe('InstanceSettings', () => {
 				await settings.initialize(mockRepo);
 
 				expect(settings.hmacSignatureSecret).toEqual('env-pinned-hmac');
-				expect(mockRepo.findActiveByType).not.toHaveBeenCalledWith('signing.hmac');
-				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'signing.hmac' }),
-				);
+				expect(mockRepo.findActiveSigningSecret).not.toHaveBeenCalled();
+				expect(mockRepo.seedSigningSecret).not.toHaveBeenCalled();
 			});
 
 			it('should use the value from the active DB row when one exists', async () => {
-				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
-					type === 'signing.hmac' ? { value: 'db-stored-hmac' } : null,
+				mockRepo.findActiveSigningSecret.mockImplementation(async (type: string) =>
+					type === 'signing.hmac' ? 'db-stored-hmac' : null,
 				);
 
 				await settings.initialize(mockRepo);
 
 				expect(settings.hmacSignatureSecret).toEqual('db-stored-hmac');
-				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'signing.hmac' }),
-				);
+				// A seeding process may also upgrade a row still in the pre-wrap form.
+				expect(mockRepo.findActiveSigningSecret).toHaveBeenCalledWith('signing.hmac', {
+					rewrapLegacy: true,
+				});
+				expect(mockRepo.seedSigningSecret).not.toHaveBeenCalled();
 			});
 
 			it('should persist the derived HMAC secret when no active DB row exists', async () => {
@@ -339,22 +343,14 @@ describe('InstanceSettings', () => {
 
 				await settings.initialize(mockRepo);
 
-				expect(mockRepo.insertOrIgnore).toHaveBeenCalledWith({
-					type: 'signing.hmac',
-					value: derivedHmac,
-					status: 'active',
-					algorithm: null,
-				});
+				expect(mockRepo.seedSigningSecret).toHaveBeenCalledWith('signing.hmac', derivedHmac);
 				expect(settings.hmacSignatureSecret).toEqual(derivedHmac);
 			});
 
 			it('should use the winner row when a concurrent insert is ignored', async () => {
-				mockRepo.insertOrIgnore.mockImplementation(async (entity: { type: string }) => {
-					if (entity.type === 'signing.hmac') return undefined;
-				});
-				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
-					type === 'signing.hmac' ? { value: 'winner-hmac' } : null,
-				);
+				mockRepo.findActiveSigningSecret
+					.mockResolvedValueOnce(null)
+					.mockResolvedValueOnce('winner-hmac');
 
 				await settings.initialize(mockRepo);
 
@@ -370,8 +366,20 @@ describe('InstanceSettings', () => {
 				await settings.initialize(mockRepo, { canSeed: false });
 
 				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalled();
+				expect(mockRepo.seedSigningSecret).not.toHaveBeenCalled();
 				expect(settings.instanceId).toEqual(derivedId);
 				expect(settings.hmacSignatureSecret).toEqual(derivedHmac);
+			});
+
+			it('should read secrets without upgrading rows still in the pre-wrap form', async () => {
+				mockRepo.findActiveSigningSecret.mockResolvedValue('db-stored-hmac');
+
+				await settings.initialize(mockRepo, { canSeed: false });
+
+				expect(settings.hmacSignatureSecret).toEqual('db-stored-hmac');
+				expect(mockRepo.findActiveSigningSecret).toHaveBeenCalledWith('signing.hmac', {
+					rewrapLegacy: false,
+				});
 			});
 
 			it('should expose the seeding permission as canSeedDeploymentState', async () => {
@@ -386,8 +394,8 @@ describe('InstanceSettings', () => {
 
 			it('should still adopt env vars and existing DB rows', async () => {
 				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
-				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
-					type === 'signing.hmac' ? { value: 'db-stored-hmac' } : null,
+				mockRepo.findActiveSigningSecret.mockImplementation(async (type: string) =>
+					type === 'signing.hmac' ? 'db-stored-hmac' : null,
 				);
 
 				await settings.initialize(mockRepo, { canSeed: false });
@@ -395,6 +403,7 @@ describe('InstanceSettings', () => {
 				expect(settings.instanceId).toEqual('env-pinned-id');
 				expect(settings.hmacSignatureSecret).toEqual('db-stored-hmac');
 				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalled();
+				expect(mockRepo.seedSigningSecret).not.toHaveBeenCalled();
 			});
 		});
 	});

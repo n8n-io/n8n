@@ -193,6 +193,7 @@ export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-mode
 export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
 export { WorkflowEditorLockedError } from './errors/workflow-editor-locked.error';
+export { FolderResolutionError } from './errors/folder-resolution.error';
 export {
 	LEGACY_PLANNED_TASK_KINDS,
 	PLANNED_TASK_KINDS,
@@ -215,8 +216,12 @@ export {
 	agentBuilderTargetMetadata,
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
+	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
+	threadAuthorizesAgentAdoption,
+	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
+export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
@@ -669,6 +674,8 @@ export type {
 	InstanceAiTraceRunInit,
 	WorkflowTaskService,
 	WorkflowSummary,
+	WorkflowFolderRef,
+	FolderResolutionFailure,
 	WorkflowDetail,
 	NodeUsageResult,
 	WorkflowNode,

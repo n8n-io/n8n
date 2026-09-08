@@ -43,6 +43,7 @@ const files = (name) => [
 	['tsconfig.json.template', 'tsconfig.json'],
 	['vite.config.ts.template', 'vite.config.ts'],
 	['eslint.config.mjs.template', 'eslint.config.mjs'],
+	['stylelint.config.mjs.template', 'stylelint.config.mjs'],
 	['biome.jsonc.template', 'biome.jsonc'],
 	['README.md.template', 'README.md'],
 	['index.ts.template', 'src/index.ts'],
@@ -50,6 +51,7 @@ const files = (name) => [
 	['store.ts.template', `src/${name}.store.ts`],
 	['store.test.ts.template', `src/${name}.store.test.ts`],
 	['setup.ts.template', 'src/__tests__/setup.ts'],
+	['design-system-icons.test.ts.template', 'src/__tests__/design-system-icons.test.ts'],
 ];
 
 /**

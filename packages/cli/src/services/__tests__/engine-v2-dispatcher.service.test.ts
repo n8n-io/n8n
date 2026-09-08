@@ -158,6 +158,40 @@ describe('EngineV2Dispatcher', () => {
 			);
 		});
 
+		it('sends the workflow beside the graph, narrowed to what a read reports', async () => {
+			const workflowData = workflow();
+
+			await dispatcher.start(runData({ workflowData }));
+
+			const { workflow: document } = proxy.startExecution.mock.calls[0][0];
+			// Exactly the projection the execution read serves. Anything wider ships
+			// the raw row to the data plane and back out to the editor.
+			expect(Object.keys(document).sort()).toEqual([
+				'connections',
+				'id',
+				'name',
+				'nodeGroups',
+				'nodes',
+				'settings',
+			]);
+			expect(document).toMatchObject({
+				id: 'wf-1',
+				name: 'My workflow',
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
+			});
+		});
+
+		it('passes the v1 mode and the caller to the data plane', async () => {
+			await dispatcher.start(runData({ userId: 'user-1', projectId: 'project-1' }));
+
+			expect(proxy.startExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					callerContext: { hostMode: 'manual', userId: 'user-1', projectId: 'project-1' },
+				}),
+			);
+		});
+
 		it('converts the workflow to a graph', async () => {
 			await dispatcher.start(runData());
 

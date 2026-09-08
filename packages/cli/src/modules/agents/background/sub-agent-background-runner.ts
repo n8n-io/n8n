@@ -57,7 +57,12 @@ export class SubAgentBackgroundRunner {
 			parentAgentId: string;
 		} & Pick<
 			SubAgentRunContext,
-			'credentialProvider' | 'runType' | 'workflowToolExecutionMode' | 'user' | 'instrumentation'
+			| 'credentialProvider'
+			| 'runType'
+			| 'workflowToolExecutionMode'
+			| 'user'
+			| 'instrumentation'
+			| 'parentWorkspaceHandle'
 		>,
 	): Promise<BackgroundJobReceipt> {
 		// Throws on an unusable task name — before the job row exists, so a bad
@@ -127,6 +132,9 @@ export class SubAgentBackgroundRunner {
 					abortSignal: abortController.signal,
 					...(request.difficulty !== undefined
 						? { selfDelegationDifficulty: request.difficulty }
+						: {}),
+					...(context.parentWorkspaceHandle !== undefined
+						? { parentWorkspaceHandle: context.parentWorkspaceHandle }
 						: {}),
 				},
 			)

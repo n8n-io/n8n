@@ -125,6 +125,7 @@ export class TypeAvailabilityPolicyInstanceController {
 		const { policy, warnings } = await this.service.updatePolicyDocument(
 			policyId,
 			dto.rules,
+			dto.version,
 			req.user.id,
 		);
 
