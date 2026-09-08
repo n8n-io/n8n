@@ -1,5 +1,6 @@
 import type {
 	BrowserRecording,
+	BrowserRecordingAction,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
 	ToolCategory,
@@ -16,6 +17,7 @@ import type {
 	SecretsBuffer,
 	ToolContext,
 } from '@n8n/mcp-browser';
+import { redactString } from '@n8n/mcp-browser';
 import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { timingSafeEqual } from 'node:crypto';
@@ -41,6 +43,9 @@ const CONNECT_TOKEN_TTL_MS = 5 * 60 * 1000;
 
 const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
+/** How often to summarize actions accumulated so far, while a recording is in progress. */
+const CAPTION_INTERVAL_MS = 20_000;
+
 interface BrowserSession {
 	userId: string;
 	sessionId: string;
@@ -58,6 +63,14 @@ interface BrowserSession {
 	/** Thread that asked Instance AI to start this recording, if any — set by `startRecording()`,
 	 *  consumed (and cleared) the moment the recording completes. */
 	pendingRecordingThreadId?: string;
+	/** Total actions streamed in for the in-progress recording — reset on start,
+	 *  cleared once the recording completes or is discarded. */
+	inProgressActionCount: number;
+	/** Redacted actions accumulated since the last caption tick, fed to the next one. */
+	pendingCaptionActions: BrowserRecordingAction[];
+	/** Latest running summary produced from `pendingCaptionActions`, consumed at completion. */
+	latestCaption?: string;
+	captionInterval?: ReturnType<typeof setInterval>;
 }
 
 interface BrowserRecordingCompletion {
@@ -67,6 +80,9 @@ interface BrowserRecordingCompletion {
 	/** The thread that triggered this recording, so completion can resume it instead of
 	 *  opening a new thread. Absent for recordings started manually from the extension. */
 	originThreadId?: string;
+	/** The latest running summary generated while the recording was in progress, if any —
+	 *  a head start for the recap, not shown anywhere in the UI. */
+	caption?: string;
 }
 
 interface BrowserRecordingCompletionResult {
@@ -85,6 +101,13 @@ export class InstanceAiBrowserSessionService {
 		input: BrowserRecordingCompletion,
 	) => Promise<BrowserRecordingCompletionResult>;
 
+	/** Summarizes actions accumulated since the last tick, into one running caption.
+	 *  Set from instance-ai.service.ts, which has the model resolution this needs. */
+	private actionCaptionHandler?: (input: {
+		userId: string;
+		actions: BrowserRecordingAction[];
+	}) => Promise<string | undefined>;
+
 	constructor(
 		logger: Logger,
 		private readonly urlService: UrlService,
@@ -102,6 +125,15 @@ export class InstanceAiBrowserSessionService {
 		handler: (input: BrowserRecordingCompletion) => Promise<BrowserRecordingCompletionResult>,
 	): void {
 		this.recordingCompletionHandler = handler;
+	}
+
+	setActionCaptionHandler(
+		handler: (input: {
+			userId: string;
+			actions: BrowserRecordingAction[];
+		}) => Promise<string | undefined>,
+	): void {
+		this.actionCaptionHandler = handler;
 	}
 
 	async createLink(userId: string): Promise<InstanceAiBrowserCreateLinkResponse> {
@@ -151,6 +183,7 @@ export class InstanceAiBrowserSessionService {
 		const session = this.sessions.get(userId);
 		if (!session?.connected) return false;
 		session.pendingRecordingThreadId = threadId;
+		this.startLiveRecordingState(session);
 		session.relay.startRecording().catch((error) => {
 			this.logger.warn('Failed to start browser recording', {
 				userId,
@@ -167,6 +200,23 @@ export class InstanceAiBrowserSessionService {
 		if (!session?.connected) return false;
 		session.relay.stopAndSubmitRecording().catch((error) => {
 			this.logger.warn('Failed to stop browser recording', {
+				userId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+		return true;
+	}
+
+	/** Ask the paired extension to discard the active recording, directly — no thread
+	 *  message, no analysis. Returns false if there's no paired session or recording to discard. */
+	discardRecording(userId: string): boolean {
+		const session = this.sessions.get(userId);
+		if (!session?.connected || !session.pendingRecordingThreadId) return false;
+		this.pushRecordingState(userId, 'discarded');
+		this.stopLiveRecordingState(session);
+		session.pendingRecordingThreadId = undefined;
+		session.relay.discardRecording().catch((error) => {
+			this.logger.warn('Failed to discard browser recording', {
 				userId,
 				error: error instanceof Error ? error.message : String(error),
 			});
@@ -233,6 +283,8 @@ export class InstanceAiBrowserSessionService {
 		relay.onExtensionDisconnect = () => this.handleExtensionDisconnected(userId);
 		relay.onRecordingCompleted = async (recording) =>
 			await this.handleRecordingCompleted(userId, recording);
+		relay.onRecordingActionAppended = (_recordingId, action) =>
+			this.handleRecordingActionAppended(userId, action);
 
 		const toolkit = createBrowserTools(
 			{ mode: 'remote' },
@@ -265,6 +317,8 @@ export class InstanceAiBrowserSessionService {
 			connection: toolkit.connection,
 			mcpServer: new BrowserLocalMcpServer(toolkit, toolContext, this.logger),
 			completedRecordingIds: new Set(),
+			inProgressActionCount: 0,
+			pendingCaptionActions: [],
 		};
 		this.sessions.set(userId, session);
 		this.sessionsBySessionId.set(sessionId, session);
@@ -284,6 +338,7 @@ export class InstanceAiBrowserSessionService {
 		session.connectedAt = null;
 		session.completedRecordingIds.clear();
 		session.pendingRecordingThreadId = undefined;
+		this.stopLiveRecordingState(session);
 	}
 
 	private async handleRecordingCompleted(
@@ -297,6 +352,8 @@ export class InstanceAiBrowserSessionService {
 		session.completedRecordingIds.add(recording.id);
 		const originThreadId = session.pendingRecordingThreadId;
 		session.pendingRecordingThreadId = undefined;
+		const caption = session.latestCaption;
+		this.stopLiveRecordingState(session);
 		try {
 			const project = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 			const { threadId } = await handler({
@@ -304,6 +361,7 @@ export class InstanceAiBrowserSessionService {
 				projectId: project.id,
 				recording,
 				originThreadId,
+				caption,
 			});
 			return {
 				threadUrl: `${this.urlService.getInstanceBaseUrl().replace(/\/$/, '')}/assistant/${threadId}`,
@@ -312,6 +370,71 @@ export class InstanceAiBrowserSessionService {
 			session.completedRecordingIds.delete(recording.id);
 			throw error;
 		}
+	}
+
+	/** Reset the in-progress recording state and start the periodic caption tick.
+	 *  Called synchronously as soon as `startRecording()` asks the extension to start —
+	 *  no need to wait for the extension to confirm. */
+	private startLiveRecordingState(session: BrowserSession): void {
+		if (session.captionInterval) clearInterval(session.captionInterval);
+		session.inProgressActionCount = 0;
+		session.pendingCaptionActions = [];
+		session.latestCaption = undefined;
+		session.captionInterval = setInterval(() => {
+			void this.runCaptionTick(session);
+		}, CAPTION_INTERVAL_MS);
+		this.pushRecordingState(session.userId, 'recording');
+	}
+
+	/** Stop the caption tick and clear in-progress state — called on completion, discard,
+	 *  or teardown. Idempotent. */
+	private stopLiveRecordingState(session: BrowserSession): void {
+		if (session.captionInterval) clearInterval(session.captionInterval);
+		session.captionInterval = undefined;
+		session.inProgressActionCount = 0;
+		session.pendingCaptionActions = [];
+		session.latestCaption = undefined;
+	}
+
+	private handleRecordingActionAppended(userId: string, action: BrowserRecordingAction): void {
+		const session = this.sessions.get(userId);
+		if (!session?.pendingRecordingThreadId) return;
+		const redacted = redactAction(action);
+		session.pendingCaptionActions.push(redacted);
+		session.inProgressActionCount += 1;
+		this.pushRecordingState(userId, 'recording');
+	}
+
+	/** Summarize whatever has accumulated since the last tick. Skips the call — and its
+	 *  cost — entirely when nothing new has come in. Never throws: a failed summary just
+	 *  means no caption is available yet, not a broken recording. */
+	private async runCaptionTick(session: BrowserSession): Promise<void> {
+		const handler = this.actionCaptionHandler;
+		const actions = session.pendingCaptionActions;
+		if (!handler || actions.length === 0) return;
+		session.pendingCaptionActions = [];
+		try {
+			const caption = await handler({ userId: session.userId, actions });
+			if (caption) session.latestCaption = caption;
+		} catch (error) {
+			this.logger.warn('Failed to summarize in-progress recording', {
+				userId: session.userId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private pushRecordingState(userId: string, status: 'recording' | 'discarded'): void {
+		const session = this.sessions.get(userId);
+		const threadId = session?.pendingRecordingThreadId;
+		if (!threadId) return;
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiRecordingStateChanged',
+				data: { threadId, status, actionCount: session.inProgressActionCount },
+			},
+			[userId],
+		);
 	}
 
 	private handleExtensionConnected(userId: string): void {
@@ -423,6 +546,28 @@ export class InstanceAiBrowserSessionService {
 		const scheme = base.protocol === 'https:' ? 'wss' : 'ws';
 		return `${scheme}://${base.host}`;
 	}
+}
+
+/** Redact an action's free-text fields again, server-side — defense in depth on top of
+ *  the extension's own sanitization, since the action now leaves the trusted extension
+ *  boundary independently of the final reviewed submission. */
+function redactAction(action: BrowserRecordingAction): BrowserRecordingAction {
+	return {
+		...action,
+		...(action.value !== undefined ? { value: redactString(action.value) } : {}),
+		url: redactString(action.url),
+		...(action.target
+			? {
+					target: {
+						...action.target,
+						...(action.target.label !== undefined
+							? { label: redactString(action.target.label) }
+							: {}),
+						...(action.target.name !== undefined ? { name: redactString(action.target.name) } : {}),
+					},
+				}
+			: {}),
+	};
 }
 
 function createInMemorySecretsBuffer(): SecretsBuffer {

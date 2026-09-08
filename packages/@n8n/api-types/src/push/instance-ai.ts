@@ -35,4 +35,14 @@ export type InstanceAiPushMessage =
 			data: {
 				connectionId: string;
 			};
+	  }
+	| {
+			type: 'instanceAiRecordingStateChanged';
+			data: {
+				/** The thread that asked for this recording — the frontend only reacts when
+				 *  this matches the thread it's currently viewing. */
+				threadId: string;
+				status: 'recording' | 'discarded';
+				actionCount: number;
+			};
 	  };
