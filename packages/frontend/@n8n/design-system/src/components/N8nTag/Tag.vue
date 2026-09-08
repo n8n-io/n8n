@@ -17,7 +17,7 @@ withDefaults(defineProps<TagProps>(), {
 		v-bind="$attrs"
 	>
 		<slot v-if="$slots['tag']" name="tag" />
-		<span v-else>{{ text }}</span>
+		<span v-else :class="$style.text">{{ text }}</span>
 	</span>
 </template>
 
@@ -26,9 +26,10 @@ withDefaults(defineProps<TagProps>(), {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-width: max-content;
+	min-width: var(--tag--min-width, max-content);
 	height: var(--tag--height);
 	padding: var(--tag--padding);
+	max-width: var(--tag--max-width);
 	line-height: var(--tag--line-height);
 	color: var(--tag--color--text);
 	background-color: var(--tag--color--background);
@@ -36,6 +37,7 @@ withDefaults(defineProps<TagProps>(), {
 	border-radius: var(--tag--radius);
 	font-size: var(--tag--font-size);
 	transition: background-color 0.3s ease;
+	user-select: none;
 
 	&.clickable {
 		cursor: pointer;
@@ -45,6 +47,13 @@ withDefaults(defineProps<TagProps>(), {
 			border-color: var(--tag--border-color--hover);
 		}
 	}
+}
+
+.text {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .sm {

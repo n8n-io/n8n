@@ -1,9 +1,11 @@
 import { createTeamProject, createWorkflow, getPersonalProject } from '@n8n/backend-test-utils';
 import type { ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { SpanStatusCode } from '@opentelemetry/api';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
 import { createUser } from '@test-integration/db/users';
 
@@ -12,6 +14,7 @@ import {
 	terminateOtelTestEnvironment,
 	executeWorkflow,
 	waitForExecution,
+	waitForExecutionStatus,
 	saveAndSetEnv,
 	restoreEnv,
 } from './support/otel-integration-utils';
@@ -19,6 +22,7 @@ import type { OtelTestProvider } from './support/otel-test-provider';
 import {
 	createMultiNodeWorkflowFixture,
 	createFailingWorkflowFixture,
+	createWaitWorkflowFixture,
 } from './support/otel-workflow-fixtures';
 
 let otel: OtelTestProvider;
@@ -106,6 +110,49 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
 		expect(workflowSpan.status.code).toBe(SpanStatusCode.ERROR);
 		expect(workflowSpan.attributes['n8n.execution.status']).toBe('error');
+	});
+
+	it('should keep the resumed segment in the trace of the parked segment', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createWaitWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecutionStatus(executionRepository, executionId, 'waiting');
+
+		await Container.get(WaitTracker).startExecution(executionId);
+		await waitForExecutionStatus(executionRepository, executionId, 'success');
+
+		const workflowSpans = otel.getFinishedSpans().filter((s) => s.name === 'workflow.execute');
+		expect(workflowSpans).toHaveLength(2);
+
+		const parked = workflowSpans.find((s) => s.attributes['n8n.execution.status'] === 'waiting')!;
+		const resumed = workflowSpans.find((s) => s.attributes['n8n.execution.status'] === 'success')!;
+		expect(parked).toBeDefined();
+		expect(resumed).toBeDefined();
+
+		expect(resumed.spanContext().traceId).toBe(parked.spanContext().traceId);
+		expect(resumed.parentSpanContext?.spanId).toBe(parked.spanContext().spanId);
+		expect(resumed.links[0]?.attributes?.['n8n.continuation.reason']).toBe('resume');
+	});
+
+	it('should advance the persisted tracing context to the resumed segment', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createWaitWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecutionStatus(executionRepository, executionId, 'waiting');
+
+		const parkedContext = (await executionRepository.findOneBy({ id: executionId }))
+			?.tracingContext;
+
+		await Container.get(WaitTracker).startExecution(executionId);
+		await waitForExecutionStatus(executionRepository, executionId, 'success');
+
+		const resumedContext = (await executionRepository.findOneBy({ id: executionId }))
+			?.tracingContext;
+
+		const [, parkedTraceId, parkedSpanId] = parkedContext!.traceparent.split('-');
+		const [, resumedTraceId, resumedSpanId] = resumedContext!.traceparent.split('-');
+		expect(resumedTraceId).toBe(parkedTraceId);
+		expect(resumedSpanId).not.toBe(parkedSpanId);
 	});
 
 	it('should inherit traceId from inbound HTTP traceparent', async () => {

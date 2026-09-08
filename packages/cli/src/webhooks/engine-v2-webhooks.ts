@@ -113,8 +113,8 @@ export class EngineV2Webhooks {
 	 * Only the webhook node's own output says whether the request brought a file,
 	 * so this runs after the node, unlike {@link assertSupported}.
 	 */
-	async assertPayloadSupported(webhookResultData: IWebhookResponseData): Promise<void> {
-		await this.payloadGuard.assertNoFiles(
+	assertPayloadSupported(webhookResultData: IWebhookResponseData): void {
+		this.payloadGuard.assertNoFiles(
 			webhookResultData.workflowData ?? [],
 			'Engine 2.0 cannot receive files from a webhook yet.',
 		);

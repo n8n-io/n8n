@@ -33,6 +33,7 @@ const request: BackgroundSpawnRequest = {
 	goal: 'find things',
 	parentThreadId: 'thread-1',
 	parentResourceId: 'resource-1',
+	parentSandboxPrincipalHash: 'principal-hash',
 };
 
 function setup() {
@@ -93,6 +94,11 @@ describe('spawn', () => {
 		const spawnRequest = runner.run.mock.calls[0][0];
 		expect(spawnRequest.childThreadId).toBe(registered.childThreadId);
 		expect(registered.childThreadId).toBeTruthy();
+		// The parent identity travels from the request onto the job row.
+		expect(registered).toMatchObject({
+			parentResourceId: 'resource-1',
+			parentPrincipalHash: 'principal-hash',
+		});
 	});
 
 	it('runs on its own abort scope without parent telemetry or execution counter', async () => {
