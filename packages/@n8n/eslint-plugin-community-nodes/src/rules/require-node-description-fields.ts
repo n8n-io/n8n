@@ -1,8 +1,6 @@
-import { TSESTree } from '@typescript-eslint/utils';
-
 import {
 	isNodeTypeClass,
-	findClassProperty,
+	findNodeDescriptionObject,
 	findObjectProperty,
 	isFileType,
 	createRule,
@@ -40,15 +38,10 @@ export const RequireNodeDescriptionFieldsRule = createRule({
 					return;
 				}
 
-				const descriptionProperty = findClassProperty(node, 'description');
-				if (
-					!descriptionProperty?.value ||
-					descriptionProperty.value.type !== TSESTree.AST_NODE_TYPES.ObjectExpression
-				) {
+				const descriptionValue = findNodeDescriptionObject(node);
+				if (!descriptionValue) {
 					return;
 				}
-
-				const descriptionValue = descriptionProperty.value;
 
 				const missingFields: RequiredField[] = REQUIRED_FIELDS.filter(
 					(field) => !findObjectProperty(descriptionValue, field),
@@ -60,13 +53,13 @@ export const RequireNodeDescriptionFieldsRule = createRule({
 
 				if (missingFields.length === 1) {
 					context.report({
-						node: descriptionProperty,
+						node: descriptionValue,
 						messageId: 'missingField',
 						data: { field: missingFields[0] },
 					});
 				} else {
 					context.report({
-						node: descriptionProperty,
+						node: descriptionValue,
 						messageId: 'missingFields',
 						data: { fields: missingFields.map((f) => `\`${f}\``).join(', ') },
 					});

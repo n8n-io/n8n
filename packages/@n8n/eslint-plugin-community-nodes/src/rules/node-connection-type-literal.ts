@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 
 import {
 	isNodeTypeClass,
-	findClassProperty,
+	findNodeDescriptionObject,
 	findObjectProperty,
 	createRule,
 } from '../utils/index.js';
@@ -81,11 +81,8 @@ export const NodeConnectionTypeLiteralRule = createRule({
 			ClassDeclaration(node) {
 				if (!isNodeTypeClass(node)) return;
 
-				const descriptionProperty = findClassProperty(node, 'description');
-				if (!descriptionProperty) return;
-
-				const descriptionValue = descriptionProperty.value;
-				if (descriptionValue?.type !== AST_NODE_TYPES.ObjectExpression) return;
+				const descriptionValue = findNodeDescriptionObject(node);
+				if (!descriptionValue) return;
 
 				for (const prop of ['inputs', 'outputs'] as const) {
 					const property = findObjectProperty(descriptionValue, prop);

@@ -6,6 +6,7 @@ import {
 	isNodeTypeClass,
 	isCredentialTypeClass,
 	findClassProperty,
+	findNodeDescriptionObject,
 	findObjectProperty,
 	getStringLiteralValue,
 	validateIconPath,
@@ -144,11 +145,8 @@ export const IconValidationRule = createRule({
 				}
 
 				if (isNodeClass) {
-					const descriptionProperty = findClassProperty(node, 'description');
-					if (
-						!descriptionProperty?.value ||
-						descriptionProperty.value.type !== TSESTree.AST_NODE_TYPES.ObjectExpression
-					) {
+					const descriptionValue = findNodeDescriptionObject(node);
+					if (!descriptionValue) {
 						context.report({
 							node,
 							messageId: 'missingIcon',
@@ -156,7 +154,6 @@ export const IconValidationRule = createRule({
 						return;
 					}
 
-					const descriptionValue = descriptionProperty.value;
 					const iconProperty = findObjectProperty(descriptionValue, 'icon');
 					if (!iconProperty) {
 						const suggestions: ReportSuggestionArray<keyof typeof messages> = [];

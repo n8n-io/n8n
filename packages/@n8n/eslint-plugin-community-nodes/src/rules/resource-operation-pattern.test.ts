@@ -213,5 +213,93 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 				},
 			],
 		},
+		{
+			// `description = { … } as INodeTypeDescription` is a widely used node layout.
+			name: 'type-asserted description with many operations without resources (error)',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						group: ['output'],
+						version: 1,
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{ name: 'Get', value: 'get' },
+									{ name: 'Create', value: 'create' },
+									{ name: 'Update', value: 'update' },
+									{ name: 'Delete', value: 'delete' },
+									{ name: 'List', value: 'list' },
+									{ name: 'Search', value: 'search' }
+								],
+								default: 'get'
+							}
+						]
+					} as INodeTypeDescription;
+				}
+			`,
+			errors: [
+				{
+					messageId: 'tooManyOperationsWithoutResources',
+					data: { operationCount: '6' },
+				},
+			],
+		},
+		{
+			// Versioned node layout from the node-building docs: the version class
+			// assigns `description` in its constructor.
+			name: 'versioned node assigning description in its constructor with many operations without resources (error)',
+			filename: '/tmp/TestNodeV1.node.ts',
+			code: `
+				import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNodeV1 implements INodeType {
+					description: INodeTypeDescription;
+
+					constructor(baseDescription: INodeTypeBaseDescription) {
+						this.description = {
+							...baseDescription,
+							displayName: 'Test Node',
+							name: 'testNode',
+							group: ['output'],
+							version: 1,
+							inputs: ['main'],
+							outputs: ['main'],
+							properties: [
+								{
+									displayName: 'Operation',
+									name: 'operation',
+									type: 'options',
+									options: [
+										{ name: 'Get', value: 'get' },
+										{ name: 'Create', value: 'create' },
+										{ name: 'Update', value: 'update' },
+										{ name: 'Delete', value: 'delete' },
+										{ name: 'List', value: 'list' },
+										{ name: 'Search', value: 'search' }
+									],
+									default: 'get'
+								}
+							]
+						};
+					}
+				}
+			`,
+			errors: [
+				{
+					messageId: 'tooManyOperationsWithoutResources',
+					data: { operationCount: '6' },
+				},
+			],
+		},
 	],
 });

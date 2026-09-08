@@ -3,7 +3,7 @@ import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 
 import {
 	isNodeTypeClass,
-	findClassProperty,
+	findNodeDescriptionObject,
 	findObjectProperty,
 	findJsonProperty,
 	createRule,
@@ -107,11 +107,8 @@ export const NoUnsafeConnectionTypeCastRule = createRule({
 			ClassDeclaration(node) {
 				if (!isNodeTypeClass(node)) return;
 
-				const descriptionProperty = findClassProperty(node, 'description');
-				if (!descriptionProperty) return;
-
-				const descriptionValue = descriptionProperty.value;
-				if (descriptionValue?.type !== AST_NODE_TYPES.ObjectExpression) return;
+				const descriptionValue = findNodeDescriptionObject(node);
+				if (!descriptionValue) return;
 
 				for (const prop of ['inputs', 'outputs'] as const) {
 					const property =

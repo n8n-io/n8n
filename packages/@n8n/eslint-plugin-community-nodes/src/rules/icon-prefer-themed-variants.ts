@@ -4,6 +4,7 @@ import {
 	isNodeTypeClass,
 	isCredentialTypeClass,
 	findClassProperty,
+	findNodeDescriptionObject,
 	findObjectProperty,
 	isFileType,
 	createRule,
@@ -49,12 +50,12 @@ export const IconPreferThemedVariantsRule = createRule({
 		return {
 			ClassDeclaration(node) {
 				if (isNodeTypeClass(node)) {
-					const descriptionProperty = findClassProperty(node, 'description');
-					if (descriptionProperty?.value?.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) {
+					const description = findNodeDescriptionObject(node);
+					if (!description) {
 						return;
 					}
 
-					const iconProperty = findObjectProperty(descriptionProperty.value, 'icon');
+					const iconProperty = findObjectProperty(description, 'icon');
 					if (iconProperty) {
 						checkIconValue(iconProperty.value);
 					}
