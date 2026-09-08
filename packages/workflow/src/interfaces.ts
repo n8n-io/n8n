@@ -2837,8 +2837,8 @@ export type DeclarativeHookMethod = (this: IHookFunctions) => Promise<boolean>;
  * With `matchOn`: true iff some returned item satisfies ALL clauses (`$item` =
  * the candidate); `store` then recovers values from the matched item.
  * Without `matchOn`: any 2xx ⇒ true; a status in `notFoundHttpCodes` (default
- * [404]) ⇒ clear the keys written by `create.store`, return false; skipped
- * (⇒ false) when `$staticData[idKey]` is absent.
+ * [404]) ⇒ clear the managed keys, return false; skipped (⇒ false) when
+ * `$staticData[idKey]` is absent or a `requireKeys` entry is empty.
  */
 export interface DeclarativeWebhookCheckExists {
 	routing: INodePropertyRouting;
@@ -2848,6 +2848,14 @@ export interface DeclarativeWebhookCheckExists {
 	notFoundHttpCodes?: number[];
 	/** Static-data key required before requesting. Default 'webhookId'. Only used without `matchOn`. */
 	idKey?: string;
+	/**
+	 * Extra static-data keys that must hold a non-empty value, or the webhook
+	 * counts as absent and is registered again. Use it for a stored signing
+	 * secret: a hook kept without one fails every signature check, so "present
+	 * but unusable" has to read as absent here. Checked before the request.
+	 * Only used without `matchOn`.
+	 */
+	requireKeys?: string[];
 }
 
 /**
@@ -2952,6 +2960,12 @@ export interface IDeclarativeWebhookTrigger {
 		/** Omit when the vendor has nothing to deregister. */
 		delete?: DeclarativeHookMethod | DeclarativeWebhookDelete;
 	};
+	/**
+	 * Static-data keys the trigger owns, cleared by delete and by a checkExists
+	 * not-found. Defaults to the keys `create.store` writes; set it explicitly
+	 * when `create` is a function, which carries no `store` to read them from.
+	 */
+	managedKeys?: string[];
 	handler?: DeclarativeWebhookHandler;
 }
 
