@@ -7,11 +7,23 @@ import {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { throwIfChatMemberUnsupported } from './sharedGuard';
 import { chatMemberRLC, chatRLC } from '../../descriptions';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
-import { throwIfChatMemberUnsupported } from './sharedGuard';
 
-const properties: INodeProperties[] = [chatRLC, chatMemberRLC];
+const properties: INodeProperties[] = [
+	{
+		// Not a default scope: it needs tenant admin consent, and putting it in the defaults
+		// would block every new or reconnected Teams credential until an admin re-consents.
+		displayName:
+			'Removing a member needs the <code>ChatMember.ReadWrite</code> permission, which is not requested by default because it needs tenant admin consent. On the credential, enable Custom Scopes, add it to Enabled Scopes, and reconnect.',
+		name: 'chatMemberRemoveScopeNotice',
+		type: 'notice',
+		default: '',
+	},
+	chatRLC,
+	chatMemberRLC,
+];
 
 const displayOptions = {
 	show: {
@@ -53,7 +65,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			throw new NodeOperationError(this.getNode(), error, {
 				itemIndex: i,
 				description:
-					'Removing a member needs the ChatMember.ReadWrite permission, which has no higher-privileged alternative: reconnect the credential to grant it (a tenant admin may have to consent again), and if Custom Scopes is enabled add it to Enabled Scopes by hand. Microsoft also refuses this call on a one-on-one chat, when removing the last owner, and when removing yourself.',
+					'Removing a member needs the ChatMember.ReadWrite permission, which is not requested by default. On the credential, enable Custom Scopes, add ChatMember.ReadWrite to Enabled Scopes, and reconnect (a tenant admin may have to consent). Microsoft also refuses this call on a one-on-one chat, when removing the last owner, and when removing yourself.',
 			});
 		}
 		throw error;

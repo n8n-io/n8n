@@ -66,7 +66,7 @@ describe('Microsoft Teams V2 - chatMember:remove error surfacing', () => {
 		});
 	});
 
-	it('a 403 is rewritten with a description naming ChatMember.ReadWrite and the reconnect', async () => {
+	it('a 403 is rewritten with a description naming ChatMember.ReadWrite and the custom scope steps', async () => {
 		requestOAuth2.mockRejectedValue(
 			graphError(
 				403,
@@ -82,6 +82,7 @@ describe('Microsoft Teams V2 - chatMember:remove error surfacing', () => {
 		expect(error.message).toContain('Insufficient privileges to complete the operation.');
 		expect(error.description).toContain('ChatMember.ReadWrite');
 		expect(error.description).toContain('reconnect');
+		expect(error.description).toContain('Custom Scopes');
 		expect(error.description).toContain('Enabled Scopes');
 		expect(requestOAuth2).toHaveBeenCalledTimes(1);
 	});

@@ -11,7 +11,6 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 		'User.Read.All',
 		'Group.ReadWrite.All',
 		'Chat.ReadWrite',
-		'ChatMember.ReadWrite',
 		'ChannelMessage.Read.All',
 		'OnlineMeetings.ReadWrite',
 	];
@@ -72,8 +71,20 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			(p) => p.name === 'enabledScopes',
 		);
 		expect(enabledScopesProperty?.default).toBe(
-			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChatMember.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite',
+			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite',
 		);
+	});
+
+	// ChatMember.ReadWrite needs tenant admin consent. In the defaults it would block every
+	// new or reconnected credential until an admin re-consents, so Remove asks for it via
+	// Custom Scopes instead.
+	it('does not request ChatMember.ReadWrite by default', () => {
+		const scope = microsoftTeamsOAuth2Api.properties.find((p) => p.name === 'scope');
+		const enabledScopes = microsoftTeamsOAuth2Api.properties.find(
+			(p) => p.name === 'enabledScopes',
+		);
+		expect(scope?.default).not.toContain('ChatMember.ReadWrite');
+		expect(enabledScopes?.default).not.toContain('ChatMember.ReadWrite');
 	});
 
 	describe('OAuth2 flow with default scopes', () => {

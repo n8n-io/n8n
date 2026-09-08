@@ -8,8 +8,6 @@ const defaultScopes = [
 	'User.Read.All',
 	'Group.ReadWrite.All',
 	'Chat.ReadWrite',
-	// Removing a chat member has no higher-privileged alternative, so this scope is mandatory
-	'ChatMember.ReadWrite',
 	'ChannelMessage.Read.All',
 	'OnlineMeetings.ReadWrite',
 ];
@@ -70,6 +68,8 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
       <br><code>Team.ReadBasic.All</code>
       <br><code>Subscription.Read.All</code>
       <br>Configure these permissions in <a href="https://portal.azure.com">Microsoft Entra</a>
+      <br><br>Chat Member > Remove requires <code>ChatMember.ReadWrite</code>, which needs tenant admin consent and is not requested by default.
+      <br>Enable Custom Scopes, add it to Enabled Scopes, and reconnect.
     `,
 			name: 'notice',
 			type: 'notice',
