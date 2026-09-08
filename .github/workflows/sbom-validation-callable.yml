@@ -3,8 +3,8 @@ name: 'Test: Validate Release SBOM'
 on:
   workflow_call:
     inputs:
-      ref:
-        description: 'Trusted Git reference to validate'
+      sha:
+        description: 'Trusted full commit SHA to validate'
         required: true
         type: string
 
@@ -17,11 +17,23 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 15
     steps:
-      - name: Checkout SBOM source
+      - name: Checkout workflow source
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ inputs.ref }}
           persist-credentials: false
+
+      # Validate the SHA before switching to the source that the local action executes.
+      # poutine: untrusted_checkout_exec
+      - name: Checkout SBOM source
+        env:
+          SOURCE_SHA: ${{ inputs.sha }}
+        run: |
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::The SBOM source must be a full commit SHA.'
+            exit 1
+          fi
+          git fetch --depth=1 origin "$SOURCE_SHA"
+          git checkout --detach "$SOURCE_SHA"
 
       - name: Build production deployment artifact
         uses: ./.github/actions/setup-nodejs

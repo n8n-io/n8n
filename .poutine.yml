@@ -46,12 +46,6 @@ skip:
       # Only called from release-publish.yml with release tag refs (e.g., n8n@1.2.3),
       # never PR code. The checked out code is already-released, trusted code.
       - .github/workflows/sbom-generation-callable.yml
-      # Called with a scheduled Docker run SHA or a maintainer-selected dispatch
-      # SHA. It never receives a PR event ref.
-      - .github/workflows/sbom-validation-callable.yml
-      # Resolves a successful scheduled Docker run, or runs by maintainer dispatch.
-      # Both paths check out a trusted SHA and never receive a PR event ref.
-      - .github/workflows/test-sbom-nightly.yml
       # Uses merge commit SHA from GitHub - the code has already been reviewed
       # and merged, not arbitrary PR code.
       - .github/workflows/test-linting-reusable.yml

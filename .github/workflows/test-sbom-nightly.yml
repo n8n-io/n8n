@@ -60,12 +60,24 @@ jobs:
 
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout nightly source
+      - name: Checkout workflow source
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ steps.source.outputs.sha }}
           fetch-depth: 1
           persist-credentials: false
+
+      # Resolve source only from GitHub's scheduled-run response or GITHUB_SHA.
+      # poutine: untrusted_checkout_exec
+      - name: Checkout nightly source
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::The nightly source must be a full commit SHA.'
+            exit 1
+          fi
+          git fetch --depth=1 origin "$SOURCE_SHA"
+          git checkout --detach "$SOURCE_SHA"
 
       - name: Select nightly image tag
         id: image-tag
@@ -85,7 +97,7 @@ jobs:
       contents: read
     uses: ./.github/workflows/sbom-validation-callable.yml
     with:
-      ref: ${{ needs.resolve-nightly-build.outputs.source_sha }}
+      sha: ${{ needs.resolve-nightly-build.outputs.source_sha }}
 
   validate-image-sboms:
     name: Validate nightly image SBOMs
@@ -98,7 +110,6 @@ jobs:
       - name: Checkout
         uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
-          ref: ${{ needs.resolve-nightly-build.outputs.source_sha }}
           fetch-depth: 1
           persist-credentials: false
 
