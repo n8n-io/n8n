@@ -143,7 +143,7 @@ export default mergeConfig(
 							// another package's sources instead of its published types.
 							tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
 							entryRoot: resolve(__dirname, 'src'),
-							processor: 'vue'
+							processor: 'vue',
 						}),
 					]
 				: []),
