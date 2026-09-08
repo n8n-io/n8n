@@ -544,6 +544,14 @@ export class TypeAvailabilityPolicyService {
 
 			const existingDocumentId = existingAttachments[0]?.policyId ?? null;
 
+			// Lock the document before checking who else uses it: an attach elsewhere key-shares
+			// the document row, so it waits for this transaction (or this one waits for it) and
+			// the check below cannot be overtaken between reading the attachments and the edit.
+			// Scope first, then document — the order every write path keeps.
+			const existingDocument = existingDocumentId
+				? await this.policyRepository.findById(existingDocumentId, ctx, true)
+				: null;
+
 			if (scope && existingDocumentId) {
 				const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
 					existingDocumentId,
@@ -580,8 +588,9 @@ export class TypeAvailabilityPolicyService {
 			let policyId: string;
 
 			if (existingDocumentId) {
-				const before = await this.policyRepository.findById(existingDocumentId, ctx);
-				documentBefore = before ? { rules: before.rules, version: before.version } : null;
+				documentBefore = existingDocument
+					? { rules: existingDocument.rules, version: existingDocument.version }
+					: null;
 
 				const updated = await this.policyRepository.updateRules(
 					existingDocumentId,

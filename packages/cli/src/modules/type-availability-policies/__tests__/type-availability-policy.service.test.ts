@@ -643,6 +643,30 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
+		it('locks the existing document before checking which scopes use it', async () => {
+			const scope = makeScope({ defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(scope);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: 'policy-1', rules: [], priority: 0, isFloor: false },
+			]);
+			policyRepository.findById.mockResolvedValue(makePolicy({ rules: [], version: 1 }));
+			policyRepository.updateRules.mockResolvedValue(makePolicy({ rules: [RULE], version: 2 }));
+			scopeRepository.findScopeById.mockResolvedValue(makeScope({ version: 2 }));
+
+			await service.setEffectivePolicy(
+				KIND,
+				null,
+				{ rules: [RULE], defaultAction: 'allow' },
+				1,
+				'user-2',
+			);
+
+			expect(policyRepository.findById).toHaveBeenCalledWith('policy-1', ROOT, true);
+			expect(policyRepository.findById.mock.invocationCallOrder[0]).toBeLessThan(
+				attachmentRepository.listScopeIdsAttachedToPolicy.mock.invocationCallOrder[0],
+			);
+		});
+
 		it('rejects a delegate defaultAction at project scope before opening a transaction', async () => {
 			await expect(
 				service.setEffectivePolicy(
