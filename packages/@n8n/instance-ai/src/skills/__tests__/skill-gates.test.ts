@@ -1,5 +1,6 @@
 import {
 	CONFIG_EVALS_SKILL_ID,
+	INSTANCE_AWARENESS_SKILL_ID,
 	PLANNING_SKILL_ID,
 	PROGRESSIVE_BUILDING_SKILL_ID,
 	disabledInstanceAiSkillIds,
@@ -12,6 +13,7 @@ describe('disabledInstanceAiSkillIds', () => {
 			const disabled = disabledInstanceAiSkillIds({
 				configEvalsEnabled: true,
 				progressiveBuildingEnabled: enabled,
+				instanceContextEnabled: true,
 			});
 			expect(disabled).toContain(PROGRESSIVE_BUILDING_SKILL_ID);
 			expect(disabled.includes(PLANNING_SKILL_ID)).toBe(enabled);
@@ -22,7 +24,28 @@ describe('disabledInstanceAiSkillIds', () => {
 		const disabled = disabledInstanceAiSkillIds({
 			configEvalsEnabled: enabled,
 			progressiveBuildingEnabled: false,
+			instanceContextEnabled: true,
 		});
 		expect(disabled.includes(CONFIG_EVALS_SKILL_ID)).toBe(!enabled);
+	});
+
+	it('hides the instance-awareness skill when the reader is off', () => {
+		expect(
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: true,
+				progressiveBuildingEnabled: false,
+				instanceContextEnabled: false,
+			}),
+		).toEqual([PROGRESSIVE_BUILDING_SKILL_ID, INSTANCE_AWARENESS_SKILL_ID]);
+	});
+
+	it('keeps only the injected policy and planning hidden when all flags are on', () => {
+		expect(
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: true,
+				progressiveBuildingEnabled: true,
+				instanceContextEnabled: true,
+			}),
+		).toEqual([PROGRESSIVE_BUILDING_SKILL_ID, PLANNING_SKILL_ID]);
 	});
 });

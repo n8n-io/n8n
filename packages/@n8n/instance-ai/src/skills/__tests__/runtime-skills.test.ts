@@ -160,10 +160,18 @@ describe('Instance AI runtime skills', () => {
 	it('gates the config-evals skill by its folder id', () => {
 		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
 		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: false, progressiveBuildingEnabled: true }),
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: false,
+				progressiveBuildingEnabled: true,
+				instanceContextEnabled: true,
+			}),
 		).toContain(CONFIG_EVALS_SKILL_ID);
 		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: true, progressiveBuildingEnabled: true }),
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: true,
+				progressiveBuildingEnabled: true,
+				instanceContextEnabled: true,
+			}),
 		).not.toContain(CONFIG_EVALS_SKILL_ID);
 
 		const source = loadInstanceAiRuntimeSkillSource();
@@ -173,7 +181,11 @@ describe('Instance AI runtime skills', () => {
 
 	it('gates the progressive-building skill by its folder id', () => {
 		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: true, progressiveBuildingEnabled: false }),
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: true,
+				progressiveBuildingEnabled: false,
+				instanceContextEnabled: true,
+			}),
 		).toContain('progressive-building');
 
 		const source = loadInstanceAiRuntimeSkillSource();
@@ -491,6 +503,16 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('within two rounds');
 		expect(loaded?.instructions).toContain('<background-task-completed>');
 		expect(loaded?.instructions).toContain('Never poll and never sleep');
+	});
+
+	it('loads the bundled instance-awareness skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find((entry) => entry.name === 'instance-awareness');
+
+		expect(skill).toBeDefined();
+
+		const loaded = await source.loadSkill('instance-awareness');
+		expect(loaded?.instructions).toContain('<instance-context>');
 	});
 
 	it('loads the bundled debugging-executions skill', async () => {

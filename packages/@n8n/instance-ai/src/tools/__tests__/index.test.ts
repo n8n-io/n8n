@@ -207,6 +207,22 @@ describe('domain tool construction', () => {
 		);
 	});
 
+	it('gates the activity tool on the host-wired activityService', () => {
+		// Gates off: the adapter leaves activityService unset when the reader is disabled.
+		const disabled = makeContext();
+		expect(createOrchestratorDomainTools(disabled).get('activity')).toBeUndefined();
+
+		const enabled = makeContext({
+			activityService: {} as InstanceAiContext['activityService'],
+		});
+		expect(createOrchestratorDomainTools(enabled).get('activity')).toBeDefined();
+		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('activity');
+	});
+
+	it('never defers activity behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('activity')).toBe(true);
+	});
+
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});
