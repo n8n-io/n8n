@@ -3,6 +3,7 @@ import { camelCase } from 'change-case';
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
+	DATABRICKS_PARTNER_USER_AGENT,
 	NodeHelpers,
 	type ICredentialType,
 	type ICredentialTypeData,
@@ -29,7 +30,6 @@ import {
 } from './node-description-transform';
 import {
 	DATABRICKS_OAUTH2_CREDENTIAL_TYPE,
-	DATABRICKS_PARTNER_USER_AGENT,
 	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,
 	resolveMcpRegistryConnection,

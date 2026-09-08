@@ -427,6 +427,37 @@ describe('McpRegistryNodeLoader', () => {
 			});
 		});
 
+		it('adds the Databricks partner User-Agent header for a server bound directly to databricksOAuth2Api', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['databricksOAuth2Api'],
+			});
+			const directDatabricksServer = {
+				...githubUsesCredentialsMockServer,
+				slug: 'databricks-direct',
+				usesCredentials: [
+					{ credentialType: 'databricksOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+				],
+			} satisfies McpRegistryServer;
+
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([directDatabricksServer]);
+			await loader.loadAll();
+
+			const connection = loader.getConnection('@n8n/mcp-registry.databricksDirect');
+			const result = getRegisteredPrepareConnection(baseNode)({
+				connection,
+				credentialType: 'databricksOAuth2Api',
+				credentialData: { oauthTokenData: { access_token: 'token' } },
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				value: {
+					headers: { Authorization: 'Bearer token', 'User-Agent': 'n8n_DatabricksNode' },
+				},
+			});
+		});
+
 		it('does not add the Databricks User-Agent header for an unrelated credential', async () => {
 			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials();
 			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);

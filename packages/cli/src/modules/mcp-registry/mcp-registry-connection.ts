@@ -21,9 +21,6 @@ export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
 
 /** Parent credential a registry row's synthetic credential extends to be Databricks-bound. */
 export const DATABRICKS_OAUTH2_CREDENTIAL_TYPE = 'databricksOAuth2Api';
-// Partner User-Agent for Databricks traffic attribution (PWAF telemetry spec),
-// same value the chat model node sends (LmChatDatabricks/token-provider.ts).
-export const DATABRICKS_PARTNER_USER_AGENT = 'n8n_DatabricksNode';
 
 export function getMcpRegistryCredentialTypeName(
 	server: McpRegistryServer,

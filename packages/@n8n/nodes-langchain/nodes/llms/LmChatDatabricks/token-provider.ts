@@ -1,7 +1,7 @@
 import { fetchFollowingRedirects } from '@n8n/ai-utilities';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type { INode, NodeEgressFilter } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { DATABRICKS_PARTNER_USER_AGENT, NodeOperationError } from 'n8n-workflow';
 
 export interface DatabricksOAuth2Credential {
 	host: string;
@@ -12,11 +12,9 @@ export interface DatabricksOAuth2Credential {
 	authentication?: 'header' | 'body';
 }
 
-// Partner User-Agent for Databricks traffic attribution (PWAF telemetry spec).
-// Unversioned by agreement with Databricks.
 // Set here, not via ChatOpenAI's `defaultHeaders`, so it also wins over the
 // OpenAI SDK's own User-Agent - Headers.set() overwrites case-insensitively.
-export const CHAT_MODEL_USER_AGENT = 'n8n_DatabricksNode';
+export const CHAT_MODEL_USER_AGENT = DATABRICKS_PARTNER_USER_AGENT;
 
 /**
  * Mints Databricks service-principal tokens on demand. Concurrent callers
