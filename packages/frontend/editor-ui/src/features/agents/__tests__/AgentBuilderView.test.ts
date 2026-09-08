@@ -127,6 +127,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => ({
 		pushConnect: pushConnectMock,
+		pushDisconnect: vi.fn(),
 		addEventListener: (listener: (event: PushMessage) => void) => {
 			pushListeners.add(listener);
 			return () => pushListeners.delete(listener);
@@ -272,6 +273,7 @@ const mockConfig = ref<TestAgentConfig | null>(
 		instructions: 'You are a helpful assistant.',
 	}),
 );
+const mockConfigHash = ref<string | null>('hash-1');
 // Stash the "desired config" separately so the fetchConfig mock can restore
 // the ref after `initialize()` clears `localConfig` and re-fetches. Without
 // this, the view's `localConfig = null` reset sticks — the config ref hasn't
@@ -301,6 +303,7 @@ function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 vi.mock('../composables/useAgentConfig', () => ({
 	useAgentConfig: () => ({
 		config: mockConfig,
+		configHash: mockConfigHash,
 		fetchConfig: fetchConfigMock.mockImplementation(async () => {
 			// Mimic the real composable: re-publish the fetched config by touching
 			// the ref, which triggers watchers even when the shape is unchanged.
@@ -695,6 +698,7 @@ function resetViewMocks() {
 		instructions: 'You are a helpful assistant.',
 	};
 	mockConfig.value = withDefaultLlm(intendedConfig);
+	mockConfigHash.value = 'hash-1';
 	updateConfigMock.mockReset();
 	updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 	repointConfigMock.mockReset();
@@ -848,6 +852,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 					gradient: expectedGradient,
 				},
 			}),
+			'hash-1',
 		);
 	});
 
@@ -1528,6 +1533,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			'p2',
 			'a2',
 			expect.objectContaining({ name: 'Ready to chat' }),
+			'hash-1',
 		);
 	});
 
@@ -2041,6 +2047,28 @@ describe('AgentBuilderView — configuration validation', () => {
 			'p1',
 			'a1',
 			expect.objectContaining({ name: 'Renamed agent' }),
+			'hash-1',
+		);
+	});
+
+	it('saves a config edit against the hash it was made on, not a hash loaded later', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
+		};
+
+		vm.onConfigFieldUpdate({ instructions: 'Edited before the refresh landed' });
+		// A refresh lands before the debounced save fires (e.g. after another
+		// tab's write pushed an update); the queued edit must not borrow its hash.
+		mockConfigHash.value = 'hash-2';
+		await vm.flushAutosave();
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Edited before the refresh landed' }),
+			'hash-1',
 		);
 	});
 
@@ -2567,7 +2595,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		wrapper.unmount();
 	});
 
-	it('reloads an idle agent from push and ignores push while an autosave is pending', async () => {
+	it('reloads an idle agent from push and defers a push received mid-autosave until the save lands', async () => {
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -2604,7 +2632,14 @@ describe('AgentBuilderView — three-column shell', () => {
 
 			expect(getAgentMock).not.toHaveBeenCalled();
 			expect(fetchConfigMock).not.toHaveBeenCalled();
+
+			// The remote change is not lost: once the local save lands it is applied.
+			// (The save itself refetches the agent, so the config fetch is the marker.)
 			await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+			await nextTick();
+			await flushPromises();
+
+			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
 		} finally {
 			vi.useRealTimers();
 			wrapper.unmount();
@@ -2857,6 +2892,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				'p1',
 				'aBcDeFgHiJkLmNoP',
 				expect.objectContaining({ instructions: 'Answer support mail' }),
+				'hash-1',
 			);
 			await vi.waitFor(() =>
 				expect(
@@ -2885,6 +2921,7 @@ describe('AgentBuilderView — three-column shell', () => {
 						gradient: expect.objectContaining({ angle: expect.any(Number) }),
 					}),
 				}),
+				'hash-1',
 			);
 		});
 
@@ -2991,6 +3028,7 @@ describe('AgentBuilderView — three-column shell', () => {
 					'p1',
 					'aBcDeFgHiJkLmNoP',
 					expect.objectContaining({ instructions: 'Keep these instructions' }),
+					'hash-1',
 				);
 				expect(fetchConfigMock).not.toHaveBeenCalled();
 
@@ -3131,6 +3169,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				...importedConfig,
 				memory: { enabled: true, storage: 'n8n' },
 			}),
+			'hash-1',
 		);
 	});
 

@@ -15,6 +15,7 @@ import { AgentModificationTelemetryService } from '../agent-modification-telemet
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentSkillsService } from '../agent-skills.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
@@ -66,6 +67,7 @@ function makeService() {
 	const eventService = mock<EventService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const telemetry = mock<Telemetry>();
+	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 
 	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 		status: 'valid',
@@ -97,6 +99,7 @@ function makeService() {
 		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
+		agentUpdateBroadcaster,
 	);
 
 	return {
@@ -111,6 +114,7 @@ function makeService() {
 		eventService,
 		agentValidationService,
 		telemetry,
+		agentUpdateBroadcaster,
 	};
 }
 
@@ -241,6 +245,21 @@ describe('AgentConfigService', () => {
 			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
 			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('notifies other agent readers of a persisted write, excluding the writing tab', async () => {
+			const { service, agentRepository, agentUpdateBroadcaster } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(agentId, projectId, baseConfig, user, {
+				...byUser,
+				pushRef: 'writer-push-ref',
+			});
+
+			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+				{ projectId, agentId },
+				'writer-push-ref',
+			);
 		});
 
 		it('accepts the current config hash and returns the hash of the saved config', async () => {

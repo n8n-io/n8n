@@ -28,6 +28,7 @@ import {
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
@@ -60,6 +61,7 @@ export class AgentConfigService {
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	/**
@@ -150,6 +152,8 @@ export class AgentConfigService {
 			baseConfigHash?: string | null;
 			clearOmittedOptionalFields?: boolean;
 			modifiedBy: AgentActor;
+			/** Push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
+			pushRef?: string;
 		},
 	): Promise<AgentConfigMutationResponse> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -317,6 +321,9 @@ export class AgentConfigService {
 
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
 		this.eventService.emit('agent-saved', { agentId });
+		// Every config writer (editor, builder, MCP) lands here, so this is where
+		// other open Agent Builder tabs learn that their loaded config is stale.
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, options.pushRef);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
 		this.modificationTelemetry.record({

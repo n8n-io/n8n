@@ -13,14 +13,10 @@ import {
 import type { Response } from 'express';
 
 import { AgentSkillsService } from './agent-skills.service';
-import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsSkillsController {
-	constructor(
-		private readonly agentSkillsService: AgentSkillsService,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
-	) {}
+	constructor(private readonly agentSkillsService: AgentSkillsService) {}
 
 	@Get('/:agentId/skills')
 	@ProjectScope('agent:read')
@@ -50,12 +46,11 @@ export class AgentsSkillsController {
 		@Body payload: CreateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		const result = await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload, {
+		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
-		return result;
 	}
 
 	@Patch('/:agentId/skills/:skillId')
@@ -69,7 +64,7 @@ export class AgentsSkillsController {
 	) {
 		const { projectId } = req.params;
 		const { baseSkillHash, ...updates } = payload;
-		const result = await this.agentSkillsService.updateSkill(
+		return await this.agentSkillsService.updateSkill(
 			agentId,
 			projectId,
 			skillId,
@@ -77,11 +72,10 @@ export class AgentsSkillsController {
 			{
 				user: req.user,
 				modifiedBy: 'user',
+				pushRef: req.headers?.['push-ref'],
 			},
 			baseSkillHash,
 		);
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
-		return result;
 	}
 
 	@Delete('/:agentId/skills/:skillId')
@@ -96,8 +90,8 @@ export class AgentsSkillsController {
 		await this.agentSkillsService.deleteSkill(agentId, projectId, skillId, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
 		return { ok: true };
 	}
 }

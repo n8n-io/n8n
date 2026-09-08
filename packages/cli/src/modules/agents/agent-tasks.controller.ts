@@ -15,7 +15,6 @@ import type { Response } from 'express';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentTaskService } from './agent-task.service';
-import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -24,7 +23,6 @@ export class AgentTasksController {
 	constructor(
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	private async getAgentOrThrow(agentId: string, projectId: string): Promise<Agent> {
@@ -54,12 +52,11 @@ export class AgentTasksController {
 	): Promise<AgentTaskDto> {
 		const projectId = req.params.projectId;
 		await this.getAgentOrThrow(agentId, projectId);
-		const result = await this.agentTaskService.create(agentId, projectId, payload, {
+		return await this.agentTaskService.create(agentId, projectId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
-		return result;
 	}
 
 	@Patch('/:agentId/tasks/:taskId')
@@ -73,12 +70,11 @@ export class AgentTasksController {
 	): Promise<AgentTaskDto> {
 		const projectId = req.params.projectId;
 		await this.getAgentOrThrow(agentId, projectId);
-		const result = await this.agentTaskService.update(agentId, projectId, taskId, payload, {
+		return await this.agentTaskService.update(agentId, projectId, taskId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
-		return result;
 	}
 
 	@Delete('/:agentId/tasks/:taskId')
@@ -94,8 +90,8 @@ export class AgentTasksController {
 		await this.agentTaskService.delete(agentId, projectId, taskId, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
 		return { success: true };
 	}
 

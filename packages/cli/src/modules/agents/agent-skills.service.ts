@@ -17,6 +17,7 @@ import {
 	type AgentMutationTelemetryContext,
 	diffAgentConfigParts,
 } from './agent-modification-telemetry.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
@@ -30,6 +31,7 @@ export class AgentSkillsService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
@@ -118,6 +120,7 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
 		await this.clearRuntimes(agentId);
 		this.modificationTelemetry.record({
 			agent: saved,
@@ -190,6 +193,7 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
 		await this.clearRuntimes(agentId);
 		this.modificationTelemetry.record({
 			agent: saved,
@@ -241,6 +245,7 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
 		await this.clearRuntimes(agentId);
 		this.modificationTelemetry.record({
 			agent: saved,

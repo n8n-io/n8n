@@ -38,6 +38,7 @@ import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import type { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
+import type { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
 	AgentTestRunService,
@@ -213,11 +214,13 @@ describe('McpAgentToolsService', () => {
 		agentTaskRepository.findByAgentId.mockResolvedValue([]);
 		agentsService.findByIdForUser.mockResolvedValue(agent);
 
+		const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 		const customToolsService = new AgentCustomToolsService(
 			mockLogger(),
 			agentRepository,
 			runtimeCacheService,
 			modificationTelemetry,
+			agentUpdateBroadcaster,
 		);
 		const configService = new AgentConfigService(
 			mockLogger(),
@@ -231,6 +234,7 @@ describe('McpAgentToolsService', () => {
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
+			agentUpdateBroadcaster,
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>

@@ -6,7 +6,6 @@ import type { Response } from 'express';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentConfigService } from './agent-config.service';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
-import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentValidationService } from './agent-validation.service';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentConfigHash } from './utils/agent-config-hash';
@@ -21,7 +20,6 @@ export class AgentsConfigController {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	@Get('/:agentId/config')
@@ -71,18 +69,11 @@ export class AgentsConfigController {
 	) {
 		const { projectId } = req.params;
 		const { config, baseConfigHash } = payload;
-		const result = await this.agentConfigService.updateConfig(
-			agentId,
-			projectId,
-			config,
-			req.user,
-			{
-				baseConfigHash,
-				modifiedBy: 'user',
-			},
-		);
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
-		return result;
+		return await this.agentConfigService.updateConfig(agentId, projectId, config, req.user, {
+			baseConfigHash,
+			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
+		});
 	}
 
 	@Delete('/:agentId/tools/:toolId')
@@ -97,8 +88,8 @@ export class AgentsConfigController {
 		await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, toolId, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, req.headers?.['push-ref']);
 		return { ok: true };
 	}
 }

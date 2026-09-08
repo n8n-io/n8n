@@ -21,6 +21,7 @@ import {
 	diffAgentConfigParts,
 } from './agent-modification-telemetry.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
@@ -72,6 +73,7 @@ export class AgentTaskService {
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly publisher: Publisher,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -165,6 +167,7 @@ export class AgentTaskService {
 			}
 			await saveAgentDraftFenced(this.agentRepository, agent, em);
 		});
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
 
 		this.modificationTelemetry.record({
 			agent,
@@ -247,6 +250,7 @@ export class AgentTaskService {
 			await saveAgentDraftFenced(this.agentRepository, agent, em);
 			return savedTask;
 		});
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
 
 		this.modificationTelemetry.record({
 			agent,
@@ -290,6 +294,7 @@ export class AgentTaskService {
 			await em.remove(task);
 			await saveAgentDraftFenced(this.agentRepository, agent, em);
 		});
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
 
 		this.modificationTelemetry.record({
 			agent,

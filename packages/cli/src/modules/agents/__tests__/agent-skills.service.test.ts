@@ -8,6 +8,7 @@ import type { Agent } from '../entities/agent.entity';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSkillsService } from '../agent-skills.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 
@@ -51,7 +52,12 @@ describe('AgentSkillsService', () => {
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		agentRepository.saveDraftFenced.mockResolvedValue(true);
 		modificationTelemetry = mock<AgentModificationTelemetryService>();
-		service = new AgentSkillsService(mockLogger(), agentRepository, modificationTelemetry);
+		service = new AgentSkillsService(
+			mockLogger(),
+			agentRepository,
+			modificationTelemetry,
+			mock<AgentUpdateBroadcaster>(),
+		);
 	});
 
 	it('creates a skill without attaching it to the config', async () => {

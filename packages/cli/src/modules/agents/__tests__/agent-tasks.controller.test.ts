@@ -5,7 +5,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentTasksController } from '../agent-tasks.controller';
-import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentRepository } from '../repositories/agent.repository';
 import {
 	expectProjectScopedAgentRoutes,
@@ -15,14 +14,12 @@ import {
 function makeController({
 	agentTaskService = mock<AgentTaskService>(),
 	agentRepository = mock<AgentRepository>(),
-	agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>(),
 }: {
 	agentTaskService?: Mocked<AgentTaskService>;
 	agentRepository?: Mocked<AgentRepository>;
-	agentUpdateBroadcaster?: Mocked<AgentUpdateBroadcaster>;
 } = {}) {
 	return {
-		controller: new AgentTasksController(agentTaskService, agentRepository, agentUpdateBroadcaster),
+		controller: new AgentTasksController(agentTaskService, agentRepository),
 		agentTaskService,
 		agentRepository,
 	};

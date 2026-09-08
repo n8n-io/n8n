@@ -82,14 +82,20 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 			return;
 		}
 		const gen = snapshotGeneration;
-		saveStatus.value = 'saving';
-		lastSaveError = null;
-		// A `saved → idle` reset timer from the previous save would otherwise
-		// fire mid-way through this one and flip the indicator back to idle
-		// while the request is still in flight.
-		if (saveStatusResetTimer !== null) {
-			clearTimeout(saveStatusResetTimer);
-			saveStatusResetTimer = null;
+		// A save chained behind an in-flight one can start after `reset()` moved
+		// the loop to a new target. It still persists its own snapshot, but must
+		// not mark the new target as saving: its completion is detached (below)
+		// and would never clear the indicator again.
+		if (gen === generation) {
+			saveStatus.value = 'saving';
+			lastSaveError = null;
+			// A `saved → idle` reset timer from the previous save would otherwise
+			// fire mid-way through this one and flip the indicator back to idle
+			// while the request is still in flight.
+			if (saveStatusResetTimer !== null) {
+				clearTimeout(saveStatusResetTimer);
+				saveStatusResetTimer = null;
+			}
 		}
 		try {
 			const result = await params.save(snapshot);
@@ -223,6 +229,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 					pendingSnapshot = target;
 					pendingSnapshotRevision = targetRevision;
 					pendingSnapshotGeneration = targetGeneration;
+					syncPendingState();
 				}
 				throw error;
 			}
@@ -250,6 +257,10 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 	 * `generation` so an in-flight save for A can still persist A's snapshot
 	 * but cannot mutate B's indicator. Call on every genuine A→B switch,
 	 * including drain failure; stale overlapping inits must not reset.
+	 *
+	 * Also call it when a save is rejected as stale, before reloading: every
+	 * snapshot scheduled so far predates the reload, while edits made during
+	 * the reload land in the new generation and are still saved.
 	 */
 	function reset() {
 		cancelPendingAutosave();

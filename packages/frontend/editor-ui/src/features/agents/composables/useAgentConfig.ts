@@ -50,10 +50,17 @@ export function useAgentConfig() {
 		}
 	}
 
+	/**
+	 * `baseConfigHash` is the server hash the edit was made against. Callers
+	 * that debounce saves must capture it at edit time: a refresh landing in
+	 * between would otherwise lend the stale snapshot the fresh hash and let it
+	 * pass the backend's conflict check.
+	 */
 	async function updateConfig(
 		projectId: string,
 		agentId: string,
 		data: AgentJsonConfig,
+		baseConfigHash: string | null = configHash.value,
 	): Promise<{ versionId: string | null; stale: boolean }> {
 		const key = keyFor(projectId, agentId);
 		const result = await updateAgentConfig(
@@ -61,7 +68,7 @@ export function useAgentConfig() {
 			projectId,
 			agentId,
 			data,
-			configHash.value ?? undefined,
+			baseConfigHash ?? undefined,
 		);
 		const stale = latestKey !== key;
 		if (!stale) {
