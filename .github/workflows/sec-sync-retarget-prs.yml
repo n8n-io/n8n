@@ -27,6 +27,7 @@ jobs:
     if: github.repository == 'n8n-io/n8n-private'
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write # move a PR's base branch
     strategy:
       fail-fast: false # one branch failing must not hold back the other
