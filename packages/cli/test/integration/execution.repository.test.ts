@@ -71,7 +71,7 @@ describe('UserRepository', () => {
 			]);
 		});
 
-		test('pages by `before` in timestamp order, even without an explicit order', async () => {
+		test('pages in timestamp order, even without an explicit order', async () => {
 			// IDs ascend while timestamps descend, so an ID order would page these wrongly.
 			const now = DateTime.utc();
 			const workflow = await createWorkflow({}, owner);
@@ -88,7 +88,7 @@ describe('UserRepository', () => {
 				workflow,
 			);
 
-			const page = async (before: { timestamp: string; id: string }) =>
+			const page = async (before?: { timestamp: string; id: string }) =>
 				await executionRepository.findManyByRangeQuery({
 					workflowId: workflow.id,
 					user: owner,
@@ -96,17 +96,20 @@ describe('UserRepository', () => {
 					range: { limit: 1, before },
 				});
 
-			const [first] = await page({
-				timestamp: now.plus({ minute: 3 }).toISO(),
-				id: newest.id,
+			// Walk the pages the way the cursor does: the first page has no cursor.
+			const cursorFor = (row: { id: string; startedAt: unknown }) => ({
+				timestamp: new Date(row.startedAt as string).toISOString(),
+				id: row.id,
 			});
-			expect(first.id).toBe(middle.id);
 
-			const [second] = await page({
-				timestamp: new Date(first.startedAt as unknown as string).toISOString(),
-				id: first.id,
-			});
-			expect(second.id).toBe(oldest.id);
+			const [first] = await page();
+			expect(first.id).toBe(newest.id);
+
+			const [second] = await page(cursorFor(first));
+			expect(second.id).toBe(middle.id);
+
+			const [third] = await page(cursorFor(second));
+			expect(third.id).toBe(oldest.id);
 		});
 
 		test('exposes `jsonSizeBytes` and `binaryDataSizeBytes` as numbers and `workflowVersionId`', async () => {
