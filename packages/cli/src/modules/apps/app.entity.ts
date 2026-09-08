@@ -24,7 +24,7 @@ export class App extends WithTimestampsAndStringId {
 	@Column()
 	projectId: string;
 
-	/** Version served at `/apps/<namespace>/`. No FK: the service sets it only to a version it just inserted. */
+	/** Version served at `/apps/<namespace>/`; set to null by the database when that version is deleted. */
 	@Column({ type: String, nullable: true })
 	activeVersionId: string | null;
 }

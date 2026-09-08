@@ -7,7 +7,7 @@
 | appId | varchar(36) |  | false |  | [public.app](public.app.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | distStorageKey | varchar(255) |  | true |  |  | Blob key of the built dist tarball; null once pruned by retention |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [public.app](public.app.md) |  |  |
 | sourceStorageKey | varchar(255) |  | false |  |  | Blob key of the source tarball (project minus node_modules, dist, .git) |
 | storedAt | varchar(8) |  | false |  |  | Execution data storage mode the tarballs were written with |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -39,6 +39,7 @@
 erDiagram
 
 "public.app_version" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
+"public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
 
 "public.app_version" {
   varchar_36_ appId FK
@@ -50,7 +51,7 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.app" {
-  varchar_36_ activeVersionId
+  varchar_36_ activeVersionId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_128_ name

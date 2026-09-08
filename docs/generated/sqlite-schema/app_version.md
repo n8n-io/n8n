@@ -18,7 +18,7 @@ CREATE TABLE "app_version" ("id" varchar(36) PRIMARY KEY NOT NULL, "appId" varch
 | appId | varchar(36) |  | false |  | [app](app.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | distStorageKey | varchar(255) |  | true |  |  |  |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [app](app.md) |  |  |
 | sourceStorageKey | varchar(255) |  | false |  |  |  |
 | storedAt | varchar(8) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -45,6 +45,7 @@ CREATE TABLE "app_version" ("id" varchar(36) PRIMARY KEY NOT NULL, "appId" varch
 erDiagram
 
 "app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"app" }o--o| "app_version" : "FOREIGN KEY (activeVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "app_version" {
   varchar_36_ appId FK
@@ -56,7 +57,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "app" {
-  varchar_36_ activeVersionId
+  varchar_36_ activeVersionId FK
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name

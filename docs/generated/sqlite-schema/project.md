@@ -156,7 +156,7 @@ erDiagram
   varchar_36_ versionId
 }
 "app" {
-  varchar_36_ activeVersionId
+  varchar_36_ activeVersionId FK
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name

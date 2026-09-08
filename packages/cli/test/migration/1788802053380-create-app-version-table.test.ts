@@ -149,19 +149,38 @@ describe('CreateAppVersionTable migration', () => {
 		expect(remaining).toHaveLength(0);
 	});
 
-	it('adds a nullable activeVersionId to app without a foreign key', async () => {
-		await withContext(async (context) => {
-			const table = context.escape.tableName(APP_TABLE);
-			await context.runQuery(`UPDATE ${table} SET "activeVersionId" = :v WHERE "id" = :id`, {
-				v: 'not-a-version',
+	it('rejects an activeVersionId that is not a version', async () => {
+		await expect(
+			withContext(async (context) => {
+				const table = context.escape.tableName(APP_TABLE);
+				await context.runQuery(`UPDATE ${table} SET "activeVersionId" = :v WHERE "id" = :id`, {
+					v: 'not-a-version',
+					id: appId,
+				});
+			}),
+		).rejects.toThrow();
+	});
+
+	it('clears activeVersionId when the active version is deleted', async () => {
+		const activeVersionId = await withContext(async (context) => {
+			const versionId = await insertVersion(context, { ownerAppId: appId });
+			const appTable = context.escape.tableName(APP_TABLE);
+			await context.runQuery(`UPDATE ${appTable} SET "activeVersionId" = :v WHERE "id" = :id`, {
+				v: versionId,
 				id: appId,
 			});
+
+			const versionTable = context.escape.tableName(APP_VERSION_TABLE);
+			await context.runQuery(`DELETE FROM ${versionTable} WHERE "id" = :id`, { id: versionId });
+
 			const rows = await context.runQuery<Array<{ activeVersionId: string | null }>>(
-				`SELECT "activeVersionId" FROM ${table} WHERE "id" = :id`,
+				`SELECT "activeVersionId" FROM ${appTable} WHERE "id" = :id`,
 				{ id: appId },
 			);
-			expect(rows[0].activeVersionId).toBe('not-a-version');
+			return rows[0].activeVersionId;
 		});
+
+		expect(activeVersionId).toBeNull();
 	});
 
 	it('accepts app_version as a binary_data sourceType', async () => {

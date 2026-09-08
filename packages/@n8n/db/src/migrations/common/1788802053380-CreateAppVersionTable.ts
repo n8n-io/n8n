@@ -4,6 +4,7 @@ const APP_TABLE = 'app';
 const APP_VERSION_TABLE = 'app_version';
 const BINARY_DATA_TABLE = 'binary_data';
 const SOURCE_TYPE_COLUMN = 'sourceType';
+const ACTIVE_VERSION_FK = 'app_activeVersionId_foreign';
 const sourceTypesBefore = [
 	'execution',
 	'chat_message_attachment',
@@ -18,7 +19,7 @@ const sourceTypesAfter = [...sourceTypesBefore, 'app_version'];
  */
 export class CreateAppVersionTable1788802053380 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
-		const { createTable, addColumns, column } = ctx.schemaBuilder;
+		const { createTable, addColumns, addForeignKey, column } = ctx.schemaBuilder;
 
 		await createTable(APP_VERSION_TABLE)
 			.withColumns(
@@ -44,8 +45,6 @@ export class CreateAppVersionTable1788802053380 implements ReversibleMigration {
 				onDelete: 'CASCADE',
 			});
 
-		// No FK: it would be circular with app_version.appId. The service only
-		// sets it to a version it just inserted and clears it on delete.
 		await addColumns(
 			APP_TABLE,
 			[
@@ -55,21 +54,41 @@ export class CreateAppVersionTable1788802053380 implements ReversibleMigration {
 			],
 			{ recreatesOnSqlite: true },
 		);
+		// Deleting the active version sends the app back to its pages instead of
+		// leaving a dangling pointer.
+		await addForeignKey(
+			APP_TABLE,
+			'activeVersionId',
+			[APP_VERSION_TABLE, 'id'],
+			ACTIVE_VERSION_FK,
+			'SET NULL',
+		);
 
 		await this.replaceSourceTypeCheck(ctx, sourceTypesAfter);
 	}
 
 	async down(ctx: MigrationContext) {
-		const { dropColumns, dropTable } = ctx.schemaBuilder;
+		const { dropColumns, dropForeignKey, dropTable } = ctx.schemaBuilder;
 
 		await ctx.runQuery(
 			`DELETE FROM ${ctx.escape.tableName(BINARY_DATA_TABLE)} WHERE ${ctx.escape.columnName(SOURCE_TYPE_COLUMN)} = 'app_version'`,
 		);
 		await this.replaceSourceTypeCheck(ctx, sourceTypesBefore);
+		await dropForeignKey(
+			APP_TABLE,
+			'activeVersionId',
+			[APP_VERSION_TABLE, 'id'],
+			ACTIVE_VERSION_FK,
+		);
 		await dropColumns(APP_TABLE, ['activeVersionId'], { recreatesOnSqlite: true });
 		await dropTable(APP_VERSION_TABLE);
 	}
 
+	/**
+	 * Two table rebuilds on SQLite: the schema builder has no single-step
+	 * replacement for an enum check, and the earlier `binary_data` source type
+	 * migrations use the same pair.
+	 */
 	private async replaceSourceTypeCheck(
 		{ schemaBuilder: { addEnumCheck, dropEnumCheck } }: MigrationContext,
 		sourceTypes: string[],
