@@ -42,6 +42,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
@@ -401,6 +402,40 @@ describe('processError', () => {
 		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
 		expect(activeExecutions.has(execution.id)).toBe(false);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+	});
+
+	test('processError does not fail the execution when a stalled-count error precedes the success write', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+
+		vi.spyOn(executionRepository, 'findSingleExecution')
+			.mockResolvedValueOnce(mock<ExecutionEntity>({ status: 'running', finished: false }))
+			.mockResolvedValue(mock<ExecutionEntity>({ status: 'success', finished: true }));
+
+		globalConfig.executions.mode = 'queue';
+		vi.useFakeTimers();
+
+		try {
+			const processing = runner.processError(
+				new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+				new Date(),
+				'webhook',
+				execution.id,
+				hooks,
+			);
+			await vi.advanceTimersByTimeAsync(60_000);
+			await processing;
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+		expect(finalizeExecution).not.toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'error' }),
+		);
 	});
 
 	test('processError should return early if the error is `ExecutionNotFoundError`', async () => {
