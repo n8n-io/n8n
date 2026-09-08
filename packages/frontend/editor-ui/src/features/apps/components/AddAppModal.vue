@@ -27,8 +27,22 @@ const appsStore = useAppsStore();
 const instanceAiReady = useInstanceAiReady();
 const { openAppArtifactThread } = useInstanceAiHandoff();
 
+// Mirrors `appNamespaceSchema` in @n8n/api-types: lowercase, digits, single hyphens.
+const toNamespace = (value: string) =>
+	value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+
 const name = ref('');
-const namespace = ref('');
+// Follows the name until the user types into the namespace field.
+const editedNamespace = ref<string | null>(null);
+const namespace = computed({
+	get: () => editedNamespace.value ?? toNamespace(name.value),
+	set: (value: string) => {
+		editedNamespace.value = value;
+	},
+});
 const isCreating = ref(false);
 const nameInputRef = ref<HTMLInputElement | null>(null);
 

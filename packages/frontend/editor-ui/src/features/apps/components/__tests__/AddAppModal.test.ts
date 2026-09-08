@@ -56,9 +56,30 @@ describe('AddAppModal', () => {
 	async function fillAndSubmit() {
 		const { getByTestId } = renderModal();
 		await userEvent.type(getByTestId('apps-new-name'), 'Greeter');
-		await userEvent.type(getByTestId('apps-new-namespace'), 'greeter');
 		await userEvent.click(getByTestId('apps-new-submit'));
 	}
+
+	it('suggests the namespace from the name', async () => {
+		const { getByTestId } = renderModal();
+
+		await userEvent.type(getByTestId('apps-new-name'), '  My Greeter -- App 2!');
+
+		expect(getByTestId('apps-new-namespace')).toHaveValue('my-greeter-app-2');
+	});
+
+	it('stops syncing the namespace once the user edits it', async () => {
+		const { getByTestId } = renderModal();
+		const nameInput = getByTestId('apps-new-name');
+		const namespaceInput = getByTestId('apps-new-namespace');
+
+		await userEvent.type(nameInput, 'Greeter');
+		await userEvent.clear(namespaceInput);
+		await userEvent.type(namespaceInput, 'hello');
+		await userEvent.type(nameInput, ' Two');
+
+		expect(nameInput).toHaveValue('Greeter Two');
+		expect(namespaceInput).toHaveValue('hello');
+	});
 
 	it('hands the new app off to the assistant instead of creating it when the assistant is ready', async () => {
 		openAppArtifactThread.mockResolvedValue(true);
