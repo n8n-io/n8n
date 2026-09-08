@@ -6,7 +6,7 @@ import { chatRLC, mentionPlacementOption, mentionsField } from '../../descriptio
 import type { MentionPlacement } from '../../helpers/utils';
 import { prepareMessage, resolveMentions } from '../../helpers/utils';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
-import { throwIfChatUnsupported } from './sharedGuard';
+import { throwIfChatMessageUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [
 	chatRLC,
@@ -77,7 +77,7 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 	// https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-1.0&tabs=http
 
 	// App-only Graph cannot post chat messages; fail before any request.
-	throwIfChatUnsupported.call(this);
+	throwIfChatMessageUnsupported.call(this);
 
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	const contentType = this.getNodeParameter('contentType', i) as string;

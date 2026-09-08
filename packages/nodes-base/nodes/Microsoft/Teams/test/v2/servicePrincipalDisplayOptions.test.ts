@@ -45,7 +45,7 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		expect(mentions).toBeDefined();
 	});
 
-	describe.each(['chatMessage', 'chatMember', 'onlineMeeting'])(
+	describe.each(['chat', 'chatMessage', 'chatMember', 'onlineMeeting'])(
 		'%s - hidden under SP via the slash-prefixed field-level key',
 		(resource) => {
 			it('operation selector carries hide["/authentication"] = [SP]', () => {
