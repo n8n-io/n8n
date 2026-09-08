@@ -1,4 +1,5 @@
 import type {
+	InstanceAiAppPreviewDiagnosticsAttachment,
 	InstanceAiAppAttachment,
 	InstanceAiNodesAttachment,
 	InstanceAiResourceAttachment,
@@ -156,6 +157,58 @@ describe('buildContextResourcesBlock — app attachment', () => {
 	});
 });
 
+describe('buildContextResourcesBlock — app preview diagnostics attachment', () => {
+	const diagnostics: InstanceAiAppPreviewDiagnosticsAttachment = {
+		type: 'app-preview-diagnostics',
+		appId: 'app-1',
+		items: [
+			{
+				kind: 'uncaught',
+				message: 'boom',
+				file: '/src/pages/Home.vue',
+				line: 12,
+				column: 3,
+				stack: 'Error: boom\n    at onClick (Home.vue:12:3)',
+				at: '2026-09-08T10:00:00.000Z',
+			},
+			{ kind: 'vite-error', message: 'Unexpected token', at: '2026-09-08T10:00:01.000Z' },
+		],
+	};
+
+	it('renders the errors as a fenced text block after the app context', () => {
+		const app: InstanceAiAppAttachment = {
+			type: 'app',
+			appId: 'app-1',
+			projectId: 'proj-1',
+			name: 'Greeter',
+		};
+
+		const block = buildContextResourcesBlock([app, diagnostics]);
+		const prose = block.split('\n\n').slice(1).join('\n\n');
+
+		expect(block.split('\n')[1]).toBe(JSON.stringify([app, diagnostics]));
+		expect(prose).toContain('from the apps page');
+		expect(prose).toContain(
+			'Errors observed in the live preview of app `app-1` since your last message (2). Fix them before anything else:',
+		);
+		expect(prose).toContain(
+			'```text\n[2026-09-08T10:00:00.000Z] uncaught at /src/pages/Home.vue:12:3: boom\n',
+		);
+		expect(prose).toContain(
+			'    at onClick (Home.vue:12:3)\n\n[2026-09-08T10:00:01.000Z] vite-error: Unexpected token\n```',
+		);
+	});
+
+	it('renders the errors alone when no resource accompanies them', () => {
+		const block = buildContextResourcesBlock([diagnostics]);
+
+		expect(block.split('\n')[1]).toBe(JSON.stringify([diagnostics]));
+		expect(block).toContain('Errors observed in the live preview');
+		expect(block).not.toContain('The user opened this conversation');
+		expect(block).not.toContain('Treat this purely as context');
+	});
+});
+
 describe('InstanceAiService — resolveContextAttachments gating', () => {
 	type GatedService = {
 		canvasNodeContextFlagGate: { isEnabled: Mock };
@@ -213,6 +266,21 @@ describe('InstanceAiService — resolveContextAttachments gating', () => {
 		const result = await service.resolveContextAttachments([appAttachment], user);
 
 		expect(result).toEqual([appAttachment]);
+		expect(isEnabled).not.toHaveBeenCalled();
+	});
+
+	it('passes a preview diagnostics attachment through without asking the gate', async () => {
+		const isEnabled = vi.fn().mockResolvedValue(true);
+		const service = createService(isEnabled);
+		const diagnostics: InstanceAiAppPreviewDiagnosticsAttachment = {
+			type: 'app-preview-diagnostics',
+			appId: 'app-1',
+			items: [{ kind: 'uncaught', message: 'boom', at: '2026-09-08T10:00:00.000Z' }],
+		};
+
+		const result = await service.resolveContextAttachments([diagnostics], user);
+
+		expect(result).toEqual([diagnostics]);
 		expect(isEnabled).not.toHaveBeenCalled();
 	});
 

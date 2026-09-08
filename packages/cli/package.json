@@ -170,6 +170,7 @@
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/node-engine-compatibility": "workspace:*",
     "@n8n/permissions": "workspace:*",
+    "@n8n/sandbox-client": "0.1.0",
     "@n8n/scheduler": "workspace:*",
     "@n8n/syslog-client": "workspace:*",
     "@n8n/task-runner": "workspace:*",

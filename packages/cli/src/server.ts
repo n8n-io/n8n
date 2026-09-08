@@ -74,6 +74,7 @@ import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
+import { AppPreviewProxyController } from './modules/instance-ai/app-preview/app-preview-proxy.controller';
 import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
@@ -547,8 +548,12 @@ export class Server extends AbstractServer {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
-		if (Container.get(ModuleRegistry).isActive('instance-ai')) {
+		const moduleRegistry = Container.get(ModuleRegistry);
+		if (moduleRegistry.isActive('instance-ai')) {
 			Container.get(BrowserUseServer).setup(server, app);
+			if (moduleRegistry.isActive('apps')) {
+				Container.get(AppPreviewProxyController).setupUpgrade(server);
+			}
 		}
 	}
 }

@@ -236,6 +236,7 @@ import type { Mock, MockedFunction } from 'vitest';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { AppPreviewService } from '../app-preview/app-preview.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
 	InstanceAiTerminalOutcomeService,
@@ -5568,6 +5569,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 			if (token === InstanceAiBuilderDelegateAdapterService) {
 				return { deleteBuilderSessions };
 			}
+			if (token === AppPreviewService) return { clearThread: vi.fn() };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 
@@ -5584,6 +5586,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 			if (token === InstanceAiBuilderDelegateAdapterService) {
 				return { deleteBuilderSessions };
 			}
+			if (token === AppPreviewService) return { clearThread: vi.fn() };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 

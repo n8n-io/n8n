@@ -98,7 +98,7 @@ function buildThreadScopedSandboxLabels(
 const N8N_SANDBOX_THREAD_ID_NAMESPACE = '5e6c2f7a-93a1-4b0e-8f27-c1d6a3b9e514';
 
 /** The n8n sandbox service only accepts lowercase UUID ids, so hash the thread-scoped name into a stable UUIDv5. */
-function buildThreadScopedSandboxUuid(threadId: string): string {
+export function buildThreadScopedSandboxUuid(threadId: string): string {
 	return uuidv5(getThreadScopedSandboxName(threadId), N8N_SANDBOX_THREAD_ID_NAMESPACE);
 }
 
