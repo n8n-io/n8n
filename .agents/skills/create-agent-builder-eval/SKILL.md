@@ -45,7 +45,9 @@ value. Rerun the check after the user confirms. Continue only when it passes.
 - Author the case at
   `packages/@n8n/instance-ai/evaluations/data/agents/<slug>.json`.
 - Set `"datasets": ["agents"]`.
-- Push the calibrated case to the LangTracer `agents` suite.
+- Push general Agent Builder cases to
+  [Instance AI capabilities — agents](https://lang-tracer.n8n-maintenance.workers.dev/suites/10).
+  Its suite slug is `agents`.
 - Do not commit the case JSON. LangTracer is the durable source of truth.
 - Commit changes to this skill, the harness, and CI when applicable.
 
@@ -129,9 +131,9 @@ Do not weaken an expectation to hide a real Agent Builder defect.
 ## CI coverage
 
 The Instance AI PR gate checks the files changed by the PR. A change under
-`packages/cli/src/modules/agents/` selects the LangTracer `agents` suite and its
-`agents` dataset. Other Instance AI changes select the `baseline` suite and its
-`pr` dataset.
+`packages/cli/src/modules/agents/` selects the `Instance AI capabilities — agents`
+suite through its `agents` slug. It also selects the `agents` dataset. Other
+Instance AI changes select the `baseline` suite and its `pr` dataset.
 
 The gate runs when a PR opens, reopens, or becomes ready for review. It does not
 run for each new push. Use the PR gate's manual dispatch after a later push.
@@ -181,6 +183,6 @@ after a successful push.
 - The transcript proves each process expectation was exercised.
 - The rendered Agent artifact proves each outcome expectation.
 - Repeated runs are stable enough for the selected tier.
-- The case is pushed to the LangTracer `agents` suite.
+- The case is pushed to `Instance AI capabilities — agents` with suite slug `agents`.
 - Agent Builder PR changes select the `agents` suite in CI.
 - The local case JSON is not committed.
