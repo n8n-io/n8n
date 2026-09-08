@@ -806,6 +806,8 @@ try {
 
 			this.logger.debug('[IsolatedVmBridge] Expression executed successfully');
 
+			// The structured clone above drops the prototype of a class instance, so
+			// rebuild the luxon instances from the markers the isolate sent.
 			return unwrapLuxonSentinels(result);
 		} catch (error) {
 			// Re-throw reconstructed errors as-is.

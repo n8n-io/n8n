@@ -1,3 +1,15 @@
+/**
+ * Transfer luxon values across the runtime boundary.
+ *
+ * Results cross the boundary by structured clone, which does not carry the
+ * prototype of a class instance. A luxon DateTime, Duration or Interval is a
+ * class instance. Each one goes across as a structured-cloneable marker object,
+ * and the host rebuilds a real instance from it.
+ *
+ * User data can hold the same keys. The escape wrappers below let the host tell
+ * our own markers from user data that looks like them.
+ */
+
 import { DateTime, Duration, IANAZone, Interval } from 'luxon';
 import type { DurationLikeObject } from 'luxon';
 
@@ -29,6 +41,13 @@ export interface LuxonEscapedObject {
 	__value: unknown;
 }
 
+/**
+ * Keys that make an object look like one of our markers.
+ *
+ * An object with one of these own keys is escaped, so the host reads it as
+ * data. The opaque flag is in the set for the same reason. If it were not, user
+ * data that holds it would make the host return an object without a walk.
+ */
 export const LUXON_SENTINEL_KEYS = [
 	'__isDateTime',
 	'__isDuration',
@@ -84,6 +103,8 @@ export function dateTimeToSentinel(value: DateTime): DateTimeSentinel {
 		__isDateTime: true,
 		__isoString: value.toISO() ?? '',
 	};
+	// Carry a zone name only when the value does not use the system zone. The
+	// host then keeps its own system zone for such a value.
 	if (value.zone.type !== 'system') sentinel.__zone = value.zone.name;
 	return sentinel;
 }
@@ -114,6 +135,9 @@ export function intervalToSentinel(value: Interval): IntervalSentinel {
 	};
 }
 
+// The host rebuilds from fields that came across the boundary, and user data
+// can hold the same fields. The checks below run before any field reaches
+// luxon. A field that does not pass gives an invalid instance.
 const DURATION_UNIT_KEYS = new Set([
 	'year',
 	'years',
@@ -135,6 +159,10 @@ const DURATION_UNIT_KEYS = new Set([
 	'milliseconds',
 ]);
 
+// Luxon resolves a fixed offset only in the "UTC" spelling, such as "UTC+1".
+// It does not resolve an offset written against GMT, such as "GMT+2", and no
+// zone database holds that name either. Bare "GMT" is a zone database name, so
+// it passes the IANA check below.
 const FIXED_OFFSET_ZONE_NAME = /^utc(?:[+-]\d{1,2}(?::\d{2})?)?$/i;
 
 function invalidArguments(sentinel: InvalidLuxonSentinel): [string, string | undefined] {
@@ -147,6 +175,7 @@ function invalidArguments(sentinel: InvalidLuxonSentinel): [string, string | und
 	return [reason, explanation];
 }
 
+/** Give back a zone name luxon can resolve, or nothing to keep the system zone. */
 function acceptedZoneName(zone: unknown): string | undefined {
 	if (typeof zone !== 'string' || zone.length === 0) return undefined;
 	const lowered = zone.toLowerCase();
@@ -169,6 +198,8 @@ export function rebuildDateTime(sentinel: DateTimeSentinel): DateTime {
 		return DateTime.invalid(...invalidArguments(sentinel));
 	}
 	const zone = acceptedZoneName(sentinel.__zone);
+	// Do not pass `setZone`. With `setZone`, luxon takes the zone from the offset
+	// in the ISO string and drops the zone name the marker carries.
 	return zone === undefined ? DateTime.fromISO(isoString) : DateTime.fromISO(isoString, { zone });
 }
 
@@ -208,6 +239,8 @@ function unwrapPlainObject(
 	seen: Map<object, unknown>,
 ): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
+	// Record the result before the walk. A value that refers to itself then
+	// resolves to the same object.
 	seen.set(value, result);
 	for (const key of Object.keys(value)) {
 		result[key] = unwrapValue(value[key], seen);
@@ -229,6 +262,9 @@ function unwrapValue(value: unknown, seen: Map<object, unknown>): unknown {
 	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
 	if (isLuxonEscapedObject(value)) {
 		const inner: unknown = value.__value;
+		// An opaque payload is a value the guest could not walk, so nothing in it
+		// is our framing. Give it back as it is. A walked payload only had its own
+		// keys collide, so the walk goes on below and rebuilds markers deeper in.
 		if (isOpaqueLuxonEscapedObject(value)) return inner;
 		if (typeof inner !== 'object' || inner === null || !isPlainObject(inner)) return inner;
 		return unwrapPlainObject(inner, seen);

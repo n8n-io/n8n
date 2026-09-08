@@ -132,6 +132,9 @@ function unwrapSentinels(value: unknown, luxonAsData = false): unknown {
 	if (!luxonAsData) {
 		if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
 		if (isLuxonEscapedObject(value)) {
+			// A walked payload only had its own keys collide, so the walk below still
+			// rebuilds luxon markers deeper in it. An opaque payload is a value the
+			// guest could not walk, so `opaque` keeps every marker in it as data.
 			const inner: unknown = value.__value;
 			const opaque = isOpaqueLuxonEscapedObject(value);
 			if (typeof inner !== 'object' || inner === null) return inner;
@@ -891,6 +894,9 @@ export class QuickJsBridge implements RuntimeBridge {
 		var prepared = original(value);
 		return wrapSpecialValues(prepared);
 	};
+	// __prepareForTransfer does not walk into a Map, a Set or the extra keys of an
+	// Error, and it does not walk an opaque payload. The inCollection flag marks
+	// those places, where a luxon marker can only come from user data.
 	function wrapSpecialValues(v, inCollection) {
 		if (v === null || v === undefined) return v;
 		// Functions and Promises must not leave the sandbox as results.
@@ -936,11 +942,15 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (Array.isArray(v)) return v.map(function(item) { return wrapSpecialValues(item, inCollection); });
 		// Error sentinels are already in transfer shape — leave them intact.
 		if (v.__isError) return v;
+		// Outside a collection, these markers come from __prepareForTransfer above,
+		// so pass them to the host as they are.
 		if (!inCollection) {
 			if (v.__isDateTime === true || v.__isDuration === true || v.__isInterval === true) return v;
 			if (v.__isLuxonEscaped === true) {
 				var payload = v.__value;
 				if (v.__isLuxonOpaque === true) {
+					// The host gives an opaque payload back as data, so wrap its contents
+					// as a collection and keep any marker in them as data too.
 					return { __isLuxonEscaped: true, __isLuxonOpaque: true, __value: wrapOwnKeys(payload, true) };
 				}
 				if (payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
@@ -964,6 +974,8 @@ export class QuickJsBridge implements RuntimeBridge {
 			) {
 				collides = true;
 			}
+			// Inside a collection a luxon marker is user data, so escape the object
+			// and the host reads the keys as the plain data they are.
 			if (
 				inCollection && (
 					key === '__isDateTime' || key === '__isDuration' ||
