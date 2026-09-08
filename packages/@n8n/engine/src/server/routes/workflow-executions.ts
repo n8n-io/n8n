@@ -2,7 +2,10 @@ import { UUID_V7_PATTERN } from '@n8n/constants';
 import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
-import { createGetExecutionHandler } from './workflow-executions.handlers';
+import {
+	createGetExecutionHandler,
+	createSearchExecutionsHandler,
+} from './workflow-executions.handlers';
 import { AdmittanceRejectedError } from '../../admittance';
 import { jsonObjectSchema, jsonValueSchema, UnimplementedError } from '../../common';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
@@ -62,6 +65,7 @@ const StartExecutionBody = z.object({
 
 export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {
 	const router = Router();
+	router.post('/search', createSearchExecutionsHandler(deps.executionQuery));
 
 	router.post('/', async (req, res) => {
 		const parsed = StartExecutionBody.safeParse(req.body);
