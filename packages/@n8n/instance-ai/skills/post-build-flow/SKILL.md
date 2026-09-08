@@ -484,9 +484,25 @@ result.
 
 ## Claiming success
 
-Do not tell the user a workflow is "fixed", "verified", "tested", "working", or
-has "no errors" unless you have a passing `verify-built-workflow`,
-`executions(action="run")`, or inspected user-run execution that exercised the
+`verify-built-workflow` returns a `claim`, and its `level` decides what you may
+say:
+
+- `verified` — you may call the workflow verified, tested, or working.
+- `partial`, `unproven`, or `failed` — you may NOT. Name what is unconfirmed
+  instead.
+
+**`success: true` does not mean verified.** It means the run ended without an
+error, and a run with every write simulated also ends without an error. Read
+`claim.level`, not `success`.
+
+The user already sees a verdict card, generated from that same claim. Do not
+contradict it, and do not repeat its node lists — write around it. Add what it
+cannot know: what stays unconfigured, and what that means when the workflow
+runs.
+
+Without a claim, do not tell the user a workflow is "fixed", "verified",
+"tested", "working", or has "no errors" unless you have a passing
+`executions(action="run")` or an inspected user-run execution that exercised the
 path being claimed. Do not call a workflow "ready to use" or "ready to publish"
 unless a passing execution met the publish-readiness requirement above. A
 successful `build-workflow`/save, a static `workflows(action="validate")`, or
