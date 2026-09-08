@@ -19,6 +19,7 @@ describe('scrubSecretsInText', () => {
 		expect(scrubSecretsInText('header is Basic dXNlcjpwYXNzd29yZA==')).toBe('header is [REDACTED]');
 		expect(scrubSecretsInText('header is Token abcdef1234567890')).toBe('header is [REDACTED]');
 		expect(scrubSecretsInText('Authorization: Bearer short')).toBe('Authorization: [REDACTED]');
+		expect(scrubSecretsInText('headers: { Authorization: "Bearer short" }')).not.toContain('short');
 		// Prose mentioning the scheme stays readable.
 		expect(scrubSecretsInText('call it with a Bearer token, then')).toBe(
 			'call it with a Bearer token, then',

@@ -41,10 +41,16 @@ function parsesAsJson(text: string): boolean {
  *  skipped instead of being glued onto it or shadowing it. */
 function extractJsonContainer(text: string): string | undefined {
 	let best: string | undefined;
-	for (let start = 0; start < text.length; start++) {
+	// Every opener starts its own scan, so a response full of unmatched brackets
+	// would rescan the same suffix from each one (quadratic). Cap the total
+	// scanned characters: a payload is found within a few scans, one per level
+	// of prose or truncated wrapper around it.
+	let budget = text.length * 32;
+	for (let start = 0; start < text.length && budget > 0; start++) {
 		if (best !== undefined && text.length - start <= best.length) break;
 		if (text[start] !== '{' && text[start] !== '[') continue;
 		const end = findBalancedEnd(text, start);
+		budget -= (end === -1 ? text.length : end + 1) - start;
 		if (end === -1) continue;
 		const candidate = text.slice(start, end + 1);
 		if ((best === undefined || candidate.length > best.length) && parsesAsJson(candidate)) {

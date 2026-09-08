@@ -51,6 +51,14 @@ describe('extractJsonCandidate', () => {
 	it('returns trimmed text when no JSON candidate exists', () => {
 		expect(extractJsonCandidate('  not JSON  ')).toBe('not JSON');
 	});
+
+	it('gives up on bracket noise in linear time', () => {
+		// Every unmatched opener used to rescan the whole suffix; 40k chars took over a second.
+		const input = '{ '.repeat(20_000).trim();
+		const start = performance.now();
+		expect(extractJsonCandidate(input)).toBe(input);
+		expect(performance.now() - start).toBeLessThan(100);
+	});
 });
 
 describe('extractFencedJson', () => {
