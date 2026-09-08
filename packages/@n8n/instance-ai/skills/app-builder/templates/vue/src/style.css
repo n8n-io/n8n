@@ -1,8 +1,8 @@
 /*
- * shadcn-vue's own theming: every component under src/components/ui/*
- * reads these CSS variables (via Tailwind utilities like bg-primary,
- * rounded-lg) instead of hardcoded colors. Changing the values below
- * restyles every component at once.
+ * shadcn-vue's own theming: every component added via the `apps` tool's
+ * `add-component` action (src/components/ui/*) reads these CSS variables
+ * (via Tailwind utilities like bg-primary, rounded-lg) instead of hardcoded
+ * colors. Changing the values below restyles every component at once.
  *
  * theme-overrides.css loads after this file (see main.ts) so its :root
  * block wins by plain cascade order — the theme rebuild pipeline

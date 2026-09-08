@@ -493,11 +493,12 @@ export async function handleRestore(
 }
 
 /**
- * Pulls an extra shadcn-vue component into an app beyond the curated set the
- * template ships with, via the real CLI (so it never drifts from upstream).
- * Runs npm install right away rather than leaving it to the next build:
- * `handleBuild` skips `npm install` whenever `node_modules` already exists,
- * which would otherwise leave a component's own new dependency unresolved.
+ * Adds a shadcn-vue component to an app via the real CLI (so it never drifts
+ * from upstream) rather than shipping every component pre-generated in the
+ * template. Runs npm install right away rather than leaving it to the next
+ * build: `handleBuild` skips `npm install` whenever `node_modules` already
+ * exists, which would otherwise leave a component's own new dependency
+ * unresolved.
  */
 async function handleAddComponent(
 	context: AppSandboxContext,
@@ -577,7 +578,7 @@ export function createAppsTool(context: InstanceAiContext) {
 				'edit the files there, then call `build` to compile them and publish a new version. ' +
 				'`build` returns the live `url` on success, or `{ error, stage, message, log }` to fix and retry. ' +
 				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet. ' +
-				'`add-component` pulls an extra shadcn-vue component into src/components/ui/ beyond the ones the template already has.',
+				'`add-component` generates a shadcn-vue component into src/components/ui/ — the template ships none pre-generated.',
 		)
 		.input(inputSchema)
 		.handler(async (input: AppsInput, ctx) => {
