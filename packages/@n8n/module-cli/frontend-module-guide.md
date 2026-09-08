@@ -587,14 +587,23 @@ Each package starts the frameworks itself, on purpose. `@n8n/i18n` has `@n8n/vit
 
 **`"test:changed": "janitor test-scoped"`.** The CI for a PR runs `pnpm test:ci:frontend:changed`.
 That script is
-`turbo run test:changed --continue --filter='./packages/frontend/**' --filter='./packages/modules/**'`.
+`turbo run test:changed --continue --filter='./packages/frontend/**' --filter='./packages/modules/*/frontend'`.
 
 Turbo **does nothing for a package that has no such script**. It gives no error and no skip
 message. Your tests then never run in the CI for a PR, and the job passes.
 
-The second `--filter` puts modules in the frontend test job. `packages/modules/**` is not inside
-`packages/frontend/**`. Without that filter, a module leaves the sharded frontend job and joins the
-backend job.
+The second `--filter` puts your module in the frontend test job. `packages/modules/*/frontend` is
+not inside `packages/frontend/**`. Without that filter, a module leaves the sharded frontend job.
+
+That filter selects the `frontend` half only. The backend jobs scope by **exclusion**: each one
+excludes `!./packages/frontend/**` and `!./packages/modules/*/frontend`, and names no positive
+path. Their scope is "every other package". A positive filter would replace that scope, and cut
+the job down to the paths named. This is why a new `<name>/backend` half needs a narrower
+exclusion, and not a new positive filter.
+
+The positive filter is in the two `test:ci:frontend*` scripts. The exclusion is in the four
+`test:ci:backend*` scripts, and in the two backend steps in
+`.github/workflows/test-unit-reusable.yml`. Change the pair together.
 
 Four packages have this defect today: `@n8n/frontend-module-sdk`, `@n8n/frontend-constants`,
 `@n8n/frontend-utils` and `@n8n/eslint-plugin-design-system`. Do not add a fifth.
