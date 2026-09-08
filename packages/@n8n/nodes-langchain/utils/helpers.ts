@@ -225,12 +225,15 @@ export const getConnectedTools = async (
 					tool.metadata ??= {};
 					tool.metadata.isFromToolkit = true;
 					tool.metadata.sourceNodeName = parentNodes[index]?.name ?? tool.name;
+					// The name can change when the user renames the node, the ID cannot.
+					tool.metadata.sourceNodeId = parentNodes[index]?.id;
 					return tool;
 				});
 			} else {
 				toolOrToolkit.metadata ??= {};
 				toolOrToolkit.metadata.isFromToolkit = false;
 				toolOrToolkit.metadata.sourceNodeName = parentNodes[index]?.name ?? toolOrToolkit.name;
+				toolOrToolkit.metadata.sourceNodeId = parentNodes[index]?.id;
 			}
 
 			return toolOrToolkit;

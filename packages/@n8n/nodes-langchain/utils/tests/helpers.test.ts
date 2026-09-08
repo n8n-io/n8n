@@ -451,6 +451,111 @@ describe('getConnectedTools', () => {
 			sourceNodeName: 'Tool Charlie',
 		});
 	});
+
+	describe('source node ID metadata', () => {
+		it('should record the source node ID next to the source node name', async () => {
+			const mockParentNodes = [
+				{ id: 'a1b2c3d4-0000-0000-0000-000000000001', name: 'RegularTool' },
+				{ id: 'a1b2c3d4-0000-0000-0000-000000000002', name: 'MCP Client Tool' },
+			];
+			const mockTools = [
+				{ name: 'tool1', description: 'desc1' },
+				new StructuredToolkit([
+					{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
+					{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+				] as any),
+			];
+
+			mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
+			mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue(mockParentNodes);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools[0].metadata).toEqual({
+				isFromToolkit: false,
+				sourceNodeName: 'RegularTool',
+				sourceNodeId: 'a1b2c3d4-0000-0000-0000-000000000001',
+			});
+			// Every tool of a toolkit points back to the single node that produced them.
+			expect(tools[1].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'MCP Client Tool',
+				sourceNodeId: 'a1b2c3d4-0000-0000-0000-000000000002',
+			});
+			expect(tools[2].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'MCP Client Tool',
+				sourceNodeId: 'a1b2c3d4-0000-0000-0000-000000000002',
+			});
+		});
+
+		it('should keep the source node ID unchanged when the source node is renamed', async () => {
+			const sourceNodeId = 'a1b2c3d4-0000-0000-0000-000000000001';
+			const connectTool = async (parentNodeName: string) => {
+				mockExecuteFunctions.getInputConnectionData = vi
+					.fn()
+					.mockResolvedValue([{ name: 'tool1', description: 'desc1' }]);
+				mockExecuteFunctions.getParentNodes = vi
+					.fn()
+					.mockReturnValue([{ id: sourceNodeId, name: parentNodeName }]);
+
+				const tools = await getConnectedTools(mockExecuteFunctions, false);
+				return tools[0].metadata;
+			};
+
+			const before = await connectTool('Weather Tool');
+			const after = await connectTool('Forecast Tool');
+
+			expect(before?.sourceNodeName).toBe('Weather Tool');
+			expect(after?.sourceNodeName).toBe('Forecast Tool');
+			expect(before?.sourceNodeId).toBe(sourceNodeId);
+			expect(after?.sourceNodeId).toBe(sourceNodeId);
+		});
+
+		it('should not corrupt source node ID or name when a disabled tool node is still connected', async () => {
+			// getParentNodes returns ALL parents including disabled ones, while
+			// getInputConnectionData filters disabled nodes out. Both metadata fields
+			// must stay aligned with the tools that actually arrived.
+			const mockParentNodes = [
+				{ id: 'node-alpha', name: 'Tool Alpha', disabled: false },
+				{ id: 'node-bravo', name: 'Tool Bravo', disabled: true },
+				{ id: 'node-charlie', name: 'Tool Charlie', disabled: false },
+			];
+			const mockTools = [
+				{ name: 'alpha', description: 'desc-alpha' },
+				{ name: 'charlie', description: 'desc-charlie' },
+			];
+
+			mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
+			mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue(mockParentNodes);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools).toHaveLength(2);
+			expect(tools[0].metadata).toEqual({
+				isFromToolkit: false,
+				sourceNodeName: 'Tool Alpha',
+				sourceNodeId: 'node-alpha',
+			});
+			expect(tools[1].metadata).toEqual({
+				isFromToolkit: false,
+				sourceNodeName: 'Tool Charlie',
+				sourceNodeId: 'node-charlie',
+			});
+		});
+
+		it('should leave the source node ID unset when no parent node is found', async () => {
+			mockExecuteFunctions.getInputConnectionData = vi
+				.fn()
+				.mockResolvedValue([{ name: 'tool1', description: 'desc1' }]);
+			mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue([]);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools[0].metadata?.sourceNodeName).toBe('tool1');
+			expect(tools[0].metadata?.sourceNodeId).toBeUndefined();
+		});
+	});
 });
 
 describe('unwrapNestedOutput', () => {

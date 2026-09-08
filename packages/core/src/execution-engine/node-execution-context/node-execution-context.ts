@@ -110,6 +110,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];
 			const entry: NodeTypeAndVersion = {
+				id: node.id,
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
@@ -143,6 +144,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];
 			const entry: NodeTypeAndVersion = {
+				id: node.id,
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
