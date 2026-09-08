@@ -71,40 +71,50 @@ describe('DynamicCredentialsController', () => {
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
 	});
 
-	// Neither endpoint asks for a scope on the shared credential. Both key on the
-	// caller's own identity server side — the connect binds the callback to it (see
-	// 'binds the state to the intended n8n user'), and the delete derives its storage
-	// key from it — so a session user resolves the credential by id, the same path a
-	// static-token caller takes.
 	describe('in-app access control', () => {
-		const foreignCredentialRequest = () =>
-			mock<AuthenticatedRequest>({
-				user: mock<AuthenticatedRequest['user']>({ id: 'user-123' }),
-				params: { id: 'foreign-credential' },
-				query: { resolverId: 'resolver-123' },
-				headers: { authorization: 'Bearer token123' },
-			});
+		const foreignCredentialRequest = () => {
+			const user = mock<AuthenticatedRequest['user']>({ id: 'user-123' });
+			return {
+				user,
+				req: mock<AuthenticatedRequest>({
+					user,
+					params: { id: 'foreign-credential' },
+					query: { resolverId: 'resolver-123' },
+					headers: { authorization: 'Bearer token123' },
+				}),
+			};
+		};
 
-		it('resolves the credential by id when connecting, not by the caller scopes', async () => {
-			enterpriseCredentialsService.getOne.mockResolvedValue(null);
-			const req = foreignCredentialRequest();
+		// Both sides of the same self-service action ask the same question: may the
+		// caller connect their own account to this end-user credential.
+		it('requires credential:connect to connect', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+			const { user, req } = foreignCredentialRequest();
 
 			await expect(controller.authorizeCredential(req, mock<Response>())).rejects.toThrow(
 				'Credential not found',
 			);
-			expect(enterpriseCredentialsService.getOne).toHaveBeenCalledWith('foreign-credential');
-			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'foreign-credential',
+				user,
+				['credential:connect'],
+			);
+			expect(enterpriseCredentialsService.getOne).not.toHaveBeenCalled();
 		});
 
-		it('resolves the credential by id when disconnecting, not by the caller scopes', async () => {
-			enterpriseCredentialsService.getOne.mockResolvedValue(null);
-			const req = foreignCredentialRequest();
+		it('requires credential:connect to disconnect', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+			const { user, req } = foreignCredentialRequest();
 
 			await expect(controller.revokeCredential(req, mock<Response>())).rejects.toThrow(
 				'Credential not found',
 			);
-			expect(enterpriseCredentialsService.getOne).toHaveBeenCalledWith('foreign-credential');
-			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'foreign-credential',
+				user,
+				['credential:connect'],
+			);
+			expect(enterpriseCredentialsService.getOne).not.toHaveBeenCalled();
 		});
 	});
 
@@ -957,6 +967,69 @@ describe('DynamicCredentialsController', () => {
 			// 2. Returns 204 status
 			expect(res.status).toHaveBeenCalledWith(204);
 			expect(res.send).toHaveBeenCalled();
+		});
+
+		it('audits the disconnect for a session user', async () => {
+			const mockCredential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const user = mock<AuthenticatedRequest['user']>({ id: 'user-123' });
+			const req = mock<AuthenticatedRequest>({
+				user,
+				params: { id: '1' },
+				query: { resolverId: 'resolver-123' },
+				headers: { authorization: 'Bearer token123' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
+			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
+			resolverRegistry.getResolverByTypename.mockReturnValue({
+				metadata: { name: 'oauth2-introspection-identifier', description: '' },
+				getSecret: vi.fn(),
+				setSecret: vi.fn(),
+				validateOptions: vi.fn(),
+				deleteSecret: vi.fn().mockResolvedValue(undefined),
+			});
+			cipher.decryptV2.mockResolvedValue('{}');
+
+			await controller.revokeCredential(req, res);
+
+			expect(eventService.emit).toHaveBeenCalledWith('credentials-user-disconnected', {
+				user,
+				credentialId: '1',
+				credentialType: 'googleOAuth2Api',
+			});
+		});
+
+		it('does not audit a disconnect the resolver cannot perform', async () => {
+			// A resolver without `deleteSecret` deletes nothing, so recording a
+			// disconnect would claim something that did not happen.
+			const mockCredential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const req = mock<AuthenticatedRequest>({
+				user: mock<AuthenticatedRequest['user']>({ id: 'user-123' }),
+				params: { id: '1' },
+				query: { resolverId: 'resolver-123' },
+				headers: { authorization: 'Bearer token123' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
+			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
+			resolverRegistry.getResolverByTypename.mockReturnValue({
+				metadata: { name: 'oauth2-introspection-identifier', description: '' },
+				getSecret: vi.fn(),
+				setSecret: vi.fn(),
+				validateOptions: vi.fn(),
+			});
+
+			await controller.revokeCredential(req, res);
+
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'credentials-user-disconnected',
+				expect.anything(),
+			);
+			expect(res.status).toHaveBeenCalledWith(204);
 		});
 	});
 });

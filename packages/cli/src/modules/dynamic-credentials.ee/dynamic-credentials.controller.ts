@@ -113,12 +113,15 @@ export class DynamicCredentialsController {
 	 *
 	 * Deletes the caller's own stored connection for the given credential.
 	 *
-	 * Not gated by a scope on the credential: the resolver derives the storage key
-	 * from the caller's own identity, so the worst any caller can do is clear their
-	 * own entry. `credential:update` asks whether the caller may edit the shared
-	 * credential, which is the wrong question here — a project viewer who connected
-	 * their own account through a form or chat panel must still be able to
-	 * disconnect it. Same reasoning as `/my-connection` below.
+	 * Gated on `credential:connect`, the scope that means "may you connect your own
+	 * account to this end-user credential" — the same scope the connect flow demands
+	 * (`oauth.service.ts`) and the same one a stored connection is retained by
+	 * (`credential-connection-status.service.ts`). `credential:update` asks whether
+	 * the caller may edit the shared credential, which is the wrong question for
+	 * removing an own connection.
+	 *
+	 * A caller who has since lost access holds no scope here and must use
+	 * `/my-connection` below, which carries no scope check by design.
 	 */
 	@Delete('/:id/revoke', {
 		allowUnauthenticated: true,
@@ -131,7 +134,8 @@ export class DynamicCredentialsController {
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const credential = await this.findCredentialToUse(req.params.id);
+		const user = isAuthenticatedRequest(req) ? req.user : undefined;
+		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:connect');
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
@@ -146,16 +150,16 @@ export class DynamicCredentialsController {
 				resolverId: resolverEntity.id,
 				resolverName: resolverEntity.type,
 			});
-		}
 
-		// Static-token callers have no n8n user, and the event requires one, so they
-		// are skipped.
-		if (isAuthenticatedRequest(req)) {
-			this.eventService.emit('credentials-user-disconnected', {
-				user: req.user,
-				credentialId: credential.id,
-				credentialType: credential.type,
-			});
+			// Only audit a delete that actually ran. Static-token callers have no n8n
+			// user, and the event requires one, so they are skipped.
+			if (user) {
+				this.eventService.emit('credentials-user-disconnected', {
+					user,
+					credentialId: credential.id,
+					credentialType: credential.type,
+				});
+			}
 		}
 
 		res.status(204).send(); // 204 No Content indicates successful deletion
@@ -176,11 +180,13 @@ export class DynamicCredentialsController {
 	 *
 	 * Mints a provider authorization URL for the caller's own connection.
 	 *
-	 * Not gated by a scope on the credential, for the same reason as `/revoke`: the
-	 * connection binds to the caller's own identity (the CSRF state carries their
-	 * context, and the callback stores the token under their key), so no caller can
-	 * connect an account on someone else's behalf. A project viewer who connected
-	 * through a form or chat panel needs this to reconnect after disconnecting.
+	 * Gated on `credential:connect`, matching `/revoke` above and the in-app connect
+	 * flow in `oauth.service.ts`: connecting an own account to an end-user credential
+	 * does not require edit rights on the shared credential.
+	 *
+	 * Note this path passes the caller's identity to the resolver to validate, so it
+	 * depends on the resolver-identity compatibility check the execution path applies
+	 * (`carriesN8nIdentity` in `dynamic-credential.service.ts`).
 	 */
 	@Post('/:id/authorize', {
 		allowUnauthenticated: true,
@@ -193,7 +199,8 @@ export class DynamicCredentialsController {
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const credential = await this.findCredentialToUse(req.params.id);
+		const user = isAuthenticatedRequest(req) ? req.user : undefined;
+		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:connect');
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);

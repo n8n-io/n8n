@@ -370,7 +370,7 @@ describe('GET /credentials', () => {
 
 		expect(teamCredAsViewer.id).toBe(teamCredentialAsViewer.id);
 		expect(teamCredAsViewer.data).not.toBeDefined();
-		expect(teamCredAsViewer.scopes).toEqual(['credential:read'].sort());
+		expect(teamCredAsViewer.scopes).toEqual(['credential:connect', 'credential:read'].sort());
 
 		expect(teamCredAsEditor.id).toBe(teamCredentialAsEditor.id);
 		expect(teamCredAsEditor.data).toBeDefined();

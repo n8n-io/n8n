@@ -20,11 +20,9 @@ import {
 	SYSTEM_RESOLVER_NAME,
 	SYSTEM_RESOLVER_TYPE,
 } from '@/modules/dynamic-credentials.ee/constants';
-import { DynamicCredentialEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-entry-storage';
 import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage';
 import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
-import { DynamicCredentialEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-entry.repository';
 import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository';
 import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
@@ -312,62 +310,28 @@ describe('Dynamic Credentials API', () => {
 		});
 
 		describe("when an unrelated authenticated member targets another user's credential", () => {
-			it('mints an authorization URL bound to the caller', async () => {
-				// No scope on the shared credential is required: the flow binds to the
-				// caller's own identity, so the connection can only ever populate their
-				// own entry. The URL itself carries no secret — client id, redirect uri,
-				// scopes and a single-use state token.
+			it('should not return an authorization URL for a credential the member cannot access', async () => {
 				const response = await testServer
 					.authAgentFor(unrelatedMember)
 					.post(`/credentials/${savedCredential.id}/authorize`)
 					.query({ resolverId: resolver.id })
-					.set('Authorization', 'Bearer test-token')
-					.expect(200);
+					.set('Authorization', 'Bearer test-token');
 
-				expect(response.body.data).toContain('https://test.domain/oauth2/auth');
+				expect([403, 404]).toContain(response.status);
+				expect(response.body?.data).toBeUndefined();
 			});
 
-			it("confines the delete to the caller's own entry", async () => {
-				// The resolver keys the entry on the caller's own identity, so the delete
-				// cannot reach another subject's entry. Revoke therefore needs no scope on
-				// the shared credential.
-				const entryStorage = Container.get(DynamicCredentialEntryStorage);
-				const entryRepository = Container.get(DynamicCredentialEntryRepository);
-
-				// 'user-123' is the subject the mocked introspection endpoint returns for
-				// the caller's bearer token.
-				await entryStorage.setCredentialData(
-					savedCredential.id,
-					'user-123',
-					resolver.id,
-					'caller-payload',
-					{},
-				);
-				await entryStorage.setCredentialData(
-					savedCredential.id,
-					'another-subject',
-					resolver.id,
-					'other-payload',
-					{},
-				);
-
-				await testServer
+			it('should not revoke a credential the member cannot even read', async () => {
+				// `credential:connect` is the floor: a member with no relationship to the
+				// credential holds no scope on it. They clear their own stored tokens
+				// through `/my-connection`, which carries no scope check by design.
+				const response = await testServer
 					.authAgentFor(unrelatedMember)
 					.delete(`/credentials/${savedCredential.id}/revoke`)
 					.query({ resolverId: resolver.id })
-					.set('Authorization', 'Bearer test-token')
-					.expect(204);
+					.set('Authorization', 'Bearer test-token');
 
-				await expect(
-					entryRepository.findOne({
-						where: { credentialId: savedCredential.id, subjectId: 'user-123' },
-					}),
-				).resolves.toBeNull();
-				await expect(
-					entryRepository.findOne({
-						where: { credentialId: savedCredential.id, subjectId: 'another-subject' },
-					}),
-				).resolves.not.toBeNull();
+				expect([403, 404]).toContain(response.status);
 			});
 		});
 	});
@@ -444,24 +408,6 @@ describe('Dynamic Credentials API', () => {
 			);
 		});
 
-		it('lets a project viewer reconnect after disconnecting', async () => {
-			const credential = await saveResolvableCredential();
-			await seedUserEntry(credential.id, viewer.id);
-
-			await disconnectAs(viewer, credential.id).expect(204);
-
-			const response = await reconnectAs(viewer, credential.id).expect(200);
-			expect(response.body.data).toContain('https://test.domain/oauth2/auth');
-		});
-
-		it('lets a user without project access reconnect their own connection', async () => {
-			const outsider = await createMember();
-			const credential = await saveResolvableCredential();
-
-			const response = await reconnectAs(outsider, credential.id).expect(200);
-			expect(response.body.data).toContain('https://test.domain/oauth2/auth');
-		});
-
 		it('lets a project viewer disconnect their own connection', async () => {
 			const credential = await saveResolvableCredential();
 			await seedUserEntry(credential.id, viewer.id);
@@ -487,11 +433,28 @@ describe('Dynamic Credentials API', () => {
 			expect(secondViewerEntries).toHaveLength(1);
 		});
 
-		it('lets a user without project access clear their own connection', async () => {
-			// User had access in the past, connected, then lost project access.
-			// They must still be able to clear their own stored tokens.
+		it('lets any authenticated user disconnect from a global end-user credential', async () => {
+			// Deliberate, and the one case with no membership check: a globally shared
+			// end-user credential grants connect access to every user, because each
+			// connects their own account (see role.service.ts and the global branch in
+			// credentials-finder.service.ts). The delete stays keyed to the caller.
 			const outsider = await createMember();
-			const credential = await saveResolvableCredential();
+			const credential = await saveCredential(
+				{
+					name: 'Global End-User Credential',
+					type: 'oAuth2Api',
+					isResolvable: true,
+					isGlobal: true,
+					data: {
+						clientId: 'test-client-id',
+						clientSecret: 'test-client-secret',
+						authUrl: 'https://test.domain/oauth2/auth',
+						accessTokenUrl: 'https://test.domain/oauth2/token',
+						grantType: 'authorizationCode',
+					},
+				},
+				{ project: teamProject, role: 'credential:owner' },
+			);
 			await seedUserEntry(credential.id, outsider.id);
 
 			await disconnectAs(outsider, credential.id).expect(204);
@@ -500,6 +463,35 @@ describe('Dynamic Credentials API', () => {
 				where: { credentialId: credential.id, userId: outsider.id },
 			});
 			expect(remaining).toHaveLength(0);
+		});
+
+		it('refuses a user who has lost project access, who uses /my-connection instead', async () => {
+			// `credential:connect` is the floor for this endpoint, and a user who lost
+			// project access holds nothing. `/my-connection` is the un-gated path that
+			// still lets them clear their own tokens — covered in my-connection.api.test.ts.
+			const outsider = await createMember();
+			const credential = await saveResolvableCredential();
+			await seedUserEntry(credential.id, outsider.id);
+
+			const response = await disconnectAs(outsider, credential.id);
+			expect([403, 404]).toContain(response.status);
+
+			const remaining = await userEntryRepository.find({
+				where: { credentialId: credential.id, userId: outsider.id },
+			});
+			expect(remaining).toHaveLength(1);
+		});
+
+		it('lets a project viewer reconnect after disconnecting', async () => {
+			// The panel's in-session reconnect: the first connect consumed its one-time
+			// link, so Connect mints a new one instead of reloading the page.
+			const credential = await saveResolvableCredential();
+			await seedUserEntry(credential.id, viewer.id);
+
+			await disconnectAs(viewer, credential.id).expect(204);
+
+			const response = await reconnectAs(viewer, credential.id).expect(200);
+			expect(response.body.data).toContain('https://test.domain/oauth2/auth');
 		});
 
 		it('emits credentials-user-disconnected audit event on success', async () => {

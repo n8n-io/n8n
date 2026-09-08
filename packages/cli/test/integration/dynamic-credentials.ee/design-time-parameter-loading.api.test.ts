@@ -133,7 +133,7 @@ beforeEach(async () => {
 	// End-user credentials live in team projects only.
 	teamProject = await createTeamProject(undefined, member);
 	await linkUserToProject(otherMember, teamProject, 'project:editor');
-	// A viewer can read the credential but not connect an account to it.
+	// A viewer can read the credential and connect their own account to it.
 	await linkUserToProject(viewer, teamProject, 'project:viewer');
 
 	const resolverRepository = Container.get(DynamicCredentialResolverRepository);
@@ -283,16 +283,17 @@ describe('design-time parameter loading with end-user credentials', () => {
 		expect(driveScope.isDone()).toBe(false);
 	});
 
-	test('refuses a user who may read the credential but not connect it', async () => {
-		// Resolution would key on this user's own connection, which they are not allowed
-		// to hold — so say that, rather than listing anything.
+	test('treats a project viewer as connectable, so it asks them to connect', async () => {
+		// A viewer holds `credential:connect`, so resolution keys on their own
+		// connection like any other user's. Not having connected yet is the answer,
+		// not a permission error — and either way the vendor is not called.
 		const credential = await createEndUserCredential();
 		const driveScope = mockDriveListing();
 
 		const response = await listResources(viewer, credential);
 
-		expect(response.statusCode).toBe(403);
-		expect(response.body.message).toContain('permission to connect');
+		expect(response.statusCode).toBe(500);
+		expect(response.body.message).toContain('is not connected for you');
 		expect(driveScope.isDone()).toBe(false);
 	});
 

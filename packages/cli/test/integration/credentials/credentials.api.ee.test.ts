@@ -549,7 +549,7 @@ describe('GET /credentials/:id', () => {
 				id: teamProject.id,
 			},
 			sharedWithProjects: [],
-			scopes: ['credential:read'],
+			scopes: ['credential:connect', 'credential:read'],
 		});
 		expect(response.body.data.data).toBeUndefined();
 	});

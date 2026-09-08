@@ -32,6 +32,15 @@ describe('credential:createEndUser default grants', () => {
 		expect(PROJECT_CUSTOM_ROLE_OPERATIONS.credential).toContain('createEndUser');
 	});
 
+	it('is distinct from credential:connect, which every project role holds', () => {
+		// Connecting an own account is not managing the credential: every project role,
+		// viewers included, may connect; only admins and owners may create or retype.
+		expect(PROJECT_VIEWER_SCOPES).toContain('credential:connect');
+		expect(PROJECT_EDITOR_SCOPES).toContain('credential:connect');
+		expect(REGULAR_PROJECT_ADMIN_SCOPES).toContain('credential:connect');
+		expect(PERSONAL_PROJECT_OWNER_SCOPES).toContain('credential:connect');
+	});
+
 	it('survives the credential owner sharing mask but not the user mask', () => {
 		expect(CREDENTIALS_SHARING_OWNER_SCOPES).toContain('credential:createEndUser');
 		expect(CREDENTIALS_SHARING_USER_SCOPES).not.toContain('credential:createEndUser');

@@ -177,6 +177,11 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'agent:execute',
 	'credential:list',
 	'credential:read',
+	// Connecting an own account to an end-user credential, not editing the shared
+	// credential. A viewer who runs a workflow through a form or chat trigger must be
+	// able to connect/disconnect their own account, and the connection is only retained while its
+	// user holds this scope (see credential-connection-status.service.ts).
+	'credential:connect',
 	'project:list',
 	'project:read',
 	'project:export',

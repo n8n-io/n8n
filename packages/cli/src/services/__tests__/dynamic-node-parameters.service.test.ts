@@ -635,7 +635,7 @@ describe('DynamicNodeParametersService', () => {
 		});
 
 		it('should throw for an end-user credential the user may read but not connect', async () => {
-			// A project viewer holds `credential:read` without `credential:connect`.
+			// A caller who holds `credential:read` without `credential:connect`.
 			credentialsFinderService.findCredentialIdsWithScopeForUser
 				.mockResolvedValueOnce(new Set(['cred-1']))
 				.mockResolvedValueOnce(new Set());
