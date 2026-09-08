@@ -335,6 +335,9 @@ setup cards keep their selection and resume flows.
 
 The agent observes saved workflows at the start of a user turn. This read updates
 its private open-item memo. It does not publish a snapshot or select a workflow.
+Observation checks saved credential bindings, required values, and placeholders.
+It does not test connections or resource availability. Configured items have not
+necessarily passed a connection test or workflow execution.
 
 ```json
 {

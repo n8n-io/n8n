@@ -20,7 +20,7 @@ import type { InstanceAiContext } from '../../types';
 const METADATA_KEY = 'instanceAiSetupPanelOpenItems';
 /** Workflows kept in the memo; older entries fall off. */
 const MAX_REMEMBERED_WORKFLOWS = 10;
-/** Workflows re-analyzed at the start of a turn; each costs a credential-test pass. */
+/** Bound the saved-state reads before the agent starts answering. */
 const MAX_OBSERVED_WORKFLOWS = 3;
 
 /** Compact, LLM-facing description of one checklist item. */
@@ -235,6 +235,7 @@ export async function observeWorkflowSetupStates(
 		try {
 			const requests = await analyzeWorkflow(context, workflowId, undefined, {
 				includeSettled: true,
+				validationMode: 'configuration',
 			});
 			summaries.push(
 				summarizeWorkflowSetupState(workflowId, requests, new Set(memo[workflowId] ?? [])),
@@ -270,8 +271,9 @@ export function formatWorkflowSetupStateNote(
 	return [
 		'Setup state of the workflows this conversation built, recomputed just now from the saved ' +
 			'workflows and the credentials in this project. The setup panel next to the chat shows the ' +
-			'current checklist and the user completes items there. A configured item is not proof of ' +
-			'a successful connection test or workflow execution. Report validationWarnings when present. Never ask ' +
+			'current checklist and the user completes items there. This observation does not test connections ' +
+			'or resource availability. A configured item is not proof of a successful connection test or ' +
+			'workflow execution. Never ask ' +
 			'for secrets in chat. `settledSinceLastTurn` names items that were open at your previous ' +
 			'look and are not anymore (configured, or removed from the workflow). Trust this over older ' +
 			'tool results.',

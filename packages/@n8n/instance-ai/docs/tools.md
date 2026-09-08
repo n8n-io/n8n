@@ -447,6 +447,9 @@ Each new user turn carries a `<workflow-setup-state>` block with current saved
 state and items that settled since the previous look. This observation does not
 publish snapshots or change the current workflow target. It preserves announced
 recipes and does not count temporary credential replacement requests as user progress.
+This observation reads saved bindings and checks required values and placeholders.
+It does not test credentials or fetch provider resource lists. It does not produce
+fresh connection-test warnings. Live checks remain part of setup and verification.
 
 ### `workflows(action="publish")`
 

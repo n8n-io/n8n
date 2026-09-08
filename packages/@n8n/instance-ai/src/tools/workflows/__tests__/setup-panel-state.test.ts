@@ -266,7 +266,10 @@ describe('observeWorkflowSetupStates', () => {
 
 		const summaries = await observeWorkflowSetupStates(ctx, ['wf-gone', 'wf-1']);
 
-		expect(analyzeWorkflow).toHaveBeenCalledWith(ctx, 'wf-1', undefined, { includeSettled: true });
+		expect(analyzeWorkflow).toHaveBeenCalledWith(ctx, 'wf-1', undefined, {
+			includeSettled: true,
+			validationMode: 'configuration',
+		});
 		expect(summaries.map((summary) => summary.workflowId)).toEqual(['wf-1']);
 	});
 
