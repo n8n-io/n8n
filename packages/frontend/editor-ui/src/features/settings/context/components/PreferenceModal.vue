@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	N8nButton,
@@ -33,6 +35,7 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const { showError } = useToast();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
@@ -130,11 +133,23 @@ async function handleSubmit() {
 		loading.value = true;
 		if (props.mode === 'new') {
 			await contextStore.createPreference({ text: form.text, scopeType, projectId });
+			telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CREATED_PREFERENCE, {
+				scope_type: scopeType,
+				text_length: form.text.length,
+				...(projectId ? { project_id: projectId } : {}),
+			});
 		} else if (props.preference) {
 			await contextStore.updatePreference(props.preference.id, {
 				text: form.text,
 				scopeType,
 				projectId,
+			});
+			telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+				scope_type: scopeType,
+				text_length: form.text.length,
+				scope_changed:
+					scopeType !== props.preference.scopeType || projectId !== props.preference.projectId,
+				...(projectId ? { project_id: projectId } : {}),
 			});
 		}
 		closeModal();

@@ -5,12 +5,24 @@ import userEvent from '@testing-library/user-event';
 
 import { useUIStore } from '@/app/stores/ui.store';
 
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
 import SettingsPreferencesView from './SettingsPreferencesView.vue';
 import { PREFERENCE_MODAL_KEY } from '../context.constants';
 import { useContextStore } from '../context.store';
 import type { Preference } from '../context.types';
 
 const push = vi.fn();
+const trackMock = vi.fn();
+const confirmMock = vi.fn().mockResolvedValue('confirm');
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
+}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: confirmMock, alert: vi.fn(), prompt: vi.fn() }),
+}));
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push }),
@@ -44,6 +56,9 @@ describe('SettingsPreferencesView', () => {
 		uiStore = mockedStore(useUIStore);
 		contextStore.loading = false;
 		push.mockClear();
+		trackMock.mockReset();
+		confirmMock.mockClear();
+		confirmMock.mockResolvedValue('confirm');
 	});
 
 	it('shows the empty state when there are no preferences', async () => {
@@ -106,6 +121,39 @@ describe('SettingsPreferencesView', () => {
 			name: PREFERENCE_MODAL_KEY,
 			data: { mode: 'edit', preference: row },
 		});
+	});
+
+	it('reports a single-row delete', async () => {
+		contextStore.preferences = [preference({ scopeType: 'user' })];
+		contextStore.count = 1;
+
+		const { getByTestId } = renderView();
+		await new Promise(process.nextTick);
+
+		await userEvent.click(getByTestId('preference-delete-button'));
+		await new Promise(process.nextTick);
+
+		expect(contextStore.deletePreference).toHaveBeenCalledWith('p1');
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			count: 1,
+			source: 'row',
+			scope_types: ['user'],
+		});
+	});
+
+	it('deletes nothing when the confirmation is dismissed', async () => {
+		confirmMock.mockResolvedValue('cancel');
+		contextStore.preferences = [preference()];
+		contextStore.count = 1;
+
+		const { getByTestId } = renderView();
+		await new Promise(process.nextTick);
+
+		await userEvent.click(getByTestId('preference-delete-button'));
+		await new Promise(process.nextTick);
+
+		expect(contextStore.deletePreference).not.toHaveBeenCalled();
+		expect(trackMock).not.toHaveBeenCalled();
 	});
 
 	it('returns to the Context landing page', async () => {

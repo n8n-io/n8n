@@ -5,10 +5,17 @@ import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
 
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
 import PreferenceModal from './PreferenceModal.vue';
 import { PREFERENCE_MODAL_KEY, PREFERENCE_TEXT_MAX_LENGTH } from '../context.constants';
 import { useContextStore } from '../context.store';
 import type { Preference } from '../context.types';
+
+const trackMock = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
+}));
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: vi.fn() }),
@@ -62,6 +69,7 @@ describe('PreferenceModal', () => {
 		contextStore = mockedStore(useContextStore);
 		usersStore = mockedStore(useUsersStore);
 		usersStore.isAdminOrOwner = false;
+		trackMock.mockReset();
 	});
 
 	describe('scope options', () => {
@@ -138,6 +146,21 @@ describe('PreferenceModal', () => {
 			});
 		});
 
+		it('reports a created preference without its text', async () => {
+			const { getByTestId } = renderModal({ props: { mode: 'new' }, global, pinia });
+
+			await userEvent.type(
+				getByTestId('preference-modal-text-input').querySelector('textarea')!,
+				'Keep replies short.',
+			);
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_CREATED_PREFERENCE, {
+				scope_type: 'user',
+				text_length: 'Keep replies short.'.length,
+			});
+		});
+
 		it('keeps the project scope when editing a project preference', async () => {
 			const preference: Preference = {
 				id: 'p1',
@@ -158,6 +181,30 @@ describe('PreferenceModal', () => {
 				text: 'Use sub-workflows.',
 				scopeType: 'project',
 				projectId: 'p-write',
+			});
+		});
+
+		it('reports an unchanged scope as scope_changed false', async () => {
+			const preference: Preference = {
+				id: 'p1',
+				text: 'Use sub-workflows.',
+				scopeType: 'project',
+				projectId: 'p-write',
+				project: { id: 'p-write', name: 'Writable Project' },
+				scopes: ['preference:read', 'preference:update', 'preference:delete'],
+				createdAt: '2026-09-08T00:00:00.000Z',
+				updatedAt: '2026-09-08T00:00:00.000Z',
+			};
+
+			const { getByTestId } = renderModal({ props: { mode: 'edit', preference }, global, pinia });
+
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+				scope_type: 'project',
+				text_length: 'Use sub-workflows.'.length,
+				scope_changed: false,
+				project_id: 'p-write',
 			});
 		});
 	});

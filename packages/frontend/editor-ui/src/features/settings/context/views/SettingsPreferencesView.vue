@@ -2,7 +2,9 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
 	N8nHeading,
@@ -20,12 +22,13 @@ import { useUIStore } from '@/app/stores/ui.store';
 import PreferencesTable from '../components/PreferencesTable.vue';
 import { PREFERENCES_DEFAULT_PAGE_SIZE, PREFERENCE_MODAL_KEY } from '../context.constants';
 import { useContextStore } from '../context.store';
-import type { Preference } from '../context.types';
+import type { Preference, PreferenceScopeType } from '../context.types';
 
 const i18n = useI18n();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const message = useMessage();
+const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const contextStore = useContextStore();
 const { showError, showMessage } = useToast();
@@ -81,11 +84,22 @@ async function confirmDelete(count: number) {
 	return confirmed === MODAL_CONFIRM;
 }
 
+/** One event per delete operation; `count` covers a bulk run. */
+function trackDelete(source: 'row' | 'bulk', scopeTypes: Array<PreferenceScopeType | undefined>) {
+	const present = scopeTypes.filter((scope): scope is PreferenceScopeType => scope !== undefined);
+	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+		count: scopeTypes.length,
+		source,
+		scope_types: [...new Set(present)],
+	});
+}
+
 async function onDelete(preference: Preference) {
 	if (!(await confirmDelete(1))) return;
 
 	try {
 		await contextStore.deletePreference(preference.id);
+		trackDelete('row', [preference.scopeType]);
 		selection.value = selection.value.filter((id) => id !== preference.id);
 		await load();
 		showMessage({
@@ -103,6 +117,10 @@ async function onDeleteSelected() {
 
 	try {
 		await contextStore.deletePreferences(ids);
+		trackDelete(
+			'bulk',
+			ids.map((id) => contextStore.preferences.find((row) => row.id === id)?.scopeType),
+		);
 		selection.value = [];
 		await load();
 		showMessage({
