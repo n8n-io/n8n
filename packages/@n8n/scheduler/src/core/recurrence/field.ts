@@ -1,5 +1,5 @@
 import { CorruptStorageRowError } from '../errors';
-import type { ScheduledJob } from '../types';
+import type { StoredSchedule } from '../types';
 
 /**
  * Reads a job field that the job's kind guarantees is set, e.g. `cronExpression`
@@ -11,15 +11,15 @@ import type { ScheduledJob } from '../types';
  * @throws {CorruptStorageRowError} When the field is unset, meaning the stored
  * data is inconsistent with the job's kind.
  */
-export function required<K extends keyof ScheduledJob>(
-	job: ScheduledJob,
+export function required<K extends keyof StoredSchedule>(
+	job: StoredSchedule,
 	key: K,
-): NonNullable<ScheduledJob[K]> {
+): NonNullable<StoredSchedule[K]> {
 	const value = job[key];
 	if (value === null || value === undefined) {
 		throw new CorruptStorageRowError(
 			`scheduled_job ${job.id} of kind '${job.kind}' is missing '${String(key)}'`,
 		);
 	}
-	return value as NonNullable<ScheduledJob[K]>;
+	return value as NonNullable<StoredSchedule[K]>;
 }

@@ -25,6 +25,7 @@ const baseHint: InstanceAiCredentialSetupHint = {
 		{ name: 'workspace_id', title: 'Workspace ID', type: 'plain', optional: true },
 	],
 	serviceHost: 'api.example.com',
+	serviceOrigin: 'https://api.example.com',
 	docsUrl: 'https://example.com/docs',
 	testUrl: 'https://api.example.com/me',
 	acceptedStatusCodes: [401],
@@ -71,6 +72,7 @@ describe('createOneCredential — httpTemplatedCustomAuth', () => {
 		expect(Object.keys(parsedValues)).toHaveLength(baseHint.placeholders.length);
 
 		expect(data.serviceHost).toBe(baseHint.serviceHost);
+		expect(data.serviceOrigin).toBe(baseHint.serviceOrigin);
 
 		expect(typeof data.acceptedStatusCodes).toBe('string');
 		expect(jsonParse(data.acceptedStatusCodes as string)).toEqual(baseHint.acceptedStatusCodes);

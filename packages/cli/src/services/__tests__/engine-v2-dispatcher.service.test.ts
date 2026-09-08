@@ -1,6 +1,7 @@
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import type {
 	INode,
+	INodeExecutionData,
 	IPinData,
 	IRunData,
 	ITaskData,
@@ -10,7 +11,7 @@ import type {
 	StartNodeData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, UserError } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
@@ -29,6 +30,8 @@ const node = (id: string, name: string, type: string): INode => ({
 });
 
 const MANUAL_TRIGGER = node('trigger-id', 'When clicking Execute', 'n8n-nodes-base.manualTrigger');
+const WEBHOOK_TRIGGER = node('webhook-id', 'Webhook', 'n8n-nodes-base.webhook');
+const SCHEDULE_TRIGGER = node('schedule-id', 'Schedule Trigger', 'n8n-nodes-base.scheduleTrigger');
 const SET_NODE = node('set-id', 'Edit Fields', 'n8n-nodes-base.set');
 
 function workflow(overrides: Partial<IWorkflowBase> = {}): IWorkflowBase {
@@ -70,6 +73,54 @@ function runData(
 	};
 }
 
+/** What `prepareExecutionData` hands the dispatcher: the fired trigger's output. */
+function webhookRunData(
+	main: Array<INodeExecutionData[] | null> = [[{ json: { body: 'hi' } }]],
+	overrides: Partial<IWorkflowExecutionDataProcess> = {},
+): IWorkflowExecutionDataProcess {
+	return {
+		executionMode: 'webhook',
+		workflowData: workflow({
+			nodes: [WEBHOOK_TRIGGER, SET_NODE],
+			connections: {
+				[WEBHOOK_TRIGGER.name]: {
+					main: [[{ node: SET_NODE.name, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+		}),
+		executionData: createRunExecutionData({
+			executionData: {
+				nodeExecutionStack: [{ node: WEBHOOK_TRIGGER, data: { main }, source: null }],
+			},
+		}),
+		...overrides,
+	};
+}
+
+/** What `WorkflowExecutionService.runWorkflow` hands the dispatcher for an active trigger. */
+function triggerRunData(
+	main: Array<INodeExecutionData[] | null> = [[{ json: { at: '2026-09-03T07:00:00.000Z' } }]],
+	overrides: Partial<IWorkflowExecutionDataProcess> = {},
+): IWorkflowExecutionDataProcess {
+	return {
+		executionMode: 'trigger',
+		workflowData: workflow({
+			nodes: [SCHEDULE_TRIGGER, SET_NODE],
+			connections: {
+				[SCHEDULE_TRIGGER.name]: {
+					main: [[{ node: SET_NODE.name, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+		}),
+		executionData: createRunExecutionData({
+			executionData: {
+				nodeExecutionStack: [{ node: SCHEDULE_TRIGGER, data: { main }, source: null }],
+			},
+		}),
+		...overrides,
+	};
+}
+
 describe('EngineV2Dispatcher', () => {
 	const proxy = mock<EngineDataPlaneProxyService>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
@@ -98,12 +149,33 @@ describe('EngineV2Dispatcher', () => {
 			expect(dispatcher.routesToEngineV2(data)).toBe(false);
 		});
 
-		it.each<WorkflowExecuteMode>(['webhook', 'trigger', 'retry', 'chat', 'evaluation'])(
+		it('routes a webhook run of a workflow that opted into engine 2.0', () => {
+			expect(dispatcher.routesToEngineV2(webhookRunData())).toBe(true);
+		});
+
+		it('routes an active trigger run of a workflow that opted into engine 2.0', () => {
+			expect(dispatcher.routesToEngineV2(triggerRunData())).toBe(true);
+		});
+
+		it.each<WorkflowExecuteMode>(['retry', 'chat', 'evaluation'])(
 			'does not route a %s run',
 			(executionMode) => {
 				expect(dispatcher.routesToEngineV2(runData({ executionMode }))).toBe(false);
 			},
 		);
+
+		it('answers the same question for a workflow and a mode alone', () => {
+			expect(dispatcher.handlesWorkflow(workflow(), 'webhook')).toBe(true);
+			expect(dispatcher.handlesWorkflow(workflow({ settings: {} }), 'webhook')).toBe(false);
+			expect(dispatcher.handlesWorkflow(workflow(), 'trigger')).toBe(true);
+			expect(dispatcher.handlesWorkflow(workflow({ settings: {} }), 'trigger')).toBe(false);
+		});
+
+		it('does not route a polled run, which hands `run` its own execution row', () => {
+			const existingExecution = mock<ResumableExecution>({ executionId: '42' });
+
+			expect(dispatcher.routesToEngineV2(triggerRunData(), existingExecution)).toBe(false);
+		});
 
 		it('does not route a resumed execution', () => {
 			const existingExecution = mock<ResumableExecution>({ executionId: '42' });
@@ -119,6 +191,40 @@ describe('EngineV2Dispatcher', () => {
 			expect(executionId).toMatch(UUID_V7_PATTERN);
 			expect(proxy.startExecution).toHaveBeenCalledWith(
 				expect.objectContaining({ executionId, workflowId: 'wf-1', mode: 'manual' }),
+			);
+		});
+
+		it('sends the workflow beside the graph, narrowed to what a read reports', async () => {
+			const workflowData = workflow();
+
+			await dispatcher.start(runData({ workflowData }));
+
+			const { workflow: document } = proxy.startExecution.mock.calls[0][0];
+			// Exactly the projection the execution read serves. Anything wider ships
+			// the raw row to the data plane and back out to the editor.
+			expect(Object.keys(document).sort()).toEqual([
+				'connections',
+				'id',
+				'name',
+				'nodeGroups',
+				'nodes',
+				'settings',
+			]);
+			expect(document).toMatchObject({
+				id: 'wf-1',
+				name: 'My workflow',
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
+			});
+		});
+
+		it('passes the v1 mode and the caller to the data plane', async () => {
+			await dispatcher.start(runData({ userId: 'user-1', projectId: 'project-1' }));
+
+			expect(proxy.startExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					callerContext: { hostMode: 'manual', userId: 'user-1', projectId: 'project-1' },
+				}),
 			);
 		});
 
@@ -194,22 +300,6 @@ describe('EngineV2Dispatcher', () => {
 			expect(proxy.startExecution).not.toHaveBeenCalled();
 		});
 
-		it.each([
-			{ name: 'the selected trigger', triggerToStartFrom: { name: 'Schedule' } },
-			{ name: 'the only trigger', triggerToStartFrom: undefined },
-		])('rejects a production trigger, when it is $name', async ({ triggerToStartFrom }) => {
-			const scheduleTrigger = node('sched-id', 'Schedule', 'n8n-nodes-base.scheduleTrigger');
-			const data = runData({
-				triggerToStartFrom,
-				workflowData: workflow({ nodes: [scheduleTrigger, SET_NODE], connections: {} }),
-			});
-
-			await expect(dispatcher.start(data)).rejects.toThrow(
-				'Engine 2.0 cannot run the "Schedule" trigger yet. Only the Manual Trigger is supported.',
-			);
-			expect(proxy.startExecution).not.toHaveBeenCalled();
-		});
-
 		it('lets the converter find the trigger when none was selected', async () => {
 			await dispatcher.start(runData({ triggerToStartFrom: undefined }));
 
@@ -222,6 +312,192 @@ describe('EngineV2Dispatcher', () => {
 				}),
 				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
 			]);
+		});
+
+		describe('a webhook run', () => {
+			it('starts a production run on the engine', async () => {
+				const executionId = await dispatcher.start(webhookRunData());
+
+				expect(proxy.startExecution).toHaveBeenCalledWith(
+					expect.objectContaining({ executionId, workflowId: 'wf-1', mode: 'production' }),
+				);
+			});
+
+			it('stays a manual run for a test webhook', async () => {
+				await dispatcher.start(webhookRunData(undefined, { executionMode: 'manual' }));
+
+				expect(proxy.startExecution.mock.calls[0][0].mode).toBe('manual');
+			});
+
+			it('roots the graph at the webhook node and makes it the trigger step', async () => {
+				await dispatcher.start(webhookRunData());
+
+				const { graph } = proxy.startExecution.mock.calls[0][0];
+				expect(graph.nodes).toEqual([
+					expect.objectContaining({
+						id: WEBHOOK_TRIGGER.id,
+						name: WEBHOOK_TRIGGER.name,
+						type: 'trigger',
+					}),
+					expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
+				]);
+			});
+
+			it('takes the payload from the webhook node output', async () => {
+				await dispatcher.start(webhookRunData([[{ json: { body: 'hi' } }]]));
+
+				expect(proxy.startExecution.mock.calls[0][0].triggerOutputs).toEqual([
+					[{ json: { body: 'hi' } }],
+				]);
+			});
+
+			it('keeps every output slot of a multi-method webhook', async () => {
+				await dispatcher.start(webhookRunData([null, [{ json: { method: 'POST' } }]]));
+
+				expect(proxy.startExecution.mock.calls[0][0].triggerOutputs).toEqual([
+					null,
+					[{ json: { method: 'POST' } }],
+				]);
+			});
+
+			it('reports the webhook trigger to the editor', async () => {
+				await dispatcher.start(webhookRunData(undefined, { pushRef: 'push-1' }));
+
+				expect(pushRegistry.register.mock.calls[0][1].trigger).toEqual({
+					nodeName: WEBHOOK_TRIGGER.name,
+					outputs: [[{ json: { body: 'hi' } }]],
+				});
+			});
+
+			it('prefers a named trigger over the seeded stack', async () => {
+				const data = webhookRunData(undefined, {
+					triggerToStartFrom: {
+						name: MANUAL_TRIGGER.name,
+						data: taskData([[{ json: { from: 'trigger' } }]]),
+					},
+					workflowData: workflow(),
+				});
+
+				await dispatcher.start(data);
+
+				expect(proxy.startExecution.mock.calls[0][0].triggerOutputs).toEqual([
+					[{ json: { from: 'trigger' } }],
+				]);
+			});
+
+			it('ignores a seeded node that is not a trigger', async () => {
+				const data = webhookRunData(undefined, {
+					workflowData: workflow(),
+					executionData: createRunExecutionData({
+						executionData: {
+							nodeExecutionStack: [
+								{ node: SET_NODE, data: { main: [[{ json: { seeded: true } }]] }, source: null },
+							],
+						},
+					}),
+				});
+
+				await dispatcher.start(data);
+
+				expect(proxy.startExecution.mock.calls[0][0].triggerOutputs).toEqual([[{ json: {} }]]);
+			});
+
+			it('allows pinned data on the webhook trigger itself', async () => {
+				const data = webhookRunData(undefined, {
+					pinData: { [WEBHOOK_TRIGGER.name]: [{ json: { from: 'pin' } }] } as IPinData,
+				});
+
+				await expect(dispatcher.start(data)).resolves.toMatch(UUID_V7_PATTERN);
+			});
+		});
+
+		describe('an active trigger run', () => {
+			it('starts a production run on the engine', async () => {
+				const executionId = await dispatcher.start(triggerRunData());
+
+				expect(proxy.startExecution).toHaveBeenCalledWith(
+					expect.objectContaining({ executionId, workflowId: 'wf-1', mode: 'production' }),
+				);
+			});
+
+			it('roots the graph at the trigger node and makes it the trigger step', async () => {
+				await dispatcher.start(triggerRunData());
+
+				const { graph } = proxy.startExecution.mock.calls[0][0];
+				expect(graph.nodes).toEqual([
+					expect.objectContaining({
+						id: SCHEDULE_TRIGGER.id,
+						name: SCHEDULE_TRIGGER.name,
+						type: 'trigger',
+					}),
+					expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
+				]);
+			});
+
+			it('takes the payload from the trigger node output', async () => {
+				await dispatcher.start(triggerRunData([[{ json: { at: 'now' } }]]));
+
+				expect(proxy.startExecution.mock.calls[0][0].triggerOutputs).toEqual([
+					[{ json: { at: 'now' } }],
+				]);
+			});
+
+			it('registers no push session, because a production trigger run has no watcher', async () => {
+				await dispatcher.start(triggerRunData());
+
+				expect(pushRegistry.register).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('a trigger that establishes an identity', () => {
+			const hookedTrigger = {
+				...node('hooked-id', 'Stripe Trigger', 'n8n-nodes-base.stripeTrigger'),
+				parameters: { contextEstablishmentHooks: { hooks: [{ hookName: 'HttpHeaderExtractor' }] } },
+			};
+
+			const hookedWorkflow = () =>
+				workflow({
+					nodes: [hookedTrigger, SET_NODE],
+					connections: {
+						[hookedTrigger.name]: {
+							main: [[{ node: SET_NODE.name, type: NodeConnectionTypes.Main, index: 0 }]],
+						},
+					},
+				});
+
+			// The context hooks mask the secret in the trigger item. The v2 path returns
+			// before they run, so the raw value would reach the data plane.
+			it.each([
+				{ name: 'named by the caller', triggerName: hookedTrigger.name },
+				{ name: 'the only trigger', triggerName: undefined },
+			])('is refused when it is $name', async ({ triggerName }) => {
+				const data = runData({
+					workflowData: hookedWorkflow(),
+					triggerToStartFrom: triggerName ? { name: triggerName } : undefined,
+				});
+
+				await expect(dispatcher.start(data)).rejects.toThrow(
+					'Engine 2.0 cannot run the "Stripe Trigger" trigger yet, because it takes credentials from the request.',
+				);
+				expect(proxy.startExecution).not.toHaveBeenCalled();
+			});
+
+			it('is refused on the webhook path too', async () => {
+				const data = webhookRunData(undefined, {
+					workflowData: workflow({
+						nodes: [{ ...WEBHOOK_TRIGGER, parameters: { authentication: 'n8nOAuth2' } }, SET_NODE],
+						connections: {},
+					}),
+				});
+
+				await expect(dispatcher.start(data)).rejects.toThrow(
+					'because it takes credentials from the request',
+				);
+			});
+
+			it('allows a trigger that configures no hooks', async () => {
+				await expect(dispatcher.start(webhookRunData())).resolves.toMatch(UUID_V7_PATTERN);
+			});
 		});
 
 		describe('rejections', () => {

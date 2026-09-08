@@ -38,9 +38,9 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
  * reproduced, and re-emitting request facts would resurrect dead approval
  * prompts), per-call timing (synthesized facts share the snapshot timestamp,
  * so durations render as instant — the tree stores no segment timing to do
- * better), and langsmith feedback anchors (they live in snapshot COLUMNS,
- * which outlive Gate B until the table drops, so feedback on pre-log threads
- * keeps resolving unchanged; the Gate B anchor relocation carries them over).
+ * better), and langsmith feedback anchors (they live in snapshot COLUMNS and
+ * drop with the table in Gate B; feedback on those turns is still stored, it
+ * just no longer annotates the LangSmith trace).
  */
 
 // ---------------------------------------------------------------------------

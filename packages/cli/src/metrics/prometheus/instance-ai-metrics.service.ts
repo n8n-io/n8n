@@ -65,6 +65,18 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 		});
 		costTotal.inc(0);
 
+		const runsRefusedTotal = new promClient.Counter({
+			name: `${this.config.prefix}instance_ai_runs_refused_total`,
+			help: 'Instance AI runs refused by a concurrency cap, by reason.',
+			labelNames: ['reason'],
+		});
+		runsRefusedTotal.inc({ reason: 'user_run_limit' }, 0);
+		runsRefusedTotal.inc({ reason: 'instance_run_limit' }, 0);
+
+		this.eventService.on('instance-ai-run-refused', ({ reason }) => {
+			runsRefusedTotal.inc({ reason });
+		});
+
 		const runProbe = this.runProbe;
 		new promClient.Gauge({
 			name: `${this.config.prefix}instance_ai_active_runs`,
@@ -123,12 +135,6 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 			buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5],
 		});
 
-		const parserFallbacksTotal = new promClient.Counter({
-			name: `${this.config.prefix}instance_ai_parser_fallbacks_total`,
-			help: 'History messages rendered from the message-derived fallback ladder instead of a renderable snapshot tree.',
-		});
-		parserFallbacksTotal.inc(0);
-
 		const runsSweptTotal = new promClient.Counter({
 			name: `${this.config.prefix}instance_ai_runs_swept_total`,
 			help: 'Crashed Instance AI runs resolved by the interrupted-run sweep.',
@@ -156,9 +162,6 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 		});
 		this.eventService.on('instance-ai-history-folded', ({ latencyMs }) => {
 			historyFoldDuration.observe(latencyMs / 1000);
-		});
-		this.eventService.on('instance-ai-parser-fallback', ({ count }) => {
-			parserFallbacksTotal.inc(count);
 		});
 		this.eventService.on('instance-ai-run-swept', ({ outcome }) => {
 			runsSweptTotal.inc({ outcome }, 1);

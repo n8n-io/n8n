@@ -1,6 +1,7 @@
-import type { INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-import type { ConfigListSummary } from 'simple-git';
+import type { INode, ResolvedFilePath } from 'n8n-workflow';
+import { NodeOperationError, OperationalError } from 'n8n-workflow';
+import { isAbsolute, parse, sep } from 'node:path';
+import type { ConfigListSummary, SimpleGit } from 'simple-git';
 
 const FILTER_COMMAND_CONFIG_KEY_PATTERN = /^filter\.(.*)\.(?:clean|smudge|process)$/i;
 
@@ -131,11 +132,143 @@ export function validateGitTag(name: string, node: INode): void {
 	assertSafeGitReference(name, node, /^[a-zA-Z0-9/@{}._:+-]+$/, '/@{}._:+-');
 }
 
+// Git accepts a URL or a path anywhere it accepts a remote name, so a name is held to
+// git's own rule for one (`check_refname_format`) plus no leading `-` or `/`.
+const UNSAFE_REMOTE_NAME_PATTERN = /^[-./]|[\\:~^?*[\s\x00-\x1f\x7f]|\.\.|\/\/|\/$/;
+
+const isValidRemoteName = (name: string) =>
+	name === '.' || (name.length > 0 && !UNSAFE_REMOTE_NAME_PATTERN.test(name));
+
+export function validateGitRemoteName(name: string, node: INode): void {
+	if (!isValidRemoteName(name)) {
+		throw new NodeOperationError(
+			node,
+			`Invalid remote name '${name}'. This field takes the name of a remote, not a URL or a path`,
+		);
+	}
+}
+export interface GitRepositoryLayout {
+	/** `--show-toplevel`, or undefined when git reports no work tree. */
+	topLevel: string | undefined;
+	/** `--absolute-git-dir`: the per-worktree git directory. */
+	gitDir: string;
+	/** `--git-common-dir`, printed relative to git's cwd. */
+	commonDir: string;
+}
+
+/**
+ * A repository path containing a newline makes git print an extra line, so take the line
+ * count as given rather than reading positionally: picking up the wrong value here would
+ * silently point the callers' checks at the wrong directory.
+ */
+function parseRevParseOutput(output: string, expectedLineCount: number): string[] {
+	const lines = output.split('\n');
+	if (lines[lines.length - 1] === '') {
+		lines.pop();
+	}
+
+	// Windows forbids a carriage return in a filename, so there it can only be a line
+	// terminator. POSIX allows it, and stripping it would name a different directory.
+	const paths = process.platform === 'win32' ? lines.map((line) => line.replace(/\r$/, '')) : lines;
+	if (paths.length !== expectedLineCount || paths.some((path) => path === '')) {
+		throw new OperationalError('Could not read the git repository layout');
+	}
+
+	return paths;
+}
+
+/**
+ * git prints these absolute, and callers hand them straight to `resolvePath`, where a relative
+ * value would resolve against n8n's own working directory instead.
+ */
+function assertAbsolutePaths(paths: string[], cause?: unknown): void {
+	if (paths.some((path) => !isAbsolute(path))) {
+		throw new OperationalError('Could not read the git repository layout', { cause });
+	}
+}
+
+// Asks git where the repository it discovered actually lives.
+export async function getGitRepositoryLayout(git: SimpleGit): Promise<GitRepositoryLayout> {
+	let workTreeError: unknown;
+	const workTreeOutput = await git
+		.raw(['rev-parse', '--show-toplevel', '--absolute-git-dir', '--git-common-dir'])
+		.catch((error: unknown) => {
+			workTreeError = error;
+			return undefined;
+		});
+
+	if (workTreeOutput !== undefined) {
+		const [topLevel, gitDir, commonDir] = parseRevParseOutput(workTreeOutput, 3);
+		assertAbsolutePaths([topLevel, gitDir]);
+		return { topLevel, gitDir, commonDir };
+	}
+
+	// The call above also fails for reasons other than "no work tree" (a spawn failure, an
+	// ownership refusal), so make git confirm there is none rather than assuming it.
+	const fallbackOutput = await git
+		.raw(['rev-parse', '--absolute-git-dir', '--git-common-dir', '--is-inside-work-tree'])
+		.catch((error: unknown) => {
+			throw new OperationalError(
+				error instanceof Error ? error.message : 'Could not read the git repository layout',
+				{ cause: workTreeError },
+			);
+		});
+
+	const [gitDir, commonDir, isInsideWorkTree] = parseRevParseOutput(fallbackOutput, 3);
+	assertAbsolutePaths([gitDir], workTreeError);
+	if (isInsideWorkTree !== 'false') {
+		throw new OperationalError('Could not read the git repository layout', {
+			cause: workTreeError,
+		});
+	}
+
+	return { topLevel: undefined, gitDir, commonDir };
+}
+
+/**
+ * Whole-component path containment. `parent` may be a filesystem root, which already ends in a
+ * separator, so appending another one would never match.
+ *
+ * Both arguments must be resolved absolute paths. This is a pure string test: it does not
+ * normalise `..`, a trailing separator or an empty `parent`.
+ */
+export function isWithinPath(parent: string, candidate: string): boolean {
+	if (candidate === parent) {
+		return true;
+	}
+
+	return candidate.startsWith(parent.endsWith(sep) ? parent : parent + sep);
+}
+
+/**
+ * The directory owning a git directory: `<top>` for both `<top>/.git` and
+ * `<top>/.git/modules/<name>`. Callers need it because the default allowed-path patterns
+ * reject every path with a `.git` component.
+ */
+export function ownerOfGitDir(gitDirPath: ResolvedFilePath): ResolvedFilePath {
+	const components = gitDirPath.split(sep);
+	const gitIndex = components.lastIndexOf('.git');
+	if (gitIndex === -1) {
+		return gitDirPath;
+	}
+
+	// Floor at the filesystem root, for a repository whose git dir sits directly under it.
+	// Ancestors of a realpath'd path are themselves resolved, so the cast is sound.
+	const { root } = parse(gitDirPath);
+	const owner = components.slice(0, gitIndex).join(sep);
+	return (owner.length > root.length ? owner : root) as ResolvedFilePath;
+}
 const REMOTE_ORIGIN_URL_KEY = 'remote.origin.url';
 
 const REMOTE_ORIGIN_PUSH_URL_KEY = 'remote.origin.pushurl';
 
 const REMOTE_CONFIG_KEY_PATTERN = /^remote\.(.+)\.(url|pushurl)$/i;
+
+// Git resolves these against the configured remotes and, failing that, uses the value
+// itself as a repository URL or path.
+const BRANCH_REMOTE_CONFIG_KEY_PATTERN = /^branch\..+\.(remote|pushremote)$/i;
+
+const REMOTE_PUSH_DEFAULT_CONFIG_KEY_PATTERN = /^remote\.pushdefault$/i;
 
 export type GitRepositoryType = 'source' | 'target';
 
@@ -147,13 +280,19 @@ export interface ConfiguredRemoteRepositories {
 
 export function getRepositoryTypeForRemoteConfigKey(key: string): GitRepositoryType | undefined {
 	const match = REMOTE_CONFIG_KEY_PATTERN.exec(key);
-
-	if (!match) {
-		return undefined;
+	if (match) {
+		return match[2].toLowerCase() === 'pushurl' ? 'target' : 'source';
 	}
 
-	return match[2].toLowerCase() === 'pushurl' ? 'target' : 'source';
+	const branchMatch = BRANCH_REMOTE_CONFIG_KEY_PATTERN.exec(key);
+	if (branchMatch) {
+		return branchMatch[1].toLowerCase() === 'pushremote' ? 'target' : 'source';
+	}
+
+	return REMOTE_PUSH_DEFAULT_CONFIG_KEY_PATTERN.test(key) ? 'target' : undefined;
 }
+
+const toArray = (value: string | string[]) => (Array.isArray(value) ? value : [value]);
 
 function addRemoteValue(
 	remoteValuesByName: Map<string, string[]>,
@@ -175,34 +314,51 @@ export function getConfiguredRemoteRepositories(
 	const remoteOriginPushUrls: string[] = [];
 	const remoteUrlsByName = new Map<string, string[]>();
 	const remotePushUrlsByName = new Map<string, string[]>();
+	const configuredRemoteNames = new Set<string>();
+	const sourceRemoteReferences: string[] = [];
+	const targetRemoteReferences: string[] = [];
 
 	for (const values of Object.values(configValues)) {
 		for (const [key, value] of Object.entries(values)) {
-			const match = REMOTE_CONFIG_KEY_PATTERN.exec(key);
-			if (value === undefined || match === null) {
+			if (value === undefined) {
 				continue;
 			}
 
-			if (typeof value !== 'string') {
-				throw new NodeOperationError(node, 'Target repository is required');
-			}
-
-			const remoteName = match[1].toLowerCase();
-			const repositoryType = match[2].toLowerCase();
-
-			const normalizedKey = key.toLowerCase();
-			if (repositoryType === 'pushurl') {
-				addRemoteValue(remotePushUrlsByName, remoteName, value);
-				if (normalizedKey === REMOTE_ORIGIN_PUSH_URL_KEY) {
-					remoteOriginPushUrls.push(value);
+			const match = REMOTE_CONFIG_KEY_PATTERN.exec(key);
+			if (match !== null) {
+				if (typeof value !== 'string') {
+					throw new NodeOperationError(node, 'Target repository is required');
 				}
-			} else {
-				sourceValidationTargets.push(value);
-				addRemoteValue(remoteUrlsByName, remoteName, value);
+
+				const remoteName = match[1].toLowerCase();
+				const repositoryType = match[2].toLowerCase();
+
+				const normalizedKey = key.toLowerCase();
+				if (repositoryType === 'pushurl') {
+					addRemoteValue(remotePushUrlsByName, remoteName, value);
+					if (normalizedKey === REMOTE_ORIGIN_PUSH_URL_KEY) {
+						remoteOriginPushUrls.push(value);
+					}
+				} else {
+					sourceValidationTargets.push(value);
+					addRemoteValue(remoteUrlsByName, remoteName, value);
+					if (isValidRemoteName(match[1])) {
+						configuredRemoteNames.add(match[1]);
+					}
+				}
+
+				if (normalizedKey === REMOTE_ORIGIN_URL_KEY) {
+					remoteOriginUrls.push(value);
+				}
+
+				continue;
 			}
 
-			if (normalizedKey === REMOTE_ORIGIN_URL_KEY) {
-				remoteOriginUrls.push(value);
+			const repositoryType = getRepositoryTypeForRemoteConfigKey(key);
+			if (repositoryType === 'source') {
+				sourceRemoteReferences.push(...toArray(value));
+			} else if (repositoryType === 'target') {
+				targetRemoteReferences.push(...toArray(value));
 			}
 		}
 	}
@@ -213,6 +369,18 @@ export function getConfiguredRemoteRepositories(
 		const remotePushUrls = remotePushUrlsByName.get(remoteName);
 		targetValidationTargets.push.apply(targetValidationTargets, remotePushUrls ?? remoteUrls);
 	}
+
+	// A reference naming a configured remote is covered by that remote's own URLs above.
+	// A branch's fetch remote is also where a push lands when it has no push remote.
+	const unresolved = (references: string[]) =>
+		references.filter((reference) => !configuredRemoteNames.has(reference));
+
+	const unresolvedSourceReferences = unresolved(sourceRemoteReferences);
+	sourceValidationTargets.push(...unresolvedSourceReferences);
+	targetValidationTargets.push(
+		...unresolvedSourceReferences,
+		...unresolved(targetRemoteReferences),
+	);
 
 	return {
 		sourceValidationTargets,

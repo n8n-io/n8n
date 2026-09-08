@@ -53,6 +53,16 @@ export class InstanceAiModule implements ModuleInterface {
 		}
 	}
 
+	async systemTasks() {
+		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [];
+
+		const { InstanceAiCheckpointPruningTask } = await import(
+			'./instance-ai-checkpoint-pruning.task.js'
+		);
+		return [InstanceAiCheckpointPruningTask];
+	}
+
 	async settings() {
 		const { GlobalConfig } = await import('@n8n/config');
 		const { InstanceAiService } = await import('./instance-ai.service.js');
@@ -77,6 +87,7 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			activationCapped: settingsService.isActivationCapped(),
+			instanceAiSetupPanelEnabled: settingsService.isInstanceAiSetupPanelEnabled(),
 		};
 	}
 
@@ -84,7 +95,6 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity.js');
 		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity.js');
 		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity.js');
-		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity.js');
 		const { InstanceAiIterationLog } = await import(
 			'./entities/instance-ai-iteration-log.entity.js'
 		);
@@ -111,7 +121,6 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiThread,
 			InstanceAiMessage,
 			InstanceAiResource,
-			InstanceAiRunSnapshot,
 			InstanceAiIterationLog,
 			InstanceAiCheckpoint,
 			InstanceAiPendingConfirmation,
