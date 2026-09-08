@@ -1107,10 +1107,24 @@ describe('Package import rejection cases', () => {
 				user: owner,
 				packageBuffer: await buildImportPackageBuffer(
 					[serializedWorkflow({ id: 'wf-x', name: 'X' })],
-					{ omitWorkflowLifecycle: true },
+					{ workflowLifecycle: 'omit' },
 				),
 			}),
-		).rejects.toThrow(/missing workflow lifecycle file/);
+		).rejects.toThrow(/lifecycle file is missing at workflows\/wf-0\/workflow-lifecycle\.json/);
+	});
+
+	it('rejects a workflow whose lifecycle file does not match the schema', async () => {
+		const owner = await createOwner();
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer(
+					[serializedWorkflow({ id: 'wf-x', name: 'X' })],
+					{ workflowLifecycle: { isArchived: false } },
+				),
+			}),
+		).rejects.toThrow(/lifecycle file at workflows\/wf-0\/workflow-lifecycle\.json failed schema/);
 	});
 
 	it('rejects when the requested projectId does not exist', async () => {
@@ -2500,6 +2514,7 @@ describe('Package import workflow publishing policy', () => {
 		);
 		const active = await createActiveWorkflow({ name: 'Active workflow' }, personalProject);
 		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+		const originalActiveVersionId = active.activeVersionId;
 
 		const result = await importPackage({
 			user: owner,
@@ -2519,10 +2534,12 @@ describe('Package import workflow publishing policy', () => {
 		const summary = result.workflows.find(
 			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
 		);
-		expect(summary?.activeVersionId).toEqual(expect.any(String));
+		expect(summary?.activeVersionId).toBe(originalActiveVersionId);
 
+		// The package content lands as a draft, but the version that was live stays live.
 		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
-		expect(stored.activeVersionId).not.toBeNull();
+		expect(stored.activeVersionId).toBe(originalActiveVersionId);
+		expect(stored.versionId).not.toBe(originalActiveVersionId);
 	});
 
 	it('"unpublish-all" unpublishes a previously published matched workflow', async () => {

@@ -1,7 +1,9 @@
 import {
 	createTeamProject,
 	createWorkflow,
+	createWorkflowWithHistory,
 	linkUserToProject,
+	setActiveVersion,
 	shareWorkflowWithUsers,
 	testDb,
 	testModules,
@@ -51,10 +53,14 @@ beforeEach(async () => {
 	]);
 });
 
-function workflowJson(entries: UnpackedEntry[], target: string) {
+function workflowFile(entries: UnpackedEntry[], target: string) {
 	const file = entries.find((entry) => entry.name === `${target}/workflow.json`);
 	if (!file) throw new Error(`missing ${target}/workflow.json`);
-	return jsonParse<Record<string, unknown>>(file.content.toString());
+	return file.content.toString();
+}
+
+function workflowJson(entries: UnpackedEntry[], target: string) {
+	return jsonParse<Record<string, unknown>>(workflowFile(entries, target));
 }
 
 function workflowLifecycleJson(entries: UnpackedEntry[], target: string) {
@@ -137,6 +143,25 @@ describe('workflow package export', () => {
 			expect(workflowLifecycleJson(entries, target)).toEqual({
 				publishedVersionId: null,
 				isArchived: false,
+			});
+		});
+
+		it('emits the same workflow.json after the workflow is published and archived', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const workflow = await createWorkflowWithHistory({ name: 'My Workflow' }, project);
+
+			const before = await exportSingleWorkflow(owner, workflow.id);
+			const target = before.manifest.workflows![0].target;
+
+			await setActiveVersion(workflow.id, workflow.versionId);
+			await Container.get(WorkflowRepository).update(workflow.id, { isArchived: true });
+			const after = await exportSingleWorkflow(owner, workflow.id);
+
+			expect(workflowFile(after.entries, target)).toBe(workflowFile(before.entries, target));
+			expect(workflowLifecycleJson(after.entries, target)).toEqual({
+				publishedVersionId: workflow.versionId,
+				isArchived: true,
 			});
 		});
 

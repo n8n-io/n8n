@@ -230,7 +230,8 @@ export async function buildImportPackageBuffer(
 	options: {
 		manifestExtras?: Partial<PackageManifest>;
 		sourceId?: string;
-		omitWorkflowLifecycle?: boolean;
+		/** Replaces every lifecycle file, or leaves it out, so tests can drive the rejections. */
+		workflowLifecycle?: 'omit' | Record<string, unknown>;
 	} = {},
 ): Promise<Buffer> {
 	const writer = new TarPackageWriter();
@@ -265,8 +266,11 @@ export async function buildImportPackageBuffer(
 		const { content, lifecycle } = workflowFiles(wf);
 		writer.writeDirectory(`workflows/wf-${idx}`);
 		writer.writeFile(`workflows/wf-${idx}/workflow.json`, JSON.stringify(content));
-		if (!options.omitWorkflowLifecycle) {
-			writer.writeFile(`workflows/wf-${idx}/workflow-lifecycle.json`, JSON.stringify(lifecycle));
+		if (options.workflowLifecycle !== 'omit') {
+			writer.writeFile(
+				`workflows/wf-${idx}/workflow-lifecycle.json`,
+				JSON.stringify(options.workflowLifecycle ?? lifecycle),
+			);
 		}
 	});
 
