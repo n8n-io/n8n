@@ -374,6 +374,7 @@ describe('GlobalConfig', () => {
 			canvasNodeContextEnabled: false,
 			instanceAiSetupPanelEnabled: false,
 			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
 			maxConcurrentRuns: -1,
@@ -576,6 +577,7 @@ describe('GlobalConfig', () => {
 			maxDisplaySize: 100 * 1024 * 1024,
 			webhookResponseRelaySizeMaxMiB: 64,
 			webhookResponseRelayOffloadEnabled: false,
+			preExecuteErrorCreatesExecution: false,
 		},
 		diagnostics: {
 			enabled: true,

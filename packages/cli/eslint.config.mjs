@@ -418,10 +418,8 @@ export default defineConfig(
 		files: [
 			'./src/license.ts',
 			'./src/modules/agents/integrations/n8n-checkpoint-storage.ts',
-			'./src/modules/insights/insights.service.ts',
 			'./src/modules/instance-ai/instance-ai.service.ts',
-			'./src/modules/instance-registry/checks/check.service.ts',
-			'./src/modules/instance-registry/stale-member-cleanup.service.ts',
+			'./src/modules/instance-reporting/instance-reporting-scheduler.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',
 			'./src/services/pruning/workflow-history-compaction.service.ts',
 			'./src/services/workflow-statistics-rollup.service.ts',

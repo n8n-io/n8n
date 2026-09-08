@@ -219,6 +219,15 @@ export class InstanceAiConfig {
 	nodeUsageEnabled: boolean = false;
 
 	/**
+	 * Force-enable folder exploration in Instance AI: folder attribution and
+	 * folder scoping on the workflows list tool. Overrides the
+	 * `110_instance_ai_folder_exploration` PostHog flag to on. `false` falls back
+	 * to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
+	folderExplorationEnabled: boolean = false;
+
+	/**
 	 * Activation-capped trial variant for n8n cloud experiment.
 	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
 	 */

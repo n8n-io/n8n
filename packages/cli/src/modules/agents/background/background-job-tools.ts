@@ -19,9 +19,16 @@ export interface BackgroundJobToolsOptions {
 	availableSubAgents: Array<{ id: string; name: string; useWhen?: string }>;
 	projectId: string;
 	parentAgentId: string;
+	// The workspace handle is principal-scoped, not thread-scoped. The sandbox
+	// outlives the parent turn, so capture it when the tool is built.
 	runContext: Pick<
 		SubAgentRunContext,
-		'credentialProvider' | 'runType' | 'workflowToolExecutionMode' | 'user' | 'instrumentation'
+		| 'credentialProvider'
+		| 'runType'
+		| 'workflowToolExecutionMode'
+		| 'user'
+		| 'instrumentation'
+		| 'parentWorkspaceHandle'
 	>;
 }
 
