@@ -2,6 +2,7 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INode,
 	INodeListSearchItems,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
@@ -53,6 +54,34 @@ const mentionMessages = (row: number): UserTargetMessages => ({
 			'Enter a plain email address or user ID. Remove any slashes, backslashes, colons, commas, spaces, or encoded characters and try again.',
 	},
 });
+
+/**
+ * Rewrites the 403 Graph returns when the credential cannot read team tags into copy that names
+ * the n8n action. Returns `undefined` for every other error, so both tag call sites stay one line
+ * and the two descriptions cannot drift apart.
+ *
+ * The text has to be read from all three fields. The delegated transport branch passes
+ * `errorOptions.message`, which puts Graph's text in `.message` and clears `.description`; a
+ * `NodeApiError` built from a raw response body leaves it in `.description` and `.messages`.
+ * Gating on one field alone is green in tests and dead in production.
+ */
+export function tagPermissionError(
+	error: unknown,
+	node: INode,
+	message: string,
+	itemIndex?: number,
+): NodeOperationError | undefined {
+	if (!(error instanceof NodeApiError) || error.httpCode !== '403') return undefined;
+	if (![error.message, error.description, ...error.messages].join(' ').includes('TeamworkTag')) {
+		return undefined;
+	}
+
+	return new NodeOperationError(node, message, {
+		itemIndex,
+		description:
+			"This credential does not have permission to read team tags. Add TeamworkTag.Read to the credential's scopes if you set them yourself, then open the credential and select Reconnect. A Microsoft Entra admin must approve it.",
+	});
+}
 
 /**
  * `GET /users/{id}` resolves an object id or a principal name, never a `mail` address, and the

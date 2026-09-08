@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
-import { filterSortSearchListItems } from '../helpers/utils';
+import { filterSortSearchListItems, tagPermissionError } from '../helpers/utils';
 import {
 	buildTeamsPath,
 	getTeamsCredentialType,
@@ -184,6 +184,54 @@ export async function getChannels(
 			url,
 		});
 	}
+
+	const results = filterSortSearchListItems(returnData, filter);
+	return { results };
+}
+
+/**
+ * Team tags for the mention picker. Mirrors `getChannels` (team-scoped, client-side filtering)
+ * rather than `getUsers`: Graph documents no `$search` on `/tags`, and `$filter` cannot do the
+ * substring match a picker needs. `/v1.0`, the tags collection is GA.
+ */
+export async function getTags(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const teamId = this.getCurrentNodeParameter('teamId', { extractValue: true }) as string;
+	// Deliberate divergence from `getChannels`, which has no such guard and lets `buildTeamsPath`
+	// emit the generic "A required ID is empty" on the same node. Mirroring the guard there would
+	// change a shipped picker, so `getChannels` stays untouched.
+	if (!teamId) {
+		throw new NodeOperationError(this.getNode(), 'Select a team first');
+	}
+
+	let value: IDataObject[];
+	try {
+		value = await microsoftApiRequestAllItems.call(
+			this,
+			'value',
+			'GET',
+			buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/tags']),
+		);
+	} catch (error) {
+		throw tagPermissionError(error, this.getNode(), 'Could not load team tags') ?? error;
+	}
+
+	const returnData: INodeListSearchItems[] = value.map((tag) => {
+		// A tag notifies everyone carrying it, and the dropdown renders only `name`, so the
+		// blast radius goes there. Graph sends `memberCount` as a number when listing and as a
+		// string when getting one tag.
+		const memberCount = Number(tag.memberCount);
+		const displayName = tag.displayName as string;
+		return {
+			name: Number.isFinite(memberCount)
+				? `${displayName} (${memberCount} ${memberCount === 1 ? 'member' : 'members'})`
+				: displayName,
+			value: tag.id as string,
+			description: tag.description as string,
+		};
+	});
 
 	const results = filterSortSearchListItems(returnData, filter);
 	return { results };
